@@ -1,0 +1,165 @@
+syntax = "proto3";
+package quorum.pb;
+option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
+
+enum PackageType {
+    TRX   = 0;
+    BLOCK = 1;
+}
+
+message Package {
+    PackageType type = 1;
+    bytes       Data = 2;
+}
+
+enum TrxType {
+  POST               = 0; // post to group
+  AUTH               = 1; // group auth update
+  SCHEMA             = 2; // group schema
+  PRODUCER           = 3; // update group producer
+  ANNOUNCE           = 4; // self announce, producer or user)  
+  REQ_BLOCK_FORWARD  = 5; // request next block 
+  REQ_BLOCK_BACKWARD = 6; // request previous block
+  REQ_BLOCK_RESP     = 7; // response request next block
+  BLOCK_SYNCED       = 8; // block for producer to sync (old block)
+  BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
+}
+
+message Trx {
+  string  TrxId        = 1;
+  TrxType Type         = 2;    
+  string  GroupId      = 3;
+  bytes   Data         = 4; 
+  int64   TimeStamp    = 5;
+  string  Version      = 6;
+  int64   Expired      = 7;
+  int64   ResendCount  = 8;
+  int64   Nonce        = 9;
+  string  SenderPubkey = 10;  
+  bytes   SenderSign   = 11;
+}
+
+message Block {
+    string   BlockId        = 1;
+    string   GroupId        = 2;
+	string   PrevBlockId    = 3;       
+	bytes    PreviousHash   = 4;     
+	repeated Trx Trxs       = 5; 
+    string   ProducerPubKey = 6;   
+	bytes    Hash           = 7;      
+    bytes    Signature      = 8;
+	int64    Timestamp      = 9; 
+}
+
+message BlockDbChunk {
+    string   BlockId           = 1;
+    Block    BlockItem         = 2;
+    string   ParentBlockId     = 3;
+    repeated string SubBlockId = 4;
+    int64    Height            = 6;
+}
+
+message ReqBlock {
+	string BlockId = 1; //block id
+    string GroupId = 2; //group id
+    string UserId  = 3; //requester
+}
+
+message BlockSynced {
+    Block BlockItem = 1;
+}
+
+message BlockProduced {
+    Block BlockItem = 1;
+}
+
+enum ReqBlkResult {
+	BLOCK_IN_TRX = 0;    //block data in trx
+	BLOCK_NOT_FOUND = 1; //block not found
+}
+
+message ReqBlockResp {
+    ReqBlkResult Result          = 1;
+    string       ProviderPubkey  = 2;
+    string       RequesterPubkey = 3;
+    string       GroupId         = 4;  
+    string       BlockId         = 5;    
+    bytes        Block           = 6;
+}
+
+message PostItem {
+    string TrxId           = 1;
+	string PublisherPubkey = 2;
+	bytes  Content         = 3;
+	int64  TimeStamp       = 4;
+}
+
+message DenyUserItem {
+    string GroupId          = 1;    
+    string PeerId           = 2;
+    string GroupOwnerPubkey = 3;
+    string GroupOwnerSign   = 4;
+    int64  TimeStamp        = 5;    
+    string Action           = 6;
+    string Memo             = 7;
+}
+
+message ProducerItem {
+   string GroupId             = 1;
+   string ProducerPubkey      = 2;
+   string GroupOwnerPubkey    = 3;   
+   string GroupOwnerSign      = 4;
+   int64  TimeStamp           = 5;    
+   string Action              = 6;
+   string Memo                = 7;
+}
+
+message AnnounceItem {
+    string GroupId            = 1;
+    string AnnouncedPubkey    = 2;
+    string AnnouncerSignature = 3;
+    int64  TimeStamp          = 4;
+    string Type               = 5;
+    string Action             = 6;
+}
+
+message SchemaItem {
+    string GroupId          = 1;
+    string SchemaJson       = 2;
+    string GroupOwnerPubkey = 3;
+    string GroupOwnerSign   = 4;
+    int64  TimeStamp        = 5;    
+    string Memo             = 6;
+}
+
+enum GroupEncryptType {
+    PUBLIC   = 0; //public group
+    PRIVATE  = 1; //private group
+}
+
+enum GroupConsenseType {
+    POA = 0;    //proof of authen
+    POS = 1;
+}
+
+enum Role {
+    GROUP_PRODUCER = 0;
+    GROUP_USER     = 1;
+}
+
+message GroupItem {
+	string GroupId                 = 1;
+	string GroupName               = 2;
+	string OwnerPubKey             = 3;
+    string UserSignPubkey          = 4;
+    string UserEncryptPubkey       = 5;
+    Role   UserRole                = 6;
+	int64  LastUpdate              = 7;
+	int64  HighestHeight           = 8;
+	repeated string HighestBlockId = 9;
+	Block  GenesisBlock            = 10;
+    GroupEncryptType EncryptType   = 11;
+    GroupConsenseType ConsenseType = 12;
+    string CipherKey               = 13;
+    string AppKey                  = 14;
+}

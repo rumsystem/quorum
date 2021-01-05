@@ -1,0 +1,42 @@
+#!bin/bash
+
+#Start owner node
+RUM_KSPASSWD=123 go run cmd/main.go -peername owner -listen /ip4/127.0.0.1/tcp/7002 -apilisten :8002 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg -keystoredir ownerkeystore -jsontracer ownertracer.json --debug true
+
+#Start node1
+RUM_KSPASSWD=123 go run cmd/main.go -peername n1 -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg -keystoredir n1keystore -jsontracer n1tracer.json --debug true
+
+#start node2
+RUM_KSPASSWD=123 go run cmd/main.go -peername n2 -listen /ip4/127.0.0.1/tcp/7004 -apilisten :8004 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg -keystoredir n2keystore -jsontracer n2tracer.json --debug true
+
+#start producer1
+RUM_KSPASSWD=123 go run cmd/main.go -peername p1 -listen /ip4/127.0.0.1/tcp/7005 -apilisten :8005 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg -keystoredir p1keystore -jsontracer p1tracer.json --debug true
+
+#start producer2
+RUM_KSPASSWD=123 go run cmd/main.go -peername p1 -listen /ip4/127.0.0.1/tcp/7006 -apilisten :8006 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg -keystoredir p1keystore -jsontracer p2tracer.json --debug true
+
+#Owner create group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group
+
+
+
+#Owner join group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"a740d382-354d-438e-b62d-bf3d4abf7a54","GroupId":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","ProducerPubKey":"CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ==","Hash":"6ZJxq/bfFtzqszoYndFfsR0ylP8UGKKLjfGwnAj4QPs=","Signature":"MEUCIQD11k+qi54DmwwE68jxmWVYo6w1DvnUCb1MxKH4oy0J9AIgIXrl35ELS3S/i7H2xZAUb/OXzTr1dHS3nwUJiwzpKKs=","Timestamp":1632841521482344400},"group_id":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","group_name":"my_test_group","owner_pubkey":"CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ==","owner_encryptpubkey":"age1cles266ueupglhfnr5a49new6yudt8zl4x77gnrf7sceccwvrveq5q9m2t","consensus_type":"poa","encryption_type":"public","cipher_key":"58044622d48c4d91932583a05db3ff87f29acacb62e701916f7f0bbc6e446e5d","app_key":"test_app","signature":"304502201ff2c436492aa3828baaee910228643d8a108f4bf0bba9c4799c9293b542e6b20221008fa909df0b40f6f244af70558b138d51f8e67800224cbd9e43c72c3dccf33592"}' https://127.0.0.1:8002/api/v1/group/join
+
+#owner post to group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"d02229b3-0b0b-4291-8416-f923e3a50992","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/content
+
+#Owner check block and trx
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/bdecf93e-b136-486f-ad57-9c38e2d1b64b/content
+
+#N1 join group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"a740d382-354d-438e-b62d-bf3d4abf7a54","GroupId":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","ProducerPubKey":"CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ==","Hash":"6ZJxq/bfFtzqszoYndFfsR0ylP8UGKKLjfGwnAj4QPs=","Signature":"MEUCIQD11k+qi54DmwwE68jxmWVYo6w1DvnUCb1MxKH4oy0J9AIgIXrl35ELS3S/i7H2xZAUb/OXzTr1dHS3nwUJiwzpKKs=","Timestamp":1632841521482344400},"group_id":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","group_name":"my_test_group","owner_pubkey":"CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ==","owner_encryptpubkey":"age1cles266ueupglhfnr5a49new6yudt8zl4x77gnrf7sceccwvrveq5q9m2t","consensus_type":"poa","encryption_type":"public","cipher_key":"58044622d48c4d91932583a05db3ff87f29acacb62e701916f7f0bbc6e446e5d","app_key":"test_app","signature":"304502201ff2c436492aa3828baaee910228643d8a108f4bf0bba9c4799c9293b542e6b20221008fa909df0b40f6f244af70558b138d51f8e67800224cbd9e43c72c3dccf33592"}' https://127.0.0.1:8003/api/v1/group/join
+
+#N1 post to group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"simple note by n1","name":"A simple Node id1"},"target":{"id":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","type":"Group"}}' https://127.0.0.1:8003/api/v1/group/content
+
+#P1 join group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"a740d382-354d-438e-b62d-bf3d4abf7a54","GroupId":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","ProducerPubKey":"CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ==","Hash":"6ZJxq/bfFtzqszoYndFfsR0ylP8UGKKLjfGwnAj4QPs=","Signature":"MEUCIQD11k+qi54DmwwE68jxmWVYo6w1DvnUCb1MxKH4oy0J9AIgIXrl35ELS3S/i7H2xZAUb/OXzTr1dHS3nwUJiwzpKKs=","Timestamp":1632841521482344400},"group_id":"bdecf93e-b136-486f-ad57-9c38e2d1b64b","group_name":"my_test_group","owner_pubkey":"CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ==","owner_encryptpubkey":"age1cles266ueupglhfnr5a49new6yudt8zl4x77gnrf7sceccwvrveq5q9m2t","consensus_type":"poa","encryption_type":"public","cipher_key":"58044622d48c4d91932583a05db3ff87f29acacb62e701916f7f0bbc6e446e5d","app_key":"test_app","signature":"304502201ff2c436492aa3828baaee910228643d8a108f4bf0bba9c4799c9293b542e6b20221008fa909df0b40f6f244af70558b138d51f8e67800224cbd9e43c72c3dccf33592"}' https://127.0.0.1:8005/api/v1/group/join
+ 
+#Owner add p1 as producer
+curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "producer_pubkey":"CAISIQMdVV3okLUSIfAlDOjKzxRX9X9mOkXGGGX/B2RUwJ5WLw==","group_id":"bdecf93e-b136-486f-ad57-9c38e2d1b64b", "memo":"add producer p1"}' https://127.0.0.1:8002/api/v1/group/producer

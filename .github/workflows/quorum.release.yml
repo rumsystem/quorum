@@ -1,0 +1,38 @@
+on: 
+  release:
+    types: [created]
+
+jobs:
+  releases-matrix:
+    name: Release Go Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # build and publish in parallel: linux/386, linux/amd64, windows/386, windows/amd64, darwin/amd64 
+        goos: [linux, windows, darwin]
+        goarch: ["386", amd64]
+        exclude:  
+          - goarch: "386"
+            goos: darwin 
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set GIT_COMMIT env 
+      run: echo GIT_COMMIT=$(git rev-parse --short ${GITHUB_SHA}) >> ${GITHUB_ENV}
+    - name: Set RELEASE_TAG env 
+      run: echo RELEASE_TAG=$(basename ${GITHUB_REF}) >> ${GITHUB_ENV}
+    - uses: chux0519/go-release-action@v2.5.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        # only needs to set following 2 secrets
+        signify_sec_key: ${{ secrets.SIGNIFY_SEC_KEY }}
+        signify_sec_key_pass: ${{ secrets.SIGNIFY_SEC_KEY_PASS }}
+        signify: TRUE
+        qingcloud: TRUE
+        qingcloud_config: ${{ secrets.QINGCLOUD_CONFIG }}
+        qingcloud_bucket: ${{ secrets.QINGCLOUD_BUCKET }}
+        project_path: "./cmd"
+        source_files: "main.go"
+        ldflags: "-X main.GitCommit=${{ env.GIT_COMMIT }} -X main.ReleaseVersion=${{ env.RELEASE_TAG }}"
+        binary_name: "quorum"
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
