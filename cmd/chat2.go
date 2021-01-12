@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 
-	dht "github.com/libp2p/go-libp2p-kad-dht"
+	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	//logging "github.com/whyrusleeping/go-logging"
 
@@ -137,18 +137,21 @@ func main() {
 	// client because we want each peer to maintain its own local copy of the
 	// DHT, so that the bootstrapping node of the DHT can go down without
 	// inhibiting future peer discovery.
-	kademliaDHT, err := dht.New(ctx, host)
-	if err != nil {
-		panic(err)
-	}
+	//kademliaDHT, err := dht.New(ctx, host)
+	//if err != nil {
+	//	panic(err)
+	//}
 
-    fmt.Printf("[*] Your Bootstrap ID Is: /ip4/127.0.0.1/tcp/4212/p2p/%s\n"  , host.ID().Pretty())
+    //fmt.Printf("%s", []multiaddr.Multiaddr(config.ListenAddresses))
+    for _, addr := range config.ListenAddresses {
+        fmt.Printf("Bootstrap ID: %s/p2p/%s\n" ,addr , host.ID().Pretty())
+    }
 	// Bootstrap the DHT. In the default configuration, this spawns a Background
 	// thread that will refresh the peer table every five minutes.
 	logger.Debug("Bootstrapping the DHT")
-	if err = kademliaDHT.Bootstrap(ctx); err != nil {
-		panic(err)
-	}
+	//if err = kademliaDHT.Bootstrap(ctx); err != nil {
+	//	panic(err)
+	//}
 
 	// Let's connect to the bootstrap nodes first. They will tell us about the
 	// other nodes in the network.
@@ -180,13 +183,19 @@ func main() {
 	// This is like your friend telling you the location to meet you.
 	logger.Info("Searching for other peers...")
     fmt.Println(config.RendezvousString)
+	fmt.Println("DHT in a bootstrapped state")
+	time.Sleep(time.Second * 5)
+
+    fmt.Println("Lan Routing Table:")
+	ddht.LAN.RoutingTable().Print()
+    fmt.Println("Wan Routing Table:")
+	ddht.WAN.RoutingTable().Print()
 
 	pctx, _ := context.WithTimeout(ctx, time.Second*10)
 	peers, err := discovery.FindPeers(pctx, routingDiscovery, config.RendezvousString)
 	if err != nil {
 		panic(err)
 	}
-
 
 	for _, peer := range peers {
 		if peer.ID == host.ID() {
