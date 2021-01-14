@@ -6,8 +6,11 @@ import (
 	"flag"
 	"fmt"
     "time"
+    "strings"
 	"os"
+	"io"
 	"sync"
+	"crypto/rand"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -18,6 +21,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	//logging "github.com/whyrusleeping/go-logging"
@@ -26,9 +30,17 @@ import (
 )
 
 var logger = log.Logger("rendezvous")
+var inputData *InputData
+
+// State 0 not ready 1 text message 2 bin data stream
+type InputData struct{
+   State int
+}
+
 
 func handleStream(stream network.Stream) {
 	logger.Info("Got a new stream!")
+    inputData.State = 1 //set to message state
 
 	// Create a buffer stream for non blocking read and write.
 	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
@@ -40,22 +52,53 @@ func handleStream(stream network.Stream) {
 }
 
 func readData(rw *bufio.ReadWriter) {
+    mode := 1 //set to command mode
+    var filewriter *os.File
+    //var filewriter *bufio.Writer
 	for {
-		str, err := rw.ReadString('\n')
-		if err != nil {
-			fmt.Println("Error reading from buffer")
-			panic(err)
-		}
+		buf := make([]byte, 500)
+		n, err := rw.Read(buf)
+        if buf[0] == '*' && mode ==1 {
+            fmt.Println("receive a command: %s\n", string(buf))
+        } else {
+            fmt.Println("is data stream.")
+            if mode == 1 { //switch from command mode, create new file to receve data stream
+                path := "incomefiles/income.bin"
+                filewriter, err = os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+                //file, err := os.Create(path)
+                if err != nil {
+                    fmt.Println("create file error")
+                    fmt.Println(err)
+                }
+            }
+            mode = 2 //set to data mode
+		    fmt.Printf("income length: %d\n", n)
+		    if err != nil {
+			    if err == io.EOF {
+			        fmt.Printf("=======EOF :%d \n", n)
+                    filewriter.Write(buf[:n])
+                    mode = 1 //set to command mode
+			        return
+			    }
+		        fmt.Println("Error reading from buffer")
+		        panic(err)
+		    } else {
+                if filewriter != nil {
+                    if n == len(buf){
+                        fmt.Printf("write length %d\n", n)
+                        filewriter.Write(buf)
+                    }else {
+                        fmt.Printf("write length %d\n", n)
+                        filewriter.Write(buf[:n])
+                    }
+                }
+            }
+        }
 
-		if str == "" {
-			return
+		if n == 0 {
+            fmt.Println("return")
+		    return
 		}
-		if str != "\n" {
-			// Green console colour: 	\x1b[32m
-			// Reset console colour: 	\x1b[0m
-			fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
-		}
-
 	}
 }
 
@@ -69,17 +112,44 @@ func writeData(rw *bufio.ReadWriter) {
 			fmt.Println("Error reading from stdin")
 			panic(err)
 		}
+        fmt.Printf("stdin data: %s \n", sendData)
+        if sendData[0]=='*' {
+            fmt.Println("command input: %s",sendData)
+            if strings.Index(sendData, "*file") ==0 {
+                filename := strings.TrimSpace(string(sendData[5:]))
+                fmt.Printf("send file: %s \n", filename)
+				f, err := os.OpenFile(filename, os.O_RDONLY, 0644)
+				fmt.Println(f)
+				if err != nil {
+					logger.Fatal(err)
+				}
+				filereader := bufio.NewReader(f)
+				io.Copy(rw, filereader)
+				err = rw.Flush()
+				fmt.Printf("write data stream...")
+				fmt.Println(err)
 
-		_, err = rw.WriteString(fmt.Sprintf("%s\n", sendData))
-		if err != nil {
-			fmt.Println("Error writing to buffer")
-			panic(err)
-		}
-		err = rw.Flush()
-		if err != nil {
-			fmt.Println("Error flushing buffer")
-			panic(err)
-		}
+				if err := f.Close(); err != nil {
+					logger.Fatal(err)
+				}
+
+            }else {
+		        _, err = rw.WriteString(fmt.Sprintf("%s\n", sendData))
+		        if err != nil {
+		            fmt.Println("Error writing to buffer")
+		            panic(err)
+		        }
+		        err = rw.Flush()
+		        if err != nil {
+		            fmt.Println("Error flushing buffer")
+		            panic(err)
+		        }
+            }
+        } else {
+		    fmt.Println("undefined command")
+        }
+
+
 	}
 }
 
@@ -88,6 +158,8 @@ func main() {
 	log.SetLogLevel("rendezvous", "info")
 	help := flag.Bool("h", false, "Display Help")
 	config, err := ParseFlags()
+
+    inputData = &InputData{}
 	if err != nil {
 		panic(err)
 	}
@@ -109,6 +181,12 @@ func main() {
 	//	return dual.New(ctx, host)
 	//})
 
+
+	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	identity := libp2p.Identity(priv)
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
 		var err error
 		ddht, err = dual.New(ctx, host)
@@ -122,6 +200,7 @@ func main() {
 	host, err := libp2p.New(ctx,
 		routing,
 		libp2p.ListenAddrs([]multiaddr.Multiaddr(config.ListenAddresses)...),
+		identity,
 	)
 	if err != nil {
 		panic(err)
@@ -210,6 +289,7 @@ func main() {
 			logger.Warning("Connection failed:", err)
 			continue
 		} else {
+            inputData.State = 1 //set to message state
 			rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 
 			go writeData(rw)
