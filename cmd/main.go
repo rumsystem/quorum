@@ -10,8 +10,10 @@ import (
 	"crypto/rand"
 	"github.com/spf13/viper"
 	"github.com/golang/glog"
+	"github.com/libp2p/go-libp2p"
 	maddr "github.com/multiformats/go-multiaddr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+    peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 type addrList []maddr.Multiaddr
@@ -126,9 +128,24 @@ func mainRet(config Config) int {
 	ctx := context.Background()
 	fmt.Println(ctx)
 	keys,_ := loadKeys()
-	fmt.Println(keys)
-	privkeybytes,_ := p2pcrypto.MarshalPrivateKey(keys.PrivKey)
-	fmt.Println(p2pcrypto.ConfigEncodeKey(privkeybytes))
+    peerid, err := peer.IDFromPublicKey(keys.PubKey)
+    if err != nil{
+        fmt.Println(err)
+    }
+    glog.Infof("Your p2p peer ID: %s", peerid)
+
+    if config.IsBootstrap == true {
+	    identity := libp2p.Identity(keys.PrivKey)
+	    host, err := libp2p.New(ctx,
+            libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/10666"),
+		    identity,
+	    )
+        fmt.Println(err)
+	    glog.Infof("Host created. We are: %s", host.ID())
+	    glog.Infof("%s", host.Addrs())
+    }
+
+
     //https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
     //node, err := core.NewNode(req.Context, ncfg)
     //https://github.com/ipfs/go-ipfs/blob/8e6358a4fac40577950260d0c7a7a5d57f4e90a9/core/builder.go#L27
