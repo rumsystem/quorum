@@ -8,13 +8,16 @@ import (
 	"context"
     "path/filepath"
     "strings"
+	"bufio"
 	"sync"
 	"crypto/rand"
 	"github.com/spf13/viper"
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/routing"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-discovery"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -143,6 +146,10 @@ func loadKeys(keyname string) (*Keys,error){
 	return &Keys{PrivKey: privfromconfig, PubKey: pubfromconfig}, nil
 }
 
+func handleStream(stream network.Stream) {
+	glog.Infof("Got a new stream %s", stream)
+}
+
 func mainRet(config Config) int {
     //IFPS soruce note:
     //https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
@@ -200,6 +207,7 @@ func mainRet(config Config) int {
             libp2p.ListenAddrs(addresses...),
 	        identity,
 	    )
+		host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
 	    var wg sync.WaitGroup
 	    for _, peerAddr := range config.BootstrapPeers {
@@ -239,6 +247,10 @@ func mainRet(config Config) int {
 		        continue
 		    }
 		    glog.Infof("Found peer: %s", peer)
+			stream, _ := host.NewStream(ctx, peer.ID, protocol.ID(config.ProtocolID))
+			_ = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+            glog.Infof("create stream with peer and protocol :%s", config.ProtocolID)
+
         }
     }
 
