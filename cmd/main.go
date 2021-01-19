@@ -4,9 +4,11 @@ import (
     "os"
     "flag"
     "fmt"
+    "time"
 	"context"
     "path/filepath"
     "strings"
+	"sync"
 	"crypto/rand"
 	"github.com/spf13/viper"
 	"github.com/golang/glog"
@@ -142,6 +144,13 @@ func loadKeys(keyname string) (*Keys,error){
 }
 
 func mainRet(config Config) int {
+    //IFPS soruce note:
+    //https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
+    //node, err := core.NewNode(req.Context, ncfg)
+    //https://github.com/ipfs/go-ipfs/blob/8e6358a4fac40577950260d0c7a7a5d57f4e90a9/core/builder.go#L27
+    //ipfs: use fx to build an IPFS node https://github.com/uber-go/fx 
+    //node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
+
 	ctx := context.Background()
 	fmt.Println(ctx)
     if config.IsBootstrap == true {
@@ -151,8 +160,17 @@ func mainRet(config Config) int {
             fmt.Println(err)
         }
         glog.Infof("Your p2p peer ID: %s", peerid)
+	    var ddht *dual.DHT
+	    var routingDiscovery *discovery.RoutingDiscovery
 	    identity := libp2p.Identity(keys.PrivKey)
+        routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
+            var err error
+            ddht, err = dual.New(ctx, host)
+            routingDiscovery = discovery.NewRoutingDiscovery(ddht)
+            return ddht, err
+        })
 	    host, err := libp2p.New(ctx,
+	        routing,
             libp2p.ListenAddrStrings(config.ListenAddresses),
 		    identity,
 	    )
@@ -182,16 +200,48 @@ func mainRet(config Config) int {
             libp2p.ListenAddrs(addresses...),
 	        identity,
 	    )
-        fmt.Println(host)
-        fmt.Println(err)
+
+	    var wg sync.WaitGroup
+	    for _, peerAddr := range config.BootstrapPeers {
+		    peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
+		    wg.Add(1)
+		    go func() {
+			    defer wg.Done()
+			    if err := host.Connect(ctx, *peerinfo); err != nil {
+                    glog.Warning(err)
+			    } else {
+                    glog.Infof("Connection established with bootstrap node %s:", *peerinfo)
+			    }
+		    }()
+	    }
+	    wg.Wait()
+        glog.Infof("Announcing ourselves...")
+	    //next, err := discovery.Advertise(ctx, routingDiscovery, config.RendezvousString)
+	    discovery.Advertise(ctx, routingDiscovery, config.RendezvousString)
+	    glog.Infof("Successfully announced!")
+        //fmt.Println(next)
+        //fmt.Println(err)
+	    time.Sleep(time.Second * 5)
+        fmt.Println("Lan Routing Table:")
+	    ddht.LAN.RoutingTable().Print()
+        fmt.Println("Wan Routing Table:")
+	    ddht.WAN.RoutingTable().Print()
+
+	    pctx, _ := context.WithTimeout(ctx, time.Second*10)
+	    glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
+	    peers, err := discovery.FindPeers(pctx, routingDiscovery, config.RendezvousString)
+	    if err != nil {
+	        panic(err)
+	    }
+
+	    for _, peer := range peers {
+		    if peer.ID == host.ID() {
+		        continue
+		    }
+		    glog.Infof("Found peer: %s", peer)
+        }
     }
 
-
-    //https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
-    //node, err := core.NewNode(req.Context, ncfg)
-    //https://github.com/ipfs/go-ipfs/blob/8e6358a4fac40577950260d0c7a7a5d57f4e90a9/core/builder.go#L27
-    //ipfs: use fx to build an IPFS node https://github.com/uber-go/fx 
-    //node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
 	select {}
 
     return 0
