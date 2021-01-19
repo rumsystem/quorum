@@ -224,7 +224,6 @@ func mainRet(config Config) int {
 	    }
 	    wg.Wait()
         glog.Infof("Announcing ourselves...")
-	    //next, err := discovery.Advertise(ctx, routingDiscovery, config.RendezvousString)
 	    discovery.Advertise(ctx, routingDiscovery, config.RendezvousString)
 	    glog.Infof("Successfully announced!")
         //fmt.Println(next)
@@ -237,6 +236,7 @@ func mainRet(config Config) int {
 
 	    pctx, _ := context.WithTimeout(ctx, time.Second*10)
 	    glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
+        //TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
 	    peers, err := discovery.FindPeers(pctx, routingDiscovery, config.RendezvousString)
 	    if err != nil {
 	        panic(err)
@@ -248,7 +248,9 @@ func mainRet(config Config) int {
 		    }
 		    glog.Infof("Found peer: %s", peer)
 			stream, _ := host.NewStream(ctx, peer.ID, protocol.ID(config.ProtocolID))
-			_ = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+            _ = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+	        //go readData(rw)
+	        //go writeData(rw)
             glog.Infof("create stream with peer and protocol :%s", config.ProtocolID)
 
         }
