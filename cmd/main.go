@@ -11,6 +11,10 @@ import (
 	"github.com/spf13/viper"
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/routing"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p-discovery"
 	maddr "github.com/multiformats/go-multiaddr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
     peer "github.com/libp2p/go-libp2p-core/peer"
@@ -23,6 +27,7 @@ type Config struct {
 	ListenAddresses  string
 	ProtocolID       string
     IsBootstrap     bool
+    PeerName        string
 }
 
 type Keys struct{
@@ -37,6 +42,7 @@ func ParseFlags() (Config,error) {
 		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
+	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
     flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flag.Parse()
 
@@ -60,6 +66,17 @@ func (al *addrList) Set(value string) error {
 	return nil
 }
 
+
+func StringsToAddrs(addrStrings []string) (maddrs []maddr.Multiaddr, err error) {
+	for _, addrString := range addrStrings {
+		addr, err := maddr.NewMultiaddr(addrString)
+		if err != nil {
+			return maddrs, err
+		}
+		maddrs = append(maddrs, addr)
+	}
+	return
+}
 
 // isolates the complex initialization steps
 //func constructPeerHost(ctx context.Context, id peer.ID, ps peerstore.Peerstore, options ...libp2p.Option) (host.Host, error) {
@@ -87,9 +104,9 @@ func writekeysToconfig(priv p2pcrypto.PrivKey, pub p2pcrypto.PubKey) error{
     return nil
 }
 
-func loadKeys() (*Keys,error){
+func loadKeys(keyname string) (*Keys,error){
 	viper.AddConfigPath(filepath.Dir("./config/"))
-	viper.SetConfigName("keys")
+	viper.SetConfigName(keyname+"_keys")
 	viper.SetConfigType("toml")
     err := viper.ReadInConfig()
     if err != nil {
@@ -127,22 +144,46 @@ func loadKeys() (*Keys,error){
 func mainRet(config Config) int {
 	ctx := context.Background()
 	fmt.Println(ctx)
-	keys,_ := loadKeys()
-    peerid, err := peer.IDFromPublicKey(keys.PubKey)
-    if err != nil{
-        fmt.Println(err)
-    }
-    glog.Infof("Your p2p peer ID: %s", peerid)
-
     if config.IsBootstrap == true {
+	    keys,_ := loadKeys("bootstrap")
+        peerid, err := peer.IDFromPublicKey(keys.PubKey)
+        if err != nil{
+            fmt.Println(err)
+        }
+        glog.Infof("Your p2p peer ID: %s", peerid)
 	    identity := libp2p.Identity(keys.PrivKey)
 	    host, err := libp2p.New(ctx,
-            libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/10666"),
+            libp2p.ListenAddrStrings(config.ListenAddresses),
 		    identity,
 	    )
         fmt.Println(err)
 	    glog.Infof("Host created. We are: %s", host.ID())
 	    glog.Infof("%s", host.Addrs())
+    } else {
+	    keys,_ := loadKeys(config.PeerName)
+        peerid, err := peer.IDFromPublicKey(keys.PubKey)
+        if err != nil{
+            fmt.Println(err)
+        }
+        glog.Infof("Your p2p peer ID: %s", peerid)
+	    var ddht *dual.DHT
+	    var routingDiscovery *discovery.RoutingDiscovery
+	    identity := libp2p.Identity(keys.PrivKey)
+        routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
+            var err error
+            ddht, err = dual.New(ctx, host)
+            routingDiscovery = discovery.NewRoutingDiscovery(ddht)
+            return ddht, err
+        })
+
+        addresses, _ := StringsToAddrs([]string{config.ListenAddresses})
+	    host, err := libp2p.New(ctx,
+	        routing,
+            libp2p.ListenAddrs(addresses...),
+	        identity,
+	    )
+        fmt.Println(host)
+        fmt.Println(err)
     }
 
 
@@ -151,6 +192,7 @@ func mainRet(config Config) int {
     //https://github.com/ipfs/go-ipfs/blob/8e6358a4fac40577950260d0c7a7a5d57f4e90a9/core/builder.go#L27
     //ipfs: use fx to build an IPFS node https://github.com/uber-go/fx 
     //node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
+	select {}
 
     return 0
 }
