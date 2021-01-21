@@ -8,7 +8,7 @@ import (
 	"context"
     "path/filepath"
     "strings"
-	"bufio"
+	//"bufio"
 	"sync"
 	"crypto/rand"
 	"github.com/spf13/viper"
@@ -19,10 +19,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-discovery"
 	maddr "github.com/multiformats/go-multiaddr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
     peer "github.com/libp2p/go-libp2p-core/peer"
+    pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type addrList []maddr.Multiaddr
@@ -40,6 +42,9 @@ type Keys struct{
 	PubKey p2pcrypto.PubKey
 }
 
+var sub *pubsub.Subscription
+var ps *pubsub.PubSub
+var ShareTopic string
 
 func ParseFlags() (Config,error) {
     config := Config{ProtocolID:"/quorum/1.0.0"}
@@ -157,7 +162,7 @@ func mainRet(config Config) int {
     //https://github.com/ipfs/go-ipfs/blob/8e6358a4fac40577950260d0c7a7a5d57f4e90a9/core/builder.go#L27
     //ipfs: use fx to build an IPFS node https://github.com/uber-go/fx 
     //node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
-
+    ShareTopic = "test_topic"
 	ctx := context.Background()
 	fmt.Println(ctx)
     if config.IsBootstrap == true {
@@ -209,6 +214,24 @@ func mainRet(config Config) int {
 	    )
 		host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
+        ps, err = pubsub.NewGossipSub(ctx, host)
+        if err !=nil {
+        fmt.Println("gossip err")
+        fmt.Println(err)
+        }
+        topic, err := ps.Join(ShareTopic)
+        if err != nil {
+            fmt.Println("join err")
+            fmt.Println(err)
+	    }
+        sub, err = topic.Subscribe()
+        if err != nil {
+            fmt.Println("sub err")
+            fmt.Println(err)
+	    }
+
+        //TOFIX: for test
+        //config.BootstrapPeers = dht.DefaultBootstrapPeers
 	    var wg sync.WaitGroup
 	    for _, peerAddr := range config.BootstrapPeers {
 		    peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
@@ -242,23 +265,71 @@ func mainRet(config Config) int {
 	        panic(err)
 	    }
 
+
+        fmt.Println("peers:")
+        fmt.Println(peers)
 	    for _, peer := range peers {
 		    if peer.ID == host.ID() {
 		        continue
 		    }
 		    glog.Infof("Found peer: %s", peer)
-			stream, _ := host.NewStream(ctx, peer.ID, protocol.ID(config.ProtocolID))
-            _ = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	        //go readData(rw)
-	        //go writeData(rw)
-            glog.Infof("create stream with peer and protocol :%s", config.ProtocolID)
+            err := host.Connect(ctx, peer)
+            if err != nil {
+                fmt.Println("====connect error")
+                fmt.Println(err)
+            }else {
+                fmt.Printf("connect: %s \n", peer)
+            }
+			//stream, _ := host.NewStream(ctx, peer.ID, protocol.ID(config.ProtocolID))
+            //_ = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+	        ////go readData(rw)
+	        ////go writeData(rw)
+            //glog.Infof("create stream with peer and protocol :%s", config.ProtocolID)
 
         }
+
+        fmt.Println("sub: ")
+        fmt.Println(sub)
+        go readLoop(ctx) //start loop to read the subscrbe topic
+        go ticker()
+        err = topic.Publish(ctx, []byte("the message. from: "+config.PeerName))
+        if err != nil {
+            fmt.Println("publish err")
+            fmt.Println(err)
+	    } else {
+            fmt.Println("publish message success")
+        }
+
     }
 
 	select {}
 
     return 0
+}
+
+func readLoop(ctx context.Context) {
+    fmt.Println("run readloop")
+	for {
+		msg, err := sub.Next(ctx)
+		if err != nil {
+            fmt.Println(err)
+			return
+		}
+        fmt.Println(msg)
+	}
+}
+
+func ticker(){
+    fmt.Println("run ticker")
+    peerRefreshTicker := time.NewTicker(time.Second*30)
+	for {
+        select {
+		    case <-peerRefreshTicker.C:
+                fmt.Println("ticker!")
+                idlist := ps.ListPeers(ShareTopic)
+                fmt.Println(idlist)
+        }
+    }
 }
 
 func main() {
