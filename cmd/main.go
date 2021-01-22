@@ -6,12 +6,12 @@ import (
     "fmt"
     "time"
 	"context"
-    "path/filepath"
+    //"path/filepath"
     //"strings"
 	//"bufio"
 	"sync"
-	"crypto/rand"
-	"github.com/spf13/viper"
+	//"crypto/rand"
+	//"github.com/spf13/viper"
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -22,16 +22,17 @@ import (
 	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-discovery"
 	maddr "github.com/multiformats/go-multiaddr"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
-    "github.com/huo-ju/quorum/internal/pkg/flags"
+    "github.com/huo-ju/quorum/internal/pkg/cli"
+    localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
-type Keys struct{
-	PrivKey p2pcrypto.PrivKey
-	PubKey p2pcrypto.PubKey
-}
+//type Keys struct{
+//	PrivKey p2pcrypto.PrivKey
+//	PubKey p2pcrypto.PubKey
+//}
 
 var sub *pubsub.Subscription
 var ps *pubsub.PubSub
@@ -58,64 +59,11 @@ func StringsToAddrs(addrStrings []string) (maddrs []maddr.Multiaddr, err error) 
 //	return libp2p.New(ctx, options...)
 //}
 
-func writekeysToconfig(priv p2pcrypto.PrivKey, pub p2pcrypto.PubKey) error{
-
-	privkeybytes,err := p2pcrypto.MarshalPrivateKey(priv)
-    if err != nil {
-        return err
-    }
-	pubkeybytes,err := p2pcrypto.MarshalPublicKey(pub)
-    if err != nil {
-        return err
-    }
-    viper.Set("priv",p2pcrypto.ConfigEncodeKey(privkeybytes))
-    viper.Set("pub",p2pcrypto.ConfigEncodeKey(pubkeybytes))
-    viper.SafeWriteConfig()
-    return nil
-}
-
-func loadKeys(keyname string) (*Keys,error){
-	viper.AddConfigPath(filepath.Dir("./config/"))
-	viper.SetConfigName(keyname+"_keys")
-	viper.SetConfigType("toml")
-    err := viper.ReadInConfig()
-    if err != nil {
-
-	    glog.Infof("Keys files not found, generating new keypair..")
-	    priv, pub, err := p2pcrypto.GenerateKeyPairWithReader(p2pcrypto.RSA, 4096, rand.Reader)
-        if err != nil{
-            return nil, err
-        }
-        writekeysToconfig(priv, pub)
-    }
-    err = viper.ReadInConfig()
-    if err !=nil {
-        return nil, err
-    }
-
-    privstr := viper.GetString("priv")
-    pubstr := viper.GetString("pub")
-	glog.Infof("Load keys from config")
-
-    serializedpub,_ := p2pcrypto.ConfigDecodeKey(pubstr)
-    pubfromconfig, err := p2pcrypto.UnmarshalPublicKey(serializedpub)
-    if err !=nil {
-        return nil, err
-    }
-
-    serializedpriv,_ := p2pcrypto.ConfigDecodeKey(privstr)
-    privfromconfig, err := p2pcrypto.UnmarshalPrivateKey(serializedpriv)
-    if err !=nil {
-        return nil, err
-    }
-	return &Keys{PrivKey: privfromconfig, PubKey: pubfromconfig}, nil
-}
-
 func handleStream(stream network.Stream) {
 	glog.Infof("Got a new stream %s", stream)
 }
 
-func mainRet(config flags.Config) int {
+func mainRet(config cli.Config) int {
     //IFPS soruce note:
     //https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
     //node, err := core.NewNode(req.Context, ncfg)
@@ -126,7 +74,7 @@ func mainRet(config flags.Config) int {
 	ctx := context.Background()
 	fmt.Println(ctx)
     if config.IsBootstrap == true {
-	    keys,_ := loadKeys("bootstrap")
+	    keys,_ := localcrypto.LoadKeys("bootstrap")
         peerid, err := peer.IDFromPublicKey(keys.PubKey)
         if err != nil{
             fmt.Println(err)
@@ -150,7 +98,7 @@ func mainRet(config flags.Config) int {
 	    glog.Infof("Host created. We are: %s", host.ID())
 	    glog.Infof("%s", host.Addrs())
     } else {
-	    keys,_ := loadKeys(config.PeerName)
+	    keys,_ := localcrypto.LoadKeys(config.PeerName)
         peerid, err := peer.IDFromPublicKey(keys.PubKey)
         if err != nil{
             fmt.Println(err)
@@ -289,7 +237,7 @@ func ticker(){
 func main() {
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")
-	config, err := flags.ParseFlags()
+	config, err := cli.ParseFlags()
 	if err != nil {
 		panic(err)
 	}
