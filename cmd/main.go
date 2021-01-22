@@ -7,7 +7,7 @@ import (
     "time"
 	"context"
     "path/filepath"
-    "strings"
+    //"strings"
 	//"bufio"
 	"sync"
 	"crypto/rand"
@@ -25,17 +25,18 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
+    "github.com/huo-ju/quorum/internal/pkg/flags"
 )
 
-type addrList []maddr.Multiaddr
-type Config struct {
-	RendezvousString string
-	BootstrapPeers   addrList
-	ListenAddresses  string
-	ProtocolID       string
-    IsBootstrap     bool
-    PeerName        string
-}
+//type addrList []maddr.Multiaddr
+//type Config struct {
+//	RendezvousString string
+//	BootstrapPeers   addrList
+//	ListenAddresses  string
+//	ProtocolID       string
+//    IsBootstrap     bool
+//    PeerName        string
+//}
 
 type Keys struct{
 	PrivKey p2pcrypto.PrivKey
@@ -46,35 +47,35 @@ var sub *pubsub.Subscription
 var ps *pubsub.PubSub
 var ShareTopic string
 
-func ParseFlags() (Config,error) {
-    config := Config{ProtocolID:"/quorum/1.0.0"}
-	flag.StringVar(&config.RendezvousString, "rendezvous", "some unique string",
-		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
-	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
-	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
-	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
-    flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
-	flag.Parse()
+//func ParseFlags() (Config,error) {
+//    config := Config{ProtocolID:"/quorum/1.0.0"}
+//	flag.StringVar(&config.RendezvousString, "rendezvous", "some unique string",
+//		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
+//	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
+//	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
+//	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
+//    flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
+//	flag.Parse()
+//
+//	return config, nil
+//}
 
-	return config, nil
-}
-
-func (al *addrList) String() string {
-	strs := make([]string, len(*al))
-	for i, addr := range *al {
-		strs[i] = addr.String()
-	}
-	return strings.Join(strs, ",")
-}
-
-func (al *addrList) Set(value string) error {
-	addr, err := maddr.NewMultiaddr(value)
-	if err != nil {
-		return err
-	}
-	*al = append(*al, addr)
-	return nil
-}
+//func (al *addrList) String() string {
+//	strs := make([]string, len(*al))
+//	for i, addr := range *al {
+//		strs[i] = addr.String()
+//	}
+//	return strings.Join(strs, ",")
+//}
+//
+//func (al *addrList) Set(value string) error {
+//	addr, err := maddr.NewMultiaddr(value)
+//	if err != nil {
+//		return err
+//	}
+//	*al = append(*al, addr)
+//	return nil
+//}
 
 
 func StringsToAddrs(addrStrings []string) (maddrs []maddr.Multiaddr, err error) {
@@ -155,7 +156,7 @@ func handleStream(stream network.Stream) {
 	glog.Infof("Got a new stream %s", stream)
 }
 
-func mainRet(config Config) int {
+func mainRet(config flags.Config) int {
     //IFPS soruce note:
     //https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
     //node, err := core.NewNode(req.Context, ncfg)
@@ -280,12 +281,6 @@ func mainRet(config Config) int {
             }else {
                 fmt.Printf("connect: %s \n", peer)
             }
-			//stream, _ := host.NewStream(ctx, peer.ID, protocol.ID(config.ProtocolID))
-            //_ = bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	        ////go readData(rw)
-	        ////go writeData(rw)
-            //glog.Infof("create stream with peer and protocol :%s", config.ProtocolID)
-
         }
 
         fmt.Println("sub: ")
@@ -335,7 +330,7 @@ func ticker(){
 func main() {
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")
-	config, err := ParseFlags()
+	config, err := flags.ParseFlags()
 	if err != nil {
 		panic(err)
 	}
