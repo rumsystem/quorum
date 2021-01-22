@@ -21,11 +21,12 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-discovery"
-	maddr "github.com/multiformats/go-multiaddr"
+	//maddr "github.com/multiformats/go-multiaddr"
 	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
     "github.com/huo-ju/quorum/internal/pkg/cli"
+    "github.com/huo-ju/quorum/internal/pkg/utils"
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
@@ -37,17 +38,6 @@ import (
 var sub *pubsub.Subscription
 var ps *pubsub.PubSub
 var ShareTopic string
-
-func StringsToAddrs(addrStrings []string) (maddrs []maddr.Multiaddr, err error) {
-	for _, addrString := range addrStrings {
-		addr, err := maddr.NewMultiaddr(addrString)
-		if err != nil {
-			return maddrs, err
-		}
-		maddrs = append(maddrs, addr)
-	}
-	return
-}
 
 // isolates the complex initialization steps
 //func constructPeerHost(ctx context.Context, id peer.ID, ps peerstore.Peerstore, options ...libp2p.Option) (host.Host, error) {
@@ -114,7 +104,7 @@ func mainRet(config cli.Config) int {
             return ddht, err
         })
 
-        addresses, _ := StringsToAddrs([]string{config.ListenAddresses})
+        addresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 	    host, err := libp2p.New(ctx,
 	        routing,
             libp2p.ListenAddrs(addresses...),
