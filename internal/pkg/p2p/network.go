@@ -1,6 +1,7 @@
 package p2p
 
 import (
+    "time"
     "context"
 	"github.com/libp2p/go-libp2p"
     "github.com/libp2p/go-libp2p-core/peer"
@@ -14,6 +15,7 @@ import (
 )
 
 type Node struct{
+    Ctx context.Context
     PeerID peer.ID
     Host host.Host
     Pubsub *pubsub.PubSub
@@ -45,7 +47,19 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []m
     if err != nil {
         return nil, err
     }
-
-    newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
+    newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
     return newnode,nil
+}
+
+func (node *Node) FindPeers(RendezvousString string)  ([]peer.AddrInfo, error) {
+    pctx, _ := context.WithTimeout(node.Ctx, time.Second*10)
+    var peers []peer.AddrInfo
+    ch, err := node.RoutingDiscovery.FindPeers(pctx, RendezvousString)
+	if err != nil {
+        return nil, err
+	}
+	for pi := range ch {
+	    peers= append(peers, pi)
+	}
+    return peers, nil
 }
