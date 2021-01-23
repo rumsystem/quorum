@@ -13,12 +13,12 @@ import (
 	//"crypto/rand"
 	//"github.com/spf13/viper"
 	"github.com/golang/glog"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
+	//"github.com/libp2p/go-libp2p"
+	//"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/routing"
+	//"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	//"github.com/libp2p/go-libp2p-kad-dht/dual"
 	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-discovery"
 	//maddr "github.com/multiformats/go-multiaddr"
@@ -27,6 +27,7 @@ import (
     pubsub "github.com/libp2p/go-libp2p-pubsub"
     "github.com/huo-ju/quorum/internal/pkg/cli"
     "github.com/huo-ju/quorum/internal/pkg/utils"
+    "github.com/huo-ju/quorum/internal/pkg/p2p"
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
@@ -36,8 +37,8 @@ import (
 //}
 
 var sub *pubsub.Subscription
-var ps *pubsub.PubSub
 var ShareTopic string
+var node *p2p.Node
 
 // isolates the complex initialization steps
 //func constructPeerHost(ctx context.Context, id peer.ID, ps peerstore.Peerstore, options ...libp2p.Option) (host.Host, error) {
@@ -62,7 +63,6 @@ func mainRet(config cli.Config) int {
     //node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
     ShareTopic = "test_topic"
 	ctx := context.Background()
-	fmt.Println(ctx)
     if config.IsBootstrap == true {
 	    keys,_ := localcrypto.LoadKeys("bootstrap")
         peerid, err := peer.IDFromPublicKey(keys.PubKey)
@@ -70,23 +70,11 @@ func mainRet(config cli.Config) int {
             fmt.Println(err)
         }
         glog.Infof("Your p2p peer ID: %s", peerid)
-	    var ddht *dual.DHT
-	    var routingDiscovery *discovery.RoutingDiscovery
-	    identity := libp2p.Identity(keys.PrivKey)
-        routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
-            var err error
-            ddht, err = dual.New(ctx, host)
-            routingDiscovery = discovery.NewRoutingDiscovery(ddht)
-            return ddht, err
-        })
-	    host, err := libp2p.New(ctx,
-	        routing,
-            libp2p.ListenAddrStrings(config.ListenAddresses),
-		    identity,
-	    )
+        listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
+        node, err = p2p.NewNode(ctx, keys.PrivKey, listenaddresses)
         fmt.Println(err)
-	    glog.Infof("Host created. We are: %s", host.ID())
-	    glog.Infof("%s", host.Addrs())
+	    glog.Infof("Host created. We are: %s", node.Host.ID())
+	    glog.Infof("%s", node.Host.Addrs())
     } else {
 	    keys,_ := localcrypto.LoadKeys(config.PeerName)
         peerid, err := peer.IDFromPublicKey(keys.PubKey)
@@ -94,30 +82,31 @@ func mainRet(config cli.Config) int {
             fmt.Println(err)
         }
         glog.Infof("Your p2p peer ID: %s", peerid)
-	    var ddht *dual.DHT
-	    var routingDiscovery *discovery.RoutingDiscovery
-	    identity := libp2p.Identity(keys.PrivKey)
-        routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
-            var err error
-            ddht, err = dual.New(ctx, host)
-            routingDiscovery = discovery.NewRoutingDiscovery(ddht)
-            return ddht, err
-        })
+	    //var ddht *dual.DHT
+	    //var routingDiscovery *discovery.RoutingDiscovery
+	    //identity := libp2p.Identity(keys.PrivKey)
+        //routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
+        //    var err error
+        //    ddht, err = dual.New(ctx, host)
+        //    routingDiscovery = discovery.NewRoutingDiscovery(ddht)
+        //    return ddht, err
+        //})
 
-        addresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-	    host, err := libp2p.New(ctx,
-	        routing,
-            libp2p.ListenAddrs(addresses...),
-	        identity,
-	    )
-		host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
+        listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
+        node, err = p2p.NewNode(ctx, keys.PrivKey, listenaddresses)
+	    //host, err := libp2p.New(ctx,
+	    //    routing,
+        //    libp2p.ListenAddrs(addresses...),
+	    //    identity,
+	    //)
+		node.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
-        ps, err = pubsub.NewGossipSub(ctx, host)
-        if err !=nil {
-        fmt.Println("gossip err")
-        fmt.Println(err)
-        }
-        topic, err := ps.Join(ShareTopic)
+        //ps, err = pubsub.NewGossipSub(ctx, node.Host)
+        //if err !=nil {
+        //fmt.Println("gossip err")
+        //fmt.Println(err)
+        //}
+        topic, err := node.Pubsub.Join(ShareTopic)
         if err != nil {
             fmt.Println("join err")
             fmt.Println(err)
@@ -136,7 +125,7 @@ func mainRet(config cli.Config) int {
 		    wg.Add(1)
 		    go func() {
 			    defer wg.Done()
-			    if err := host.Connect(ctx, *peerinfo); err != nil {
+			    if err := node.Host.Connect(ctx, *peerinfo); err != nil {
                     glog.Warning(err)
 			    } else {
                     glog.Infof("Connection established with bootstrap node %s:", *peerinfo)
@@ -145,20 +134,20 @@ func mainRet(config cli.Config) int {
 	    }
 	    wg.Wait()
         glog.Infof("Announcing ourselves...")
-	    discovery.Advertise(ctx, routingDiscovery, config.RendezvousString)
+	    discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
 	    glog.Infof("Successfully announced!")
         //fmt.Println(next)
         //fmt.Println(err)
-	    time.Sleep(time.Second * 5)
-        fmt.Println("Lan Routing Table:")
-	    ddht.LAN.RoutingTable().Print()
-        fmt.Println("Wan Routing Table:")
-	    ddht.WAN.RoutingTable().Print()
+	    //time.Sleep(time.Second * 5)
+        //fmt.Println("Lan Routing Table:")
+	    //ddht.LAN.RoutingTable().Print()
+        //fmt.Println("Wan Routing Table:")
+	    //ddht.WAN.RoutingTable().Print()
 
 	    pctx, _ := context.WithTimeout(ctx, time.Second*10)
 	    glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
         //TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
-	    peers, err := discovery.FindPeers(pctx, routingDiscovery, config.RendezvousString)
+	    peers, err := discovery.FindPeers(pctx, node.RoutingDiscovery, config.RendezvousString)
 	    if err != nil {
 	        panic(err)
 	    }
@@ -167,11 +156,11 @@ func mainRet(config cli.Config) int {
         fmt.Println("peers:")
         fmt.Println(peers)
 	    for _, peer := range peers {
-		    if peer.ID == host.ID() {
+		    if peer.ID == node.Host.ID() {
 		        continue
 		    }
 		    glog.Infof("Found peer: %s", peer)
-            err := host.Connect(ctx, peer)
+            err := node.Host.Connect(ctx, peer)
             if err != nil {
                 fmt.Println("====connect error")
                 fmt.Println(err)
@@ -218,7 +207,7 @@ func ticker(){
         select {
 		    case <-peerRefreshTicker.C:
                 fmt.Println("ticker!")
-                idlist := ps.ListPeers(ShareTopic)
+                idlist := node.Pubsub.ListPeers(ShareTopic)
                 fmt.Println(idlist)
         }
     }
