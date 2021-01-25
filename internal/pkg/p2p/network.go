@@ -24,7 +24,7 @@ type Node struct{
 }
 
 
-func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []maddr.Multiaddr ) (*Node, error){
+func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error){
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
     routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
@@ -43,7 +43,18 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []m
     if err != nil {
         return nil, err
     }
-    ps, err := pubsub.NewGossipSub(ctx, host)
+
+    var ps *pubsub.PubSub
+    if jsontracerfile != "" {
+        tracer, err := pubsub.NewJSONTracer(jsontracerfile)
+	    if err != nil {
+            return nil, err
+	    }
+	    ps, err = pubsub.NewGossipSub(ctx, host, pubsub.WithEventTracer(tracer))
+    }else {
+	    ps, err = pubsub.NewGossipSub(ctx, host)
+    }
+
     if err != nil {
         return nil, err
     }

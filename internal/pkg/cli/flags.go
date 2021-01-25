@@ -15,6 +15,7 @@ type Config struct {
 	ProtocolID       string
     IsBootstrap     bool
     PeerName        string
+    JsonTracer   string
 }
 
 func (al *addrList) String() string {
@@ -42,6 +43,7 @@ func ParseFlags() (Config,error) {
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
+	flag.StringVar(&config.JsonTracer, "jsontracer", "", "output tracer data to a json file")
     flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flag.Parse()
 
