@@ -31,13 +31,8 @@ import (
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
-//type Keys struct{
-//	PrivKey p2pcrypto.PrivKey
-//	PubKey p2pcrypto.PubKey
-//}
-
 var sub *pubsub.Subscription
-var ps *pubsub.PubSub
+//var ps *pubsub.PubSub
 var ShareTopic string
 var node *p2p.Node
 var newnode *p2p.Node
@@ -77,8 +72,6 @@ func mainRet(config cli.Config) int {
         fmt.Println(err)
 	    glog.Infof("Host created. We are: %s", node.Host.ID())
 	    glog.Infof("%s", node.Host.Addrs())
-
-
 
     } else {
 	    keys,_ := localcrypto.LoadKeys(config.PeerName)

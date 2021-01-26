@@ -14,7 +14,7 @@ import (
 	maddr "github.com/multiformats/go-multiaddr"
 )
 
-type Node struct{
+type Node struct {
     Ctx context.Context
     PeerID peer.ID
     Host host.Host
