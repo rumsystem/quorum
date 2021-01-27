@@ -2,11 +2,13 @@ package storage
 
 import (
     //"encoding/json"
+	"github.com/golang/glog"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
     "os"
 	"context"
     "fmt"
     "path/filepath"
+	"github.com/google/uuid"
     "io/ioutil"
 )
 
@@ -15,6 +17,7 @@ func filePathWalkDir(root string) ([]string, error) {
 
     var files []string
 	if _, err := os.Stat(root); os.IsNotExist(err) {
+		os.MkdirAll(root, 0755)
 		return files, err
 	}
     err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
@@ -58,5 +61,14 @@ func JsonSyncData(ctx context.Context, dir string, topic *pubsub.Topic) {
             }
         }
     }
+}
 
+func WriteJsonToFile(dir string, jsonData []byte) {
+    uuidname := uuid.New()
+	filename := fmt.Sprintf("%s/%s.json", dir, uuidname)
+    err := ioutil.WriteFile(filename, jsonData, 0644)
+	if err != nil {
+		glog.Errorf("file write err %s", err)
+	}
+    fmt.Println(err)
 }

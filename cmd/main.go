@@ -6,23 +6,10 @@ import (
     "fmt"
     "time"
 	"context"
-    //"path/filepath"
-    //"strings"
-	//"bufio"
-	//"sync"
-	//"crypto/rand"
-	//"github.com/spf13/viper"
 	"github.com/golang/glog"
-	//"github.com/libp2p/go-libp2p"
-	//"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
-	//"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	//"github.com/libp2p/go-libp2p-kad-dht/dual"
-	//dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-discovery"
-	//maddr "github.com/multiformats/go-multiaddr"
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
     "github.com/huo-ju/quorum/internal/pkg/cli"
@@ -125,22 +112,8 @@ func mainRet(config cli.Config) int {
             fmt.Println("sub err")
             fmt.Println(err)
 	    }
-        //storage sync ,publish
-        //newnode.EnsureConnect(config.RendezvousString, func(){
-        //    fmt.Println("ok connected")
-        //})
-
-        //fmt.Println("sub: ")
-        //fmt.Println(sub)
-        go readFromNetworkLoop(ctx) //start loop to read the subscrbe topic
+        go readFromNetworkLoop(ctx, config) //start loop to read the subscrbe topic
         go syncDataTicker(config, ctx, topic)
-        //err = topic.Publish(ctx, []byte("the message. from: "+config.PeerName))
-        //if err != nil {
-        //    fmt.Println("publish err")
-        //    fmt.Println(err)
-	    //} else {
-        //    fmt.Println("publish message success")
-        //}
     }
 
 	select {}
@@ -148,7 +121,7 @@ func mainRet(config cli.Config) int {
     return 0
 }
 
-func readFromNetworkLoop(ctx context.Context) {
+func readFromNetworkLoop(ctx context.Context, config cli.Config) {
     fmt.Println("run readloop")
 	for {
 		msg, err := sub.Next(ctx)
@@ -156,7 +129,8 @@ func readFromNetworkLoop(ctx context.Context) {
             fmt.Println(err)
 			return
 		}
-        // save to disk
+		storage.WriteJsonToFile("data"+"/"+config.PeerName,  msg.Data)
+        fmt.Printf("receive msg: %T\n", msg)
         fmt.Println(msg)
 	}
 }
