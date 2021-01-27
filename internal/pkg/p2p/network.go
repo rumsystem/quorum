@@ -8,6 +8,7 @@ import (
     "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-discovery"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -31,8 +32,13 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []m
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
     routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
+        dhtOpts := dual.DHTOption(
+                dht.Mode(dht.ModeServer),
+				dht.Concurrency(10),
+        )
+
         var err error
-        ddht, err = dual.New(ctx, host)
+        ddht, err = dual.New(ctx, host, dhtOpts)
         routingDiscovery = discovery.NewRoutingDiscovery(ddht)
         return ddht, err
     })
