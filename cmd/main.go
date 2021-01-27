@@ -9,7 +9,7 @@ import (
     //"path/filepath"
     //"strings"
 	//"bufio"
-	"sync"
+	//"sync"
 	//"crypto/rand"
 	//"github.com/spf13/viper"
 	"github.com/golang/glog"
@@ -28,6 +28,7 @@ import (
     "github.com/huo-ju/quorum/internal/pkg/cli"
     "github.com/huo-ju/quorum/internal/pkg/utils"
     "github.com/huo-ju/quorum/internal/pkg/p2p"
+    "github.com/huo-ju/quorum/internal/pkg/storage"
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
@@ -86,34 +87,15 @@ func mainRet(config cli.Config) int {
 		newnode.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
         topic, err := newnode.Pubsub.Join(ShareTopic)
+        fmt.Println("=======")
+        fmt.Printf("topic type %T\n", topic)
         if err != nil {
             fmt.Println("join err")
             fmt.Println(err)
 	    }
-        sub, err = topic.Subscribe()
-        if err != nil {
-            fmt.Println("sub err")
-            fmt.Println(err)
-	    }
+        _ = newnode.Bootstrap(config)
 
-        //TOFIX: for test
-        //config.BootstrapPeers = dht.DefaultBootstrapPeers
-	    var wg sync.WaitGroup
-	    for _, peerAddr := range config.BootstrapPeers {
-		    peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
-		    wg.Add(1)
-		    go func() {
-			    defer wg.Done()
-			    if err := newnode.Host.Connect(ctx, *peerinfo); err != nil {
-                    glog.Warning(err)
-			    } else {
-                    glog.Infof("Connection established with bootstrap node %s:", *peerinfo)
-			    }
-		    }()
-	    }
-	    wg.Wait()
         glog.Infof("Announcing ourselves...")
-        fmt.Println("===newnode.RoutingDiscovery===")
         fmt.Println(newnode.RoutingDiscovery)
 	    discovery.Advertise(ctx, newnode.RoutingDiscovery, config.RendezvousString)
 	    glog.Infof("Successfully announced!")
@@ -125,43 +107,40 @@ func mainRet(config cli.Config) int {
         //fmt.Println("Wan Routing Table:")
 	    //ddht.WAN.RoutingTable().Print()
 
-	    //pctx, _ := context.WithTimeout(ctx, time.Second*10)
-	    glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
         //TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
-	    //peers, err := discovery.FindPeers(pctx, newnode.RoutingDiscovery, config.RendezvousString)
-	    peers, err := newnode.FindPeers(config.RendezvousString)
-	    if err != nil {
-            fmt.Println(err)
-	    //    panic(err)
-	    }
-        fmt.Println("new peers:")
-        fmt.Println(peers)
+        count, err := newnode.ConnectPeers(config)
 
-	    for _, peer := range peers {
-		    if peer.ID == newnode.Host.ID() {
-		        continue
+        if count <= 1 {
+            for {
+		        peers, _:= newnode.FindPeers(config.RendezvousString)
+		        if len(peers)>1 { // //connect 2 nodes at least
+		            break
+		        }
+	            time.Sleep(time.Second * 5)
 		    }
-		    glog.Infof("Found peer: %s", peer)
-            err := newnode.Host.Connect(ctx, peer)
-            if err != nil {
-                fmt.Println("====connect error")
-                fmt.Println(err)
-            }else {
-                fmt.Printf("connect: %s \n", peer)
-            }
         }
-
-        fmt.Println("sub: ")
-        fmt.Println(sub)
-        go readLoop(ctx) //start loop to read the subscrbe topic
-        go ticker(config, ctx, topic)
-        err = topic.Publish(ctx, []byte("the message. from: "+config.PeerName))
+		//OK we can Subscribe and Publish
+        sub, err = topic.Subscribe()
         if err != nil {
-            fmt.Println("publish err")
+            fmt.Println("sub err")
             fmt.Println(err)
-	    } else {
-            fmt.Println("publish message success")
-        }
+	    }
+        //storage sync ,publish
+        //newnode.EnsureConnect(config.RendezvousString, func(){
+        //    fmt.Println("ok connected")
+        //})
+
+        //fmt.Println("sub: ")
+        //fmt.Println(sub)
+        go readFromNetworkLoop(ctx) //start loop to read the subscrbe topic
+        go syncDataTicker(config, ctx, topic)
+        //err = topic.Publish(ctx, []byte("the message. from: "+config.PeerName))
+        //if err != nil {
+        //    fmt.Println("publish err")
+        //    fmt.Println(err)
+	    //} else {
+        //    fmt.Println("publish message success")
+        //}
     }
 
 	select {}
@@ -169,7 +148,7 @@ func mainRet(config cli.Config) int {
     return 0
 }
 
-func readLoop(ctx context.Context) {
+func readFromNetworkLoop(ctx context.Context) {
     fmt.Println("run readloop")
 	for {
 		msg, err := sub.Next(ctx)
@@ -177,30 +156,21 @@ func readLoop(ctx context.Context) {
             fmt.Println(err)
 			return
 		}
+        // save to disk
         fmt.Println(msg)
 	}
 }
 
-func ticker(config cli.Config, ctx context.Context, topic *pubsub.Topic){
-    fmt.Println("run ticker")
-    peerRefreshTicker := time.NewTicker(time.Second*30)
+func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic){
+    fmt.Println("run syncDataTicker")
+    syncdataTicker := time.NewTicker(time.Second*30)
 	for {
         select {
-		    case <-peerRefreshTicker.C:
+		    case <-syncdataTicker.C:
                 fmt.Println("ticker!")
-	            peers, err := newnode.FindPeers(config.RendezvousString)
-                if err != nil{
-                    fmt.Println(err)
-                }
-                fmt.Println(peers)
-
-                err = topic.Publish(ctx, []byte("the message ticker. from: "+config.PeerName))
-                if err != nil {
-                    fmt.Println("publish err")
-                    fmt.Println(err)
-	            } else {
-                    fmt.Println("publish message success")
-                }
+                newnode.EnsureConnect(config.RendezvousString, func(){
+                    storage.JsonSyncData(ctx, "data"+"/"+config.PeerName, topic)
+                })
         }
     }
 }
