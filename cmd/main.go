@@ -7,6 +7,9 @@ import (
     "time"
 	"context"
 	"github.com/golang/glog"
+	"github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v4/middleware"
+    "github.com/labstack/gommon/log"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-discovery"
@@ -15,10 +18,12 @@ import (
     ds_badger "github.com/ipfs/go-ds-badger"
     ds_sync "github.com/ipfs/go-datastore/sync"
     blockstore "github.com/ipfs/go-ipfs-blockstore"
+    blocks "github.com/ipfs/go-block-format"
     "github.com/huo-ju/quorum/internal/pkg/cli"
     "github.com/huo-ju/quorum/internal/pkg/utils"
     "github.com/huo-ju/quorum/internal/pkg/p2p"
     "github.com/huo-ju/quorum/internal/pkg/storage"
+    "github.com/huo-ju/quorum/internal/pkg/api"
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
@@ -77,6 +82,8 @@ func mainRet(config cli.Config) int {
 
         badgerstorage, err := ds_badger.NewDatastore(blockpath, nil)
         bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage))
+        //run local http api service
+        go StartAPIServer()
 
         listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
         newnode, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)
@@ -95,6 +102,7 @@ func mainRet(config cli.Config) int {
         fmt.Println(newnode.RoutingDiscovery)
 	    discovery.Advertise(ctx, newnode.RoutingDiscovery, config.RendezvousString)
 	    glog.Infof("Successfully announced!")
+
         //fmt.Println(next)
         //fmt.Println(err)
 	    //time.Sleep(time.Second * 5)
@@ -125,6 +133,7 @@ func mainRet(config cli.Config) int {
         go syncDataTicker(config, ctx, topic)
     }
 
+
 	select {}
 
     return 0
@@ -153,9 +162,30 @@ func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic)
                 fmt.Println("ticker!")
                 newnode.EnsureConnect(config.RendezvousString, func(){
                     storage.JsonSyncData(ctx, "data"+"/"+config.PeerName, topic)
+
+                    block := blocks.NewBlock([]byte("some data1"))
+                    cid := block.Cid()
+                    fmt.Println("cid:")
+                    fmt.Println(cid)
+                    fmt.Println("exchange:")
+                    fmt.Println(newnode.Exchange)
+                    readblock, err := newnode.Exchange.GetBlock(ctx, cid)
+                    fmt.Println("peer:"+config.PeerName)
+                    fmt.Println(readblock)
+                    fmt.Println(err)
                 })
         }
     }
+}
+
+//StartAPIServer : Start the web server
+func StartAPIServer() {
+	e := echo.New()
+    e.Use(middleware.Logger())
+    e.Logger.SetLevel(log.DEBUG)
+    r := e.Group("/api")
+    r.POST("/post", api.Post)
+	e.Logger.Fatal(e.Start(":1323"))
 }
 
 func main() {

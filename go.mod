@@ -8,6 +8,7 @@ require (
 	github.com/ipfs/go-bitswap v0.3.3
 	github.com/ipfs/go-graphsync v0.6.0
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
+	github.com/labstack/echo/v4 v4.1.17
 	github.com/libp2p/go-libp2p v0.13.0
 	github.com/libp2p/go-libp2p-core v0.8.0
 	github.com/libp2p/go-libp2p-discovery v0.5.0
