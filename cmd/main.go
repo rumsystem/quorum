@@ -12,6 +12,9 @@ import (
 	"github.com/libp2p/go-libp2p-discovery"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
+    ds_badger "github.com/ipfs/go-ds-badger"
+    ds_sync "github.com/ipfs/go-datastore/sync"
+    blockstore "github.com/ipfs/go-ipfs-blockstore"
     "github.com/huo-ju/quorum/internal/pkg/cli"
     "github.com/huo-ju/quorum/internal/pkg/utils"
     "github.com/huo-ju/quorum/internal/pkg/p2p"
@@ -56,7 +59,7 @@ func mainRet(config cli.Config) int {
         }
         glog.Infof("Your p2p peer ID: %s", peerid)
         listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-        node, err = p2p.NewNode(ctx, keys.PrivKey, listenaddresses, config.JsonTracer)
+        node, err = p2p.NewNode(ctx, keys.PrivKey, nil, listenaddresses, config.JsonTracer)
         fmt.Println(err)
 	    glog.Infof("Host created. We are: %s", node.Host.ID())
 	    glog.Infof("%s", node.Host.Addrs())
@@ -69,8 +72,14 @@ func mainRet(config cli.Config) int {
         }
         glog.Infof("Your p2p peer ID: %s", peerid)
 
+
+        blockpath := "data"+"/"+config.PeerName+"_blocks"
+
+        badgerstorage, err := ds_badger.NewDatastore(blockpath, nil)
+        bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage))
+
         listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-        newnode, err = p2p.NewNode(ctx, keys.PrivKey, listenaddresses, config.JsonTracer)
+        newnode, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)
 		newnode.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
         topic, err := newnode.Pubsub.Join(ShareTopic)

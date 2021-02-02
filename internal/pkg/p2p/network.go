@@ -8,12 +8,15 @@ import (
     "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
+    bitswap "github.com/ipfs/go-bitswap"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-discovery"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	maddr "github.com/multiformats/go-multiaddr"
+    bsnet "github.com/ipfs/go-bitswap/network"
+    blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/golang/glog"
     "github.com/huo-ju/quorum/internal/pkg/cli"
 )
@@ -25,10 +28,11 @@ type Node struct {
     Pubsub *pubsub.PubSub
 	Ddht *dual.DHT
 	RoutingDiscovery *discovery.RoutingDiscovery
+    Exchange *bitswap.Bitswap
 }
 
 
-func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error){
+func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.Blockstore, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error){
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
     routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
@@ -67,7 +71,11 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, listenAddresses []m
     if err != nil {
         return nil, err
     }
-    newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
+
+    network := bsnet.NewFromIpfsHost(host, routingDiscovery)
+    exchange := bitswap.New(ctx, network, bstore)
+
+    newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
     return newnode,nil
 }
 
