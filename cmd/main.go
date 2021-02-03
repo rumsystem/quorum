@@ -5,7 +5,9 @@ import (
     "flag"
     "fmt"
     "time"
+	//"strings"
 	"context"
+	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/labstack/echo/v4"
     "github.com/labstack/echo/v4/middleware"
@@ -15,15 +17,20 @@ import (
 	"github.com/libp2p/go-libp2p-discovery"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
+	//ds "github.com/ipfs/go-datastore"
     ds_badger "github.com/ipfs/go-ds-badger"
     ds_sync "github.com/ipfs/go-datastore/sync"
     blockstore "github.com/ipfs/go-ipfs-blockstore"
     blocks "github.com/ipfs/go-block-format"
+    dsquery "github.com/ipfs/go-datastore/query"
+	//dshelp "github.com/ipfs/go-ipfs-ds-help"
+	//cid "github.com/ipfs/go-cid"
     "github.com/huo-ju/quorum/internal/pkg/cli"
     "github.com/huo-ju/quorum/internal/pkg/utils"
     "github.com/huo-ju/quorum/internal/pkg/p2p"
     "github.com/huo-ju/quorum/internal/pkg/storage"
     "github.com/huo-ju/quorum/internal/pkg/api"
+    "github.com/huo-ju/quorum/internal/pkg/data"
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 )
 
@@ -82,16 +89,35 @@ func mainRet(config cli.Config) int {
 
         badgerstorage, err := ds_badger.NewDatastore(blockpath, nil)
         bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage))
-        //run local http api service
-        go StartAPIServer()
+
+        //FOR TEST
+        query := dsquery.Query{
+            //KeysOnly: true,
+            Limit:10,
+	    }
+        res,err := badgerstorage.Query(query)
+        fmt.Println("====query")
+        fmt.Println(query)
+
+		actualE, err := res.Rest()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		actual := make([]string, len(actualE))
+		for _, e := range actualE {
+			fmt.Println(e.Key)
+            block := blocks.NewBlock(e.Value)
+            cid := block.Cid()
+			fmt.Println(cid)
+		}
+        fmt.Println(actual)
 
         listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
         newnode, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)
 		newnode.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
         topic, err := newnode.Pubsub.Join(ShareTopic)
-        fmt.Println("=======")
-        fmt.Printf("topic type %T\n", topic)
         if err != nil {
             fmt.Println("join err")
             fmt.Println(err)
@@ -129,8 +155,12 @@ func mainRet(config cli.Config) int {
             fmt.Println("sub err")
             fmt.Println(err)
 	    }
-        go readFromNetworkLoop(ctx, config) //start loop to read the subscrbe topic
-        go syncDataTicker(config, ctx, topic)
+        go readFromNetworkLoop(ctx, config, bs) //start loop to read the subscrbe topic
+        //go syncDataTicker(config, ctx, topic)
+        //run local http api service
+
+        h := &api.Handler{PubsubTopic: topic, Ctx: ctx}
+        go StartAPIServer(config, h)
     }
 
 
@@ -139,7 +169,7 @@ func mainRet(config cli.Config) int {
     return 0
 }
 
-func readFromNetworkLoop(ctx context.Context, config cli.Config) {
+func readFromNetworkLoop(ctx context.Context, config cli.Config, bs blockstore.Blockstore) {
     fmt.Println("run readloop")
 	for {
 		msg, err := sub.Next(ctx)
@@ -147,9 +177,22 @@ func readFromNetworkLoop(ctx context.Context, config cli.Config) {
             fmt.Println(err)
 			return
 		}
-		storage.WriteJsonToFile("data"+"/"+config.PeerName,  msg.Data)
+		//storage.WriteJsonToFile("data"+"/"+config.PeerName,  msg.Data)
         fmt.Printf("receive msg: %T\n", msg)
-        fmt.Println(msg)
+        //verify msg
+
+        var activity data.Activity
+        err = json.Unmarshal(msg.Data, &activity)
+
+        if err != nil {
+            fmt.Println(err)
+        } else {
+            block := blocks.NewBlock(msg.Data)
+            cid := block.Cid()
+            fmt.Printf("receive cid: %s \n ",cid)
+            err = bs.Put(block)
+            fmt.Println(err)
+        }
 	}
 }
 
@@ -179,13 +222,13 @@ func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic)
 }
 
 //StartAPIServer : Start the web server
-func StartAPIServer() {
+func StartAPIServer(config cli.Config, h *api.Handler) {
 	e := echo.New()
     e.Use(middleware.Logger())
     e.Logger.SetLevel(log.DEBUG)
     r := e.Group("/api")
-    r.POST("/post", api.Post)
-	e.Logger.Fatal(e.Start(":1323"))
+    r.POST("/create", h.Create)
+	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 
 func main() {

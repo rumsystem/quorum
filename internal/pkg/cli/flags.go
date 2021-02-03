@@ -12,6 +12,7 @@ type Config struct {
 	RendezvousString string
 	BootstrapPeers   addrList
 	ListenAddresses  string
+    APIListenAddresses string
 	ProtocolID       string
     IsBootstrap     bool
     PeerName        string
@@ -42,6 +43,7 @@ func ParseFlags() (Config,error) {
 		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
+    flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "Adds a multiaddress to the listen list")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
 	flag.StringVar(&config.JsonTracer, "jsontracer", "", "output tracer data to a json file")
     flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")

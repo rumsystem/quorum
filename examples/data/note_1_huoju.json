@@ -1,0 +1,14 @@
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "summary": "huoju created a note",
+  "type": "Create",
+  "actor": {
+    "type": "Person",
+    "name": "huoju"
+  },
+  "object": {
+    "type": "Note",
+    "name": "A Simple Note",
+    "content": "This is a simple note by huoju"
+  }
+}
