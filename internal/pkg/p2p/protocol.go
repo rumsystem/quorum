@@ -29,7 +29,7 @@ func (service *HeadBlockService) HeadBlockHandler(s network.Stream) {
                 glog.Errorf("HeadBlockHandler ReadMsg error: %s",err)
 				s.Reset()
 			}else {
-				glog.Infof("receive message: %s\n", msg)
+				glog.Infof("receive message: %s from %s\n", msg,  s.Conn().RemotePeer())
                 newmsg := []byte("HEAD:00001")
 				mw := msgio.NewWriter(s)
 				err := mw.WriteMsg(newmsg)

@@ -213,6 +213,7 @@ func AskHeadBlockID(config cli.Config, ctx context.Context){
 	for {
         select {
 		    case <-syncdataTicker.C:
+	            glog.Infof("Run ask head block")
 		        peers, _:= newnode.FindPeers(config.RendezvousString)
                 for _, peer := range peers {
 
@@ -228,19 +229,21 @@ func AskHeadBlockID(config cli.Config, ctx context.Context){
 					        if err != nil {
                                 glog.Errorf("Write ASK-HEAD message err: %s", err)
 					        } else {//read reply message
-							    for {
-								    msg, err := mrw.ReadMsg()
-								    if len(msg)>0 {
-                                        glog.Infof("ASK-HEAD reply : %s", string(msg))
-									    if err != nil {
-                                            glog.Errorf("read ASK-HEAD reply err: %s", err)
-									        s.Reset()
-									    }else {
-									        s.Close()
-									    }
-									    return
-								    }
-							    }
+                                go func() {
+							        for {
+								        msg, err := mrw.ReadMsg()
+								        if len(msg)>0 {
+                                            glog.Infof("ASK-HEAD reply : %s", string(msg))
+								    	    if err != nil {
+                                                glog.Errorf("read ASK-HEAD reply err: %s", err)
+								    	        s.Reset()
+								    	    }else {
+								    	        s.Close()
+								    	    }
+								    	    return
+								        }
+							        }
+                                }()
 						}
 					    }
                     }
