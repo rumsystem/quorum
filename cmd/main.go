@@ -5,8 +5,12 @@ import (
     "flag"
     "fmt"
     "time"
+    //"io"
+    //"io/ioutil"
 	//"strings"
+	//"bufio"
 	"context"
+	//"math/rand"
 	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/labstack/echo/v4"
@@ -15,6 +19,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-discovery"
+    "github.com/libp2p/go-libp2p-core/host"
+	msgio "github.com/libp2p/go-msgio"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
 	//ds "github.com/ipfs/go-datastore"
@@ -22,7 +28,8 @@ import (
     ds_sync "github.com/ipfs/go-datastore/sync"
     blockstore "github.com/ipfs/go-ipfs-blockstore"
     blocks "github.com/ipfs/go-block-format"
-    dsquery "github.com/ipfs/go-datastore/query"
+    //dsquery "github.com/ipfs/go-datastore/query"
+	//"github.com/libp2p/go-msgio"
 	//dshelp "github.com/ipfs/go-ipfs-ds-help"
 	//cid "github.com/ipfs/go-cid"
     "github.com/huo-ju/quorum/internal/pkg/cli"
@@ -40,15 +47,43 @@ var ShareTopic string
 var node *p2p.Node
 var newnode *p2p.Node
 
-// isolates the complex initialization steps
-//func constructPeerHost(ctx context.Context, id peer.ID, ps peerstore.Peerstore, options ...libp2p.Option) (host.Host, error) {
-//	pkey := ps.PrivKey(id)
-//	if pkey == nil {
-//		return nil, fmt.Errorf("missing private key for node ID: %s", id.Pretty())
-//	}
-//	options = append([]libp2p.Option{libp2p.Identity(pkey), libp2p.Peerstore(ps)}, options...)
-//	return libp2p.New(ctx, options...)
-//}
+const HeadBlockProtocolID = "/quorum/headblocks/1.0.0"
+type HeadBlockService struct {
+	Host host.Host
+}
+
+func NewHeadBlockService(h host.Host) *HeadBlockService {
+	ps := &HeadBlockService{h}
+	h.SetStreamHandler(HeadBlockProtocolID, ps.HeadBlockHandler)
+	return ps
+}
+
+
+func (service *HeadBlockService) HeadBlockHandler(s network.Stream) {
+	log.Infof("Got a new stream!")
+	reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
+	for {
+		msg, err := reader.ReadMsg()
+		if len(msg)>0 {
+			fmt.Println("=======ReadMsg")
+			fmt.Println(msg)
+			fmt.Println(err)
+			if err != nil {
+				s.Reset()
+			}else {
+				log.Printf("read: %s\n and reply", msg)
+				newmsg := []byte("reply")
+				mw := msgio.NewWriter(s)
+				err := mw.WriteMsg(newmsg)
+				fmt.Println("reply err")
+				fmt.Println(err)
+				s.Close()
+			}
+			return
+		}
+	}
+
+}
 
 func handleStream(stream network.Stream) {
 	glog.Infof("Got a new stream %s", stream)
@@ -91,27 +126,27 @@ func mainRet(config cli.Config) int {
         bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage))
 
         //FOR TEST
-        query := dsquery.Query{
-            //KeysOnly: true,
-            Limit:10,
-	    }
-        res,err := badgerstorage.Query(query)
-        fmt.Println("====query")
-        fmt.Println(query)
+        //query := dsquery.Query{
+        //    //KeysOnly: true,
+        //    Limit:10,
+	    //}
+        //res,err := badgerstorage.Query(query)
+        //fmt.Println("====query")
+        //fmt.Println(query)
 
-		actualE, err := res.Rest()
-		if err != nil {
-			fmt.Println(err)
-		}
+		//actualE, err := res.Rest()
+		//if err != nil {
+		//	fmt.Println(err)
+		//}
 
-		actual := make([]string, len(actualE))
-		for _, e := range actualE {
-			fmt.Println(e.Key)
-            block := blocks.NewBlock(e.Value)
-            cid := block.Cid()
-			fmt.Println(cid)
-		}
-        fmt.Println(actual)
+		//actual := make([]string, len(actualE))
+		//for _, e := range actualE {
+		//	fmt.Println(e.Key)
+        //    block := blocks.NewBlock(e.Value)
+        //    cid := block.Cid()
+		//	fmt.Println(cid)
+		//}
+        //fmt.Println(actual)
 
         listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
         newnode, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)
@@ -128,6 +163,13 @@ func mainRet(config cli.Config) int {
         fmt.Println(newnode.RoutingDiscovery)
 	    discovery.Advertise(ctx, newnode.RoutingDiscovery, config.RendezvousString)
 	    glog.Infof("Successfully announced!")
+
+        //network := bsnet.NewFromIpfsHost(host, routingDiscovery)
+        //exchange := bitswap.New(ctx, network, bstore)
+        askheadservice := NewHeadBlockService(newnode.Host)
+        fmt.Println("register askheadservice")
+        fmt.Println(askheadservice)
+
 
         //fmt.Println(next)
         //fmt.Println(err)
@@ -156,11 +198,14 @@ func mainRet(config cli.Config) int {
             fmt.Println(err)
 	    }
         go readFromNetworkLoop(ctx, config, bs) //start loop to read the subscrbe topic
+        go testHeadProtocol(config, ctx)
         //go syncDataTicker(config, ctx, topic)
         //run local http api service
 
         h := &api.Handler{PubsubTopic: topic, Ctx: ctx}
         go StartAPIServer(config, h)
+
+
     }
 
 
@@ -194,6 +239,59 @@ func readFromNetworkLoop(ctx context.Context, config cli.Config, bs blockstore.B
             fmt.Println(err)
         }
 	}
+}
+
+//func RandBuf(r *rand.Rand, length int) []byte {
+//	buf := make([]byte, length)
+//	for i := range buf {
+//		buf[i] = byte(r.Intn(256))
+//	}
+//	return buf[:]
+//}
+
+func testHeadProtocol(config cli.Config, ctx context.Context){
+    fmt.Println("run testHeadProtocol")
+    syncdataTicker := time.NewTicker(time.Second*10)
+	for {
+        select {
+		    case <-syncdataTicker.C:
+                fmt.Println("test head ticker!")
+		        peers, _:= newnode.FindPeers(config.RendezvousString)
+                for _, peer := range peers {
+					fmt.Println("opening stream")
+                    s, err := newnode.Host.NewStream(ctx, peer.ID, HeadBlockProtocolID)
+					if err != nil {
+						fmt.Println(err)
+					} else  {
+						newmsg := []byte("hello")
+						mrw := msgio.NewReadWriter(s)
+						fmt.Println("write:")
+						fmt.Println(newmsg)
+						err := mrw.WriteMsg(newmsg)
+						if err != nil {
+							fmt.Println("==write err:")
+							fmt.Println(err)
+						} else {//read reply message
+							for {
+								msg, err := mrw.ReadMsg()
+								if len(msg)>0 {
+									fmt.Println("=======ReadMsg from writer reply")
+									fmt.Println(msg)
+									fmt.Println(err)
+									log.Printf("reply receive: %s\n", msg)
+									if err != nil {
+										s.Reset()
+									}else {
+										s.Close()
+									}
+									return
+								}
+							}
+						}
+					}
+				}
+        }
+    }
 }
 
 func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic){
