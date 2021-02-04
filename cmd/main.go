@@ -128,10 +128,10 @@ func mainRet(config cli.Config) int {
 
         //network := bsnet.NewFromIpfsHost(host, routingDiscovery)
         //exchange := bitswap.New(ctx, network, bstore)
-        askheadservice := p2p.NewHeadBlockService(newnode.Host)
+        relationdb := "a_block_relation_db_object"
+        askheadservice := p2p.NewHeadBlockService(newnode.Host, relationdb)
         fmt.Println("register askheadservice")
         fmt.Println(askheadservice)
-
 
         //fmt.Println(next)
         //fmt.Println(err)
@@ -160,7 +160,7 @@ func mainRet(config cli.Config) int {
             fmt.Println(err)
 	    }
         go readFromNetworkLoop(ctx, config, bs) //start loop to read the subscrbe topic
-        go testHeadProtocol(config, ctx)
+        go AskHeadBlockID(config, ctx)
         //go syncDataTicker(config, ctx, topic)
         //run local http api service
         h := &api.Handler{PubsubTopic: topic, Ctx: ctx}
@@ -208,46 +208,42 @@ func readFromNetworkLoop(ctx context.Context, config cli.Config, bs blockstore.B
 //	return buf[:]
 //}
 
-func testHeadProtocol(config cli.Config, ctx context.Context){
-    fmt.Println("run testHeadProtocol")
+func AskHeadBlockID(config cli.Config, ctx context.Context){
     syncdataTicker := time.NewTicker(time.Second*10)
 	for {
         select {
 		    case <-syncdataTicker.C:
-                fmt.Println("test head ticker!")
 		        peers, _:= newnode.FindPeers(config.RendezvousString)
                 for _, peer := range peers {
-					fmt.Println("opening stream")
-                    s, err := newnode.Host.NewStream(ctx, peer.ID, p2p.HeadBlockProtocolID)
-					if err != nil {
-						fmt.Println(err)
-					} else  {
-						newmsg := []byte("hello")
-						mrw := msgio.NewReadWriter(s)
-						fmt.Println("write:")
-						fmt.Println(newmsg)
-						err := mrw.WriteMsg(newmsg)
-						if err != nil {
-							fmt.Println("==write err:")
-							fmt.Println(err)
-						} else {//read reply message
-							for {
-								msg, err := mrw.ReadMsg()
-								if len(msg)>0 {
-									fmt.Println("=======ReadMsg from writer reply")
-									fmt.Println(msg)
-									fmt.Println(err)
-									log.Printf("reply receive: %s\n", msg)
-									if err != nil {
-										s.Reset()
-									}else {
-										s.Close()
-									}
-									return
-								}
-							}
+
+                    if newnode.PeerID  != peer.ID { //peer is not myself
+	                    glog.Infof("Open a new stream to  %s", peer.ID)
+                        s, err := newnode.Host.NewStream(ctx, peer.ID, p2p.HeadBlockProtocolID)
+					    if err != nil {
+                            glog.Errorf("Open new stream to %s err: %s", peer.ID, err)
+					    } else  {
+					        newmsg := []byte("ASK-HEAD")
+					        mrw := msgio.NewReadWriter(s)
+					        err := mrw.WriteMsg(newmsg)
+					        if err != nil {
+                                glog.Errorf("Write ASK-HEAD message err: %s", err)
+					        } else {//read reply message
+							    for {
+								    msg, err := mrw.ReadMsg()
+								    if len(msg)>0 {
+                                        glog.Infof("ASK-HEAD reply : %s", string(msg))
+									    if err != nil {
+                                            glog.Errorf("read ASK-HEAD reply err: %s", err)
+									        s.Reset()
+									    }else {
+									        s.Close()
+									    }
+									    return
+								    }
+							    }
 						}
-					}
+					    }
+                    }
 				}
         }
     }

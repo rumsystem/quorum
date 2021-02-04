@@ -11,10 +11,11 @@ const HeadBlockProtocolID = "/quorum/headblocks/1.0.0"
 
 type HeadBlockService struct {
 	Host host.Host
+    Relationdb interface{}
 }
 
-func NewHeadBlockService(h host.Host) *HeadBlockService {
-	ps := &HeadBlockService{h}
+func NewHeadBlockService(h host.Host , relationdb interface{} ) *HeadBlockService {
+    ps := &HeadBlockService{Host:h, Relationdb: relationdb}
 	h.SetStreamHandler(HeadBlockProtocolID, ps.HeadBlockHandler)
 	return ps
 }
@@ -28,8 +29,8 @@ func (service *HeadBlockService) HeadBlockHandler(s network.Stream) {
                 glog.Errorf("HeadBlockHandler ReadMsg error: %s",err)
 				s.Reset()
 			}else {
-				glog.Infof("receive : %s\n and reply", msg)
-				newmsg := []byte("reply")
+				glog.Infof("receive message: %s\n", msg)
+                newmsg := []byte("HEAD:00001")
 				mw := msgio.NewWriter(s)
 				err := mw.WriteMsg(newmsg)
                 if err != nil{
