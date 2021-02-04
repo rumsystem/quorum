@@ -19,7 +19,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-discovery"
-    "github.com/libp2p/go-libp2p-core/host"
+    //"github.com/libp2p/go-libp2p-core/host"
 	msgio "github.com/libp2p/go-msgio"
     peer "github.com/libp2p/go-libp2p-core/peer"
     pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -47,43 +47,8 @@ var ShareTopic string
 var node *p2p.Node
 var newnode *p2p.Node
 
-const HeadBlockProtocolID = "/quorum/headblocks/1.0.0"
-type HeadBlockService struct {
-	Host host.Host
-}
-
-func NewHeadBlockService(h host.Host) *HeadBlockService {
-	ps := &HeadBlockService{h}
-	h.SetStreamHandler(HeadBlockProtocolID, ps.HeadBlockHandler)
-	return ps
-}
 
 
-func (service *HeadBlockService) HeadBlockHandler(s network.Stream) {
-	log.Infof("Got a new stream!")
-	reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
-	for {
-		msg, err := reader.ReadMsg()
-		if len(msg)>0 {
-			fmt.Println("=======ReadMsg")
-			fmt.Println(msg)
-			fmt.Println(err)
-			if err != nil {
-				s.Reset()
-			}else {
-				log.Printf("read: %s\n and reply", msg)
-				newmsg := []byte("reply")
-				mw := msgio.NewWriter(s)
-				err := mw.WriteMsg(newmsg)
-				fmt.Println("reply err")
-				fmt.Println(err)
-				s.Close()
-			}
-			return
-		}
-	}
-
-}
 
 func handleStream(stream network.Stream) {
 	glog.Infof("Got a new stream %s", stream)
@@ -166,7 +131,7 @@ func mainRet(config cli.Config) int {
 
         //network := bsnet.NewFromIpfsHost(host, routingDiscovery)
         //exchange := bitswap.New(ctx, network, bstore)
-        askheadservice := NewHeadBlockService(newnode.Host)
+        askheadservice := p2p.NewHeadBlockService(newnode.Host)
         fmt.Println("register askheadservice")
         fmt.Println(askheadservice)
 
@@ -201,16 +166,13 @@ func mainRet(config cli.Config) int {
         go testHeadProtocol(config, ctx)
         //go syncDataTicker(config, ctx, topic)
         //run local http api service
-
         h := &api.Handler{PubsubTopic: topic, Ctx: ctx}
         go StartAPIServer(config, h)
 
 
     }
 
-
 	select {}
-
     return 0
 }
 
@@ -259,7 +221,7 @@ func testHeadProtocol(config cli.Config, ctx context.Context){
 		        peers, _:= newnode.FindPeers(config.RendezvousString)
                 for _, peer := range peers {
 					fmt.Println("opening stream")
-                    s, err := newnode.Host.NewStream(ctx, peer.ID, HeadBlockProtocolID)
+                    s, err := newnode.Host.NewStream(ctx, peer.ID, p2p.HeadBlockProtocolID)
 					if err != nil {
 						fmt.Println(err)
 					} else  {
