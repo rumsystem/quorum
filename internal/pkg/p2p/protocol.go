@@ -1,7 +1,6 @@
 package p2p
 
 import (
-    "fmt"
 	"github.com/golang/glog"
     "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -25,18 +24,17 @@ func (service *HeadBlockService) HeadBlockHandler(s network.Stream) {
 	for {
 		msg, err := reader.ReadMsg()
 		if len(msg)>0 {
-			fmt.Println("=======ReadMsg")
-			fmt.Println(msg)
-			fmt.Println(err)
 			if err != nil {
+                glog.Errorf("HeadBlockHandler ReadMsg error: %s",err)
 				s.Reset()
 			}else {
-				glog.Infof("read: %s\n and reply", msg)
+				glog.Infof("receive : %s\n and reply", msg)
 				newmsg := []byte("reply")
 				mw := msgio.NewWriter(s)
 				err := mw.WriteMsg(newmsg)
-				fmt.Println("reply err")
-				fmt.Println(err)
+                if err != nil{
+                    glog.Errorf("HeadBlockHandler WriteMsg error: %s",err)
+                }
 				s.Close()
 			}
 			return

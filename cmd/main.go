@@ -47,9 +47,6 @@ var ShareTopic string
 var node *p2p.Node
 var newnode *p2p.Node
 
-
-
-
 func handleStream(stream network.Stream) {
 	glog.Infof("Got a new stream %s", stream)
 }
