@@ -3,8 +3,8 @@ package main
 import (
     "os"
     "flag"
-    "fmt"
     "time"
+    "fmt"
     //"io"
     //"io/ioutil"
 	//"strings"
@@ -19,6 +19,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-discovery"
+    "google.golang.org/protobuf/proto"
     //"github.com/libp2p/go-libp2p-core/host"
 	msgio "github.com/libp2p/go-msgio"
     peer "github.com/libp2p/go-libp2p-core/peer"
@@ -39,6 +40,7 @@ import (
     "github.com/huo-ju/quorum/internal/pkg/api"
     "github.com/huo-ju/quorum/internal/pkg/data"
     localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+    quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 )
 
 var sub *pubsub.Subscription
@@ -223,28 +225,40 @@ func AskHeadBlockID(config cli.Config, ctx context.Context){
 					    if err != nil {
                             glog.Errorf("Open new stream to %s err: %s", peer.ID, err)
 					    } else  {
-					        newmsg := []byte("ASK-HEAD")
-					        mrw := msgio.NewReadWriter(s)
-					        err := mrw.WriteMsg(newmsg)
-					        if err != nil {
-                                glog.Errorf("Write ASK-HEAD message err: %s", err)
-					        } else {//read reply message
-                                go func() {
-							        for {
-								        msg, err := mrw.ReadMsg()
-								        if len(msg)>0 {
-                                            glog.Infof("ASK-HEAD reply : %s", string(msg))
-								    	    if err != nil {
-                                                glog.Errorf("read ASK-HEAD reply err: %s", err)
-								    	        s.Reset()
-								    	    }else {
-								    	        s.Close()
-								    	    }
-								    	    return
-								        }
-							        }
-                                }()
-						}
+
+                            askheadmsg := &quorumpb.BlockMessage{
+                                Type: quorumpb.BlockMessage_ASKHEAD,
+                                Value: "",
+                            }
+
+                            pbmsg, err := proto.Marshal(askheadmsg)
+                            if err != nil{
+                                glog.Errorf("Marshal askheadmsg err: %s", err)
+                            } else {
+					            mrw := msgio.NewReadWriter(s)
+					            err = mrw.WriteMsg(pbmsg)
+					            if err != nil {
+                                    glog.Errorf("Write ASKHEAD message err: %s", err)
+					            } else {//read reply message
+                                    glog.Infof("Send ASKHEAD msg to : %s", peer.ID)
+                                    go func() { //TOFIX: set a timeout flag to avoid long loop
+							            for {
+							                msg, err := mrw.ReadMsg()
+		                                    if err == nil {
+	                                            pb:= &quorumpb.BlockMessage{}
+                                                err = proto.Unmarshal(msg, pb)
+                                                mrw.ReleaseMsg(msg)
+                                                glog.Infof("ASKHEAD reply : %s", string(msg))
+							                    s.Close()
+							                    return
+                                            } else {
+                                                glog.Errorf("read ASKHEAD reply err: %s", err)
+							                    s.Reset()
+                                            }
+							            }
+                                    }()
+						        }
+                            }
 					    }
                     }
 				}
