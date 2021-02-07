@@ -165,7 +165,7 @@ func mainRet(config cli.Config) int {
         go AskHeadBlockID(config, ctx)
         //go syncDataTicker(config, ctx, topic)
         //run local http api service
-        h := &api.Handler{PubsubTopic: topic, Ctx: ctx}
+        h := &api.Handler{Node: newnode, PubsubTopic: topic,  Ctx: ctx}
         go StartAPIServer(config, h)
 
 
@@ -298,6 +298,7 @@ func StartAPIServer(config cli.Config, h *api.Handler) {
     e.Logger.SetLevel(log.DEBUG)
     r := e.Group("/api")
     r.POST("/create", h.Create)
+    r.GET("/info", h.Info)
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 
