@@ -1,12 +1,12 @@
 package api
 
 import (
-	"fmt"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"github.com/huo-ju/quorum/internal/pkg/data"
 	"github.com/labstack/echo/v4"
-    "github.com/huo-ju/quorum/internal/pkg/data"
+	"io/ioutil"
+	"net/http"
 )
 
 func (h *Handler) Create(c echo.Context) (err error) {
@@ -16,16 +16,16 @@ func (h *Handler) Create(c echo.Context) (err error) {
 		bodyBytes, _ = ioutil.ReadAll(c.Request().Body)
 	}
 
-    c.Echo().Logger.Info(bodyBytes)
+	c.Echo().Logger.Info(bodyBytes)
 
-    var activity data.Activity
-    err = json.Unmarshal(bodyBytes, &activity)
+	var activity data.Activity
+	err = json.Unmarshal(bodyBytes, &activity)
 	if err != nil { // error joson data
-		return c.JSON(http.StatusOK, map[string]string{"create": fmt.Sprintf("%s",err), })
+		return c.JSON(http.StatusOK, map[string]string{"create": fmt.Sprintf("%s", err)})
 	}
 
-    err = h.PubsubTopic.Publish(h.Ctx, bodyBytes)
+	err = h.PubsubTopic.Publish(h.Ctx, bodyBytes)
 	fmt.Println(err)
 
-    return c.JSON(http.StatusOK, map[string]int64{"post": 0, })
+	return c.JSON(http.StatusOK, map[string]int64{"post": 0})
 }

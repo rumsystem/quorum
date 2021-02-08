@@ -1,10 +1,9 @@
 package data
 
-import (
-)
+import ()
 
-type Object struct{
-    Type string `json:"type"`
-    Name string `json:"name"`
-    Content string `json:"content"`
+type Object struct {
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
 }
