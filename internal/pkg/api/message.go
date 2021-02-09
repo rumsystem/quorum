@@ -16,7 +16,7 @@ func (h *Handler) Create(c echo.Context) (err error) {
 		bodyBytes, _ = ioutil.ReadAll(c.Request().Body)
 	}
 
-	c.Echo().Logger.Info(bodyBytes)
+	//c.Echo().Logger.Info(bodyBytes)
 
 	var activity data.Activity
 	err = json.Unmarshal(bodyBytes, &activity)
@@ -24,8 +24,6 @@ func (h *Handler) Create(c echo.Context) (err error) {
 		return c.JSON(http.StatusOK, map[string]string{"create": fmt.Sprintf("%s", err)})
 	}
 
-	err = h.PubsubTopic.Publish(h.Ctx, bodyBytes)
-	fmt.Println(err)
-
+	h.PubsubTopic.Publish(h.Ctx, bodyBytes)
 	return c.JSON(http.StatusOK, map[string]int64{"post": 0})
 }

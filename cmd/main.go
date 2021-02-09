@@ -13,6 +13,7 @@ import (
 	//"math/rand"
 	"encoding/json"
 	"github.com/golang/glog"
+	golog "github.com/ipfs/go-log"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -147,13 +148,13 @@ func mainRet(config cli.Config) int {
 		count, err := newnode.ConnectPeers(config)
 
 		if count <= 1 {
-			for {
-				peers, _ := newnode.FindPeers(config.RendezvousString)
-				if len(peers) > 1 { // //connect 2 nodes at least
-					break
-				}
-				time.Sleep(time.Second * 5)
-			}
+			//for {
+			//	peers, _ := newnode.FindPeers(config.RendezvousString)
+			//	if len(peers) > 1 { // //connect 2 nodes at least
+			//		break
+			//	}
+			//	time.Sleep(time.Second * 5)
+			//}
 		}
 		//OK we can Subscribe and Publish
 		sub, err = topic.Subscribe()
@@ -305,6 +306,13 @@ func main() {
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")
 	config, err := cli.ParseFlags()
+	lvl, err := golog.LevelFromString("info")
+	if err != nil {
+		panic(err)
+	}
+	golog.SetAllLoggers(lvl)
+	golog.SetLogLevel("pubsub", "debug")
+
 	if err != nil {
 		panic(err)
 	}
