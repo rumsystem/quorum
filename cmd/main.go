@@ -26,13 +26,13 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	msgio "github.com/libp2p/go-msgio"
 	//ds "github.com/ipfs/go-datastore"
+	blockstore "github.com/huo-ju/go-ipfs-blockstore"
 	blocks "github.com/ipfs/go-block-format"
+	dsquery "github.com/ipfs/go-datastore/query"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	ds_badger "github.com/ipfs/go-ds-badger"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	//dsquery "github.com/ipfs/go-datastore/query"
 	//"github.com/libp2p/go-msgio"
-	//dshelp "github.com/ipfs/go-ipfs-ds-help"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	//cid "github.com/ipfs/go-cid"
 	"github.com/huo-ju/quorum/internal/pkg/api"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
@@ -88,30 +88,38 @@ func mainRet(config cli.Config) int {
 		blockpath := "data" + "/" + config.PeerName + "_blocks"
 
 		badgerstorage, err := ds_badger.NewDatastore(blockpath, nil)
-		bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage))
+		bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage), "data")
 
+		//set default prefix: /blocks
+		//https://github.com/ipfs/go-ipfs-blockstore/blob/fb07d7bc5aece18c62603f36ac02db2e853cadfa/blockstore.go#L24
 		//FOR TEST
-		//query := dsquery.Query{
-		//    //KeysOnly: true,
-		//    Limit:10,
-		//}
-		//res,err := badgerstorage.Query(query)
-		//fmt.Println("====query")
-		//fmt.Println(query)
+		query := dsquery.Query{
+			//Prefix: "/blocks",
+			//KeysOnly: true,
+			Limit: 10,
+		}
+		res, err := badgerstorage.Query(query)
+		fmt.Println("====query")
+		fmt.Println(query)
 
-		//actualE, err := res.Rest()
-		//if err != nil {
-		//	fmt.Println(err)
-		//}
+		actualE, err := res.Rest()
+		if err != nil {
+			fmt.Println(err)
+		}
 
-		//actual := make([]string, len(actualE))
-		//for _, e := range actualE {
-		//	fmt.Println(e.Key)
-		//    block := blocks.NewBlock(e.Value)
-		//    cid := block.Cid()
-		//	fmt.Println(cid)
-		//}
-		//fmt.Println(actual)
+		actual := make([]string, len(actualE))
+		for _, e := range actualE {
+			fmt.Println("e.Key:")
+			fmt.Println(e.Key)
+			block := blocks.NewBlock(e.Value)
+			cid := block.Cid()
+			fmt.Println("====cid:")
+			fmt.Println(cid)
+			k := dshelp.MultihashToDsKey(block.Cid().Hash())
+			fmt.Println("====dskey:")
+			fmt.Println(k)
+		}
+		fmt.Println(actual)
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		newnode, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)

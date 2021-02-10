@@ -3,10 +3,10 @@ package p2p
 import (
 	"context"
 	"github.com/golang/glog"
+	blockstore "github.com/huo-ju/go-ipfs-blockstore"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	bitswap "github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
