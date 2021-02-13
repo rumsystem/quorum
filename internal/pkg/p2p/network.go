@@ -2,14 +2,17 @@ package p2p
 
 import (
 	"context"
+	//"fmt"
 	"github.com/golang/glog"
 	blockstore "github.com/huo-ju/go-ipfs-blockstore"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	bitswap "github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/libp2p/go-libp2p"
+	autonat "github.com/libp2p/go-libp2p-autonat"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	network "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-discovery"
@@ -29,6 +32,7 @@ type Node struct {
 	Ddht             *dual.DHT
 	RoutingDiscovery *discovery.RoutingDiscovery
 	Exchange         *bitswap.Bitswap
+	AutoNat          autonat.AutoNAT
 }
 
 func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.Blockstore, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
@@ -50,6 +54,7 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 	host, err := libp2p.New(ctx,
 		routing,
 		libp2p.ListenAddrs(listenAddresses...),
+		libp2p.NATPortMap(),
 		identity,
 	)
 	if err != nil {
@@ -71,10 +76,18 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 		return nil, err
 	}
 
-	network := bsnet.NewFromIpfsHost(host, routingDiscovery)
-	exchange := bitswap.New(ctx, network, bstore)
+	bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
+	exchange := bitswap.New(ctx, bsnetwork, bstore)
 
-	newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
+	newAutoNat, err := autonat.New(ctx, host, autonat.WithReachability(network.ReachabilityPublic))
+	//autonataddr, err := newAutoNat.PublicAddr()
+	//atuonatstatus := newAutoNat.Status()
+	//glog.Infof("autonat %s", newAutoNat)
+	//glog.Infof("autoant pubaddr %s", autonataddr)
+	//glog.Infof("autoant pubaddr %s", atuonatstatus)
+	//glog.Errorf("autonat err %s", err)
+
+	newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap), AutoNat: newAutoNat}
 	return newnode, nil
 }
 

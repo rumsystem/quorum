@@ -17,6 +17,7 @@ type Config struct {
 	IsBootstrap        bool
 	PeerName           string
 	JsonTracer         string
+	IsDebug            bool
 }
 
 func (al *addrList) String() string {
@@ -46,6 +47,7 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
 	flag.StringVar(&config.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
+	flag.BoolVar(&config.IsDebug, "debug", false, "show debug log")
 	flag.Parse()
 
 	return config, nil

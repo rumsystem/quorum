@@ -77,6 +77,12 @@ func mainRet(config cli.Config) int {
 		glog.Infof("Host created. We are: %s", node.Host.ID())
 		glog.Infof("%s", node.Host.Addrs())
 
+		autonataddr, err := node.AutoNat.PublicAddr()
+		atuonatstatus := node.AutoNat.Status()
+		glog.Infof("Autonat addr:\n")
+		glog.Infof("%s\n", autonataddr)
+		glog.Infof("autoant status %s\n", atuonatstatus)
+		glog.Errorf("autonat err %s\n", err)
 	} else {
 		keys, _ := localcrypto.LoadKeys(config.PeerName)
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
@@ -131,6 +137,13 @@ func mainRet(config cli.Config) int {
 			fmt.Println(err)
 		}
 		_ = newnode.Bootstrap(config)
+
+		autonataddr, err := newnode.AutoNat.PublicAddr()
+		atuonatstatus := newnode.AutoNat.Status()
+		glog.Infof("Autonat addr:\n")
+		glog.Infof("%s\n", autonataddr)
+		glog.Infof("autoant status %s\n", atuonatstatus)
+		glog.Errorf("autonat err %s\n", err)
 
 		glog.Infof("Announcing ourselves...")
 		fmt.Println(newnode.RoutingDiscovery)
@@ -224,6 +237,17 @@ func AskHeadBlockID(config cli.Config, ctx context.Context) {
 		select {
 		case <-syncdataTicker.C:
 			glog.Infof("Run ask head block")
+
+			glog.Infof("We are: %s", newnode.Host.ID())
+			glog.Infof("Address: %s", newnode.Host.Addrs())
+
+			//autonataddr, err := newnode.AutoNat.PublicAddr()
+			//atuonatstatus := newnode.AutoNat.Status()
+			//glog.Infof("Autonat addr:\n")
+			//glog.Infof("%s\n", autonataddr)
+			//glog.Infof("autoant status %s\n", atuonatstatus)
+			//glog.Errorf("autonat err %s\n", err)
+
 			peers, _ := newnode.FindPeers(config.RendezvousString)
 			for _, peer := range peers {
 
@@ -318,8 +342,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	golog.SetAllLoggers(lvl)
-	golog.SetLogLevel("pubsub", "debug")
+
+	if config.IsDebug == true {
+		golog.SetAllLoggers(lvl)
+		golog.SetLogLevel("pubsub", "debug")
+	}
 
 	if err != nil {
 		panic(err)
