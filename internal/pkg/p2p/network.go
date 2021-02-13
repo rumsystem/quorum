@@ -9,10 +9,10 @@ import (
 	bitswap "github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/libp2p/go-libp2p"
-	autonat "github.com/libp2p/go-libp2p-autonat"
+	//autonat "github.com/libp2p/go-libp2p-autonat"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
-	network "github.com/libp2p/go-libp2p-core/network"
+	//network "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-discovery"
@@ -32,7 +32,7 @@ type Node struct {
 	Ddht             *dual.DHT
 	RoutingDiscovery *discovery.RoutingDiscovery
 	Exchange         *bitswap.Bitswap
-	AutoNat          autonat.AutoNAT
+	//AutoNat          autonat.AutoNAT
 }
 
 func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.Blockstore, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
@@ -55,6 +55,7 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 		routing,
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
+		libp2p.EnableNATService(),
 		identity,
 	)
 	if err != nil {
@@ -79,7 +80,7 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 	bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
 	exchange := bitswap.New(ctx, bsnetwork, bstore)
 
-	newAutoNat, err := autonat.New(ctx, host, autonat.WithReachability(network.ReachabilityPublic))
+	//newAutoNat, err := autonat.New(ctx, host, autonat.WithReachability(network.ReachabilityPublic))
 	//autonataddr, err := newAutoNat.PublicAddr()
 	//atuonatstatus := newAutoNat.Status()
 	//glog.Infof("autonat %s", newAutoNat)
@@ -87,7 +88,7 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 	//glog.Infof("autoant pubaddr %s", atuonatstatus)
 	//glog.Errorf("autonat err %s", err)
 
-	newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap), AutoNat: newAutoNat}
+	newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
 	return newnode, nil
 }
 

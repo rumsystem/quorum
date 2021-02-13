@@ -58,6 +58,7 @@ func (service *HeadBlockService) HeadBlockHandler(s network.Stream) {
 		} else {
 			glog.Errorf("HeadBlockHandler ReadMsg error: %s", err)
 			s.Reset()
+			return
 		}
 	}
 }
