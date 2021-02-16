@@ -49,7 +49,6 @@ var sub *pubsub.Subscription
 //var ps *pubsub.PubSub
 var ShareTopic string
 var node *p2p.Node
-var newnode *p2p.Node
 
 func handleStream(stream network.Stream) {
 	glog.Infof("Got a new stream %s", stream)
@@ -57,8 +56,6 @@ func handleStream(stream network.Stream) {
 
 func mainRet(config cli.Config) int {
 	//IFPS soruce note:
-	//https://github.com/ipfs/go-ipfs/blob/78c6dba9cc584c5f94d3c610ee95b57272df891f/cmd/ipfs/daemon.go#L360
-	//node, err := core.NewNode(req.Context, ncfg)
 	//https://github.com/ipfs/go-ipfs/blob/8e6358a4fac40577950260d0c7a7a5d57f4e90a9/core/builder.go#L27
 	//ipfs: use fx to build an IPFS node https://github.com/uber-go/fx
 	//node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
@@ -126,32 +123,24 @@ func mainRet(config cli.Config) int {
 		fmt.Println(actual)
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-		newnode, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)
-		newnode.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
+		node, err = p2p.NewNode(ctx, keys.PrivKey, bs, listenaddresses, config.JsonTracer)
+		node.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
-		topic, err := newnode.Pubsub.Join(ShareTopic)
+		topic, err := node.Pubsub.Join(ShareTopic)
 		if err != nil {
 			fmt.Println("join err")
 			fmt.Println(err)
 		}
-		_ = newnode.Bootstrap(ctx, config)
-
-		//autonataddr, err := newnode.AutoNat.PublicAddr()
-		//atuonatstatus := newnode.AutoNat.Status()
-		//glog.Infof("Autonat addr:\n")
-		//glog.Infof("%s\n", autonataddr)
-		//glog.Infof("autoant status %s\n", atuonatstatus)
-		//glog.Errorf("autonat err %s\n", err)
-
+		_ = node.Bootstrap(ctx, config)
 		glog.Infof("Announcing ourselves...")
-		fmt.Println(newnode.RoutingDiscovery)
-		discovery.Advertise(ctx, newnode.RoutingDiscovery, config.RendezvousString)
+		fmt.Println(node.RoutingDiscovery)
+		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
 		glog.Infof("Successfully announced!")
 
 		//network := bsnet.NewFromIpfsHost(host, routingDiscovery)
 		//exchange := bitswap.New(ctx, network, bstore)
 		relationdb := "a_block_relation_db_object"
-		askheadservice := p2p.NewHeadBlockService(newnode.Host, relationdb)
+		askheadservice := p2p.NewHeadBlockService(node.Host, relationdb)
 		fmt.Println("register askheadservice")
 		fmt.Println(askheadservice)
 
@@ -164,11 +153,11 @@ func mainRet(config cli.Config) int {
 		//ddht.WAN.RoutingTable().Print()
 
 		//TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
-		count, err := newnode.ConnectPeers(ctx, config)
+		count, err := node.ConnectPeers(ctx, config)
 
 		if count <= 1 {
 			//for {
-			//	peers, _ := newnode.FindPeers(config.RendezvousString)
+			//	peers, _ := node.FindPeers(config.RendezvousString)
 			//	if len(peers) > 1 { // //connect 2 nodes at least
 			//		break
 			//	}
@@ -185,7 +174,7 @@ func mainRet(config cli.Config) int {
 		go AskHeadBlockID(config, ctx)
 		//go syncDataTicker(config, ctx, topic)
 		//run local http api service
-		h := &api.Handler{Node: newnode, PubsubTopic: topic, Ctx: ctx}
+		h := &api.Handler{Node: node, PubsubTopic: topic, Ctx: ctx}
 		go StartAPIServer(config, h)
 
 	}
@@ -239,22 +228,14 @@ func AskHeadBlockID(config cli.Config, ctx context.Context) {
 		case <-syncdataTicker.C:
 			glog.Infof("Run ask head block")
 
-			glog.Infof("We are: %s", newnode.Host.ID())
-			glog.Infof("Address: %s", newnode.Host.Addrs())
-
-			//autonataddr, err := newnode.AutoNat.PublicAddr()
-			//atuonatstatus := newnode.AutoNat.Status()
-			//glog.Infof("Autonat addr:\n")
-			//glog.Infof("%s\n", autonataddr)
-			//glog.Infof("autoant status %s\n", atuonatstatus)
-			//glog.Errorf("autonat err %s\n", err)
-
-			peers, _ := newnode.FindPeers(ctx, config.RendezvousString)
+			glog.Infof("We are: %s", node.Host.ID())
+			glog.Infof("Address: %s", node.Host.Addrs())
+			peers, _ := node.FindPeers(ctx, config.RendezvousString)
 			for _, peer := range peers {
 
-				if newnode.PeerID != peer.ID { //peer is not myself
+				if node.PeerID != peer.ID { //peer is not myself
 					glog.Infof("Open a new stream to  %s", peer.ID)
-					s, err := newnode.Host.NewStream(ctx, peer.ID, p2p.HeadBlockProtocolID)
+					s, err := node.Host.NewStream(ctx, peer.ID, p2p.HeadBlockProtocolID)
 					if err != nil {
 						glog.Errorf("Open new stream to %s err: %s", peer.ID, err)
 					} else {
@@ -307,7 +288,7 @@ func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic)
 		select {
 		case <-syncdataTicker.C:
 			fmt.Println("ticker!")
-			newnode.EnsureConnect(ctx, config.RendezvousString, func() {
+			node.EnsureConnect(ctx, config.RendezvousString, func() {
 				storage.JsonSyncData(ctx, "data"+"/"+config.PeerName, topic)
 
 				block := blocks.NewBlock([]byte("some data1"))
@@ -315,8 +296,8 @@ func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic)
 				fmt.Println("cid:")
 				fmt.Println(cid)
 				fmt.Println("exchange:")
-				fmt.Println(newnode.Exchange)
-				readblock, err := newnode.Exchange.GetBlock(ctx, cid)
+				fmt.Println(node.Exchange)
+				readblock, err := node.Exchange.GetBlock(ctx, cid)
 				fmt.Println("peer:" + config.PeerName)
 				fmt.Println(readblock)
 				fmt.Println(err)

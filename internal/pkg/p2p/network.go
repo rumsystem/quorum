@@ -77,15 +77,6 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 
 	bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
 	exchange := bitswap.New(ctx, bsnetwork, bstore)
-
-	//newAutoNat, err := autonat.New(ctx, host, autonat.WithReachability(network.ReachabilityPublic))
-	//autonataddr, err := newAutoNat.PublicAddr()
-	//atuonatstatus := newAutoNat.Status()
-	//glog.Infof("autonat %s", newAutoNat)
-	//glog.Infof("autoant pubaddr %s", autonataddr)
-	//glog.Infof("autoant pubaddr %s", atuonatstatus)
-	//glog.Errorf("autonat err %s", err)
-
 	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
 	return newnode, nil
 }
@@ -96,7 +87,6 @@ func (node *Node) FindPeers(ctx context.Context, RendezvousString string) ([]pee
 	var peers []peer.AddrInfo
 	ch, err := node.RoutingDiscovery.FindPeers(pctx, RendezvousString)
 	if err != nil {
-		cancel()
 		return nil, err
 	}
 	for pi := range ch {
