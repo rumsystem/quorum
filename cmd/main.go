@@ -76,13 +76,6 @@ func mainRet(config cli.Config) int {
 		fmt.Println(err)
 		glog.Infof("Host created. We are: %s", node.Host.ID())
 		glog.Infof("%s", node.Host.Addrs())
-
-		//autonataddr, err := node.AutoNat.PublicAddr()
-		//atuonatstatus := node.AutoNat.Status()
-		//glog.Infof("Autonat addr:\n")
-		//glog.Infof("%s\n", autonataddr)
-		//glog.Infof("autoant status %s\n", atuonatstatus)
-		//glog.Errorf("autonat err %s\n", err)
 	} else {
 		keys, _ := localcrypto.LoadKeys(config.PeerName)
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
@@ -136,7 +129,7 @@ func mainRet(config cli.Config) int {
 			fmt.Println("join err")
 			fmt.Println(err)
 		}
-		_ = newnode.Bootstrap(config)
+		_ = newnode.Bootstrap(ctx, config)
 
 		//autonataddr, err := newnode.AutoNat.PublicAddr()
 		//atuonatstatus := newnode.AutoNat.Status()
@@ -166,7 +159,7 @@ func mainRet(config cli.Config) int {
 		//ddht.WAN.RoutingTable().Print()
 
 		//TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
-		count, err := newnode.ConnectPeers(config)
+		count, err := newnode.ConnectPeers(ctx, config)
 
 		if count <= 1 {
 			//for {
@@ -248,7 +241,7 @@ func AskHeadBlockID(config cli.Config, ctx context.Context) {
 			//glog.Infof("autoant status %s\n", atuonatstatus)
 			//glog.Errorf("autonat err %s\n", err)
 
-			peers, _ := newnode.FindPeers(config.RendezvousString)
+			peers, _ := newnode.FindPeers(ctx, config.RendezvousString)
 			for _, peer := range peers {
 
 				if newnode.PeerID != peer.ID { //peer is not myself
@@ -306,7 +299,7 @@ func syncDataTicker(config cli.Config, ctx context.Context, topic *pubsub.Topic)
 		select {
 		case <-syncdataTicker.C:
 			fmt.Println("ticker!")
-			newnode.EnsureConnect(config.RendezvousString, func() {
+			newnode.EnsureConnect(ctx, config.RendezvousString, func() {
 				storage.JsonSyncData(ctx, "data"+"/"+config.PeerName, topic)
 
 				block := blocks.NewBlock([]byte("some data1"))

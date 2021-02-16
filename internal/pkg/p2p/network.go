@@ -25,14 +25,12 @@ import (
 )
 
 type Node struct {
-	Ctx              context.Context
 	PeerID           peer.ID
 	Host             host.Host
 	Pubsub           *pubsub.PubSub
 	Ddht             *dual.DHT
 	RoutingDiscovery *discovery.RoutingDiscovery
 	Exchange         *bitswap.Bitswap
-	//AutoNat          autonat.AutoNAT
 }
 
 func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.Blockstore, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
@@ -88,12 +86,12 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 	//glog.Infof("autoant pubaddr %s", atuonatstatus)
 	//glog.Errorf("autonat err %s", err)
 
-	newnode := &Node{Ctx: ctx, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
+	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
 	return newnode, nil
 }
 
-func (node *Node) FindPeers(RendezvousString string) ([]peer.AddrInfo, error) {
-	pctx, _ := context.WithTimeout(node.Ctx, time.Second*10)
+func (node *Node) FindPeers(ctx context.Context, RendezvousString string) ([]peer.AddrInfo, error) {
+	pctx, _ := context.WithTimeout(ctx, time.Second*10)
 	var peers []peer.AddrInfo
 	ch, err := node.RoutingDiscovery.FindPeers(pctx, RendezvousString)
 	if err != nil {
@@ -105,14 +103,14 @@ func (node *Node) FindPeers(RendezvousString string) ([]peer.AddrInfo, error) {
 	return peers, nil
 }
 
-func (node *Node) Bootstrap(config cli.Config) error {
+func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 	var wg sync.WaitGroup
 	for _, peerAddr := range config.BootstrapPeers {
 		peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := node.Host.Connect(node.Ctx, *peerinfo); err != nil {
+			if err := node.Host.Connect(ctx, *peerinfo); err != nil {
 				glog.Warning(err)
 			} else {
 				glog.Infof("Connection established with bootstrap node %s:", *peerinfo)
@@ -123,9 +121,9 @@ func (node *Node) Bootstrap(config cli.Config) error {
 	return nil
 }
 
-func (node *Node) ConnectPeers(config cli.Config) (int, error) {
+func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) (int, error) {
 	connectedCount := 0
-	peers, err := node.FindPeers(config.RendezvousString)
+	peers, err := node.FindPeers(ctx, config.RendezvousString)
 	glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
 	if err != nil {
 		return connectedCount, err
@@ -135,7 +133,7 @@ func (node *Node) ConnectPeers(config cli.Config) (int, error) {
 			continue
 		}
 		//pctx, _ := context.WithTimeout(ctx, time.Second*10)
-		err := node.Host.Connect(node.Ctx, peer)
+		err := node.Host.Connect(ctx, peer)
 		if err != nil {
 			glog.Warningf("connect peer failure: %s \n", peer)
 		} else {
@@ -146,9 +144,9 @@ func (node *Node) ConnectPeers(config cli.Config) (int, error) {
 	return connectedCount, nil
 }
 
-func (node *Node) EnsureConnect(rendezvousString string, f func()) {
+func (node *Node) EnsureConnect(ctx context.Context, rendezvousString string, f func()) {
 	for {
-		peers, _ := node.FindPeers(rendezvousString)
+		peers, _ := node.FindPeers(ctx, rendezvousString)
 		glog.Infof("Find peers count: %d \n", len(peers))
 		if len(peers) > 1 { // //connect 2 nodes at least
 			break
