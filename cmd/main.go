@@ -63,12 +63,15 @@ func mainRet(config cli.Config) int {
 	//ipfs: use fx to build an IPFS node https://github.com/uber-go/fx
 	//node.IPFS(ctx, cfg): https://github.com/ipfs/go-ipfs/blob/7588a6a52a789fa951e1c4916cee5c7a304912c2/core/node/groups.go#L307
 	ShareTopic = "test_topic"
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	if config.IsBootstrap == true {
 		keys, _ := localcrypto.LoadKeys("bootstrap")
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
 		if err != nil {
 			fmt.Println(err)
+			cancel()
+			return 0
 		}
 		glog.Infof("Your p2p peer ID: %s", peerid)
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
@@ -81,6 +84,8 @@ func mainRet(config cli.Config) int {
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
 		if err != nil {
 			fmt.Println(err)
+			cancel()
+			return 0
 		}
 		glog.Infof("Your p2p peer ID: %s", peerid)
 
@@ -185,7 +190,10 @@ func mainRet(config cli.Config) int {
 
 	}
 
-	select {}
+	select {
+	case <-ctx.Done():
+		fmt.Fprint(os.Stderr, "request cancelled\n")
+	}
 	return 0
 }
 
