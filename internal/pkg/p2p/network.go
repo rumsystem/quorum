@@ -91,10 +91,12 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 }
 
 func (node *Node) FindPeers(ctx context.Context, RendezvousString string) ([]peer.AddrInfo, error) {
-	pctx, _ := context.WithTimeout(ctx, time.Second*10)
+	pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
 	var peers []peer.AddrInfo
 	ch, err := node.RoutingDiscovery.FindPeers(pctx, RendezvousString)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	for pi := range ch {
@@ -132,10 +134,13 @@ func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) (int, err
 		if peer.ID == node.Host.ID() {
 			continue
 		}
-		//pctx, _ := context.WithTimeout(ctx, time.Second*10)
-		err := node.Host.Connect(ctx, peer)
+		pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+		defer cancel()
+		err := node.Host.Connect(pctx, peer)
 		if err != nil {
 			glog.Warningf("connect peer failure: %s \n", peer)
+			cancel()
+			continue
 		} else {
 			connectedCount++
 			glog.Infof("connect: %s \n", peer)
