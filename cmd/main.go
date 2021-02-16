@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 	//"io"
 	//"io/ioutil"
@@ -179,10 +181,13 @@ func mainRet(config cli.Config) int {
 
 	}
 
-	select {
-	case <-ctx.Done():
-		fmt.Fprint(os.Stderr, "request cancelled\n")
-	}
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signalType := <-ch
+	signal.Stop(ch)
+	//cleanup before exit
+	fmt.Println("Exit command received. Exiting...")
+	fmt.Println("Signal type : ", signalType)
 	return 0
 }
 
