@@ -6,10 +6,10 @@ option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
 
 message BlockMessage {
   enum MessageType {
-    ASKHEAD = 0;
-    REPLYHEAD = 1;
-    ASKNEXT = 2;
-    REPLYNEXT = 3;
+    ASKHEAD          = 0;
+    REPLYHEAD        = 1;
+    ASKNEXT          = 2;
+    REPLYNEXT        = 3;
   }
 
   MessageType Type = 1;

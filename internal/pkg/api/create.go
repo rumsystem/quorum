@@ -9,6 +9,7 @@ import (
 	"net/http"
 )
 
+//not used
 func (h *Handler) Create(c echo.Context) (err error) {
 
 	var bodyBytes []byte
@@ -24,6 +25,6 @@ func (h *Handler) Create(c echo.Context) (err error) {
 		return c.JSON(http.StatusOK, map[string]string{"create": fmt.Sprintf("%s", err)})
 	}
 
-	h.PubsubTopic.Publish(h.Ctx, bodyBytes)
+	h.ChainCtx.PublicTopic.Publish(h.Ctx, bodyBytes)
 	return c.JSON(http.StatusOK, map[string]int64{"post": 0})
 }

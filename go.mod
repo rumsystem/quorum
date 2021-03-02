@@ -5,6 +5,7 @@ go 1.15
 replace github.com/ipfs/go-ipfs-blockstore => github.com/huo-ju/go-ipfs-blockstore v1.0.5
 
 require (
+	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.1.2
@@ -25,6 +26,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.4.1
 	github.com/libp2p/go-msgio v0.0.6
 	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/oklog/ulid v1.3.1
 	github.com/spf13/viper v1.7.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
 	google.golang.org/protobuf v1.25.0
