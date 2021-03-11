@@ -24,11 +24,12 @@ type ChainContext struct {
 	Privatekey p2pcrypto.PrivKey
 	PublicKey  p2pcrypto.PubKey
 
-	Group map[string]GroupItem
+	Groups map[string]*GroupItem
 
-	GroupInfoDb  *badger.DB
-	TrxDb        *badger.DB
-	ConfigDb     *badger.DB //maybe use global config DB???
+	GroupInfoDb *badger.DB
+	TrxDb       *badger.DB
+	BlockDb     *badger.DB
+
 	BlockStorage blockstore.Blockstore
 
 	PublicTopic     *pubsub.Topic
@@ -36,22 +37,20 @@ type ChainContext struct {
 
 	Ctx context.Context
 
-	//test only, Trx should be saved to TrxDb
-	TrxItem map[string]Trx
+	DataPath string
+	Version  string
+
+	TrxSignReq int
 }
 
 var chainContext *ChainContext
 
 func InitContext() {
 	chainContext = &ChainContext{}
-
-	var group map[string]GroupItem
-	group = make(map[string]GroupItem)
-	chainContext.Group = group
-
-	var trxItem map[string]Trx
-	trxItem = make(map[string]Trx)
-	chainContext.TrxItem = trxItem
+	chainContext.Groups = make(map[string]*GroupItem)
+	chainContext.Version = "ver 0.01"
+	//test only, request at least 1 witness signature
+	chainContext.TrxSignReq = 1
 }
 
 //singlaton
@@ -60,40 +59,26 @@ func GetContext() *ChainContext {
 }
 
 func (chainContext *ChainContext) InitDB(datapath string) {
-	groupInfo, err := badger.Open(badger.DefaultOptions(datapath + "_groups"))
-	if err != nil {
-		glog.Fatalf(err.Error())
-	}
+	badgerstorage, err := ds_badger.NewDatastore(datapath+"_bs", nil)
+	bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage), "bs")
 
-	defer groupInfo.Close()
-
-	config, err := badger.Open(badger.DefaultOptions(datapath + "_config"))
-	if err != nil {
-		glog.Fatal(err.Error())
-	}
-	defer config.Close()
-
-	trx, err := badger.Open(badger.DefaultOptions(datapath + "_trx"))
-	if err != nil {
-		glog.Fatal(err.Error())
-	}
-	defer trx.Close()
-
-	badgerstorage, err := ds_badger.NewDatastore(datapath+"_blocks", nil)
-	bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage), "block")
-
-	if err != nil {
-		glog.Fatal((err).Error())
-	}
-
-	chainContext.GroupInfoDb = groupInfo
-	chainContext.ConfigDb = config
-	chainContext.TrxDb = trx
+	chainContext.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups"))
+	chainContext.TrxDb, err = badger.Open(badger.DefaultOptions(datapath + "_trx"))
+	chainContext.BlockDb, err = badger.Open(badger.DefaultOptions(datapath + "_block"))
 	chainContext.BlockStorage = bs
+
+	//defer chainContext.GroupInfoDb.Close()
+	//defer chainContext.TrxDb.Close()
+	//defer chainContext.BlockDb.Close()
+
+	if err != nil {
+		glog.Fatal(err.Error())
+	}
+
+	chainContext.DataPath = datapath
 }
 
 func (chainctx *ChainContext) JoinPublicChannel(node *p2p.Node, publicChannel string, ctx context.Context, config cli.Config) error {
-
 	publicTopic, err := node.Pubsub.Join(publicChannel)
 
 	if err != nil {
@@ -120,10 +105,12 @@ func (chainctx *ChainContext) JoinPublicChannel(node *p2p.Node, publicChannel st
 	chainctx.Ctx = ctx
 
 	go handlePublicChannel(ctx, config)
+
 	return nil
 }
 
 func handlePublicChannel(ctx context.Context, config cli.Config) error {
+
 	for {
 		msg, err := chainContext.PublicSubscribe.Next(ctx)
 		if err != nil {
@@ -139,6 +126,17 @@ func handlePublicChannel(ctx context.Context, config cli.Config) error {
 			return err
 		}
 
+		if trxMsg.Version != GetContext().Version {
+			glog.Infof("Version mismatch")
+		} else {
+			//glog.Infof("Version ok")
+		}
+
+		if trxMsg.Sender == GetContext().PeerId.Pretty() {
+			//glog.Infof("Msg from myself, ingore")
+			return nil
+		}
+		
 		handleTrxMsg(trxMsg)
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	//"fmt"
+
 	"time"
 
 	guuid "github.com/google/uuid"
@@ -12,37 +14,39 @@ import (
 type Block struct {
 	Cid          string
 	GroupId      string
-	prevBlockId  string
-	hash         string
-	previousHash string
-	blockNum     int64
-	timestamp    int64
-	trxs         []Trx
+	PrevBlockId  string
+	BlockNum     int64
+	Timestamp    int64
+	Hash         string
+	PreviousHash string
+	Producer     string
+	Signature    string
+	Trxs         []Trx
 }
 
 func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
-	blockWithoutHash := newBlock
 
 	//set hash to ""
-	blockWithoutHash.hash = ""
+	blockWithoutHash := newBlock
+	blockWithoutHash.Hash = ""
 
-	if CalculateHash(blockWithoutHash) != newBlock.hash {
+	if CalculateHash(blockWithoutHash) != newBlock.Hash {
 		return false, nil
 	}
 
-	if newBlock.previousHash != oldBlock.hash {
+	if newBlock.PreviousHash != oldBlock.Hash {
 		return false, nil
 	}
 
-	if newBlock.blockNum != oldBlock.blockNum+1 {
+	if newBlock.BlockNum != oldBlock.BlockNum+1 {
 		return false, nil
 	}
 
-	if newBlock.prevBlockId != oldBlock.Cid {
+	if newBlock.PrevBlockId != oldBlock.Cid {
 		return false, nil
 	}
 
-	//verify all trx signatures
+	//verify all trx signature
 
 	return true, nil
 }
@@ -50,36 +54,40 @@ func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
 func CreateBlock(oldBlock Block, trx Trx) Block {
 	var newBlock Block
 	cid := guuid.New()
-	t := time.Now().UnixNano()
 
 	newBlock.Cid = cid.String()
 	newBlock.GroupId = TestGroupId
-	newBlock.prevBlockId = oldBlock.Cid
-	newBlock.previousHash = oldBlock.hash
-	newBlock.blockNum = oldBlock.blockNum + 1
-	newBlock.timestamp = t
+	newBlock.PrevBlockId = oldBlock.Cid
+	newBlock.PreviousHash = oldBlock.Hash
+	newBlock.BlockNum = oldBlock.BlockNum + 1
+	newBlock.Timestamp = time.Now().UnixNano()
+	newBlock.Trxs = append(newBlock.Trxs, trx)
+	newBlock.Producer = GetContext().PeerId.Pretty()
+	newBlock.Signature = string("Signature from producer")
 
 	hash := CalculateHash(newBlock)
-	newBlock.hash = hash
+	newBlock.Hash = hash
 	return newBlock
 }
 
-func CreateGenesisBlock() Block {
+func CreateGenesisBlock(groupId string) Block {
 	var genesisBlock Block
 
 	cid := guuid.New()
 	t := time.Now().UnixNano()
 
 	genesisBlock.Cid = cid.String()
-	genesisBlock.GroupId = TestGroupId
-	genesisBlock.prevBlockId = ""
-	genesisBlock.previousHash = ""
-	genesisBlock.blockNum = 1
-	genesisBlock.timestamp = t
+	genesisBlock.GroupId = groupId
+	genesisBlock.PrevBlockId = ""
+	genesisBlock.PreviousHash = ""
+	genesisBlock.BlockNum = 1
+	genesisBlock.Timestamp = t
+	genesisBlock.Producer = GetContext().PeerId.Pretty()
+	genesisBlock.Signature = string("Signature from producer")
 
 	//calculate hash
 	hash := CalculateHash(genesisBlock)
-	genesisBlock.hash = hash
+	genesisBlock.Hash = hash
 
 	return genesisBlock
 }

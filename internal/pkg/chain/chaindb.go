@@ -1,147 +1,141 @@
 package chain
 
 import (
+	"encoding/json"
 	//"fmt"
-	//"encoding/json"
 	"math/rand"
 	"sync"
 	"time"
 
-	//"github.com/golang/glog"
-	//badger "github.com/dgraph-io/badger/v3"
+	badger "github.com/dgraph-io/badger/v3"
+	"github.com/golang/glog"
 	"github.com/oklog/ulid"
 )
 
 //Save trx to local db
 func AddTrx(trx Trx) error {
-	/*
-		txn := db.NewTransaction(true)
-		if eSerial, err := json.Marshal(block); err != nil {
-			return err
-		} else if binCID, err := blockID.MarshalBinary(); err != nil {
-			return err
-		} else if err := txn.Set(binCID, []byte(eSerial)); err != nil {
-			return err
-		} else if err := txn.Commit(); err != nil {
-			return err
-		} else {
-			return nil
-		}
-	*/
+	err := GetContext().TrxDb.Update(func(txn *badger.Txn) error {
+		bytes, err := json.Marshal(trx)
+		e := badger.NewEntry([]byte(trx.Msg.TrxId), bytes)
+		err = txn.SetEntry(e)
+		return err
+	})
 
-	//test only
-	//Should add to trx.db
+	if err != nil {
+		glog.Fatalf(err.Error())
+	}
 
-	GetContext().TrxItem[trx.Msg.TrxId] = trx
-	return nil
+	return err
 }
 
 //Rm Trx
-func RmTrx(trxid string) error {
+func RmTrx(trxId string) error {
+	err := GetContext().TrxDb.Update(func(txn *badger.Txn) error {
+		err := txn.Delete([]byte(trxId))
+		return err
+	})
 
-	//test only
-	//Should rm from trx.db
-
-	delete(GetContext().TrxItem, trxid)
-	return nil
+	return err
 }
 
-//Update Trx
-//func UpdTrx(oldTrx, newTrx Trx) error {
-//}
-
-func UpdTrxCons(trxId, witnessSign string) error {
-
-	//test only
-	//should upd trx inside trx.db
-	trx, _ := GetContext().TrxItem[trxId]
-	trx.Consensus = append(trx.Consensus, witnessSign)
-	GetContext().TrxItem[trx.Msg.TrxId] = trx
-	return nil
+func UpdTrxCons(trxId, consensusString string) error {
+	if trx, err := GetTrx(trxId); err != nil {
+		return err
+	} else {
+		trx.Consensus = append(trx.Consensus, consensusString)
+		return AddTrx(trx)
+	}
 }
 
 //Get trx
 func GetTrx(trxId string) (Trx, error) {
+	var trx Trx
+	err := GetContext().TrxDb.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(trxId))
 
-	//test only
-	//should get from trx.db
-	trx, ok := GetContext().TrxItem[trxId]
+		if err != nil {
+			return err
+		}
 
-	if ok {
-		return trx, nil
-	} else {
-		//return an error here
-		return trx, nil
-	}
+		trxBytes, err := item.ValueCopy(nil)
+
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(trxBytes, &trx)
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return trx, err
 }
 
 //Save Block
-func AddBlock(block Block) error {
-	return nil
+func AddBlock(block Block, groupItem *GroupItem) error {
+
+	//AddBlock to blockDb
+	err := GetContext().BlockDb.Update(func(txn *badger.Txn) error {
+		bytes, err := json.Marshal(block)
+		e := badger.NewEntry([]byte(block.Cid), bytes)
+		err = txn.SetEntry(e)
+		return err
+	})
+
+	if err != nil {
+		glog.Fatalf(err.Error())
+	}
+
+	return err
 }
 
 //Rm Block
 func RmBlock(block Block) error {
-	return nil
+	err := GetContext().BlockDb.Update(func(txn *badger.Txn) error {
+		err := txn.Delete([]byte(block.Cid))
+		return err
+	})
+	return err
 }
 
 //Upd Block
-func UpdBlock(oldBlock, newBlock Block) error {
-	return nil
+func UpdBlock(oldBlock, newBlock Block, groupItem *GroupItem) error {
+	err := AddBlock(newBlock, groupItem)
+	return err
 }
 
 //Get Block
 func GetBlock(blockId string) (Block, error) {
 	var block Block
-	return block, nil
-}
+	err := GetContext().BlockDb.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(blockId))
+		blockBytes, err := item.ValueCopy(nil)
 
-//Get top block of a group
-func GetTopBlock(groupId string) (Block, error) {
-
-	testGroup, _ := GetContext().Group[TestGroupId]
-	//check testGroup exist
-
-	topBlock := testGroup.BlocksList[len(testGroup.BlocksList)-1]
-	//check blockList not empty
-	return topBlock, nil
-}
-
-/*
-func GetItem(blockId ulid.ULID) (Block, error) {
-
-	var block Block
-	return block, nil
-
-		if binCID, err := cid.MarshalBinary(); err != nil {
-			return block, err
+		if err != nil {
+			return err
 		}
 
+		err = json.Unmarshal(blockBytes, &block)
+		return err
+	})
 
-			err := db.View(func(txn *badger.Txn) error {
-				item, err := txn.Get(binCID)
-
-				if (err != nil) {
-					return block, err
-				}
-
-				var valCopy []byte
-
-				err := item.Value(func(val []byte) error{
-					valCopy = append([]byte{}, val...)
-					return nil
-				if (err != nil)	{
-					return err
-				}
-
-				err := json.Unmarshal(valCopy, &block)
-
-				if (err != nil) {
-					return err
-				}
-			})
+	return block, err
 }
-*/
+
+func GetRawBlock(blockId string) ([]byte, error) {
+	var raw []byte
+	err := GetContext().BlockDb.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(blockId))
+		raw, err = item.ValueCopy(nil)
+		return err
+	})
+
+	return raw, err
+}
 
 //for generate sequence ULID
 type MonotonicULIDSource struct {

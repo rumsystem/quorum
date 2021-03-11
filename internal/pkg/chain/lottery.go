@@ -7,6 +7,7 @@ import ()
 //adjust odds of winning accordingly
 //if true,  do someting, like verify and sign incoming trx or save block
 //if false, do nothing
+
 func Lucky() bool {
 	return true
 }
