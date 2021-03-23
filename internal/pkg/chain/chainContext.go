@@ -122,21 +122,15 @@ func handlePublicChannel(ctx context.Context, config cli.Config) error {
 		err = json.Unmarshal(msg.Data, &trxMsg)
 
 		if err != nil {
-			glog.Fatalf(err.Error())
-			return err
+			glog.Infof(err.Error())
 		}
 
 		if trxMsg.Version != GetContext().Version {
 			glog.Infof("Version mismatch")
-		} else {
-			//glog.Infof("Version ok")
 		}
 
-		if trxMsg.Sender == GetContext().PeerId.Pretty() {
-			//glog.Infof("Msg from myself, ingore")
-			return nil
+		if trxMsg.Sender != GetContext().PeerId.Pretty() {
+			handleTrxMsg(trxMsg)
 		}
-		
-		handleTrxMsg(trxMsg)
 	}
 }

@@ -38,13 +38,9 @@ func RmTrx(trxId string) error {
 	return err
 }
 
-func UpdTrxCons(trxId, consensusString string) error {
-	if trx, err := GetTrx(trxId); err != nil {
-		return err
-	} else {
-		trx.Consensus = append(trx.Consensus, consensusString)
-		return AddTrx(trx)
-	}
+func UpdTrxCons(trx Trx, consensusString string) error {
+	trx.Consensus = append(trx.Consensus, consensusString)
+	return AddTrx(trx)
 }
 
 //Get trx

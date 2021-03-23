@@ -92,14 +92,12 @@ func (item *GroupItem) AddBlock(block Block) error {
 		item.ContentsList = append(item.ContentsList, string(v.Data))
 	}
 
+	fmt.Printf("-- add new block, id::%s, num::%d --\n", block.Cid, block.BlockNum)
+
 	glog.Infof("<<<<<<<<<<<<<<<<< content list >>>>>>>>>>>>>>>>>>>")
 	for _, c := range item.ContentsList {
 		glog.Infof(c)
 	}
-
-	fmt.Printf("add new block, id::%s, num::%d\n", block.Cid, block.BlockNum)
-	fmt.Printf("latestBlockNum::%d\n", item.LatestBlockNum)
-	fmt.Printf("latestBLockId::%s\n", item.LatestBlockId)
 
 	return nil
 }
@@ -208,43 +206,42 @@ func JoinTestGroup() error {
 	group.GroupStatus = GROUP_OK
 	group.LastUpdate = 0
 
-	/*
-		var err error
-		group.ContentDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_group"))
-		group.UserDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_user"))
-		group.BlockSeqDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_bsq"))
+	var err error
+	group.ContentDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_group"))
+	group.UserDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_user"))
+	group.BlockSeqDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_bsq"))
 
-		if err != nil {
-			glog.Fatal(err.Error())
-		}
+	if err != nil {
+		glog.Fatal(err.Error())
+	}
 
-		//defer group.ContentDb.Close()
-		//defer group.UserDb.Close()
-		//defer group.BlockSeqDb.Close()
+	//defer group.ContentDb.Close()
+	//defer group.UserDb.Close()
+	//defer group.BlockSeqDb.Close()
 
-		var genesisBlock Block
-		genesisBlock.Cid = "12345678"
-		genesisBlock.GroupId = TestGroupId
-		genesisBlock.PrevBlockId = ""
-		genesisBlock.PreviousHash = ""
-		genesisBlock.BlockNum = 0
-		genesisBlock.Timestamp = 0 //test_time_stamp
+	var genesisBlock Block
+	genesisBlock.Cid = "12345678"
+	genesisBlock.GroupId = TestGroupId
+	genesisBlock.PrevBlockId = ""
+	genesisBlock.PreviousHash = ""
+	genesisBlock.BlockNum = 0
+	genesisBlock.Timestamp = 0 //test_time_stamp
 
-		group.GenesisBlock = genesisBlock
-		GetContext().Groups[TestGroupId] = group
+	group.GenesisBlock = genesisBlock
+	GetContext().Groups[TestGroupId] = group
 
-		AddBlock(genesisBlock, group)
-		group.AddBlock(genesisBlock)
-	*/
+	AddBlock(genesisBlock, group)
+	group.AddBlock(genesisBlock)
+
 	if group.IsDirty {
 		group.StartAskNextBlock()
 	}
 	return nil
 }
 
-func (item *GroupItem) StartAskNextBlock() error {
+func (item *GroupItem) StartAskNextBlock() {
 	//send ask_next_block every 3 sec till get "on_top response"
-	item.AskNextTicker = time.NewTicker(3000 * time.Millisecond)
+	item.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
 	item.TickerDone = make(chan bool)
 	go func() {
 		for {
@@ -254,8 +251,7 @@ func (item *GroupItem) StartAskNextBlock() error {
 			case t := <-item.AskNextTicker.C:
 				glog.Infof("Ask NEXT_BLOCK " + t.UTC().String())
 				//send ask next block msg out
-				//topBlock, _ := item.GetTopBlock()
-				var topBlock Block
+				topBlock, _ := item.GetTopBlock()
 				askNextMsg, _ := CreateTrxReqNextBlock(topBlock)
 				jsonBytes, _ := json.Marshal(askNextMsg)
 				GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
@@ -263,12 +259,11 @@ func (item *GroupItem) StartAskNextBlock() error {
 		}
 	}()
 
-	return nil
+	//return nil
 }
 
-func (item *GroupItem) StopAskNextBlock() error {
+func (item *GroupItem) StopAskNextBlock() {
 	item.AskNextTicker.Stop()
 	item.TickerDone <- true
 	item.IsDirty = false
-	return nil
 }
