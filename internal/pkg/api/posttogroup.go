@@ -2,23 +2,24 @@ package api
 
 import (
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
+
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
-type RmGroupParam struct {
+type PostToGroupParam struct {
 	GroupId string `from:"group_id" json:"group_id" validate:"required"`
+	Content string `from:"content"  json:"content"  validate:"required"`
 }
 
-func (h *Handler) RmGroup(c echo.Context) (err error) {
+func (h *Handler) PostToGroup(c echo.Context) (err error) {
 	output := make(map[string]string)
 
 	validate := validator.New()
-	params := new(RmGroupParam)
+	params := new(PostToGroupParam)
 	if err = c.Bind(params); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -29,34 +30,18 @@ func (h *Handler) RmGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	shouldRemove := false
 	if group, ok := chain.GetChainCtx().Groups[params.GroupId]; ok {
-		err := group.DelGrp()
+		trxId, err := group.Post(params.Content)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		shouldRemove = true
+		output[TRX_ID] = trxId
+		return c.JSON(http.StatusOK, output)
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", params.GroupId)
 		return c.JSON(http.StatusBadRequest, output)
 	}
-
-	if shouldRemove {
-		delete(chain.GetChainCtx().Groups, params.GroupId)
-	}
-
-	pubkeybytes, err := p2pcrypto.MarshalPublicKey(chain.GetChainCtx().PublicKey)
-	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-
-	output[GROUP_ID] = params.GroupId
-	output[GROUP_OWNER_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	output[SIGNATURE] = "owner_signature"
-
-	return c.JSON(http.StatusOK, output)
 }

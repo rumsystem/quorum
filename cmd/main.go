@@ -47,9 +47,6 @@ func handleStream(stream network.Stream) {
 
 func mainRet(config cli.Config) int {
 
-	//Initial chain context
-	chain.InitContext()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -65,9 +62,6 @@ func mainRet(config cli.Config) int {
 		}
 
 		glog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
-		chain.GetContext().Privatekey = keys.PrivKey
-		chain.GetContext().PublicKey = keys.PubKey
-		chain.GetContext().PeerId = node.Host.ID()
 
 	} else {
 
@@ -82,14 +76,13 @@ func mainRet(config cli.Config) int {
 		glog.Infof("peer_id created, <%s>", peerid)
 
 		datapath := "data" + "/" + config.PeerName
-
-		chain.GetContext().Privatekey = keys.PrivKey
-		chain.GetContext().PublicKey = keys.PubKey
-		chain.GetContext().PeerId = peerid
-		chain.GetContext().InitDB(datapath)
+		chain.InitCtx(datapath)
+		chain.GetChainCtx().Privatekey = keys.PrivKey
+		chain.GetChainCtx().PublicKey = keys.PubKey
+		chain.GetChainCtx().PeerId = peerid
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-		node, err = p2p.NewNode(ctx, keys.PrivKey, chain.GetContext().BlockStorage, listenaddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, keys.PrivKey, chain.GetDbMgr().BlockStorage, listenaddresses, config.JsonTracer)
 		node.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
 		_ = node.Bootstrap(ctx, config)
@@ -117,23 +110,20 @@ func mainRet(config cli.Config) int {
 		}
 
 		//join public channel
-		err = chain.GetContext().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
+		err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
 		if err != nil {
 			return 0
 		}
 
-		//load group from localdb
-
-		//test only
-		err = chain.JoinTestGroup()
+		err = chain.GetChainCtx().SyncAllGroup()
 		if err != nil {
+			glog.Fatalf(err.Error())
 			return 0
 		}
 
 		//run local http api service
-		h := &api.Handler{Node: node, ChainCtx: chain.GetContext(), Ctx: ctx}
+		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx}
 		go StartAPIServer(config, h)
-
 	}
 
 	//attach signal
@@ -141,6 +131,14 @@ func mainRet(config cli.Config) int {
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
 	signalType := <-ch
 	signal.Stop(ch)
+
+	if config.IsBootstrap != true {
+		err := chain.GetChainCtx().QuitPublicChannel()
+		if err != nil {
+			return 0
+		}
+		chain.Release()
+	}
 
 	//cleanup before exit
 	glog.Infof("On Signal <%s>", signalType)
@@ -155,13 +153,16 @@ func StartAPIServer(config cli.Config, h *api.Handler) {
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
-	//r.POST("/create", h.Create)
-	r.POST("/posttogroup", h.PostToGroup)
-	r.POST("/addgroup", h.AddGroup)
-	r.POST("/addgroupuser", h.AddGroupUser)
-	r.POST("/rmgroup", h.RmGroup)
-	r.POST("/rmgroupuser", h.RmGroupUser)
-	r.GET("/info", h.Info)
+	r.POST("/creategrp", h.CreateGroup)
+	r.POST("/rmgrp", h.RmGroup)
+	r.POST("/joingrp", h.JoinGroup)
+	r.POST("/leavegrp", h.LeaveGroup)
+	r.POST("/posttogrp", h.PostToGroup)
+	r.GET("/getnodeinfo", h.GetNodeInfo)
+	r.GET("/getblk", h.GetBlock)
+	r.GET("/gettrx", h.GetTrx)
+	r.GET("/getgrpctn", h.GetGroupCtn)
+	r.GET("/getgrps", h.GetGroups)
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 

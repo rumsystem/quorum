@@ -3,63 +3,108 @@ package chain
 import (
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
+	"errors"
+	//"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"time"
 )
 
 type GroupStatus int8
 
 const (
-	GROUP_SYNCING GroupStatus = 0 //syncing
-	GROUP_OK      GroupStatus = 1 //normal
-	GROUP_ERR     GroupStatus = 2 //error
+	GROUP_CLEAN = 0
+	GROUP_DIRTY = 1
 )
 
-type GroupUserItem struct {
-	Uid       string
-	PublicKey string
+type GroupContentItem struct {
+	TrxId     string
+	Publisher string
+	Content   string
+	TimeStamp int64
 }
 
-type GroupContentItem struct {
-	Cid          string
-	Publisher    string
-	PublisherKey string
-	Content      string
+type Group struct {
+	Item          *GroupItem
+	Db            *GroupDb
+	AskNextTicker *time.Ticker
+	TickerDone    chan bool
+	Status        GroupStatus
 }
 
 type GroupItem struct {
-	OwnerPubKey string
-	IsDirty     bool
-	GroupStatus GroupStatus
-	LastUpdate  uint64
-
-	GenesisBlock Block
-
+	OwnerPubKey    string
+	GroupId        string
+	GroupName      string
+	LastUpdate     int64
 	LatestBlockNum int64
 	LatestBlockId  string
 
-	ContentDb  *badger.DB //Content db
-	BlockSeqDb *badger.DB //map blocknum with blockId
-	UserDb     *badger.DB //Users db
-
-	ContentsList []string
-	UsersMap     map[string]GroupUserItem //Group Users   (index map)
-
-	//private pubsub channel
-	//PubSubTopic libp2p.pubsub
-
-	AskNextTicker *time.Ticker
-	TickerDone    chan bool
+	GenesisBlock Block
 }
 
-func (item *GroupItem) AddBlock(block Block) error {
+type GroupDb struct {
+	ContentDb  *badger.DB //Content db
+	BlockSeqDb *badger.DB //map blocknum with blockId
+}
 
+func (grp *Group) init(item *GroupItem) error {
+	grp.Item = item
+
+	var db *GroupDb
+	db = &GroupDb{}
+
+	contentDb, err := badger.Open(badger.DefaultOptions(GetDbMgr().DataPath + item.GroupId + "/" + "_group"))
+	if err != nil {
+		return err
+	}
+
+	blockSeqDb, err := badger.Open(badger.DefaultOptions(GetDbMgr().DataPath + item.GroupId + "/" + "_bsq"))
+	if err != nil {
+		return err
+	}
+
+	db.ContentDb = contentDb
+	db.BlockSeqDb = blockSeqDb
+	grp.Db = db
+
+	grp.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
+	grp.TickerDone = make(chan bool)
+
+	return nil
+}
+
+func (grp *Group) Teardown() {
+	//is syncing, stop ask next task
+	if grp.Status == GROUP_DIRTY {
+		grp.stopAskNextBlock()
+	}
+	grp.Db.ContentDb.Close()
+	grp.Db.BlockSeqDb.Close()
+}
+
+//Start sync group
+func (grp *Group) StartSync() error {
+	glog.Infof("Group %s start syncing", grp.Item.GroupId)
+	grp.Status = GROUP_DIRTY
+	grp.startAskNextBlock()
+	return nil
+}
+
+//Stop sync group
+func (grp *Group) StopSync() error {
+	glog.Infof("Group stop sync")
+	grp.Status = GROUP_CLEAN
+	grp.stopAskNextBlock()
+	return nil
+}
+
+func (grp *Group) AddBlock(block Block) error {
 	//verify block
 	if block.BlockNum != 0 {
 		var topBlock Block
-		topBlock, _ = item.GetTopBlock()
+		topBlock, _ = grp.GetTopBlock()
 		valid, _ := IsBlockValid(block, topBlock)
 		if !valid {
 			glog.Errorf("Invalid block")
@@ -69,10 +114,10 @@ func (item *GroupItem) AddBlock(block Block) error {
 	}
 
 	//save block to local db
-	AddBlock(block, item)
+	GetDbMgr().AddBlock(block)
 
 	//update BlockSeqDb
-	err := item.BlockSeqDb.Update(func(txn *badger.Txn) error {
+	err := grp.Db.BlockSeqDb.Update(func(txn *badger.Txn) error {
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(block.BlockNum))
 		e := badger.NewEntry(b, []byte(block.Cid))
@@ -81,35 +126,56 @@ func (item *GroupItem) AddBlock(block Block) error {
 	})
 
 	if err != nil {
-		glog.Fatalf(err.Error())
+		return err
 	}
-
-	item.LatestBlockNum = block.BlockNum
-	item.LatestBlockId = block.Cid
 
 	//update contentDB
-	for _, v := range block.Trxs {
-		item.ContentsList = append(item.ContentsList, string(v.Data))
+	for _, trx := range block.Trxs {
+
+		var ctnItem *GroupContentItem
+		ctnItem = &GroupContentItem{}
+
+		ctnItem.TrxId = trx.Msg.TrxId
+		ctnItem.Publisher = trx.Msg.Sender
+		ctnItem.Content = string(trx.Data)
+		ctnItem.TimeStamp = trx.Msg.TimeStamp
+		ctnBytes, err := json.Marshal(ctnItem)
+		if err != nil {
+			return err
+		}
+
+		//update ContentDb
+		err = grp.Db.ContentDb.Update(func(txn *badger.Txn) error {
+			b := make([]byte, 8)
+			binary.LittleEndian.PutUint64(b, uint64(trx.Msg.TimeStamp))
+			e := badger.NewEntry(b, ctnBytes)
+			err := txn.SetEntry(e)
+			return err
+		})
+
+		if err != nil {
+			return err
+		}
 	}
 
-	fmt.Printf("-- add new block, id::%s, num::%d --\n", block.Cid, block.BlockNum)
+	grp.Item.LatestBlockNum = block.BlockNum
+	grp.Item.LatestBlockId = block.Cid
+	grp.Item.LastUpdate = time.Now().UnixNano()
 
-	glog.Infof("<<<<<<<<<<<<<<<<< content list >>>>>>>>>>>>>>>>>>>")
-	for _, c := range item.ContentsList {
-		glog.Infof(c)
-	}
+	//update local db
+	dbMgr.UpdGroup(grp.Item)
 
 	return nil
 }
 
-func (item *GroupItem) GetTopBlock() (Block, error) {
-	topBlock, err := GetBlock(item.LatestBlockId)
+func (grp *Group) GetTopBlock() (Block, error) {
+	topBlock, err := GetDbMgr().GetBlock(grp.Item.LatestBlockId)
 	return topBlock, err
 }
 
-func (item *GroupItem) GetBlockIdByBlockNum(blockNum int64) (string, error) {
+func (grp *Group) GetBlockIdByBlockNum(blockNum int64) (string, error) {
 	var blockId string
-	err := item.BlockSeqDb.View(func(txn *badger.Txn) error {
+	err := grp.Db.BlockSeqDb.View(func(txn *badger.Txn) error {
 		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(blockNum))
 		item, err := txn.Get([]byte(b))
@@ -126,135 +192,107 @@ func (item *GroupItem) GetBlockIdByBlockNum(blockNum int64) (string, error) {
 		blockId = string(blockIdBytes)
 		return nil
 	})
-
 	return blockId, err
 }
 
-//group protocols
+func (grp *Group) CreateGrp(item *GroupItem) error {
+	err := grp.init(item)
+	if err != nil {
+		return err
+	}
 
-//Add new Group
-func (item *GroupItem) AddNewGroup() error {
-	return nil
+	err = dbMgr.AddBlock(item.GenesisBlock)
+	if err != nil {
+		return err
+	}
+	return dbMgr.AddGroup(grp.Item)
 }
 
-//Rm group
-func (item *GroupItem) RmGroup() error {
-	return nil
+func (grp *Group) DelGrp() error {
+	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
+	if err != nil {
+		return err
+	}
+
+	if grp.Item.OwnerPubKey != p2pcrypto.ConfigEncodeKey(pubkeybytes) {
+		err := errors.New("You can not 'delete' group created by others, use 'leave' instead")
+		return err
+	}
+
+	return dbMgr.RmGroup(grp.Item)
 }
 
-//Add Group User
-func (item *GroupItem) AddGroupUser() error {
-	return nil
-}
+func (grp *Group) LeaveGrp() error {
+	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
+	if err != nil {
+		return err
+	}
 
-//Rm Group User
-func (item *GroupItem) RmGroupUser() error {
-	return nil
+	if grp.Item.OwnerPubKey == p2pcrypto.ConfigEncodeKey(pubkeybytes) {
+		err := errors.New("Group creator can not leave the group they created, use 'delete' instead")
+		return err
+	}
+
+	return dbMgr.RmGroup(grp.Item)
 }
 
 //Add Content to Group
-func (item *GroupItem) AddGroupContent() error {
-	return nil
-}
+func (grp *Group) Post(content string) (string, error) {
 
-func (item *GroupItem) RmGroupContent() error {
-	return nil
-}
+	var trx Trx
+	var trxMsg TrxMsg
 
-//Sync in memory content map with local DB
-func (item *GroupItem) syncContent() error {
-	return nil
-}
+	//use test groupId here, should parse from POST msg
+	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, []byte(content))
+	trx.Msg = trxMsg
+	trx.Data = []byte(content)
+	var cons []string
+	trx.Consensus = cons
 
-//Sync in memory user map with local db
-func (item *GroupItem) syncUser() error {
-	return nil
+	dbMgr.AddTrx(trx)
+
+	jsonBytes, err := json.Marshal(trxMsg)
+	if err != nil {
+		return "INVALID_TRX", err
+	}
+
+	chainCtx.PublicTopic.Publish(chainCtx.Ctx, jsonBytes)
+	return trxMsg.TrxId, nil
 }
 
 //Load groupItem from DB
-func (item *GroupItem) LoadContent(upperCount, lowerCount uint64) error {
+func (grp *Group) GetContent(upperCount, lowerCount uint64) []*GroupContentItem {
 	return nil
 }
 
-//Load Group User from DB
-func (item *GroupItem) LoadUser() error {
-	return nil
-}
+//ask next block
+func (grp *Group) startAskNextBlock() {
+	//send ask_next_block every 1 sec till get "on_top response"
 
-//Release in memory group Item
-func (item *GroupItem) ReleaseContent() error {
-	return nil
-}
-
-//Release Group User
-func (item *GroupItem) ReleaseUser() error {
-	return nil
-}
-
-//test only
-const TestGroupId string = "test_group_id"
-
-func JoinTestGroup() error {
-
-	glog.Infof("<<<Join test group>>>")
-
-	var group *GroupItem
-	group = &GroupItem{}
-
-	group.OwnerPubKey = "owner_pub_key"
-	group.IsDirty = true
-	group.GroupStatus = GROUP_OK
-	group.LastUpdate = 0
-
-	var err error
-	group.ContentDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_group"))
-	group.UserDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_user"))
-	group.BlockSeqDb, err = badger.Open(badger.DefaultOptions(GetContext().DataPath + TestGroupId + "/" + "_bsq"))
-
-	if err != nil {
-		glog.Fatal(err.Error())
-	}
-
-	//defer group.ContentDb.Close()
-	//defer group.UserDb.Close()
-	//defer group.BlockSeqDb.Close()
-
-	var genesisBlock Block
-	genesisBlock.Cid = "12345678"
-	genesisBlock.GroupId = TestGroupId
-	genesisBlock.PrevBlockId = ""
-	genesisBlock.PreviousHash = ""
-	genesisBlock.BlockNum = 0
-	genesisBlock.Timestamp = 0 //test_time_stamp
-
-	group.GenesisBlock = genesisBlock
-	GetContext().Groups[TestGroupId] = group
-
-	AddBlock(genesisBlock, group)
-	group.AddBlock(genesisBlock)
-
-	if group.IsDirty {
-		group.StartAskNextBlock()
-	}
-	return nil
-}
-
-func (item *GroupItem) StartAskNextBlock() {
-	//send ask_next_block every 3 sec till get "on_top response"
-	item.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
-	item.TickerDone = make(chan bool)
 	go func() {
 		for {
 			select {
-			case <-item.TickerDone:
+			case <-grp.TickerDone:
 				return
-			case t := <-item.AskNextTicker.C:
+			case t := <-grp.AskNextTicker.C:
 				glog.Infof("Ask NEXT_BLOCK " + t.UTC().String())
 				//send ask next block msg out
-				topBlock, _ := item.GetTopBlock()
-				askNextMsg, _ := CreateTrxReqNextBlock(topBlock)
-				jsonBytes, _ := json.Marshal(askNextMsg)
-				GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
+				topBlock, err := grp.GetTopBlock()
+				if err != nil {
+					glog.Fatalf(err.Error())
+				}
+
+				askNextMsg, err := CreateTrxReqNextBlock(topBlock)
+				if err != nil {
+					glog.Fatalf(err.Error())
+				}
+
+				jsonBytes, err := json.Marshal(askNextMsg)
+				if err != nil {
+					glog.Fatalf(err.Error())
+				}
+
+				GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 			}
 		}
 	}()
@@ -262,8 +300,8 @@ func (item *GroupItem) StartAskNextBlock() {
 	//return nil
 }
 
-func (item *GroupItem) StopAskNextBlock() {
-	item.AskNextTicker.Stop()
-	item.TickerDone <- true
-	item.IsDirty = false
+func (grp *Group) stopAskNextBlock() {
+	grp.AskNextTicker.Stop()
+	grp.TickerDone <- true
+	grp.Status = GROUP_CLEAN
 }

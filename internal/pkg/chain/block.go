@@ -56,13 +56,13 @@ func CreateBlock(oldBlock Block, trx Trx) Block {
 	cid := guuid.New()
 
 	newBlock.Cid = cid.String()
-	newBlock.GroupId = TestGroupId
+	newBlock.GroupId = oldBlock.GroupId
 	newBlock.PrevBlockId = oldBlock.Cid
 	newBlock.PreviousHash = oldBlock.Hash
 	newBlock.BlockNum = oldBlock.BlockNum + 1
 	newBlock.Timestamp = time.Now().UnixNano()
 	newBlock.Trxs = append(newBlock.Trxs, trx)
-	newBlock.Producer = GetContext().PeerId.Pretty()
+	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.Signature = string("Signature from producer")
 
 	hash := CalculateHash(newBlock)
@@ -82,7 +82,7 @@ func CreateGenesisBlock(groupId string) Block {
 	genesisBlock.PreviousHash = ""
 	genesisBlock.BlockNum = 1
 	genesisBlock.Timestamp = t
-	genesisBlock.Producer = GetContext().PeerId.Pretty()
+	genesisBlock.Producer = GetChainCtx().PeerId.Pretty()
 	genesisBlock.Signature = string("Signature from producer")
 
 	//calculate hash

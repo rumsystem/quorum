@@ -60,12 +60,11 @@ func handleReqSign(trxMsg TrxMsg) error {
 		if jsonBytes, err := json.Marshal(trxMsg2); err != nil {
 			return err
 		} else {
-			GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
+			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 		}
 	}
 
 	return nil
-
 }
 
 func handleReqSignResp(trxMsg TrxMsg) error {
@@ -76,12 +75,12 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 		return err
 	}
 
-	if reqSignResp.Requester != GetContext().PeerId.Pretty() {
+	if reqSignResp.Requester != GetChainCtx().PeerId.Pretty() {
 		//glog.Infof("Not requested by me, ignore")
 		return nil
 	}
 
-	trx, err := GetTrx(reqSignResp.ReqTrxId)
+	trx, err := GetDbMgr().GetTrx(reqSignResp.ReqTrxId)
 	if err != nil {
 		return err
 	}
@@ -90,14 +89,16 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 	wsign := string(reqSignResp.WitnessSign)
 	consensusString := "witness?=" + reqSignResp.Witness + "/hash?=" + hash + "/wsign?=" + wsign
 
-	if err := UpdTrxCons(trx, consensusString); err != nil {
+	trx.Consensus = append(trx.Consensus, consensusString)
+
+	if err := GetDbMgr().UpdTrxCons(trx, consensusString); err != nil {
 		return err
 	}
 
-	if len(trx.Consensus) < GetContext().TrxSignReq { //check if we have enough signature
+	if len(trx.Consensus) < GetChainCtx().TrxSignReq { //check if we have enough signature
 		glog.Infof("Wait more signature to come")
 		return nil
-	} else if groupItem, OK := GetContext().Groups[trxMsg.GroupId]; OK {
+	} else if groupItem, OK := GetChainCtx().Groups[trxMsg.GroupId]; OK {
 		//Get topblock and create a new block to include trx
 		topBlock, _ := groupItem.GetTopBlock()
 		newBlock := CreateBlock(topBlock, trx)
@@ -105,12 +106,7 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 		//Create NEW_BLOCK msg and send it out
 		newBlockTrxMsg, _ := CreateTrxNewBlock(newBlock)
 		jsonBytes, _ := json.Marshal(newBlockTrxMsg)
-		GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
-
-		//rm reqSign trx from local db
-		if err := RmTrx(trxMsg.TrxId); err != nil {
-			glog.Infof("Something wrong!")
-		}
+		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 
 		//Give new block to group
 		groupItem.AddBlock(newBlock)
@@ -135,14 +131,14 @@ func handleNewBlock(trxMsg TrxMsg) error {
 	}
 
 	sendResp := true
-	if groupItem, ok := GetContext().Groups[block.GroupId]; ok {
+	if group, ok := GetChainCtx().Groups[block.GroupId]; ok {
 		glog.Infof("give new block to group")
-		groupItem.AddBlock(block)
+		group.AddBlock(block)
 	} else {
 		glog.Infof("not my block, I don't have the related group")
 		if Lucky() {
 			glog.Infof("save new block to local db")
-			AddBlock(block, groupItem)
+			GetDbMgr().AddBlock(block)
 		} else {
 			sendResp = false
 		}
@@ -153,7 +149,7 @@ func handleNewBlock(trxMsg TrxMsg) error {
 		glog.Infof("send Add_NEW_BLOCK_RESP")
 		newBlockRespMsg, _ := CreateTrxNewBlockResp(block)
 		jsonBytes, _ := json.Marshal(newBlockRespMsg)
-		GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
+		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 	}
 
 	return nil
@@ -177,19 +173,19 @@ func handleNextBlock(trxMsg TrxMsg) error {
 	}
 
 	//check if requested block is in my group and on top
-	if groupItem, ok := GetContext().Groups[trxMsg.GroupId]; ok {
-		if groupItem.LatestBlockId == reqNextBlock.BlockId {
+	if group, ok := GetChainCtx().Groups[trxMsg.GroupId]; ok {
+		if group.Item.LatestBlockId == reqNextBlock.BlockId {
 			glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
 			var emptyBlock Block
 			emptyBlock.GroupId = trxMsg.GroupId
 			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
 			jsonBytes, _ := json.Marshal(nextBlockRespMsg)
-			GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
+			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 			return nil
 		}
 
 		//otherwise, check blockDB, if I have the block requested, send it out by publish
-		err := GetContext().BlockDb.View(func(txn *badger.Txn) error {
+		err := GetDbMgr().BlockDb.View(func(txn *badger.Txn) error {
 			opts := badger.DefaultIteratorOptions
 			opts.PrefetchSize = 10
 			it := txn.NewIterator(opts)
@@ -207,7 +203,7 @@ func handleNextBlock(trxMsg TrxMsg) error {
 						glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
 						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_IN_TRX, trxMsg.Sender, block)
 						jsonBytes, _ := json.Marshal(nextBlockRespMsg)
-						GetContext().PublicTopic.Publish(GetContext().Ctx, jsonBytes)
+						GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 					}
 					return nil
 				})
@@ -235,15 +231,15 @@ func handleNextBlockResp(trxMsg TrxMsg) error {
 		return err
 	}
 
-	if groupItem, ok := GetContext().Groups[trxMsg.GroupId]; ok {
+	if group, ok := GetChainCtx().Groups[trxMsg.GroupId]; ok {
 
-		if reqNextBlockResp.Requester != GetContext().PeerId.Pretty() {
+		if reqNextBlockResp.Requester != GetChainCtx().PeerId.Pretty() {
 			glog.Infof("Not asked by me, ignore")
-		} else if !groupItem.IsDirty {
+		} else if group.Status == GROUP_CLEAN {
 			glog.Infof("Group is clean, ignore")
 		} else if reqNextBlockResp.Response == BLOCK_ON_TOP {
-			glog.Infof("No new block, set status back to normal")
-			groupItem.StopAskNextBlock()
+			glog.Infof("On Group Top, Set Group Status to GROUP_READY")
+			group.StopSync()
 		} else if reqNextBlockResp.Response == BLOCK_IN_TRX {
 			glog.Infof("new block incoming")
 			var newBlock Block
@@ -251,13 +247,14 @@ func handleNextBlockResp(trxMsg TrxMsg) error {
 				return err
 			}
 
-			topBlock, _ := groupItem.GetTopBlock()
+			topBlock, _ := group.GetTopBlock()
 			if valid, _ := IsBlockValid(newBlock, topBlock); valid {
-				//				groupItem.StopAskNextBlock()
 				glog.Infof("block is valid, add it")
-				AddBlock(newBlock, groupItem)
-				groupItem.AddBlock(newBlock)
-				//				groupItem.StartAskNextBlock()
+				//add block to db
+				GetDbMgr().AddBlock(newBlock)
+
+				//update group block seq map
+				group.AddBlock(newBlock)
 			}
 		}
 	} else {

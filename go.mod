@@ -5,10 +5,15 @@ go 1.15
 replace github.com/ipfs/go-ipfs-blockstore => github.com/huo-ju/go-ipfs-blockstore v1.0.5
 
 require (
+	github.com/RichardKnop/machinery v1.10.5
+	github.com/dgraph-io/badger v1.6.1
 	github.com/dgraph-io/badger/v3 v3.2011.1
+	github.com/go-playground/universal-translator v0.17.0 // indirect
+	github.com/go-playground/validator v9.31.0+incompatible
+	github.com/go-playground/validator/v10 v10.5.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.3
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.2.0
 	github.com/huo-ju/go-ipfs-blockstore v1.0.5
 	github.com/ipfs/go-bitswap v0.3.3
 	github.com/ipfs/go-block-format v0.0.3
@@ -17,6 +22,7 @@ require (
 	github.com/ipfs/go-graphsync v0.6.0
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/labstack/gommon v0.3.0
+	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libp2p/go-libp2p v0.13.0
 	github.com/libp2p/go-libp2p-autonat v0.4.0
 	github.com/libp2p/go-libp2p-core v0.8.0

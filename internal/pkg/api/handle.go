@@ -10,6 +10,6 @@ type (
 	Handler struct {
 		Ctx      context.Context
 		Node     *p2p.Node
-		ChainCtx *chain.ChainContext
+		ChainCtx *chain.ChainCtx
 	}
 )
