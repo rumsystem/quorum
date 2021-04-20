@@ -140,20 +140,15 @@
             group_id : 组id
 
         返回值:
-            {"1618959433130449600":"some test contents"}
+            {"1618962812679676800":"{\"TrxId\":\"3085fbae-e8f5-4713-9caf-e499fc7c416d\",    \"Publisher\":\"QmNSxoSyvJ8GLoQ77kJ3p5KqB9LUdTkxhQkrwtKtzfgLXB\",\"Content\":\"Post by xxxxxxxx\",\"TimeStamp\":1618962812679676800}"}
 
-            参数：{时间戳} ：“内容”  
-
-            *待完善
-
-            返回应为包含数个如下结构的json数组
-
-            type GroupContentItem struct {
+            参数："时间戳" ："内容"
 	            TrxId     string    //trx_id
 	            Publisher string    //发布者
 	            Content   string    //内容
-	            TimeStamp int64     
-            }
+	            TimeStamp int64      
+            
+            * 应按照时间戳对内容进行排序显示
 
     - 节点A也可以查询刚刚发布的内容
 
