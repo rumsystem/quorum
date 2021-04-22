@@ -17,6 +17,14 @@ type CreateGroupParam struct {
 	GroupName string `from:"group_name" json:"group_name" validate:"required,max=20,min=5"`
 }
 
+type CreateGroupResult struct {
+	GenesisBlock *chain.Block `json:"genesis_block"`
+	GroupId      string       `json:"group_id"`
+	GroupName    string       `json:"group_name"`
+	OwnerPubkey  string       `json:"owner_pubkey"`
+	Signature    string       `json:"signature"`
+}
+
 func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	output := make(map[string]string)
 
@@ -35,13 +43,11 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	groupid := guuid.New()
 	genesisBlock := chain.CreateGenesisBlock(groupid.String())
 
-	b, err := json.Marshal(genesisBlock)
+	_, err = json.Marshal(genesisBlock)
 	if err != nil {
 		output[ERROR_INFO] = "create genesis block failed with msg:" + err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
-
-	bs := string(b)
 
 	pubkeybytes, err := p2pcrypto.MarshalPublicKey(chain.GetChainCtx().PublicKey)
 	if err != nil {
@@ -49,11 +55,7 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	output[GROUP_ID] = groupid.String()
-	output[GROUP_NAME] = params.GroupName
-	output[GROUP_OWNER_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	output[GENESIS_BLOCK] = bs
-	output[SIGNATURE] = "owner_signature" //Sign for all above items
+	creategrpresult := &CreateGroupResult{GenesisBlock: &genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: "owner_signature"}
 
 	//create local group
 	var item *chain.GroupItem
@@ -78,5 +80,5 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 
 	chain.GetChainCtx().Groups[group.Item.GroupId] = group
 
-	return c.JSON(http.StatusOK, output)
+	return c.JSON(http.StatusOK, creategrpresult)
 }

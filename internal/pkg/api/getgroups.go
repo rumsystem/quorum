@@ -1,8 +1,6 @@
 package api
 
 import (
-	"encoding/json"
-	//"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 
@@ -11,13 +9,17 @@ import (
 )
 
 type groupInfo struct {
-	OwnerPubKey    string
-	GroupId        string
-	GroupName      string
-	LastUpdate     int64
-	LatestBlockNum int64
-	LatestBlockId  string
-	GroupStatus    string
+	OwnerPubKey    string `json:"OwnerPubKey"`
+	GroupId        string `json:"GroupId"`
+	GroupName      string `json:"GroupName"`
+	LastUpdate     int64  `json:"LastUpdate"`
+	LatestBlockNum int64  `json:"LatestBlockNum"`
+	LatestBlockId  string `json:"LatestBlockId"`
+	GroupStatus    string `json:"GroupStatus"`
+}
+
+type groupInfoList struct {
+	GroupInfos []*groupInfo `json:"groups"`
 }
 
 func (h *Handler) GetGroups(c echo.Context) (err error) {
@@ -45,13 +47,5 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		}
 		groups = append(groups, group)
 	}
-
-	result, err := json.Marshal(groups)
-	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-
-	output[GROUP_ITEMS] = string(result)
-	return c.JSON(http.StatusOK, output)
+	return c.JSON(http.StatusOK, &groupInfoList{groups})
 }

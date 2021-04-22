@@ -153,16 +153,16 @@ func StartAPIServer(config cli.Config, h *api.Handler) {
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
-	r.POST("/creategrp", h.CreateGroup)
-	r.POST("/rmgrp", h.RmGroup)
-	r.POST("/joingrp", h.JoinGroup)
-	r.POST("/leavegrp", h.LeaveGroup)
-	r.POST("/posttogrp", h.PostToGroup)
-	r.GET("/getnodeinfo", h.GetNodeInfo)
-	r.GET("/getblk", h.GetBlock)
-	r.GET("/gettrx", h.GetTrx)
-	r.GET("/getgrpctn", h.GetGroupCtn)
-	r.GET("/getgrps", h.GetGroups)
+	r.POST("/v1/group", h.CreateGroup) //done
+	r.DELETE("/v1/group", h.RmGroup)   //done
+	r.POST("/v1/group/join", h.JoinGroup)
+	r.POST("/v1/group/leave", h.LeaveGroup)    //done
+	r.POST("/v1/group/content", h.PostToGroup) //done
+	r.GET("/v1/node", h.GetNodeInfo)
+	r.GET("/v1/block", h.GetBlock)
+	r.GET("/v1/trx", h.GetTrx)
+	r.GET("/v1/group/content", h.GetGroupCtn) //done
+	r.GET("/v1/group", h.GetGroups)           //done
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 
