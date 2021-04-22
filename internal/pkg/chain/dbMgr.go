@@ -186,6 +186,11 @@ func (dbMgr *DbMgr) GetRawBlock(blockId string) ([]byte, error) {
 	var raw []byte
 	err := dbMgr.BlockDb.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(blockId))
+
+		if err != nil {
+			return err
+		}
+
 		raw, err = item.ValueCopy(nil)
 		return err
 	})

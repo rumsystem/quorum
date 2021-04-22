@@ -26,7 +26,7 @@ func (h *Handler) GetBlock(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	block, err := chain.GetDbMgr().GetRawBlock(params.BlockId)
+	block, err := chain.GetDbMgr().GetBlock(params.BlockId)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
