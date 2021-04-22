@@ -2,10 +2,11 @@ package api
 
 import (
 	"encoding/binary"
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/go-playground/validator/v10"
+	"github.com/golang/glog"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -32,7 +33,7 @@ func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 	}
 
 	if group, ok := chain.GetChainCtx().Groups[params.GroupId]; ok {
-		//var ctnList []*chain.GroupContentItem
+		var ctnList []*chain.GroupContentItem
 		err = group.Db.ContentDb.View(func(txn *badger.Txn) error {
 			opts := badger.DefaultIteratorOptions
 			opts.PrefetchSize = 10
@@ -44,6 +45,13 @@ func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 				err := item.Value(func(v []byte) error {
 					i := int64(binary.LittleEndian.Uint64(k))
 					s := strconv.Itoa(int(i))
+					var contentitem *chain.GroupContentItem
+					ctnerr := json.Unmarshal(v, &contentitem)
+					if ctnerr == nil {
+						ctnList = append(ctnList, contentitem)
+					} else {
+						glog.Errorf("unknown data format: %s", v)
+					}
 					output[s] = string(v)
 					return nil
 				})
@@ -60,12 +68,9 @@ func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-
-		return c.JSON(http.StatusOK, output)
+		return c.JSON(http.StatusOK, ctnList)
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", params.GroupId)
 		return c.JSON(http.StatusBadRequest, output)
 	}
-
-	//return c.JSON(http.StatusBadRequest, output)
 }

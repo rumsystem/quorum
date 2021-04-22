@@ -1,7 +1,7 @@
 package api
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"net/http"
 	"time"
 
@@ -12,10 +12,10 @@ import (
 )
 
 type JoinGroupParam struct {
-	GroupId      string `from:"group_id" json:"group_id" validate:"required`
-	GroupName    string `from:"group_name" json:"group_name" validate:"required"`
-	OwnerPubKey  string `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
-	GenesisBlock string `from:"genesis_block" json:"genesis_block" validate:"required"`
+	GroupId      string       `from:"group_id" json:"group_id" validate:"required`
+	GroupName    string       `from:"group_name" json:"group_name" validate:"required"`
+	OwnerPubKey  string       `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
+	GenesisBlock *chain.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
 }
 
 func (h *Handler) JoinGroup(c echo.Context) (err error) {
@@ -33,10 +33,10 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	var genesisBlock chain.Block
+	//var genesisBlock chain.Block
 
-	b := []byte(params.GenesisBlock)
-	err = json.Unmarshal(b, &genesisBlock)
+	//b := []byte(params.GenesisBlock)
+	//err = json.Unmarshal(b, &genesisBlock)
 	if err != nil {
 		output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -48,10 +48,10 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 	item.OwnerPubKey = params.OwnerPubKey
 	item.GroupId = params.GroupId
 	item.GroupName = params.GroupName
-	item.LatestBlockId = genesisBlock.Cid
-	item.LatestBlockNum = genesisBlock.BlockNum
+	item.LatestBlockId = params.GenesisBlock.Cid
+	item.LatestBlockNum = params.GenesisBlock.BlockNum
 	item.LastUpdate = time.Now().UnixNano()
-	item.GenesisBlock = genesisBlock
+	item.GenesisBlock = *params.GenesisBlock
 
 	var group *chain.Group
 	group = &chain.Group{}
