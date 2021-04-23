@@ -15,6 +15,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
@@ -54,7 +55,8 @@ func mainRet(config cli.Config) int {
 		keys, _ := localcrypto.LoadKeys("bootstrap")
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-		node, err := p2p.NewNode(ctx, keys.PrivKey, nil, listenaddresses, config.JsonTracer)
+		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
+		node, err := p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
 
 		if err != nil {
 			glog.Fatalf(err.Error())
@@ -82,7 +84,8 @@ func mainRet(config cli.Config) int {
 		chain.GetChainCtx().PeerId = peerid
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
-		node, err = p2p.NewNode(ctx, keys.PrivKey, chain.GetDbMgr().BlockStorage, listenaddresses, config.JsonTracer)
+		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
+		node, err = p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
 		node.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
 		_ = node.Bootstrap(ctx, config)
