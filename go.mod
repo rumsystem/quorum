@@ -2,7 +2,7 @@ module github.com/huo-ju/quorum
 
 go 1.15
 
-replace github.com/ipfs/go-ipfs-blockstore => github.com/huo-ju/go-ipfs-blockstore v1.0.5
+//replace github.com/ipfs/go-ipfs-blockstore => github.com/huo-ju/go-ipfs-blockstore v1.0.5
 
 require (
 	github.com/RichardKnop/machinery v1.10.5
@@ -25,6 +25,7 @@ require (
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libp2p/go-libp2p v0.13.0
 	github.com/libp2p/go-libp2p-autonat v0.4.0
+	github.com/libp2p/go-libp2p-connmgr v0.2.4 // indirect
 	github.com/libp2p/go-libp2p-core v0.8.0
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1

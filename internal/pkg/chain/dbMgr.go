@@ -11,16 +11,11 @@ import (
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
 	"github.com/oklog/ulid"
-
-	blockstore "github.com/huo-ju/go-ipfs-blockstore"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	ds_badger "github.com/ipfs/go-ds-badger"
 )
 
 func (dbMgr *DbMgr) InitDb(datapath string) {
-	badgerstorage, err := ds_badger.NewDatastore(datapath+"_bs", nil)
-	bs := blockstore.NewBlockstore(ds_sync.MutexWrap(badgerstorage), "bs")
 
+	var err error
 	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups"))
 	if err != nil {
 		glog.Fatal(err.Error())
@@ -36,7 +31,6 @@ func (dbMgr *DbMgr) InitDb(datapath string) {
 		glog.Fatal(err.Error())
 	}
 
-	dbMgr.BlockStorage = bs
 	dbMgr.DataPath = datapath
 
 	glog.Infof("ChainCtx DbMgf initialized")
