@@ -4,12 +4,10 @@ import (
 	"context"
 	//"fmt"
 	"github.com/golang/glog"
-	blockstore "github.com/huo-ju/go-ipfs-blockstore"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
-	bitswap "github.com/ipfs/go-bitswap"
-	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/libp2p/go-libp2p"
 	//autonat "github.com/libp2p/go-libp2p-autonat"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	//network "github.com/libp2p/go-libp2p-core/network"
@@ -30,10 +28,9 @@ type Node struct {
 	Pubsub           *pubsub.PubSub
 	Ddht             *dual.DHT
 	RoutingDiscovery *discovery.RoutingDiscovery
-	Exchange         *bitswap.Bitswap
 }
 
-func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.Blockstore, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
@@ -54,6 +51,7 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
 		libp2p.EnableNATService(),
+		libp2p.ConnectionManager(cmgr),
 		identity,
 	)
 	if err != nil {
@@ -75,9 +73,9 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, bstore blockstore.B
 		return nil, err
 	}
 
-	bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
-	exchange := bitswap.New(ctx, bsnetwork, bstore)
-	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Exchange: exchange.(*bitswap.Bitswap)}
+	//bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
+	//exchange := bitswap.New(ctx, bsnetwork, bstore)
+	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
 	return newnode, nil
 }
 

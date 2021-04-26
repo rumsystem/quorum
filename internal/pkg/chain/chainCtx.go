@@ -9,7 +9,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	blockstore "github.com/huo-ju/go-ipfs-blockstore"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 
@@ -43,11 +42,10 @@ type ChainCtx struct {
 var chainCtx *ChainCtx
 
 type DbMgr struct {
-	GroupInfoDb  *badger.DB
-	TrxDb        *badger.DB
-	BlockDb      *badger.DB
-	BlockStorage blockstore.Blockstore
-	DataPath     string
+	GroupInfoDb *badger.DB
+	TrxDb       *badger.DB
+	BlockDb     *badger.DB
+	DataPath    string
 }
 
 var dbMgr *DbMgr
