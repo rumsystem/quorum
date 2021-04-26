@@ -27,8 +27,7 @@ type ChainCtx struct {
 	PeerId     peer.ID
 	Privatekey p2pcrypto.PrivKey
 	PublicKey  p2pcrypto.PubKey
-
-	Groups map[string]*Group
+	Groups     map[string]*Group
 
 	PublicTopic     *pubsub.Topic
 	PublicSubscribe *pubsub.Subscription
@@ -155,21 +154,20 @@ func handlePublicChannel(ctx context.Context, config cli.Config) error {
 		if err != nil {
 			glog.Fatalf(err.Error())
 			return err
-		}
-
-		var trxMsg TrxMsg
-		err = json.Unmarshal(msg.Data, &trxMsg)
-
-		if err != nil {
-			glog.Infof(err.Error())
-		}
-
-		if trxMsg.Version != GetChainCtx().Version {
-			glog.Infof("Version mismatch")
-		}
-
-		if trxMsg.Sender != GetChainCtx().PeerId.Pretty() {
-			handleTrxMsg(trxMsg)
+		} else {
+			var trxMsg TrxMsg
+			err = json.Unmarshal(msg.Data, &trxMsg)
+			if err != nil {
+				glog.Infof(err.Error())
+			} else {
+				if trxMsg.Version != GetChainCtx().Version {
+					//glog.Infof("Version mismatch")
+				} else if trxMsg.Sender != GetChainCtx().PeerId.Pretty() {
+					handleTrxMsg(trxMsg)
+				} else {
+					//glog.Info("Msg from myself")
+				}
+			}
 		}
 	}
 }

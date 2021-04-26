@@ -2,11 +2,12 @@ package chain
 
 import (
 	"crypto/sha256"
-	//"encoding/hex"
 	"encoding/json"
 	"time"
 
+	//"github.com/golang/glog"
 	guuid "github.com/google/uuid"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 //transaction will expire in 1 hour (after send)
@@ -41,18 +42,22 @@ type Trx struct {
 }
 
 type TrxMsg struct {
-	TrxId     string
-	MsgType   TrxType
+	TrxId   string
+	GroupId string
+
+	MsgType TrxType
+	Data    []byte
+
 	Sender    string
-	GroupId   string
-	Data      []byte
-	Version   string
 	TimeStamp int64
+	Version   string
+
+	Pubkey string
+	Sign   []byte
 }
 
 type ReqSign struct {
-	Hash       []byte
-	Signature  []byte
+	Datahash   []byte
 	Expiration string
 }
 
@@ -92,24 +97,37 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (TrxMsg, error) {
 	var trxMsg TrxMsg
 	var reqSign ReqSign
 
+	trxId := guuid.New()
+	trxMsg.TrxId = trxId.String()
+	trxMsg.MsgType = REQ_SIGN
+	trxMsg.Sender = GetChainCtx().PeerId.Pretty()
+	trxMsg.GroupId = groupId
+	trxMsg.Version = GetChainCtx().Version
+	trxMsg.TimeStamp = time.Now().UnixNano()
+
+	pubkey, err := getPubKey()
+	if err != nil {
+		return trxMsg, err
+	}
+	trxMsg.Pubkey = pubkey
+
 	timein := time.Now().Local().Add(time.Hour*time.Duration(Hours) +
 		time.Minute*time.Duration(Mins) +
 		time.Second*time.Duration(Sec))
 
 	reqSign.Expiration = timein.String()
-	reqSign.Hash = hash(data)
-	reqSign.Signature = []byte("Signature of original data (signed by using peer private key")
+	reqSign.Datahash = hash(data)
 
-	trxId := guuid.New()
 	payload, _ := json.Marshal(reqSign)
-
-	trxMsg.TrxId = trxId.String()
-	trxMsg.MsgType = REQ_SIGN
-	trxMsg.Sender = GetChainCtx().PeerId.Pretty()
-	trxMsg.GroupId = groupId
 	trxMsg.Data = payload
-	trxMsg.Version = GetChainCtx().Version
-	trxMsg.TimeStamp = time.Now().UnixNano()
+
+	sign, err := signTrx(trxMsg)
+
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Sign = sign
 
 	return trxMsg, nil
 }
@@ -135,6 +153,21 @@ func CreateTrxMsgReqSignResp(inTrxMsg TrxMsg, reqSign ReqSign) (TrxMsg, error) {
 	trxMsg.Version = GetChainCtx().Version
 	trxMsg.TimeStamp = time.Now().UnixNano()
 
+	pubkey, err := getPubKey()
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Pubkey = pubkey
+
+	sign, err := signTrx(trxMsg)
+
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Sign = sign
+
 	return trxMsg, nil
 }
 
@@ -159,6 +192,19 @@ func CreateTrxNewBlock(block Block) (TrxMsg, error) {
 	trxMsg.Version = GetChainCtx().Version
 	trxMsg.TimeStamp = time.Now().UnixNano()
 
+	pubkey, err := getPubKey()
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Pubkey = pubkey
+
+	sign, err := signTrx(trxMsg)
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Sign = sign
 	return trxMsg, nil
 }
 
@@ -181,6 +227,20 @@ func CreateTrxNewBlockResp(block Block) (TrxMsg, error) {
 	trxMsg.Version = GetChainCtx().Version
 	trxMsg.TimeStamp = time.Now().UnixNano()
 
+	pubkey, err := getPubKey()
+	if err != nil {
+		return trxMsg, err
+	}
+	trxMsg.Pubkey = pubkey
+
+	sign, err := signTrx(trxMsg)
+
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Sign = sign
+
 	return trxMsg, nil
 }
 
@@ -201,6 +261,19 @@ func CreateTrxReqNextBlock(block Block) (TrxMsg, error) {
 	trxMsg.Version = GetChainCtx().Version
 	trxMsg.TimeStamp = time.Now().UnixNano()
 
+	pubkey, err := getPubKey()
+	if err != nil {
+		return trxMsg, err
+	}
+	trxMsg.Pubkey = pubkey
+
+	sign, err := signTrx(trxMsg)
+
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Sign = sign
 	return trxMsg, nil
 }
 
@@ -232,6 +305,20 @@ func CreateTrxReqNextBlockResp(resp ReqBlock, requester string, block Block) (Tr
 	trxMsg.Version = GetChainCtx().Version
 	trxMsg.TimeStamp = time.Now().UnixNano()
 
+	pubkey, err := getPubKey()
+	if err != nil {
+		return trxMsg, err
+	}
+	trxMsg.Pubkey = pubkey
+
+	sign, err := signTrx(trxMsg)
+
+	if err != nil {
+		return trxMsg, err
+	}
+
+	trxMsg.Sign = sign
+
 	return trxMsg, nil
 }
 
@@ -245,16 +332,48 @@ func hash(data []byte) []byte {
 	h.Write([]byte(data))
 	hashed := h.Sum(nil)
 	return hashed
-	//return hex.EncodeToString(hashed)
 }
 
-//sign trx by using private key
-func SignTrx(hash []byte) (singature string, err error) {
-	var sig string
-	return sig, nil
+func signTrx(trxMsg TrxMsg) ([]byte, error) {
+	bytes, err := json.Marshal(trxMsg)
+	hashed := hash(bytes)
+	signature, err := GetChainCtx().Privatekey.Sign(hashed)
+	return signature, err
 }
 
-//check if hash is available
-func VerifySig(hash []byte, signature string) (bool, error) {
-	return true, nil
+func VerifyTrx(trxMsg TrxMsg) (bool, error) {
+	//get signature
+	sign := trxMsg.Sign
+	trxMsg.Sign = nil
+
+	bytes, err := json.Marshal(trxMsg)
+	if err != nil {
+		return false, err
+	}
+	hashed := hash(bytes)
+
+	//create pubkey
+	serializedpub, err := p2pcrypto.ConfigDecodeKey(trxMsg.Pubkey)
+	if err != nil {
+		return false, err
+	}
+
+	pubkey, err := p2pcrypto.UnmarshalPublicKey(serializedpub)
+	if err != nil {
+		return false, err
+	}
+
+	verify, err := pubkey.Verify(hashed, sign)
+	return verify, err
+}
+
+func getPubKey() (string, error) {
+	var pubkey string
+	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
+	if err != nil {
+		return pubkey, err
+	}
+
+	pubkey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
+	return pubkey, nil
 }
