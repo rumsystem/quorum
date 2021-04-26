@@ -3,29 +3,13 @@ package chain
 import ()
 
 //sign
-func RsaSignature(trx []byte) (signature []byte, err error) {
-
-	/*
-		hashed := sha256.Sum256(trx)
-		signature, err := rsa.SignPKCS1v15(rand.Reader, GetContext().Privatekey, crypto.SHA256, hashed[:])
-
-		if err != nil {
-			return err
-		}
-
-		return signature
-	*/
-
-	var result []byte
-	return result, nil
+func Sign(trx []byte) ([]byte, error) {
+	signature, err := GetChainCtx().Privatekey.Sign(trx)
+	return signature, err
 }
 
 //verify
-func RsaVerify(trx []byte, sig []byte) bool {
-	/*
-		hashed := sha256.Sum256(trx)
-		return rsa.VerifyPKCS1v15(GetContext().PublicKey, crypto.SHA256, hashed, sig)
-	*/
-
-	return true
+func Verify(data, sign []byte) (bool, error) {
+	verify, err := GetChainCtx().PublicKey.Verify(data, sign)
+	return verify, err
 }

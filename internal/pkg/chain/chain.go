@@ -18,6 +18,18 @@ const CONSENSUS uint8 = 1
 ****************************/
 
 func handleTrxMsg(trxMsg TrxMsg) error {
+
+	verify, err := VerifyTrx(trxMsg)
+	if err != nil {
+		glog.Infof(err.Error())
+		return err
+	}
+
+	if !verify {
+		err := errors.New("Can not verify trx")
+		return err
+	}
+
 	switch trxMsg.MsgType {
 	case REQ_SIGN:
 		handleReqSign(trxMsg)
@@ -51,10 +63,6 @@ func handleReqSign(trxMsg TrxMsg) error {
 
 	if lucky := Lucky(); lucky {
 		glog.Infof("sign it and send ReqSignResp msg")
-
-		//Verify trxMsg signature, if correct, sign it and publish
-		//If failed, do nothing
-
 		var trxMsg2 TrxMsg
 		trxMsg2, _ = CreateTrxMsgReqSignResp(trxMsg, reqSign)
 		if jsonBytes, err := json.Marshal(trxMsg2); err != nil {
