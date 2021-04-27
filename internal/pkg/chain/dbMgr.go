@@ -20,15 +20,14 @@ const SEQ_PREFIX string = "seq_"
 const GRP_PREFIX string = "grp_"
 const CNT_PREFIX string = "cnt_"
 
-func (dbMgr *DbMgr) InitDb(datapath string) {
-
+func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
 	var err error
-	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups"))
+	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
+	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 
-	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db"))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
@@ -226,28 +225,6 @@ func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
 	if err != nil {
 		glog.Fatalf(err.Error())
 	}
-
-	/*
-		//test only, show db contents
-		err = dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
-			opts := badger.DefaultIteratorOptions
-			opts.PrefetchSize = 10
-			it := txn.NewIterator(opts)
-			defer it.Close()
-			for it.Rewind(); it.Valid(); it.Next() {
-				item := it.Item()
-				k := item.Key()
-				err := item.Value(func(v []byte) error {
-					fmt.Printf("key=%s, value=%s\n", k, v)
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-		return err */
 
 	return nil
 }
