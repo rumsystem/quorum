@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"context"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/golang/glog"
@@ -52,8 +53,7 @@ type DbOption struct {
 
 type DbMgr struct {
 	GroupInfoDb *badger.DB
-	TrxDb       *badger.DB
-	BlockDb     *badger.DB
+	Db          *badger.DB
 	DataPath    string
 }
 
