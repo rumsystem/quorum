@@ -13,20 +13,20 @@ import (
 	"github.com/oklog/ulid"
 )
 
-func (dbMgr *DbMgr) InitDb(datapath string) {
+func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
 
 	var err error
-	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups"))
+	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
 
-	dbMgr.TrxDb, err = badger.Open(badger.DefaultOptions(datapath + "_trx"))
+	dbMgr.TrxDb, err = badger.Open(badger.DefaultOptions(datapath + "_trx").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
 
-	dbMgr.BlockDb, err = badger.Open(badger.DefaultOptions(datapath + "_block"))
+	dbMgr.BlockDb, err = badger.Open(badger.DefaultOptions(datapath + "_block").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}

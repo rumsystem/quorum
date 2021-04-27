@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -41,6 +42,14 @@ type ChainCtx struct {
 
 var chainCtx *ChainCtx
 
+type DbOption struct {
+	LogFileSize    int64
+	MemTableSize   int64
+	LogMaxEntries  uint32
+	BlockCacheSize int64
+	Compression    options.CompressionType
+}
+
 type DbMgr struct {
 	GroupInfoDb *badger.DB
 	TrxDb       *badger.DB
@@ -64,7 +73,9 @@ func InitCtx(dataPath string) {
 	chainCtx = &ChainCtx{}
 	dbMgr = &DbMgr{}
 	chainCtx.Groups = make(map[string]*Group)
-	dbMgr.InitDb(dataPath)
+
+	dbopts := &DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: options.Snappy}
+	dbMgr.InitDb(dataPath, dbopts)
 
 	chainCtx.TrxSignReq = 1
 	chainCtx.Status = NODE_OFFLINE
