@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"context"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -43,8 +44,7 @@ var chainCtx *ChainCtx
 
 type DbMgr struct {
 	GroupInfoDb *badger.DB
-	TrxDb       *badger.DB
-	BlockDb     *badger.DB
+	Db          *badger.DB
 	DataPath    string
 }
 

@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/json"
 	"errors"
+
 	//"fmt"
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
@@ -193,14 +194,13 @@ func handleNextBlock(trxMsg TrxMsg) error {
 		}
 
 		//otherwise, check blockDB, if I have the block requested, send it out by publish
-		err := GetDbMgr().BlockDb.View(func(txn *badger.Txn) error {
+		err := GetDbMgr().Db.View(func(txn *badger.Txn) error {
 			opts := badger.DefaultIteratorOptions
 			opts.PrefetchSize = 10
 			it := txn.NewIterator(opts)
 			defer it.Close()
-			for it.Rewind(); it.Valid(); it.Next() {
+			for it.Seek([]byte(BLK_PREFIX)); it.ValidForPrefix([]byte(BLK_PREFIX)); it.Next() {
 				item := it.Item()
-				//k := item.Key()
 				err := item.Value(func(v []byte) error {
 					var block Block
 					if err := json.Unmarshal(v, &block); err != nil {

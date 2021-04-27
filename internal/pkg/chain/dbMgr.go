@@ -3,7 +3,8 @@ package chain
 import (
 	"encoding/json"
 	"errors"
-	//"fmt"
+	"fmt"
+
 	"math/rand"
 	"sync"
 	"time"
@@ -13,6 +14,12 @@ import (
 	"github.com/oklog/ulid"
 )
 
+const TRX_PREFIX string = "trx_"
+const BLK_PREFIX string = "blk_"
+const SEQ_PREFIX string = "seq_"
+const GRP_PREFIX string = "grp_"
+const CNT_PREFIX string = "cnt_"
+
 func (dbMgr *DbMgr) InitDb(datapath string) {
 
 	var err error
@@ -21,12 +28,7 @@ func (dbMgr *DbMgr) InitDb(datapath string) {
 		glog.Fatal(err.Error())
 	}
 
-	dbMgr.TrxDb, err = badger.Open(badger.DefaultOptions(datapath + "_trx"))
-	if err != nil {
-		glog.Fatal(err.Error())
-	}
-
-	dbMgr.BlockDb, err = badger.Open(badger.DefaultOptions(datapath + "_block"))
+	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db"))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
@@ -38,16 +40,16 @@ func (dbMgr *DbMgr) InitDb(datapath string) {
 
 func (dbMgr *DbMgr) CloseDb() {
 	dbMgr.GroupInfoDb.Close()
-	dbMgr.TrxDb.Close()
-	dbMgr.BlockDb.Close()
+	dbMgr.Db.Close()
 	glog.Infof("ChainCtx Db closed")
 }
 
 //save trx
 func (dbMgr *DbMgr) AddTrx(trx Trx) error {
-	err := dbMgr.TrxDb.Update(func(txn *badger.Txn) error {
+	key := TRX_PREFIX + trx.Msg.TrxId
+	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		bytes, err := json.Marshal(trx)
-		e := badger.NewEntry([]byte(trx.Msg.TrxId), bytes)
+		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
 	})
@@ -82,8 +84,9 @@ func (dbMgr *DbMgr) AddTrx(trx Trx) error {
 
 //rm Trx
 func (dbMgr *DbMgr) RmTrx(trxId string) error {
-	err := dbMgr.TrxDb.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(trxId))
+	key := TRX_PREFIX + trxId
+	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
+		err := txn.Delete([]byte(key))
 		return err
 	})
 
@@ -98,8 +101,9 @@ func (dbMgr *DbMgr) UpdTrxCons(trx Trx, consensusString string) error {
 //get trx
 func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
 	var trx Trx
-	err := dbMgr.TrxDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(trxId))
+	key := TRX_PREFIX + trxId
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
 
 		if err != nil {
 			return err
@@ -126,10 +130,11 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
 //Save Block
 func (dbMgr *DbMgr) AddBlock(block Block) error {
 
+	key := BLK_PREFIX + block.Cid
 	//AddBlock to blockDb
-	err := dbMgr.BlockDb.Update(func(txn *badger.Txn) error {
+	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		bytes, err := json.Marshal(block)
-		e := badger.NewEntry([]byte(block.Cid), bytes)
+		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
 	})
@@ -139,8 +144,9 @@ func (dbMgr *DbMgr) AddBlock(block Block) error {
 
 //Rm Block
 func (dbMgr *DbMgr) RmBlock(block Block) error {
-	err := dbMgr.BlockDb.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(block.Cid))
+	key := BLK_PREFIX + block.Cid
+	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
+		err := txn.Delete([]byte(key))
 		return err
 	})
 
@@ -156,8 +162,10 @@ func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock Block) error {
 //Get Block
 func (dbMgr *DbMgr) GetBlock(blockId string) (Block, error) {
 	var block Block
-	err := dbMgr.BlockDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(blockId))
+	key := BLK_PREFIX + blockId
+
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
 		if err != nil {
 			return err
 		}
@@ -178,8 +186,9 @@ func (dbMgr *DbMgr) GetBlock(blockId string) (Block, error) {
 //Get raw block ([]byte)
 func (dbMgr *DbMgr) GetRawBlock(blockId string) ([]byte, error) {
 	var raw []byte
-	err := dbMgr.BlockDb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(blockId))
+	key := BLK_PREFIX + blockId
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
 
 		if err != nil {
 			return err
@@ -193,7 +202,6 @@ func (dbMgr *DbMgr) GetRawBlock(blockId string) ([]byte, error) {
 }
 
 func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
-
 	//check if group exist
 	err := dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(groupItem.GroupId))
@@ -281,30 +289,6 @@ func (dbMgr *DbMgr) RmGroup(item *GroupItem) error {
 		return err
 	}
 
-	/*
-		//test only, show db contents
-		err = dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
-			opts := badger.DefaultIteratorOptions
-			opts.PrefetchSize = 10
-			it := txn.NewIterator(opts)
-			defer it.Close()
-			for it.Rewind(); it.Valid(); it.Next() {
-				item := it.Item()
-				k := item.Key()
-				err := item.Value(func(v []byte) error {
-					fmt.Printf("key=%s, value=%s\n", k, v)
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-
-		return err
-	*/
-
 	return nil
 
 }
@@ -373,6 +357,109 @@ func (dbMgr *DbMgr) GetGroupsString() ([]string, error) {
 	})
 
 	return groupItemList, err
+}
+
+func (dbMgr *DbMgr) UpdBlkSeq(block Block) error {
+	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + block.GroupId + "_" + fmt.Sprint(block.BlockNum)
+
+	//update BlockSeqDb
+	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
+		//b := make([]byte, 8)
+		//binary.LittleEndian.PutUint64(b, uint64(block.BlockNum))
+		e := badger.NewEntry([]byte(key), []byte(block.Cid))
+		err := txn.SetEntry(e)
+		return err
+	})
+
+	return err
+}
+
+func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
+	var blockId string
+	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + groupId + "_" + fmt.Sprint(blockNum)
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+
+		if err != nil {
+			return err
+		}
+
+		blockIdBytes, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+
+		blockId = string(blockIdBytes)
+		return nil
+	})
+
+	return blockId, err
+}
+
+func (dbMgr *DbMgr) AddGrpCtnt(block Block) error {
+	for _, trx := range block.Trxs {
+
+		var ctnItem *GroupContentItem
+		ctnItem = &GroupContentItem{}
+
+		ctnItem.TrxId = trx.Msg.TrxId
+		ctnItem.Publisher = trx.Msg.Sender
+		ctnItem.Content = string(trx.Data)
+		ctnItem.TimeStamp = trx.Msg.TimeStamp
+		ctnBytes, err := json.Marshal(ctnItem)
+		if err != nil {
+			return err
+		}
+
+		key := GRP_PREFIX + CNT_PREFIX + block.GroupId + "_" + trx.Msg.TrxId + "_" + fmt.Sprint(trx.Msg.TimeStamp)
+
+		glog.Infof("Add trx with key %s", key)
+		//update ContentDb
+		err = dbMgr.Db.Update(func(txn *badger.Txn) error {
+			e := badger.NewEntry([]byte(key), ctnBytes)
+			err := txn.SetEntry(e)
+			return err
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*GroupContentItem, error) {
+	var ctnList []*GroupContentItem
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
+		glog.Infof("Get Key Prefix %s", key)
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek([]byte(key)); it.ValidForPrefix([]byte(key)); it.Next() {
+			glog.Infof("Append")
+			item := it.Item()
+			err := item.Value(func(v []byte) error {
+				var contentitem *GroupContentItem
+				ctnerr := json.Unmarshal(v, &contentitem)
+				if ctnerr == nil {
+					ctnList = append(ctnList, contentitem)
+				}
+
+				return ctnerr
+			})
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return ctnList, err
 }
 
 //for generate sequence ULID
