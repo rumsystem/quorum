@@ -26,8 +26,7 @@ type GroupContentItem struct {
 }
 
 type Group struct {
-	Item *GroupItem
-	//Db            *GroupDb
+	Item          *GroupItem
 	AskNextTicker *time.Ticker
 	TickerDone    chan bool
 	Status        GroupStatus
