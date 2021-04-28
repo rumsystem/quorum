@@ -381,7 +381,7 @@ func (dbMgr *DbMgr) AddGrpCtnt(block Block) error {
 
 		ctnItem.TrxId = trx.Msg.TrxId
 		ctnItem.Publisher = trx.Msg.Sender
-		ctnItem.Content = string(trx.Data)
+		ctnItem.Content = trx.Data
 		ctnItem.TimeStamp = trx.Msg.TimeStamp
 		ctnBytes, err := json.Marshal(ctnItem)
 		if err != nil {

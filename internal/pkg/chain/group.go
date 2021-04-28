@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	//"fmt"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"google.golang.org/protobuf/proto"
 	"time"
 
 	"github.com/golang/glog"
@@ -21,7 +23,7 @@ const (
 type GroupContentItem struct {
 	TrxId     string
 	Publisher string
-	Content   string
+	Content   []byte
 	TimeStamp int64
 }
 
@@ -161,13 +163,18 @@ func (grp *Group) LeaveGrp() error {
 }
 
 //Add Content to Group
-func (grp *Group) Post(content []byte) (string, error) {
+func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	var trx Trx
 	var trxMsg TrxMsg
 
-	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, content)
+	encodedcontent, err := proto.Marshal(content)
+	if err != nil {
+		return "", err
+	}
+
+	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, encodedcontent)
 	trx.Msg = trxMsg
-	trx.Data = content
+	trx.Data = encodedcontent
 	var cons []string
 	trx.Consensus = cons
 

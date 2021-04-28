@@ -8,7 +8,6 @@ import (
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
-	"google.golang.org/protobuf/proto"
 )
 
 type CustomValidator struct {
@@ -61,12 +60,12 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 	}
 
 	if group, ok := chain.GetChainCtx().Groups[paramspb.Target.Id]; ok {
-		contentobj, err := proto.Marshal(paramspb.Object)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-		trxId, err := group.Post(contentobj)
+		//contentobj, err := proto.Marshal(paramspb.Object)
+		//if err != nil {
+		//	output[ERROR_INFO] = err.Error()
+		//	return c.JSON(http.StatusBadRequest, output)
+		//}
+		trxId, err := group.Post(paramspb.Object)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
