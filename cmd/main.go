@@ -5,12 +5,14 @@ import (
 	//"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
 	//"time"
 
 	"github.com/golang/glog"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	golog "github.com/ipfs/go-log"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -20,6 +22,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-discovery"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	//msgio "github.com/libp2p/go-msgio"
 	//"google.golang.org/protobuf/proto"
@@ -150,9 +153,27 @@ func mainRet(config cli.Config) int {
 	return 0
 }
 
+type CustomBinder struct{}
+
+func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
+	db := new(echo.DefaultBinder)
+	switch i.(type) {
+	case *quorumpb.Activity:
+		bodyBytes, err := ioutil.ReadAll(c.Request().Body)
+		err = protojson.Unmarshal(bodyBytes, i.(*quorumpb.Activity))
+		return err
+	default:
+		if err = db.Bind(i, c); err != echo.ErrUnsupportedMediaType {
+			return
+		}
+		return err
+	}
+}
+
 //StartAPIServer : Start local web server
 func StartAPIServer(config cli.Config, h *api.Handler) {
 	e := echo.New()
+	e.Binder = new(CustomBinder)
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")

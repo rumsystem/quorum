@@ -161,13 +161,13 @@ func (grp *Group) LeaveGrp() error {
 }
 
 //Add Content to Group
-func (grp *Group) Post(content string) (string, error) {
+func (grp *Group) Post(content []byte) (string, error) {
 	var trx Trx
 	var trxMsg TrxMsg
 
-	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, []byte(content))
+	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, content)
 	trx.Msg = trxMsg
-	trx.Data = []byte(content)
+	trx.Data = content
 	var cons []string
 	trx.Consensus = cons
 
