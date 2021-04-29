@@ -11,7 +11,7 @@ import (
 )
 
 type LeaveGroupParam struct {
-	GroupId string `from:"group_id" json:"group_id" validate:"required`
+	GroupId string `from:"group_id" json:"group_id" validate:"required"`
 }
 
 func (h *Handler) LeaveGroup(c echo.Context) (err error) {

@@ -63,7 +63,6 @@ func handleReqSign(trxMsg TrxMsg) error {
 	}
 
 	if lucky := Lucky(); lucky {
-		glog.Infof("sign it and send ReqSignResp msg")
 		var trxMsg2 TrxMsg
 		trxMsg2, _ = CreateTrxMsgReqSignResp(trxMsg, reqSign)
 		if jsonBytes, err := json.Marshal(trxMsg2); err != nil {
@@ -94,9 +93,11 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 		return err
 	}
 
-	hash := string(reqSignResp.Hash)
-	wsign := string(reqSignResp.WitnessSign)
-	consensusString := "witness?=" + reqSignResp.Witness + "/hash?=" + hash + "/wsign?=" + wsign
+	//hash := string(reqSignResp.Hash)
+	//wsign := string(reqSignResp.WitnessSign)
+
+	consensusString := "test"
+	//consensusString := "witness:=" + reqSignResp.Witness + "?hash:=" + hash + "?wsign:=" + wsign
 
 	trx.Consensus = append(trx.Consensus, consensusString)
 
@@ -109,7 +110,16 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 		return nil
 	} else if groupItem, OK := GetChainCtx().Groups[trxMsg.GroupId]; OK {
 		//Get topblock and create a new block to include trx
-		topBlock, _ := groupItem.GetTopBlock()
+		topBlock, err := groupItem.GetTopBlock()
+
+		if err != nil {
+			glog.Infof(err.Error())
+			return err
+		}
+
+		glog.Infof("Topblock cid %s", topBlock.Cid)
+		glog.Infof("Topblock groupId %s", topBlock.GroupId)
+
 		newBlock := CreateBlock(topBlock, trx)
 
 		//Create NEW_BLOCK msg and send it out
@@ -118,7 +128,11 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
 
 		//Give new block to group
-		groupItem.AddBlock(newBlock)
+		err = groupItem.AddBlock(newBlock)
+		if err != nil {
+			glog.Infof(err.Error())
+			return err
+		}
 	} else {
 		glog.Infof("Can not find group")
 	}
@@ -142,7 +156,11 @@ func handleNewBlock(trxMsg TrxMsg) error {
 	sendResp := true
 	if group, ok := GetChainCtx().Groups[block.GroupId]; ok {
 		glog.Infof("give new block to group")
-		group.AddBlock(block)
+		err := group.AddBlock(block)
+		if err != nil {
+			sendResp = false
+			glog.Infof(err.Error())
+		}
 	} else {
 		glog.Infof("not my block, I don't have the related group")
 		if Lucky() {
