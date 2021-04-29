@@ -25,18 +25,6 @@ const (
 	BLOCK_ON_TOP ReqBlock = 1 //top block, no new block, block in trx is empty
 )
 
-type ReqSign struct {
-	Datahash   []byte
-	Expiration string
-}
-
-type ReqSignResp struct {
-	ReqTrxId    string
-	Requester   string
-	Witness     string
-	Hash        []byte
-	WitnessSign []byte
-}
 type NewBlock struct {
 	Producer string
 	BlockId  string
@@ -63,7 +51,7 @@ type ReqNextBlockResp struct {
 
 func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var reqSign ReqSign
+	var reqSign quorumpb.ReqSign
 
 	trxId := guuid.New()
 	trxMsg.TrxId = trxId.String()
@@ -86,7 +74,7 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	reqSign.Expiration = timein.String()
 	reqSign.Datahash = hash(data)
 
-	payload, _ := json.Marshal(reqSign)
+	payload, _ := proto.Marshal(&reqSign)
 	trxMsg.Data = payload
 
 	sign, err := signTrx(trxMsg)
@@ -100,9 +88,9 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign ReqSign) (quorumpb.TrxMsg, error) {
+func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var respSign ReqSignResp
+	var respSign quorumpb.ReqSignResp
 
 	respSign.ReqTrxId = inTrxMsg.TrxId
 	respSign.Requester = inTrxMsg.Sender
@@ -117,7 +105,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign ReqSign) (quorump
 	respSign.WitnessSign = sign
 
 	trxId := guuid.New()
-	payload, _ := json.Marshal(respSign)
+	payload, _ := proto.Marshal(&respSign)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN_RESP

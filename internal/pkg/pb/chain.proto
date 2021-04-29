@@ -29,3 +29,17 @@ message Trx {
 	bytes Data = 2;
     repeated string Consensus = 3;
 }
+
+message ReqSign {
+    bytes Datahash = 1;
+    string Expiration = 2;
+}
+
+
+message ReqSignResp {
+    string ReqTrxId = 1;
+    string Requester = 2;
+    string Witness = 3;
+    bytes  Hash = 4;
+    bytes WitnessSign = 5;
+}

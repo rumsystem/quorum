@@ -59,8 +59,8 @@ func handleTrxMsg(trxMsg quorumpb.TrxMsg) error {
 func handleReqSign(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSign called")
 
-	var reqSign ReqSign
-	if err := json.Unmarshal(trxMsg.Data, &reqSign); err != nil {
+	var reqSign quorumpb.ReqSign
+	if err := proto.Unmarshal(trxMsg.Data, &reqSign); err != nil {
 		return err
 	}
 
@@ -81,8 +81,8 @@ func handleReqSign(trxMsg quorumpb.TrxMsg) error {
 func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSignResp called")
 
-	var reqSignResp ReqSignResp
-	if err := json.Unmarshal(trxMsg.Data, &reqSignResp); err != nil {
+	var reqSignResp quorumpb.ReqSignResp
+	if err := proto.Unmarshal(trxMsg.Data, &reqSignResp); err != nil {
 		return err
 	}
 
