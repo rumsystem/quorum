@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"errors"
 
 	//"fmt"
@@ -165,7 +164,7 @@ func (grp *Group) LeaveGrp() error {
 //Add Content to Group
 func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	var trx Trx
-	var trxMsg TrxMsg
+	var trxMsg quorumpb.TrxMsg
 
 	encodedcontent, err := proto.Marshal(content)
 	if err != nil {
@@ -180,12 +179,12 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 
 	dbMgr.AddTrx(trx)
 
-	jsonBytes, err := json.Marshal(trxMsg)
+	pbBytes, err := proto.Marshal(&trxMsg)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
 
-	chainCtx.PublicTopic.Publish(chainCtx.Ctx, jsonBytes)
+	chainCtx.PublicTopic.Publish(chainCtx.Ctx, pbBytes)
 	return trxMsg.TrxId, nil
 }
 
@@ -216,12 +215,12 @@ func (grp *Group) startAskNextBlock() {
 					glog.Fatalf(err.Error())
 				}
 
-				jsonBytes, err := json.Marshal(askNextMsg)
+				pbBytes, err := proto.Marshal(&askNextMsg)
 				if err != nil {
 					glog.Fatalf(err.Error())
 				}
 
-				GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
+				GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 			}
 		}
 	}()

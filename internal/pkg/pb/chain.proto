@@ -1,0 +1,25 @@
+syntax = "proto3";
+package quorum.pb;
+option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
+
+enum TrxType {
+  REQ_SIGN            = 0; // request witness sign
+  REQ_SIGN_RESP       = 1; // response requset withness sign
+  ADD_NEW_BLOCK       = 2; // new block created
+  ADD_NEW_BLOCK_RESP  = 3; // response new block created
+  REQ_NEXT_BLOCK      = 4; // request next block
+  REQ_NEXT_BLOCK_RESP = 5; // response request next block
+  PEER_ANNOUNCE       = 6; // announce I am online
+}
+
+message TrxMsg {
+  string TrxId = 1;
+  string GroupId = 2;
+  TrxType MsgType = 3;
+  bytes Data = 4;
+  string Sender = 5;
+  int64 TimeStamp = 6;
+  string Version = 7;
+  string Pubkey = 8;
+  bytes Sign = 9;
+}

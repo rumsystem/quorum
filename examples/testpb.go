@@ -105,4 +105,9 @@ func main() {
 	//}
 	fmt.Println(np)
 
+	trxmsg := &quorumpb.TrxMsg{TrxId: "12345"}
+	out, err = proto.Marshal(trxmsg)
+	fmt.Println(out)
+	fmt.Println(err)
+
 }

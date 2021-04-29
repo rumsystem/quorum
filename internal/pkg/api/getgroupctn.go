@@ -45,7 +45,6 @@ func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 		}
 		var ctnobjList []*GroupContentObjectItem
 		for _, ctn := range ctnList {
-			fmt.Println(ctn.Content)
 			ctnobj := &quorumpb.Object{}
 			err = proto.Unmarshal(ctn.Content, ctnobj)
 			if err == nil {
