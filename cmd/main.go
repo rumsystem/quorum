@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
 	//"time"
 
 	"github.com/golang/glog"
@@ -23,6 +24,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-discovery"
 	"google.golang.org/protobuf/encoding/protojson"
+   discovery "github.com/libp2p/go-libp2p-discovery"
 
 	//msgio "github.com/libp2p/go-msgio"
 	//"google.golang.org/protobuf/proto"
