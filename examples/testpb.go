@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	//"github.com/huo-ju/quorum/examples/pb/examplespb"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -70,7 +71,17 @@ func main() {
 	addtogroupactivity := &quorumpb.Activity{Type: "Add", Object: note, Actor: actor, Target: grouptarget}
 	out, err := proto.Marshal(addtogroupactivity)
 
-	fmt.Println("testpb")
+	fmt.Println("testpb:")
+	fmt.Println(string(out))
+	fmt.Println([]byte(string(out)))
+	fmt.Println(out)
+	fmt.Println("=====pb")
+
+	jsonoutbytes, err := protojson.Marshal(addtogroupactivity)
+	fmt.Println(err)
+	fmt.Println(string(jsonoutbytes))
+	fmt.Println("=====json")
+
 	//fmt.Println(p)
 	// Write the new address book back to disk.
 	fname := "testactivity.pb"
@@ -93,5 +104,10 @@ func main() {
 	//	fmt.Println("ASKHEAD")
 	//}
 	fmt.Println(np)
+
+	trxmsg := &quorumpb.TrxMsg{TrxId: "12345"}
+	out, err = proto.Marshal(trxmsg)
+	fmt.Println(out)
+	fmt.Println(err)
 
 }

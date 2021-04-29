@@ -10,10 +10,12 @@ import (
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/golang/glog"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
@@ -166,8 +168,8 @@ func handlePublicChannel(ctx context.Context, config cli.Config) error {
 			glog.Fatalf(err.Error())
 			return err
 		} else {
-			var trxMsg TrxMsg
-			err = json.Unmarshal(msg.Data, &trxMsg)
+			var trxMsg quorumpb.TrxMsg
+			err = proto.Unmarshal(msg.Data, &trxMsg)
 			if err != nil {
 				glog.Infof(err.Error())
 			} else {

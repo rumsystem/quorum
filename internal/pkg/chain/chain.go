@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	//"fmt"
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 const CONSENSUS uint8 = 1
@@ -18,7 +19,7 @@ const CONSENSUS uint8 = 1
 *
 ****************************/
 
-func handleTrxMsg(trxMsg TrxMsg) error {
+func handleTrxMsg(trxMsg quorumpb.TrxMsg) error {
 
 	verify, err := VerifyTrx(trxMsg)
 	if err != nil {
@@ -32,19 +33,19 @@ func handleTrxMsg(trxMsg TrxMsg) error {
 	}
 
 	switch trxMsg.MsgType {
-	case REQ_SIGN:
+	case quorumpb.TrxType_REQ_SIGN:
 		handleReqSign(trxMsg)
-	case REQ_SIGN_RESP:
+	case quorumpb.TrxType_REQ_SIGN_RESP:
 		handleReqSignResp(trxMsg)
-	case ADD_NEW_BLOCK:
+	case quorumpb.TrxType_ADD_NEW_BLOCK:
 		handleNewBlock(trxMsg)
-	case ADD_NEW_BLOCK_RESP:
+	case quorumpb.TrxType_ADD_NEW_BLOCK_RESP:
 		handleNewBlockResp(trxMsg)
-	case REQ_NEXT_BLOCK:
+	case quorumpb.TrxType_REQ_NEXT_BLOCK:
 		handleNextBlock(trxMsg)
-	case REQ_NEXT_BLOCK_RESP:
+	case quorumpb.TrxType_REQ_NEXT_BLOCK_RESP:
 		handleNextBlockResp(trxMsg)
-	case PEER_ANNOUNCE:
+	case quorumpb.TrxType_PEER_ANNOUNCE:
 		handlePeerAnnounce(trxMsg)
 	default:
 		err := errors.New("unsupported msg type")
@@ -54,7 +55,7 @@ func handleTrxMsg(trxMsg TrxMsg) error {
 	return nil
 }
 
-func handleReqSign(trxMsg TrxMsg) error {
+func handleReqSign(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSign called")
 
 	var reqSign ReqSign
@@ -63,19 +64,20 @@ func handleReqSign(trxMsg TrxMsg) error {
 	}
 
 	if lucky := Lucky(); lucky {
-		var trxMsg2 TrxMsg
+		glog.Infof("sign it and send ReqSignResp msg")
+		var trxMsg2 quorumpb.TrxMsg
 		trxMsg2, _ = CreateTrxMsgReqSignResp(trxMsg, reqSign)
-		if jsonBytes, err := json.Marshal(trxMsg2); err != nil {
+		if pbBytes, err := proto.Marshal(&trxMsg2); err != nil {
 			return err
 		} else {
-			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
+			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 		}
 	}
 
 	return nil
 }
 
-func handleReqSignResp(trxMsg TrxMsg) error {
+func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSignResp called")
 
 	var reqSignResp ReqSignResp
@@ -124,8 +126,8 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 
 		//Create NEW_BLOCK msg and send it out
 		newBlockTrxMsg, _ := CreateTrxNewBlock(newBlock)
-		jsonBytes, _ := json.Marshal(newBlockTrxMsg)
-		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
+		pbBytes, _ := proto.Marshal(&newBlockTrxMsg)
+		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 
 		//Give new block to group
 		err = groupItem.AddBlock(newBlock)
@@ -140,7 +142,7 @@ func handleReqSignResp(trxMsg TrxMsg) error {
 	return nil
 }
 
-func handleNewBlock(trxMsg TrxMsg) error {
+func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNewBlock called")
 
 	var newBlock NewBlock
@@ -175,14 +177,14 @@ func handleNewBlock(trxMsg TrxMsg) error {
 	if sendResp {
 		glog.Infof("send Add_NEW_BLOCK_RESP")
 		newBlockRespMsg, _ := CreateTrxNewBlockResp(block)
-		jsonBytes, _ := json.Marshal(newBlockRespMsg)
-		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
+		pbBytes, _ := proto.Marshal(&newBlockRespMsg)
+		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 	}
 
 	return nil
 }
 
-func handleNewBlockResp(trxMsg TrxMsg) error {
+func handleNewBlockResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNewBlockResp called")
 
 	//know block is saved
@@ -191,7 +193,7 @@ func handleNewBlockResp(trxMsg TrxMsg) error {
 	return nil
 }
 
-func handleNextBlock(trxMsg TrxMsg) error {
+func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlock called...")
 
 	var reqNextBlock ReqNextBlock
@@ -206,8 +208,8 @@ func handleNextBlock(trxMsg TrxMsg) error {
 			var emptyBlock Block
 			emptyBlock.GroupId = trxMsg.GroupId
 			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
-			jsonBytes, _ := json.Marshal(nextBlockRespMsg)
-			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
+			pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
+			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 			return nil
 		}
 
@@ -228,8 +230,8 @@ func handleNextBlock(trxMsg TrxMsg) error {
 					if block.PrevBlockId == reqNextBlock.BlockId {
 						glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
 						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_IN_TRX, trxMsg.Sender, block)
-						jsonBytes, _ := json.Marshal(nextBlockRespMsg)
-						GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, jsonBytes)
+						pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
+						GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 					}
 					return nil
 				})
@@ -249,7 +251,7 @@ func handleNextBlock(trxMsg TrxMsg) error {
 	return nil
 }
 
-func handleNextBlockResp(trxMsg TrxMsg) error {
+func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlockResp called")
 
 	var reqNextBlockResp ReqNextBlockResp
@@ -290,7 +292,7 @@ func handleNextBlockResp(trxMsg TrxMsg) error {
 	return nil
 }
 
-func handlePeerAnnounce(trxMsg TrxMsg) error {
+func handlePeerAnnounce(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handlePeerAnnounce called")
 	return nil
 }
