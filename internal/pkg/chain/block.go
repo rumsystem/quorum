@@ -9,7 +9,6 @@ import (
 
 	"time"
 
-	"github.com/golang/glog"
 	guuid "github.com/google/uuid"
 )
 
@@ -32,31 +31,19 @@ func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
 	blockWithoutHash := newBlock
 	blockWithoutHash.Hash = ""
 
-	/*
-		fmt.Printf("%+v\n", blockWithoutHash)
-
-		glog.Infof("Hash 1: %s", CalculateHash(blockWithoutHash))
-		glog.Infof("Hash 2：%s", newBlock.Hash)
-		glog.Infof("Hash 3: %s", oldBlock.Hash)
-	*/
-
 	if CalculateHash(blockWithoutHash) != newBlock.Hash {
-		glog.Infof("1")
 		return false, nil
 	}
 
 	if newBlock.PreviousHash != oldBlock.Hash {
-		glog.Infof("2")
 		return false, nil
 	}
 
 	if newBlock.BlockNum != oldBlock.BlockNum+1 {
-		glog.Infof("3")
 		return false, nil
 	}
 
 	if newBlock.PrevBlockId != oldBlock.Cid {
-		glog.Infof("4")
 		return false, nil
 	}
 

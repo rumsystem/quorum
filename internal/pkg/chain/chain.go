@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
@@ -97,9 +98,11 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 
 	//hash := string(reqSignResp.Hash)
 	//wsign := string(reqSignResp.WitnessSign)
-	//consensusString := "witness:=" + reqSignResp.Witness + "?hash:=" + hash + "?wsign:=" + wsign
 
-	consensusString := "test"
+	hash := fmt.Sprintf("%x", reqSignResp.Hash)
+	wsign := fmt.Sprintf("%x", reqSignResp.WitnessSign)
+	consensusString := "witness:=" + reqSignResp.Witness + "?hash:=" + hash + "?wsign:=" + wsign
+
 	trx.Consensus = append(trx.Consensus, consensusString)
 
 	if err := GetDbMgr().UpdTrxCons(trx, consensusString); err != nil {
