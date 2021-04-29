@@ -3,9 +3,10 @@ package chain
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"time"
+
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"time"
 
 	//"github.com/golang/glog"
 	guuid "github.com/google/uuid"

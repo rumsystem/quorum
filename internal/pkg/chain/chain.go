@@ -97,10 +97,9 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 
 	//hash := string(reqSignResp.Hash)
 	//wsign := string(reqSignResp.WitnessSign)
-
-	consensusString := "test"
 	//consensusString := "witness:=" + reqSignResp.Witness + "?hash:=" + hash + "?wsign:=" + wsign
 
+	consensusString := "test"
 	trx.Consensus = append(trx.Consensus, consensusString)
 
 	if err := GetDbMgr().UpdTrxCons(trx, consensusString); err != nil {
