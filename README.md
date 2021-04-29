@@ -97,8 +97,8 @@
 
     - 节点A post to group
         执行：
+            curl -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"846011a8-1c58-4a35-b70f-83195c3bc2e8","type":"Group"}}' http://127.0.0.1:8002/api/v1/group/content
 
-            curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8", "content":"some test contents"}' http://127.0.0.1:8002/api/v1/group/content
 
             参数： 
                 group_id : 组id
@@ -119,7 +119,7 @@
             group_id : 组id
 
         返回值:
-            [{"TrxId":"f73c94a0-2bb9-4d19-9efc-c9f1f7e87b1d","Publisher":"Qmbt56A7gVueThDVxfvLstxSR7BhE6M8doqxZXKWGBEbxT","Content":"some test contents","TimeStamp":1619076546856132197}]
+            [{"TrxId":"f73c94a0-2bb9-4d19-9efc-c9f1f7e87b1d","Publisher":"Qmbt56A7gVueThDVxfvLstxSR7BhE6M8doqxZXKWGBEbxT","Content":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"TimeStamp":1619656412253363059}]
 
             参数："时间戳" ："内容"
 	            TrxId     string    //trx_id
