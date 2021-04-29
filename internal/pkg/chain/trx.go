@@ -25,12 +25,6 @@ const (
 	BLOCK_ON_TOP ReqBlock = 1 //top block, no new block, block in trx is empty
 )
 
-type Trx struct {
-	Msg       quorumpb.TrxMsg
-	Data      []byte
-	Consensus []string
-}
-
 type ReqSign struct {
 	Datahash   []byte
 	Expiration string
@@ -43,7 +37,6 @@ type ReqSignResp struct {
 	Hash        []byte
 	WitnessSign []byte
 }
-
 type NewBlock struct {
 	Producer string
 	BlockId  string
@@ -114,7 +107,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign ReqSign) (quorump
 	respSign.ReqTrxId = inTrxMsg.TrxId
 	respSign.Requester = inTrxMsg.Sender
 	respSign.Witness = GetChainCtx().PeerId.Pretty()
-	bytes, err := json.Marshal(trxMsg)
+	bytes, err := proto.Marshal(&inTrxMsg)
 	hashed := hash(bytes)
 	respSign.Hash = hashed
 	sign, err := signTrx(inTrxMsg)

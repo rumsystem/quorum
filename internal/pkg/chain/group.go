@@ -166,7 +166,7 @@ func (grp *Group) LeaveGrp() error {
 
 //Add Content to Group
 func (grp *Group) Post(content *quorumpb.Object) (string, error) {
-	var trx Trx
+	var trx quorumpb.Trx
 	var trxMsg quorumpb.TrxMsg
 
 	encodedcontent, err := proto.Marshal(content)
@@ -175,7 +175,7 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	}
 
 	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, encodedcontent)
-	trx.Msg = trxMsg
+	trx.Msg = &trxMsg
 	trx.Data = encodedcontent
 	var cons []string
 	trx.Consensus = cons

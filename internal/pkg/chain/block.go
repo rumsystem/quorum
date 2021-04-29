@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
 	//"fmt"
 
@@ -22,7 +23,7 @@ type Block struct {
 	PreviousHash string
 	Producer     string
 	Signature    string
-	Trxs         []Trx
+	Trxs         []quorumpb.Trx
 }
 
 func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
@@ -50,7 +51,7 @@ func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
 	return true, nil
 }
 
-func CreateBlock(oldBlock Block, trx Trx) Block {
+func CreateBlock(oldBlock Block, trx quorumpb.Trx) Block {
 	var newBlock Block
 	cid := guuid.New()
 

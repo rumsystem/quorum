@@ -23,3 +23,9 @@ message TrxMsg {
   string Pubkey = 8;
   bytes Sign = 9;
 }
+
+message Trx {
+	TrxMsg Msg = 1;
+	bytes Data = 2;
+    repeated string Consensus = 3;
+}

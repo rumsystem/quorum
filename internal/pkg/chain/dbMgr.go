@@ -11,7 +11,9 @@ import (
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/oklog/ulid"
+	"google.golang.org/protobuf/proto"
 )
 
 const TRX_PREFIX string = "trx_"
@@ -44,10 +46,10 @@ func (dbMgr *DbMgr) CloseDb() {
 }
 
 //save trx
-func (dbMgr *DbMgr) AddTrx(trx Trx) error {
+func (dbMgr *DbMgr) AddTrx(trx quorumpb.Trx) error {
 	key := TRX_PREFIX + trx.Msg.TrxId
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(trx)
+		bytes, err := proto.Marshal(&trx)
 		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
@@ -93,13 +95,13 @@ func (dbMgr *DbMgr) RmTrx(trxId string) error {
 }
 
 //update Trx
-func (dbMgr *DbMgr) UpdTrxCons(trx Trx, consensusString string) error {
+func (dbMgr *DbMgr) UpdTrxCons(trx quorumpb.Trx, consensusString string) error {
 	return dbMgr.AddTrx(trx)
 }
 
 //get trx
-func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
-	var trx Trx
+func (dbMgr *DbMgr) GetTrx(trxId string) (quorumpb.Trx, error) {
+	var trx quorumpb.Trx
 	key := TRX_PREFIX + trxId
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
@@ -114,7 +116,7 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
 			return err
 		}
 
-		err = json.Unmarshal(trxBytes, &trx)
+		err = proto.Unmarshal(trxBytes, &trx)
 
 		if err != nil {
 			return err
