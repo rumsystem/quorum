@@ -12,6 +12,12 @@ enum TrxType {
   PEER_ANNOUNCE       = 6; // announce I am online
 }
 
+
+enum ReqBlock {
+	BLOCK_IN_TRX = 0; //block data in trx
+	BLOCK_ON_TOP = 1; //top block, no new block, block in trx is empty
+}
+
 message TrxMsg {
   string TrxId = 1;
   string GroupId = 2;
@@ -35,11 +41,19 @@ message ReqSign {
     string Expiration = 2;
 }
 
-
 message ReqSignResp {
     string ReqTrxId = 1;
     string Requester = 2;
     string Witness = 3;
     bytes  Hash = 4;
     bytes WitnessSign = 5;
+}
+
+
+message ReqNextBlockResp {
+    string Provider  = 1;
+    string Requester = 2;
+    ReqBlock Response = 3;
+    string BlockId = 4;
+    bytes  Block = 5;
 }

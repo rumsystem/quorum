@@ -18,13 +18,6 @@ const Hours = 1
 const Mins = 0
 const Sec = 0
 
-type ReqBlock int8
-
-const (
-	BLOCK_IN_TRX ReqBlock = 0 //block data in trx
-	BLOCK_ON_TOP ReqBlock = 1 //top block, no new block, block in trx is empty
-)
-
 type NewBlock struct {
 	Producer string
 	BlockId  string
@@ -39,14 +32,6 @@ type NewBlockResp struct {
 
 type ReqNextBlock struct {
 	BlockId string //block id
-}
-
-type ReqNextBlockResp struct {
-	Provider  string   //who provide the block
-	Requester string   //who request the block
-	Response  ReqBlock //response
-	BlockId   string
-	Block     []byte //the whole block data
 }
 
 func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
@@ -105,7 +90,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign)
 	respSign.WitnessSign = sign
 
 	trxId := guuid.New()
-	payload, _ := proto.Marshal(&respSign)
+	payload, _ := proto.Marshal(&respSign) //TODO: catch proto.Marshal err?
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN_RESP
@@ -239,9 +224,9 @@ func CreateTrxReqNextBlock(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxReqNextBlockResp(resp ReqBlock, requester string, block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxReqNextBlockResp(resp quorumpb.ReqBlock, requester string, block Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var respMsg ReqNextBlockResp
+	var respMsg quorumpb.ReqNextBlockResp
 
 	respMsg.Provider = GetChainCtx().PeerId.Pretty()
 	respMsg.Requester = requester
@@ -254,7 +239,7 @@ func CreateTrxReqNextBlockResp(resp ReqBlock, requester string, block Block) (qu
 
 	respMsg.Block = payload
 	trxId := guuid.New()
-	payloadmsg, err := json.Marshal(respMsg)
+	payloadmsg, err := proto.Marshal(&respMsg)
 	if err != nil {
 		return trxMsg, err
 	}

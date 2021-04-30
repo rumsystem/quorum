@@ -209,7 +209,7 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 			glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
 			var emptyBlock Block
 			emptyBlock.GroupId = trxMsg.GroupId
-			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
+			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
 			pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
 			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 			return nil
@@ -231,7 +231,7 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 
 					if block.PrevBlockId == reqNextBlock.BlockId {
 						glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
-						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_IN_TRX, trxMsg.Sender, block)
+						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_IN_TRX, trxMsg.Sender, block)
 						pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
 						GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 					}
@@ -256,8 +256,8 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlockResp called")
 
-	var reqNextBlockResp ReqNextBlockResp
-	if err := json.Unmarshal(trxMsg.Data, &reqNextBlockResp); err != nil {
+	var reqNextBlockResp quorumpb.ReqNextBlockResp
+	if err := proto.Unmarshal(trxMsg.Data, &reqNextBlockResp); err != nil {
 		return err
 	}
 
@@ -267,10 +267,10 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 			glog.Infof("Not asked by me, ignore")
 		} else if group.Status == GROUP_CLEAN {
 			glog.Infof("Group is clean, ignore")
-		} else if reqNextBlockResp.Response == BLOCK_ON_TOP {
+		} else if reqNextBlockResp.Response == quorumpb.ReqBlock_BLOCK_ON_TOP {
 			glog.Infof("On Group Top, Set Group Status to GROUP_READY")
 			group.StopSync()
-		} else if reqNextBlockResp.Response == BLOCK_IN_TRX {
+		} else if reqNextBlockResp.Response == quorumpb.ReqBlock_BLOCK_IN_TRX {
 			glog.Infof("new block incoming")
 			var newBlock Block
 			if err := json.Unmarshal(reqNextBlockResp.Block, &newBlock); err != nil {
@@ -285,6 +285,8 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 
 				//update group block seq map
 				group.AddBlock(newBlock)
+			} else {
+				glog.Infof("block not vaild, skip it")
 			}
 		}
 	} else {

@@ -86,6 +86,52 @@ func (TrxType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
+type ReqBlock int32
+
+const (
+	ReqBlock_BLOCK_IN_TRX ReqBlock = 0 //block data in trx
+	ReqBlock_BLOCK_ON_TOP ReqBlock = 1 //top block, no new block, block in trx is empty
+)
+
+// Enum value maps for ReqBlock.
+var (
+	ReqBlock_name = map[int32]string{
+		0: "BLOCK_IN_TRX",
+		1: "BLOCK_ON_TOP",
+	}
+	ReqBlock_value = map[string]int32{
+		"BLOCK_IN_TRX": 0,
+		"BLOCK_ON_TOP": 1,
+	}
+)
+
+func (x ReqBlock) Enum() *ReqBlock {
+	p := new(ReqBlock)
+	*p = x
+	return p
+}
+
+func (x ReqBlock) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReqBlock) Descriptor() protoreflect.EnumDescriptor {
+	return file_chain_proto_enumTypes[1].Descriptor()
+}
+
+func (ReqBlock) Type() protoreflect.EnumType {
+	return &file_chain_proto_enumTypes[1]
+}
+
+func (x ReqBlock) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReqBlock.Descriptor instead.
+func (ReqBlock) EnumDescriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{1}
+}
+
 type TrxMsg struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -394,6 +440,85 @@ func (x *ReqSignResp) GetWitnessSign() []byte {
 	return nil
 }
 
+type ReqNextBlockResp struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Provider  string   `protobuf:"bytes,1,opt,name=Provider,proto3" json:"Provider,omitempty"`
+	Requester string   `protobuf:"bytes,2,opt,name=Requester,proto3" json:"Requester,omitempty"`
+	Response  ReqBlock `protobuf:"varint,3,opt,name=Response,proto3,enum=quorum.pb.ReqBlock" json:"Response,omitempty"`
+	BlockId   string   `protobuf:"bytes,4,opt,name=BlockId,proto3" json:"BlockId,omitempty"`
+	Block     []byte   `protobuf:"bytes,5,opt,name=Block,proto3" json:"Block,omitempty"`
+}
+
+func (x *ReqNextBlockResp) Reset() {
+	*x = ReqNextBlockResp{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_chain_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ReqNextBlockResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReqNextBlockResp) ProtoMessage() {}
+
+func (x *ReqNextBlockResp) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReqNextBlockResp.ProtoReflect.Descriptor instead.
+func (*ReqNextBlockResp) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ReqNextBlockResp) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ReqNextBlockResp) GetRequester() string {
+	if x != nil {
+		return x.Requester
+	}
+	return ""
+}
+
+func (x *ReqNextBlockResp) GetResponse() ReqBlock {
+	if x != nil {
+		return x.Response
+	}
+	return ReqBlock_BLOCK_IN_TRX
+}
+
+func (x *ReqNextBlockResp) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *ReqNextBlockResp) GetBlock() []byte {
+	if x != nil {
+		return x.Block
+	}
+	return nil
+}
+
 var File_chain_proto protoreflect.FileDescriptor
 
 var file_chain_proto_rawDesc = []byte{
@@ -434,6 +559,17 @@ var file_chain_proto_rawDesc = []byte{
 	0x73, 0x68, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x48, 0x61, 0x73, 0x68, 0x12, 0x20,
 	0x0a, 0x0b, 0x57, 0x69, 0x74, 0x6e, 0x65, 0x73, 0x73, 0x53, 0x69, 0x67, 0x6e, 0x18, 0x05, 0x20,
 	0x01, 0x28, 0x0c, 0x52, 0x0b, 0x57, 0x69, 0x74, 0x6e, 0x65, 0x73, 0x73, 0x53, 0x69, 0x67, 0x6e,
+	0x22, 0xad, 0x01, 0x0a, 0x10, 0x52, 0x65, 0x71, 0x4e, 0x65, 0x78, 0x74, 0x42, 0x6c, 0x6f, 0x63,
+	0x6b, 0x52, 0x65, 0x73, 0x70, 0x12, 0x1a, 0x0a, 0x08, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65,
+	0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65,
+	0x72, 0x12, 0x1c, 0x0a, 0x09, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x72, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x72, 0x12,
+	0x2f, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x0e, 0x32, 0x13, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65,
+	0x71, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x18, 0x0a, 0x07, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x49, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x07, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x42, 0x6c,
+	0x6f, 0x63, 0x6b, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x42, 0x6c, 0x6f, 0x63, 0x6b,
 	0x2a, 0x95, 0x01, 0x0a, 0x07, 0x54, 0x72, 0x78, 0x54, 0x79, 0x70, 0x65, 0x12, 0x0c, 0x0a, 0x08,
 	0x52, 0x45, 0x51, 0x5f, 0x53, 0x49, 0x47, 0x4e, 0x10, 0x00, 0x12, 0x11, 0x0a, 0x0d, 0x52, 0x45,
 	0x51, 0x5f, 0x53, 0x49, 0x47, 0x4e, 0x5f, 0x52, 0x45, 0x53, 0x50, 0x10, 0x01, 0x12, 0x11, 0x0a,
@@ -443,7 +579,10 @@ var file_chain_proto_rawDesc = []byte{
 	0x4e, 0x45, 0x58, 0x54, 0x5f, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x10, 0x04, 0x12, 0x17, 0x0a, 0x13,
 	0x52, 0x45, 0x51, 0x5f, 0x4e, 0x45, 0x58, 0x54, 0x5f, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f, 0x52,
 	0x45, 0x53, 0x50, 0x10, 0x05, 0x12, 0x11, 0x0a, 0x0d, 0x50, 0x45, 0x45, 0x52, 0x5f, 0x41, 0x4e,
-	0x4e, 0x4f, 0x55, 0x4e, 0x43, 0x45, 0x10, 0x06, 0x42, 0x2a, 0x5a, 0x28, 0x67, 0x69, 0x74, 0x68,
+	0x4e, 0x4f, 0x55, 0x4e, 0x43, 0x45, 0x10, 0x06, 0x2a, 0x2e, 0x0a, 0x08, 0x52, 0x65, 0x71, 0x42,
+	0x6c, 0x6f, 0x63, 0x6b, 0x12, 0x10, 0x0a, 0x0c, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f, 0x49, 0x4e,
+	0x5f, 0x54, 0x52, 0x58, 0x10, 0x00, 0x12, 0x10, 0x0a, 0x0c, 0x42, 0x4c, 0x4f, 0x43, 0x4b, 0x5f,
+	0x4f, 0x4e, 0x5f, 0x54, 0x4f, 0x50, 0x10, 0x01, 0x42, 0x2a, 0x5a, 0x28, 0x67, 0x69, 0x74, 0x68,
 	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x75, 0x6f, 0x2d, 0x6a, 0x75, 0x2f, 0x71, 0x75,
 	0x6f, 0x72, 0x75, 0x6d, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x70, 0x6b,
 	0x67, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
@@ -461,23 +600,26 @@ func file_chain_proto_rawDescGZIP() []byte {
 	return file_chain_proto_rawDescData
 }
 
-var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_chain_proto_goTypes = []interface{}{
-	(TrxType)(0),        // 0: quorum.pb.TrxType
-	(*TrxMsg)(nil),      // 1: quorum.pb.TrxMsg
-	(*Trx)(nil),         // 2: quorum.pb.Trx
-	(*ReqSign)(nil),     // 3: quorum.pb.ReqSign
-	(*ReqSignResp)(nil), // 4: quorum.pb.ReqSignResp
+	(TrxType)(0),             // 0: quorum.pb.TrxType
+	(ReqBlock)(0),            // 1: quorum.pb.ReqBlock
+	(*TrxMsg)(nil),           // 2: quorum.pb.TrxMsg
+	(*Trx)(nil),              // 3: quorum.pb.Trx
+	(*ReqSign)(nil),          // 4: quorum.pb.ReqSign
+	(*ReqSignResp)(nil),      // 5: quorum.pb.ReqSignResp
+	(*ReqNextBlockResp)(nil), // 6: quorum.pb.ReqNextBlockResp
 }
 var file_chain_proto_depIdxs = []int32{
 	0, // 0: quorum.pb.TrxMsg.MsgType:type_name -> quorum.pb.TrxType
-	1, // 1: quorum.pb.Trx.Msg:type_name -> quorum.pb.TrxMsg
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 1: quorum.pb.Trx.Msg:type_name -> quorum.pb.TrxMsg
+	1, // 2: quorum.pb.ReqNextBlockResp.Response:type_name -> quorum.pb.ReqBlock
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_chain_proto_init() }
@@ -534,14 +676,26 @@ func file_chain_proto_init() {
 				return nil
 			}
 		}
+		file_chain_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ReqNextBlockResp); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_chain_proto_rawDesc,
-			NumEnums:      1,
-			NumMessages:   4,
+			NumEnums:      2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
