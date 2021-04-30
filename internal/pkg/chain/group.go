@@ -19,13 +19,6 @@ const (
 	GROUP_DIRTY = 1
 )
 
-type GroupContentItem struct {
-	TrxId     string
-	Publisher string
-	Content   []byte
-	TimeStamp int64
-}
-
 type Group struct {
 	Item          *quorumpb.GroupItem
 	AskNextTicker *time.Ticker
@@ -181,8 +174,8 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 }
 
 //Load groupItem from DB
-func (grp *Group) GetContent(upperCount, lowerCount uint64) ([]*GroupContentItem, error) {
-	var ctnList []*GroupContentItem
+func (grp *Group) GetContent(upperCount, lowerCount uint64) ([]*quorumpb.GroupContentItem, error) {
+	var ctnList []*quorumpb.GroupContentItem
 	return ctnList, nil
 }
 

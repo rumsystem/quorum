@@ -97,3 +97,9 @@ message GroupItem {
 	Block GenesisBlock = 7;
 }
 
+message GroupContentItem {
+	string TrxId = 1;
+	string Publisher = 2;
+	bytes Content = 3;
+	int64 TimeStamp = 4;
+}

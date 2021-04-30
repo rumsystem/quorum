@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -378,14 +377,14 @@ func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
 func (dbMgr *DbMgr) AddGrpCtnt(block quorumpb.Block) error {
 	for _, trx := range block.Trxs {
 
-		var ctnItem *GroupContentItem
-		ctnItem = &GroupContentItem{}
+		var ctnItem *quorumpb.GroupContentItem
+		ctnItem = &quorumpb.GroupContentItem{}
 
 		ctnItem.TrxId = trx.Msg.TrxId
 		ctnItem.Publisher = trx.Msg.Sender
 		ctnItem.Content = trx.Data
 		ctnItem.TimeStamp = trx.Msg.TimeStamp
-		ctnBytes, err := json.Marshal(ctnItem)
+		ctnBytes, err := proto.Marshal(ctnItem)
 		if err != nil {
 			return err
 		}
@@ -408,8 +407,8 @@ func (dbMgr *DbMgr) AddGrpCtnt(block quorumpb.Block) error {
 	return nil
 }
 
-func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*GroupContentItem, error) {
-	var ctnList []*GroupContentItem
+func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.GroupContentItem, error) {
+	var ctnList []*quorumpb.GroupContentItem
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
 		glog.Infof("Get Key Prefix %s", key)
@@ -421,8 +420,8 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*GroupContentItem, error) {
 			glog.Infof("Append")
 			item := it.Item()
 			err := item.Value(func(v []byte) error {
-				var contentitem *GroupContentItem
-				ctnerr := json.Unmarshal(v, &contentitem)
+				contentitem := &quorumpb.GroupContentItem{}
+				ctnerr := proto.Unmarshal(v, contentitem)
 				if ctnerr == nil {
 					ctnList = append(ctnList, contentitem)
 				}
