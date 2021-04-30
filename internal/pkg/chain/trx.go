@@ -39,7 +39,7 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 		time.Second*time.Duration(Sec))
 
 	reqSign.Expiration = timein.String()
-	reqSign.Datahash = hash(data)
+	reqSign.Datahash = Hash(data)
 
 	payload, _ := proto.Marshal(&reqSign)
 	trxMsg.Data = payload
@@ -62,8 +62,8 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign)
 	respSign.ReqTrxId = inTrxMsg.TrxId
 	respSign.Requester = inTrxMsg.Sender
 	respSign.Witness = GetChainCtx().PeerId.Pretty()
-	bytes, err := proto.Marshal(&inTrxMsg)
-	hashed := hash(bytes)
+	bytes, err := proto.Marshal(&trxMsg)
+	hashed := Hash(bytes)
 	respSign.Hash = hashed
 	sign, err := signTrx(inTrxMsg)
 	if err != nil {
@@ -256,7 +256,7 @@ func CreateTrxPeerAnnounce() (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func hash(data []byte) []byte {
+func Hash(data []byte) []byte {
 	h := sha256.New()
 	h.Write([]byte(data))
 	hashed := h.Sum(nil)
@@ -265,7 +265,7 @@ func hash(data []byte) []byte {
 
 func signTrx(trxMsg quorumpb.TrxMsg) ([]byte, error) {
 	bytes, err := proto.Marshal(&trxMsg)
-	hashed := hash(bytes)
+	hashed := Hash(bytes)
 	signature, err := GetChainCtx().Privatekey.Sign(hashed)
 	return signature, err
 }
@@ -278,7 +278,7 @@ func VerifyTrx(trxMsg quorumpb.TrxMsg) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	hashed := hash(bytes)
+	hashed := Hash(bytes)
 
 	//create pubkey
 	serializedpub, err := p2pcrypto.ConfigDecodeKey(trxMsg.Pubkey)
