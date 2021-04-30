@@ -64,7 +64,7 @@ func (grp *Group) AddBlock(block quorumpb.Block) error {
 			return err
 		}
 
-		valid, _ := IsBlockValid(block, topBlock)
+		valid, _ := IsBlockValid(&block, &topBlock)
 		if !valid {
 			err := errors.New("Invalid block")
 			return err

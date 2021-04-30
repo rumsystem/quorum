@@ -277,7 +277,7 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 			}
 
 			topBlock, _ := group.GetTopBlock()
-			if valid, _ := IsBlockValid(newBlock, topBlock); valid {
+			if valid, _ := IsBlockValid(&newBlock, &topBlock); valid {
 				glog.Infof("block is valid, add it")
 				//add block to db
 				GetDbMgr().AddBlock(&newBlock)

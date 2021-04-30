@@ -13,10 +13,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func IsBlockValid(newBlock, oldBlock quorumpb.Block) (bool, error) {
+func IsBlockValid(newBlock, oldBlock *quorumpb.Block) (bool, error) {
 
+	blockWithoutHash := &quorumpb.Block{}
+	//deep copy newBlock by the protobuf. quorumpb.Block is a protobuf defined struct.
+	clonedblockbuff, err := proto.Marshal(newBlock)
+	if err != nil {
+		return false, err
+	}
+	err = proto.Unmarshal(clonedblockbuff, blockWithoutHash)
+	if err != nil {
+		return false, err
+	}
 	//set hash to ""
-	blockWithoutHash := newBlock
 	blockWithoutHash.Hash = ""
 
 	if CalculateHash(blockWithoutHash) != newBlock.Hash {
@@ -53,7 +62,7 @@ func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) quorumpb.Block {
 	newBlock.Signature = string("Signature from producer")
 	newBlock.Hash = ""
 
-	hash := CalculateHash(newBlock)
+	hash := CalculateHash(&newBlock)
 	newBlock.Hash = hash
 	return newBlock
 }
@@ -74,14 +83,14 @@ func CreateGenesisBlock(groupId string) *quorumpb.Block {
 	genesisBlock.Signature = string("Signature from producer")
 
 	//calculate hash
-	hash := CalculateHash(genesisBlock)
+	hash := CalculateHash(&genesisBlock)
 	genesisBlock.Hash = hash
 
 	return &genesisBlock
 }
 
-func CalculateHash(block quorumpb.Block) string {
-	bytes, err := proto.Marshal(&block)
+func CalculateHash(block *quorumpb.Block) string {
+	bytes, err := proto.Marshal(block)
 
 	if err != nil {
 		return ""
