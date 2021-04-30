@@ -153,7 +153,7 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	}
 
 	var block quorumpb.Block
-	if err := json.Unmarshal(newBlock.Data, &block); err != nil {
+	if err := proto.Unmarshal(newBlock.Data, &block); err != nil {
 		return err
 	}
 
@@ -225,7 +225,7 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 				item := it.Item()
 				err := item.Value(func(v []byte) error {
 					var block quorumpb.Block
-					if err := json.Unmarshal(v, &block); err != nil {
+					if err := proto.Unmarshal(v, &block); err != nil {
 						return err
 					}
 
@@ -273,7 +273,7 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 		} else if reqNextBlockResp.Response == quorumpb.ReqBlock_BLOCK_IN_TRX {
 			glog.Infof("new block incoming")
 			var newBlock quorumpb.Block
-			if err := json.Unmarshal(reqNextBlockResp.Block, &newBlock); err != nil {
+			if err := proto.Unmarshal(reqNextBlockResp.Block, &newBlock); err != nil {
 				return err
 			}
 

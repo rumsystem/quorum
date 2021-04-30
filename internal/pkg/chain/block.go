@@ -3,7 +3,7 @@ package chain
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	//"encoding/json"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
 	//"fmt"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 )
 
 func IsBlockValid(newBlock, oldBlock quorumpb.Block) (bool, error) {
@@ -81,7 +82,7 @@ func CreateGenesisBlock(groupId string) quorumpb.Block {
 }
 
 func CalculateHash(block quorumpb.Block) string {
-	bytes, err := json.Marshal(&block)
+	bytes, err := proto.Marshal(&block)
 
 	if err != nil {
 		return ""

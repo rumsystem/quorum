@@ -125,7 +125,7 @@ func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.BlockId = block.Cid
 
-	payloadblock, _ := json.Marshal(block)
+	payloadblock, _ := proto.Marshal(&block)
 	newBlock.Data = payloadblock
 
 	trxId := guuid.New()
@@ -232,7 +232,7 @@ func CreateTrxReqNextBlockResp(resp quorumpb.ReqBlock, requester string, block q
 	respMsg.Requester = requester
 	respMsg.Response = resp
 	respMsg.BlockId = block.Cid
-	payload, err := json.Marshal(block)
+	payload, err := proto.Marshal(&block)
 	if err != nil {
 		return trxMsg, err
 	}

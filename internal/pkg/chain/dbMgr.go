@@ -134,7 +134,7 @@ func (dbMgr *DbMgr) AddBlock(block quorumpb.Block) error {
 	key := BLK_PREFIX + block.Cid
 	//AddBlock to blockDb
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(block)
+		bytes, err := proto.Marshal(&block)
 		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
@@ -177,7 +177,7 @@ func (dbMgr *DbMgr) GetBlock(blockId string) (quorumpb.Block, error) {
 			return err
 		}
 
-		err = json.Unmarshal(blockBytes, &block)
+		err = proto.Unmarshal(blockBytes, &block)
 		return err
 	})
 
