@@ -337,7 +337,7 @@ func (dbMgr *DbMgr) GetGroupsString() ([]string, error) {
 	return groupItemList, err
 }
 
-func (dbMgr *DbMgr) UpdBlkSeq(block quorumpb.Block) error {
+func (dbMgr *DbMgr) UpdBlkSeq(block *quorumpb.Block) error {
 	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + block.GroupId + "_" + fmt.Sprint(block.BlockNum)
 
 	//update BlockSeqDb
@@ -374,7 +374,7 @@ func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
 	return blockId, err
 }
 
-func (dbMgr *DbMgr) AddGrpCtnt(block quorumpb.Block) error {
+func (dbMgr *DbMgr) AddGrpCtnt(block *quorumpb.Block) error {
 	for _, trx := range block.Trxs {
 
 		var ctnItem *quorumpb.GroupContentItem

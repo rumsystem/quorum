@@ -47,7 +47,7 @@ func IsBlockValid(newBlock, oldBlock *quorumpb.Block) (bool, error) {
 	return true, nil
 }
 
-func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) quorumpb.Block {
+func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) *quorumpb.Block {
 	var newBlock quorumpb.Block
 	cid := guuid.New()
 
@@ -64,7 +64,7 @@ func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) quorumpb.Block {
 
 	hash := CalculateHash(&newBlock)
 	newBlock.Hash = hash
-	return newBlock
+	return &newBlock
 }
 
 func CreateGenesisBlock(groupId string) *quorumpb.Block {

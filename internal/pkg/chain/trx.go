@@ -100,14 +100,14 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign)
 	return trxMsg, nil
 }
 
-func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
+func CreateTrxNewBlock(block *quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var newBlock quorumpb.NewBlock
 
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.BlockId = block.Cid
 
-	payloadblock, _ := proto.Marshal(&block)
+	payloadblock, _ := proto.Marshal(block)
 	newBlock.Data = payloadblock
 
 	trxId := guuid.New()

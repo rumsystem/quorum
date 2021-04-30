@@ -159,7 +159,7 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	sendResp := true
 	if group, ok := GetChainCtx().Groups[block.GroupId]; ok {
 		glog.Infof("give new block to group")
-		err := group.AddBlock(block)
+		err := group.AddBlock(&block)
 		if err != nil {
 			sendResp = false
 			glog.Infof(err.Error())
@@ -283,7 +283,7 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 				GetDbMgr().AddBlock(&newBlock)
 
 				//update group block seq map
-				group.AddBlock(newBlock)
+				group.AddBlock(&newBlock)
 			} else {
 				glog.Infof("block not vaild, skip it")
 			}

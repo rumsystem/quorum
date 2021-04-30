@@ -55,7 +55,7 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
-func (grp *Group) AddBlock(block quorumpb.Block) error {
+func (grp *Group) AddBlock(block *quorumpb.Block) error {
 	//verify block
 	if block.BlockNum != 0 {
 		topBlock, err := grp.GetTopBlock()
@@ -64,7 +64,7 @@ func (grp *Group) AddBlock(block quorumpb.Block) error {
 			return err
 		}
 
-		valid, _ := IsBlockValid(&block, &topBlock)
+		valid, _ := IsBlockValid(block, &topBlock)
 		if !valid {
 			err := errors.New("Invalid block")
 			return err
@@ -72,7 +72,7 @@ func (grp *Group) AddBlock(block quorumpb.Block) error {
 	}
 
 	//save block to local db
-	err := GetDbMgr().AddBlock(&block)
+	err := GetDbMgr().AddBlock(block)
 	if err != nil {
 		return err
 	}
