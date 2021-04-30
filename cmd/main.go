@@ -22,9 +22,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p-discovery"
 	"google.golang.org/protobuf/encoding/protojson"
-   discovery "github.com/libp2p/go-libp2p-discovery"
 
 	//msgio "github.com/libp2p/go-msgio"
 	//"google.golang.org/protobuf/proto"

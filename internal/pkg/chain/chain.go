@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
@@ -95,9 +96,12 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 		return err
 	}
 
-	hash := string(reqSignResp.Hash)
-	wsign := string(reqSignResp.WitnessSign)
-	consensusString := "witness?=" + reqSignResp.Witness + "/hash?=" + hash + "/wsign?=" + wsign
+	//hash := string(reqSignResp.Hash)
+	//wsign := string(reqSignResp.WitnessSign)
+
+	hash := fmt.Sprintf("%x", reqSignResp.Hash)
+	wsign := fmt.Sprintf("%x", reqSignResp.WitnessSign)
+	consensusString := "witness:=" + reqSignResp.Witness + "?hash:=" + hash + "?wsign:=" + wsign
 
 	trx.Consensus = append(trx.Consensus, consensusString)
 
@@ -110,7 +114,16 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 		return nil
 	} else if groupItem, OK := GetChainCtx().Groups[trxMsg.GroupId]; OK {
 		//Get topblock and create a new block to include trx
-		topBlock, _ := groupItem.GetTopBlock()
+		topBlock, err := groupItem.GetTopBlock()
+
+		if err != nil {
+			glog.Infof(err.Error())
+			return err
+		}
+
+		glog.Infof("Topblock cid %s", topBlock.Cid)
+		glog.Infof("Topblock groupId %s", topBlock.GroupId)
+
 		newBlock := CreateBlock(topBlock, trx)
 
 		//Create NEW_BLOCK msg and send it out
@@ -119,7 +132,11 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 		GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 
 		//Give new block to group
-		groupItem.AddBlock(newBlock)
+		err = groupItem.AddBlock(newBlock)
+		if err != nil {
+			glog.Infof(err.Error())
+			return err
+		}
 	} else {
 		glog.Infof("Can not find group")
 	}
@@ -143,7 +160,11 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	sendResp := true
 	if group, ok := GetChainCtx().Groups[block.GroupId]; ok {
 		glog.Infof("give new block to group")
-		group.AddBlock(block)
+		err := group.AddBlock(block)
+		if err != nil {
+			sendResp = false
+			glog.Infof(err.Error())
+		}
 	} else {
 		glog.Infof("not my block, I don't have the related group")
 		if Lucky() {

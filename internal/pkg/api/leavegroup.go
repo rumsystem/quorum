@@ -1,17 +1,19 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
 type LeaveGroupParam struct {
-	GroupId string `from:"group_id" json:"group_id" validate:"required`
+	GroupId string `from:"group_id" json:"group_id" validate:"required"`
 }
 
 func (h *Handler) LeaveGroup(c echo.Context) (err error) {
@@ -39,8 +41,20 @@ func (h *Handler) LeaveGroup(c echo.Context) (err error) {
 
 		delete(chain.GetChainCtx().Groups, params.GroupId)
 
+		pubkeybytes, err := p2pcrypto.MarshalPublicKey(chain.GetChainCtx().PublicKey)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		var buffer bytes.Buffer
+		buffer.Write(pubkeybytes)
+		buffer.Write([]byte(params.GroupId))
+		hash := chain.Hash(buffer.Bytes())
+		signature, err := chain.Sign(hash)
+
 		output[GROUP_ID] = params.GroupId
-		output[SIGNATURE] = "Owner Signature"
+		output[SIGNATURE] = fmt.Sprintf("%x", signature)
 		return c.JSON(http.StatusOK, output)
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", params.GroupId)

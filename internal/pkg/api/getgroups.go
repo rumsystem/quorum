@@ -30,6 +30,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 
 		group.OwnerPubKey = value.Item.OwnerPubKey
 		group.GroupId = value.Item.GroupId
+		group.GroupName = value.Item.GroupName
 		group.LastUpdate = value.Item.LastUpdate
 		group.LatestBlockNum = value.Item.LatestBlockNum
 		group.LatestBlockId = value.Item.LatestBlockId

@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"time"
-	//"fmt"
+
+	"fmt"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 
@@ -43,7 +46,7 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	groupid := guuid.New()
 	genesisBlock := chain.CreateGenesisBlock(groupid.String())
 
-	_, err = json.Marshal(genesisBlock)
+	genesisBlockBytes, err := json.Marshal(genesisBlock)
 	if err != nil {
 		output[ERROR_INFO] = "create genesis block failed with msg:" + err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -55,7 +58,13 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	creategrpresult := &CreateGroupResult{GenesisBlock: &genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: "owner_signature"}
+	var buffer bytes.Buffer
+	buffer.Write(genesisBlockBytes)
+	buffer.Write(pubkeybytes)
+	buffer.Write([]byte(groupid.String()))
+	hash := chain.Hash(buffer.Bytes())
+	signature, err := chain.Sign(hash)
+	creategrpresult := &CreateGroupResult{GenesisBlock: &genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: fmt.Sprintf("%x", signature)}
 
 	//create local group
 	var item *chain.GroupItem

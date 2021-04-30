@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+
 	//"fmt"
 
 	"time"
@@ -46,8 +47,6 @@ func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
 		return false, nil
 	}
 
-	//verify all trx signature
-
 	return true, nil
 }
 
@@ -64,6 +63,7 @@ func CreateBlock(oldBlock Block, trx Trx) Block {
 	newBlock.Trxs = append(newBlock.Trxs, trx)
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.Signature = string("Signature from producer")
+	newBlock.Hash = ""
 
 	hash := CalculateHash(newBlock)
 	newBlock.Hash = hash

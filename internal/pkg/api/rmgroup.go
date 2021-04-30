@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/go-playground/validator/v10"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
@@ -54,9 +56,16 @@ func (h *Handler) RmGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
+	var buffer bytes.Buffer
+	buffer.Write(pubkeybytes)
+	buffer.Write([]byte(params.GroupId))
+	hash := chain.Hash(buffer.Bytes())
+	signature, err := chain.Sign(hash)
+
 	output[GROUP_ID] = params.GroupId
 	output[GROUP_OWNER_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	output[SIGNATURE] = "owner_signature"
+
+	output[SIGNATURE] = fmt.Sprintf("%x", signature)
 
 	return c.JSON(http.StatusOK, output)
 }

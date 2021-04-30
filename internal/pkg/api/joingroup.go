@@ -2,6 +2,9 @@ package api
 
 import (
 	//"encoding/json"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,10 +12,11 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 type JoinGroupParam struct {
-	GroupId      string       `from:"group_id" json:"group_id" validate:"required`
+	GroupId      string       `from:"group_id" json:"group_id" validate:"required"`
 	GroupName    string       `from:"group_name" json:"group_name" validate:"required"`
 	OwnerPubKey  string       `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
 	GenesisBlock *chain.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
@@ -33,10 +37,6 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	//var genesisBlock chain.Block
-
-	//b := []byte(params.GenesisBlock)
-	//err = json.Unmarshal(b, &genesisBlock)
 	if err != nil {
 		output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -71,7 +71,27 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 
 	chain.GetChainCtx().Groups[group.Item.GroupId] = group
 
+	genesisBlockBytes, err := json.Marshal(item.GenesisBlock)
+	if err != nil {
+		output[ERROR_INFO] = "marshal genesis block failed with msg:" + err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	pubkeybytes, err := p2pcrypto.MarshalPublicKey(chain.GetChainCtx().PublicKey)
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	var buffer bytes.Buffer
+	buffer.Write(genesisBlockBytes)
+	buffer.Write(pubkeybytes)
+	buffer.Write([]byte(item.GroupId))
+	hash := chain.Hash(buffer.Bytes())
+	signature, err := chain.Sign(hash)
+
 	output[GROUP_ID] = params.GroupId
-	output[SIGNATURE] = "Owner Signature"
+	output[SIGNATURE] = fmt.Sprintf("%x", signature)
+
 	return c.JSON(http.StatusOK, output)
 }

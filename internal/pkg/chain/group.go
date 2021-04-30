@@ -76,8 +76,12 @@ func (grp *Group) StopSync() error {
 func (grp *Group) AddBlock(block Block) error {
 	//verify block
 	if block.BlockNum != 0 {
-		var topBlock Block
-		topBlock, _ = grp.GetTopBlock()
+		topBlock, err := grp.GetTopBlock()
+
+		if err != nil {
+			return err
+		}
+
 		valid, _ := IsBlockValid(block, topBlock)
 		if !valid {
 			err := errors.New("Invalid block")
