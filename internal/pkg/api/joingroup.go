@@ -6,16 +6,17 @@ import (
 	"time"
 
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
 type JoinGroupParam struct {
-	GroupId      string       `from:"group_id" json:"group_id" validate:"required"`
-	GroupName    string       `from:"group_name" json:"group_name" validate:"required"`
-	OwnerPubKey  string       `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
-	GenesisBlock *chain.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
+	GroupId      string          `from:"group_id" json:"group_id" validate:"required"`
+	GroupName    string          `from:"group_name" json:"group_name" validate:"required"`
+	OwnerPubKey  string          `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
+	GenesisBlock *quorumpb.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
 }
 
 func (h *Handler) JoinGroup(c echo.Context) (err error) {

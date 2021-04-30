@@ -129,7 +129,7 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (quorumpb.Trx, error) {
 }
 
 //Save Block
-func (dbMgr *DbMgr) AddBlock(block Block) error {
+func (dbMgr *DbMgr) AddBlock(block quorumpb.Block) error {
 
 	key := BLK_PREFIX + block.Cid
 	//AddBlock to blockDb
@@ -144,7 +144,7 @@ func (dbMgr *DbMgr) AddBlock(block Block) error {
 }
 
 //Rm Block
-func (dbMgr *DbMgr) RmBlock(block Block) error {
+func (dbMgr *DbMgr) RmBlock(block quorumpb.Block) error {
 	key := BLK_PREFIX + block.Cid
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		err := txn.Delete([]byte(key))
@@ -155,14 +155,14 @@ func (dbMgr *DbMgr) RmBlock(block Block) error {
 }
 
 //Upd Block
-func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock Block) error {
+func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock quorumpb.Block) error {
 	err := dbMgr.AddBlock(newBlock)
 	return err
 }
 
 //Get Block
-func (dbMgr *DbMgr) GetBlock(blockId string) (Block, error) {
-	var block Block
+func (dbMgr *DbMgr) GetBlock(blockId string) (quorumpb.Block, error) {
+	var block quorumpb.Block
 	key := BLK_PREFIX + blockId
 
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
@@ -338,7 +338,7 @@ func (dbMgr *DbMgr) GetGroupsString() ([]string, error) {
 	return groupItemList, err
 }
 
-func (dbMgr *DbMgr) UpdBlkSeq(block Block) error {
+func (dbMgr *DbMgr) UpdBlkSeq(block quorumpb.Block) error {
 	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + block.GroupId + "_" + fmt.Sprint(block.BlockNum)
 
 	//update BlockSeqDb
@@ -375,7 +375,7 @@ func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
 	return blockId, err
 }
 
-func (dbMgr *DbMgr) AddGrpCtnt(block Block) error {
+func (dbMgr *DbMgr) AddGrpCtnt(block quorumpb.Block) error {
 	for _, trx := range block.Trxs {
 
 		var ctnItem *GroupContentItem

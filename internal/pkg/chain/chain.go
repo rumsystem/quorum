@@ -152,7 +152,7 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 		return err
 	}
 
-	var block Block
+	var block quorumpb.Block
 	if err := json.Unmarshal(newBlock.Data, &block); err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 	if group, ok := GetChainCtx().Groups[trxMsg.GroupId]; ok {
 		if group.Item.LatestBlockId == reqNextBlock.BlockId {
 			glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
-			var emptyBlock Block
+			var emptyBlock quorumpb.Block
 			emptyBlock.GroupId = trxMsg.GroupId
 			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
 			pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
@@ -224,7 +224,7 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 			for it.Seek([]byte(BLK_PREFIX)); it.ValidForPrefix([]byte(BLK_PREFIX)); it.Next() {
 				item := it.Item()
 				err := item.Value(func(v []byte) error {
-					var block Block
+					var block quorumpb.Block
 					if err := json.Unmarshal(v, &block); err != nil {
 						return err
 					}
@@ -272,7 +272,7 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 			group.StopSync()
 		} else if reqNextBlockResp.Response == quorumpb.ReqBlock_BLOCK_IN_TRX {
 			glog.Infof("new block incoming")
-			var newBlock Block
+			var newBlock quorumpb.Block
 			if err := json.Unmarshal(reqNextBlockResp.Block, &newBlock); err != nil {
 				return err
 			}

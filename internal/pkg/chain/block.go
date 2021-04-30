@@ -13,20 +13,7 @@ import (
 	guuid "github.com/google/uuid"
 )
 
-type Block struct {
-	Cid          string
-	GroupId      string
-	PrevBlockId  string
-	BlockNum     int64
-	Timestamp    int64
-	Hash         string
-	PreviousHash string
-	Producer     string
-	Signature    string
-	Trxs         []quorumpb.Trx
-}
-
-func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
+func IsBlockValid(newBlock, oldBlock quorumpb.Block) (bool, error) {
 
 	//set hash to ""
 	blockWithoutHash := newBlock
@@ -51,8 +38,8 @@ func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
 	return true, nil
 }
 
-func CreateBlock(oldBlock Block, trx quorumpb.Trx) Block {
-	var newBlock Block
+func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) quorumpb.Block {
+	var newBlock quorumpb.Block
 	cid := guuid.New()
 
 	newBlock.Cid = cid.String()
@@ -61,7 +48,7 @@ func CreateBlock(oldBlock Block, trx quorumpb.Trx) Block {
 	newBlock.PreviousHash = oldBlock.Hash
 	newBlock.BlockNum = oldBlock.BlockNum + 1
 	newBlock.Timestamp = time.Now().UnixNano()
-	newBlock.Trxs = append(newBlock.Trxs, trx)
+	newBlock.Trxs = append(newBlock.Trxs, &trx)
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.Signature = string("Signature from producer")
 	newBlock.Hash = ""
@@ -71,8 +58,8 @@ func CreateBlock(oldBlock Block, trx quorumpb.Trx) Block {
 	return newBlock
 }
 
-func CreateGenesisBlock(groupId string) Block {
-	var genesisBlock Block
+func CreateGenesisBlock(groupId string) quorumpb.Block {
+	var genesisBlock quorumpb.Block
 
 	cid := guuid.New()
 	t := time.Now().UnixNano()
@@ -93,7 +80,7 @@ func CreateGenesisBlock(groupId string) Block {
 	return genesisBlock
 }
 
-func CalculateHash(block Block) string {
+func CalculateHash(block quorumpb.Block) string {
 	bytes, err := json.Marshal(&block)
 
 	if err != nil {

@@ -118,7 +118,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign)
 	return trxMsg, nil
 }
 
-func CreateTrxNewBlock(block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var newBlock NewBlock
 
@@ -155,7 +155,7 @@ func CreateTrxNewBlock(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxNewBlockResp(block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxNewBlockResp(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var newBlockResp NewBlockResp
 
@@ -191,7 +191,7 @@ func CreateTrxNewBlockResp(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxReqNextBlock(block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxReqNextBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var reqNextBlock ReqNextBlock
 
@@ -224,7 +224,7 @@ func CreateTrxReqNextBlock(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxReqNextBlockResp(resp quorumpb.ReqBlock, requester string, block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxReqNextBlockResp(resp quorumpb.ReqBlock, requester string, block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var respMsg quorumpb.ReqNextBlockResp
 

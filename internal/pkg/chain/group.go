@@ -41,7 +41,7 @@ type GroupItem struct {
 	LatestBlockNum int64
 	LatestBlockId  string
 
-	GenesisBlock Block
+	GenesisBlock quorumpb.Block
 }
 
 func (grp *Group) init(item *GroupItem) error {
@@ -73,7 +73,7 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
-func (grp *Group) AddBlock(block Block) error {
+func (grp *Group) AddBlock(block quorumpb.Block) error {
 	//verify block
 	if block.BlockNum != 0 {
 		topBlock, err := grp.GetTopBlock()
@@ -115,7 +115,7 @@ func (grp *Group) AddBlock(block Block) error {
 	return nil
 }
 
-func (grp *Group) GetTopBlock() (Block, error) {
+func (grp *Group) GetTopBlock() (quorumpb.Block, error) {
 	return GetDbMgr().GetBlock(grp.Item.LatestBlockId)
 }
 
