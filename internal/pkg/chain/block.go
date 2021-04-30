@@ -3,7 +3,6 @@ package chain
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	//"encoding/json"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
 	//"fmt"

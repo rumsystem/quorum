@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -147,8 +146,8 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNewBlock called")
 
-	var newBlock NewBlock
-	if err := json.Unmarshal(trxMsg.Data, &newBlock); err != nil {
+	var newBlock quorumpb.NewBlock
+	if err := proto.Unmarshal(trxMsg.Data, &newBlock); err != nil {
 		return err
 	}
 
@@ -198,8 +197,8 @@ func handleNewBlockResp(trxMsg quorumpb.TrxMsg) error {
 func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlock called...")
 
-	var reqNextBlock ReqNextBlock
-	if err := json.Unmarshal(trxMsg.Data, &reqNextBlock); err != nil {
+	var reqNextBlock quorumpb.ReqNextBlock
+	if err := proto.Unmarshal(trxMsg.Data, &reqNextBlock); err != nil {
 		return err
 	}
 

@@ -70,3 +70,19 @@ message Block {
     string Signature = 9;
 	repeated Trx Trxs = 10;
 }
+
+message NewBlock {
+	string Producer = 1;
+	string BlockId = 2; 
+	bytes Data = 3; //the whole block
+}
+
+message NewBlockResp {
+	string Producer = 1;
+	string BlockId = 2;        
+	string StorageProvider = 3;
+}
+
+message ReqNextBlock {
+	string BlockId = 1; //block id
+}

@@ -2,13 +2,11 @@ package chain
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"time"
 
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
-	//"github.com/golang/glog"
 	guuid "github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
@@ -17,22 +15,6 @@ import (
 const Hours = 1
 const Mins = 0
 const Sec = 0
-
-type NewBlock struct {
-	Producer string
-	BlockId  string
-	Data     []byte //the whole block
-}
-
-type NewBlockResp struct {
-	Producer        string
-	BlockId         string
-	StorageProvider string
-}
-
-type ReqNextBlock struct {
-	BlockId string //block id
-}
 
 func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
@@ -120,7 +102,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign)
 
 func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var newBlock NewBlock
+	var newBlock quorumpb.NewBlock
 
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.BlockId = block.Cid
@@ -129,7 +111,7 @@ func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	newBlock.Data = payloadblock
 
 	trxId := guuid.New()
-	payloadmsg, _ := json.Marshal(newBlock)
+	payloadmsg, _ := proto.Marshal(&newBlock)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_ADD_NEW_BLOCK
@@ -157,14 +139,14 @@ func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 
 func CreateTrxNewBlockResp(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var newBlockResp NewBlockResp
+	var newBlockResp quorumpb.NewBlockResp
 
 	newBlockResp.Producer = block.Producer
 	newBlockResp.BlockId = block.Cid
 	newBlockResp.StorageProvider = GetChainCtx().PeerId.Pretty()
 
 	trxId := guuid.New()
-	payload, _ := json.Marshal(newBlockResp)
+	payload, _ := proto.Marshal(&newBlockResp)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_ADD_NEW_BLOCK_RESP
@@ -193,12 +175,12 @@ func CreateTrxNewBlockResp(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 
 func CreateTrxReqNextBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var reqNextBlock ReqNextBlock
+	var reqNextBlock quorumpb.ReqNextBlock
 
 	reqNextBlock.BlockId = block.Cid
 
 	trxId := guuid.New()
-	payload, _ := json.Marshal(reqNextBlock)
+	payload, _ := proto.Marshal(&reqNextBlock)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_REQ_NEXT_BLOCK
