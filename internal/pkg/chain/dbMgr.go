@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -11,7 +10,9 @@ import (
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/golang/glog"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/oklog/ulid"
+	"google.golang.org/protobuf/proto"
 )
 
 const TRX_PREFIX string = "trx_"
@@ -44,10 +45,10 @@ func (dbMgr *DbMgr) CloseDb() {
 }
 
 //save trx
-func (dbMgr *DbMgr) AddTrx(trx Trx) error {
+func (dbMgr *DbMgr) AddTrx(trx quorumpb.Trx) error {
 	key := TRX_PREFIX + trx.Msg.TrxId
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(trx)
+		bytes, err := proto.Marshal(&trx)
 		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
@@ -93,13 +94,13 @@ func (dbMgr *DbMgr) RmTrx(trxId string) error {
 }
 
 //update Trx
-func (dbMgr *DbMgr) UpdTrxCons(trx Trx, consensusString string) error {
+func (dbMgr *DbMgr) UpdTrxCons(trx quorumpb.Trx, consensusString string) error {
 	return dbMgr.AddTrx(trx)
 }
 
 //get trx
-func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
-	var trx Trx
+func (dbMgr *DbMgr) GetTrx(trxId string) (quorumpb.Trx, error) {
+	var trx quorumpb.Trx
 	key := TRX_PREFIX + trxId
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
@@ -114,7 +115,7 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
 			return err
 		}
 
-		err = json.Unmarshal(trxBytes, &trx)
+		err = proto.Unmarshal(trxBytes, &trx)
 
 		if err != nil {
 			return err
@@ -127,12 +128,12 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (Trx, error) {
 }
 
 //Save Block
-func (dbMgr *DbMgr) AddBlock(block Block) error {
+func (dbMgr *DbMgr) AddBlock(block *quorumpb.Block) error {
 
 	key := BLK_PREFIX + block.Cid
 	//AddBlock to blockDb
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(block)
+		bytes, err := proto.Marshal(block)
 		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
@@ -142,7 +143,7 @@ func (dbMgr *DbMgr) AddBlock(block Block) error {
 }
 
 //Rm Block
-func (dbMgr *DbMgr) RmBlock(block Block) error {
+func (dbMgr *DbMgr) RmBlock(block quorumpb.Block) error {
 	key := BLK_PREFIX + block.Cid
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		err := txn.Delete([]byte(key))
@@ -153,14 +154,14 @@ func (dbMgr *DbMgr) RmBlock(block Block) error {
 }
 
 //Upd Block
-func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock Block) error {
-	err := dbMgr.AddBlock(newBlock)
+func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock quorumpb.Block) error {
+	err := dbMgr.AddBlock(&newBlock)
 	return err
 }
 
 //Get Block
-func (dbMgr *DbMgr) GetBlock(blockId string) (Block, error) {
-	var block Block
+func (dbMgr *DbMgr) GetBlock(blockId string) (quorumpb.Block, error) {
+	var block quorumpb.Block
 	key := BLK_PREFIX + blockId
 
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
@@ -175,7 +176,7 @@ func (dbMgr *DbMgr) GetBlock(blockId string) (Block, error) {
 			return err
 		}
 
-		err = json.Unmarshal(blockBytes, &block)
+		err = proto.Unmarshal(blockBytes, &block)
 		return err
 	})
 
@@ -200,7 +201,7 @@ func (dbMgr *DbMgr) GetRawBlock(blockId string) ([]byte, error) {
 	return raw, err
 }
 
-func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
+func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	//check if group exist
 	err := dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(groupItem.GroupId))
@@ -213,7 +214,7 @@ func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
 
 	//add group to db
 	err = dbMgr.GroupInfoDb.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(groupItem)
+		bytes, err := proto.Marshal(groupItem)
 		if err != nil {
 			return err
 		}
@@ -229,10 +230,10 @@ func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
 	return nil
 }
 
-func (dbMgr *DbMgr) UpdGroup(groupItem *GroupItem) error {
+func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
 	//upd group to db
 	err := dbMgr.GroupInfoDb.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(groupItem)
+		bytes, err := proto.Marshal(groupItem)
 		if err != nil {
 			return err
 		}
@@ -244,7 +245,7 @@ func (dbMgr *DbMgr) UpdGroup(groupItem *GroupItem) error {
 	return err
 }
 
-func (dbMgr *DbMgr) RmGroup(item *GroupItem) error {
+func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 
 	//check if group exist
 	err := dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
@@ -336,7 +337,7 @@ func (dbMgr *DbMgr) GetGroupsString() ([]string, error) {
 	return groupItemList, err
 }
 
-func (dbMgr *DbMgr) UpdBlkSeq(block Block) error {
+func (dbMgr *DbMgr) UpdBlkSeq(block quorumpb.Block) error {
 	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + block.GroupId + "_" + fmt.Sprint(block.BlockNum)
 
 	//update BlockSeqDb
@@ -373,17 +374,17 @@ func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
 	return blockId, err
 }
 
-func (dbMgr *DbMgr) AddGrpCtnt(block Block) error {
+func (dbMgr *DbMgr) AddGrpCtnt(block quorumpb.Block) error {
 	for _, trx := range block.Trxs {
 
-		var ctnItem *GroupContentItem
-		ctnItem = &GroupContentItem{}
+		var ctnItem *quorumpb.GroupContentItem
+		ctnItem = &quorumpb.GroupContentItem{}
 
 		ctnItem.TrxId = trx.Msg.TrxId
 		ctnItem.Publisher = trx.Msg.Sender
 		ctnItem.Content = trx.Data
 		ctnItem.TimeStamp = trx.Msg.TimeStamp
-		ctnBytes, err := json.Marshal(ctnItem)
+		ctnBytes, err := proto.Marshal(ctnItem)
 		if err != nil {
 			return err
 		}
@@ -406,8 +407,8 @@ func (dbMgr *DbMgr) AddGrpCtnt(block Block) error {
 	return nil
 }
 
-func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*GroupContentItem, error) {
-	var ctnList []*GroupContentItem
+func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.GroupContentItem, error) {
+	var ctnList []*quorumpb.GroupContentItem
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
 		glog.Infof("Get Key Prefix %s", key)
@@ -419,8 +420,8 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*GroupContentItem, error) {
 			glog.Infof("Append")
 			item := it.Item()
 			err := item.Value(func(v []byte) error {
-				var contentitem *GroupContentItem
-				ctnerr := json.Unmarshal(v, &contentitem)
+				contentitem := &quorumpb.GroupContentItem{}
+				ctnerr := proto.Unmarshal(v, contentitem)
 				if ctnerr == nil {
 					ctnList = append(ctnList, contentitem)
 				}

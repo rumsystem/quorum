@@ -12,6 +12,12 @@ enum TrxType {
   PEER_ANNOUNCE       = 6; // announce I am online
 }
 
+
+enum ReqBlock {
+	BLOCK_IN_TRX = 0; //block data in trx
+	BLOCK_ON_TOP = 1; //top block, no new block, block in trx is empty
+}
+
 message TrxMsg {
   string TrxId = 1;
   string GroupId = 2;
@@ -22,4 +28,78 @@ message TrxMsg {
   string Version = 7;
   string Pubkey = 8;
   bytes Sign = 9;
+}
+
+message Trx {
+	TrxMsg Msg = 1;
+	bytes Data = 2;
+    repeated string Consensus = 3;
+}
+
+message ReqSign {
+    bytes Datahash = 1;
+    string Expiration = 2;
+}
+
+message ReqSignResp {
+    string ReqTrxId = 1;
+    string Requester = 2;
+    string Witness = 3;
+    bytes  Hash = 4;
+    bytes WitnessSign = 5;
+}
+
+
+message ReqNextBlockResp {
+    string Provider  = 1;
+    string Requester = 2;
+    ReqBlock Response = 3;
+    string BlockId = 4;
+    bytes  Block = 5;
+}
+
+message Block {
+    string Cid = 1;
+    string GroupId = 2;
+	string PrevBlockId = 3;
+	int64 BlockNum = 4;
+	int64 Timestamp = 5;
+	string Hash = 6;
+	string PreviousHash = 7;
+	string Producer = 8;
+    string Signature = 9;
+	repeated Trx Trxs = 10;
+}
+
+message NewBlock {
+	string Producer = 1;
+	string BlockId = 2; 
+	bytes Data = 3; //the whole block
+}
+
+message NewBlockResp {
+	string Producer = 1;
+	string BlockId = 2;        
+	string StorageProvider = 3;
+}
+
+message ReqNextBlock {
+	string BlockId = 1; //block id
+}
+
+message GroupItem {
+	string OwnerPubKey = 1;
+	string GroupId = 2;       
+	string GroupName = 3;
+	int64 LastUpdate = 4;
+	int64 LatestBlockNum = 5;
+	string LatestBlockId = 6;
+	Block GenesisBlock = 7;
+}
+
+message GroupContentItem {
+	string TrxId = 1;
+	string Publisher = 2;
+	bytes Content = 3;
+	int64 TimeStamp = 4;
 }

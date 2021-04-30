@@ -2,13 +2,11 @@ package chain
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"time"
 
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
-	//"github.com/golang/glog"
 	guuid "github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
@@ -18,59 +16,9 @@ const Hours = 1
 const Mins = 0
 const Sec = 0
 
-type ReqBlock int8
-
-const (
-	BLOCK_IN_TRX ReqBlock = 0 //block data in trx
-	BLOCK_ON_TOP ReqBlock = 1 //top block, no new block, block in trx is empty
-)
-
-type Trx struct {
-	Msg       quorumpb.TrxMsg
-	Data      []byte
-	Consensus []string
-}
-
-type ReqSign struct {
-	Datahash   []byte
-	Expiration string
-}
-
-type ReqSignResp struct {
-	ReqTrxId    string
-	Requester   string
-	Witness     string
-	Hash        []byte
-	WitnessSign []byte
-}
-
-type NewBlock struct {
-	Producer string
-	BlockId  string
-	Data     []byte //the whole block
-}
-
-type NewBlockResp struct {
-	Producer        string
-	BlockId         string
-	StorageProvider string
-}
-
-type ReqNextBlock struct {
-	BlockId string //block id
-}
-
-type ReqNextBlockResp struct {
-	Provider  string   //who provide the block
-	Requester string   //who request the block
-	Response  ReqBlock //response
-	BlockId   string
-	Block     []byte //the whole block data
-}
-
 func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var reqSign ReqSign
+	var reqSign quorumpb.ReqSign
 
 	trxId := guuid.New()
 	trxMsg.TrxId = trxId.String()
@@ -93,7 +41,7 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	reqSign.Expiration = timein.String()
 	reqSign.Datahash = Hash(data)
 
-	payload, _ := json.Marshal(reqSign)
+	payload, _ := proto.Marshal(&reqSign)
 	trxMsg.Data = payload
 
 	sign, err := signTrx(trxMsg)
@@ -107,14 +55,14 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign ReqSign) (quorumpb.TrxMsg, error) {
+func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var respSign ReqSignResp
+	var respSign quorumpb.ReqSignResp
 
 	respSign.ReqTrxId = inTrxMsg.TrxId
 	respSign.Requester = inTrxMsg.Sender
 	respSign.Witness = GetChainCtx().PeerId.Pretty()
-	bytes, err := json.Marshal(trxMsg)
+	bytes, err := proto.Marshal(&trxMsg)
 	hashed := Hash(bytes)
 	respSign.Hash = hashed
 	sign, err := signTrx(inTrxMsg)
@@ -124,7 +72,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign ReqSign) (quorump
 	respSign.WitnessSign = sign
 
 	trxId := guuid.New()
-	payload, _ := json.Marshal(respSign)
+	payload, _ := proto.Marshal(&respSign) //TODO: catch proto.Marshal err?
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN_RESP
@@ -152,18 +100,18 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign ReqSign) (quorump
 	return trxMsg, nil
 }
 
-func CreateTrxNewBlock(block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxNewBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var newBlock NewBlock
+	var newBlock quorumpb.NewBlock
 
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.BlockId = block.Cid
 
-	payloadblock, _ := json.Marshal(block)
+	payloadblock, _ := proto.Marshal(&block)
 	newBlock.Data = payloadblock
 
 	trxId := guuid.New()
-	payloadmsg, _ := json.Marshal(newBlock)
+	payloadmsg, _ := proto.Marshal(&newBlock)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_ADD_NEW_BLOCK
@@ -189,16 +137,16 @@ func CreateTrxNewBlock(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxNewBlockResp(block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxNewBlockResp(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var newBlockResp NewBlockResp
+	var newBlockResp quorumpb.NewBlockResp
 
 	newBlockResp.Producer = block.Producer
 	newBlockResp.BlockId = block.Cid
 	newBlockResp.StorageProvider = GetChainCtx().PeerId.Pretty()
 
 	trxId := guuid.New()
-	payload, _ := json.Marshal(newBlockResp)
+	payload, _ := proto.Marshal(&newBlockResp)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_ADD_NEW_BLOCK_RESP
@@ -225,14 +173,14 @@ func CreateTrxNewBlockResp(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxReqNextBlock(block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxReqNextBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var reqNextBlock ReqNextBlock
+	var reqNextBlock quorumpb.ReqNextBlock
 
 	reqNextBlock.BlockId = block.Cid
 
 	trxId := guuid.New()
-	payload, _ := json.Marshal(reqNextBlock)
+	payload, _ := proto.Marshal(&reqNextBlock)
 
 	trxMsg.TrxId = trxId.String()
 	trxMsg.MsgType = quorumpb.TrxType_REQ_NEXT_BLOCK
@@ -258,22 +206,22 @@ func CreateTrxReqNextBlock(block Block) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxReqNextBlockResp(resp ReqBlock, requester string, block Block) (quorumpb.TrxMsg, error) {
+func CreateTrxReqNextBlockResp(resp quorumpb.ReqBlock, requester string, block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
-	var respMsg ReqNextBlockResp
+	var respMsg quorumpb.ReqNextBlockResp
 
 	respMsg.Provider = GetChainCtx().PeerId.Pretty()
 	respMsg.Requester = requester
 	respMsg.Response = resp
 	respMsg.BlockId = block.Cid
-	payload, err := json.Marshal(block)
+	payload, err := proto.Marshal(&block)
 	if err != nil {
 		return trxMsg, err
 	}
 
 	respMsg.Block = payload
 	trxId := guuid.New()
-	payloadmsg, err := json.Marshal(respMsg)
+	payloadmsg, err := proto.Marshal(&respMsg)
 	if err != nil {
 		return trxMsg, err
 	}

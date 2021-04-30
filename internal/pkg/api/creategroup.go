@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 
 	guuid "github.com/google/uuid"
@@ -21,11 +22,11 @@ type CreateGroupParam struct {
 }
 
 type CreateGroupResult struct {
-	GenesisBlock *chain.Block `json:"genesis_block"`
-	GroupId      string       `json:"group_id"`
-	GroupName    string       `json:"group_name"`
-	OwnerPubkey  string       `json:"owner_pubkey"`
-	Signature    string       `json:"signature"`
+	GenesisBlock *quorumpb.Block `json:"genesis_block"`
+	GroupId      string          `json:"group_id"`
+	GroupName    string          `json:"group_name"`
+	OwnerPubkey  string          `json:"owner_pubkey"`
+	Signature    string          `json:"signature"`
 }
 
 func (h *Handler) CreateGroup(c echo.Context) (err error) {
@@ -57,18 +58,17 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
-
 	var buffer bytes.Buffer
 	buffer.Write(genesisBlockBytes)
 	buffer.Write(pubkeybytes)
 	buffer.Write([]byte(groupid.String()))
 	hash := chain.Hash(buffer.Bytes())
 	signature, err := chain.Sign(hash)
-	creategrpresult := &CreateGroupResult{GenesisBlock: &genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: fmt.Sprintf("%x", signature)}
+	creategrpresult := &CreateGroupResult{GenesisBlock: genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: fmt.Sprintf("%x", signature)}
 
 	//create local group
-	var item *chain.GroupItem
-	item = &chain.GroupItem{}
+	var item *quorumpb.GroupItem
+	item = &quorumpb.GroupItem{}
 
 	item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
 	item.GroupId = groupid.String()

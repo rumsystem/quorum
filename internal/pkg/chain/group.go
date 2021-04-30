@@ -19,32 +19,14 @@ const (
 	GROUP_DIRTY = 1
 )
 
-type GroupContentItem struct {
-	TrxId     string
-	Publisher string
-	Content   []byte
-	TimeStamp int64
-}
-
 type Group struct {
-	Item          *GroupItem
+	Item          *quorumpb.GroupItem
 	AskNextTicker *time.Ticker
 	TickerDone    chan bool
 	Status        GroupStatus
 }
 
-type GroupItem struct {
-	OwnerPubKey    string
-	GroupId        string
-	GroupName      string
-	LastUpdate     int64
-	LatestBlockNum int64
-	LatestBlockId  string
-
-	GenesisBlock Block
-}
-
-func (grp *Group) init(item *GroupItem) error {
+func (grp *Group) init(item *quorumpb.GroupItem) error {
 	grp.Item = item
 	grp.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
 	grp.TickerDone = make(chan bool)
@@ -73,7 +55,7 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
-func (grp *Group) AddBlock(block Block) error {
+func (grp *Group) AddBlock(block quorumpb.Block) error {
 	//verify block
 	if block.BlockNum != 0 {
 		topBlock, err := grp.GetTopBlock()
@@ -90,7 +72,7 @@ func (grp *Group) AddBlock(block Block) error {
 	}
 
 	//save block to local db
-	err := GetDbMgr().AddBlock(block)
+	err := GetDbMgr().AddBlock(&block)
 	if err != nil {
 		return err
 	}
@@ -115,7 +97,7 @@ func (grp *Group) AddBlock(block Block) error {
 	return nil
 }
 
-func (grp *Group) GetTopBlock() (Block, error) {
+func (grp *Group) GetTopBlock() (quorumpb.Block, error) {
 	return GetDbMgr().GetBlock(grp.Item.LatestBlockId)
 }
 
@@ -123,7 +105,7 @@ func (grp *Group) GetBlockId(blockNum int64) (string, error) {
 	return GetDbMgr().GetBlkId(blockNum, grp.Item.GroupId)
 }
 
-func (grp *Group) CreateGrp(item *GroupItem) error {
+func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	err := grp.init(item)
 	if err != nil {
 		return err
@@ -166,7 +148,7 @@ func (grp *Group) LeaveGrp() error {
 
 //Add Content to Group
 func (grp *Group) Post(content *quorumpb.Object) (string, error) {
-	var trx Trx
+	var trx quorumpb.Trx
 	var trxMsg quorumpb.TrxMsg
 
 	encodedcontent, err := proto.Marshal(content)
@@ -175,7 +157,7 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	}
 
 	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, encodedcontent)
-	trx.Msg = trxMsg
+	trx.Msg = &trxMsg
 	trx.Data = encodedcontent
 	var cons []string
 	trx.Consensus = cons
@@ -192,8 +174,8 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 }
 
 //Load groupItem from DB
-func (grp *Group) GetContent(upperCount, lowerCount uint64) ([]*GroupContentItem, error) {
-	var ctnList []*GroupContentItem
+func (grp *Group) GetContent(upperCount, lowerCount uint64) ([]*quorumpb.GroupContentItem, error) {
+	var ctnList []*quorumpb.GroupContentItem
 	return ctnList, nil
 }
 

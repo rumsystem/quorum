@@ -9,6 +9,7 @@ import (
 	"time"
 
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
@@ -16,10 +17,10 @@ import (
 )
 
 type JoinGroupParam struct {
-	GroupId      string       `from:"group_id" json:"group_id" validate:"required"`
-	GroupName    string       `from:"group_name" json:"group_name" validate:"required"`
-	OwnerPubKey  string       `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
-	GenesisBlock *chain.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
+	GroupId      string          `from:"group_id" json:"group_id" validate:"required"`
+	GroupName    string          `from:"group_name" json:"group_name" validate:"required"`
+	OwnerPubKey  string          `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
+	GenesisBlock *quorumpb.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
 }
 
 func (h *Handler) JoinGroup(c echo.Context) (err error) {
@@ -42,8 +43,8 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	var item *chain.GroupItem
-	item = &chain.GroupItem{}
+	var item *quorumpb.GroupItem
+	item = &quorumpb.GroupItem{}
 
 	item.OwnerPubKey = params.OwnerPubKey
 	item.GroupId = params.GroupId
@@ -51,7 +52,7 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 	item.LatestBlockId = params.GenesisBlock.Cid
 	item.LatestBlockNum = params.GenesisBlock.BlockNum
 	item.LastUpdate = time.Now().UnixNano()
-	item.GenesisBlock = *params.GenesisBlock
+	item.GenesisBlock = params.GenesisBlock
 
 	var group *chain.Group
 	group = &chain.Group{}

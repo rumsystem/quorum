@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -59,8 +58,8 @@ func handleTrxMsg(trxMsg quorumpb.TrxMsg) error {
 func handleReqSign(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSign called")
 
-	var reqSign ReqSign
-	if err := json.Unmarshal(trxMsg.Data, &reqSign); err != nil {
+	var reqSign quorumpb.ReqSign
+	if err := proto.Unmarshal(trxMsg.Data, &reqSign); err != nil {
 		return err
 	}
 
@@ -81,8 +80,8 @@ func handleReqSign(trxMsg quorumpb.TrxMsg) error {
 func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSignResp called")
 
-	var reqSignResp ReqSignResp
-	if err := json.Unmarshal(trxMsg.Data, &reqSignResp); err != nil {
+	var reqSignResp quorumpb.ReqSignResp
+	if err := proto.Unmarshal(trxMsg.Data, &reqSignResp); err != nil {
 		return err
 	}
 
@@ -147,13 +146,13 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNewBlock called")
 
-	var newBlock NewBlock
-	if err := json.Unmarshal(trxMsg.Data, &newBlock); err != nil {
+	var newBlock quorumpb.NewBlock
+	if err := proto.Unmarshal(trxMsg.Data, &newBlock); err != nil {
 		return err
 	}
 
-	var block Block
-	if err := json.Unmarshal(newBlock.Data, &block); err != nil {
+	var block quorumpb.Block
+	if err := proto.Unmarshal(newBlock.Data, &block); err != nil {
 		return err
 	}
 
@@ -169,7 +168,7 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 		glog.Infof("not my block, I don't have the related group")
 		if Lucky() {
 			glog.Infof("save new block to local db")
-			GetDbMgr().AddBlock(block)
+			GetDbMgr().AddBlock(&block)
 		} else {
 			sendResp = false
 		}
@@ -198,8 +197,8 @@ func handleNewBlockResp(trxMsg quorumpb.TrxMsg) error {
 func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlock called...")
 
-	var reqNextBlock ReqNextBlock
-	if err := json.Unmarshal(trxMsg.Data, &reqNextBlock); err != nil {
+	var reqNextBlock quorumpb.ReqNextBlock
+	if err := proto.Unmarshal(trxMsg.Data, &reqNextBlock); err != nil {
 		return err
 	}
 
@@ -207,9 +206,9 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 	if group, ok := GetChainCtx().Groups[trxMsg.GroupId]; ok {
 		if group.Item.LatestBlockId == reqNextBlock.BlockId {
 			glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
-			var emptyBlock Block
+			var emptyBlock quorumpb.Block
 			emptyBlock.GroupId = trxMsg.GroupId
-			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
+			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_ON_TOP, trxMsg.Sender, emptyBlock)
 			pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
 			GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 			return nil
@@ -224,14 +223,14 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 			for it.Seek([]byte(BLK_PREFIX)); it.ValidForPrefix([]byte(BLK_PREFIX)); it.Next() {
 				item := it.Item()
 				err := item.Value(func(v []byte) error {
-					var block Block
-					if err := json.Unmarshal(v, &block); err != nil {
+					var block quorumpb.Block
+					if err := proto.Unmarshal(v, &block); err != nil {
 						return err
 					}
 
 					if block.PrevBlockId == reqNextBlock.BlockId {
 						glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
-						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(BLOCK_IN_TRX, trxMsg.Sender, block)
+						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_IN_TRX, trxMsg.Sender, block)
 						pbBytes, _ := proto.Marshal(&nextBlockRespMsg)
 						GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
 					}
@@ -256,8 +255,8 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlockResp called")
 
-	var reqNextBlockResp ReqNextBlockResp
-	if err := json.Unmarshal(trxMsg.Data, &reqNextBlockResp); err != nil {
+	var reqNextBlockResp quorumpb.ReqNextBlockResp
+	if err := proto.Unmarshal(trxMsg.Data, &reqNextBlockResp); err != nil {
 		return err
 	}
 
@@ -267,13 +266,13 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 			glog.Infof("Not asked by me, ignore")
 		} else if group.Status == GROUP_CLEAN {
 			glog.Infof("Group is clean, ignore")
-		} else if reqNextBlockResp.Response == BLOCK_ON_TOP {
+		} else if reqNextBlockResp.Response == quorumpb.ReqBlock_BLOCK_ON_TOP {
 			glog.Infof("On Group Top, Set Group Status to GROUP_READY")
 			group.StopSync()
-		} else if reqNextBlockResp.Response == BLOCK_IN_TRX {
+		} else if reqNextBlockResp.Response == quorumpb.ReqBlock_BLOCK_IN_TRX {
 			glog.Infof("new block incoming")
-			var newBlock Block
-			if err := json.Unmarshal(reqNextBlockResp.Block, &newBlock); err != nil {
+			var newBlock quorumpb.Block
+			if err := proto.Unmarshal(reqNextBlockResp.Block, &newBlock); err != nil {
 				return err
 			}
 
@@ -281,10 +280,12 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 			if valid, _ := IsBlockValid(newBlock, topBlock); valid {
 				glog.Infof("block is valid, add it")
 				//add block to db
-				GetDbMgr().AddBlock(newBlock)
+				GetDbMgr().AddBlock(&newBlock)
 
 				//update group block seq map
 				group.AddBlock(newBlock)
+			} else {
+				glog.Infof("block not vaild, skip it")
 			}
 		}
 	} else {

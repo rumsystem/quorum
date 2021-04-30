@@ -3,29 +3,17 @@ package chain
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
 	//"fmt"
 
 	"time"
 
 	guuid "github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 )
 
-type Block struct {
-	Cid          string
-	GroupId      string
-	PrevBlockId  string
-	BlockNum     int64
-	Timestamp    int64
-	Hash         string
-	PreviousHash string
-	Producer     string
-	Signature    string
-	Trxs         []Trx
-}
-
-func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
+func IsBlockValid(newBlock, oldBlock quorumpb.Block) (bool, error) {
 
 	//set hash to ""
 	blockWithoutHash := newBlock
@@ -50,8 +38,8 @@ func IsBlockValid(newBlock, oldBlock Block) (bool, error) {
 	return true, nil
 }
 
-func CreateBlock(oldBlock Block, trx Trx) Block {
-	var newBlock Block
+func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) quorumpb.Block {
+	var newBlock quorumpb.Block
 	cid := guuid.New()
 
 	newBlock.Cid = cid.String()
@@ -60,7 +48,7 @@ func CreateBlock(oldBlock Block, trx Trx) Block {
 	newBlock.PreviousHash = oldBlock.Hash
 	newBlock.BlockNum = oldBlock.BlockNum + 1
 	newBlock.Timestamp = time.Now().UnixNano()
-	newBlock.Trxs = append(newBlock.Trxs, trx)
+	newBlock.Trxs = append(newBlock.Trxs, &trx)
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.Signature = string("Signature from producer")
 	newBlock.Hash = ""
@@ -70,8 +58,8 @@ func CreateBlock(oldBlock Block, trx Trx) Block {
 	return newBlock
 }
 
-func CreateGenesisBlock(groupId string) Block {
-	var genesisBlock Block
+func CreateGenesisBlock(groupId string) *quorumpb.Block {
+	var genesisBlock quorumpb.Block
 
 	cid := guuid.New()
 	t := time.Now().UnixNano()
@@ -89,11 +77,11 @@ func CreateGenesisBlock(groupId string) Block {
 	hash := CalculateHash(genesisBlock)
 	genesisBlock.Hash = hash
 
-	return genesisBlock
+	return &genesisBlock
 }
 
-func CalculateHash(block Block) string {
-	bytes, err := json.Marshal(&block)
+func CalculateHash(block quorumpb.Block) string {
+	bytes, err := proto.Marshal(&block)
 
 	if err != nil {
 		return ""

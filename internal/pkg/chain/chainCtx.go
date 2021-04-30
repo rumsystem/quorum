@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"context"
@@ -144,10 +143,10 @@ func (chainctx *ChainCtx) SyncAllGroup() error {
 		var group *Group
 		group = &Group{}
 
-		var item *GroupItem
-		item = &GroupItem{}
+		var item *quorumpb.GroupItem
+		item = &quorumpb.GroupItem{}
 
-		json.Unmarshal(b, &item)
+		proto.Unmarshal(b, item)
 		group.init(item)
 		go group.StartSync()
 		chainctx.Groups[item.GroupId] = group
