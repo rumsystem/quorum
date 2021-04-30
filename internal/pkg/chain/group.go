@@ -27,24 +27,13 @@ type GroupContentItem struct {
 }
 
 type Group struct {
-	Item          *GroupItem
+	Item          *quorumpb.GroupItem
 	AskNextTicker *time.Ticker
 	TickerDone    chan bool
 	Status        GroupStatus
 }
 
-type GroupItem struct {
-	OwnerPubKey    string
-	GroupId        string
-	GroupName      string
-	LastUpdate     int64
-	LatestBlockNum int64
-	LatestBlockId  string
-
-	GenesisBlock quorumpb.Block
-}
-
-func (grp *Group) init(item *GroupItem) error {
+func (grp *Group) init(item *quorumpb.GroupItem) error {
 	grp.Item = item
 	grp.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
 	grp.TickerDone = make(chan bool)
@@ -90,7 +79,7 @@ func (grp *Group) AddBlock(block quorumpb.Block) error {
 	}
 
 	//save block to local db
-	err := GetDbMgr().AddBlock(block)
+	err := GetDbMgr().AddBlock(&block)
 	if err != nil {
 		return err
 	}
@@ -123,7 +112,7 @@ func (grp *Group) GetBlockId(blockNum int64) (string, error) {
 	return GetDbMgr().GetBlkId(blockNum, grp.Item.GroupId)
 }
 
-func (grp *Group) CreateGrp(item *GroupItem) error {
+func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	err := grp.init(item)
 	if err != nil {
 		return err

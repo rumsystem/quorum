@@ -56,11 +56,11 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	creategrpresult := &CreateGroupResult{GenesisBlock: &genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: "owner_signature"}
+	creategrpresult := &CreateGroupResult{GenesisBlock: genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: p2pcrypto.ConfigEncodeKey(pubkeybytes), Signature: "owner_signature"}
 
 	//create local group
-	var item *chain.GroupItem
-	item = &chain.GroupItem{}
+	var item *quorumpb.GroupItem
+	item = &quorumpb.GroupItem{}
 
 	item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
 	item.GroupId = groupid.String()

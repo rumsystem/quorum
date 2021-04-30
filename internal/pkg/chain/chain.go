@@ -168,7 +168,7 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 		glog.Infof("not my block, I don't have the related group")
 		if Lucky() {
 			glog.Infof("save new block to local db")
-			GetDbMgr().AddBlock(block)
+			GetDbMgr().AddBlock(&block)
 		} else {
 			sendResp = false
 		}
@@ -280,7 +280,7 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 			if valid, _ := IsBlockValid(newBlock, topBlock); valid {
 				glog.Infof("block is valid, add it")
 				//add block to db
-				GetDbMgr().AddBlock(newBlock)
+				GetDbMgr().AddBlock(&newBlock)
 
 				//update group block seq map
 				group.AddBlock(newBlock)

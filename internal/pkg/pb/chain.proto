@@ -86,3 +86,14 @@ message NewBlockResp {
 message ReqNextBlock {
 	string BlockId = 1; //block id
 }
+
+message GroupItem {
+	string OwnerPubKey = 1;
+	string GroupId = 2;       
+	string GroupName = 3;
+	int64 LastUpdate = 4;
+	int64 LatestBlockNum = 5;
+	string LatestBlockId = 6;
+	Block GenesisBlock = 7;
+}
+

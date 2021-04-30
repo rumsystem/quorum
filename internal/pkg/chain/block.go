@@ -58,7 +58,7 @@ func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) quorumpb.Block {
 	return newBlock
 }
 
-func CreateGenesisBlock(groupId string) quorumpb.Block {
+func CreateGenesisBlock(groupId string) *quorumpb.Block {
 	var genesisBlock quorumpb.Block
 
 	cid := guuid.New()
@@ -77,7 +77,7 @@ func CreateGenesisBlock(groupId string) quorumpb.Block {
 	hash := CalculateHash(genesisBlock)
 	genesisBlock.Hash = hash
 
-	return genesisBlock
+	return &genesisBlock
 }
 
 func CalculateHash(block quorumpb.Block) string {

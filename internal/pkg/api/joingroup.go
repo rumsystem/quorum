@@ -43,8 +43,8 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	var item *chain.GroupItem
-	item = &chain.GroupItem{}
+	var item *quorumpb.GroupItem
+	item = &quorumpb.GroupItem{}
 
 	item.OwnerPubKey = params.OwnerPubKey
 	item.GroupId = params.GroupId
@@ -52,7 +52,7 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 	item.LatestBlockId = params.GenesisBlock.Cid
 	item.LatestBlockNum = params.GenesisBlock.BlockNum
 	item.LastUpdate = time.Now().UnixNano()
-	item.GenesisBlock = *params.GenesisBlock
+	item.GenesisBlock = params.GenesisBlock
 
 	var group *chain.Group
 	group = &chain.Group{}

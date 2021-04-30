@@ -129,12 +129,12 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (quorumpb.Trx, error) {
 }
 
 //Save Block
-func (dbMgr *DbMgr) AddBlock(block quorumpb.Block) error {
+func (dbMgr *DbMgr) AddBlock(block *quorumpb.Block) error {
 
 	key := BLK_PREFIX + block.Cid
 	//AddBlock to blockDb
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		bytes, err := proto.Marshal(&block)
+		bytes, err := proto.Marshal(block)
 		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
@@ -156,7 +156,7 @@ func (dbMgr *DbMgr) RmBlock(block quorumpb.Block) error {
 
 //Upd Block
 func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock quorumpb.Block) error {
-	err := dbMgr.AddBlock(newBlock)
+	err := dbMgr.AddBlock(&newBlock)
 	return err
 }
 
@@ -202,7 +202,7 @@ func (dbMgr *DbMgr) GetRawBlock(blockId string) ([]byte, error) {
 	return raw, err
 }
 
-func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
+func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	//check if group exist
 	err := dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(groupItem.GroupId))
@@ -215,7 +215,7 @@ func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
 
 	//add group to db
 	err = dbMgr.GroupInfoDb.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(groupItem)
+		bytes, err := proto.Marshal(groupItem)
 		if err != nil {
 			return err
 		}
@@ -231,10 +231,10 @@ func (dbMgr *DbMgr) AddGroup(groupItem *GroupItem) error {
 	return nil
 }
 
-func (dbMgr *DbMgr) UpdGroup(groupItem *GroupItem) error {
+func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
 	//upd group to db
 	err := dbMgr.GroupInfoDb.Update(func(txn *badger.Txn) error {
-		bytes, err := json.Marshal(groupItem)
+		bytes, err := proto.Marshal(groupItem)
 		if err != nil {
 			return err
 		}
@@ -246,7 +246,7 @@ func (dbMgr *DbMgr) UpdGroup(groupItem *GroupItem) error {
 	return err
 }
 
-func (dbMgr *DbMgr) RmGroup(item *GroupItem) error {
+func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 
 	//check if group exist
 	err := dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
