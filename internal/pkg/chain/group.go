@@ -3,7 +3,6 @@ package chain
 import (
 	"errors"
 
-	//"fmt"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 	"time"
@@ -64,7 +63,7 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 			return err
 		}
 
-		valid, _ := IsBlockValid(block, &topBlock)
+		valid, _ := IsBlockValid(block, topBlock)
 		if !valid {
 			err := errors.New("Invalid block")
 			return err
@@ -97,7 +96,7 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 	return nil
 }
 
-func (grp *Group) GetTopBlock() (quorumpb.Block, error) {
+func (grp *Group) GetTopBlock() (*quorumpb.Block, error) {
 	return GetDbMgr().GetBlock(grp.Item.LatestBlockId)
 }
 
@@ -149,7 +148,7 @@ func (grp *Group) LeaveGrp() error {
 //Add Content to Group
 func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	var trx quorumpb.Trx
-	var trxMsg quorumpb.TrxMsg
+	var trxMsg *quorumpb.TrxMsg
 
 	encodedcontent, err := proto.Marshal(content)
 	if err != nil {
@@ -157,14 +156,14 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	}
 
 	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, encodedcontent)
-	trx.Msg = &trxMsg
+	trx.Msg = trxMsg
 	trx.Data = encodedcontent
 	var cons []string
 	trx.Consensus = cons
 
-	dbMgr.AddTrx(trx)
+	dbMgr.AddTrx(&trx)
 
-	pbBytes, err := proto.Marshal(&trxMsg)
+	pbBytes, err := proto.Marshal(trxMsg)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -200,7 +199,7 @@ func (grp *Group) startAskNextBlock() {
 					glog.Fatalf(err.Error())
 				}
 
-				pbBytes, err := proto.Marshal(&askNextMsg)
+				pbBytes, err := proto.Marshal(askNextMsg)
 				if err != nil {
 					glog.Fatalf(err.Error())
 				}

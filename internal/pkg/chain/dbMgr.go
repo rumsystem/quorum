@@ -45,10 +45,10 @@ func (dbMgr *DbMgr) CloseDb() {
 }
 
 //save trx
-func (dbMgr *DbMgr) AddTrx(trx quorumpb.Trx) error {
+func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx) error {
 	key := TRX_PREFIX + trx.Msg.TrxId
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		bytes, err := proto.Marshal(&trx)
+		bytes, err := proto.Marshal(trx)
 		e := badger.NewEntry([]byte(key), bytes)
 		err = txn.SetEntry(e)
 		return err
@@ -94,12 +94,12 @@ func (dbMgr *DbMgr) RmTrx(trxId string) error {
 }
 
 //update Trx
-func (dbMgr *DbMgr) UpdTrxCons(trx quorumpb.Trx, consensusString string) error {
+func (dbMgr *DbMgr) UpdTrxCons(trx *quorumpb.Trx, consensusString string) error {
 	return dbMgr.AddTrx(trx)
 }
 
 //get trx
-func (dbMgr *DbMgr) GetTrx(trxId string) (quorumpb.Trx, error) {
+func (dbMgr *DbMgr) GetTrx(trxId string) (*quorumpb.Trx, error) {
 	var trx quorumpb.Trx
 	key := TRX_PREFIX + trxId
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
@@ -124,7 +124,7 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (quorumpb.Trx, error) {
 		return nil
 	})
 
-	return trx, err
+	return &trx, err
 }
 
 //Save Block
@@ -143,8 +143,8 @@ func (dbMgr *DbMgr) AddBlock(block *quorumpb.Block) error {
 }
 
 //Rm Block
-func (dbMgr *DbMgr) RmBlock(block quorumpb.Block) error {
-	key := BLK_PREFIX + block.Cid
+func (dbMgr *DbMgr) RmBlock(blockCid string) error {
+	key := BLK_PREFIX + blockCid
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		err := txn.Delete([]byte(key))
 		return err
@@ -154,13 +154,13 @@ func (dbMgr *DbMgr) RmBlock(block quorumpb.Block) error {
 }
 
 //Upd Block
-func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock quorumpb.Block) error {
-	err := dbMgr.AddBlock(&newBlock)
+func (dbMgr *DbMgr) UpdBlock(oldBlock, newBlock *quorumpb.Block) error {
+	err := dbMgr.AddBlock(newBlock)
 	return err
 }
 
 //Get Block
-func (dbMgr *DbMgr) GetBlock(blockId string) (quorumpb.Block, error) {
+func (dbMgr *DbMgr) GetBlock(blockId string) (*quorumpb.Block, error) {
 	var block quorumpb.Block
 	key := BLK_PREFIX + blockId
 
@@ -180,7 +180,7 @@ func (dbMgr *DbMgr) GetBlock(blockId string) (quorumpb.Block, error) {
 		return err
 	})
 
-	return block, err
+	return &block, err
 }
 
 //Get raw block ([]byte)
