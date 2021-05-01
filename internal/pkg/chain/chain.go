@@ -123,7 +123,7 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 		glog.Infof("Topblock cid %s", topBlock.Cid)
 		glog.Infof("Topblock groupId %s", topBlock.GroupId)
 
-		newBlock := CreateBlock(topBlock, trx)
+		newBlock := CreateBlock(&topBlock, &trx)
 
 		//Create NEW_BLOCK msg and send it out
 		newBlockTrxMsg, _ := CreateTrxNewBlock(newBlock)

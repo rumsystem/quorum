@@ -47,9 +47,20 @@ func IsBlockValid(newBlock, oldBlock *quorumpb.Block) (bool, error) {
 	return true, nil
 }
 
-func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) *quorumpb.Block {
+func CreateBlock(oldBlock *quorumpb.Block, trx *quorumpb.Trx) *quorumpb.Block {
 	var newBlock quorumpb.Block
 	cid := guuid.New()
+
+	//deep copy trx by the protobuf. quorumpb.Trx is a protobuf defined struct.
+	trxclone := &quorumpb.Trx{}
+	clonedtrxbuff, err := proto.Marshal(trx)
+	if err != nil {
+		return nil
+	}
+	err = proto.Unmarshal(clonedtrxbuff, trxclone)
+	if err != nil {
+		return nil
+	}
 
 	newBlock.Cid = cid.String()
 	newBlock.GroupId = oldBlock.GroupId
@@ -57,7 +68,7 @@ func CreateBlock(oldBlock quorumpb.Block, trx quorumpb.Trx) *quorumpb.Block {
 	newBlock.PreviousHash = oldBlock.Hash
 	newBlock.BlockNum = oldBlock.BlockNum + 1
 	newBlock.Timestamp = time.Now().UnixNano()
-	newBlock.Trxs = append(newBlock.Trxs, &trx)
+	newBlock.Trxs = append(newBlock.Trxs, trxclone)
 	newBlock.Producer = GetChainCtx().PeerId.Pretty()
 	newBlock.Signature = string("Signature from producer")
 	newBlock.Hash = ""
