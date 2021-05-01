@@ -19,7 +19,7 @@ const CONSENSUS uint8 = 1
 *
 ****************************/
 
-func handleTrxMsg(trxMsg quorumpb.TrxMsg) error {
+func handleTrxMsg(trxMsg *quorumpb.TrxMsg) error {
 
 	verify, err := VerifyTrx(trxMsg)
 	if err != nil {
@@ -55,7 +55,7 @@ func handleTrxMsg(trxMsg quorumpb.TrxMsg) error {
 	return nil
 }
 
-func handleReqSign(trxMsg quorumpb.TrxMsg) error {
+func handleReqSign(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSign called")
 
 	var reqSign quorumpb.ReqSign
@@ -77,7 +77,7 @@ func handleReqSign(trxMsg quorumpb.TrxMsg) error {
 	return nil
 }
 
-func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
+func handleReqSignResp(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handleReqSignResp called")
 
 	var reqSignResp quorumpb.ReqSignResp
@@ -143,7 +143,7 @@ func handleReqSignResp(trxMsg quorumpb.TrxMsg) error {
 	return nil
 }
 
-func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
+func handleNewBlock(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handleNewBlock called")
 
 	var newBlock quorumpb.NewBlock
@@ -185,16 +185,17 @@ func handleNewBlock(trxMsg quorumpb.TrxMsg) error {
 	return nil
 }
 
-func handleNewBlockResp(trxMsg quorumpb.TrxMsg) error {
+func handleNewBlockResp(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handleNewBlockResp called")
 
+	//note: trxMsg in args is a pointer not value copy.
 	//know block is saved
 	//remove local req
 	//update block status
 	return nil
 }
 
-func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
+func handleNextBlock(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlock called...")
 
 	var reqNextBlock quorumpb.ReqNextBlock
@@ -252,7 +253,7 @@ func handleNextBlock(trxMsg quorumpb.TrxMsg) error {
 	return nil
 }
 
-func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
+func handleNextBlockResp(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handleNextBlockResp called")
 
 	var reqNextBlockResp quorumpb.ReqNextBlockResp
@@ -295,7 +296,7 @@ func handleNextBlockResp(trxMsg quorumpb.TrxMsg) error {
 	return nil
 }
 
-func handlePeerAnnounce(trxMsg quorumpb.TrxMsg) error {
+func handlePeerAnnounce(trxMsg *quorumpb.TrxMsg) error {
 	glog.Infof("handlePeerAnnounce called")
 	return nil
 }

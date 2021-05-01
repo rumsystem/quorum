@@ -175,7 +175,7 @@ func handlePublicChannel(ctx context.Context, config cli.Config) error {
 				if trxMsg.Version != GetChainCtx().Version {
 					//glog.Infof("Version mismatch")
 				} else if trxMsg.Sender != GetChainCtx().PeerId.Pretty() {
-					handleTrxMsg(trxMsg)
+					handleTrxMsg(&trxMsg)
 				} else {
 					//glog.Info("Msg from myself")
 				}

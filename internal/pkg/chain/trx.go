@@ -44,7 +44,7 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	payload, _ := proto.Marshal(&reqSign)
 	trxMsg.Data = payload
 
-	sign, err := signTrx(trxMsg)
+	sign, err := signTrx(&trxMsg)
 
 	if err != nil {
 		return trxMsg, err
@@ -55,14 +55,14 @@ func CreateTrxMsgReqSign(groupId string, data []byte) (quorumpb.TrxMsg, error) {
 	return trxMsg, nil
 }
 
-func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign) (quorumpb.TrxMsg, error) {
+func CreateTrxMsgReqSignResp(inTrxMsg *quorumpb.TrxMsg, reqSign quorumpb.ReqSign) (quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var respSign quorumpb.ReqSignResp
 
 	respSign.ReqTrxId = inTrxMsg.TrxId
 	respSign.Requester = inTrxMsg.Sender
 	respSign.Witness = GetChainCtx().PeerId.Pretty()
-	bytes, err := proto.Marshal(&trxMsg)
+	bytes, err := proto.Marshal(inTrxMsg)
 	hashed := Hash(bytes)
 	respSign.Hash = hashed
 	sign, err := signTrx(inTrxMsg)
@@ -89,7 +89,7 @@ func CreateTrxMsgReqSignResp(inTrxMsg quorumpb.TrxMsg, reqSign quorumpb.ReqSign)
 
 	trxMsg.Pubkey = pubkey
 
-	sign, err = signTrx(trxMsg)
+	sign, err = signTrx(&trxMsg)
 
 	if err != nil {
 		return trxMsg, err
@@ -128,7 +128,7 @@ func CreateTrxNewBlock(block *quorumpb.Block) (quorumpb.TrxMsg, error) {
 
 	trxMsg.Pubkey = pubkey
 
-	sign, err := signTrx(trxMsg)
+	sign, err := signTrx(&trxMsg)
 	if err != nil {
 		return trxMsg, err
 	}
@@ -162,7 +162,7 @@ func CreateTrxNewBlockResp(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	}
 	trxMsg.Pubkey = pubkey
 
-	sign, err := signTrx(trxMsg)
+	sign, err := signTrx(&trxMsg)
 
 	if err != nil {
 		return trxMsg, err
@@ -196,7 +196,7 @@ func CreateTrxReqNextBlock(block quorumpb.Block) (quorumpb.TrxMsg, error) {
 	}
 	trxMsg.Pubkey = pubkey
 
-	sign, err := signTrx(trxMsg)
+	sign, err := signTrx(&trxMsg)
 
 	if err != nil {
 		return trxMsg, err
@@ -240,7 +240,7 @@ func CreateTrxReqNextBlockResp(resp quorumpb.ReqBlock, requester string, block q
 	}
 	trxMsg.Pubkey = pubkey
 
-	sign, err := signTrx(trxMsg)
+	sign, err := signTrx(&trxMsg)
 
 	if err != nil {
 		return trxMsg, err
@@ -263,18 +263,18 @@ func Hash(data []byte) []byte {
 	return hashed
 }
 
-func signTrx(trxMsg quorumpb.TrxMsg) ([]byte, error) {
-	bytes, err := proto.Marshal(&trxMsg)
+func signTrx(trxMsg *quorumpb.TrxMsg) ([]byte, error) {
+	bytes, err := proto.Marshal(trxMsg)
 	hashed := Hash(bytes)
 	signature, err := GetChainCtx().Privatekey.Sign(hashed)
 	return signature, err
 }
 
-func VerifyTrx(trxMsg quorumpb.TrxMsg) (bool, error) {
-	//get signature
-	sign := trxMsg.Sign
-	trxMsg.Sign = nil
-	bytes, err := proto.Marshal(&trxMsg)
+func VerifyTrx(trxMsg *quorumpb.TrxMsg) (bool, error) {
+	//clone trxMsg to verify
+	clonetrxmsg := &quorumpb.TrxMsg{TrxId: trxMsg.TrxId, GroupId: trxMsg.GroupId, MsgType: trxMsg.MsgType, Data: trxMsg.Data, Sender: trxMsg.Sender, TimeStamp: trxMsg.TimeStamp, Version: trxMsg.Version, Pubkey: trxMsg.Pubkey}
+
+	bytes, err := proto.Marshal(clonetrxmsg)
 	if err != nil {
 		return false, err
 	}
@@ -291,7 +291,7 @@ func VerifyTrx(trxMsg quorumpb.TrxMsg) (bool, error) {
 		return false, err
 	}
 
-	verify, err := pubkey.Verify(hashed, sign)
+	verify, err := pubkey.Verify(hashed, trxMsg.Sign)
 	return verify, err
 }
 
