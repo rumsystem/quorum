@@ -13,7 +13,7 @@ type Keys struct {
 	PubKey  p2pcrypto.PubKey
 }
 
-func NewKeys(keyname string) (*Keys, error) {
+func NewKeys() (*Keys, error) {
 	priv, pub, err := p2pcrypto.GenerateKeyPairWithReader(p2pcrypto.RSA, 4096, rand.Reader)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func LoadKeys(keyname string) (*Keys, error) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		glog.Infof("Keys files not found, generating new keypair..")
-		newkeys, err := NewKeys(keyname)
+		newkeys, err := NewKeys()
 		if err != nil {
 			return nil, err
 		}

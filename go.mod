@@ -20,6 +20,7 @@ require (
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-badger v0.2.3
 	github.com/ipfs/go-graphsync v0.6.0
+	github.com/ipfs/go-log v1.0.4 // indirect
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/labstack/gommon v0.3.0
 	github.com/leodido/go-urn v1.2.1 // indirect
