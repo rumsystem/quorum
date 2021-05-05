@@ -13,13 +13,17 @@ func TestNodeConnecting(t *testing.T) {
 	defer cancel()
 
 	mockRendezvousString := "testrendezvousuniqstring"
-	bootstrap, peer1, peer2, err := testnode.Run2nodes(ctx, mockRendezvousString)
+	bootstrap, peer1, peer2, _, _, _, err := testnode.Run2nodes(ctx, mockRendezvousString)
+	if err != nil {
+		t.Errorf("create test peers err:%s", err)
+	}
 
 	log.Printf("bootstrap id: %s", bootstrap.Host.ID())
 	log.Printf("peer1 id: %s", peer1.Host.ID())
 	log.Printf("peer2 id: %s", peer2.Host.ID())
 
-	log.Println("Finding peers...")
+	log.Println("Waitting 10s for finding peers testing...")
+	time.Sleep(10 * time.Second)
 	peer1info, err := peer1.FindPeers(ctx, mockRendezvousString)
 	if err != nil {
 		t.Errorf("Find peer1 peers err:%s", err)

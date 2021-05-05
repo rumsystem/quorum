@@ -12,13 +12,13 @@ import (
 	"log"
 )
 
-func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2p.Node, *p2p.Node, error) {
+func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2p.Node, *p2p.Node, *localcrypto.Keys, *localcrypto.Keys, *localcrypto.Keys, error) {
 	mockbootstrapaddr := "/ip4/127.0.0.1/tcp/8520"
 	mockbootstrapnodekeys, err := localcrypto.NewKeys()
 	listenaddresses, _ := utils.StringsToAddrs([]string{mockbootstrapaddr})
 	node, err := p2p.NewNode(ctx, mockbootstrapnodekeys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, "")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	mockbootstrapp2paddr := fmt.Sprintf("%s/p2p/%s", mockbootstrapaddr, node.Host.ID())
 	log.Printf("bootstrap:%s", mockbootstrapp2paddr)
@@ -30,7 +30,7 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 	peer1listenaddresses, _ := utils.StringsToAddrs([]string{"/ip4/127.0.0.1/tcp/8551"})
 	node1, err := p2p.NewNode(ctx, mockpeer1nodekeys.PrivKey, connmgr.NewConnManager(10, 200, 60), peer1listenaddresses, "")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	_ = node1.Bootstrap(ctx, *defaultnodeconfig)
 	log.Println("Announcing peer1...")
@@ -42,11 +42,11 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 	peer2listenaddresses, _ := utils.StringsToAddrs([]string{"/ip4/127.0.0.1/tcp/8552"})
 	node2, err := p2p.NewNode(ctx, mockpeer2nodekeys.PrivKey, connmgr.NewConnManager(10, 200, 60), peer2listenaddresses, "")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	node2.Bootstrap(ctx, *defaultnodeconfig)
 	log.Println("Announcing peer2...")
 	discovery.Advertise(ctx, node2.RoutingDiscovery, defaultnodeconfig.RendezvousString)
 	log.Println("Successfully announced peer2")
-	return node, node1, node2, nil
+	return node, node1, node2, mockbootstrapnodekeys, mockpeer1nodekeys, mockpeer2nodekeys, nil
 }
