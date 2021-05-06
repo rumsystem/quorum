@@ -55,6 +55,7 @@ type DbOption struct {
 type DbMgr struct {
 	GroupInfoDb *badger.DB
 	Db          *badger.DB
+	Auth        *badger.DB
 	DataPath    string
 }
 

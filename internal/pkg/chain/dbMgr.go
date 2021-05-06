@@ -20,6 +20,7 @@ const BLK_PREFIX string = "blk_"
 const SEQ_PREFIX string = "seq_"
 const GRP_PREFIX string = "grp_"
 const CNT_PREFIX string = "cnt_"
+const ATH_PREFIX string = "ath_"
 
 func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
 	var err error
@@ -27,8 +28,8 @@ func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
-	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 
+	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
 		glog.Fatal(err.Error())
 	}
@@ -246,7 +247,6 @@ func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
 }
 
 func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
-
 	//check if group exist
 	err := dbMgr.GroupInfoDb.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(item.GroupId))
@@ -268,7 +268,6 @@ func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 	}
 
 	return nil
-
 }
 
 //Get group list
@@ -339,11 +338,7 @@ func (dbMgr *DbMgr) GetGroupsString() ([]string, error) {
 
 func (dbMgr *DbMgr) UpdBlkSeq(block *quorumpb.Block) error {
 	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + block.GroupId + "_" + fmt.Sprint(block.BlockNum)
-
-	//update BlockSeqDb
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		//b := make([]byte, 8)
-		//binary.LittleEndian.PutUint64(b, uint64(block.BlockNum))
 		e := badger.NewEntry([]byte(key), []byte(block.Cid))
 		err := txn.SetEntry(e)
 		return err
@@ -438,6 +433,69 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.GroupContentItem, er
 	})
 
 	return ctnList, err
+}
+
+func (dbMgr *DbMgr) AddBlkList(item *quorumpb.BlockListItem) (err error) {
+	itemBytes, err := proto.Marshal(item)
+	key := ATH_PREFIX + item.GroupId + "_" + item.UserId
+	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry([]byte(key), itemBytes)
+		err := txn.SetEntry(e)
+		return err
+	})
+
+	return nil
+}
+
+func (dbMgr *DbMgr) RmBlkLlist(groupId, userId string) (err error) {
+	key := ATH_PREFIX + groupId + "_" + userId
+
+	//check if group exist
+	err = dbMgr.Db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte(key))
+		return err
+	})
+
+	if err != nil {
+		return err
+	}
+
+	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
+		err := txn.Delete([]byte(key))
+		return err
+	})
+
+	return err
+}
+
+func (dbMgr *DbMgr) GetBlkList() ([]*quorumpb.BlockListItem, error) {
+	var blkList []*quorumpb.BlockListItem
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		key := ATH_PREFIX
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek([]byte(key)); it.ValidForPrefix([]byte(key)); it.Next() {
+			item := it.Item()
+			err := item.Value(func(v []byte) error {
+				blkItem := &quorumpb.BlockListItem{}
+				ctnerr := proto.Unmarshal(v, blkItem)
+				if ctnerr == nil {
+					blkList = append(blkList, blkItem)
+				}
+
+				return ctnerr
+			})
+
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return blkList, err
 }
 
 //for generate sequence ULID
