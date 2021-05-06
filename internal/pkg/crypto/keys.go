@@ -5,6 +5,7 @@ import (
 	"github.com/golang/glog"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/spf13/viper"
+	"os"
 	"path/filepath"
 )
 
@@ -21,8 +22,21 @@ func NewKeys() (*Keys, error) {
 	return &Keys{priv, pub}, nil
 }
 
-func LoadKeys(keyname string) (*Keys, error) {
-	viper.AddConfigPath(filepath.Dir("./config/"))
+func LoadKeys(dir string, keyname string) (*Keys, error) {
+	if dir[len(dir)-1:] != "/" && dir[len(dir)-1:] != "\\" { // add \\ for windows
+		dir = dir + "/"
+		if _, err := os.Stat(dir); err != nil {
+			if os.IsNotExist(err) {
+				err := os.Mkdir(dir, 0755)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
+		}
+	}
+	viper.AddConfigPath(filepath.Dir(dir))
 	viper.SetConfigName(keyname + "_keys")
 	viper.SetConfigType("toml")
 	err := viper.ReadInConfig()

@@ -51,12 +51,11 @@ func handleStream(stream network.Stream) {
 }
 
 func mainRet(config cli.Config) int {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if config.IsBootstrap == true {
-		keys, _ := localcrypto.LoadKeys("bootstrap")
+		keys, _ := localcrypto.LoadKeys(config.ConfigDir, "bootstrap")
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
@@ -71,7 +70,7 @@ func mainRet(config cli.Config) int {
 
 	} else {
 
-		keys, _ := localcrypto.LoadKeys(config.PeerName)
+		keys, _ := localcrypto.LoadKeys(config.ConfigDir, config.PeerName)
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
 		if err != nil {
 			glog.Fatalf(err.Error())
