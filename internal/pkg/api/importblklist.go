@@ -1,17 +1,18 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/golang/protobuf/proto"
 	"github.com/huo-ju/quorum/internal/pkg/chain"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type ImportBlkListParam struct {
-	Items []string
+	Items []BlkUserListItem `from:"blk_list" json:"blk_list" validate:"required"`
 }
 
 func (h *Handler) ImportBlkList(c echo.Context) (err error) {
@@ -30,12 +31,11 @@ func (h *Handler) ImportBlkList(c echo.Context) (err error) {
 	}
 
 	for _, blkItem := range params.Items {
-
 		var item *quorumpb.BlockListItem
 		item = &quorumpb.BlockListItem{}
 
-		err := proto.Unmarshal([]byte(blkItem), item)
-
+		blkItemBytes, err := json.Marshal(blkItem)
+		err = protojson.Unmarshal(blkItemBytes, item)
 		err = chain.GetDbMgr().AddBlkList(item)
 
 		if err != nil {
