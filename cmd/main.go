@@ -80,7 +80,8 @@ func mainRet(config cli.Config) int {
 
 		glog.Infof("peer_id created, <%s>", peerid)
 
-		datapath := "data" + "/" + config.PeerName
+		//datapath := "data" + "/" + config.PeerName
+		datapath := config.DataDir + "/" + config.PeerName
 		chain.InitCtx(datapath)
 		chain.GetChainCtx().Privatekey = keys.PrivKey
 		chain.GetChainCtx().PublicKey = keys.PubKey
@@ -205,9 +206,19 @@ func main() {
 		golog.SetLogLevel("autonat", "debug")
 	}
 
-	if err != nil {
-		panic(err)
+	if _, err := os.Stat(config.DataDir); err != nil {
+		if os.IsNotExist(err) {
+			err := os.Mkdir(config.DataDir, 0755)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
+
 	if *help {
 		fmt.Println("Output a help ")
 		fmt.Println()
