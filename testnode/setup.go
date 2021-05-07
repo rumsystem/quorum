@@ -67,9 +67,9 @@ func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string,
 	peer2apiport := ":18002"
 	bootstrapapiport := ":18010"
 
-	Fork(pidch, "/usr/bin/go", "run", "cmd/main.go", "-bootstrap", "-listen", "/ip4/0.0.0.0/tcp/20666", "-apilisten", bootstrapapiport, "-configdir", testconfdir, "-datadir", testdatadir)
+	Fork(pidch, "/usr/bin/go", "run", "main.go", "-bootstrap", "-listen", "/ip4/0.0.0.0/tcp/20666", "-apilisten", bootstrapapiport, "-configdir", testconfdir, "-datadir", testdatadir)
 
-	checkctx, _ := context.WithTimeout(ctx, 10*time.Second)
+	checkctx, _ := context.WithTimeout(ctx, 20*time.Second)
 	result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", bootstrapapiport))
 	if result == false {
 		return "", "", "", "", fmt.Errorf("bootstrap node start failed")
@@ -82,15 +82,15 @@ func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string,
 	bootstrapaddr := fmt.Sprintf("/ip4/127.0.0.1/tcp/20666/p2p/%s", bootstrappeerid)
 	log.Printf("bootstrap addr: %s\n", bootstrapaddr)
 
-	Fork(pidch, "/usr/bin/go", "run", "cmd/main.go", "-peername", "peer1", "-listen", "/ip4/0.0.0.0/tcp/17001", "-apilisten", peer1apiport, "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
-	Fork(pidch, "/usr/bin/go", "run", "cmd/main.go", "-peername", "peer2", "-listen", "/ip4/0.0.0.0/tcp/17002", "-apilisten", peer2apiport, "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
+	Fork(pidch, "/usr/bin/go", "run", "main.go", "-peername", "peer1", "-listen", "/ip4/0.0.0.0/tcp/17001", "-apilisten", peer1apiport, "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
+	Fork(pidch, "/usr/bin/go", "run", "main.go", "-peername", "peer2", "-listen", "/ip4/0.0.0.0/tcp/17002", "-apilisten", peer2apiport, "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
 
-	checkctx, _ = context.WithTimeout(ctx, 10*time.Second)
+	checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
 	resultpeer1 := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", peer1apiport))
 	if resultpeer1 == false {
 		return "", "", "", "", fmt.Errorf("peer1 node start failed")
 	}
-	checkctx, _ = context.WithTimeout(ctx, 10*time.Second)
+	checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
 	resultpeer2 := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", peer2apiport))
 	if resultpeer2 == false {
 		return "", "", "", "", fmt.Errorf("peer2 node start failed")
@@ -102,21 +102,42 @@ func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string,
 	return "", "", "", "", fmt.Errorf("unknown error")
 }
 
+func CleanTestData(dir string) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	configdirexist := false
+	datadirexist := false
+	for _, file := range files {
+		if file.Name() == "config" && file.IsDir() == true {
+			configdirexist = true
+		}
+		if file.Name() == "data" && file.IsDir() == true {
+			datadirexist = true
+		}
+	}
+	if configdirexist == true && datadirexist == true {
+		log.Printf("remove testdata:%s ...\n", dir)
+		err = os.RemoveAll(dir)
+		if err != nil {
+			log.Printf("can't remove testdata:%s %s\n", dir, err)
+		}
+	} else {
+		log.Printf("can't remove testdata:%s\n", dir)
+	}
+}
+
 func Cleanup(dir string, pidlist []int) {
 	log.Printf("Clean testdata path: %s ...", dir)
 	log.Println("pidlist", pidlist)
 
 	for _, pid := range pidlist {
-		killpid := "N"
-		log.Printf("Kill process: %d ? (Y/N)", pid)
-		fmt.Scanf("%s\n", &killpid)
-		if killpid == "Y" || killpid == "y" {
-			syscall.Kill(pid, syscall.SIGKILL) //TODO: `go run` will start a child process to run the application, but SIGKILL can't kill child processes
-			//pgid, err := syscall.Getpgid(pid)
-			//if err == nil {
-			//	syscall.Kill(-pgid, syscall.SIGKILL)
-			//}
-
+		//syscall.Kill(pid, syscall.SIGKILL) //TODO: `go run` will start a child process to run the application, but SIGKILL can't kill child processes
+		pgid, err := syscall.Getpgid(pid)
+		if err == nil {
+			log.Printf("kill pid %d pgid %d ", pid, pgid)
+			syscall.Kill(-pgid, 15) // note the minus sign
 		}
 	}
 
@@ -134,17 +155,15 @@ func Cleanup(dir string, pidlist []int) {
 		if file.Name() == "data" && file.IsDir() == true {
 			datadirexist = true
 		}
-		fmt.Println(file.Name())
-		fmt.Println()
 	}
 
-	deldir := "N"
 	if configdirexist == true && datadirexist == true {
-		fmt.Println("del: %s ?(Y/N)", dir)
-		fmt.Scanf("%s\n", &deldir)
-		if deldir == "Y" || deldir == "y" {
-			err = os.RemoveAll(dir)
-			fmt.Println("ok del this dir, result ", err)
+		log.Printf("remove testdata:%s ...\n", dir)
+		err = os.RemoveAll(dir)
+		if err != nil {
+			log.Printf("can't remove testdata:%s %s\n", dir, err)
 		}
+	} else {
+		log.Printf("can't remove testdata:%s\n", dir)
 	}
 }

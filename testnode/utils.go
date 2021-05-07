@@ -1,6 +1,7 @@
 package testnode
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,23 +9,23 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
 func Fork(pidch chan int, cmdName string, cmdArgs ...string) {
 	go func() {
+		var stderr bytes.Buffer
 		command := exec.Command(cmdName, cmdArgs...)
+		log.Printf("run command: %s", command)
+		command.Stderr = &stderr
+		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err := command.Start()
-		//output, err := command.Output()
 		if err != nil {
-			OnError(err)
+			log.Println(err, stderr.String())
 		}
 		pidch <- command.Process.Pid
 	}()
-}
-
-func OnError(err error) {
-	log.Println("Error: %s", err)
 }
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {
@@ -33,6 +34,7 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 		url := fmt.Sprintf("%s%s", apiurl, endpoint)
 		log.Printf("%s %s", method, url)
 		resp, err := http.Get(url)
+		log.Println(err)
 		if err != nil {
 			return []byte(""), err
 		}
