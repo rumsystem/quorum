@@ -67,9 +67,9 @@ func mainRet(config cli.Config) int {
 		}
 
 		glog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
-
+		h := &api.Handler{}
+		go StartAPIServer(config, h, true)
 	} else {
-
 		keys, _ := localcrypto.LoadKeys(config.ConfigDir, config.PeerName)
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
 		if err != nil {
@@ -130,7 +130,7 @@ func mainRet(config cli.Config) int {
 
 		//run local http api service
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx}
-		go StartAPIServer(config, h)
+		go StartAPIServer(config, h, false)
 	}
 
 	//attach signal
@@ -172,22 +172,26 @@ func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
 }
 
 //StartAPIServer : Start local web server
-func StartAPIServer(config cli.Config, h *api.Handler) {
+func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e := echo.New()
 	e.Binder = new(CustomBinder)
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
-	r.POST("/v1/group", h.CreateGroup)         //done
-	r.DELETE("/v1/group", h.RmGroup)           //done
-	r.POST("/v1/group/join", h.JoinGroup)      //done
-	r.POST("/v1/group/leave", h.LeaveGroup)    //done
-	r.POST("/v1/group/content", h.PostToGroup) //done
-	r.GET("/v1/node", h.GetNodeInfo)           //done
-	r.GET("/v1/block", h.GetBlock)             //done
-	r.GET("/v1/trx", h.GetTrx)                 //done
-	r.GET("/v1/group/content", h.GetGroupCtn)  //done
-	r.GET("/v1/group", h.GetGroups)            //done
+	if isbootstrapnode == false {
+		r.POST("/v1/group", h.CreateGroup)         //done
+		r.DELETE("/v1/group", h.RmGroup)           //done
+		r.POST("/v1/group/join", h.JoinGroup)      //done
+		r.POST("/v1/group/leave", h.LeaveGroup)    //done
+		r.POST("/v1/group/content", h.PostToGroup) //done
+		r.GET("/v1/node", h.GetNodeInfo)           //done
+		r.GET("/v1/block", h.GetBlock)             //done
+		r.GET("/v1/trx", h.GetTrx)                 //done
+		r.GET("/v1/group/content", h.GetGroupCtn)  //done
+		r.GET("/v1/group", h.GetGroups)            //done
+	} else {
+		r.GET("/v1/node", h.GetBootStropNodeInfo) //done
+	}
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 
