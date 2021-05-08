@@ -29,26 +29,34 @@ func Fork(pidch chan int, cmdName string, cmdArgs ...string) {
 }
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {
+	url := fmt.Sprintf("%s%s", apiurl, endpoint)
 	switch method {
 	case "GET":
-		url := fmt.Sprintf("%s%s", apiurl, endpoint)
 		log.Printf("%s %s", method, url)
 		resp, err := http.Get(url)
-		log.Println(err)
+		defer resp.Body.Close()
 		if err != nil {
 			return []byte(""), err
 		}
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return []byte(""), err
 		}
 		return body, nil
-
 	case "POST":
-		//log.Println("post")
-	}
+		log.Printf("%s %s", method, url)
+		resp, err := http.Post(url, "application/json", bytes.NewBufferString(data))
+		defer resp.Body.Close()
 
+		if err != nil {
+			return []byte(""), err
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return []byte(""), err
+		}
+		return body, nil
+	}
 	return []byte(""), nil
 }
 
