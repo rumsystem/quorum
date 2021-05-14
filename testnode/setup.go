@@ -69,7 +69,8 @@ func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string,
 
 	Fork(pidch, "/usr/bin/go", "run", "main.go", "-bootstrap", "-listen", "/ip4/0.0.0.0/tcp/20666", "-apilisten", bootstrapapiport, "-configdir", testconfdir, "-datadir", testdatadir)
 
-	checkctx, _ := context.WithTimeout(ctx, 20*time.Second)
+	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
+	log.Printf("request: %s", fmt.Sprintf("http://127.0.0.1%s", bootstrapapiport))
 	result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", bootstrapapiport))
 	if result == false {
 		return "", "", "", "", fmt.Errorf("bootstrap node start failed")

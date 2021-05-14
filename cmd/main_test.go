@@ -116,10 +116,10 @@ func TestGroups(t *testing.T) {
 		}
 
 		ready := "GROUP_READY"
-		syncfinish := false
 		waitingcounter := 0
+		groupStatus := make(map[string]bool) // add ready groups
 		for {
-			if waitingcounter >= 5 {
+			if waitingcounter >= 10 {
 				break
 			}
 			groupslist1 := &api.GroupInfoList{}
@@ -137,41 +137,41 @@ func TestGroups(t *testing.T) {
 					t.Errorf("get peer2 group  error %s", err)
 				}
 			}
-			syncfinish = true
 			if len(groupslist1.GroupInfos) == 2*groupspeernum && len(groupslist2.GroupInfos) == 2*groupspeernum {
 				log.Printf("%d/%d groups on peer1/peer2", len(groupslist1.GroupInfos), len(groupslist2.GroupInfos))
 				for _, groupinfo := range groupslist1.GroupInfos {
 					if groupinfo.GroupStatus != ready {
-						syncfinish = false
 						t.Logf("peer1 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
+					} else {
+						t.Logf("peer1 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
+						groupStatus[groupinfo.GroupName] = true
 					}
 				}
 				for _, groupinfo := range groupslist2.GroupInfos {
 					if groupinfo.GroupStatus != ready {
-						syncfinish = false
 						t.Logf("peer2 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
+					} else {
+						t.Logf("peer2 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
+						groupStatus[groupinfo.GroupName] = true
 					}
 				}
 			} else {
 				t.Errorf("Expected %d/%d groups on peer1/peer2, got %d/%d", 2*groupspeernum, 2*groupspeernum, len(groupslist1.GroupInfos), len(groupslist2.GroupInfos))
 			}
-			if syncfinish == true {
+			if len(groupStatus) == 10 {
 				break
 			} else {
-				log.Printf("waiting 10 seconds for peers data sync")
-				time.Sleep(10 * time.Second)
+				log.Printf("waiting 30 seconds for peers data sync")
+				time.Sleep(30 * time.Second)
 			}
 			waitingcounter += 1
 		}
 
-		if syncfinish == false {
+		if len(groupStatus) != 10 {
 			t.Errorf("error: peer data sync not finish. ")
 		}
 	} else {
 		t.Fail()
 		t.Logf("Expected %d groups on peer1/peer2 got %d/%d", groupspeernum, len(genesisblockpeer1), len(genesisblockpeer2))
 	}
-
-	//resp, err := testnode.RequestAPI(apiurl, "/group", "POST", )
-	//time.Sleep(10000 * time.Minute)
 }

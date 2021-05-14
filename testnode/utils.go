@@ -34,10 +34,10 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 	case "GET":
 		log.Printf("%s %s", method, url)
 		resp, err := http.Get(url)
-		defer resp.Body.Close()
 		if err != nil {
 			return []byte(""), err
 		}
+		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return []byte(""), err
@@ -46,11 +46,12 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 	case "POST":
 		log.Printf("%s %s", method, url)
 		resp, err := http.Post(url, "application/json", bytes.NewBufferString(data))
-		defer resp.Body.Close()
 
 		if err != nil {
 			return []byte(""), err
 		}
+
+		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return []byte(""), err
