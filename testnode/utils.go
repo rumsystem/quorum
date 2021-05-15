@@ -33,7 +33,16 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 	switch method {
 	case "GET":
 		log.Printf("%s %s", method, url)
-		resp, err := http.Get(url)
+
+		req, err := http.NewRequest("GET", url, bytes.NewBufferString(data))
+		if err != nil {
+			return []byte(""), err
+		}
+		req.Header.Add("Content-Type", "application/json")
+		client := &http.Client{}
+
+		//resp, err := http.Get(url)
+		resp, err := client.Do(req)
 		if err != nil {
 			return []byte(""), err
 		}

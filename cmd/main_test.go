@@ -99,6 +99,7 @@ func TestGroups(t *testing.T) {
 		} else {
 			t.Errorf("create group on peer%d error %s", 2, err)
 		}
+		time.Sleep(5 * time.Second)
 	}
 
 	if len(genesisblockpeer1) == groupspeernum && len(genesisblockpeer2) == groupspeernum {
@@ -156,6 +157,7 @@ func TestGroups(t *testing.T) {
 					}
 				}
 			} else {
+				t.Fail()
 				t.Errorf("Expected %d/%d groups on peer1/peer2, got %d/%d", 2*groupspeernum, 2*groupspeernum, len(groupslist1.GroupInfos), len(groupslist2.GroupInfos))
 			}
 			if len(groupStatus) == 10 {
@@ -173,5 +175,102 @@ func TestGroups(t *testing.T) {
 	} else {
 		t.Fail()
 		t.Logf("Expected %d groups on peer1/peer2 got %d/%d", groupspeernum, len(genesisblockpeer1), len(genesisblockpeer2))
+	}
+}
+
+func TestGroupsContent(t *testing.T) {
+
+	//create 5 posts on each groups, then verify peer1 groups have the same posts with peer2 groups
+
+	groupslist1 := &api.GroupInfoList{}
+	groupslist2 := &api.GroupInfoList{}
+	resp, err := testnode.RequestAPI(peer1api, "/api/v1/group", "GET", "")
+	if err == nil {
+		if err := json.Unmarshal(resp, &groupslist1); err != nil {
+			t.Errorf("Data Unmarshal error %s", err)
+		}
+	} else {
+		t.Errorf("request api /api/v1/group err: %s", err)
+	}
+	resp, err = testnode.RequestAPI(peer2api, "/api/v1/group", "GET", "")
+	if err == nil {
+		if err := json.Unmarshal(resp, &groupslist2); err != nil {
+			t.Errorf("Data Unmarshal error %s", err)
+		}
+	} else {
+		t.Errorf("request api /api/v1/group err: %s", err)
+	}
+
+	for _, groupinfo := range groupslist1.GroupInfos {
+		log.Println("post content to each groups")
+		i := 1
+		for ; i <= 5; i++ {
+			content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupinfo.GroupId, i, groupinfo.GroupId, i, groupinfo.GroupId)
+			log.Println(content)
+			resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "POST", content)
+			if err != nil {
+				t.Errorf("post content to api error %s", err)
+			}
+			var objmap map[string]interface{}
+			if err = json.Unmarshal(resp, &objmap); err != nil {
+				t.Errorf("Data Unmarshal error %s", err)
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}
+
+	log.Println("waiting 60 seconds for peers data sync")
+	time.Sleep(60 * time.Second)
+	log.Println("start verify groups content")
+	for _, groupinfo := range groupslist1.GroupInfos {
+		contentlist := make(map[string]string)
+		groupcontentlist1 := []api.GroupContentObjectItem{}
+		log.Printf("get peer1 group %s  content", groupinfo.GroupId)
+		reqdata := fmt.Sprintf(`{"group_id":"%s"}`, groupinfo.GroupId)
+		resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "GET", reqdata)
+
+		if err == nil {
+			if err := json.Unmarshal(resp, &groupcontentlist1); err != nil {
+				t.Errorf("Data Unmarshal error %s", err)
+			}
+		} else {
+			t.Errorf("get /api/v1/group/content err: %s", err)
+		}
+
+		for _, contentitem := range groupcontentlist1 {
+			if contentitem.Content != nil {
+				contentlist[contentitem.TrxId] = contentitem.Content.Content
+			}
+		}
+
+		log.Printf("peer1 group %s content number: %d", groupinfo.GroupId, len(contentlist))
+		//verify with peer2
+
+		groupcontentlist2 := []api.GroupContentObjectItem{}
+		resp, err = testnode.RequestAPI(peer2api, "/api/v1/group/content", "GET", reqdata)
+
+		if err == nil {
+			if err := json.Unmarshal(resp, &groupcontentlist2); err != nil {
+				t.Errorf("Data Unmarshal error %s", err)
+			}
+		} else {
+			t.Errorf("get /api/v1/group/content err: %s", err)
+		}
+
+		contentcount := 0
+		for _, contentitem := range groupcontentlist2 {
+			if contentitem.Content != nil {
+				if contentlist[contentitem.TrxId] == contentitem.Content.Content {
+					log.Printf("trxid: %s find in peer2's group.\n", contentitem.TrxId)
+					contentcount++
+				}
+			}
+		}
+		if contentcount == len(contentlist) {
+			log.Printf("group %s content check ok.", groupinfo.GroupId)
+		} else {
+			t.Fail()
+			t.Logf("Expected groups %s content number %d, got %d", groupinfo.GroupId, len(contentlist), contentcount)
+		}
 	}
 }
