@@ -103,3 +103,12 @@ message GroupContentItem {
 	bytes Content = 3;
 	int64 TimeStamp = 4;
 }
+
+message BlockListItem {
+    string GroupId = 1;
+    string UserId = 2;
+    string OwnerPubkey = 3;
+    string OwnerSign = 4;
+    string Memo = 5;
+    int64 TimeStamp = 6;
+}

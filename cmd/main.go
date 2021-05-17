@@ -192,6 +192,13 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo) //done
 	}
+
+	//auth related API
+	r.POST("/v1/group/user/blocked/add", h.BlkGrpUser)
+	r.POST("/v1/group/user/blocked/rm", h.RmBlkedGrpUser)
+	r.POST("/v1/group/user/blocked/import", h.ImportBlkList)
+	r.GET("/v1/group/user/blocked", h.GetBlockedUsrList)
+
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 
