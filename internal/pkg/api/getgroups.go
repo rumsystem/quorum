@@ -18,7 +18,7 @@ type groupInfo struct {
 	GroupStatus    string `json:"GroupStatus"`
 }
 
-type groupInfoList struct {
+type GroupInfoList struct {
 	GroupInfos []*groupInfo `json:"groups"`
 }
 
@@ -41,5 +41,5 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		}
 		groups = append(groups, group)
 	}
-	return c.JSON(http.StatusOK, &groupInfoList{groups})
+	return c.JSON(http.StatusOK, &GroupInfoList{groups})
 }
