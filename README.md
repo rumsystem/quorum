@@ -1,5 +1,10 @@
 设置测试环境
 
+Run testing
+
+```go test cmd/main* -v```
+
+
 本地开发环境配置
 
     1. 安装go

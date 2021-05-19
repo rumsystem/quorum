@@ -51,12 +51,11 @@ func handleStream(stream network.Stream) {
 }
 
 func mainRet(config cli.Config) int {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if config.IsBootstrap == true {
-		keys, _ := localcrypto.LoadKeys("bootstrap")
+		keys, _ := localcrypto.LoadKeys(config.ConfigDir, "bootstrap")
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
@@ -68,10 +67,10 @@ func mainRet(config cli.Config) int {
 		}
 
 		glog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
-
+		h := &api.Handler{}
+		go StartAPIServer(config, h, true)
 	} else {
-
-		keys, _ := localcrypto.LoadKeys(config.PeerName)
+		keys, _ := localcrypto.LoadKeys(config.ConfigDir, config.PeerName)
 		peerid, err := peer.IDFromPublicKey(keys.PubKey)
 		if err != nil {
 			glog.Fatalf(err.Error())
@@ -81,7 +80,8 @@ func mainRet(config cli.Config) int {
 
 		glog.Infof("peer_id created, <%s>", peerid)
 
-		datapath := "data" + "/" + config.PeerName
+		//datapath := "data" + "/" + config.PeerName
+		datapath := config.DataDir + "/" + config.PeerName
 		chain.InitCtx(datapath)
 		chain.GetChainCtx().Privatekey = keys.PrivKey
 		chain.GetChainCtx().PublicKey = keys.PubKey
@@ -130,7 +130,7 @@ func mainRet(config cli.Config) int {
 
 		//run local http api service
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx}
-		go StartAPIServer(config, h)
+		go StartAPIServer(config, h, false)
 	}
 
 	//attach signal
@@ -172,22 +172,26 @@ func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
 }
 
 //StartAPIServer : Start local web server
-func StartAPIServer(config cli.Config, h *api.Handler) {
+func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e := echo.New()
 	e.Binder = new(CustomBinder)
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
-	r.POST("/v1/group", h.CreateGroup)         //done
-	r.DELETE("/v1/group", h.RmGroup)           //done
-	r.POST("/v1/group/join", h.JoinGroup)      //done
-	r.POST("/v1/group/leave", h.LeaveGroup)    //done
-	r.POST("/v1/group/content", h.PostToGroup) //done
-	r.GET("/v1/node", h.GetNodeInfo)           //done
-	r.GET("/v1/block", h.GetBlock)             //done
-	r.GET("/v1/trx", h.GetTrx)                 //done
-	r.GET("/v1/group/content", h.GetGroupCtn)  //done
-	r.GET("/v1/group", h.GetGroups)            //done
+	if isbootstrapnode == false {
+		r.POST("/v1/group", h.CreateGroup)         //done
+		r.DELETE("/v1/group", h.RmGroup)           //done
+		r.POST("/v1/group/join", h.JoinGroup)      //done
+		r.POST("/v1/group/leave", h.LeaveGroup)    //done
+		r.POST("/v1/group/content", h.PostToGroup) //done
+		r.GET("/v1/node", h.GetNodeInfo)           //done
+		r.GET("/v1/block", h.GetBlock)             //done
+		r.GET("/v1/trx", h.GetTrx)                 //done
+		r.GET("/v1/group/content", h.GetGroupCtn)  //done
+		r.GET("/v1/group", h.GetGroups)            //done
+	} else {
+		r.GET("/v1/node", h.GetBootStropNodeInfo) //done
+	}
 
 	//auth related API
 	r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
@@ -210,9 +214,19 @@ func main() {
 		golog.SetLogLevel("autonat", "debug")
 	}
 
-	if err != nil {
-		panic(err)
+	if _, err := os.Stat(config.DataDir); err != nil {
+		if os.IsNotExist(err) {
+			err := os.Mkdir(config.DataDir, 0755)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
+
 	if *help {
 		fmt.Println("Output a help ")
 		fmt.Println()

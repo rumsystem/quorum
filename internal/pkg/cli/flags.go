@@ -18,6 +18,8 @@ type Config struct {
 	PeerName           string
 	JsonTracer         string
 	IsDebug            bool
+	ConfigDir          string
+	DataDir            string
 }
 
 func (al *addrList) String() string {
@@ -45,6 +47,8 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
 	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "Adds a multiaddress to the listen list")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
+	flag.StringVar(&config.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flag.StringVar(&config.DataDir, "datadir", "./data/", "config and keys dir")
 	flag.StringVar(&config.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flag.BoolVar(&config.IsDebug, "debug", false, "show debug log")
