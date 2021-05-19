@@ -41,7 +41,7 @@ func (al *addrList) Set(value string) error {
 
 func ParseFlags() (Config, error) {
 	config := Config{ProtocolID: "/quorum/1.0.0"}
-	flag.StringVar(&config.RendezvousString, "rendezvous", "some unique string",
+	flag.StringVar(&config.RendezvousString, "rendezvous", "e6629921-b5cd-4855-9fcd-08bcc39caef7", //e6629921-b5cd-4855-9fcd-08bcc39caef7 default quorum rendezvous
 		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")

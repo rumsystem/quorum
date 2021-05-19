@@ -2,6 +2,7 @@ package chain
 
 import (
 	"errors"
+	"fmt"
 
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -168,7 +169,13 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 		return "INVALID_TRX", err
 	}
 
-	chainCtx.PublicTopic.Publish(chainCtx.Ctx, pbBytes)
+	grouptopic := GetChainCtx().GroupTopic(trxMsg.GroupId)
+	if grouptopic != nil {
+		grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
+	} else {
+		return "INVALID_GROUP", fmt.Errorf("can't publish Content to a unknown group topic: %s", trxMsg.GroupId)
+	}
+
 	return trxMsg.TrxId, nil
 }
 
@@ -204,7 +211,14 @@ func (grp *Group) startAskNextBlock() {
 					glog.Fatalf(err.Error())
 				}
 
-				GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
+				//GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
+
+				grouptopic := GetChainCtx().GroupTopic(askNextMsg.GroupId)
+				if grouptopic != nil {
+					grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
+				} else {
+					glog.Fatalf(fmt.Errorf("can't publish AskNextMsg to a unknown group topic: %s", askNextMsg.GroupId).Error())
+				}
 			}
 		}
 	}()

@@ -42,7 +42,7 @@ import (
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 )
 
-const PUBLIC_CHANNEL = "all_node_public_channel"
+//const PUBLIC_CHANNEL = "all_node_public_channel"
 
 var node *p2p.Node
 
@@ -117,10 +117,10 @@ func mainRet(config cli.Config) int {
 		}
 
 		//join public channel
-		err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
-		if err != nil {
-			return 0
-		}
+		//err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
+		//if err != nil {
+		//	return 0
+		//}
 
 		err = chain.GetChainCtx().SyncAllGroup()
 		if err != nil {
