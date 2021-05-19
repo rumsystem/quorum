@@ -133,6 +133,15 @@ func (chainctx *ChainCtx) GroupTopic(groupId string) *pubsub.Topic {
 	return nil
 }
 
+func (chainctx *ChainCtx) GroupTopicPublish(groupId string, data []byte) error {
+	grouptopic := chainctx.GroupTopic(groupId)
+	if grouptopic != nil {
+		return grouptopic.Publish(chainctx.Ctx, data)
+	} else {
+		return fmt.Errorf("can't publish to a unknown group topic: %s", groupId)
+	}
+}
+
 //quit public channel before teardown
 func (chainctx *ChainCtx) QuitPublicChannel() error {
 	return nil

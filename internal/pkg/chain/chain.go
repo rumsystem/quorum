@@ -69,13 +69,7 @@ func handleReqSign(trxMsg *quorumpb.TrxMsg) error {
 		if pbBytes, err := proto.Marshal(trxMsg2); err != nil {
 			return err
 		} else {
-			grouptopic := GetChainCtx().GroupTopic(trxMsg.GroupId)
-			if grouptopic != nil {
-				grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
-			} else {
-				return fmt.Errorf("can't publish to a unknown group topic: %s", trxMsg.GroupId)
-			}
-
+			return GetChainCtx().GroupTopicPublish(trxMsg.GroupId, pbBytes)
 		}
 	}
 
@@ -134,11 +128,9 @@ func handleReqSignResp(trxMsg *quorumpb.TrxMsg) error {
 		newBlockTrxMsg, _ := CreateTrxNewBlock(newBlock)
 		pbBytes, _ := proto.Marshal(newBlockTrxMsg)
 
-		grouptopic := GetChainCtx().GroupTopic(newBlockTrxMsg.GroupId)
-		if grouptopic != nil {
-			grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
-		} else {
-			return fmt.Errorf("can't publish to a unknown group topic: %s", newBlockTrxMsg.GroupId)
+		err = GetChainCtx().GroupTopicPublish(newBlockTrxMsg.GroupId, pbBytes)
+		if err != nil {
+			return err
 		}
 
 		//Give new block to group
@@ -190,14 +182,7 @@ func handleNewBlock(trxMsg *quorumpb.TrxMsg) error {
 		glog.Infof("send Add_NEW_BLOCK_RESP")
 		newBlockRespMsg, _ := CreateTrxNewBlockResp(&block)
 		pbBytes, _ := proto.Marshal(newBlockRespMsg)
-
-		grouptopic := GetChainCtx().GroupTopic(newBlockRespMsg.GroupId)
-		if grouptopic != nil {
-			grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
-		} else {
-			return fmt.Errorf("can't publish to a unknown group topic: %s", newBlockRespMsg.GroupId)
-		}
-
+		return GetChainCtx().GroupTopicPublish(newBlockRespMsg.GroupId, pbBytes)
 	}
 
 	return nil
@@ -229,15 +214,7 @@ func handleNextBlock(trxMsg *quorumpb.TrxMsg) error {
 			emptyBlock.GroupId = trxMsg.GroupId
 			nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_ON_TOP, trxMsg.Sender, &emptyBlock)
 			pbBytes, _ := proto.Marshal(nextBlockRespMsg)
-
-			grouptopic := GetChainCtx().GroupTopic(nextBlockRespMsg.GroupId)
-			if grouptopic != nil {
-				grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
-			} else {
-				return fmt.Errorf("can't publish to a unknown group topic: %s", nextBlockRespMsg.GroupId)
-			}
-
-			return nil
+			return GetChainCtx().GroupTopicPublish(nextBlockRespMsg.GroupId, pbBytes)
 		}
 
 		//otherwise, check blockDB, if I have the block requested, send it out by publish
@@ -258,12 +235,7 @@ func handleNextBlock(trxMsg *quorumpb.TrxMsg) error {
 						glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
 						nextBlockRespMsg, _ := CreateTrxReqNextBlockResp(quorumpb.ReqBlock_BLOCK_IN_TRX, trxMsg.Sender, &block)
 						pbBytes, _ := proto.Marshal(nextBlockRespMsg)
-						grouptopic := GetChainCtx().GroupTopic(nextBlockRespMsg.GroupId)
-						if grouptopic != nil {
-							grouptopic.Publish(GetChainCtx().Ctx, pbBytes)
-						} else {
-							return fmt.Errorf("can't publish to a unknown group topic: %s", nextBlockRespMsg.GroupId)
-						}
+						return GetChainCtx().GroupTopicPublish(nextBlockRespMsg.GroupId, pbBytes)
 					}
 					return nil
 				})
