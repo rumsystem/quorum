@@ -33,9 +33,11 @@ func handleTrxMsg(trxMsg *quorumpb.TrxMsg) error {
 	}
 
 	switch trxMsg.MsgType {
-	case quorumpb.TrxType_REQ_SIGN:
+	case quorumpb.TrxType_REQ_SIGN_POST,
+		quorumpb.TrxType_REQ_SIGN_AUTH:
 		handleReqSign(trxMsg)
-	case quorumpb.TrxType_REQ_SIGN_RESP:
+	case quorumpb.TrxType_REQ_SIGN_RESP_POST,
+		quorumpb.TrxType_REQ_SIGN_RESP_AUTH:
 		handleReqSignResp(trxMsg)
 	case quorumpb.TrxType_ADD_NEW_BLOCK:
 		handleNewBlock(trxMsg)
@@ -94,9 +96,6 @@ func handleReqSignResp(trxMsg *quorumpb.TrxMsg) error {
 		return err
 	}
 
-	//hash := string(reqSignResp.Hash)
-	//wsign := string(reqSignResp.WitnessSign)
-
 	hash := fmt.Sprintf("%x", reqSignResp.Hash)
 	wsign := fmt.Sprintf("%x", reqSignResp.WitnessSign)
 	consensusString := "witness:=" + reqSignResp.Witness + "?hash:=" + hash + "?wsign:=" + wsign
@@ -118,9 +117,6 @@ func handleReqSignResp(trxMsg *quorumpb.TrxMsg) error {
 			glog.Infof(err.Error())
 			return err
 		}
-
-		glog.Infof("Topblock cid %s", topBlock.Cid)
-		glog.Infof("Topblock groupId %s", topBlock.GroupId)
 
 		newBlock := CreateBlock(topBlock, trx)
 
@@ -199,6 +195,15 @@ func handleNextBlock(trxMsg *quorumpb.TrxMsg) error {
 
 	var reqNextBlock quorumpb.ReqNextBlock
 	if err := proto.Unmarshal(trxMsg.Data, &reqNextBlock); err != nil {
+		return err
+	}
+
+	//check if requester is in group block list
+	isBlocked, _ := GetDbMgr().IsBlocked(trxMsg.GroupId, trxMsg.Sender)
+
+	if isBlocked {
+		glog.Warning("user is blocked by group owner")
+		err := errors.New("user auth failed")
 		return err
 	}
 

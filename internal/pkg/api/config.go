@@ -18,3 +18,14 @@ const GROUP_NAME_MIN_LENGTH int = 5
 
 //error
 const ERROR_INFO string = "error"
+
+const (
+	Add    = "Add"
+	Remove = "Remove"
+	Group  = "Group"
+	User   = "User"
+	Auth   = "Auth"
+	Note   = "Note"
+)
+
+const BLACK_LIST_OP_PREFIX string = "blklistop_"

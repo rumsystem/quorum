@@ -3,13 +3,15 @@ package quorum.pb;
 option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
 
 enum TrxType {
-  REQ_SIGN            = 0; // request witness sign
-  REQ_SIGN_RESP       = 1; // response requset withness sign
-  ADD_NEW_BLOCK       = 2; // new block created
-  ADD_NEW_BLOCK_RESP  = 3; // response new block created
-  REQ_NEXT_BLOCK      = 4; // request next block
-  REQ_NEXT_BLOCK_RESP = 5; // response request next block
-  PEER_ANNOUNCE       = 6; // announce I am online
+  REQ_SIGN_POST       = 0; // request witness sign for post
+  REQ_SIGN_AUTH       = 1; // request witness sign for auth
+  REQ_SIGN_RESP_POST  = 2; // response requset withness sign
+  REQ_SIGN_RESP_AUTH  = 3; // response request witness auth
+  ADD_NEW_BLOCK       = 4; // new block created
+  ADD_NEW_BLOCK_RESP  = 5; // response new block created
+  REQ_NEXT_BLOCK      = 6; // request next block
+  REQ_NEXT_BLOCK_RESP = 7; // response request next block
+  PEER_ANNOUNCE       = 8; // announce I am online
 }
 
 

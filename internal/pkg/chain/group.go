@@ -3,9 +3,10 @@ package chain
 import (
 	"errors"
 
+	"time"
+
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"time"
 
 	"github.com/golang/glog"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -81,9 +82,17 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 		return err
 	}
 
-	err = GetDbMgr().AddGrpCtnt(block)
-	if err != nil {
-		return err
+	for _, trx := range block.Trxs {
+		switch trx.Msg.MsgType {
+		case quorumpb.TrxType_REQ_SIGN_AUTH:
+			glog.Infof("REQ_SIGN_AUTH")
+			GetDbMgr().UpdateBlkListItem(trx)
+		case quorumpb.TrxType_REQ_SIGN_POST:
+			glog.Infof("REQ_SIGN_POST")
+			GetDbMgr().AddPost(trx)
+		default:
+			glog.Infof("xxx %s", trx.Msg.MsgType)
+		}
 	}
 
 	grp.Item.LatestBlockNum = block.BlockNum
@@ -155,7 +164,34 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 		return "", err
 	}
 
-	trxMsg, _ = CreateTrxMsgReqSign(grp.Item.GroupId, encodedcontent)
+	trxMsg, _ = CreateTrxMsgReqSign(quorumpb.TrxType_REQ_SIGN_POST, grp.Item.GroupId, encodedcontent)
+	trx.Msg = trxMsg
+	trx.Data = encodedcontent
+	var cons []string
+	trx.Consensus = cons
+
+	dbMgr.AddTrx(&trx)
+
+	pbBytes, err := proto.Marshal(trxMsg)
+	if err != nil {
+		return "INVALID_TRX", err
+	}
+
+	chainCtx.PublicTopic.Publish(chainCtx.Ctx, pbBytes)
+	return trxMsg.TrxId, nil
+}
+
+//Add Content to Group
+func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
+	var trx quorumpb.Trx
+	var trxMsg *quorumpb.TrxMsg
+
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return "", err
+	}
+
+	trxMsg, _ = CreateTrxMsgReqSign(quorumpb.TrxType_REQ_SIGN_AUTH, grp.Item.GroupId, encodedcontent)
 	trx.Msg = trxMsg
 	trx.Data = encodedcontent
 	var cons []string

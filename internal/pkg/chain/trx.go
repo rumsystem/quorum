@@ -2,8 +2,10 @@ package chain
 
 import (
 	"crypto/sha256"
+	"errors"
 	"time"
 
+	"github.com/golang/glog"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
@@ -16,13 +18,13 @@ const Hours = 1
 const Mins = 0
 const Sec = 0
 
-func CreateTrxMsgReqSign(groupId string, data []byte) (*quorumpb.TrxMsg, error) {
+func CreateTrxMsgReqSign(msgType quorumpb.TrxType, groupId string, data []byte) (*quorumpb.TrxMsg, error) {
 	var trxMsg quorumpb.TrxMsg
 	var reqSign quorumpb.ReqSign
 
 	trxId := guuid.New()
 	trxMsg.TrxId = trxId.String()
-	trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN
+	trxMsg.MsgType = msgType // quorumpb.TrxType_REQ_SIGN_POST
 	trxMsg.Sender = GetChainCtx().PeerId.Pretty()
 	trxMsg.GroupId = groupId
 	trxMsg.Version = GetChainCtx().Version
@@ -76,7 +78,17 @@ func CreateTrxMsgReqSignResp(inTrxMsg *quorumpb.TrxMsg, reqSign *quorumpb.ReqSig
 	payload, _ := proto.Marshal(&respSign) //TODO: catch proto.Marshal err?
 
 	trxMsg.TrxId = trxId.String()
-	trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN_RESP
+
+	if inTrxMsg.MsgType == quorumpb.TrxType_REQ_SIGN_POST {
+		trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN_RESP_POST
+	} else if inTrxMsg.MsgType == quorumpb.TrxType_REQ_SIGN_AUTH {
+		trxMsg.MsgType = quorumpb.TrxType_REQ_SIGN_RESP_AUTH
+	} else {
+		glog.Warning("Unknown msgType")
+		err := errors.New("Unknown msgType")
+		return &trxMsg, err
+	}
+
 	trxMsg.Sender = GetChainCtx().PeerId.Pretty()
 	trxMsg.GroupId = inTrxMsg.GroupId
 	trxMsg.Data = payload

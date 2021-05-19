@@ -369,37 +369,31 @@ func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
 	return blockId, err
 }
 
-func (dbMgr *DbMgr) AddGrpCtnt(block *quorumpb.Block) error {
-	for _, trx := range block.Trxs {
+func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 
-		var ctnItem *quorumpb.GroupContentItem
-		ctnItem = &quorumpb.GroupContentItem{}
+	var ctnItem *quorumpb.GroupContentItem
+	ctnItem = &quorumpb.GroupContentItem{}
 
-		ctnItem.TrxId = trx.Msg.TrxId
-		ctnItem.Publisher = trx.Msg.Sender
-		ctnItem.Content = trx.Data
-		ctnItem.TimeStamp = trx.Msg.TimeStamp
-		ctnBytes, err := proto.Marshal(ctnItem)
-		if err != nil {
-			return err
-		}
-
-		key := GRP_PREFIX + CNT_PREFIX + block.GroupId + "_" + trx.Msg.TrxId + "_" + fmt.Sprint(trx.Msg.TimeStamp)
-
-		glog.Infof("Add trx with key %s", key)
-		//update ContentDb
-		err = dbMgr.Db.Update(func(txn *badger.Txn) error {
-			e := badger.NewEntry([]byte(key), ctnBytes)
-			err := txn.SetEntry(e)
-			return err
-		})
-
-		if err != nil {
-			return err
-		}
+	ctnItem.TrxId = trx.Msg.TrxId
+	ctnItem.Publisher = trx.Msg.Sender
+	ctnItem.Content = trx.Data
+	ctnItem.TimeStamp = trx.Msg.TimeStamp
+	ctnBytes, err := proto.Marshal(ctnItem)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	key := GRP_PREFIX + CNT_PREFIX + trx.Msg.GroupId + "_" + trx.Msg.TrxId + "_" + fmt.Sprint(trx.Msg.TimeStamp)
+
+	glog.Infof("Add trx with key %s", key)
+	//update ContentDb
+	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry([]byte(key), ctnBytes)
+		err := txn.SetEntry(e)
+		return err
+	})
+
+	return err
 }
 
 func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.GroupContentItem, error) {
@@ -435,40 +429,49 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.GroupContentItem, er
 	return ctnList, err
 }
 
-func (dbMgr *DbMgr) AddBlkList(item *quorumpb.BlockListItem) (err error) {
-	itemBytes, err := proto.Marshal(item)
-	key := ATH_PREFIX + item.GroupId + "_" + item.UserId
-	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry([]byte(key), itemBytes)
-		err := txn.SetEntry(e)
+func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx) (err error) {
+
+	item := &quorumpb.BlockListItem{}
+
+	if err := proto.Unmarshal(trx.Data, item); err != nil {
 		return err
-	})
+	}
+
+	if item.Memo == "Add" {
+		key := ATH_PREFIX + item.GroupId + "_" + item.UserId
+		err = dbMgr.Db.Update(func(txn *badger.Txn) error {
+			e := badger.NewEntry([]byte(key), trx.Data)
+			err := txn.SetEntry(e)
+			return err
+		})
+	} else if item.Memo == "Remove" {
+		key := ATH_PREFIX + item.GroupId + "_" + item.UserId
+
+		//check if group exist
+		err = dbMgr.Db.View(func(txn *badger.Txn) error {
+			_, err := txn.Get([]byte(key))
+			return err
+		})
+
+		if err != nil {
+			return err
+		}
+
+		err = dbMgr.Db.Update(func(txn *badger.Txn) error {
+			err := txn.Delete([]byte(key))
+			return err
+		})
+
+		return err
+	} else {
+		err := errors.New("unknow msgType")
+		return err
+	}
 
 	return nil
 }
 
-func (dbMgr *DbMgr) RmBlkLlist(groupId, userId string) (err error) {
-	key := ATH_PREFIX + groupId + "_" + userId
-
-	//check if group exist
-	err = dbMgr.Db.View(func(txn *badger.Txn) error {
-		_, err := txn.Get([]byte(key))
-		return err
-	})
-
-	if err != nil {
-		return err
-	}
-
-	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(key))
-		return err
-	})
-
-	return err
-}
-
-func (dbMgr *DbMgr) GetBlkList() ([]*quorumpb.BlockListItem, error) {
+func (dbMgr *DbMgr) GetBlkListItems() ([]*quorumpb.BlockListItem, error) {
 	var blkList []*quorumpb.BlockListItem
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		key := ATH_PREFIX
@@ -496,6 +499,22 @@ func (dbMgr *DbMgr) GetBlkList() ([]*quorumpb.BlockListItem, error) {
 	})
 
 	return blkList, err
+}
+
+func (dbMgr *DbMgr) IsBlocked(groupId, userId string) (bool, error) {
+	key := ATH_PREFIX + groupId + "_" + groupId
+
+	//check if group exist
+	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte(key))
+		return err
+	})
+
+	if err == nil {
+		return true, nil
+	}
+
+	return false, err
 }
 
 //for generate sequence ULID
