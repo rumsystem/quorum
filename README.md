@@ -104,7 +104,6 @@ Run testing
         执行：
             curl -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"846011a8-1c58-4a35-b70f-83195c3bc2e8","type":"Group"}}' http://127.0.0.1:8002/api/v1/group/content
 
-
             参数： 
                 group_id : 组id
                 content：发布的内容
@@ -161,19 +160,108 @@ Run testing
             group_id : 组id
 
         - /api/v1/node , 获取节点信息
+
         例子：
         curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8003/api/v1/node
 
         返回值：
 
-        {"node_publickey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCk7Mwxj3gnM8TDCg92M3b2baGoLkk04I+piMoPPTwYjG57CTA9d4dxgFCHOWCa2M93P5+2Ap7w6pGhAPgpldEkFS8zrU4IpKk2Syqh163IDjVnhB2hmrQ2+ZdkXVNOdLTv3zdHR5+iUQAeM7Tp5mE1Sas3iWIJmJn3RPXV0+LV9Ugy/kMYnXMPDuggsTidGK8sjSQNK0ks+BCDrF37vnbiEBfyDJ42jMhvycxzUecTNrNVtUuElkuXsBa+hwPnnljQRCwi1aeTU0v5w6dOwZw1Lpx2FEKhxU5H5ti72XKGfmcU5KznkYsBkS15Xl8mx6Hu9VGq9KHmk5xSJZSi/Eu49RldcE1DGh1LKurxc5cKgy20kqoRU19b8Ba3z1I+0yeEAKBl8QWYaTbRovV2w+xABteKI+FQHfmGs4tkt+VUs1rhOTniqQ1qFwMDZX0ZcuK3GnnaLd+GvppXM1C1wqlpL+zv8LsSFSTQkCd1pz9SO2nz2UM047HIbn463DN89xrT3oIT2AiP50ozH0VoMZ1UAuHJfkQyJA0noh9t8CYjYYqe/N3sRgkY2L3P47TAzhqai0uJBEv22OJIx2Dt50eUhSUjP0UzkMssGxWLlqRZ0s+XrrLs6mTnE6zRj2+GqjFekj4thhSernXQuA3f1hqFnUYs3HIYScxCQvPVzTPZTQIDAQAB","node_status":"NODE_ONLINE",
-        "node_version":"ver 0.01"}
+        {"node_publickey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCyOIkTFxF1v8xborMo/6k45AMpfijbmT3OithJ/XTn8MDhnMw6j/jzw8YFSIfDj4KfjpwlyuVVZbSxHjeFFKMAWJgkeTNxRYLxXQWbZKd6d9PeRKLpdv/oEyDoPpdigMON84M1VWx9W0/lJ8Nps+cuI+7ugMLue40lAAUXXTPSaKy7vrgvQplKyfE4chPRY+bOAdmZDm76G00bGW6p4D2SLgApGXaG4grhGGvmJutAByIcaJRlpQu2mvgvjUAArP+YLw8scNvWzShGU/gz8tUFtus6c/cez/TmIUjeuD2hbbM+Gn1CxJxx/v0P59+hQT+f2NCM8yKC2KoXQkm5Llz2cUbJWbfOOQEkDCWRibYNEIUHYjWEL5xOcKLb4ie3vmJ5mz3kmI0iEDcx7OvTw7dtJGCo9GG5yPLITI0T3ygsjLUIpooY6PhOTIWvMqBVmiovUzb6cUb5Tms226KkP2ZOqNqqkwkN6zGI27ePdRde5N9N9zkwZd9ESaeOeea1BGDINyfpV1x2jk90BXRE7sB7f4eQrhCwtEHsoiZLUV4QevKO03XMMAGOmT6fQGACe6sVSeGfouNjKsgp0KrTRTtHIJCdGHNUNiv38ZGgRUWiwzPR83aJ24OJT2CNhLUvZk8tu5PagV19+4VKQ5OIOotHJusLvc1oibKCwv7sf6b2pQIDAQAB","node_status":"NODE_ONLINE","node_version":"ver 0.01","user_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m"}
 
         参数：
             node_publickey: 组创建者的pubkey
-            node_status : 节点状态，值可以是 “NODE_ONLINE"和”NODE_OFFLINE“
-            node_version : 节点的协议版本号
+            node_status   : 节点状态，值可以是 “NODE_ONLINE"和”NODE_OFFLINE“
+            node_version  : 节点的协议版本号
+            user_id       : 节点用户的user_id 
 
-        - /api/v1/block (TBD)            
-        - /api/v1/trx (TBD)
+        - 获取一个块的完整内容
+        例子：
+            curl -X GET -H 'Content-Type: application/json' -d '{"block_id":"<BLOCK_ID>"}' http://127.0.0.1:8003/api/v1/block
+
+        - 获取一个trx的完整内容
+        例子:
+            curl -X GET -H 'Content-Type: application/json' -d '{"trx_id":"<TRX_ID>"}' http://127.0.0.1:8003/api/v1/trx
+
+
+        - 添加组黑名单
+        
+            例子：
+            curl -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Auth", "id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m"},"target":{"id":"3171b27b-2241-41ca-b3a5-144d34ed5bee", "type":"Group"}}' http://127.0.0.1:8002/api/v1/group/blacklist
+            
+            参数： 
+                type: "Add" 
+                object : 
+                    type：必须是"Auth"
+                    id:想要屏蔽的user_id (可以通过节点信息API获得)
+                target                                             
+                    id:组id，哪个组想要屏蔽该用户
+                    type：必须为"Group"
+
+            说明：只有创建该组的节点才能执行此操作，也就是需要group_owner的权限，添加后会通过block广播至组中其他节点
+                  注意：黑名单操作分为2种情况
+                        1. 被组屏蔽的节点发出的block会被其他节点拒绝，因此无法向节点中发布内容，但是此时该节点仍可以获得组中其他节点的发出的新块（也即只要节点不退出，仍然可以看到新内容，但是不能发送）
+                        2. 被组屏蔽的节点如果退出node，下次上线时将无法获取节点中最新的块，所以会一直处于syncing状态
+
+            返回值：
+                {"group_id":"3171b27b-2241-41ca-b3a5-144d34ed5bee","user_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","owner_pubkey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCsnOQxSxyeBQdbR3DVys2BNBo78QHkzuf7xCUwxu8Aizu1Xz7eC/7V0ISm//jUtx+wfGvA1n9F4Pi/tuVtpP7ysuETbflYFwn1HFmQkB2KAfpXBh9nPdz4ZpYxKRac6t38VPFLrRzHQZWlzyP0bYiLLGKc2oPlDqIlPDsxQWDA7pHAvHYd2SfUtiLRHvDKQvRmOk2IUcKJF0kWaVvok68Nn1+ihbxyF2kGzd02SdGe0W8qbdYFT9K/Sx4ed/qE+43dzhCbNh0fEBiNDeAHdsssZ+6HiSGSlPS1SSrlSazQUF9ZglrnRN6Jtx/ezqP25ZpMsHMFbYl8fgETkxQUp2gDpvrZ1sW2jJIdcuhUP0BCfbvcis+YkOosd0Map9Z+KN6MHAEcN+zwCtVvbWRJCs3u3VzyOOxZN7A/o4LHEAvM9eAWObWcxvlMZABncaTC4+9gYIUI5N9nJY6ETmDsUdL6B/9zCiXnXaOZDEhzg5AxAkEShqoUW5OOupk9Lm42g4PKLrBR/qhzGzJEyXWXp09xRV7SFpmUJP6KnKLKDnthMYsrKMVYuX5SwIBd4RSWVU9gm52eHUS/wNSbEp0WiiWe9lBHMje2dSoSUqfV9HXIf8AIDD37vq5aJsj1PgH8VuARgtmCHdPSngODUcU8f3J7t3WXys75njOptB9AcW2fWwIDAQAB","sign":"20e9863fddadac7846a5e6caa50dbb39483f8f33479ce0ecf3b7a02441b31a317647a8fd28ff171363d94ae3f31ebda6e2e5c9e915be340988ec3b4e77fce36143baa4797c48cb0b5a358aa995f59098eda7d8494c2c91146d6aca7b9c4e0ce2df88d0e371c7e2e7a43ef83a6a5e7fb2616aea6a45a940f2bd5d4fbdd95bb4b6518e1d4cc234a6ed76ae31265175317ce82255a61501f96f8292840642e67ac5d860484df3c1ff23ba08daa2ad4a49855e51ceab194e27b7c723b026ec0a19e3da3e53d62634ee59cbf1fa2445148afa94be8a114a7559268aac33c3d6ce102c69a978496da2c25e215593c2b856a90c75bdf2a83f39540ea0979716b2d45e19a14e8c95d655d3d82e8fd9f2814d16352efd188eeb3ca681a2b4b501d98d1be1a716b8bc37697cf2699f4d962a1fa38588a2f4b2163de1540a9e46572b185a16170fb4efb2a08a04374f70c06548f8883a4bc2e2e0d2eda3f82ed3e3492c2f422ff0f92f432015bd6a6e5ecc603dc8bdba97c21c6a8600a940722f09a4bd6e14a632a037e3ad5925c178b602755626c2a172fbaa038f5efe8e82cf6644fa310d4da95bdd4a639bbba034e4bff31860835d6ab7371b42abe6f9864393816ef855d375701c84ccd86894496723ead59f1a71866a3e38bf262f3db5936881bb0550257c22be0d04b49b32c6ab70a403bb182d02a299509983269df37be54d540f59","trx_id":"4a890c84-4e8d-4706-bbdf-13c7cfd3ea98","memo":"Add"}
+
+                group_id：组id
+                user_id:  被屏蔽的用户id
+                owner_pubkey: 组拥有者的pubkey
+                sign: 组拥有者的签名（可通过pubkey验证）
+                trx_id:该操作的trx的id，可以通过gettrx API获取具体内容
+                memo: "Add"
+        
+        - 获取组黑名单 
+            例子：
+                curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/group/blacklist
+
+            参数：
+                无
+            
+            说明：获取一个节点的blacklist
+
+            返回值：
+                {"blocked":[{"GroupId":"3171b27b-2241-41ca-b3a5-144d34ed5bee","UserId":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","OwnerPubkey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCsnOQxSxyeBQdbR3DVys2BNBo78QHkzuf7xCUwxu8Aizu1Xz7eC/7V0ISm//jUtx+wfGvA1n9F4Pi/tuVtpP7ysuETbflYFwn1HFmQkB2KAfpXBh9nPdz4ZpYxKRac6t38VPFLrRzHQZWlzyP0bYiLLGKc2oPlDqIlPDsxQWDA7pHAvHYd2SfUtiLRHvDKQvRmOk2IUcKJF0kWaVvok68Nn1+ihbxyF2kGzd02SdGe0W8qbdYFT9K/Sx4ed/qE+43dzhCbNh0fEBiNDeAHdsssZ+6HiSGSlPS1SSrlSazQUF9ZglrnRN6Jtx/ezqP25ZpMsHMFbYl8fgETkxQUp2gDpvrZ1sW2jJIdcuhUP0BCfbvcis+YkOosd0Map9Z+KN6MHAEcN+zwCtVvbWRJCs3u3VzyOOxZN7A/o4LHEAvM9eAWObWcxvlMZABncaTC4+9gYIUI5N9nJY6ETmDsUdL6B/9zCiXnXaOZDEhzg5AxAkEShqoUW5OOupk9Lm42g4PKLrBR/qhzGzJEyXWXp09xRV7SFpmUJP6KnKLKDnthMYsrKMVYuX5SwIBd4RSWVU9gm52eHUS/wNSbEp0WiiWe9lBHMje2dSoSUqfV9HXIf8AIDD37vq5aJsj1PgH8VuARgtmCHdPSngODUcU8f3J7t3WXys75njOptB9AcW2fWwIDAQAB","OwnerSign":"20e9863fddadac7846a5e6caa50dbb39483f8f33479ce0ecf3b7a02441b31a317647a8fd28ff171363d94ae3f31ebda6e2e5c9e915be340988ec3b4e77fce36143baa4797c48cb0b5a358aa995f59098eda7d8494c2c91146d6aca7b9c4e0ce2df88d0e371c7e2e7a43ef83a6a5e7fb2616aea6a45a940f2bd5d4fbdd95bb4b6518e1d4cc234a6ed76ae31265175317ce82255a61501f96f8292840642e67ac5d860484df3c1ff23ba08daa2ad4a49855e51ceab194e27b7c723b026ec0a19e3da3e53d62634ee59cbf1fa2445148afa94be8a114a7559268aac33c3d6ce102c69a978496da2c25e215593c2b856a90c75bdf2a83f39540ea0979716b2d45e19a14e8c95d655d3d82e8fd9f2814d16352efd188eeb3ca681a2b4b501d98d1be1a716b8bc37697cf2699f4d962a1fa38588a2f4b2163de1540a9e46572b185a16170fb4efb2a08a04374f70c06548f8883a4bc2e2e0d2eda3f82ed3e3492c2f422ff0f92f432015bd6a6e5ecc603dc8bdba97c21c6a8600a940722f09a4bd6e14a632a037e3ad5925c178b602755626c2a172fbaa038f5efe8e82cf6644fa310d4da95bdd4a639bbba034e4bff31860835d6ab7371b42abe6f9864393816ef855d375701c84ccd86894496723ead59f1a71866a3e38bf262f3db5936881bb0550257c22be0d04b49b32c6ab70a403bb182d02a299509983269df37be54d540f59","Memo":"Add","TimeStamp":1621532089763312100}]}
+
+                blocked：数组，包含该节点所有已经屏蔽的组-用户对
+                    GroupId:组id
+                    UserId:用户id
+                    OwnerPubkey：组拥有者pubkey
+                    OwnerSign:执行该操作的签名
+                    Memo: Add or Remove
+                    Timestamp：操作执行的时间戳
+
+        - 删除组黑名单
+        
+            例子：
+            curl -X POST -H 'Content-Type: application/json' -d '{"type":"Remove","object":{"type":"Auth", "id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m"},"target":{"id":"3171b27b-2241-41ca-b3a5-144d34ed5bee", "type":"Group"}}' http://127.0.0.1:8002/api/v1/group/blacklist
+
+            参数： 
+            type: "Remove"
+            object : 
+                type：必须是"Auth"
+                id:  想要解除的user_id (可以通过节点信息API获得)
+            target                                             
+                id:组id
+                type：必须为"Group"
+
+            结果：
+                {"group_id":"3171b27b-2241-41ca-b3a5-144d34ed5bee","user_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","owner_pubkey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCsnOQxSxyeBQdbR3DVys2BNBo78QHkzuf7xCUwxu8Aizu1Xz7eC/7V0ISm//jUtx+wfGvA1n9F4Pi/tuVtpP7ysuETbflYFwn1HFmQkB2KAfpXBh9nPdz4ZpYxKRac6t38VPFLrRzHQZWlzyP0bYiLLGKc2oPlDqIlPDsxQWDA7pHAvHYd2SfUtiLRHvDKQvRmOk2IUcKJF0kWaVvok68Nn1+ihbxyF2kGzd02SdGe0W8qbdYFT9K/Sx4ed/qE+43dzhCbNh0fEBiNDeAHdsssZ+6HiSGSlPS1SSrlSazQUF9ZglrnRN6Jtx/ezqP25ZpMsHMFbYl8fgETkxQUp2gDpvrZ1sW2jJIdcuhUP0BCfbvcis+YkOosd0Map9Z+KN6MHAEcN+zwCtVvbWRJCs3u3VzyOOxZN7A/o4LHEAvM9eAWObWcxvlMZABncaTC4+9gYIUI5N9nJY6ETmDsUdL6B/9zCiXnXaOZDEhzg5AxAkEShqoUW5OOupk9Lm42g4PKLrBR/qhzGzJEyXWXp09xRV7SFpmUJP6KnKLKDnthMYsrKMVYuX5SwIBd4RSWVU9gm52eHUS/wNSbEp0WiiWe9lBHMje2dSoSUqfV9HXIf8AIDD37vq5aJsj1PgH8VuARgtmCHdPSngODUcU8f3J7t3WXys75njOptB9AcW2fWwIDAQAB","sign":"20e9863fddadac7846a5e6caa50dbb39483f8f33479ce0ecf3b7a02441b31a317647a8fd28ff171363d94ae3f31ebda6e2e5c9e915be340988ec3b4e77fce36143baa4797c48cb0b5a358aa995f59098eda7d8494c2c91146d6aca7b9c4e0ce2df88d0e371c7e2e7a43ef83a6a5e7fb2616aea6a45a940f2bd5d4fbdd95bb4b6518e1d4cc234a6ed76ae31265175317ce82255a61501f96f8292840642e67ac5d860484df3c1ff23ba08daa2ad4a49855e51ceab194e27b7c723b026ec0a19e3da3e53d62634ee59cbf1fa2445148afa94be8a114a7559268aac33c3d6ce102c69a978496da2c25e215593c2b856a90c75bdf2a83f39540ea0979716b2d45e19a14e8c95d655d3d82e8fd9f2814d16352efd188eeb3ca681a2b4b501d98d1be1a716b8bc37697cf2699f4d962a1fa38588a2f4b2163de1540a9e46572b185a16170fb4efb2a08a04374f70c06548f8883a4bc2e2e0d2eda3f82ed3e3492c2f422ff0f92f432015bd6a6e5ecc603dc8bdba97c21c6a8600a940722f09a4bd6e14a632a037e3ad5925c178b602755626c2a172fbaa038f5efe8e82cf6644fa310d4da95bdd4a639bbba034e4bff31860835d6ab7371b42abe6f9864393816ef855d375701c84ccd86894496723ead59f1a71866a3e38bf262f3db5936881bb0550257c22be0d04b49b32c6ab70a403bb182d02a299509983269df37be54d540f59","trx_id":"41204fd0-f9cb-497f-a62e-0d43d755a5b9","memo":"Remove"}
+
+                group_id：组id
+                user_id:  移除黑名单的用户id
+                owner_pubkey: 组拥有者的pubkey
+                sign: 组拥有者的签名（可通过pubkey验证）
+                trx_id:该操作的trx的id，可以通过gettrx API获取具体内容
+                memo: "Remove"
+
+
+
+
+
+            
+
+
+
 

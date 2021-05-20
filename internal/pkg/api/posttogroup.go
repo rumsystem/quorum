@@ -10,17 +10,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type CustomValidator struct {
+type CustomValidatorPost struct {
 	Validator *validator.Validate
 }
 
-const (
-	Add   = "Add"
-	Group = "Group"
-	Note  = "Note"
-)
-
-func (cv *CustomValidator) Validate(i interface{}) error {
+func (cv *CustomValidatorPost) Validate(i interface{}) error {
 	switch i.(type) {
 	case *quorumpb.Activity:
 		inputobj := i.(*quorumpb.Activity)
@@ -53,18 +47,13 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	validate := &CustomValidator{Validator: validator.New()}
+	validate := &CustomValidatorPost{Validator: validator.New()}
 	if err = validate.Validate(paramspb); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
 	if group, ok := chain.GetChainCtx().Groups[paramspb.Target.Id]; ok {
-		//contentobj, err := proto.Marshal(paramspb.Object)
-		//if err != nil {
-		//	output[ERROR_INFO] = err.Error()
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
 		trxId, err := group.Post(paramspb.Object)
 
 		if err != nil {

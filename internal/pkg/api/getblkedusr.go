@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/huo-ju/quorum/internal/pkg/chain"
+	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
 )
 
@@ -23,7 +23,7 @@ type BlkUserList struct {
 func (h *Handler) GetBlockedUsrList(c echo.Context) (err error) {
 	var result []*BlkUserListItem
 
-	blkList, err := chain.GetDbMgr().GetBlkList()
+	blkList, err := chain.GetDbMgr().GetBlkListItems()
 
 	for _, blkItem := range blkList {
 		var item *BlkUserListItem
