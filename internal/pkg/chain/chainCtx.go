@@ -11,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
@@ -27,6 +26,7 @@ const (
 )
 
 type ChainCtx struct {
+	node       *p2p.Node
 	PeerId     peer.ID
 	Privatekey p2pcrypto.PrivKey
 	PublicKey  p2pcrypto.PubKey
@@ -71,8 +71,9 @@ func GetDbMgr() *DbMgr {
 	return dbMgr
 }
 
-func InitCtx(dataPath string) {
+func InitCtx(ctx context.Context, node *p2p.Node, dataPath string) {
 	chainCtx = &ChainCtx{}
+	chainCtx.node = node
 	dbMgr = &DbMgr{}
 	chainCtx.Groups = make(map[string]*Group)
 
@@ -81,6 +82,7 @@ func InitCtx(dataPath string) {
 
 	chainCtx.TrxSignReq = 1
 	chainCtx.Status = NODE_OFFLINE
+	chainCtx.Ctx = ctx
 	chainCtx.Version = "ver 0.01"
 }
 
@@ -94,14 +96,17 @@ func Release() {
 	dbMgr.CloseDb()
 }
 
-func (chainctx *ChainCtx) JoinGroupChannel(node *p2p.Node, groupId string, ctx context.Context, config cli.Config) error {
-	groupTopic, err := node.Pubsub.Join(groupId)
-
-	if err != nil {
-		glog.Infof("Join <%s> failed", groupId)
-		return err
-	} else {
-		glog.Infof("Join <%s> done", groupId)
+func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) error {
+	var err error
+	groupTopic := chainctx.GroupTopic(groupId)
+	if groupTopic == nil {
+		groupTopic, err = chainctx.node.Pubsub.Join(groupId)
+		if err != nil {
+			glog.Infof("Join <%s> failed", groupId)
+			return err
+		} else {
+			glog.Infof("Join <%s> done", groupId)
+		}
 	}
 
 	chainctx.GroupTopics = append(chainctx.GroupTopics, groupTopic)
@@ -116,10 +121,11 @@ func (chainctx *ChainCtx) JoinGroupChannel(node *p2p.Node, groupId string, ctx c
 	}
 
 	chainctx.GroupSubscriptions = append(chainctx.GroupSubscriptions, sub)
-	chainctx.Ctx = ctx
-	chainctx.Status = NODE_ONLINE
+	//chainctx.Ctx = ctx
+	//TODO: ONLINE status
+	//chainctx.Status = NODE_ONLINE
 
-	go handleGroupChannel(ctx, groupId, config)
+	go handleGroupChannel(ctx, sub, groupId)
 
 	return nil
 }
@@ -128,6 +134,15 @@ func (chainctx *ChainCtx) GroupTopic(groupId string) *pubsub.Topic {
 	for _, topic := range chainctx.GroupTopics {
 		if topic.String() == groupId {
 			return topic
+		}
+	}
+	return nil
+}
+
+func (chainctx *ChainCtx) GroupSubscription(groupId string) *pubsub.Subscription {
+	for _, sub := range chainctx.GroupSubscriptions {
+		if sub.Topic() == groupId {
+			return sub
 		}
 	}
 	return nil
@@ -167,8 +182,15 @@ func (chainctx *ChainCtx) SyncAllGroup() error {
 
 		proto.Unmarshal(b, item)
 		group.init(item)
-		go group.StartSync()
-		chainctx.Groups[item.GroupId] = group
+		err = chainctx.JoinGroupChannel(item.GroupId, context.Background())
+		if err == nil {
+			go group.StartSync()
+			chainctx.Groups[item.GroupId] = group
+		} else {
+			glog.Infof(fmt.Sprintf("can't join group channel: %s", item.GroupId))
+			glog.Fatalf(err.Error())
+
+		}
 	}
 
 	return nil
@@ -178,14 +200,7 @@ func (chainctx *ChainCtx) StopSyncAllGroup() error {
 	return nil
 }
 
-func handleGroupChannel(ctx context.Context, groupId string, config cli.Config) error {
-	var groupchannel *pubsub.Subscription
-	for _, sub := range chainCtx.GroupSubscriptions {
-		if sub.Topic() == groupId {
-			groupchannel = sub
-			break
-		}
-	}
+func handleGroupChannel(ctx context.Context, groupchannel *pubsub.Subscription, groupId string) error {
 	if groupchannel != nil {
 		for {
 			msg, err := groupchannel.Next(ctx)

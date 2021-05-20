@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"context"
-	//"fmt"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/libp2p/go-libp2p"
@@ -111,30 +111,43 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 	return nil
 }
 
-func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) (int, error) {
+func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) error {
 	connectedCount := 0
-	peers, err := node.FindPeers(ctx, config.RendezvousString)
-	glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
-	if err != nil {
-		return connectedCount, err
-	}
-	for _, peer := range peers {
-		if peer.ID == node.Host.ID() {
-			continue
+
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			//TODO: check peers status and max connect peers
+			peers, err := node.FindPeers(ctx, config.RendezvousString)
+			glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
+			fmt.Println(peers)
+			if err != nil {
+				return err
+			}
+			for _, peer := range peers {
+				if peer.ID == node.Host.ID() {
+					continue
+				}
+				pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+				defer cancel()
+				err := node.Host.Connect(pctx, peer)
+				if err != nil {
+					glog.Warningf("connect peer failure: %s \n", peer)
+					cancel()
+					continue
+				} else {
+					connectedCount++
+					glog.Infof("connect: %s \n", peer)
+				}
+			}
 		}
-		pctx, cancel := context.WithTimeout(ctx, time.Second*10)
-		defer cancel()
-		err := node.Host.Connect(pctx, peer)
-		if err != nil {
-			glog.Warningf("connect peer failure: %s \n", peer)
-			cancel()
-			continue
-		} else {
-			connectedCount++
-			glog.Infof("connect: %s \n", peer)
-		}
 	}
-	return connectedCount, nil
+	return nil
 }
 
 func (node *Node) EnsureConnect(ctx context.Context, rendezvousString string, f func()) {

@@ -32,7 +32,7 @@ func TestGroups(t *testing.T) {
 	fmt.Println(peer2keys)
 	datapath, err := ioutil.TempDir("", "peer1")
 	log.Printf("chain node 1 setup at: %s", datapath)
-	chain.InitCtx(datapath)
+	chain.InitCtx(ctx, datapath)
 	chain.GetChainCtx().Privatekey = peer1keys.PrivKey
 	chain.GetChainCtx().PublicKey = peer1keys.PubKey
 	//TODO:
