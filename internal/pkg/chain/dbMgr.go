@@ -502,7 +502,7 @@ func (dbMgr *DbMgr) GetBlkListItems() ([]*quorumpb.BlockListItem, error) {
 }
 
 func (dbMgr *DbMgr) IsBlocked(groupId, userId string) (bool, error) {
-	key := ATH_PREFIX + groupId + "_" + groupId
+	key := ATH_PREFIX + groupId + "_" + userId
 
 	//check if group exist
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {

@@ -85,13 +85,11 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 	for _, trx := range block.Trxs {
 		switch trx.Msg.MsgType {
 		case quorumpb.TrxType_REQ_SIGN_AUTH:
-			glog.Infof("REQ_SIGN_AUTH")
 			GetDbMgr().UpdateBlkListItem(trx)
 		case quorumpb.TrxType_REQ_SIGN_POST:
-			glog.Infof("REQ_SIGN_POST")
 			GetDbMgr().AddPost(trx)
 		default:
-			glog.Infof("xxx %s", trx.Msg.MsgType)
+			glog.Infof("Unsupported msgType %s", trx.Msg.MsgType)
 		}
 	}
 

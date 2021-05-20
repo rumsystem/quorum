@@ -26,7 +26,6 @@ func (h *Handler) GetBlockedUsrList(c echo.Context) (err error) {
 	blkList, err := chain.GetDbMgr().GetBlkListItems()
 
 	for _, blkItem := range blkList {
-
 		var item *BlkUserListItem
 		item = &BlkUserListItem{}
 		item.GroupId = blkItem.GroupId
