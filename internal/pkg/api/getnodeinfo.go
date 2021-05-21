@@ -1,10 +1,11 @@
 package api
 
 import (
+	"net/http"
+
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"net/http"
 )
 
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
@@ -25,6 +26,7 @@ func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	}
 
 	output[NODE_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
+	output[USER_ID] = chain.GetChainCtx().PeerId.Pretty()
 
 	return c.JSON(http.StatusOK, output)
 }

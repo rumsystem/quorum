@@ -182,25 +182,21 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
 	if isbootstrapnode == false {
-		r.POST("/v1/group", h.CreateGroup)         //done
-		r.DELETE("/v1/group", h.RmGroup)           //done
-		r.POST("/v1/group/join", h.JoinGroup)      //done
-		r.POST("/v1/group/leave", h.LeaveGroup)    //done
-		r.POST("/v1/group/content", h.PostToGroup) //done
-		r.GET("/v1/node", h.GetNodeInfo)           //done
-		r.GET("/v1/block", h.GetBlock)             //done
-		r.GET("/v1/trx", h.GetTrx)                 //done
-		r.GET("/v1/group/content", h.GetGroupCtn)  //done
-		r.GET("/v1/group", h.GetGroups)            //done
+		r.POST("/v1/group", h.CreateGroup)                //done
+		r.DELETE("/v1/group", h.RmGroup)                  //done
+		r.POST("/v1/group/join", h.JoinGroup)             //done
+		r.POST("/v1/group/leave", h.LeaveGroup)           //done
+		r.POST("/v1/group/content", h.PostToGroup)        //done
+		r.GET("/v1/node", h.GetNodeInfo)                  //done
+		r.GET("/v1/block", h.GetBlock)                    //done
+		r.GET("/v1/trx", h.GetTrx)                        //done
+		r.GET("/v1/group/content", h.GetGroupCtn)         //done
+		r.GET("/v1/group", h.GetGroups)                   //done
+		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)    //done
+		r.GET("/v1/group/blacklist", h.GetBlockedUsrList) //done
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo) //done
 	}
-
-	//auth related API
-	r.POST("/v1/group/user/blocked/add", h.BlkGrpUser)
-	r.POST("/v1/group/user/blocked/rm", h.RmBlkedGrpUser)
-	r.POST("/v1/group/user/blocked/import", h.ImportBlkList)
-	r.GET("/v1/group/user/blocked", h.GetBlockedUsrList)
 
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
