@@ -270,11 +270,15 @@ func TestGroupsContent(t *testing.T) {
 				}
 			}
 		}
-		if contentcount == len(contentlist) {
+		if len(contentlist) > 0 && contentcount == len(contentlist) {
 			log.Printf("group %s content check ok.", groupinfo.GroupId)
 		} else {
 			t.Fail()
-			t.Logf("Expected groups %s content number %d, got %d", groupinfo.GroupId, len(contentlist), contentcount)
+			if len(contentlist) > 0 {
+				t.Logf("Expected groups %s content number %d, got %d", groupinfo.GroupId, len(contentlist), contentcount)
+			} else {
+				t.Logf("Expected groups content number greater than zero, got %d", len(contentlist))
+			}
 		}
 	}
 }
