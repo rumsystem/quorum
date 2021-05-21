@@ -121,9 +121,8 @@ func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) 
 	}
 
 	chainctx.GroupSubscriptions = append(chainctx.GroupSubscriptions, sub)
-	//chainctx.Ctx = ctx
-	//TODO: ONLINE status
-	//chainctx.Status = NODE_ONLINE
+	//TODO: fix ONLINE status
+	chainctx.Status = NODE_ONLINE
 
 	go handleGroupChannel(ctx, sub, groupId)
 

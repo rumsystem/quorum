@@ -42,19 +42,23 @@ func TestMain(m *testing.M) {
 }
 
 func TestNodeStatus(t *testing.T) {
-	expected := "NODE_ONLINE"
 	for _, peerapi := range []string{peer1api, peer2api} {
+		if peerapi == "" {
+			t.Fail()
+			t.Logf("peerapi should not be nil.")
+		}
+		t.Logf("request API at: %s", peerapi)
 		resp, err := testnode.RequestAPI(peerapi, "/api/v1/node", "GET", "")
 		if err == nil {
 			var objmap map[string]interface{}
 			if err := json.Unmarshal(resp, &objmap); err != nil {
 				t.Errorf("Data Unmarshal error %s", err)
 			} else {
-				if objmap["node_status"] != expected {
+				if objmap["node_publickey"] == "" {
 					t.Fail()
-					t.Logf("Expected %s, got %s", expected, objmap["node_status"])
+					t.Logf("Expected node publickey not nil")
 				} else {
-					t.Logf("api %s status: %s", peerapi, objmap["node_status"])
+					t.Logf("api %s status ok", peerapi)
 				}
 			}
 		} else {
