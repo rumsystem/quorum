@@ -174,9 +174,8 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	if err != nil {
 		return "INVALID_TRX", err
 	}
-
-	chainCtx.PublicTopic.Publish(chainCtx.Ctx, pbBytes)
-	return trxMsg.TrxId, nil
+	err = GetChainCtx().GroupTopicPublish(trxMsg.GroupId, pbBytes)
+	return trxMsg.TrxId, err
 }
 
 //Add Content to Group
