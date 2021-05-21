@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/libp2p/go-libp2p"
@@ -111,9 +111,9 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 	return nil
 }
 
-func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) error {
-	connectedCount := 0
+func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config cli.Config) error {
 
+	notify := false
 	ticker := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
 
@@ -123,9 +123,9 @@ func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) error {
 			return nil
 		case <-ticker.C:
 			//TODO: check peers status and max connect peers
+			connectedCount := 0
 			peers, err := node.FindPeers(ctx, config.RendezvousString)
-			glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
-			fmt.Println(peers)
+			//glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
 			if err != nil {
 				return err
 			}
@@ -144,6 +144,14 @@ func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) error {
 					connectedCount++
 					glog.Infof("connect: %s \n", peer)
 				}
+			}
+			if connectedCount > 0 {
+				if notify == false {
+					peerok <- struct{}{}
+					notify = true
+				}
+			} else {
+				glog.Infof("waitting for peers...")
 			}
 		}
 	}

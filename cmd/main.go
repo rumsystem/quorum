@@ -92,8 +92,13 @@ func mainRet(config cli.Config) int {
 		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
 		glog.Infof("Successfully announced!")
 
-		go node.ConnectPeers(ctx, config)
+		peerok := make(chan struct{})
+		go node.ConnectPeers(ctx, peerok, config)
 
+		select {
+		case <-peerok:
+			glog.Infof("Connected to enough peers.")
+		}
 		//if err != nil {
 		//	glog.Fatalf(err.Error())
 		//	return 0
