@@ -223,8 +223,8 @@ func TestGroupsContent(t *testing.T) {
 		}
 	}
 
-	log.Println("waiting 60 seconds for peers data sync")
-	time.Sleep(60 * time.Second)
+	log.Println("waiting 30 seconds for peers data sync")
+	time.Sleep(30 * time.Second)
 	log.Println("start verify groups content")
 	for _, groupinfo := range groupslist1.GroupInfos {
 		contentlist := make(map[string]string)
