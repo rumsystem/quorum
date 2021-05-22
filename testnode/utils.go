@@ -86,9 +86,19 @@ func CheckNodeRunning(ctx context.Context, url string) bool {
 				if err := json.Unmarshal(resp, &objmap); err != nil {
 					fmt.Println(err)
 				} else {
-					if objmap["node_publickey"] != "" {
+					log.Println(objmap)
+					if objmap["node_status"] == "NODE_ONLINE" && objmap["node_type"] == "bootstrap" {
 						ticker.Stop()
 						return true
+					} else if objmap["peers"] != nil {
+						peers := []string{}
+						for _, peer := range objmap["peers"].([]interface{}) {
+							peers = append(peers, peer.(string))
+						}
+						if len(peers) >= 0 {
+							ticker.Stop()
+							return true
+						}
 					}
 				}
 			}

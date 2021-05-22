@@ -9,9 +9,10 @@ import (
 )
 
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
-	output := make(map[string]string)
+	output := make(map[string]interface{})
 
 	output[NODE_VERSION] = chain.GetChainCtx().Version
+	output[NODETYPE] = "peer"
 
 	if chain.GetChainCtx().Status == 0 {
 		output[NODE_STATUS] = "NODE_ONLINE"
@@ -27,6 +28,9 @@ func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 
 	output[NODE_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
 	output[USER_ID] = chain.GetChainCtx().PeerId.Pretty()
+
+	peers := chain.GetChainCtx().Peers()
+	output[PEERS] = *peers
 
 	return c.JSON(http.StatusOK, output)
 }

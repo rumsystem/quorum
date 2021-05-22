@@ -13,6 +13,8 @@ const NODE_STATUS string = "node_status"
 const USER_ID string = "user_id"
 const SIGNATURE string = "signature"
 const TRX_ID string = "trx_id"
+const PEERS string = "peers"
+const NODETYPE string = "node_type"
 
 //config
 const GROUP_NAME_MIN_LENGTH int = 5
