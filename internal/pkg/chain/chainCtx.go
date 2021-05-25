@@ -4,14 +4,13 @@ import (
 	"fmt"
 
 	"context"
-
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/golang/glog"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
@@ -27,13 +26,14 @@ const (
 )
 
 type ChainCtx struct {
+	node       *p2p.Node
 	PeerId     peer.ID
 	Privatekey p2pcrypto.PrivKey
 	PublicKey  p2pcrypto.PubKey
 	Groups     map[string]*Group
 
-	PublicTopic     *pubsub.Topic
-	PublicSubscribe *pubsub.Subscription
+	GroupTopics        []*pubsub.Topic
+	GroupSubscriptions []*pubsub.Subscription
 
 	Ctx        context.Context
 	TrxSignReq int
@@ -71,8 +71,9 @@ func GetDbMgr() *DbMgr {
 	return dbMgr
 }
 
-func InitCtx(dataPath string) {
+func InitCtx(ctx context.Context, node *p2p.Node, dataPath string) {
 	chainCtx = &ChainCtx{}
+	chainCtx.node = node
 	dbMgr = &DbMgr{}
 	chainCtx.Groups = make(map[string]*Group)
 
@@ -81,6 +82,7 @@ func InitCtx(dataPath string) {
 
 	chainCtx.TrxSignReq = 1
 	chainCtx.Status = NODE_OFFLINE
+	chainCtx.Ctx = ctx
 	chainCtx.Version = "ver 0.01"
 }
 
@@ -94,34 +96,78 @@ func Release() {
 	dbMgr.CloseDb()
 }
 
-func (chainctx *ChainCtx) JoinPublicChannel(node *p2p.Node, publicChannel string, ctx context.Context, config cli.Config) error {
-	publicTopic, err := node.Pubsub.Join(publicChannel)
+func (chainctx *ChainCtx) Peers() *[]string {
+	connectedpeers := []string{}
+	peerstore := chainctx.node.Host.Peerstore()
+	peers := peerstore.Peers()
+	for _, peerid := range peers {
+		if chainctx.node.Host.Network().Connectedness(peerid) == network.Connected {
+			if chainctx.node.Host.ID() != peerid {
+				connectedpeers = append(connectedpeers, peerid.Pretty())
+			}
+		}
+	}
+	return &connectedpeers
 
-	if err != nil {
-		glog.Infof("Join <%s> failed", publicChannel)
-		return err
-	} else {
-		glog.Infof("Join <%s> done", publicChannel)
+}
+func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) error {
+	var err error
+	groupTopic := chainctx.GroupTopic(groupId)
+	if groupTopic == nil {
+		groupTopic, err = chainctx.node.Pubsub.Join(groupId)
+		if err != nil {
+			glog.Infof("Join <%s> failed", groupId)
+			return err
+		} else {
+			glog.Infof("Join <%s> done", groupId)
+		}
 	}
 
-	chainctx.PublicTopic = publicTopic
+	chainctx.GroupTopics = append(chainctx.GroupTopics, groupTopic)
 
-	sub, err := publicTopic.Subscribe()
+	sub, err := groupTopic.Subscribe()
 	if err != nil {
-		glog.Fatalf("Subscribe <%s> failed", publicChannel)
+		glog.Fatalf("Subscribe <%s> failed", groupId)
 		glog.Fatalf(err.Error())
 		return err
 	} else {
-		glog.Infof("Subscribe <%s> done", publicChannel)
+		glog.Infof("Subscribe <%s> done", groupId)
 	}
 
-	chainctx.PublicSubscribe = sub
-	chainctx.Ctx = ctx
+	chainctx.GroupSubscriptions = append(chainctx.GroupSubscriptions, sub)
+	//TODO: fix ONLINE status
 	chainctx.Status = NODE_ONLINE
 
-	go handlePublicChannel(ctx, config)
+	go handleGroupChannel(ctx, sub, groupId)
 
 	return nil
+}
+
+func (chainctx *ChainCtx) GroupTopic(groupId string) *pubsub.Topic {
+	for _, topic := range chainctx.GroupTopics {
+		if topic.String() == groupId {
+			return topic
+		}
+	}
+	return nil
+}
+
+func (chainctx *ChainCtx) GroupSubscription(groupId string) *pubsub.Subscription {
+	for _, sub := range chainctx.GroupSubscriptions {
+		if sub.Topic() == groupId {
+			return sub
+		}
+	}
+	return nil
+}
+
+func (chainctx *ChainCtx) GroupTopicPublish(groupId string, data []byte) error {
+	grouptopic := chainctx.GroupTopic(groupId)
+	if grouptopic != nil {
+		return grouptopic.Publish(chainctx.Ctx, data)
+	} else {
+		return fmt.Errorf("can't publish to a unknown group topic: %s", groupId)
+	}
 }
 
 //quit public channel before teardown
@@ -149,8 +195,15 @@ func (chainctx *ChainCtx) SyncAllGroup() error {
 
 		proto.Unmarshal(b, item)
 		group.init(item)
-		go group.StartSync()
-		chainctx.Groups[item.GroupId] = group
+		err = chainctx.JoinGroupChannel(item.GroupId, context.Background())
+		if err == nil {
+			go group.StartSync()
+			chainctx.Groups[item.GroupId] = group
+		} else {
+			glog.Infof(fmt.Sprintf("can't join group channel: %s", item.GroupId))
+			glog.Fatalf(err.Error())
+
+		}
 	}
 
 	return nil
@@ -160,27 +213,29 @@ func (chainctx *ChainCtx) StopSyncAllGroup() error {
 	return nil
 }
 
-func handlePublicChannel(ctx context.Context, config cli.Config) error {
-
-	for {
-		msg, err := chainCtx.PublicSubscribe.Next(ctx)
-		if err != nil {
-			glog.Fatalf(err.Error())
-			return err
-		} else {
-			var trxMsg quorumpb.TrxMsg
-			err = proto.Unmarshal(msg.Data, &trxMsg)
+func handleGroupChannel(ctx context.Context, groupchannel *pubsub.Subscription, groupId string) error {
+	if groupchannel != nil {
+		for {
+			msg, err := groupchannel.Next(ctx)
 			if err != nil {
-				glog.Infof(err.Error())
+				glog.Fatalf(err.Error())
+				return err
 			} else {
-				if trxMsg.Version != GetChainCtx().Version {
-					//glog.Infof("Version mismatch")
-				} else if trxMsg.Sender != GetChainCtx().PeerId.Pretty() {
-					handleTrxMsg(&trxMsg)
+				var trxMsg quorumpb.TrxMsg
+				err = proto.Unmarshal(msg.Data, &trxMsg)
+				if err != nil {
+					glog.Infof(err.Error())
 				} else {
-					//glog.Info("Msg from myself")
+					if trxMsg.Version != GetChainCtx().Version {
+						//glog.Infof("Version mismatch")
+					} else if trxMsg.Sender != GetChainCtx().PeerId.Pretty() {
+						handleTrxMsg(&trxMsg)
+					} else {
+						//glog.Info("Msg from myself")
+					}
 				}
 			}
 		}
 	}
+	return fmt.Errorf("unknown group topic: %s", groupId)
 }

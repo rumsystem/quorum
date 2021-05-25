@@ -174,9 +174,8 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	if err != nil {
 		return "INVALID_TRX", err
 	}
-
-	chainCtx.PublicTopic.Publish(chainCtx.Ctx, pbBytes)
-	return trxMsg.TrxId, nil
+	err = GetChainCtx().GroupTopicPublish(trxMsg.GroupId, pbBytes)
+	return trxMsg.TrxId, err
 }
 
 //Add Content to Group
@@ -202,8 +201,8 @@ func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
 		return "INVALID_TRX", err
 	}
 
-	chainCtx.PublicTopic.Publish(chainCtx.Ctx, pbBytes)
-	return trxMsg.TrxId, nil
+	err = GetChainCtx().GroupTopicPublish(trxMsg.GroupId, pbBytes)
+	return trxMsg.TrxId, err
 }
 
 //Load groupItem from DB
@@ -238,7 +237,10 @@ func (grp *Group) startAskNextBlock() {
 					glog.Fatalf(err.Error())
 				}
 
-				GetChainCtx().PublicTopic.Publish(GetChainCtx().Ctx, pbBytes)
+				err = GetChainCtx().GroupTopicPublish(askNextMsg.GroupId, pbBytes)
+				if err != nil {
+					glog.Fatalf(err.Error())
+				}
 			}
 		}
 	}()

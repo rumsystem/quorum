@@ -42,7 +42,7 @@ import (
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 )
 
-const PUBLIC_CHANNEL = "all_node_public_channel"
+//const PUBLIC_CHANNEL = "all_node_public_channel"
 
 var node *p2p.Node
 
@@ -80,13 +80,6 @@ func mainRet(config cli.Config) int {
 
 		glog.Infof("peer_id created, <%s>", peerid)
 
-		//datapath := "data" + "/" + config.PeerName
-		datapath := config.DataDir + "/" + config.PeerName
-		chain.InitCtx(datapath)
-		chain.GetChainCtx().Privatekey = keys.PrivKey
-		chain.GetChainCtx().PublicKey = keys.PubKey
-		chain.GetChainCtx().PeerId = peerid
-
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
 		node, err = p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
@@ -99,28 +92,38 @@ func mainRet(config cli.Config) int {
 		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
 		glog.Infof("Successfully announced!")
 
-		//TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
-		count, err := node.ConnectPeers(ctx, config)
+		peerok := make(chan struct{})
+		go node.ConnectPeers(ctx, peerok, config)
 
-		if err != nil {
-			glog.Fatalf(err.Error())
-			return 0
-		} else if count <= 1 {
-			//for {
-			//	peers, _ := node.FindPeers(config.RendezvousString)
-			//	if len(peers) > 1 { // //connect 2 nodes at least
-			//		break
-			//	}
-			//	time.Sleep(time.Second * 5)
-			//}
-			glog.Errorf("can not connec to other peer, maybe I am the first one?")
+		select {
+		case <-peerok:
+			glog.Infof("Connected to enough peers.")
 		}
+		//if err != nil {
+		//	glog.Fatalf(err.Error())
+		//	return 0
+		//} else if count <= 1 {
+		//	//for {
+		//	//	peers, _ := node.FindPeers(config.RendezvousString)
+		//	//	if len(peers) > 1 { // //connect 2 nodes at least
+		//	//		break
+		//	//	}
+		//	//	time.Sleep(time.Second * 5)
+		//	//}
+		//	glog.Errorf("can not connec to other peer, maybe I am the first one?")
+		//}
+
+		datapath := config.DataDir + "/" + config.PeerName
+		chain.InitCtx(ctx, node, datapath)
+		chain.GetChainCtx().Privatekey = keys.PrivKey
+		chain.GetChainCtx().PublicKey = keys.PubKey
+		chain.GetChainCtx().PeerId = peerid
 
 		//join public channel
-		err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
-		if err != nil {
-			return 0
-		}
+		//err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
+		//if err != nil {
+		//	return 0
+		//}
 
 		err = chain.GetChainCtx().SyncAllGroup()
 		if err != nil {

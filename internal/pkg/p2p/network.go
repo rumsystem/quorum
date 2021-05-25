@@ -111,30 +111,51 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 	return nil
 }
 
-func (node *Node) ConnectPeers(ctx context.Context, config cli.Config) (int, error) {
-	connectedCount := 0
-	peers, err := node.FindPeers(ctx, config.RendezvousString)
-	glog.Infof("find peers with Rendezvous %s ", config.RendezvousString)
-	if err != nil {
-		return connectedCount, err
-	}
-	for _, peer := range peers {
-		if peer.ID == node.Host.ID() {
-			continue
+func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config cli.Config) error {
+
+	notify := false
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			//TODO: check peers status and max connect peers
+			connectedCount := 0
+			peers, err := node.FindPeers(ctx, config.RendezvousString)
+			//glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
+			if err != nil {
+				return err
+			}
+			for _, peer := range peers {
+				if peer.ID == node.Host.ID() {
+					continue
+				}
+				pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+				defer cancel()
+				err := node.Host.Connect(pctx, peer)
+				if err != nil {
+					glog.Warningf("connect peer failure: %s \n", peer)
+					cancel()
+					continue
+				} else {
+					connectedCount++
+					glog.Infof("connect: %s \n", peer)
+				}
+			}
+			if connectedCount > 0 {
+				if notify == false {
+					peerok <- struct{}{}
+					notify = true
+				}
+			} else {
+				glog.Infof("waitting for peers...")
+			}
 		}
-		pctx, cancel := context.WithTimeout(ctx, time.Second*10)
-		defer cancel()
-		err := node.Host.Connect(pctx, peer)
-		if err != nil {
-			glog.Warningf("connect peer failure: %s \n", peer)
-			cancel()
-			continue
-		} else {
-			connectedCount++
-			glog.Infof("connect: %s \n", peer)
-		}
 	}
-	return connectedCount, nil
+	return nil
 }
 
 func (node *Node) EnsureConnect(ctx context.Context, rendezvousString string, f func()) {

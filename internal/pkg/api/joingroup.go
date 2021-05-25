@@ -3,6 +3,7 @@ package api
 import (
 	//"encoding/json"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -59,6 +60,12 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 
 	err = group.CreateGrp(item)
 
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	err = chain.GetChainCtx().JoinGroupChannel(item.GroupId, context.Background())
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
