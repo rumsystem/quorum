@@ -192,6 +192,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 		r.GET("/v1/trx", h.GetTrx)                        //done
 		r.GET("/v1/group/content", h.GetGroupCtn)         //done
 		r.GET("/v1/group", h.GetGroups)                   //done
+		r.GET("/v1/network", h.GetNetwork)                //done
 		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)    //done
 		r.GET("/v1/group/blacklist", h.GetBlockedUsrList) //done
 	} else {
