@@ -22,7 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	discovery "github.com/libp2p/go-libp2p-discovery"
+	//discovery "github.com/libp2p/go-libp2p-discovery"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	//msgio "github.com/libp2p/go-msgio"
@@ -59,7 +59,7 @@ func mainRet(config cli.Config) int {
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
+		node, err := p2p.NewNode(ctx, config.IsBootstrap, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
 
 		if err != nil {
 			glog.Fatalf(err.Error())
@@ -82,35 +82,22 @@ func mainRet(config cli.Config) int {
 
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, config.IsBootstrap, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
 		node.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
 
 		_ = node.Bootstrap(ctx, config)
 
-		glog.Infof("Announcing ourselves...")
+		//Discovery and Advertise had been replaced by PeerExchange
+		//glog.Infof("Announcing ourselves...")
+		//discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
+		//glog.Infof("Successfully announced!")
 
-		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
-		glog.Infof("Successfully announced!")
+		//peerok := make(chan struct{})
+		//go node.ConnectPeers(ctx, peerok, config)
 
-		peerok := make(chan struct{})
-		go node.ConnectPeers(ctx, peerok, config)
-
-		select {
-		case <-peerok:
-			glog.Infof("Connected to enough peers.")
-		}
-		//if err != nil {
-		//	glog.Fatalf(err.Error())
-		//	return 0
-		//} else if count <= 1 {
-		//	//for {
-		//	//	peers, _ := node.FindPeers(config.RendezvousString)
-		//	//	if len(peers) > 1 { // //connect 2 nodes at least
-		//	//		break
-		//	//	}
-		//	//	time.Sleep(time.Second * 5)
-		//	//}
-		//	glog.Errorf("can not connec to other peer, maybe I am the first one?")
+		//select {
+		//case <-peerok:
+		//	glog.Infof("Connected to enough peers.")
 		//}
 
 		datapath := config.DataDir + "/" + config.PeerName

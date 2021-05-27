@@ -30,7 +30,7 @@ type Node struct {
 	RoutingDiscovery *discovery.RoutingDiscovery
 }
 
-func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, isBootstrap bool, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
@@ -58,16 +58,28 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, cmgr *connmgr.Basic
 		return nil, err
 	}
 
+	options := []pubsub.Option{pubsub.WithFloodPublish(true), pubsub.WithPeerExchange(true)}
+
+	if isBootstrap == true {
+		// turn off the mesh in bootstrapnode
+		pubsub.GossipSubD = 0
+		pubsub.GossipSubDscore = 0
+		pubsub.GossipSubDlo = 0
+		pubsub.GossipSubDhi = 0
+		pubsub.GossipSubDout = 0
+		pubsub.GossipSubDlazy = 1024
+		pubsub.GossipSubGossipFactor = 0.5
+	}
+
 	var ps *pubsub.PubSub
 	if jsontracerfile != "" {
 		tracer, err := pubsub.NewJSONTracer(jsontracerfile)
 		if err != nil {
 			return nil, err
 		}
-		ps, err = pubsub.NewGossipSub(ctx, host, pubsub.WithEventTracer(tracer))
-	} else {
-		ps, err = pubsub.NewGossipSub(ctx, host)
+		options = append(options, pubsub.WithEventTracer(tracer))
 	}
+	ps, err = pubsub.NewGossipSub(ctx, host, options...)
 
 	if err != nil {
 		return nil, err
