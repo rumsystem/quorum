@@ -87,6 +87,11 @@ func mainRet(config cli.Config) int {
 
 		_ = node.Bootstrap(ctx, config)
 
+		for _, addr := range node.Host.Addrs() {
+			p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), node.Host.ID())
+			glog.Infof("Peer ID:<%s>, Peer Address:<%s>", node.Host.ID(), p2paddr)
+		}
+
 		//Discovery and Advertise had been replaced by PeerExchange
 		//glog.Infof("Announcing ourselves...")
 		//discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
@@ -169,21 +174,22 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
 	if isbootstrapnode == false {
-		r.POST("/v1/group", h.CreateGroup)                //done
-		r.DELETE("/v1/group", h.RmGroup)                  //done
-		r.POST("/v1/group/join", h.JoinGroup)             //done
-		r.POST("/v1/group/leave", h.LeaveGroup)           //done
-		r.POST("/v1/group/content", h.PostToGroup)        //done
-		r.GET("/v1/node", h.GetNodeInfo)                  //done
-		r.GET("/v1/block", h.GetBlock)                    //done
-		r.GET("/v1/trx", h.GetTrx)                        //done
-		r.GET("/v1/group/content", h.GetGroupCtn)         //done
-		r.GET("/v1/group", h.GetGroups)                   //done
-		r.GET("/v1/network", h.GetNetwork)                //done
-		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)    //done
-		r.GET("/v1/group/blacklist", h.GetBlockedUsrList) //done
+		r.POST("/v1/group", h.CreateGroup)
+		r.DELETE("/v1/group", h.RmGroup)
+		r.POST("/v1/group/join", h.JoinGroup)
+		r.POST("/v1/group/leave", h.LeaveGroup)
+		r.POST("/v1/group/content", h.PostToGroup)
+		r.GET("/v1/node", h.GetNodeInfo)
+		r.GET("/v1/block", h.GetBlock)
+		r.GET("/v1/trx", h.GetTrx)
+		r.GET("/v1/group/content", h.GetGroupCtn)
+		r.GET("/v1/group", h.GetGroups)
+		r.GET("/v1/network", h.GetNetwork)
+		r.POST("/v1/network/peers", h.AddPeers)
+		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
+		r.GET("/v1/group/blacklist", h.GetBlockedUsrList)
 	} else {
-		r.GET("/v1/node", h.GetBootStropNodeInfo) //done
+		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}
 
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))

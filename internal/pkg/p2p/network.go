@@ -123,6 +123,27 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 	return nil
 }
 
+func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
+	connectedCount := 0
+	for _, peer := range peers {
+		if peer.ID == node.Host.ID() {
+			continue
+		}
+		pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+		defer cancel()
+		err := node.Host.Connect(pctx, peer)
+		if err != nil {
+			glog.Warningf("connect peer failure: %s \n", peer)
+			cancel()
+			continue
+		} else {
+			connectedCount++
+			glog.Infof("connect: %s", peer)
+		}
+	}
+	return connectedCount
+}
+
 func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config cli.Config) error {
 
 	notify := false

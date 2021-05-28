@@ -110,10 +110,6 @@ func (chainctx *ChainCtx) Peers() *[]string {
 	return &connectedpeers
 }
 
-func (chainctx *ChainCtx) ListGroupPeers(groupid string) []peer.ID {
-	return chainctx.node.Pubsub.ListPeers(groupid)
-}
-
 func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) error {
 	var err error
 	groupTopic := chainctx.GroupTopic(groupId)
