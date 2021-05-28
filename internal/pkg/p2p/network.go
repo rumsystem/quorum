@@ -5,7 +5,9 @@ import (
 	//"fmt"
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
+	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	//autonat "github.com/libp2p/go-libp2p-autonat"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -30,7 +32,7 @@ type Node struct {
 	RoutingDiscovery *discovery.RoutingDiscovery
 }
 
-func NewNode(ctx context.Context, isBootstrap bool, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
@@ -46,9 +48,16 @@ func NewNode(ctx context.Context, isBootstrap bool, privKey p2pcrypto.PrivKey, c
 	})
 
 	identity := libp2p.Identity(privKey)
+
+	pstore, err := pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
+	if err != nil {
+		return nil, err
+	}
+
 	host, err := libp2p.New(ctx,
 		routing,
 		libp2p.ListenAddrs(listenAddresses...),
+		libp2p.Peerstore(pstore),
 		libp2p.NATPortMap(),
 		libp2p.EnableNATService(),
 		libp2p.ConnectionManager(cmgr),
@@ -85,9 +94,19 @@ func NewNode(ctx context.Context, isBootstrap bool, privKey p2pcrypto.PrivKey, c
 		return nil, err
 	}
 
-	//bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
-	//exchange := bitswap.New(ctx, bsnetwork, bstore)
 	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
+
+	//reconnect peers
+	storedpeers := []peer.AddrInfo{}
+	for _, peer := range pstore.Peers() {
+		peerinfo := pstore.PeerInfo(peer)
+		storedpeers = append(storedpeers, peerinfo)
+	}
+	if len(storedpeers) > 0 {
+		go func() {
+			newnode.AddPeers(ctx, storedpeers)
+		}()
+	}
 	return newnode, nil
 }
 

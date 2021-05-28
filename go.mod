@@ -19,6 +19,7 @@ require (
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-badger v0.2.3
+	github.com/ipfs/go-ds-badger2 v0.1.0 // indirect
 	github.com/ipfs/go-graphsync v0.6.0
 	github.com/ipfs/go-log v1.0.4 // indirect
 	github.com/labstack/echo/v4 v4.1.17
@@ -31,6 +32,7 @@ require (
 	github.com/libp2p/go-libp2p-discovery v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-kbucket v0.4.7
+	github.com/libp2p/go-libp2p-peerstore v0.2.6 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.4.1
 	github.com/libp2p/go-msgio v0.0.6
 	github.com/multiformats/go-multiaddr v0.3.1
