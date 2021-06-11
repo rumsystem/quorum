@@ -103,6 +103,7 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 		storedpeers = append(storedpeers, peerinfo)
 	}
 	if len(storedpeers) > 0 {
+		//TODO: try connect every x minutes for x*y minutes?
 		go func() {
 			newnode.AddPeers(ctx, storedpeers)
 		}()
