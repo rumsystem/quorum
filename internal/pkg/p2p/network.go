@@ -7,6 +7,7 @@ import (
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	//autonat "github.com/libp2p/go-libp2p-autonat"
@@ -42,6 +43,7 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 		dhtOpts := dual.DHTOption(
 			dht.Mode(dht.ModeServer),
 			dht.Concurrency(10),
+			dht.ProtocolPrefix("/quorum"),
 		)
 
 		var err error
@@ -96,6 +98,18 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 		}
 		options = append(options, pubsub.WithEventTracer(tracer))
 	}
+
+	customprotocol := protocol.ID("/quorum/meshsub/1.1.0")
+	protos := []protocol.ID{customprotocol}
+	features := func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
+		if proto == customprotocol {
+			return true
+		}
+		return false
+	}
+
+	options = append(options, pubsub.WithGossipSubProtocols(protos, features))
+
 	ps, err = pubsub.NewGossipSub(ctx, host, options...)
 
 	if err != nil {

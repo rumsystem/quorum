@@ -85,7 +85,8 @@ func main() {
 	}
 
 	//// open a stream, this stream will be handled by handleStream other end
-	protocols := []string{"/ipfs/id/1.0.0", "/ipfs/kad/1.0.0", "/ipfs/ping/1.0.0", "/randomsub/1.0.0", "/floodsub/1.0.0", "/meshsub/1.1.0", "/meshsub/1.0.0"}
+	protocols := []string{"/ipfs/id/1.0.0", "/ipfs/kad/1.0.0", "/ipfs/ping/1.0.0", "/randomsub/1.0.0", "/floodsub/1.0.0", "/meshsub/1.1.0", "/meshsub/1.0.0", "/quorum/kad/1.0.0", "/quorum/meshsub/1.1.0", "/quorum/meshsub/1.0.0", "/quorum/floodsub/1.0.0"}
+
 	for _, protocolid := range protocols {
 		_, err = host.NewStream(ctx, bootpeer.ID, protocol.ID(protocolid))
 		if err != nil {
