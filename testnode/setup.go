@@ -20,7 +20,7 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 	mockbootstrapaddr := "/ip4/127.0.0.1/tcp/8520"
 	mockbootstrapnodekeys, err := localcrypto.NewKeys()
 	listenaddresses, _ := utils.StringsToAddrs([]string{mockbootstrapaddr})
-	node, err := p2p.NewNode(ctx, true, mockbootstrapnodekeys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, "")
+	node, err := p2p.NewNode(ctx, true, nil, mockbootstrapnodekeys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, "")
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, err
 	}
@@ -32,7 +32,7 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 
 	mockpeer1nodekeys, err := localcrypto.NewKeys()
 	peer1listenaddresses, _ := utils.StringsToAddrs([]string{"/ip4/127.0.0.1/tcp/8551"})
-	node1, err := p2p.NewNode(ctx, false, mockpeer1nodekeys.PrivKey, connmgr.NewConnManager(10, 200, 60), peer1listenaddresses, "")
+	node1, err := p2p.NewNode(ctx, false, nil, mockpeer1nodekeys.PrivKey, connmgr.NewConnManager(10, 200, 60), peer1listenaddresses, "")
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, err
 	}
@@ -44,7 +44,7 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 	//TODO: use peerID to instead the RendezvousString, anyone can claim to this RendezvousString now"
 	mockpeer2nodekeys, err := localcrypto.NewKeys()
 	peer2listenaddresses, _ := utils.StringsToAddrs([]string{"/ip4/127.0.0.1/tcp/8552"})
-	node2, err := p2p.NewNode(ctx, false, mockpeer2nodekeys.PrivKey, connmgr.NewConnManager(10, 200, 60), peer2listenaddresses, "")
+	node2, err := p2p.NewNode(ctx, false, nil, mockpeer2nodekeys.PrivKey, connmgr.NewConnManager(10, 200, 60), peer2listenaddresses, "")
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, err
 	}
