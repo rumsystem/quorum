@@ -6,6 +6,7 @@ require (
 	github.com/RichardKnop/machinery v1.10.5
 	github.com/dgraph-io/badger v1.6.1
 	github.com/dgraph-io/badger/v3 v3.2011.1
+	github.com/ethereum/go-ethereum v1.10.3 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-playground/validator/v10 v10.5.0
