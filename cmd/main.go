@@ -51,7 +51,8 @@ func mainRet(config cli.Config) int {
 		cancel()
 		return 0
 	}
-	glog.Infof("peer_id created, <%s>", peerid)
+
+	glog.Infof("eth addresss: <%s>", keys.EthAddr)
 
 	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
 	if err != nil {

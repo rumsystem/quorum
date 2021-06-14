@@ -15,6 +15,7 @@ import (
 type Keys struct {
 	PrivKey p2pcrypto.PrivKey
 	PubKey  p2pcrypto.PubKey
+	EthAddr string
 }
 
 type ethkey struct {
@@ -27,7 +28,9 @@ func NewKeys() (*Keys, *ethkey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return &Keys{priv, pub}, &ethkey{key}, nil
+
+	address := ethcrypto.PubkeyToAddress(key.PublicKey).Hex()
+	return &Keys{priv, pub, address}, &ethkey{key}, nil
 }
 
 func LoadKeys(dir string, keyname string) (*Keys, error) {
@@ -79,7 +82,9 @@ func LoadKeys(dir string, keyname string) (*Keys, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Keys{PrivKey: priv, PubKey: pub}, nil
+
+	address := ethcrypto.PubkeyToAddress(ethprivkey.PublicKey).Hex()
+	return &Keys{PrivKey: priv, PubKey: pub, EthAddr: address}, nil
 }
 
 func (key *ethkey) WritekeysToconfig() error {
