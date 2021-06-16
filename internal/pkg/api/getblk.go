@@ -1,10 +1,11 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/go-playground/validator/v10"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type GetBlockParam struct {

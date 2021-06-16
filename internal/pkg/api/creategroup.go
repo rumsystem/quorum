@@ -46,7 +46,12 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	}
 
 	groupid := guuid.New()
-	genesisBlock := chain.CreateGenesisBlock(groupid.String())
+	genesisBlock, err := chain.CreateGenesisBlock(groupid.String())
+
+	if err != nil {
+		output[ERROR_INFO] = "create genesis block failed with msg:" + err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
 
 	genesisBlockBytes, err := json.Marshal(genesisBlock)
 	if err != nil {
@@ -74,7 +79,7 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
 	item.GroupId = groupid.String()
 	item.GroupName = params.GroupName
-	item.LatestBlockId = genesisBlock.Cid
+	item.LatestBlockId = genesisBlock.BlockId
 	item.LatestBlockNum = genesisBlock.BlockNum
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
