@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"context"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	"github.com/golang/glog"
@@ -217,23 +218,40 @@ func handleGroupChannel(ctx context.Context, groupchannel *pubsub.Subscription, 
 	if groupchannel != nil {
 		for {
 			msg, err := groupchannel.Next(ctx)
-			if err != nil {
+			if err == nil {
+				var pkg quorumpb.Package
+				err = proto.Unmarshal(msg.Data, &pkg)
+				if err == nil {
+					if pkg.Type == quorumpb.PackageType_BLOCK {
+						//is block
+						var blk quorumpb.Block
+						err := proto.Unmarshal(pkg.Data, &blk)
+						if err == nil {
+							HandleBlock(&blk)
+						} else {
+							glog.Warning(err.Error())
+						}
+					} else if pkg.Type == quorumpb.PackageType_TRX {
+						var trx quorumpb.Trx
+						err := proto.Unmarshal(pkg.Data, &trx)
+						if err == nil {
+							if trx.Version != GetChainCtx().Version {
+								glog.Infof("Version mismatch")
+							} else if trx.Sender != GetChainCtx().PeerId.Pretty() {
+								HandleTrx(&trx)
+							} else {
+								//glog.Info("Trx from myself")
+							}
+						} else {
+							glog.Warning(err.Error())
+						}
+					}
+				} else {
+					glog.Warningf(err.Error())
+				}
+			} else {
 				glog.Fatalf(err.Error())
 				return err
-			} else {
-				var trxMsg quorumpb.TrxMsg
-				err = proto.Unmarshal(msg.Data, &trxMsg)
-				if err != nil {
-					glog.Infof(err.Error())
-				} else {
-					if trxMsg.Version != GetChainCtx().Version {
-						//glog.Infof("Version mismatch")
-					} else if trxMsg.Sender != GetChainCtx().PeerId.Pretty() {
-						handleTrxMsg(&trxMsg)
-					} else {
-						//glog.Info("Msg from myself")
-					}
-				}
 			}
 		}
 	}
