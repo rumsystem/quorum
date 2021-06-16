@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"encoding/binary"
 	"errors"
 	"math/rand"
 	"sort"
@@ -11,6 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/golang/glog"
+
+	"github.com/mr-tron/base58"
 )
 
 type GroupStatus int8
@@ -210,7 +213,6 @@ func (grp *Group) UpdAuth() (string, error) {
 
 //Add trx to trx pool, prepare for produce block
 func (grp *Group) AddTrx(trx *quorumpb.Trx) {
-	glog.Infof("Add trx %v", trx)
 	grp.TrxPool[trx.TrxId] = trx
 }
 
@@ -251,7 +253,15 @@ func (grp *Group) LanuchProduce(content []byte, trxType quorumpb.TrxType) (strin
 		challenge = &quorumpb.ChallengeItem{}
 
 		challenge.Challenger = GetChainCtx().PeerId.Pretty()
-		challenge.ChallengeSeed = rand.Int63n(Base58Decode([]byte(GetChainCtx().PeerId.Pretty())).Int64())
+		//challenge.ChallengeSeed = rand.Int63n(Base58Decode([]byte(GetChainCtx().PeerId.Pretty())).Int64())
+
+		num, err := base58.Decode(challenge.Challenger)
+		if err != nil {
+			glog.Infof(err.Error())
+		}
+		inum := int64(binary.BigEndian.Uint64(num))
+		glog.Infof("seed %d", inum)
+		challenge.ChallengeSeed = rand.Int63n(inum)
 
 		//add challenge item to challenge pool
 		grp.ChallengePool[challenge.ChallengeSeed] = challenge
@@ -325,7 +335,16 @@ func (grp *Group) UpdateChallenge(trx *quorumpb.Trx) error {
 		myChallenge = &quorumpb.ChallengeItem{}
 
 		myChallenge.Challenger = GetChainCtx().PeerId.Pretty()
-		myChallenge.ChallengeSeed = rand.Int63n(Base58Decode([]byte(GetChainCtx().PeerId.Pretty())).Int64())
+
+		num, err := base58.Decode(myChallenge.Challenger)
+		if err != nil {
+			glog.Infof(err.Error())
+		}
+		inum := int64(binary.BigEndian.Uint64(num))
+		glog.Infof("seed %d", inum)
+		myChallenge.ChallengeSeed = rand.Int63n(inum)
+
+		//myChallenge.ChallengeSeed = rand.Int63n(Base58Decode([]byte(GetChainCtx().PeerId.Pretty())).Int64())
 
 		chItemBytes, err := proto.Marshal(myChallenge)
 		if err != nil {
