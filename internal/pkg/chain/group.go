@@ -201,13 +201,11 @@ func (grp *Group) UpdAuth() (string, error) {
 	}
 
 	IF PRODUCE_DONE {
-		CHECK INCOMING BLOCK
-		IF MY TRX WERE INCLUDED
-			UPDATE TRX STATUS AND CLEAN UP
-		ELSE
-			START NEW PRODUCE ROUTINE AND TRY PACKAGE MY TRX
-	} ELSE
-		START NEW PRODUCE ROUTINT AND TRY PACKAGE MY TRX
+		DO CLEANUP
+	} ELSE {
+		ERROR
+	}
+
 */
 
 //Add trx to trx pool, prepare for produce block

@@ -54,7 +54,7 @@ Run testing
                 owner_pubkey   新建组的Owner公钥
                 signature      新建组owner对结果的签名 
 
-            *这个返回的json串就是新创建组的“种子”，应该通过ATM提供的接口上传至PRS链，目前保存到文件中即可                
+            *这个返回的json串就是新创建组的“种子”，保存到文件中
 
     - 查看节点A所拥有的组
 
@@ -256,6 +256,78 @@ Run testing
                 trx_id:该操作的trx的id，可以通过gettrx API获取具体内容
                 memo: "Remove"
 
+        - Trx生命周期和出块过程
+            所有链上操作均是Trx，客户端相关的Trx有2种
+                - POST 发送组内信息
+                - AUTH 调整组内权限
+            一个Trx被push到链上后，会被广播并有所有在线节点收集，并出发一轮出块流程，出块流程如下（伪码）
+
+            If NOT IN PRODUCE ROUTINE
+		        START A ROUND OF CHALLENGE
+	        ELSE
+                IF RECEIVE CHALLENGE ITEM FROM OTHER NODE {
+                    SET STATUS TO *IN_PRODUCE*
+                    SEND RESPONSE *ONLY ONCE*
+                }                    
+
+            WAIT 10S FOR INCOMING CHALLENGE RESPONSE
+            WHEN TIME UP, SORT AND LOCK CHALLENGE RESPONSE TABLE
+
+            REPEAT TILL PRODUCE DONE OR TIMEOUT OR RUN_OUT_OF CHALLENGE TABLE ITEMS{
+                IF I AM LUCKY
+                    PRODUCE BLOCK
+                ELSE {
+                    WAIT 5S INCOMING BLOCK
+                    IF BLOCK COMES {
+                        IF BLOCK IS VALID
+                            PRODUCE_DONE
+                        ELSE
+                            REJECT AND CONTINUE
+                    } ELSE
+                        UPDATE CHALLENGE TABLE INDEX
+                }                        
+            }
+
+            DO CLEANUP
+
+            1. 节点1发起挑战（如果不在出块流程中），发送一个challenge trx
+            2. 其他节点收到挑战请求，存储，产生并发送自己的挑战相应
+            3. 每轮挑战10秒钟，在这10秒钟里，每个节点都会形成一个同样的挑战结果“榜单”，按照挑战结果的大小排序
+            4. 挑战结束后，开始出块过程
+            5. 每轮出块时间是5秒，在这五秒钟内，节点们检查挑战榜的顺序，如果本轮轮到自己，则出块，如果不是自己出块，则等待相应节点出块，如果时间到并没有等到相应的块，则进入下一轮出块过程
+            6. 更新挑战榜index，开始新一轮出块过程
+            7. 如果用尽挑战榜名单也没有出块，则说明本组内全体节点都下线，则出块失败，也即发送trx失败，客户端应重试
+            
+        - POST Trx状态判断
+            
+            同其他链相似，Trx的发送没有重试机制，客户端应自己保存并判断一个Trx的状态，具体过程如下
+
+            1. 发送一个trx，获取trx_id
+
+            curl -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"846011a8-1c58-4a35-b70f-83195c3bc2e8","type":"Group"}}' http://127.0.0.1:8002/api/v1/group/content
+
+            {"trx_id":"f73c94a0-2bb9-4d19-9efc-c9f1f7e87b1d"}
+
+            2. 将这个trx标记为“发送中”
+            3. 查询组内的内容
+
+            curl -X GET -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' http://127.0.0.1:8002/api/v1/group/content
+        
+            [{"TrxId":"f73c94a0-2bb9-4d19-9efc-c9f1f7e87b1d","Publisher":"Qmbt56A7gVueThDVxfvLstxSR7BhE6M8doqxZXKWGBEbxT","Content":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"TimeStamp":1619656412253363059}]
+
+            4. 设置一个超时，目前建议是20秒，不断查询，直到相同trx_id的内容出现在返回结果中，即可认为trx发送成功（被包含在块中）
+            5. 如果超时被触发，没有查到结果，即认为发送trx失败，客户端可以自行处理重发
+
+        - AUTH Trx状态判断
+            
+            大体流程同POST Trx状态判断，步骤3略有不同，需要查询当前的blacklist条目
+            curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/group/blacklist
+        
+            {"blocked":[{"GroupId":"3171b27b-2241-41ca-b3a5-144d34ed5bee","UserId":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","OwnerPubkey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCsnOQxSxyeBQdbR3DVys2BNBo78QHkzuf7xCUwxu8Aizu1Xz7eC/7V0ISm//jUtx+wfGvA1n9F4Pi/tuVtpP7ysuETbflYFwn1HFmQkB2KAfpXBh9nPdz4ZpYxKRac6t38VPFLrRzHQZWlzyP0bYiLLGKc2oPlDqIlPDsxQWDA7pHAvHYd2SfUtiLRHvDKQvRmOk2IUcKJF0kWaVvok68Nn1+ihbxyF2kGzd02SdGe0W8qbdYFT9K/Sx4ed/qE+43dzhCbNh0fEBiNDeAHdsssZ+6HiSGSlPS1SSrlSazQUF9ZglrnRN6Jtx/ezqP25ZpMsHMFbYl8fgETkxQUp2gDpvrZ1sW2jJIdcuhUP0BCfbvcis+YkOosd0Map9Z+KN6MHAEcN+zwCtVvbWRJCs3u3VzyOOxZN7A/o4LHEAvM9eAWObWcxvlMZABncaTC4+9gYIUI5N9nJY6ETmDsUdL6B/9zCiXnXaOZDEhzg5AxAkEShqoUW5OOupk9Lm42g4PKLrBR/qhzGzJEyXWXp09xRV7SFpmUJP6KnKLKDnthMYsrKMVYuX5SwIBd4RSWVU9gm52eHUS/wNSbEp0WiiWe9lBHMje2dSoSUqfV9HXIf8AIDD37vq5aJsj1PgH8VuARgtmCHdPSngODUcU8f3J7t3WXys75njOptB9AcW2fWwIDAQAB","OwnerSign":"20e9863fddadac7846a5e6caa50dbb39483f8f33479ce0ecf3b7a02441b31a317647a8fd28ff171363d94ae3f31ebda6e2e5c9e915be340988ec3b4e77fce36143baa4797c48cb0b5a358aa995f59098eda7d8494c2c91146d6aca7b9c4e0ce2df88d0e371c7e2e7a43ef83a6a5e7fb2616aea6a45a940f2bd5d4fbdd95bb4b6518e1d4cc234a6ed76ae31265175317ce82255a61501f96f8292840642e67ac5d860484df3c1ff23ba08daa2ad4a49855e51ceab194e27b7c723b026ec0a19e3da3e53d62634ee59cbf1fa2445148afa94be8a114a7559268aac33c3d6ce102c69a978496da2c25e215593c2b856a90c75bdf2a83f39540ea0979716b2d45e19a14e8c95d655d3d82e8fd9f2814d16352efd188eeb3ca681a2b4b501d98d1be1a716b8bc37697cf2699f4d962a1fa38588a2f4b2163de1540a9e46572b185a16170fb4efb2a08a04374f70c06548f8883a4bc2e2e0d2eda3f82ed3e3492c2f422ff0f92f432015bd6a6e5ecc603dc8bdba97c21c6a8600a940722f09a4bd6e14a632a037e3ad5925c178b602755626c2a172fbaa038f5efe8e82cf6644fa310d4da95bdd4a639bbba034e4bff31860835d6ab7371b42abe6f9864393816ef855d375701c84ccd86894496723ead59f1a71866a3e38bf262f3db5936881bb0550257c22be0d04b49b32c6ab70a403bb182d02a299509983269df37be54d540f59","Memo":"Add","TimeStamp":1621532089763312100}]}
+
+            可以看到，相关条目同样有trx_id字段，与POST Trx做同样处理即可
+
+            
 
 
 
