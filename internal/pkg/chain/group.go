@@ -222,7 +222,7 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 		return "", err
 	}
 
-	return grp.LanuchProduce(encodedcontent, quorumpb.TrxType_POST)
+	return grp.LaunchProduce(encodedcontent, quorumpb.TrxType_POST)
 }
 
 func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
@@ -231,12 +231,12 @@ func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return grp.LanuchProduce(encodedcontent, quorumpb.TrxType_AUTH)
+	return grp.LaunchProduce(encodedcontent, quorumpb.TrxType_AUTH)
 
 }
 
 //Post to group (by myself)
-func (grp *Group) LanuchProduce(content []byte, trxType quorumpb.TrxType) (string, error) {
+func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (string, error) {
 	glog.Infof("Launch Produce")
 	trx, err := CreateTrx(trxType, grp.Item.GroupId, content)
 	err = grp.sendTrxPackage(trx)
@@ -392,7 +392,6 @@ func (grp *Group) tryProduceBlock() {
 	if grp.ChallengePool[index].Challenger == GetChainCtx().PeerId.Pretty() {
 		grp.produceBlock()
 		glog.Infof("Start wait")
-		grp.WaitBlockTimer = time.NewTimer(5 * time.Second)
 		for {
 			select {
 			case t := <-grp.WaitBlockTimer.C:
