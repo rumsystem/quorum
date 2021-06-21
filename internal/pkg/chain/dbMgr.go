@@ -9,11 +9,13 @@ import (
 	"time"
 
 	badger "github.com/dgraph-io/badger/v3"
-	"github.com/golang/glog"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/oklog/ulid"
 	"google.golang.org/protobuf/proto"
 )
+
+var dbmgr_log = logging.Logger("dbmgr")
 
 const TRX_PREFIX string = "trx_"
 const BLK_PREFIX string = "blk_"
@@ -26,28 +28,28 @@ func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
 	var err error
 	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		glog.Fatal(err.Error())
+		dbmgr_log.Fatal(err.Error())
 	}
 
 	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		glog.Fatal(err.Error())
+		dbmgr_log.Fatal(err.Error())
 	}
 
 	dbMgr.DataPath = datapath
 
-	glog.Infof("ChainCtx DbMgf initialized")
+	dbmgr_log.Infof("ChainCtx DbMgf initialized")
 }
 
 func (dbMgr *DbMgr) CloseDb() {
 	dbMgr.GroupInfoDb.Close()
 	dbMgr.Db.Close()
-	glog.Infof("ChainCtx Db closed")
+	dbmgr_log.Infof("ChainCtx Db closed")
 }
 
 //save trx
 func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx) error {
-	key := TRX_PREFIX + trx.Msg.TrxId
+	key := TRX_PREFIX + trx.TrxId
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		bytes, err := proto.Marshal(trx)
 		e := badger.NewEntry([]byte(key), bytes)
@@ -131,7 +133,7 @@ func (dbMgr *DbMgr) GetTrx(trxId string) (*quorumpb.Trx, error) {
 //Save Block
 func (dbMgr *DbMgr) AddBlock(block *quorumpb.Block) error {
 
-	key := BLK_PREFIX + block.Cid
+	key := BLK_PREFIX + block.BlockId
 	//AddBlock to blockDb
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
 		bytes, err := proto.Marshal(block)
@@ -225,7 +227,7 @@ func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	})
 
 	if err != nil {
-		glog.Fatalf(err.Error())
+		dbmgr_log.Fatalf(err.Error())
 	}
 
 	return nil
@@ -339,7 +341,7 @@ func (dbMgr *DbMgr) GetGroupsString() ([]string, error) {
 func (dbMgr *DbMgr) UpdBlkSeq(block *quorumpb.Block) error {
 	key := GRP_PREFIX + BLK_PREFIX + SEQ_PREFIX + block.GroupId + "_" + fmt.Sprint(block.BlockNum)
 	err := dbMgr.Db.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry([]byte(key), []byte(block.Cid))
+		e := badger.NewEntry([]byte(key), []byte(block.BlockId))
 		err := txn.SetEntry(e)
 		return err
 	})
@@ -371,21 +373,21 @@ func (dbMgr *DbMgr) GetBlkId(blockNum int64, groupId string) (string, error) {
 
 func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 
-	var ctnItem *quorumpb.GroupContentItem
-	ctnItem = &quorumpb.GroupContentItem{}
+	var ctnItem *quorumpb.PostItem
+	ctnItem = &quorumpb.PostItem{}
 
-	ctnItem.TrxId = trx.Msg.TrxId
-	ctnItem.Publisher = trx.Msg.Sender
+	ctnItem.TrxId = trx.TrxId
+	ctnItem.Publisher = trx.Sender
 	ctnItem.Content = trx.Data
-	ctnItem.TimeStamp = trx.Msg.TimeStamp
+	ctnItem.TimeStamp = trx.TimeStamp
 	ctnBytes, err := proto.Marshal(ctnItem)
 	if err != nil {
 		return err
 	}
 
-	key := GRP_PREFIX + CNT_PREFIX + trx.Msg.GroupId + "_" + trx.Msg.TrxId + "_" + fmt.Sprint(trx.Msg.TimeStamp)
+	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + trx.TrxId + "_" + fmt.Sprint(trx.TimeStamp)
 
-	glog.Infof("Add trx with key %s", key)
+	dbmgr_log.Infof("Add trx with key %s", key)
 	//update ContentDb
 	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
 		e := badger.NewEntry([]byte(key), ctnBytes)
@@ -396,20 +398,18 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 	return err
 }
 
-func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.GroupContentItem, error) {
-	var ctnList []*quorumpb.GroupContentItem
+func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.PostItem, error) {
+	var ctnList []*quorumpb.PostItem
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
-		glog.Infof("Get Key Prefix %s", key)
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 10
 		it := txn.NewIterator(opts)
 		defer it.Close()
 		for it.Seek([]byte(key)); it.ValidForPrefix([]byte(key)); it.Next() {
-			glog.Infof("Append")
 			item := it.Item()
 			err := item.Value(func(v []byte) error {
-				contentitem := &quorumpb.GroupContentItem{}
+				contentitem := &quorumpb.PostItem{}
 				ctnerr := proto.Unmarshal(v, contentitem)
 				if ctnerr == nil {
 					ctnList = append(ctnList, contentitem)

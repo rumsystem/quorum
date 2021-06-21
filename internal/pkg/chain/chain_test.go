@@ -3,13 +3,14 @@ package chain
 import (
 	"context"
 	"fmt"
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	"github.com/huo-ju/quorum/testnode"
-	peer "github.com/libp2p/go-libp2p-core/peer"
 	"io/ioutil"
 	"log"
 	"testing"
 	"time"
+
+	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/testnode"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 func TestGroups(t *testing.T) {

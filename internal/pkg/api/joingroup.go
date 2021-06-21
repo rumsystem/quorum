@@ -50,7 +50,7 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 	item.OwnerPubKey = params.OwnerPubKey
 	item.GroupId = params.GroupId
 	item.GroupName = params.GroupName
-	item.LatestBlockId = params.GenesisBlock.Cid
+	item.LatestBlockId = params.GenesisBlock.BlockId
 	item.LatestBlockNum = params.GenesisBlock.BlockNum
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = params.GenesisBlock

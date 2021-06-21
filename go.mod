@@ -20,6 +20,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.3
 	github.com/ipfs/go-ds-badger2 v0.1.0 // indirect
 	github.com/ipfs/go-graphsync v0.6.0
+	github.com/ipfs/go-log/v2 v2.1.3
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/labstack/gommon v0.3.0
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -33,6 +34,7 @@ require (
 	github.com/libp2p/go-libp2p-peerstore v0.2.7 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.4.2-0.20210517161200-e6ad80cf4782 // indirect
 	github.com/libp2p/go-msgio v0.0.6
+	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/oklog/ulid v1.3.1
 	github.com/spf13/viper v1.7.1

@@ -2,115 +2,114 @@ syntax = "proto3";
 package quorum.pb;
 option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
 
-enum TrxType {
-  REQ_SIGN_POST       = 0; // request witness sign for post
-  REQ_SIGN_AUTH       = 1; // request witness sign for auth
-  REQ_SIGN_RESP_POST  = 2; // response requset withness sign
-  REQ_SIGN_RESP_AUTH  = 3; // response request witness auth
-  ADD_NEW_BLOCK       = 4; // new block created
-  ADD_NEW_BLOCK_RESP  = 5; // response new block created
-  REQ_NEXT_BLOCK      = 6; // request next block
-  REQ_NEXT_BLOCK_RESP = 7; // response request next block
-  PEER_ANNOUNCE       = 8; // announce I am online
+enum PackageType {
+    TRX   = 0;
+    BLOCK = 1;
 }
 
+message Package {
+    PackageType type = 1;
+    bytes       Data = 2;
+}
 
-enum ReqBlock {
+enum TrxType {
+  POST           = 0; // post to group
+  AUTH           = 1; // group auth update
+  REQ_BLOCK      = 2; // request next block
+  REQ_BLOCK_RESP = 3; // response request next block
+  CHALLENGE      = 4; // initial a round of CHALLENGE
+  CHALLENGE_RESP = 5; // challenge response
+  NEW_BLOCK_RESP = 6; // accept block response 
+}
+
+message Trx {
+  string  TrxId     = 1;
+  TrxType type      = 2;    
+  string  GroupId   = 3;
+  string  Sender    = 4;
+  string  Pubkey    = 5;
+  bytes   Data      = 6; 
+  int64   TimeStamp = 7;
+  string  Version   = 8;
+  int64   Expired   = 9;
+  bytes   Signature = 10;  
+}
+
+message Block {
+    string BlockId        = 1;
+    string GroupId        = 2;
+	string PrevBlockId    = 3;
+	int64  BlockNum       = 4;
+	int64  Timestamp      = 5;   
+	bytes  PreviousHash   = 6;   
+	string ProducerId     = 7;
+    string ProducerPubKey = 8;     
+	repeated Trx Trxs     = 9;  
+	bytes  Hash           = 10;      
+    bytes  Signature      = 11;
+}
+
+message NewBLockResp {
+    string BlockId             = 1;
+    string GroupId             = 2;    
+    string ProducerId          = 3;
+    string Receiver            = 4;
+    NewBlockRespResult  Result = 7;
+}
+
+enum NewBlockRespResult {
+    BLOCK_ACCEPTED = 0;
+    BLOCK_REJECTED = 1;
+}
+
+message ReqBlock {
+	string BlockId = 1; //block id
+    string GroupId = 2; //group id
+    string UserId  = 3; //requester
+}    
+
+enum ReqBlkResult {
 	BLOCK_IN_TRX = 0; //block data in trx
 	BLOCK_ON_TOP = 1; //top block, no new block, block in trx is empty
 }
 
-message TrxMsg {
-  string TrxId = 1;
-  string GroupId = 2;
-  TrxType MsgType = 3;
-  bytes Data = 4;
-  string Sender = 5;
-  int64 TimeStamp = 6;
-  string Version = 7;
-  string Pubkey = 8;
-  bytes Sign = 9;
+message ReqBlockResp {
+    ReqBlkResult Result    = 1;
+    string       Provider  = 2;
+    string       Requester = 3;
+    string       GroupId   = 4;  
+    string       BlockId   = 5;    
+    bytes        Block     = 6;
 }
 
-message Trx {
-	TrxMsg Msg = 1;
-	bytes Data = 2;
-    repeated string Consensus = 3;
-}
-
-message ReqSign {
-    bytes Datahash = 1;
-    string Expiration = 2;
-}
-
-message ReqSignResp {
-    string ReqTrxId = 1;
-    string Requester = 2;
-    string Witness = 3;
-    bytes  Hash = 4;
-    bytes WitnessSign = 5;
-}
-
-
-message ReqNextBlockResp {
-    string Provider  = 1;
-    string Requester = 2;
-    ReqBlock Response = 3;
-    string BlockId = 4;
-    bytes  Block = 5;
-}
-
-message Block {
-    string Cid = 1;
-    string GroupId = 2;
-	string PrevBlockId = 3;
-	int64 BlockNum = 4;
-	int64 Timestamp = 5;
-	string Hash = 6;
-	string PreviousHash = 7;
-	string Producer = 8;
-    string Signature = 9;
-	repeated Trx Trxs = 10;
-}
-
-message NewBlock {
-	string Producer = 1;
-	string BlockId = 2; 
-	bytes Data = 3; //the whole block
-}
-
-message NewBlockResp {
-	string Producer = 1;
-	string BlockId = 2;        
-	string StorageProvider = 3;
-}
-
-message ReqNextBlock {
-	string BlockId = 1; //block id
-}
-
-message GroupItem {
-	string OwnerPubKey = 1;
-	string GroupId = 2;       
-	string GroupName = 3;
-	int64 LastUpdate = 4;
-	int64 LatestBlockNum = 5;
-	string LatestBlockId = 6;
-	Block GenesisBlock = 7;
-}
-
-message GroupContentItem {
-	string TrxId = 1;
+message PostItem {
+    string TrxId     = 1;
 	string Publisher = 2;
-	bytes Content = 3;
-	int64 TimeStamp = 4;
+	bytes  Content   = 3;
+	int64  TimeStamp = 4;
 }
 
 message BlockListItem {
-    string GroupId = 1;
-    string UserId = 2;
+    string UserId      = 1;
+    string GroupId     = 2;
     string OwnerPubkey = 3;
-    string OwnerSign = 4;
-    string Memo = 5;
-    int64 TimeStamp = 6;
+    string OwnerSign   = 4;
+    string Memo        = 5;
+    int64  TimeStamp   = 6;
 }
+
+message GroupItem {
+	string GroupId        = 1;       
+	string GroupName      = 2;
+	string OwnerPubKey    = 3;    
+	int64  LastUpdate     = 4;
+	int64  LatestBlockNum = 5;
+	string LatestBlockId  = 6;
+	Block  GenesisBlock   = 7;
+}
+
+message ChallengeItem {
+    string Challenger    = 1;
+    int64  ChallengeSeed = 2; 
+}
+

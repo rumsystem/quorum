@@ -201,6 +201,11 @@ func main() {
 		golog.SetAllLoggers(lvl)
 		golog.SetLogLevel("pubsub", "debug")
 		golog.SetLogLevel("autonat", "debug")
+		golog.SetLogLevel("chain", "debug")
+		golog.SetLogLevel("dbmgr", "debug")
+		golog.SetLogLevel("chainctx", "debug")
+		golog.SetLogLevel("group", "debug")
+
 	}
 
 	if _, err := os.Stat(config.DataDir); err != nil {
