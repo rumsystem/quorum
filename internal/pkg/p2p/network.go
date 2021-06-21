@@ -5,8 +5,11 @@ import (
 	//"fmt"
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
+	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
-
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	//autonat "github.com/libp2p/go-libp2p-autonat"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -33,13 +36,16 @@ type Node struct {
 	RoutingDiscovery *discovery.RoutingDiscovery
 }
 
-func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
+	var pstore peerstore.Peerstore
+	var err error
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
 		dhtOpts := dual.DHTOption(
 			dht.Mode(dht.ModeServer),
 			dht.Concurrency(10),
+			dht.ProtocolPrefix("/quorum"),
 		)
 
 		var err error
@@ -49,16 +55,41 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, cmgr *connmgr.Basic
 	})
 
 	identity := libp2p.Identity(privKey)
-	host, err := libp2p.New(ctx,
-		routing,
+
+	libp2poptions := []libp2p.Option{routing,
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
 		libp2p.EnableNATService(),
 		libp2p.ConnectionManager(cmgr),
 		identity,
+	}
+
+	if ds != nil {
+		pstore, err = pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
+		if err != nil {
+			return nil, err
+		}
+		libp2poptions = append(libp2poptions, libp2p.Peerstore(pstore))
+	}
+
+	host, err := libp2p.New(ctx,
+		libp2poptions...,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	options := []pubsub.Option{pubsub.WithPeerExchange(true)}
+
+	if isBootstrap == true {
+		// turn off the mesh in bootstrapnode
+		pubsub.GossipSubD = 0
+		pubsub.GossipSubDscore = 0
+		pubsub.GossipSubDlo = 0
+		pubsub.GossipSubDhi = 0
+		pubsub.GossipSubDout = 0
+		pubsub.GossipSubDlazy = 1024
+		pubsub.GossipSubGossipFactor = 0.5
 	}
 
 	var ps *pubsub.PubSub
@@ -67,18 +98,43 @@ func NewNode(ctx context.Context, privKey p2pcrypto.PrivKey, cmgr *connmgr.Basic
 		if err != nil {
 			return nil, err
 		}
-		ps, err = pubsub.NewGossipSub(ctx, host, pubsub.WithEventTracer(tracer))
-	} else {
-		ps, err = pubsub.NewGossipSub(ctx, host)
+		options = append(options, pubsub.WithEventTracer(tracer))
 	}
+
+	customprotocol := protocol.ID("/quorum/meshsub/1.1.0")
+	protos := []protocol.ID{customprotocol}
+	features := func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
+		if proto == customprotocol {
+			return true
+		}
+		return false
+	}
+
+	options = append(options, pubsub.WithGossipSubProtocols(protos, features))
+
+	ps, err = pubsub.NewGossipSub(ctx, host, options...)
 
 	if err != nil {
 		return nil, err
 	}
 
-	//bsnetwork := bsnet.NewFromIpfsHost(host, routingDiscovery)
-	//exchange := bitswap.New(ctx, bsnetwork, bstore)
 	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
+
+	//reconnect peers
+
+	storedpeers := []peer.AddrInfo{}
+	if ds != nil {
+		for _, peer := range pstore.Peers() {
+			peerinfo := pstore.PeerInfo(peer)
+			storedpeers = append(storedpeers, peerinfo)
+		}
+	}
+	if len(storedpeers) > 0 {
+		//TODO: try connect every x minutes for x*y minutes?
+		go func() {
+			newnode.AddPeers(ctx, storedpeers)
+		}()
+	}
 	return newnode, nil
 }
 
@@ -112,6 +168,27 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 	}
 	wg.Wait()
 	return nil
+}
+
+func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
+	connectedCount := 0
+	for _, peer := range peers {
+		if peer.ID == node.Host.ID() {
+			continue
+		}
+		pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+		defer cancel()
+		err := node.Host.Connect(pctx, peer)
+		if err != nil {
+			glog.Warningf("connect peer failure: %s \n", peer)
+			cancel()
+			continue
+		} else {
+			connectedCount++
+			glog.Infof("connect: %s", peer)
+		}
+	}
+	return connectedCount
 }
 
 func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config cli.Config) error {

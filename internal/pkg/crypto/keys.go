@@ -1,7 +1,10 @@
 package crypto
 
 import (
-	"crypto/rand"
+	"crypto/ecdsa"
+	"encoding/hex"
+	"fmt"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/glog"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/spf13/viper"
@@ -12,14 +15,22 @@ import (
 type Keys struct {
 	PrivKey p2pcrypto.PrivKey
 	PubKey  p2pcrypto.PubKey
+	EthAddr string
 }
 
-func NewKeys() (*Keys, error) {
-	priv, pub, err := p2pcrypto.GenerateKeyPairWithReader(p2pcrypto.RSA, 4096, rand.Reader)
+type ethkey struct {
+	privkey *ecdsa.PrivateKey
+}
+
+func NewKeys() (*Keys, *ethkey, error) {
+	key, err := ethcrypto.GenerateKey()
+	priv, pub, err := p2pcrypto.ECDSAKeyPairFromKey(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &Keys{priv, pub}, nil
+
+	address := ethcrypto.PubkeyToAddress(key.PublicKey).Hex()
+	return &Keys{priv, pub, address}, &ethkey{key}, nil
 }
 
 func LoadKeys(dir string, keyname string) (*Keys, error) {
@@ -42,11 +53,11 @@ func LoadKeys(dir string, keyname string) (*Keys, error) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		glog.Infof("Keys files not found, generating new keypair..")
-		newkeys, err := NewKeys()
+		_, ethkey, err := NewKeys()
 		if err != nil {
 			return nil, err
 		}
-		err = newkeys.WritekeysToconfig()
+		err = ethkey.WritekeysToconfig()
 		if err != nil {
 			return nil, err
 		}
@@ -57,34 +68,31 @@ func LoadKeys(dir string, keyname string) (*Keys, error) {
 	}
 
 	privstr := viper.GetString("priv")
-	pubstr := viper.GetString("pub")
+	ethprivkey, err := ethcrypto.HexToECDSA(privstr)
+	if err != nil {
+		return nil, err
+	}
+
 	glog.Infof("Load keys from config")
+	privkeybytes := ethcrypto.FromECDSA(ethprivkey)
+	pubkeybytes := ethcrypto.FromECDSAPub(&ethprivkey.PublicKey)
+	priv, err := p2pcrypto.UnmarshalSecp256k1PrivateKey(privkeybytes)
+	pub, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
 
-	serializedpub, _ := p2pcrypto.ConfigDecodeKey(pubstr)
-	pubfromconfig, err := p2pcrypto.UnmarshalPublicKey(serializedpub)
 	if err != nil {
 		return nil, err
 	}
 
-	serializedpriv, _ := p2pcrypto.ConfigDecodeKey(privstr)
-	privfromconfig, err := p2pcrypto.UnmarshalPrivateKey(serializedpriv)
-	if err != nil {
-		return nil, err
-	}
-	return &Keys{PrivKey: privfromconfig, PubKey: pubfromconfig}, nil
+	address := ethcrypto.PubkeyToAddress(ethprivkey.PublicKey).Hex()
+	return &Keys{PrivKey: priv, PubKey: pub, EthAddr: address}, nil
 }
 
-func (keys *Keys) WritekeysToconfig() error {
-	privkeybytes, err := p2pcrypto.MarshalPrivateKey(keys.PrivKey)
-	if err != nil {
-		return err
+func (key *ethkey) WritekeysToconfig() error {
+	privkeybytes := ethcrypto.FromECDSA(key.privkey)
+	if len(privkeybytes) == 0 {
+		return fmt.Errorf("Private key encoding error")
 	}
-	pubkeybytes, err := p2pcrypto.MarshalPublicKey(keys.PubKey)
-	if err != nil {
-		return err
-	}
-	viper.Set("priv", p2pcrypto.ConfigEncodeKey(privkeybytes))
-	viper.Set("pub", p2pcrypto.ConfigEncodeKey(pubkeybytes))
+	viper.Set("priv", hex.EncodeToString(privkeybytes))
 	viper.SafeWriteConfig()
 	return nil
 }

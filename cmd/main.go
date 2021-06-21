@@ -2,64 +2,69 @@ package main
 
 import (
 	"context"
-	//"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
-
-	//"time"
 
 	"github.com/golang/glog"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	golog "github.com/ipfs/go-log"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	"github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	"google.golang.org/protobuf/encoding/protojson"
-
-	//msgio "github.com/libp2p/go-msgio"
-	//"google.golang.org/protobuf/proto"
 
 	"github.com/huo-ju/quorum/internal/pkg/api"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
-	//"github.com/huo-ju/quorum/internal/pkg/data"
-	"github.com/huo-ju/quorum/internal/pkg/p2p"
-	//quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
-	//"github.com/huo-ju/quorum/internal/pkg/storage"
-	"github.com/huo-ju/quorum/internal/pkg/utils"
-	//blocks "github.com/ipfs/go-block-format"
-	//pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
+	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	"github.com/huo-ju/quorum/internal/pkg/p2p"
+	"github.com/huo-ju/quorum/internal/pkg/utils"
 )
 
 //const PUBLIC_CHANNEL = "all_node_public_channel"
 
 var node *p2p.Node
 
-func handleStream(stream network.Stream) {
-	glog.Infof("Got a new stream <%s>", stream)
-}
-
 func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if config.IsBootstrap == true {
-		keys, _ := localcrypto.LoadKeys(config.ConfigDir, "bootstrap")
+	peername := config.PeerName
 
+	if config.IsBootstrap == true {
+		peername = "bootstrap"
+	}
+
+	keys, _ := localcrypto.LoadKeys(config.ConfigDir, peername)
+	peerid, err := peer.IDFromPublicKey(keys.PubKey)
+	if err != nil {
+		glog.Fatalf(err.Error())
+		cancel()
+		return 0
+	}
+
+	glog.Infof("eth addresss: <%s>", keys.EthAddr)
+
+	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
+	if err != nil {
+		glog.Fatalf(err.Error())
+		cancel()
+		return 0
+	}
+
+	if config.IsBootstrap == true {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
+		node, err := p2p.NewNode(ctx, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
 
 		if err != nil {
 			glog.Fatalf(err.Error())
@@ -70,47 +75,27 @@ func mainRet(config cli.Config) int {
 		h := &api.Handler{}
 		go StartAPIServer(config, h, true)
 	} else {
-		keys, _ := localcrypto.LoadKeys(config.ConfigDir, config.PeerName)
-		peerid, err := peer.IDFromPublicKey(keys.PubKey)
-		if err != nil {
-			glog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-
-		glog.Infof("peer_id created, <%s>", peerid)
-
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
-		node.Host.SetStreamHandler(protocol.ID(config.ProtocolID), handleStream)
-
+		node, err = p2p.NewNode(ctx, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
 		_ = node.Bootstrap(ctx, config)
 
-		glog.Infof("Announcing ourselves...")
-
-		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
-		glog.Infof("Successfully announced!")
-
-		peerok := make(chan struct{})
-		go node.ConnectPeers(ctx, peerok, config)
-
-		select {
-		case <-peerok:
-			glog.Infof("Connected to enough peers.")
+		for _, addr := range node.Host.Addrs() {
+			p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), node.Host.ID())
+			glog.Infof("Peer ID:<%s>, Peer Address:<%s>", node.Host.ID(), p2paddr)
 		}
-		//if err != nil {
-		//	glog.Fatalf(err.Error())
-		//	return 0
-		//} else if count <= 1 {
-		//	//for {
-		//	//	peers, _ := node.FindPeers(config.RendezvousString)
-		//	//	if len(peers) > 1 { // //connect 2 nodes at least
-		//	//		break
-		//	//	}
-		//	//	time.Sleep(time.Second * 5)
-		//	//}
-		//	glog.Errorf("can not connec to other peer, maybe I am the first one?")
+
+		//Discovery and Advertise had been replaced by PeerExchange
+		//glog.Infof("Announcing ourselves...")
+		//discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
+		//glog.Infof("Successfully announced!")
+
+		//peerok := make(chan struct{})
+		//go node.ConnectPeers(ctx, peerok, config)
+
+		//select {
+		//case <-peerok:
+		//	glog.Infof("Connected to enough peers.")
 		//}
 
 		datapath := config.DataDir + "/" + config.PeerName
@@ -182,20 +167,22 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
 	if isbootstrapnode == false {
-		r.POST("/v1/group", h.CreateGroup)                //done
-		r.DELETE("/v1/group", h.RmGroup)                  //done
-		r.POST("/v1/group/join", h.JoinGroup)             //done
-		r.POST("/v1/group/leave", h.LeaveGroup)           //done
-		r.POST("/v1/group/content", h.PostToGroup)        //done
-		r.GET("/v1/node", h.GetNodeInfo)                  //done
-		r.GET("/v1/block", h.GetBlock)                    //done
-		r.GET("/v1/trx", h.GetTrx)                        //done
-		r.GET("/v1/group/content", h.GetGroupCtn)         //done
-		r.GET("/v1/group", h.GetGroups)                   //done
-		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)    //done
-		r.GET("/v1/group/blacklist", h.GetBlockedUsrList) //done
+		r.POST("/v1/group", h.CreateGroup)
+		r.DELETE("/v1/group", h.RmGroup)
+		r.POST("/v1/group/join", h.JoinGroup)
+		r.POST("/v1/group/leave", h.LeaveGroup)
+		r.POST("/v1/group/content", h.PostToGroup)
+		r.GET("/v1/node", h.GetNodeInfo)
+		r.GET("/v1/block", h.GetBlock)
+		r.GET("/v1/trx", h.GetTrx)
+		r.GET("/v1/group/content", h.GetGroupCtn)
+		r.GET("/v1/group", h.GetGroups)
+		r.GET("/v1/network", h.GetNetwork)
+		r.POST("/v1/network/peers", h.AddPeers)
+		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
+		r.GET("/v1/group/blacklist", h.GetBlockedUsrList)
 	} else {
-		r.GET("/v1/node", h.GetBootStropNodeInfo) //done
+		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}
 
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
