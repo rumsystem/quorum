@@ -41,9 +41,11 @@ func HandleTrx(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		handleReqBlockResp(trx)
 	case quorumpb.TrxType_CHALLENGE:
-		HandleChallenge(trx)
+		handleChallenge(trx)
 	case quorumpb.TrxType_CHALLENGE_RESP:
 		handleReqBlockResp(trx)
+	case quorumpb.TrxType_NEW_BLOCK_RESP:
+		handleNewBLockResp(trx)
 	default:
 		err := errors.New("unsupported msg type")
 		return err
@@ -190,12 +192,23 @@ func handleReqBlockResp(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func HandleChallenge(trx *quorumpb.Trx) error {
+func handleChallenge(trx *quorumpb.Trx) error {
 	glog.Infof("HandleChallenge called")
 
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
 		glog.Infof("give challenge item to group")
 		group.UpdateChallenge(trx)
+	}
+
+	return nil
+}
+
+func handleNewBLockResp(trx *quorumpb.Trx) error {
+	glog.Infof("HandleNewBlockResp called")
+
+	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
+		glog.Infof("give block response to group")
+		group.UpdateNewBlockResp(trx)
 	}
 
 	return nil

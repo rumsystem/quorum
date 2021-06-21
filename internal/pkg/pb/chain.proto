@@ -19,6 +19,7 @@ enum TrxType {
   REQ_BLOCK_RESP = 3; // response request next block
   CHALLENGE      = 4; // initial a round of CHALLENGE
   CHALLENGE_RESP = 5; // challenge response
+  NEW_BLOCK_RESP = 6; // accept block response 
 }
 
 message Trx {
@@ -46,6 +47,19 @@ message Block {
 	repeated Trx Trxs     = 9;  
 	bytes  Hash           = 10;      
     bytes  Signature      = 11;
+}
+
+message NewBLockResp {
+    string BlockId             = 1;
+    string GroupId             = 2;    
+    string ProducerId          = 3;
+    string Receiver            = 4;
+    NewBlockRespResult  Result = 7;
+}
+
+enum NewBlockRespResult {
+    BLOCK_ACCEPTED = 0;
+    BLOCK_REJECTED = 1;
 }
 
 message ReqBlock {
@@ -98,3 +112,4 @@ message ChallengeItem {
     string Challenger    = 1;
     int64  ChallengeSeed = 2; 
 }
+
