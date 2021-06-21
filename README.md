@@ -12,7 +12,7 @@ Run testing
 
     共需要3个本地节点，进入本地目录，例如 ~/work/quorum
     
-    - 启动BootStrap节点 : 
+    - 启动BootStrap节点 (mkdir -p config): 
         
         go run cmd/main.go -bootstrap -listen /ip4/0.0.0.0/tcp/10666 -logtostderr=true
         I0420 14:58:47.719592     332 keys.go:47] Load keys from config
@@ -263,35 +263,36 @@ Run testing
             一个Trx被push到链上后，会被广播并有所有在线节点收集，并出发一轮出块流程，出块流程如下（伪码）
 
             If NOT IN PRODUCE ROUTINE
-		        START A ROUND OF CHALLENGE
-	        ELSE
-                IF RECEIVE CHALLENGE ITEM FROM OTHER NODE {
-                    SET STATUS TO *IN_PRODUCE*
-                    SEND RESPONSE *ONLY ONCE*
-                }                    
+              START A ROUND OF CHALLENGE
+            ELSE
+              IF RECEIVE CHALLENGE ITEM FROM OTHER NODE {
+                  SET STATUS TO *IN_PRODUCE*
+                  SEND RESPONSE *ONLY ONCE*
+              }                    
 
-            WAIT 10S FOR INCOMING CHALLENGE RESPONSE
-            WHEN TIME UP, SORT AND LOCK CHALLENGE RESPONSE TABLE
+              WAIT 10S FOR INCOMING CHALLENGE RESPONSE
+              WHEN TIME UP, SORT AND LOCK CHALLENGE RESPONSE TABLE
 
-            REPEAT TILL PRODUCE DONE OR TIMEOUT OR RUN_OUT_OF CHALLENGE TABLE ITEMS{
-                IF I AM LUCKY
-                    PRODUCE BLOCK
-                ELSE {
-                    WAIT 5S INCOMING BLOCK
-                    IF BLOCK COMES {
-                        IF BLOCK IS VALID
-                            PRODUCE_DONE
-                        ELSE
-                            REJECT AND CONTINUE
-                    } ELSE
-                        UPDATE CHALLENGE TABLE INDEX
-                }                        
-            }
+              REPEAT TILL PRODUCE DONE OR TIMEOUT OR RUN_OUT_OF CHALLENGE TABLE ITEMS{
+                  IF I AM LUCKY
+                      PRODUCE BLOCK
+                  ELSE {
+                      WAIT 5S INCOMING BLOCK
+                      IF BLOCK COMES {
+                          IF BLOCK IS VALID
+                              PRODUCE_DONE
+                          ELSE
+                              REJECT AND CONTINUE
+                      }
+                      ELSE
+                          UPDATE CHALLENGE TABLE INDEX
+                  }                        
+              }
 
             DO CLEANUP
 
             1. 节点1发起挑战（如果不在出块流程中），发送一个challenge trx
-            2. 其他节点收到挑战请求，存储，产生并发送自己的挑战相应
+            2. 其他节点收到挑战请求，存储，产生并发送自己的挑战响应
             3. 每轮挑战10秒钟，在这10秒钟里，每个节点都会形成一个同样的挑战结果“榜单”，按照挑战结果的大小排序
             4. 挑战结束后，开始出块过程
             5. 每轮出块时间是5秒，在这五秒钟内，节点们检查挑战榜的顺序，如果本轮轮到自己，则出块，如果不是自己出块，则等待相应节点出块，如果时间到并没有等到相应的块，则进入下一轮出块过程

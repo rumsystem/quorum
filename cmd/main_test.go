@@ -3,21 +3,33 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
-	"github.com/huo-ju/quorum/internal/pkg/api"
-	"github.com/huo-ju/quorum/testnode"
 	"log"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/huo-ju/quorum/internal/pkg/api"
+	"github.com/huo-ju/quorum/testnode"
 )
 
-var pidlist []int
-var bootstrapapi, peer1api, peer2api string
+var (
+	pidlist                          []int
+	bootstrapapi, peer1api, peer2api string
+	timerange, nodes                 int
+)
 
 func TestMain(m *testing.M) {
+	timerangePtr := flag.Int("timerange", 5, "interval(in normal distribution) of sending transactions")
+	nodesPtr := flag.Int("nodes", 2, "mock nodes")
+	flag.Parse()
 
-	log.Println("Setup testing nodes")
+	timerange = *timerangePtr
+	nodes = *nodesPtr
+
+	log.Printf("Setup testing nodes: %d, timerange: %d\n", nodes, timerange)
 	log.Println(pidlist)
 	pidch := make(chan int)
 	go func() {
@@ -68,8 +80,7 @@ func TestNodeStatus(t *testing.T) {
 }
 
 func TestGroups(t *testing.T) {
-
-	//create 5 groups on peer1, and another 5 groups on peer2, and join all groups, then verify peer1 groups == peer2 groups
+	// create 5 groups on peer1, and another 5 groups on peer2, and join all groups, then verify peer1 groups == peer2 groups
 
 	var genesisblockpeer1 []string
 	var genesisblockpeer2 []string
@@ -183,8 +194,7 @@ func TestGroups(t *testing.T) {
 }
 
 func TestGroupsContent(t *testing.T) {
-
-	//create 5 posts on each groups, then verify peer1 groups have the same posts with peer2 groups
+	// create 5 posts on each groups, then verify peer1 groups have the same posts with peer2 groups
 
 	groupslist1 := &api.GroupInfoList{}
 	groupslist2 := &api.GroupInfoList{}
@@ -219,7 +229,14 @@ func TestGroupsContent(t *testing.T) {
 			if err = json.Unmarshal(resp, &objmap); err != nil {
 				t.Errorf("Data Unmarshal error %s", err)
 			}
-			time.Sleep(5 * time.Second)
+			// use normal distribution time range
+			// half range  == 3 * stddev (99.7%)
+			mean := float64(timerange) / 2.0
+			stddev := mean / 3.0
+			sleepTime := rand.NormFloat64()*stddev + mean
+			log.Printf("sleep: %.2f s before next post\n", sleepTime)
+			// time.Sleep(5 * time.Second)
+			time.Sleep(time.Duration(sleepTime*1000) * time.Millisecond)
 		}
 	}
 
@@ -248,7 +265,7 @@ func TestGroupsContent(t *testing.T) {
 		}
 
 		log.Printf("peer1 group %s content number: %d", groupinfo.GroupId, len(contentlist))
-		//verify with peer2
+		// verify with peer2
 
 		groupcontentlist2 := []api.GroupContentObjectItem{}
 		resp, err = testnode.RequestAPI(peer2api, "/api/v1/group/content", "GET", reqdata)
