@@ -111,8 +111,8 @@ func (chainctx *ChainCtx) Peers() *[]string {
 		}
 	}
 	return &connectedpeers
-
 }
+
 func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) error {
 	var err error
 	groupTopic := chainctx.GroupTopic(groupId)
