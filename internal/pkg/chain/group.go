@@ -16,7 +16,7 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-var log = logging.Logger("chaingroup")
+var group_log = logging.Logger("group")
 
 type GroupStatus int8
 
@@ -86,7 +86,7 @@ func (grp *Group) Teardown() {
 
 //Start sync group
 func (grp *Group) StartSync() error {
-	log.Infof("Group %s start syncing", grp.Item.GroupId)
+	group_log.Infof("Group %s start syncing", grp.Item.GroupId)
 	grp.Status = GROUP_DIRTY
 	grp.startAskNextBlock()
 	return nil
@@ -94,7 +94,7 @@ func (grp *Group) StartSync() error {
 
 //Stop sync group
 func (grp *Group) StopSync() error {
-	log.Infof("Group stop sync")
+	group_log.Infof("Group stop sync")
 	grp.Status = GROUP_CLEAN
 	grp.stopAskNextBlock()
 	return nil
@@ -169,7 +169,7 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 }
 
 func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
-	log.Infof("Update Auth")
+	group_log.Infof("Update Auth")
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return "", err
@@ -180,7 +180,7 @@ func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
 
 //Post to group (by myself)
 func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (string, error) {
-	log.Infof("Launch Produce")
+	group_log.Infof("Launch Produce")
 	trx, err := CreateTrx(trxType, grp.Item.GroupId, content)
 	err = grp.sendTrxPackage(trx)
 	if err != nil {
@@ -218,7 +218,7 @@ func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (strin
 			return "INVALID_CHALLENGE_TRX", err
 		}
 
-		log.Infof("Start produce routine")
+		group_log.Infof("Start produce routine")
 		go grp.startChallenge()
 	}
 
@@ -227,7 +227,7 @@ func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (strin
 
 //Start a round of challenge
 func (grp *Group) startChallenge() {
-	log.Infof("startChallenge")
+	group_log.Infof("startChallenge")
 	grp.RStatus = CHALLENGE
 
 	//set timer for 10s
@@ -239,12 +239,12 @@ func (grp *Group) startChallenge() {
 		select {
 		case t := <-grp.ChallengeTimer.C:
 			//sort challenge list
-			log.Infof("Challenge done, Sort challenge list")
+			group_log.Infof("Challenge done, Sort challenge list")
 			sort.Slice(grp.ChallengeIndex, func(i, j int) bool {
 				return grp.ChallengeIndex[i] < grp.ChallengeIndex[j]
 			})
-			log.Infof("challenge pool index %v", grp.ChallengeIndex)
-			log.Infof("try produce block " + t.UTC().String())
+			group_log.Infof("challenge pool index %v", grp.ChallengeIndex)
+			group_log.Infof("try produce block " + t.UTC().String())
 
 			//calculate challenge seeds consensus number
 			//at least 2/3 node of the challenge list should accept the block unless there is only 1 or 2 node in the list
@@ -255,14 +255,14 @@ func (grp *Group) startChallenge() {
 			go grp.tryProduceBlock()
 			return
 		case <-grp.ProduceRoutineDone:
-			log.Infof("In challenge, produce routine stopped by channel")
+			group_log.Infof("In challenge, produce routine stopped by channel")
 			grp.finishProduce()
 		}
 	}
 }
 
 func (grp *Group) UpdateChallenge(trx *quorumpb.Trx) error {
-	log.Infof("Update challenge")
+	group_log.Infof("Update challenge")
 
 	challenge := &quorumpb.ChallengeItem{}
 	if err := proto.Unmarshal(trx.Data, challenge); err != nil {
@@ -271,8 +271,8 @@ func (grp *Group) UpdateChallenge(trx *quorumpb.Trx) error {
 
 	switch grp.RStatus {
 	case IDLE:
-		log.Infof("IDLE, receive challenge item %v", challenge)
-		log.Infof("create and send my challenge response")
+		group_log.Infof("IDLE, receive challenge item %v", challenge)
+		group_log.Infof("create and send my challenge response")
 
 		//initial round of challenge
 		var myChallenge *quorumpb.ChallengeItem
@@ -303,20 +303,20 @@ func (grp *Group) UpdateChallenge(trx *quorumpb.Trx) error {
 		grp.ChallengeIndex = append(grp.ChallengeIndex, challenge.ChallengeSeed)
 		go grp.startChallenge()
 	case CHALLENGE:
-		log.Infof("CHALLENGE, receive challenge item %v", challenge)
+		group_log.Infof("CHALLENGE, receive challenge item %v", challenge)
 		//add incoming challenge to pool
 		grp.ChallengePool[challenge.ChallengeSeed] = challenge
 		grp.ChallengeIndex = append(grp.ChallengeIndex, challenge.ChallengeSeed)
 	case PRODUCE:
-		log.Infof("in PRODUCE, receive challenge item %v", challenge)
-		log.Infof("ignore challege item")
+		group_log.Infof("in PRODUCE, receive challenge item %v", challenge)
+		group_log.Infof("ignore challege item")
 	}
 
 	return nil
 }
 
 func (grp *Group) tryProduceBlock() {
-	log.Infof("try produce block...")
+	group_log.Infof("try produce block...")
 
 	grp.RStatus = PRODUCE
 	grp.AcceptRecvd = 0
@@ -327,9 +327,9 @@ func (grp *Group) tryProduceBlock() {
 
 	//if it is my turn to produce block
 	if grp.ChallengePool[index].Challenger == GetChainCtx().PeerId.Pretty() {
-		log.Infof("My turn to produce block")
+		group_log.Infof("My turn to produce block")
 		grp.produceBlock()
-		log.Infof("Start wait")
+		group_log.Infof("Start wait")
 
 		if len(grp.ChallengePool) == 1 {
 			//only myself, produce block anyway, no need to wait for others
@@ -341,39 +341,39 @@ func (grp *Group) tryProduceBlock() {
 		for {
 			select {
 			case t := <-grp.WaitBlockTimer.C:
-				log.Infof("Producer wait done at " + t.UTC().String())
+				group_log.Infof("Producer wait done at " + t.UTC().String())
 
 				//update producer index
 				grp.IndexPosition += 1
 				if grp.IndexPosition == len(grp.ChallengePool) {
-					log.Infof("use all challengers and still can not produce block, fail the round and reject all trx")
+					group_log.Infof("use all challengers and still can not produce block, fail the round and reject all trx")
 					grp.stopProduceRoutine()
 				}
-				log.Infof("Don't get 2/3 consensus, update index %d", grp.IndexPosition)
-				log.Infof("Start next round of waiting")
+				group_log.Infof("Don't get 2/3 consensus, update index %d", grp.IndexPosition)
+				group_log.Infof("Start next round of waiting")
 				grp.tryProduceBlock()
 			case <-grp.ProduceRoutineDone:
-				log.Infof("Produce done")
+				group_log.Infof("Produce done")
 				grp.finishProduce()
 				return
 			}
 		}
 	} else {
-		log.Infof("Not my turn, wait block incoming")
+		group_log.Infof("Not my turn, wait block incoming")
 		for {
 			select {
 			case t := <-grp.WaitBlockTimer.C:
-				log.Infof("Wait done at " + t.UTC().String())
+				group_log.Infof("Wait done at " + t.UTC().String())
 				grp.IndexPosition += 1
 				if grp.IndexPosition == len(grp.ChallengePool) {
-					log.Infof("use all challengers and still can not produce block, fail the round and reject all trx")
+					group_log.Infof("use all challengers and still can not produce block, fail the round and reject all trx")
 					grp.stopProduceRoutine()
 				}
-				log.Infof("Don't get the block expected, update index %d ", grp.IndexPosition)
-				log.Infof("Start next round of waiting")
+				group_log.Infof("Don't get the block expected, update index %d ", grp.IndexPosition)
+				group_log.Infof("Start next round of waiting")
 				grp.tryProduceBlock()
 			case <-grp.ProduceRoutineDone:
-				log.Infof("Produce stop by channel")
+				group_log.Infof("Produce stop by channel")
 				grp.finishProduce()
 				return
 			}
@@ -382,7 +382,7 @@ func (grp *Group) tryProduceBlock() {
 }
 
 func (grp *Group) AddBlock(block *quorumpb.Block) error {
-	log.Infof("add block")
+	group_log.Infof("add block")
 
 	topBlock, err := grp.GetTopBlock()
 
@@ -397,14 +397,14 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 
 	if grp.Status == GROUP_DIRTY {
 		//is syncing
-		log.Infof("group dirty, update group db")
+		group_log.Infof("group dirty, update group db")
 		err := grp.applyBlock(block)
 		if err != nil {
 			return err
 		}
 	} else {
 		if block.ProducerId != grp.ChallengePool[grp.ChallengeIndex[grp.IndexPosition]].Challenger {
-			log.Infof("Got block from *UNEXPECTED* producer %s", block.ProducerId)
+			group_log.Infof("Got block from *UNEXPECTED* producer %s", block.ProducerId)
 			//reject block
 			err = grp.sendNewBlockResp(block, quorumpb.NewBlockRespResult_BLOCK_REJECTED)
 			if err != nil {
@@ -412,7 +412,7 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 			}
 			return errors.New("Reject block, received from wrong producer")
 		} else {
-			log.Infof("Got block from producer %s", block.ProducerId)
+			group_log.Infof("Got block from producer %s", block.ProducerId)
 			topBlock, err := grp.GetTopBlock()
 			if err != nil {
 				return err
@@ -424,7 +424,7 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 			}
 			//if block is invalid, REJECT block
 			if !valid {
-				log.Infof("Reject block, invalid block")
+				group_log.Infof("Reject block, invalid block")
 				err := grp.sendNewBlockResp(block, quorumpb.NewBlockRespResult_BLOCK_REJECTED)
 				if err != nil {
 					return err
@@ -433,12 +433,12 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 
 			err = grp.applyBlock(block)
 			if err != nil {
-				log.Infof(err.Error())
+				group_log.Infof(err.Error())
 				return err
 			}
 
 			//block is accepted
-			log.Info("Accept block")
+			group_log.Info("Accept block")
 			err = grp.sendNewBlockResp(block, quorumpb.NewBlockRespResult_BLOCK_ACCEPTED)
 
 			//add myself
@@ -452,7 +452,7 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 }
 
 func (grp *Group) UpdateNewBlockResp(trx *quorumpb.Trx) error {
-	log.Infof("UpdateNewBlockResp called")
+	group_log.Infof("UpdateNewBlockResp called")
 
 	newBlockResp := &quorumpb.NewBLockResp{}
 	if err := proto.Unmarshal(trx.Data, newBlockResp); err != nil {
@@ -463,9 +463,9 @@ func (grp *Group) UpdateNewBlockResp(trx *quorumpb.Trx) error {
 	//TODO: should check if block_id match the block produced
 	if newBlockResp.Result == quorumpb.NewBlockRespResult_BLOCK_ACCEPTED {
 		grp.AcceptRecvd++
-		log.Infof("consensus received::%d, needed::%d", grp.AcceptRecvd, grp.IndexLen)
+		group_log.Infof("consensus received::%d, needed::%d", grp.AcceptRecvd, grp.IndexLen)
 		if grp.AcceptRecvd == grp.IndexLen {
-			log.Infof("get enough consensus, stop produce")
+			group_log.Infof("get enough consensus, stop produce")
 			grp.stopProduceRoutine()
 		}
 	}
@@ -478,7 +478,7 @@ func (grp *Group) stopProduceRoutine() {
 }
 
 func (grp *Group) applyBlock(block *quorumpb.Block) error {
-	log.Infof("apply block to group")
+	group_log.Infof("apply block to group")
 
 	//Save block to local db
 	err := GetDbMgr().AddBlock(block)
@@ -498,13 +498,13 @@ func (grp *Group) applyBlock(block *quorumpb.Block) error {
 		GetDbMgr().AddTrx(trx)
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
-			log.Infof("Apply POST trx")
+			group_log.Infof("Apply POST trx")
 			GetDbMgr().AddPost(trx)
 		case quorumpb.TrxType_AUTH:
-			log.Infof("Apply AUTH trx")
+			group_log.Infof("Apply AUTH trx")
 			GetDbMgr().UpdateBlkListItem(trx)
 		default:
-			log.Infof("Unsupported msgType %s", trx.Type)
+			group_log.Infof("Unsupported msgType %s", trx.Type)
 		}
 	}
 
@@ -520,16 +520,16 @@ func (grp *Group) applyBlock(block *quorumpb.Block) error {
 }
 
 func (grp *Group) produceBlock() {
-	log.Infof("produce block")
+	group_log.Infof("produce block")
 
 	//get top block
 	topBlock, err := grp.GetTopBlock()
 	if err != nil {
-		log.Infof(err.Error())
+		group_log.Infof(err.Error())
 	}
 
 	//package all trx
-	log.Infof("package %d trxs", len(grp.TrxPool))
+	group_log.Infof("package %d trxs", len(grp.TrxPool))
 	trxs := make([]*quorumpb.Trx, 0, len(grp.TrxPool))
 	for _, value := range grp.TrxPool {
 		trxs = append(trxs, value)
@@ -538,18 +538,18 @@ func (grp *Group) produceBlock() {
 	//create block
 	newBlock, err := CreateBlock(topBlock, trxs)
 	if err != nil {
-		log.Infof(err.Error())
+		group_log.Infof(err.Error())
 	}
 
 	//send block via group channel
 	grp.sendBlkPackage(newBlock)
 	if err != nil {
-		log.Infof(err.Error())
+		group_log.Infof(err.Error())
 	}
 }
 
 func (grp *Group) finishProduce() {
-	log.Infof("finish produce")
+	group_log.Infof("finish produce")
 	//reset status
 	grp.initProduce()
 }
@@ -563,14 +563,14 @@ func (grp *Group) startAskNextBlock() {
 		for {
 			select {
 			case <-grp.AskNextTickerDone:
-				log.Infof("Ask next block done")
+				group_log.Infof("Ask next block done")
 				return
 			case t := <-grp.AskNextTicker.C:
-				log.Infof("Ask NEXT_BLOCK " + t.UTC().String())
+				group_log.Infof("Ask NEXT_BLOCK " + t.UTC().String())
 				//send ask next block msg out
 				topBlock, err := grp.GetTopBlock()
 				if err != nil {
-					log.Fatalf(err.Error())
+					group_log.Fatalf(err.Error())
 				}
 
 				var reqBlockItem quorumpb.ReqBlock
@@ -580,20 +580,20 @@ func (grp *Group) startAskNextBlock() {
 
 				bItemBytes, err := proto.Marshal(&reqBlockItem)
 				if err != nil {
-					log.Warningf(err.Error())
+					group_log.Warningf(err.Error())
 					return
 				}
 
 				//send ask next block trx out
 				trx, err := CreateTrx(quorumpb.TrxType_REQ_BLOCK, grp.Item.GroupId, bItemBytes)
 				if err != nil {
-					log.Warningf(err.Error())
+					group_log.Warningf(err.Error())
 					return
 				}
 
 				err = grp.sendTrxPackage(trx)
 				if err != nil {
-					log.Warningf(err.Error())
+					group_log.Warningf(err.Error())
 					return
 				}
 				grp.sendTrxPackage(trx)
@@ -638,12 +638,12 @@ func (grp *Group) sendNewBlockResp(block *quorumpb.Block, result quorumpb.NewBlo
 
 	bItemBytes, err := proto.Marshal(&newBlockRespItem)
 	if err != nil {
-		log.Warningf(err.Error())
+		group_log.Warningf(err.Error())
 		return err
 	}
 	trx, err := CreateTrx(quorumpb.TrxType_NEW_BLOCK_RESP, grp.Item.GroupId, bItemBytes)
 	if err != nil {
-		log.Warningf(err.Error())
+		group_log.Warningf(err.Error())
 		return err
 	}
 
@@ -682,6 +682,6 @@ func (grp *Group) getChallengeSeed(seed string) (int64, error) {
 		return 0, err
 	}
 	inum := int64(binary.BigEndian.Uint64(num))
-	log.Infof("seed %d", inum)
+	group_log.Infof("seed %d", inum)
 	return rand.Int63(), nil
 }

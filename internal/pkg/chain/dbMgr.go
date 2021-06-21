@@ -9,11 +9,13 @@ import (
 	"time"
 
 	badger "github.com/dgraph-io/badger/v3"
-	"github.com/golang/glog"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/oklog/ulid"
 	"google.golang.org/protobuf/proto"
 )
+
+var dbmgr_log = logging.Logger("dbmgr")
 
 const TRX_PREFIX string = "trx_"
 const BLK_PREFIX string = "blk_"
@@ -26,23 +28,23 @@ func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
 	var err error
 	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		glog.Fatal(err.Error())
+		dbmgr_log.Fatal(err.Error())
 	}
 
 	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		glog.Fatal(err.Error())
+		dbmgr_log.Fatal(err.Error())
 	}
 
 	dbMgr.DataPath = datapath
 
-	glog.Infof("ChainCtx DbMgf initialized")
+	dbmgr_log.Infof("ChainCtx DbMgf initialized")
 }
 
 func (dbMgr *DbMgr) CloseDb() {
 	dbMgr.GroupInfoDb.Close()
 	dbMgr.Db.Close()
-	glog.Infof("ChainCtx Db closed")
+	dbmgr_log.Infof("ChainCtx Db closed")
 }
 
 //save trx
@@ -225,7 +227,7 @@ func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	})
 
 	if err != nil {
-		glog.Fatalf(err.Error())
+		dbmgr_log.Fatalf(err.Error())
 	}
 
 	return nil
@@ -385,7 +387,7 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 
 	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + trx.TrxId + "_" + fmt.Sprint(trx.TimeStamp)
 
-	glog.Infof("Add trx with key %s", key)
+	dbmgr_log.Infof("Add trx with key %s", key)
 	//update ContentDb
 	err = dbMgr.Db.Update(func(txn *badger.Txn) error {
 		e := badger.NewEntry([]byte(key), ctnBytes)

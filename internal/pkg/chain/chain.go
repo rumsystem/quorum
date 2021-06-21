@@ -4,12 +4,10 @@ import (
 	"errors"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/golang/glog"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )
-
-const CONSENSUS uint8 = 1
 
 /****************************
 *
@@ -18,11 +16,13 @@ const CONSENSUS uint8 = 1
 *
 ****************************/
 
+var chain_log = logging.Logger("chain")
+
 func HandleTrx(trx *quorumpb.Trx) error {
 
 	verify, err := VerifyTrx(trx)
 	if err != nil {
-		glog.Infof(err.Error())
+		chain_log.Infof(err.Error())
 		return err
 	}
 
@@ -54,18 +54,18 @@ func HandleTrx(trx *quorumpb.Trx) error {
 }
 
 func HandleBlock(block *quorumpb.Block) error {
-	glog.Infof("HandleBlock called")
+	chain_log.Infof("HandleBlock called")
 
 	if group, ok := GetChainCtx().Groups[block.GroupId]; ok {
-		glog.Infof("give new block to group")
+		chain_log.Infof("give new block to group")
 		err := group.AddBlock(block)
 		if err != nil {
-			glog.Infof(err.Error())
+			chain_log.Infof(err.Error())
 		}
 	} else {
-		glog.Infof("not my block, I don't have the related group")
+		chain_log.Infof("not my block, I don't have the related group")
 		if Lucky() {
-			glog.Infof("save new block to local db")
+			chain_log.Infof("save new block to local db")
 			GetDbMgr().AddBlock(block)
 		}
 	}
@@ -74,10 +74,10 @@ func HandleBlock(block *quorumpb.Block) error {
 }
 
 func handleTrx(trx *quorumpb.Trx) error {
-	glog.Infof("handleTrx called")
+	chain_log.Infof("handleTrx called")
 
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
-		glog.Infof("give new trx to group")
+		chain_log.Infof("give new trx to group")
 		group.AddTrx(trx)
 	}
 
@@ -85,7 +85,7 @@ func handleTrx(trx *quorumpb.Trx) error {
 }
 
 func handleReqBlock(trx *quorumpb.Trx) error {
-	glog.Infof("Handle req block")
+	chain_log.Infof("Handle req block")
 	var reqBlockItem quorumpb.ReqBlock
 	if err := proto.Unmarshal(trx.Data, &reqBlockItem); err != nil {
 		return err
@@ -95,7 +95,7 @@ func handleReqBlock(trx *quorumpb.Trx) error {
 	isBlocked, _ := GetDbMgr().IsBlocked(trx.GroupId, trx.Sender)
 
 	if isBlocked {
-		glog.Warning("user is blocked by group owner")
+		chain_log.Warning("user is blocked by group owner")
 		err := errors.New("user auth failed")
 		return err
 	}
@@ -103,7 +103,7 @@ func handleReqBlock(trx *quorumpb.Trx) error {
 	//check if requested block is in my group and on top
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
 		if group.Item.LatestBlockId == reqBlockItem.BlockId {
-			glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
+			chain_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
 			var emptyblock quorumpb.Block
 			err := SendReqBlockResp(trx, &reqBlockItem, &emptyblock)
 
@@ -125,7 +125,7 @@ func handleReqBlock(trx *quorumpb.Trx) error {
 						}
 
 						if block.PrevBlockId == reqBlockItem.BlockId {
-							glog.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
+							chain_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
 							err := SendReqBlockResp(trx, &reqBlockItem, &block)
 							return err
 
@@ -150,7 +150,7 @@ func handleReqBlock(trx *quorumpb.Trx) error {
 }
 
 func handleReqBlockResp(trx *quorumpb.Trx) error {
-	glog.Infof("handleNextBlockResp called")
+	chain_log.Infof("handleNextBlockResp called")
 
 	var reqBlockResp quorumpb.ReqBlockResp
 	if err := proto.Unmarshal(trx.Data, &reqBlockResp); err != nil {
@@ -160,14 +160,14 @@ func handleReqBlockResp(trx *quorumpb.Trx) error {
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
 
 		if reqBlockResp.Requester != GetChainCtx().PeerId.Pretty() {
-			glog.Infof("Not asked by me, ignore")
+			chain_log.Infof("Not asked by me, ignore")
 		} else if group.Status == GROUP_CLEAN {
-			glog.Infof("Group is clean, ignore")
+			chain_log.Infof("Group is clean, ignore")
 		} else if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_ON_TOP {
-			glog.Infof("On Group Top, Set Group Status to GROUP_READY")
+			chain_log.Infof("On Group Top, Set Group Status to GROUP_READY")
 			group.StopSync()
 		} else if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_IN_TRX {
-			glog.Infof("new block incoming")
+			chain_log.Infof("new block incoming")
 			var newBlock quorumpb.Block
 			if err := proto.Unmarshal(reqBlockResp.Block, &newBlock); err != nil {
 				return err
@@ -175,28 +175,28 @@ func handleReqBlockResp(trx *quorumpb.Trx) error {
 
 			topBlock, _ := group.GetTopBlock()
 			if valid, _ := IsBlockValid(&newBlock, topBlock); valid {
-				glog.Infof("block is valid, add it")
+				chain_log.Infof("block is valid, add it")
 				//add block to db
 				GetDbMgr().AddBlock(&newBlock)
 
 				//update group block seq map
 				group.AddBlock(&newBlock)
 			} else {
-				glog.Infof("block not vaild, skip it")
+				chain_log.Infof("block not vaild, skip it")
 			}
 		}
 	} else {
-		glog.Infof("Can not find group")
+		chain_log.Infof("Can not find group")
 	}
 
 	return nil
 }
 
 func handleChallenge(trx *quorumpb.Trx) error {
-	glog.Infof("HandleChallenge called")
+	chain_log.Infof("HandleChallenge called")
 
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
-		glog.Infof("give challenge item to group")
+		chain_log.Infof("give challenge item to group")
 		group.UpdateChallenge(trx)
 	}
 
@@ -204,10 +204,10 @@ func handleChallenge(trx *quorumpb.Trx) error {
 }
 
 func handleNewBLockResp(trx *quorumpb.Trx) error {
-	glog.Infof("HandleNewBlockResp called")
+	chain_log.Infof("HandleNewBlockResp called")
 
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
-		glog.Infof("give block response to group")
+		chain_log.Infof("give block response to group")
 		group.UpdateNewBlockResp(trx)
 	}
 
