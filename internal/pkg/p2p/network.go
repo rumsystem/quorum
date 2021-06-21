@@ -6,20 +6,23 @@ import (
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/libp2p/go-libp2p"
+
 	//autonat "github.com/libp2p/go-libp2p-autonat"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+
 	//network "github.com/libp2p/go-libp2p-core/network"
+	"sync"
+	"time"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	maddr "github.com/multiformats/go-multiaddr"
-	"sync"
-	"time"
 )
 
 type Node struct {
@@ -142,7 +145,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 					continue
 				} else {
 					connectedCount++
-					glog.Infof("connect: %s \n", peer)
+					//glog.Infof("connect: %s \n", peer)
 				}
 			}
 			if connectedCount > 0 {

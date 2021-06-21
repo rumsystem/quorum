@@ -7,7 +7,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
-	"github.com/golang/glog"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/proto"
@@ -18,6 +18,8 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
+
+var chainctx_log = logging.Logger("chainctx")
 
 type NodeStatus int8
 
@@ -117,10 +119,10 @@ func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) 
 	if groupTopic == nil {
 		groupTopic, err = chainctx.node.Pubsub.Join(groupId)
 		if err != nil {
-			glog.Infof("Join <%s> failed", groupId)
+			chain_log.Infof("Join <%s> failed", groupId)
 			return err
 		} else {
-			glog.Infof("Join <%s> done", groupId)
+			chain_log.Infof("Join <%s> done", groupId)
 		}
 	}
 
@@ -128,11 +130,11 @@ func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) 
 
 	sub, err := groupTopic.Subscribe()
 	if err != nil {
-		glog.Fatalf("Subscribe <%s> failed", groupId)
-		glog.Fatalf(err.Error())
+		chain_log.Fatalf("Subscribe <%s> failed", groupId)
+		chain_log.Fatalf(err.Error())
 		return err
 	} else {
-		glog.Infof("Subscribe <%s> done", groupId)
+		chain_log.Infof("Subscribe <%s> done", groupId)
 	}
 
 	chainctx.GroupSubscriptions = append(chainctx.GroupSubscriptions, sub)
@@ -178,7 +180,7 @@ func (chainctx *ChainCtx) QuitPublicChannel() error {
 
 //load and group and start syncing
 func (chainctx *ChainCtx) SyncAllGroup() error {
-	glog.Infof("Start Sync all groups")
+	chain_log.Infof("Start Sync all groups")
 
 	//open all groups
 	groupItemsBytes, err := dbMgr.GetGroupsBytes()
@@ -201,8 +203,8 @@ func (chainctx *ChainCtx) SyncAllGroup() error {
 			go group.StartSync()
 			chainctx.Groups[item.GroupId] = group
 		} else {
-			glog.Infof(fmt.Sprintf("can't join group channel: %s", item.GroupId))
-			glog.Fatalf(err.Error())
+			chain_log.Infof(fmt.Sprintf("can't join group channel: %s", item.GroupId))
+			chain_log.Fatalf(err.Error())
 
 		}
 	}
@@ -229,28 +231,28 @@ func handleGroupChannel(ctx context.Context, groupchannel *pubsub.Subscription, 
 						if err == nil {
 							HandleBlock(&blk)
 						} else {
-							glog.Warning(err.Error())
+							chain_log.Warning(err.Error())
 						}
 					} else if pkg.Type == quorumpb.PackageType_TRX {
 						var trx quorumpb.Trx
 						err := proto.Unmarshal(pkg.Data, &trx)
 						if err == nil {
 							if trx.Version != GetChainCtx().Version {
-								glog.Infof("Version mismatch")
+								chain_log.Infof("Version mismatch")
 							} else if trx.Sender != GetChainCtx().PeerId.Pretty() {
 								HandleTrx(&trx)
 							} else {
-								//glog.Info("Trx from myself")
+								//chain_log.Info("Trx from myself")
 							}
 						} else {
-							glog.Warning(err.Error())
+							chain_log.Warning(err.Error())
 						}
 					}
 				} else {
-					glog.Warningf(err.Error())
+					chain_log.Warningf(err.Error())
 				}
 			} else {
-				glog.Fatalf(err.Error())
+				chain_log.Fatalf(err.Error())
 				return err
 			}
 		}
