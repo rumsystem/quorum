@@ -218,7 +218,7 @@ func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (strin
 			return "INVALID_CHALLENGE_TRX", err
 		}
 
-		group_log.Infof("Start produce routine")
+		group_log.Infof("==================== Start produce routine ====================")
 		go grp.startChallenge()
 	}
 
@@ -250,7 +250,7 @@ func (grp *Group) startChallenge() {
 			//at least 2/3 node of the challenge list should accept the block unless there is only 1 or 2 node in the list
 			grp.IndexLen = len(grp.ChallengeIndex)
 			if !(grp.IndexLen == 1 || grp.IndexLen == 2) {
-				grp.IndexLen = grp.IndexLen * (2 / 3)
+				grp.IndexLen = (int)(grp.IndexLen * 2 / 3)
 			}
 			go grp.tryProduceBlock()
 			return
@@ -549,7 +549,7 @@ func (grp *Group) produceBlock() {
 }
 
 func (grp *Group) finishProduce() {
-	group_log.Infof("finish produce")
+	group_log.Infof("==================== finish produce ====================")
 	//reset status
 	grp.initProduce()
 }
