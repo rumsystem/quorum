@@ -33,7 +33,7 @@ type ChainCtx struct {
 	PeerId     peer.ID
 	Privatekey p2pcrypto.PrivKey
 	PublicKey  p2pcrypto.PubKey
-	Groups     map[string]*Group
+	Groups     map[string]*GroupPoa
 
 	GroupTopics        []*pubsub.Topic
 	GroupSubscriptions []*pubsub.Subscription
@@ -78,7 +78,7 @@ func InitCtx(ctx context.Context, node *p2p.Node, dataPath string) {
 	chainCtx = &ChainCtx{}
 	chainCtx.node = node
 	dbMgr = &DbMgr{}
-	chainCtx.Groups = make(map[string]*Group)
+	chainCtx.Groups = make(map[string]*GroupPoa)
 
 	dbopts := &DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: options.Snappy}
 	dbMgr.InitDb(dataPath, dbopts)
@@ -190,14 +190,14 @@ func (chainctx *ChainCtx) SyncAllGroup() error {
 	}
 
 	for _, b := range groupItemsBytes {
-		var group *Group
-		group = &Group{}
+		var group *GroupPoa
+		group = &GroupPoa{}
 
 		var item *quorumpb.GroupItem
 		item = &quorumpb.GroupItem{}
 
 		proto.Unmarshal(b, item)
-		group.init(item)
+		group.Init(item)
 		err = chainctx.JoinGroupChannel(item.GroupId, context.Background())
 		if err == nil {
 			go group.StartSync()
