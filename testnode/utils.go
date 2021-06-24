@@ -73,7 +73,7 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 func CheckNodeRunning(ctx context.Context, url string) bool {
 	apiurl := fmt.Sprintf("%s/api/v1", url)
 	fmt.Printf("checkNodeRunning: %s\n", apiurl)
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	for {
 		select {
 		case <-ctx.Done():

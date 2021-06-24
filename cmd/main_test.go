@@ -16,20 +16,28 @@ import (
 )
 
 var (
-	pidlist                          []int
-	bootstrapapi, peer1api, peer2api string
-	timerange, nodes                 int
+	pidlist                                   []int
+	bootstrapapi, peer1api, peer2api          string
+	peerapilist, groupIds                     []string
+	timerange, nodes, groups, posts, synctime int
 )
 
 func TestMain(m *testing.M) {
 	timerangePtr := flag.Int("timerange", 5, "interval(in normal distribution) of sending transactions")
 	nodesPtr := flag.Int("nodes", 2, "mock nodes")
+	groupsPtr := flag.Int("groups", 5, "groups on each node")
+	postsPtr := flag.Int("posts", 5, "posts on each group")
+	synctimePtr := flag.Int("synctime", 30, "time to wait before verify")
+
 	flag.Parse()
 
 	timerange = *timerangePtr
 	nodes = *nodesPtr
+	groups = *groupsPtr
+	posts = *postsPtr
+	synctime = *synctimePtr
 
-	log.Printf("Setup testing nodes: %d, timerange: %d\n", nodes, timerange)
+	log.Printf("Setup testing nodes: %d, groups: %d, posts: %d\n", nodes, groups, posts)
 	log.Println(pidlist)
 	pidch := make(chan int)
 	go func() {
@@ -46,7 +54,12 @@ func TestMain(m *testing.M) {
 	}()
 
 	var tempdatadir string
-	bootstrapapi, peer1api, peer2api, tempdatadir, _ = testnode.Run2NodeProcessWith1Bootstrap(context.Background(), pidch)
+	// bootstrapapi, peer1api, peer2api, tempdatadir, _ = testnode.Run2NodeProcessWith1Bootstrap(context.Background(), pidch)
+	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), pidch, 2)
+	log.Println("peers: ", peerapilist)
+	peer1api = peerapilist[0]
+	peer2api = peerapilist[1]
+
 	exitVal := m.Run()
 	log.Println("after tests clean:", tempdatadir)
 	testnode.Cleanup(tempdatadir, pidlist)
@@ -54,7 +67,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNodeStatus(t *testing.T) {
-	for _, peerapi := range []string{peer1api, peer2api} {
+	for _, peerapi := range peerapilist {
 		if peerapi == "" {
 			t.Fail()
 			t.Logf("peerapi should not be nil.")
@@ -80,146 +93,123 @@ func TestNodeStatus(t *testing.T) {
 }
 
 func TestGroups(t *testing.T) {
-	// create 5 groups on peer1, and another 5 groups on peer2, and join all groups, then verify peer1 groups == peer2 groups
+	// create n groups on each peer, and join all groups, then verify peerN groups == peerM groups
 
-	var genesisblockpeer1 []string
-	var genesisblockpeer2 []string
+	var genesisblocks [][]string
 
-	groupspeernum := 5
+	groupspeernum := groups
 
-	for i := 0; i < groupspeernum; i++ {
-		resp, err := testnode.RequestAPI(peer1api, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d"}`, 1, i))
-		if err == nil {
-			var objmap map[string]interface{}
-			if err := json.Unmarshal(resp, &objmap); err != nil {
-				t.Errorf("Data Unmarshal error %s", err)
+	for idx, peerapi := range peerapilist {
+		var peergenesisblock []string
+		for i := 0; i < groupspeernum; i++ {
+			resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d"}`, idx+1, i+1))
+			if err == nil {
+				var objmap map[string]interface{}
+				if err := json.Unmarshal(resp, &objmap); err != nil {
+					t.Errorf("Data Unmarshal error %s", err)
+				} else {
+					peergenesisblock = append(peergenesisblock, string(resp))
+					groupName := objmap["group_name"]
+					groupId := objmap["group_id"].(string)
+					groupIds = append(groupIds, groupId)
+					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
+				}
 			} else {
-				genesisblockpeer1 = append(genesisblockpeer1, string(resp))
-				group_name := objmap["group_name"]
-				log.Printf("group %s created on peer%d", group_name, 1)
+				t.Errorf("create group on peer%d error %s", 1, err)
 			}
-		} else {
-			t.Errorf("create group on peer%d error %s", 1, err)
 		}
-		resp, err = testnode.RequestAPI(peer2api, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d"}`, 2, i))
-		if err == nil {
-			var objmap map[string]interface{}
-			if err := json.Unmarshal(resp, &objmap); err != nil {
-				t.Errorf("Data Unmarshal error %s", err)
-			} else {
-				genesisblockpeer2 = append(genesisblockpeer2, string(resp))
-				group_name := objmap["group_name"]
-				log.Printf("group %s created on peer%d", group_name, 2)
-			}
-		} else {
-			t.Errorf("create group on peer%d error %s", 2, err)
-		}
-		time.Sleep(5 * time.Second)
+		genesisblocks = append(genesisblocks, peergenesisblock)
+		time.Sleep(1 * time.Second)
 	}
 
-	if len(genesisblockpeer1) == groupspeernum && len(genesisblockpeer2) == groupspeernum {
-		for i := 0; i < groupspeernum; i++ {
-			g1 := genesisblockpeer1[i]
-			g2 := genesisblockpeer2[i]
-			_, err := testnode.RequestAPI(peer1api, "/api/v1/group/join", "POST", g2)
-			if err != nil {
-				t.Errorf("peer1 join group %d error %s", i, err)
-			}
-			_, err = testnode.RequestAPI(peer2api, "/api/v1/group/join", "POST", g1)
-			if err != nil {
-				t.Errorf("peer2 join group %d error %s", i, err)
+	for idx, peergenesisblocks := range genesisblocks {
+		if len(peergenesisblocks) != groupspeernum {
+			t.Fail()
+		}
+		t.Logf("Expected %d genesisblocks on peer%d got %d", groupspeernum, idx+1, len(peergenesisblocks))
+	}
+
+	for peerIdx, peerapi := range peerapilist {
+		for genesisblockIdx := 0; genesisblockIdx < nodes; genesisblockIdx++ {
+			if genesisblockIdx != peerIdx {
+				oterhpeergenesisblocks := genesisblocks[genesisblockIdx]
+				for i := 0; i < groupspeernum; i++ {
+					g := oterhpeergenesisblocks[i]
+					// join to other groups of other nodes
+					_, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
+					if err != nil {
+						t.Errorf("peer%d join group %s error %s", peerIdx+1, g, err)
+					} else {
+						t.Logf("peer%d join group %s", peerIdx+1, g)
+					}
+				}
 			}
 		}
+	}
 
-		ready := "GROUP_READY"
-		waitingcounter := 0
-		groupStatus := make(map[string]bool) // add ready groups
+	ready := "GROUP_READY"
+
+	for i := 0; i < nodes; i++ {
+		// wait for all nodes, all groups ready
+		// reinit groupStatus here, to check each node
+		groupStatus := map[string]bool{} // add ready groups
+		for _, groupId := range groupIds {
+			groupStatus[groupId] = false
+		}
+		waitingcounter := 5
 		for {
-			if waitingcounter >= 10 {
+			if waitingcounter <= 0 {
 				break
 			}
-			groupslist1 := &api.GroupInfoList{}
-			groupslist2 := &api.GroupInfoList{}
-			resp, err := testnode.RequestAPI(peer1api, "/api/v1/group", "GET", "")
-			if err == nil {
-				if err := json.Unmarshal(resp, &groupslist1); err != nil {
-					t.Errorf("get peer1 group  error %s", err)
-				}
+			peerapi := peerapilist[i]
+			groupslist := &api.GroupInfoList{}
+			resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "GET", "")
+			if err != nil {
+				t.Errorf("get peer group error %s", err)
 			}
-
-			resp, err = testnode.RequestAPI(peer2api, "/api/v1/group", "GET", "")
-			if err == nil {
-				if err := json.Unmarshal(resp, &groupslist2); err != nil {
-					t.Errorf("get peer2 group  error %s", err)
-				}
+			if err := json.Unmarshal(resp, &groupslist); err != nil {
+				t.Errorf("parse peer group error %s", err)
 			}
-			if len(groupslist1.GroupInfos) == 2*groupspeernum && len(groupslist2.GroupInfos) == 2*groupspeernum {
-				log.Printf("%d/%d groups on peer1/peer2", len(groupslist1.GroupInfos), len(groupslist2.GroupInfos))
-				for _, groupinfo := range groupslist1.GroupInfos {
-					if groupinfo.GroupStatus != ready {
-						t.Logf("peer1 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
-					} else {
-						t.Logf("peer1 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
-						groupStatus[groupinfo.GroupName] = true
+			for _, groupinfo := range groupslist.GroupInfos {
+				if _, found := groupStatus[groupinfo.GroupId]; found {
+					if groupinfo.GroupStatus == ready {
+						groupStatus[groupinfo.GroupId] = true
 					}
+					t.Logf("group(node%d): %s %s", i+1, groupinfo.GroupName, groupinfo.GroupStatus)
+				} else {
+					t.Logf("[cache??] group(node%d): %s %s", i+1, groupinfo.GroupName, groupinfo.GroupStatus)
 				}
-				for _, groupinfo := range groupslist2.GroupInfos {
-					if groupinfo.GroupStatus != ready {
-						t.Logf("peer2 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
-					} else {
-						t.Logf("peer2 %s status: %s ", groupinfo.GroupName, groupinfo.GroupStatus)
-						groupStatus[groupinfo.GroupName] = true
-					}
-				}
-			} else {
-				t.Fail()
-				t.Errorf("Expected %d/%d groups on peer1/peer2, got %d/%d", 2*groupspeernum, 2*groupspeernum, len(groupslist1.GroupInfos), len(groupslist2.GroupInfos))
 			}
-			if len(groupStatus) == 10 {
+			ok := true
+			for k, v := range groupStatus {
+				if v == false {
+					ok = false
+					t.Logf("group id %s not ready on node%d", k, i+1)
+				}
+			}
+			if ok {
 				break
 			} else {
-				log.Printf("waiting 30 seconds for peers data sync")
-				time.Sleep(30 * time.Second)
+				t.Logf("wait 3s for sync")
+				time.Sleep(3 * time.Second)
 			}
-			waitingcounter += 1
 		}
-
-		if len(groupStatus) != 10 {
-			t.Errorf("error: peer data sync not finish. ")
-		}
-	} else {
-		t.Fail()
-		t.Logf("Expected %d groups on peer1/peer2 got %d/%d", groupspeernum, len(genesisblockpeer1), len(genesisblockpeer2))
 	}
 }
 
 func TestGroupsContent(t *testing.T) {
-	// create 5 posts on each groups, then verify peer1 groups have the same posts with peer2 groups
-
-	groupslist1 := &api.GroupInfoList{}
-	groupslist2 := &api.GroupInfoList{}
-	resp, err := testnode.RequestAPI(peer1api, "/api/v1/group", "GET", "")
-	if err == nil {
-		if err := json.Unmarshal(resp, &groupslist1); err != nil {
-			t.Errorf("Data Unmarshal error %s", err)
-		}
-	} else {
-		t.Errorf("request api /api/v1/group err: %s", err)
+	if len(peerapilist) == 0 {
+		return
 	}
-	resp, err = testnode.RequestAPI(peer2api, "/api/v1/group", "GET", "")
-	if err == nil {
-		if err := json.Unmarshal(resp, &groupslist2); err != nil {
-			t.Errorf("Data Unmarshal error %s", err)
-		}
-	} else {
-		t.Errorf("request api /api/v1/group err: %s", err)
-	}
+	peer1api := peerapilist[0]
 
-	for _, groupinfo := range groupslist1.GroupInfos {
-		log.Println("post content to each groups")
-		i := 1
-		for ; i <= 5; i++ {
-			content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupinfo.GroupId, i, groupinfo.GroupId, i, groupinfo.GroupId)
+	// create m posts on each group, then verify each group has the same posts
+	groupIdToTrxIds := map[string][]string{}
+
+	for _, groupId := range groupIds {
+		groupIdToTrxIds[groupId] = []string{}
+		for i := 1; i <= posts; i++ {
+			content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupId, i, groupId, i, groupId)
 			log.Println(content)
 			resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "POST", content)
 			if err != nil {
@@ -227,74 +217,64 @@ func TestGroupsContent(t *testing.T) {
 			}
 			var objmap map[string]interface{}
 			if err = json.Unmarshal(resp, &objmap); err != nil {
+				// store trx id, verify it later on each group
 				t.Errorf("Data Unmarshal error %s", err)
 			}
+			t.Logf("post with trxid: %s created", objmap["trx_id"].(string))
+			groupIdToTrxIds[groupId] = append(groupIdToTrxIds[groupId], objmap["trx_id"].(string))
 			// use normal distribution time range
 			// half range  == 3 * stddev (99.7%)
 			mean := float64(timerange) / 2.0
 			stddev := mean / 3.0
 			sleepTime := rand.NormFloat64()*stddev + mean
 			log.Printf("sleep: %.2f s before next post\n", sleepTime)
-			// time.Sleep(5 * time.Second)
 			time.Sleep(time.Duration(sleepTime*1000) * time.Millisecond)
+			//time.Sleep(time.Duration(5*1000) * time.Millisecond)
 		}
 	}
-
-	log.Println("waiting 30 seconds for peers data sync")
-	time.Sleep(30 * time.Second)
+	t.Logf("waiting %d seconds for peers data sync", synctime)
+	time.Sleep(time.Duration(synctime) * time.Second)
 	log.Println("start verify groups content")
-	for _, groupinfo := range groupslist1.GroupInfos {
-		contentlist := make(map[string]string)
-		groupcontentlist1 := []api.GroupContentObjectItem{}
-		log.Printf("get peer1 group %s  content", groupinfo.GroupId)
-		reqdata := fmt.Sprintf(`{"group_id":"%s"}`, groupinfo.GroupId)
-		resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "GET", reqdata)
 
-		if err == nil {
-			if err := json.Unmarshal(resp, &groupcontentlist1); err != nil {
-				t.Errorf("Data Unmarshal error %s", err)
+	for _, groupId := range groupIds {
+		reqdata := fmt.Sprintf(`{"group_id":"%s"}`, groupId)
+		trxIds := groupIdToTrxIds[groupId]
+		// for each node, verify groups content
+		for nodeIdx, peerapi := range peerapilist {
+			trxStatus := map[string]bool{}
+			for _, trxId := range trxIds {
+				trxStatus[trxId] = false
 			}
-		} else {
-			t.Errorf("get /api/v1/group/content err: %s", err)
-		}
 
-		for _, contentitem := range groupcontentlist1 {
-			if contentitem.Content != nil {
-				contentlist[contentitem.TrxId] = contentitem.Content.Content
+			t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
+			resp, err := testnode.RequestAPI(peerapi, "/api/v1/group/content", "GET", reqdata)
+			// t.Logf("resp: %s", resp)
+			groupcontentlist := []api.GroupContentObjectItem{}
+
+			if err == nil {
+				if err := json.Unmarshal(resp, &groupcontentlist); err != nil {
+					t.Errorf("Data Unmarshal error %s", err)
+				}
+			} else {
+				t.Errorf("get /api/v1/group/content err: %s", err)
 			}
-		}
-
-		log.Printf("peer1 group %s content number: %d", groupinfo.GroupId, len(contentlist))
-		// verify with peer2
-
-		groupcontentlist2 := []api.GroupContentObjectItem{}
-		resp, err = testnode.RequestAPI(peer2api, "/api/v1/group/content", "GET", reqdata)
-
-		if err == nil {
-			if err := json.Unmarshal(resp, &groupcontentlist2); err != nil {
-				t.Errorf("Data Unmarshal error %s", err)
-			}
-		} else {
-			t.Errorf("get /api/v1/group/content err: %s", err)
-		}
-
-		contentcount := 0
-		for _, contentitem := range groupcontentlist2 {
-			if contentitem.Content != nil {
-				if contentlist[contentitem.TrxId] == contentitem.Content.Content {
-					log.Printf("trxid: %s find in peer2's group.\n", contentitem.TrxId)
-					contentcount++
+			for _, contentitem := range groupcontentlist {
+				if contentitem.Content != nil {
+					if _, found := trxStatus[contentitem.TrxId]; found {
+						trxStatus[contentitem.TrxId] = true
+						t.Logf("trx %s ok", contentitem.TrxId)
+					} else {
+						t.Errorf("trx %s not exists in this groups", contentitem.TrxId)
+					}
 				}
 			}
-		}
-		if len(contentlist) > 0 && contentcount == len(contentlist) {
-			log.Printf("group %s content check ok.", groupinfo.GroupId)
-		} else {
-			t.Fail()
-			if len(contentlist) > 0 {
-				t.Logf("Expected groups %s content number %d, got %d", groupinfo.GroupId, len(contentlist), contentcount)
-			} else {
-				t.Logf("Expected groups content number greater than zero, got %d", len(contentlist))
+
+			// check trxStatus, if it has some false value
+			for k, v := range trxStatus {
+				if v == false {
+					t.Logf("trx id %s not found on node%d", k, nodeIdx+1)
+					t.Fail()
+				}
 			}
 		}
 	}
