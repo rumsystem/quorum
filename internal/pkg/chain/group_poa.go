@@ -127,12 +127,16 @@ func (grp *GroupPoa) LeaveGrp() error {
 
 //Add trx to trx pool, prepare for produce block
 func (grp *GroupPoa) AddTrx(trx *quorumpb.Trx) {
-	group_log.Infof("Add Trx")
-	grp.TrxPool[trx.TrxId] = trx
 
 	pubkey, _ := getPubKey()
-	if len(grp.TrxPool) == 1 && pubkey == grp.Item.OwnerPubKey {
-		grp.LaunchProduce()
+
+	//only group owner collect trxs
+	if pubkey == grp.Item.OwnerPubKey {
+		group_log.Infof("Add Trx")
+		grp.TrxPool[trx.TrxId] = trx
+		if len(grp.TrxPool) == 1 {
+			grp.LaunchProduce()
+		}
 	}
 }
 
