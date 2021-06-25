@@ -55,8 +55,8 @@ func (h *Handler) JoinGroup(c echo.Context) (err error) {
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = params.GenesisBlock
 
-	var group *chain.Group
-	group = &chain.Group{}
+	var group *chain.GroupPoa
+	group = &chain.GroupPoa{}
 
 	err = group.CreateGrp(item)
 

@@ -11,18 +11,7 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"google.golang.org/protobuf/proto"
 
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/mr-tron/base58"
-)
-
-var group_log = logging.Logger("group")
-
-type GroupStatus int8
-
-const (
-	GROUP_CLEAN = 0
-	GROUP_DIRTY = 1
 )
 
 type RoutineStatus int8
@@ -33,7 +22,7 @@ const (
 	PRODUCE   = 2
 )
 
-type Group struct {
+type ChallengeGroup struct {
 	//Group Item
 	Item *quorumpb.GroupItem
 
@@ -61,13 +50,13 @@ type Group struct {
 	AskNextTickerDone chan bool
 }
 
-func (grp *Group) init(item *quorumpb.GroupItem) {
+func (grp *ChallengeGroup) Init(item *quorumpb.GroupItem) {
 	grp.Item = item
 	grp.initProduce()
 }
 
 //initial trx pool
-func (grp *Group) initProduce() {
+func (grp *ChallengeGroup) initProduce() {
 	grp.TrxPool = make(map[string]*quorumpb.Trx)
 	grp.RStatus = IDLE
 	grp.ChallengePool = make(map[int64]*quorumpb.ChallengeItem)
@@ -78,14 +67,14 @@ func (grp *Group) initProduce() {
 }
 
 //teardown group
-func (grp *Group) Teardown() {
+func (grp *ChallengeGroup) Teardown() {
 	if grp.Status == GROUP_DIRTY {
 		grp.stopAskNextBlock()
 	}
 }
 
 //Start sync group
-func (grp *Group) StartSync() error {
+func (grp *ChallengeGroup) StartSync() error {
 	group_log.Infof("Group %s start syncing", grp.Item.GroupId)
 	grp.Status = GROUP_DIRTY
 	grp.startAskNextBlock()
@@ -93,23 +82,23 @@ func (grp *Group) StartSync() error {
 }
 
 //Stop sync group
-func (grp *Group) StopSync() error {
+func (grp *ChallengeGroup) StopSync() error {
 	group_log.Infof("Group stop sync")
 	grp.Status = GROUP_CLEAN
 	grp.stopAskNextBlock()
 	return nil
 }
 
-func (grp *Group) GetTopBlock() (*quorumpb.Block, error) {
+func (grp *ChallengeGroup) GetTopBlock() (*quorumpb.Block, error) {
 	return GetDbMgr().GetBlock(grp.Item.LatestBlockId)
 }
 
-func (grp *Group) GetBlockId(blockNum int64) (string, error) {
+func (grp *ChallengeGroup) GetBlockId(blockNum int64) (string, error) {
 	return GetDbMgr().GetBlkId(blockNum, grp.Item.GroupId)
 }
 
-func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
-	grp.init(item)
+func (grp *ChallengeGroup) CreateGrp(item *quorumpb.GroupItem) error {
+	grp.Init(item)
 
 	err := GetDbMgr().AddBlock(item.GenesisBlock)
 	if err != nil {
@@ -124,7 +113,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	return GetDbMgr().AddGroup(grp.Item)
 }
 
-func (grp *Group) DelGrp() error {
+func (grp *ChallengeGroup) DelGrp() error {
 	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
 	if err != nil {
 		return err
@@ -138,7 +127,7 @@ func (grp *Group) DelGrp() error {
 	return GetDbMgr().RmGroup(grp.Item)
 }
 
-func (grp *Group) LeaveGrp() error {
+func (grp *ChallengeGroup) LeaveGrp() error {
 	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
 	if err != nil {
 		return err
@@ -155,11 +144,11 @@ func (grp *Group) LeaveGrp() error {
 }
 
 //Add trx to trx pool, prepare for produce block
-func (grp *Group) AddTrx(trx *quorumpb.Trx) {
+func (grp *ChallengeGroup) AddTrx(trx *quorumpb.Trx) {
 	grp.TrxPool[trx.TrxId] = trx
 }
 
-func (grp *Group) Post(content *quorumpb.Object) (string, error) {
+func (grp *ChallengeGroup) Post(content *quorumpb.Object) (string, error) {
 	encodedcontent, err := proto.Marshal(content)
 	if err != nil {
 		return "", err
@@ -168,7 +157,7 @@ func (grp *Group) Post(content *quorumpb.Object) (string, error) {
 	return grp.LaunchProduce(encodedcontent, quorumpb.TrxType_POST)
 }
 
-func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
+func (grp *ChallengeGroup) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
 	group_log.Infof("Update Auth")
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
@@ -179,7 +168,7 @@ func (grp *Group) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
 }
 
 //Post to group (by myself)
-func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (string, error) {
+func (grp *ChallengeGroup) LaunchProduce(content []byte, trxType quorumpb.TrxType) (string, error) {
 	group_log.Infof("Launch Produce")
 	trx, err := CreateTrx(trxType, grp.Item.GroupId, content)
 	err = grp.sendTrxPackage(trx)
@@ -226,7 +215,7 @@ func (grp *Group) LaunchProduce(content []byte, trxType quorumpb.TrxType) (strin
 }
 
 //Start a round of challenge
-func (grp *Group) startChallenge() {
+func (grp *ChallengeGroup) startChallenge() {
 	group_log.Infof("startChallenge")
 	grp.RStatus = CHALLENGE
 
@@ -261,7 +250,7 @@ func (grp *Group) startChallenge() {
 	}
 }
 
-func (grp *Group) UpdateChallenge(trx *quorumpb.Trx) error {
+func (grp *ChallengeGroup) UpdateChallenge(trx *quorumpb.Trx) error {
 	group_log.Infof("Update challenge")
 
 	challenge := &quorumpb.ChallengeItem{}
@@ -315,7 +304,7 @@ func (grp *Group) UpdateChallenge(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (grp *Group) tryProduceBlock() {
+func (grp *ChallengeGroup) tryProduceBlock() {
 	group_log.Infof("try produce block...")
 
 	grp.RStatus = PRODUCE
@@ -381,7 +370,7 @@ func (grp *Group) tryProduceBlock() {
 	}
 }
 
-func (grp *Group) AddBlock(block *quorumpb.Block) error {
+func (grp *ChallengeGroup) AddBlock(block *quorumpb.Block) error {
 	group_log.Infof("add block")
 
 	topBlock, err := grp.GetTopBlock()
@@ -451,7 +440,7 @@ func (grp *Group) AddBlock(block *quorumpb.Block) error {
 	return nil
 }
 
-func (grp *Group) UpdateNewBlockResp(trx *quorumpb.Trx) error {
+func (grp *ChallengeGroup) UpdateNewBlockResp(trx *quorumpb.Trx) error {
 	group_log.Infof("UpdateNewBlockResp called")
 
 	newBlockResp := &quorumpb.NewBLockResp{}
@@ -473,11 +462,11 @@ func (grp *Group) UpdateNewBlockResp(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (grp *Group) stopProduceRoutine() {
+func (grp *ChallengeGroup) stopProduceRoutine() {
 	grp.ProduceRoutineDone <- true
 }
 
-func (grp *Group) applyBlock(block *quorumpb.Block) error {
+func (grp *ChallengeGroup) applyBlock(block *quorumpb.Block) error {
 	group_log.Infof("apply block to group")
 
 	//Save block to local db
@@ -519,7 +508,7 @@ func (grp *Group) applyBlock(block *quorumpb.Block) error {
 	return nil
 }
 
-func (grp *Group) produceBlock() {
+func (grp *ChallengeGroup) produceBlock() {
 	group_log.Infof("produce block")
 
 	//get top block
@@ -548,14 +537,14 @@ func (grp *Group) produceBlock() {
 	}
 }
 
-func (grp *Group) finishProduce() {
+func (grp *ChallengeGroup) finishProduce() {
 	group_log.Infof("==================== finish produce ====================")
 	//reset status
 	grp.initProduce()
 }
 
 //ask next block
-func (grp *Group) startAskNextBlock() {
+func (grp *ChallengeGroup) startAskNextBlock() {
 	grp.AskNextTicker = time.NewTicker(500 * time.Millisecond)
 	grp.AskNextTickerDone = make(chan bool)
 	//send ask_next_block every 0.5 sec till get "on_top response"
@@ -602,13 +591,13 @@ func (grp *Group) startAskNextBlock() {
 	}()
 }
 
-func (grp *Group) stopAskNextBlock() {
+func (grp *ChallengeGroup) stopAskNextBlock() {
 	grp.AskNextTicker.Stop()
 	grp.AskNextTickerDone <- true
 	grp.Status = GROUP_CLEAN
 }
 
-func (grp *Group) sendTrxPackage(trx *quorumpb.Trx) error {
+func (grp *ChallengeGroup) sendTrxPackage(trx *quorumpb.Trx) error {
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -628,7 +617,7 @@ func (grp *Group) sendTrxPackage(trx *quorumpb.Trx) error {
 	return GetChainCtx().GroupTopicPublish(trx.GroupId, pkgBytes)
 }
 
-func (grp *Group) sendNewBlockResp(block *quorumpb.Block, result quorumpb.NewBlockRespResult) error {
+func (grp *ChallengeGroup) sendNewBlockResp(block *quorumpb.Block, result quorumpb.NewBlockRespResult) error {
 	var newBlockRespItem quorumpb.NewBLockResp
 	newBlockRespItem.BlockId = block.BlockId
 	newBlockRespItem.GroupId = grp.Item.GroupId
@@ -650,7 +639,7 @@ func (grp *Group) sendNewBlockResp(block *quorumpb.Block, result quorumpb.NewBlo
 	return grp.sendTrxPackage(trx)
 }
 
-func (grp *Group) sendBlkPackage(blk *quorumpb.Block) error {
+func (grp *ChallengeGroup) sendBlkPackage(blk *quorumpb.Block) error {
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -676,7 +665,7 @@ func (grp *Group) sendBlkPackage(blk *quorumpb.Block) error {
 	return nil
 }
 
-func (grp *Group) getChallengeSeed(seed string) (int64, error) {
+func (grp *ChallengeGroup) getChallengeSeed(seed string) (int64, error) {
 	num, err := base58.Decode(seed)
 	if err != nil {
 		return 0, err

@@ -84,8 +84,8 @@ func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 
-	var group *chain.Group
-	group = &chain.Group{}
+	var group *chain.GroupPoa
+	group = &chain.GroupPoa{}
 
 	err = group.CreateGrp(item)
 	if err != nil {
