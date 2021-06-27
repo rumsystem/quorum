@@ -3,17 +3,18 @@ package testnode
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"syscall"
+	"time"
+
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 	"github.com/huo-ju/quorum/internal/pkg/utils"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	"io/ioutil"
-	"log"
-	"os"
-	"syscall"
-	"time"
 )
 
 func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2p.Node, *p2p.Node, *localcrypto.Keys, *localcrypto.Keys, *localcrypto.Keys, error) {
@@ -53,6 +54,61 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 	//discovery.Advertise(ctx, node2.RoutingDiscovery, defaultnodeconfig.RendezvousString)
 	//log.Println("Successfully announced peer2")
 	return node, node1, node2, mockbootstrapnodekeys, mockpeer1nodekeys, mockpeer2nodekeys, nil
+}
+
+func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, []string, string, error) {
+	var bootstrapaddr, testtempdir string
+	peers := []string{}
+	testtempdir, err := ioutil.TempDir("", "quorumtestdata")
+	if err != nil {
+		return "", []string{}, "", err
+	}
+	testconfdir := fmt.Sprintf("%s/%s", testtempdir, "config")
+	testdatadir := fmt.Sprintf("%s/%s", testtempdir, "data")
+	bootstrapport := 20666
+	bootstrapapiport := 18010
+
+	Fork(pidch, "/usr/bin/go", "run", "main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-datadir", testdatadir)
+
+	// wait bootstrap node
+	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
+	log.Printf("request: %s", fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport))
+	result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport))
+	if result == false {
+		return "", []string{}, "", fmt.Errorf("bootstrap node start failed")
+	}
+	bootstrapkeys, _ := localcrypto.LoadKeys(testconfdir, "bootstrap")
+	bootstrappeerid, err := peer.IDFromPublicKey(bootstrapkeys.PubKey)
+	if err != nil {
+		return "", []string{}, "", fmt.Errorf("can't load bootstrap keys:%s\n", err)
+	}
+	bootstrapaddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/20666/p2p/%s", bootstrappeerid)
+	log.Printf("bootstrap addr: %s\n", bootstrapaddr)
+
+	// start other nodes
+	peerport := 17001
+	peerapiport := bootstrapapiport + 1
+	i := 0
+	for i < n {
+		peerport = peerport + i
+		peerapiport = peerapiport + i
+		peername := fmt.Sprintf("peer%d", i+1)
+
+		Fork(pidch, "/usr/bin/go", "run", "main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
+
+		checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
+		result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", peerapiport))
+		if result == false {
+			return "", []string{}, "", fmt.Errorf("%s node start failed", peername)
+		}
+
+		peerapiurl := fmt.Sprintf("http://127.0.0.1:%d", peerapiport)
+		peers = append(peers, peerapiurl)
+
+		i++
+	}
+
+	return bootstrapaddr, peers, testtempdir, nil
 }
 
 func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string, string, string, string, error) {
