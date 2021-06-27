@@ -54,11 +54,8 @@ func TestMain(m *testing.M) {
 	}()
 
 	var tempdatadir string
-	// bootstrapapi, peer1api, peer2api, tempdatadir, _ = testnode.Run2NodeProcessWith1Bootstrap(context.Background(), pidch)
-	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), pidch, 2)
+	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), pidch, nodes)
 	log.Println("peers: ", peerapilist)
-	peer1api = peerapilist[0]
-	peer2api = peerapilist[1]
 
 	exitVal := m.Run()
 	log.Println("after tests clean:", tempdatadir)
@@ -193,6 +190,7 @@ func TestGroups(t *testing.T) {
 				t.Logf("wait 3s for sync")
 				time.Sleep(3 * time.Second)
 			}
+			waitingcounter -= 1
 		}
 	}
 }
