@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"syscall"
+	//"syscall"
 	"time"
 
 	"github.com/huo-ju/quorum/internal/pkg/cli"
@@ -50,9 +50,6 @@ func Run2nodes(ctx context.Context, mockRendezvousString string) (*p2p.Node, *p2
 		return nil, nil, nil, nil, nil, nil, err
 	}
 	node2.Bootstrap(ctx, *defaultnodeconfig)
-	//log.Println("Announcing peer2...")
-	//discovery.Advertise(ctx, node2.RoutingDiscovery, defaultnodeconfig.RendezvousString)
-	//log.Println("Successfully announced peer2")
 	return node, node1, node2, mockbootstrapnodekeys, mockpeer1nodekeys, mockpeer2nodekeys, nil
 }
 
@@ -184,18 +181,20 @@ func CleanTestData(dir string) {
 	}
 }
 
-func Cleanup(dir string, pidlist []int) {
+func Cleanup(dir string, peerapilist []string) {
 	log.Printf("Clean testdata path: %s ...", dir)
-	log.Println("pidlist", pidlist)
-
-	for _, pid := range pidlist {
-		//syscall.Kill(pid, syscall.SIGKILL) //TODO: `go run` will start a child process to run the application, but SIGKILL can't kill child processes
-		pgid, err := syscall.Getpgid(pid)
+	log.Println("peer api list", peerapilist)
+	//add bootstrap node
+	peerapilist = append(peerapilist, fmt.Sprintf("http://127.0.0.1:%d", 18010))
+	for _, peerapi := range peerapilist {
+		_, err := RequestAPI(peerapi, "/api/quit", "GET", "")
 		if err == nil {
-			log.Printf("kill pid %d pgid %d ", pid, pgid)
-			syscall.Kill(-pgid, 15) // note the minus sign
+			log.Printf("kill node at %s ", peerapi)
 		}
+
 	}
+	//waiting 3 sencodes for all processes quit.
+	time.Sleep(3 * time.Second)
 
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {

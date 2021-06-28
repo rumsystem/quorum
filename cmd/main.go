@@ -33,6 +33,7 @@ import (
 //const PUBLIC_CHANNEL = "all_node_public_channel"
 
 var node *p2p.Node
+var signalch chan os.Signal
 
 func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -122,10 +123,10 @@ func mainRet(config cli.Config) int {
 	}
 
 	//attach signal
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
-	signalType := <-ch
-	signal.Stop(ch)
+	signalch = make(chan os.Signal, 1)
+	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signalType := <-signalch
+	signal.Stop(signalch)
 
 	if config.IsBootstrap != true {
 		err := chain.GetChainCtx().QuitPublicChannel()
@@ -166,6 +167,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
+	r.GET("/quit", quitapp)
 	if isbootstrapnode == false {
 		r.POST("/v1/group", h.CreateGroup)
 		r.DELETE("/v1/group", h.RmGroup)
@@ -186,6 +188,12 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	}
 
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
+}
+
+func quitapp(c echo.Context) (err error) {
+	glog.Infof("/api/quit has been called, send Signal SIGTERM...")
+	signalch <- syscall.SIGTERM
+	return nil
 }
 
 func main() {
