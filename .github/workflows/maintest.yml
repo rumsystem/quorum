@@ -15,4 +15,4 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: MainTest
-      run: go test cmd/main_test.go -v -nodes=5 -posts=10 -timerange=1 -groups=5 -synctime=10
+      run: go test cmd/main_test.go -v -nodes=3 -posts=10 -timerange=1 -groups=5 -synctime=10
