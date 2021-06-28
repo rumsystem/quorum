@@ -59,7 +59,7 @@ func TestMain(m *testing.M) {
 
 	exitVal := m.Run()
 	log.Println("after tests clean:", tempdatadir)
-	testnode.Cleanup(tempdatadir, pidlist)
+	testnode.Cleanup(tempdatadir, peerapilist)
 	os.Exit(exitVal)
 }
 
