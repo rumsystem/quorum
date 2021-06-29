@@ -3,9 +3,11 @@ package testnode
 import (
 	"context"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"log"
 	"os"
+
 	//"syscall"
 	"time"
 
@@ -65,7 +67,12 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 	bootstrapport := 20666
 	bootstrapapiport := 18010
 
-	Fork(pidch, "/usr/bin/go", "run", "main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-datadir", testdatadir)
+	gopath := os.Getenv("GOROOT")
+	if gopath == "" {
+		gopath = build.Default.GOROOT
+	}
+
+	Fork(pidch, gopath+"/bin/go", "run", "main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-datadir", testdatadir)
 
 	// wait bootstrap node
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
