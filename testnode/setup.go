@@ -67,12 +67,12 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 	bootstrapport := 20666
 	bootstrapapiport := 18010
 
-	gopath := os.Getenv("GOROOT")
-	if gopath == "" {
-		gopath = build.Default.GOROOT
+	goroot := os.Getenv("GOROOT")
+	if goroot == "" {
+		goroot = build.Default.GOROOT
 	}
 
-	Fork(pidch, gopath+"/bin/go", "run", "main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-datadir", testdatadir)
+	Fork(pidch, goroot+"/bin/go", "run", "main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-datadir", testdatadir)
 
 	// wait bootstrap node
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
@@ -98,7 +98,7 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 		peerapiport = peerapiport + i
 		peername := fmt.Sprintf("peer%d", i+1)
 
-		Fork(pidch, "/usr/bin/go", "run", "main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
+		Fork(pidch, goroot+"/bin/go", "run", "main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
 
 		checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
 		result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", peerapiport))
