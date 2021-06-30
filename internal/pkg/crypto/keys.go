@@ -7,9 +7,11 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/glog"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/spf13/viper"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Keys struct {
@@ -33,46 +35,44 @@ func NewKeys() (*Keys, *ethkey, error) {
 	return &Keys{priv, pub, address}, &ethkey{key}, nil
 }
 
-func LoadKeys(dir string, keyname string) (*Keys, error) {
-	if dir[len(dir)-1:] != "/" && dir[len(dir)-1:] != "\\" { // add \\ for windows
-		dir = dir + "/"
-		if _, err := os.Stat(dir); err != nil {
-			if os.IsNotExist(err) {
-				err := os.Mkdir(dir, 0755)
-				if err != nil {
-					return nil, err
-				}
-			} else {
+func LoadKeysFrom(dir string, keyname string, filetype string) (*Keys, error) {
+	keyfilepath := filepath.FromSlash(fmt.Sprintf("%s%s_keys.%s", dir, keyname, filetype))
+	keyhexstring := ""
+	if filetype == "txt" {
+		fmt.Println("Path: " + keyfilepath)
+		f, err := os.Open(keyfilepath)
+		if err != nil {
+			_, ethkey, err := NewKeys()
+			if err != nil {
+				return nil, err
+			}
+
+			fmt.Println("call write keys to Path: " + keyfilepath)
+			err = ethkey.WritekeysTo(keyfilepath, filetype)
+			if err != nil {
+				return nil, err
+			}
+			f, err = os.Open(keyfilepath)
+			if err != nil {
 				return nil, err
 			}
 		}
-	}
-	viper.AddConfigPath(filepath.Dir(dir))
-	viper.SetConfigName(keyname + "_keys")
-	viper.SetConfigType("toml")
-	err := viper.ReadInConfig()
-	if err != nil {
-		glog.Infof("Keys files not found, generating new keypair..")
-		_, ethkey, err := NewKeys()
+		defer f.Close()
+
+		buf, err := ioutil.ReadAll(f)
 		if err != nil {
 			return nil, err
 		}
-		err = ethkey.WritekeysToconfig()
-		if err != nil {
-			return nil, err
-		}
+
+		keyhexstring = strings.TrimSpace(string(buf))
+	} else {
+		return nil, fmt.Errorf("unsupported filetype: %s", filetype)
 	}
-	err = viper.ReadInConfig()
+
+	ethprivkey, err := ethcrypto.HexToECDSA(keyhexstring)
 	if err != nil {
 		return nil, err
 	}
-
-	privstr := viper.GetString("priv")
-	ethprivkey, err := ethcrypto.HexToECDSA(privstr)
-	if err != nil {
-		return nil, err
-	}
-
 	glog.Infof("Load keys from config")
 	privkeybytes := ethcrypto.FromECDSA(ethprivkey)
 	pubkeybytes := ethcrypto.FromECDSAPub(&ethprivkey.PublicKey)
@@ -87,12 +87,21 @@ func LoadKeys(dir string, keyname string) (*Keys, error) {
 	return &Keys{PrivKey: priv, PubKey: pub, EthAddr: address}, nil
 }
 
-func (key *ethkey) WritekeysToconfig() error {
+func (key *ethkey) WritekeysTo(filewithpath string, filetype string) error {
 	privkeybytes := ethcrypto.FromECDSA(key.privkey)
 	if len(privkeybytes) == 0 {
 		return fmt.Errorf("Private key encoding error")
 	}
-	viper.Set("priv", hex.EncodeToString(privkeybytes))
-	viper.SafeWriteConfig()
+	if filetype == "txt" {
+		f, err := os.OpenFile(filewithpath, os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		io.WriteString(f, hex.EncodeToString(privkeybytes))
+	} else {
+		return fmt.Errorf("unsupported filetype: %s", filetype)
+	}
 	return nil
 }

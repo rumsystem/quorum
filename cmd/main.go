@@ -10,6 +10,7 @@ import (
 	"path"
 	"syscall"
 
+	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
@@ -24,7 +25,7 @@ import (
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 
 	"github.com/huo-ju/quorum/internal/pkg/cli"
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	//"github.com/huo-ju/quorum/internal/pkg/options"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 	"github.com/huo-ju/quorum/internal/pkg/utils"
 )
@@ -45,7 +46,10 @@ func mainRet(config cli.Config) int {
 		peername = "bootstrap"
 	}
 
-	keys, _ := localcrypto.LoadKeys(config.ConfigDir, peername)
+	keys, err1 := localcrypto.LoadKeysFrom(config.ConfigDir, peername, "txt")
+	fmt.Println(keys)
+	fmt.Println(err1)
+	//keys, _ := localcrypto.LoadKeys(config.ConfigDir, peername)
 	peerid, err := peer.IDFromPublicKey(keys.PubKey)
 	if err != nil {
 		mainlog.Fatalf(err.Error())
@@ -61,6 +65,9 @@ func mainRet(config cli.Config) int {
 		cancel()
 		return 0
 	}
+
+	//Load node options
+	//nodeoptions, err := options.Load(config.ConfigDir, peername)
 
 	if config.IsBootstrap == true {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
