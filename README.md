@@ -1,3 +1,6 @@
+![Main Test](https://github.com/huo-ju/quorum/actions/workflows/maintest.yml/badge.svg)
+
+
 设置测试环境
 
 Run testing
