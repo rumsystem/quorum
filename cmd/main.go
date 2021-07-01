@@ -25,7 +25,7 @@ import (
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 
 	"github.com/huo-ju/quorum/internal/pkg/cli"
-	//"github.com/huo-ju/quorum/internal/pkg/options"
+	"github.com/huo-ju/quorum/internal/pkg/options"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 	"github.com/huo-ju/quorum/internal/pkg/utils"
 )
@@ -46,10 +46,12 @@ func mainRet(config cli.Config) int {
 		peername = "bootstrap"
 	}
 
-	keys, err1 := localcrypto.LoadKeysFrom(config.ConfigDir, peername, "txt")
-	fmt.Println(keys)
-	fmt.Println(err1)
-	//keys, _ := localcrypto.LoadKeys(config.ConfigDir, peername)
+	keys, err := localcrypto.LoadKeysFrom(config.ConfigDir, peername, "txt")
+	if err != nil {
+		mainlog.Fatalf(err.Error())
+		cancel()
+		return 0
+	}
 	peerid, err := peer.IDFromPublicKey(keys.PubKey)
 	if err != nil {
 		mainlog.Fatalf(err.Error())
@@ -67,12 +69,17 @@ func mainRet(config cli.Config) int {
 	}
 
 	//Load node options
-	//nodeoptions, err := options.Load(config.ConfigDir, peername)
+	nodeoptions, err := options.Load(config.ConfigDir, peername)
+	if err != nil {
+		mainlog.Fatalf(err.Error())
+		cancel()
+		return 0
+	}
 
 	if config.IsBootstrap == true {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
+		node, err := p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
 
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -85,7 +92,7 @@ func mainRet(config cli.Config) int {
 	} else {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
 		_ = node.Bootstrap(ctx, config)
 
 		for _, addr := range node.Host.Addrs() {

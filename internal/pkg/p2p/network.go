@@ -5,15 +5,16 @@ import (
 	//"fmt"
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
+	"github.com/huo-ju/quorum/internal/pkg/options"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-peerstore"
-	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	//autonat "github.com/libp2p/go-libp2p-autonat"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 
 	//network "github.com/libp2p/go-libp2p-core/network"
 	"sync"
@@ -36,7 +37,7 @@ type Node struct {
 	RoutingDiscovery *discovery.RoutingDiscovery
 }
 
-func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	var pstore peerstore.Peerstore
@@ -59,7 +60,6 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 	libp2poptions := []libp2p.Option{routing,
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
-		libp2p.EnableNATService(),
 		libp2p.ConnectionManager(cmgr),
 		identity,
 	}
@@ -70,6 +70,11 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 			return nil, err
 		}
 		libp2poptions = append(libp2poptions, libp2p.Peerstore(pstore))
+	}
+
+	if nodeopt.EnableNat == true {
+		libp2poptions = append(libp2poptions, libp2p.EnableNATService())
+		glog.Infof("NAT enabled")
 	}
 
 	host, err := libp2p.New(ctx,
