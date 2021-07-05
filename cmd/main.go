@@ -18,6 +18,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	//"github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -88,7 +89,7 @@ func mainRet(config cli.Config) int {
 
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
 		h := &api.Handler{}
-		go StartAPIServer(config, h, true)
+		go StartAPIServer(config, h, node, nodeoptions, keys.EthAddr, true)
 	} else {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
@@ -133,7 +134,13 @@ func mainRet(config cli.Config) int {
 
 		//run local http api service
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx}
-		go StartAPIServer(config, h, false)
+
+		go StartAPIServer(config, h, node, nodeoptions, keys.EthAddr, false)
+		//nat := node.Host.GetAutoNat()
+		//natstatus := nat.Status()
+		//pubaddr := nat.PublicAddr()
+		//fmt.Println(natstatus)
+		//fmt.Println(pubaddr)
 	}
 
 	//attach signal
@@ -175,7 +182,7 @@ func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
 }
 
 //StartAPIServer : Start local web server
-func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
+func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ethaddr string, isbootstrapnode bool) {
 	e := echo.New()
 	e.Binder = new(CustomBinder)
 	e.Use(middleware.Logger())
@@ -193,7 +200,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 		r.GET("/v1/trx", h.GetTrx)
 		r.GET("/v1/group/content", h.GetGroupCtn)
 		r.GET("/v1/group", h.GetGroups)
-		r.GET("/v1/network", h.GetNetwork)
+		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 		r.POST("/v1/network/peers", h.AddPeers)
 		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
 		r.GET("/v1/group/blacklist", h.GetBlockedUsrList)

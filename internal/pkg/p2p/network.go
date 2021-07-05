@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	//"fmt"
 	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/huo-ju/quorum/internal/pkg/options"
@@ -11,7 +10,9 @@ import (
 	//autonat "github.com/libp2p/go-libp2p-autonat"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
@@ -27,13 +28,19 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	maddr "github.com/multiformats/go-multiaddr"
+	//basic "github.com/libp2p/go-libp2p/p2p/host/basic"
 )
+
+type NodeInfo struct {
+	NATType network.Reachability
+}
 
 type Node struct {
 	PeerID           peer.ID
 	Host             host.Host
 	Pubsub           *pubsub.PubSub
 	Ddht             *dual.DHT
+	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
 }
 
@@ -123,7 +130,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		return nil, err
 	}
 
-	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
+	info := &NodeInfo{NATType: network.ReachabilityUnknown}
+
+	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
 
 	//reconnect peers
 
@@ -140,7 +149,31 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 			newnode.AddPeers(ctx, storedpeers)
 		}()
 	}
+	go newnode.eventhandler(ctx)
+
 	return newnode, nil
+}
+
+func (node *Node) eventhandler(ctx context.Context) {
+	evbus := node.Host.EventBus()
+	subReachability, err := evbus.Subscribe(new(event.EvtLocalReachabilityChanged))
+	if err != nil {
+		glog.Errorf("event subscribe err: %s:", err)
+	}
+	defer subReachability.Close()
+	for {
+		select {
+		case ev := <-subReachability.Out():
+			evt, ok := ev.(event.EvtLocalReachabilityChanged)
+			if !ok {
+				return
+			}
+			glog.Infof("Reachability change: %s:", evt.Reachability.String())
+			node.Info.NATType = evt.Reachability
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (node *Node) FindPeers(ctx context.Context, RendezvousString string) ([]peer.AddrInfo, error) {
