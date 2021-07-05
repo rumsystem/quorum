@@ -340,8 +340,34 @@ Run testing
             可以看到，相关条目同样有trx_id字段，与POST Trx做同样处理即可
 
             
+	- 节点网络信息
+	
+	curl http://localhost:8002/api/v1/network
+	
+	{
+	  "groups": [
+	    {
+	      "GroupId": "997ce496-661b-457b-8c6a-f57f6d9862d0",
+	      "GroupName": "pb_group_1",
+	      "Peers": [
+		"16Uiu2HAkuXLC2hZTRbWToCNztyWB39KDi8g66ou3YrSzeTbsWsFG"
+	      ]
+	    }
+	  ],
+	  "node": {
+	    "addrs": [
+	      "/ip4/192.168.20.17/tcp/7002",
+	      "/ip4/127.0.0.1/tcp/7002",
+	      "/ip4/107.159.4.35/tcp/65185"
+	    ],
+	    "ethaddr": "0x4daD72e78c3537a8852ca7b3d1742Dd42c30441A",
+	    "nat_enabled": true,
+	    "nat_type": "Public",
+	    "peerid": "16Uiu2HAm8XVpfQrJYaeL7XtrHC3FvfKt2QW7P8R3MBenYyHxu8Kk"
+	  }
+	}
 
-
+这里需要注意， nat_type和addrs都会改变，开始的时候没有公网地址，类型是Unknown 之后会变成Private，再过一段时间反向链接成功的话，就变成Public，同时Addrs里面出现公网地址。
 
 
             
