@@ -229,6 +229,7 @@ func main() {
 	if config.IsDebug == true {
 		logging.SetAllLoggers(lvl)
 		logging.SetLogLevel("main", "debug")
+		logging.SetLogLevel("network", "debug")
 		logging.SetLogLevel("pubsub", "debug")
 		logging.SetLogLevel("autonat", "debug")
 		logging.SetLogLevel("chain", "debug")
