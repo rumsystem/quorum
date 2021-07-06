@@ -339,9 +339,9 @@ func (grp *GroupPoa) produceBlock() {
 
 //ask next block
 func (grp *GroupPoa) startAskNextBlock() {
-	grp.AskNextTicker = time.NewTicker(500 * time.Millisecond)
+	grp.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
 	grp.AskNextTickerDone = make(chan bool)
-	//send ask_next_block every 0.5 sec till get "on_top response"
+	//send ask_next_block every 1 sec till get "on_top response"
 	go func() {
 		for {
 			select {
