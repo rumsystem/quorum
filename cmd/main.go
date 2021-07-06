@@ -10,10 +10,9 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/golang/glog"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
-	golog "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -33,6 +32,8 @@ import (
 //const PUBLIC_CHANNEL = "all_node_public_channel"
 
 var node *p2p.Node
+var signalch chan os.Signal
+var mainlog = logging.Logger("main")
 
 func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -47,16 +48,16 @@ func mainRet(config cli.Config) int {
 	keys, _ := localcrypto.LoadKeys(config.ConfigDir, peername)
 	peerid, err := peer.IDFromPublicKey(keys.PubKey)
 	if err != nil {
-		glog.Fatalf(err.Error())
+		mainlog.Fatalf(err.Error())
 		cancel()
 		return 0
 	}
 
-	glog.Infof("eth addresss: <%s>", keys.EthAddr)
+	mainlog.Infof("eth addresss: <%s>", keys.EthAddr)
 
 	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
 	if err != nil {
-		glog.Fatalf(err.Error())
+		mainlog.Fatalf(err.Error())
 		cancel()
 		return 0
 	}
@@ -67,11 +68,11 @@ func mainRet(config cli.Config) int {
 		node, err := p2p.NewNode(ctx, config.IsBootstrap, ds, keys.PrivKey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
 
 		if err != nil {
-			glog.Fatalf(err.Error())
+			mainlog.Fatalf(err.Error())
 			return 0
 		}
 
-		glog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
+		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
 		h := &api.Handler{}
 		go StartAPIServer(config, h, true)
 	} else {
@@ -82,20 +83,20 @@ func mainRet(config cli.Config) int {
 
 		for _, addr := range node.Host.Addrs() {
 			p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), node.Host.ID())
-			glog.Infof("Peer ID:<%s>, Peer Address:<%s>", node.Host.ID(), p2paddr)
+			mainlog.Infof("Peer ID:<%s>, Peer Address:<%s>", node.Host.ID(), p2paddr)
 		}
 
 		//Discovery and Advertise had been replaced by PeerExchange
-		//glog.Infof("Announcing ourselves...")
+		//mainlog.Infof("Announcing ourselves...")
 		//discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
-		//glog.Infof("Successfully announced!")
+		//mainlog.Infof("Successfully announced!")
 
 		//peerok := make(chan struct{})
 		//go node.ConnectPeers(ctx, peerok, config)
 
 		//select {
 		//case <-peerok:
-		//	glog.Infof("Connected to enough peers.")
+		//	mainlog.Infof("Connected to enough peers.")
 		//}
 
 		datapath := config.DataDir + "/" + config.PeerName
@@ -112,7 +113,7 @@ func mainRet(config cli.Config) int {
 
 		err = chain.GetChainCtx().SyncAllGroup()
 		if err != nil {
-			glog.Fatalf(err.Error())
+			mainlog.Fatalf(err.Error())
 			return 0
 		}
 
@@ -122,10 +123,10 @@ func mainRet(config cli.Config) int {
 	}
 
 	//attach signal
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
-	signalType := <-ch
-	signal.Stop(ch)
+	signalch = make(chan os.Signal, 1)
+	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signalType := <-signalch
+	signal.Stop(signalch)
 
 	if config.IsBootstrap != true {
 		err := chain.GetChainCtx().QuitPublicChannel()
@@ -136,8 +137,8 @@ func mainRet(config cli.Config) int {
 	}
 
 	//cleanup before exit
-	glog.Infof("On Signal <%s>", signalType)
-	glog.Infof("Exit command received. Exiting...")
+	mainlog.Infof("On Signal <%s>", signalType)
+	mainlog.Infof("Exit command received. Exiting...")
 
 	return 0
 }
@@ -166,6 +167,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
+	r.GET("/quit", quitapp)
 	if isbootstrapnode == false {
 		r.POST("/v1/group", h.CreateGroup)
 		r.DELETE("/v1/group", h.RmGroup)
@@ -188,23 +190,30 @@ func StartAPIServer(config cli.Config, h *api.Handler, isbootstrapnode bool) {
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }
 
+func quitapp(c echo.Context) (err error) {
+	mainlog.Infof("/api/quit has been called, send Signal SIGTERM...")
+	signalch <- syscall.SIGTERM
+	return nil
+}
+
 func main() {
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")
 	config, err := cli.ParseFlags()
-	lvl, err := golog.LevelFromString("info")
+	lvl, err := logging.LevelFromString("info")
+	logging.SetAllLoggers(lvl)
 	if err != nil {
 		panic(err)
 	}
 
 	if config.IsDebug == true {
-		golog.SetAllLoggers(lvl)
-		golog.SetLogLevel("pubsub", "debug")
-		golog.SetLogLevel("autonat", "debug")
-		golog.SetLogLevel("chain", "debug")
-		golog.SetLogLevel("dbmgr", "debug")
-		golog.SetLogLevel("chainctx", "debug")
-		golog.SetLogLevel("group", "debug")
+		logging.SetLogLevel("main", "debug")
+		logging.SetLogLevel("pubsub", "debug")
+		logging.SetLogLevel("autonat", "debug")
+		logging.SetLogLevel("chain", "debug")
+		logging.SetLogLevel("dbmgr", "debug")
+		logging.SetLogLevel("chainctx", "debug")
+		logging.SetLogLevel("group", "debug")
 
 	}
 
