@@ -222,12 +222,12 @@ func main() {
 	version := flag.Bool("version", false, "Show the version")
 	config, err := cli.ParseFlags()
 	lvl, err := logging.LevelFromString("info")
+	logging.SetAllLoggers(lvl)
 	if err != nil {
 		panic(err)
 	}
 
 	if config.IsDebug == true {
-		logging.SetAllLoggers(lvl)
 		logging.SetLogLevel("main", "debug")
 		logging.SetLogLevel("network", "debug")
 		logging.SetLogLevel("pubsub", "debug")
