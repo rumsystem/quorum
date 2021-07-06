@@ -105,7 +105,7 @@ func handleReqBlock(trx *quorumpb.Trx) error {
 		if group.Item.LatestBlockId == reqBlockItem.BlockId {
 			chain_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_ON_TOP)")
 			var emptyblock quorumpb.Block
-			err := SendReqBlockResp(trx, &reqBlockItem, &emptyblock)
+			err := SendReqBlockResp(trx, &reqBlockItem, &emptyblock, quorumpb.ReqBlkResult_BLOCK_ON_TOP)
 
 			if err != nil {
 				return err
@@ -126,7 +126,7 @@ func handleReqBlock(trx *quorumpb.Trx) error {
 
 						if block.PrevBlockId == reqBlockItem.BlockId {
 							chain_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
-							err := SendReqBlockResp(trx, &reqBlockItem, &block)
+							err := SendReqBlockResp(trx, &reqBlockItem, &block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 							return err
 
 						}
@@ -214,9 +214,9 @@ func handleNewBLockResp(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func SendReqBlockResp(trx *quorumpb.Trx, req *quorumpb.ReqBlock, block *quorumpb.Block) error {
+func SendReqBlockResp(trx *quorumpb.Trx, req *quorumpb.ReqBlock, block *quorumpb.Block, result quorumpb.ReqBlkResult) error {
 	var reqBlockRespItem quorumpb.ReqBlockResp
-	reqBlockRespItem.Result = quorumpb.ReqBlkResult_BLOCK_ON_TOP
+	reqBlockRespItem.Result = result // quorumpb.ReqBlkResult_BLOCK_ON_TOP
 	reqBlockRespItem.Provider = GetChainCtx().PeerId.Pretty()
 	reqBlockRespItem.Requester = trx.Sender
 	reqBlockRespItem.GroupId = trx.GroupId
