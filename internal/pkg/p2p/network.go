@@ -8,8 +8,9 @@ import (
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-peerstore"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+
 	//autonat "github.com/libp2p/go-libp2p-autonat"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -205,7 +206,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 			//TODO: check peers status and max connect peers
 			connectedCount := 0
 			peers, err := node.FindPeers(ctx, config.RendezvousString)
-			//glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
+			glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
 			if err != nil {
 				return err
 			}
