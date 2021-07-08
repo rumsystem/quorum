@@ -262,7 +262,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 					connectedCount++
 				}
 			}
-			if connectedCount > maxpeers {
+			if connectedCount >= maxpeers {
 				if notify == false {
 					peerok <- struct{}{}
 					notify = true
