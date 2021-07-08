@@ -217,6 +217,10 @@ func quitapp(c echo.Context) (err error) {
 	return nil
 }
 
+// @title Quorum Api
+// @version 1.0
+// @description Quorum Api Desc
+// @BasePath /api
 func main() {
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")

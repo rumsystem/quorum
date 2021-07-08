@@ -30,6 +30,14 @@ type CreateGroupResult struct {
 	Signature    string          `json:"signature"`
 }
 
+// @Tags Groups
+// @Summary CreateGroup
+// @Description Create a new Group
+// @Accept json
+// @Produce json
+// @Param data body CreateGroupParam true "GroupInfo"
+// @Success 200 {object} CreateGroupResult
+// @Router /v1/group [post]
 func (h *Handler) CreateGroup(c echo.Context) (err error) {
 	output := make(map[string]string)
 

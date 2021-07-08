@@ -8,6 +8,19 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
+type NodeInfo struct {
+	Node_publickey string `json:"node_publickey"`
+	Node_status string `json:"node_status"`
+	Node_version string `json:"node_version"`
+	User_id string `json:"user_id"`
+}
+
+// @Tags Node
+// @Summary GetNodeInfo
+// @Description Return the node info
+// @Produce json
+// @Success 200 {object} NodeInfo
+// @Router /v1/node [get]
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	output := make(map[string]interface{})
 
