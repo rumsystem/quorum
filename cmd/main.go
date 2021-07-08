@@ -48,6 +48,15 @@ func mainRet(config cli.Config) int {
 		peername = "bootstrap"
 	}
 
+	//Load node options
+	nodeoptions, err := options.Load(config.ConfigDir, peername)
+	if err != nil {
+		mainlog.Fatalf(err.Error())
+		cancel()
+		return 0
+	}
+
+	//Load keys
 	keys, err := localcrypto.LoadKeysFrom(config.ConfigDir, peername, "txt")
 	if err != nil {
 		mainlog.Fatalf(err.Error())
@@ -64,14 +73,6 @@ func mainRet(config cli.Config) int {
 	mainlog.Infof("eth addresss: <%s>", keys.EthAddr)
 
 	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
-	if err != nil {
-		mainlog.Fatalf(err.Error())
-		cancel()
-		return 0
-	}
-
-	//Load node options
-	nodeoptions, err := options.Load(config.ConfigDir, peername)
 	if err != nil {
 		mainlog.Fatalf(err.Error())
 		cancel()

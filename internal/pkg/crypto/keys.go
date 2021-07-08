@@ -36,7 +36,7 @@ func NewKeys() (*Keys, *ethkey, error) {
 }
 
 func LoadKeysFrom(dir string, keyname string, filetype string) (*Keys, error) {
-	keyfilepath := filepath.FromSlash(fmt.Sprintf("%s%s_keys.%s", dir, keyname, filetype))
+	keyfilepath := filepath.FromSlash(fmt.Sprintf("%s/%s_keys.%s", dir, keyname, filetype))
 	keyhexstring := ""
 	if filetype == "txt" {
 		fmt.Println("Path: " + keyfilepath)
