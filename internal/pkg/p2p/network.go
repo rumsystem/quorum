@@ -230,10 +230,10 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 	return connectedCount
 }
 
-func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config cli.Config) error {
+func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpeers int, config cli.Config) error {
 
 	notify := false
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 30)
 	defer ticker.Stop()
 
 	for {
@@ -262,13 +262,13 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 					connectedCount++
 				}
 			}
-			if connectedCount > 0 {
+			if connectedCount > maxpeers {
 				if notify == false {
 					peerok <- struct{}{}
 					notify = true
 				}
 			} else {
-				networklog.Infof("waitting for peers...")
+				networklog.Infof("finding peers...")
 			}
 		}
 	}

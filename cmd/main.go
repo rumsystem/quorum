@@ -18,6 +18,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	"github.com/libp2p/go-libp2p-discovery"
 	//"github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -102,12 +103,12 @@ func mainRet(config cli.Config) int {
 		}
 
 		//Discovery and Advertise had been replaced by PeerExchange
-		//mainlog.Infof("Announcing ourselves...")
-		//discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
-		//mainlog.Infof("Successfully announced!")
+		mainlog.Infof("Announcing ourselves...")
+		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
+		mainlog.Infof("Successfully announced!")
 
-		//peerok := make(chan struct{})
-		//go node.ConnectPeers(ctx, peerok, config)
+		peerok := make(chan struct{})
+		go node.ConnectPeers(ctx, peerok, 3, config)
 
 		//select {
 		//case <-peerok:
