@@ -3,15 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-	//maddr "github.com/multiformats/go-multiaddr"
-	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 	"github.com/huo-ju/quorum/internal/pkg/utils"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -21,9 +16,16 @@ import (
 	"github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
+var mainlog = logging.Logger("main")
+
 func main() {
+	logging.SetLogLevel("main", "debug")
 	config, err := cli.ParseFlags()
 	if err != nil {
 		panic(err)
@@ -79,12 +81,11 @@ func main() {
 		defer cancel()
 		err := host.Connect(pctx, *bootpeer)
 		if err != nil {
-			glog.Warningf("connect peer failure: %s \n", bootpeer)
+			mainlog.Warningf("connect peer failure: %s \n", bootpeer)
 			cancel()
 		}
 	}
 
-	//// open a stream, this stream will be handled by handleStream other end
 	protocols := []string{"/ipfs/id/1.0.0", "/ipfs/kad/1.0.0", "/ipfs/ping/1.0.0", "/randomsub/1.0.0", "/floodsub/1.0.0", "/meshsub/1.1.0", "/meshsub/1.0.0", "/quorum/kad/1.0.0", "/quorum/meshsub/1.1.0", "/quorum/meshsub/1.0.0", "/quorum/floodsub/1.0.0"}
 
 	for _, protocolid := range protocols {
@@ -101,6 +102,6 @@ func main() {
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
 	signalType := <-ch
 	signal.Stop(ch)
-	glog.Infof("On Signal <%s>", signalType)
-	glog.Infof("Exit command received. Exiting...")
+	mainlog.Infof("On Signal <%s>", signalType)
+	mainlog.Infof("Exit command received. Exiting...")
 }
