@@ -8,25 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os/exec"
-	"syscall"
 	"time"
 )
-
-func Fork(pidch chan int, cmdName string, cmdArgs ...string) {
-	go func() {
-		var stderr bytes.Buffer
-		command := exec.Command(cmdName, cmdArgs...)
-		log.Printf("run command: %s", command)
-		command.Stderr = &stderr
-		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		err := command.Start()
-		if err != nil {
-			log.Println(err, stderr.String())
-		}
-		pidch <- command.Process.Pid
-	}()
-}
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {
 	url := fmt.Sprintf("%s%s", apiurl, endpoint)

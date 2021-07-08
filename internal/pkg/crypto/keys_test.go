@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"bytes"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"log"
 	"math/rand"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestNewKeys(t *testing.T) {
-	keys, err := NewKeys()
+	keys, _, err := NewKeys()
 	if err != nil {
 		t.Errorf("Test New Keys err:%s", err)
 	}
@@ -27,10 +26,11 @@ func TestNewKeys(t *testing.T) {
 		t.Errorf("Test RSA sign verify err: %s", err)
 	}
 
-	keys1, err := NewKeys()
-	pk1bytes, _ := p2pcrypto.MarshalPrivateKey(keys1.PrivKey)
-	pkbytes, _ := p2pcrypto.MarshalPrivateKey(keys.PrivKey)
-	if bytes.Equal(pk1bytes, pkbytes) {
+	keys1, _, err := NewKeys()
+
+	keypkey, ok := keys.PrivKey.(*p2pcrypto.ECDSAPrivateKey)
+	key1pkey, ok1 := keys1.PrivKey.(*p2pcrypto.ECDSAPrivateKey)
+	if ok == ok1 == true && key1pkey.Equals(keypkey) {
 		t.Errorf("error generated keys repeated.")
 	}
 }

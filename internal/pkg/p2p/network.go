@@ -2,18 +2,19 @@ package p2p
 
 import (
 	"context"
-	//"fmt"
-	"github.com/golang/glog"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
+	"github.com/huo-ju/quorum/internal/pkg/options"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/event"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
-	//autonat "github.com/libp2p/go-libp2p-autonat"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
 
 	//network "github.com/libp2p/go-libp2p-core/network"
 	"sync"
@@ -26,17 +27,25 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	maddr "github.com/multiformats/go-multiaddr"
+	//basic "github.com/libp2p/go-libp2p/p2p/host/basic"
 )
+
+var networklog = logging.Logger("network")
+
+type NodeInfo struct {
+	NATType network.Reachability
+}
 
 type Node struct {
 	PeerID           peer.ID
 	Host             host.Host
 	Pubsub           *pubsub.PubSub
 	Ddht             *dual.DHT
+	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
 }
 
-func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, privKey p2pcrypto.PrivKey, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	var pstore peerstore.Peerstore
@@ -59,7 +68,6 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 	libp2poptions := []libp2p.Option{routing,
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
-		libp2p.EnableNATService(),
 		libp2p.ConnectionManager(cmgr),
 		identity,
 	}
@@ -70,6 +78,11 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 			return nil, err
 		}
 		libp2poptions = append(libp2poptions, libp2p.Peerstore(pstore))
+	}
+
+	if nodeopt.EnableNat == true {
+		libp2poptions = append(libp2poptions, libp2p.EnableNATService())
+		networklog.Infof("NAT enabled")
 	}
 
 	host, err := libp2p.New(ctx,
@@ -118,7 +131,9 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 		return nil, err
 	}
 
-	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery}
+	info := &NodeInfo{NATType: network.ReachabilityUnknown}
+
+	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
 
 	//reconnect peers
 
@@ -135,7 +150,31 @@ func NewNode(ctx context.Context, isBootstrap bool, ds *dsbadger2.Datastore, pri
 			newnode.AddPeers(ctx, storedpeers)
 		}()
 	}
+	go newnode.eventhandler(ctx)
+
 	return newnode, nil
+}
+
+func (node *Node) eventhandler(ctx context.Context) {
+	evbus := node.Host.EventBus()
+	subReachability, err := evbus.Subscribe(new(event.EvtLocalReachabilityChanged))
+	if err != nil {
+		networklog.Errorf("event subscribe err: %s:", err)
+	}
+	defer subReachability.Close()
+	for {
+		select {
+		case ev := <-subReachability.Out():
+			evt, ok := ev.(event.EvtLocalReachabilityChanged)
+			if !ok {
+				return
+			}
+			networklog.Infof("Reachability change: %s:", evt.Reachability.String())
+			node.Info.NATType = evt.Reachability
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (node *Node) FindPeers(ctx context.Context, RendezvousString string) ([]peer.AddrInfo, error) {
@@ -160,9 +199,9 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 		go func() {
 			defer wg.Done()
 			if err := node.Host.Connect(ctx, *peerinfo); err != nil {
-				glog.Warning(err)
+				networklog.Warning(err)
 			} else {
-				glog.Infof("Connection established with bootstrap node %s:", *peerinfo)
+				networklog.Infof("Connection established with bootstrap node %s:", *peerinfo)
 			}
 		}()
 	}
@@ -180,12 +219,12 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 		defer cancel()
 		err := node.Host.Connect(pctx, peer)
 		if err != nil {
-			glog.Warningf("connect peer failure: %s \n", peer)
+			networklog.Warningf("connect peer failure: %s \n", peer)
 			cancel()
 			continue
 		} else {
 			connectedCount++
-			glog.Infof("connect: %s", peer)
+			networklog.Infof("connect: %s", peer)
 		}
 	}
 	return connectedCount
@@ -205,7 +244,6 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 			//TODO: check peers status and max connect peers
 			connectedCount := 0
 			peers, err := node.FindPeers(ctx, config.RendezvousString)
-			//glog.Infof("find peers with Rendezvous %s count: %d", config.RendezvousString, len(peers))
 			if err != nil {
 				return err
 			}
@@ -217,12 +255,11 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 				defer cancel()
 				err := node.Host.Connect(pctx, peer)
 				if err != nil {
-					glog.Warningf("connect peer failure: %s \n", peer)
+					networklog.Warningf("connect peer failure: %s \n", peer)
 					cancel()
 					continue
 				} else {
 					connectedCount++
-					//glog.Infof("connect: %s \n", peer)
 				}
 			}
 			if connectedCount > 0 {
@@ -231,7 +268,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 					notify = true
 				}
 			} else {
-				glog.Infof("waitting for peers...")
+				networklog.Infof("waitting for peers...")
 			}
 		}
 	}
@@ -241,7 +278,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, config
 func (node *Node) EnsureConnect(ctx context.Context, rendezvousString string, f func()) {
 	for {
 		peers, _ := node.FindPeers(ctx, rendezvousString)
-		glog.Infof("Find peers count: %d \n", len(peers))
+		networklog.Infof("Find peers count: %d \n", len(peers))
 		if len(peers) > 1 { // //connect 2 nodes at least
 			break
 		}
