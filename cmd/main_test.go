@@ -235,7 +235,6 @@ func TestGroupsContent(t *testing.T) {
 	log.Println("start verify groups content")
 
 	for _, groupId := range groupIds {
-		reqdata := fmt.Sprintf(`{"group_id":"%s"}`, groupId)
 		trxIds := groupIdToTrxIds[groupId]
 		// for each node, verify groups content
 		for nodeIdx, peerapi := range peerapilist {
@@ -245,7 +244,7 @@ func TestGroupsContent(t *testing.T) {
 			}
 
 			t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
-			resp, err := testnode.RequestAPI(peerapi, "/api/v1/group/content", "GET", reqdata)
+			resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
 			// t.Logf("resp: %s", resp)
 			groupcontentlist := []api.GroupContentObjectItem{}
 
