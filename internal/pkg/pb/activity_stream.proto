@@ -46,6 +46,20 @@ message Link {
   uint32 width = 7;
   Object preview =8;
 }
+message Image {
+  string id = 1;
+  string name = 2;
+  string mediaType= 3;
+  bytes content = 4;
+  string url = 5;
+}
+
+message Person {
+  string id = 1;
+  string type = 2;
+  string name = 3;
+  Image image = 4;
+}
 
 message Activity {
   string id = 1;
