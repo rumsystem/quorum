@@ -140,15 +140,9 @@ func (grp *GroupPoa) AddTrx(trx *quorumpb.Trx) {
 	}
 }
 
-func (grp *GroupPoa) Post(content *quorumpb.Object) (string, error) {
-	group_log.Infof("Post")
-	encodedcontent, err := proto.Marshal(content)
-	if err != nil {
-		return "", err
-	}
-
+func (grp *GroupPoa) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte) (string, error) {
 	group_log.Infof("Create Trx")
-	trx, err := CreateTrx(quorumpb.TrxType_POST, grp.Item.GroupId, encodedcontent)
+	trx, err := CreateTrx(trxtype, grp.Item.GroupId, encodedcontent)
 	err = grp.sendTrxPackage(trx)
 	if err != nil {
 		return "INVALID_TRX", err
@@ -156,6 +150,15 @@ func (grp *GroupPoa) Post(content *quorumpb.Object) (string, error) {
 
 	grp.AddTrx(trx)
 	return trx.TrxId, nil
+}
+
+func (grp *GroupPoa) Post(content *quorumpb.Object) (string, error) {
+	group_log.Infof("Post")
+	encodedcontent, err := proto.Marshal(content)
+	if err != nil {
+		return "", err
+	}
+	return grp.PostBytes(quorumpb.TrxType_POST, encodedcontent)
 }
 
 func (grp *GroupPoa) UpdAuth(item *quorumpb.BlockListItem) (string, error) {
