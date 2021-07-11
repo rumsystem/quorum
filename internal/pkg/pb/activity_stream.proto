@@ -16,7 +16,7 @@ message Object {
   google.protobuf.Timestamp endtime = 9;
   Object generator= 10;
   repeated Object icon = 11;
-  repeated Object image = 12;
+  repeated Image image = 12;
   Object inReplyTo = 13;
   Object location = 14;
   Object preview = 15;
@@ -56,9 +56,8 @@ message Image {
 
 message Person {
   string id = 1;
-  string type = 2;
-  string name = 3;
-  Image image = 4;
+  string name = 2;
+  Image image = 3;
 }
 
 message Activity {
@@ -98,4 +97,5 @@ message Activity {
   Object result = 32;
   Object origin = 33;
   Object instrument = 34;
+  Person person = 35;
 }

@@ -152,6 +152,15 @@ func (grp *GroupPoa) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte) 
 	return trx.TrxId, nil
 }
 
+func (grp *GroupPoa) UpdateProfile(person *quorumpb.Person) (string, error) {
+	group_log.Infof("Post")
+	encodedcontent, err := proto.Marshal(person)
+	if err != nil {
+		return "", err
+	}
+	return grp.PostBytes(quorumpb.TrxType_POST, encodedcontent)
+}
+
 func (grp *GroupPoa) Post(content *quorumpb.Object) (string, error) {
 	group_log.Infof("Post")
 	encodedcontent, err := proto.Marshal(content)

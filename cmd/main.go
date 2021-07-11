@@ -202,6 +202,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *
 		r.GET("/v1/trx/:trx_id", h.GetTrx)
 		r.GET("/v1/group/:group_id/content", h.GetGroupCtn)
 		r.GET("/v1/groups", h.GetGroups)
+		r.POST("/v1/group/profile", h.UpdateProfile)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 		r.POST("/v1/network/peers", h.AddPeers)
 		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
