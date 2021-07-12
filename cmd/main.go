@@ -34,6 +34,7 @@ import (
 
 //const PUBLIC_CHANNEL = "all_node_public_channel"
 
+var GitCommit string
 var node *p2p.Node
 var signalch chan os.Signal
 var mainlog = logging.Logger("main")
@@ -42,6 +43,7 @@ func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	mainlog.Info("Version: %s", GitCommit)
 	peername := config.PeerName
 
 	if config.IsBootstrap == true {
@@ -117,7 +119,7 @@ func mainRet(config cli.Config) int {
 		//}
 
 		datapath := config.DataDir + "/" + config.PeerName
-		chain.InitCtx(ctx, node, datapath)
+		chain.InitCtx(ctx, node, datapath, GitCommit)
 		chain.GetChainCtx().Privatekey = keys.PrivKey
 		chain.GetChainCtx().PublicKey = keys.PubKey
 		chain.GetChainCtx().PeerId = peerid
@@ -268,7 +270,7 @@ func main() {
 	}
 
 	if *version {
-		fmt.Println("1.0.0")
+		fmt.Println("1.0.0 - " + GitCommit)
 		return
 	}
 
