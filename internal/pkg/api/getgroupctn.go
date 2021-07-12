@@ -4,16 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/protobuf/proto"
 )
-
-type GetGroupCtnParams struct {
-	GroupId string `from:"group_id" json:"group_id" validate:"required"`
-}
 
 type GroupContentObjectItem struct {
 	TrxId     string
@@ -24,20 +19,13 @@ type GroupContentObjectItem struct {
 
 func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 	output := make(map[string]string)
-
-	validate := validator.New()
-	params := new(GetGroupCtnParams)
-	if err = c.Bind(params); err != nil {
-		output[ERROR_INFO] = err.Error()
+	groupid := c.Param("group_id")
+	if groupid == "" {
+		output[ERROR_INFO] = "group_id can't be nil."
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if err = validate.Struct(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-
-	if group, ok := chain.GetChainCtx().Groups[params.GroupId]; ok {
+	if group, ok := chain.GetChainCtx().Groups[groupid]; ok {
 		ctnList, err := chain.GetDbMgr().GetGrpCtnt(group.Item.GroupId)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
@@ -55,7 +43,7 @@ func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 
 		return c.JSON(http.StatusOK, ctnobjList)
 	} else {
-		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", params.GroupId)
+		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
 		return c.JSON(http.StatusBadRequest, output)
 	}
 }
