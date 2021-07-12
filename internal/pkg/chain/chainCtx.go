@@ -74,7 +74,7 @@ func GetDbMgr() *DbMgr {
 	return dbMgr
 }
 
-func InitCtx(ctx context.Context, node *p2p.Node, dataPath string) {
+func InitCtx(ctx context.Context, node *p2p.Node, dataPath string, gitcommit string) {
 	chainCtx = &ChainCtx{}
 	chainCtx.node = node
 	dbMgr = &DbMgr{}
@@ -86,7 +86,7 @@ func InitCtx(ctx context.Context, node *p2p.Node, dataPath string) {
 	chainCtx.TrxSignReq = 1
 	chainCtx.Status = NODE_OFFLINE
 	chainCtx.Ctx = ctx
-	chainCtx.Version = "ver 0.01"
+	chainCtx.Version = "ver 0.01 - " + gitcommit
 }
 
 func Release() {
