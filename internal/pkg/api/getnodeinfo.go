@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
