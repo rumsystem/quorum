@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/glog"
+	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"io"
 	"io/ioutil"
@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+var cryptolog = logging.Logger("crypto")
 
 type Keys struct {
 	PrivKey p2pcrypto.PrivKey
@@ -73,7 +75,7 @@ func LoadKeysFrom(dir string, keyname string, filetype string) (*Keys, error) {
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("Load keys from config")
+	cryptolog.Infof("Load keys from config")
 	privkeybytes := ethcrypto.FromECDSA(ethprivkey)
 	pubkeybytes := ethcrypto.FromECDSAPub(&ethprivkey.PublicKey)
 	priv, err := p2pcrypto.UnmarshalSecp256k1PrivateKey(privkeybytes)

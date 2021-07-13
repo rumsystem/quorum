@@ -7,6 +7,11 @@ Run testing
 
 ```go test cmd/main* -v```
 
+API Docs
+
+```go run cmd/docs.go```
+
+Open url ```http://localhost:1323/swagger/index.html``` in the browser. 
 
 本地开发环境配置
 
