@@ -86,7 +86,7 @@ func InitCtx(ctx context.Context, node *p2p.Node, dataPath string, gitcommit str
 	chainCtx.TrxSignReq = 1
 	chainCtx.Status = NODE_OFFLINE
 	chainCtx.Ctx = ctx
-	chainCtx.Version = "ver 0.01 - " + gitcommit
+	chainCtx.Version = "ver 0.01"
 }
 
 func Release() {
