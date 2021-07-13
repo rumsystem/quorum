@@ -43,6 +43,9 @@ func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	if GitCommit == "" {
+		GitCommit = "devel"
+	}
 	mainlog.Info("Version: %s", GitCommit)
 	peername := config.PeerName
 
@@ -92,7 +95,7 @@ func mainRet(config cli.Config) int {
 		}
 
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
-		h := &api.Handler{}
+		h := &api.Handler{GitCommit: GitCommit}
 		go StartAPIServer(config, h, node, nodeoptions, keys.EthAddr, true)
 	} else {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
@@ -137,7 +140,7 @@ func mainRet(config cli.Config) int {
 		}
 
 		//run local http api service
-		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx}
+		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx, GitCommit: GitCommit}
 
 		go StartAPIServer(config, h, node, nodeoptions, keys.EthAddr, false)
 		//nat := node.Host.GetAutoNat()

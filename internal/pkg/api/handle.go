@@ -8,8 +8,9 @@ import (
 
 type (
 	Handler struct {
-		Ctx      context.Context
-		Node     *p2p.Node
-		ChainCtx *chain.ChainCtx
+		Ctx       context.Context
+		Node      *p2p.Node
+		ChainCtx  *chain.ChainCtx
+		GitCommit string
 	}
 )

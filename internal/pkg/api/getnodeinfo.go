@@ -10,9 +10,9 @@ import (
 
 type NodeInfo struct {
 	Node_publickey string `json:"node_publickey"`
-	Node_status string `json:"node_status"`
-	Node_version string `json:"node_version"`
-	User_id string `json:"user_id"`
+	Node_status    string `json:"node_status"`
+	Node_version   string `json:"node_version"`
+	User_id        string `json:"user_id"`
 }
 
 // @Tags Node
@@ -24,7 +24,7 @@ type NodeInfo struct {
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	output := make(map[string]interface{})
 
-	output[NODE_VERSION] = chain.GetChainCtx().Version
+	output[NODE_VERSION] = chain.GetChainCtx().Version + " - " + h.GitCommit
 	output[NODETYPE] = "peer"
 
 	if chain.GetChainCtx().Status == 0 {
