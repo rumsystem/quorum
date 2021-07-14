@@ -3,6 +3,11 @@ package quorum.pb;
 option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+message AnyObj {
+    google.protobuf.Any any=1;
+}
 
 message Object {
   string id = 1;

@@ -386,21 +386,21 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	prefix := CNT_PREFIX
-	item := &quorumpb.Object{}
-	err = proto.Unmarshal(trx.Data, item)
-	if err != nil {
-		item := &quorumpb.Person{}
-		err = proto.Unmarshal(trx.Data, item)
-		if err == nil {
-			prefix = PRF_PREFIX
-		}
-	}
-	if err != nil {
-		return fmt.Errorf("unknown data in the trx %s", trx.TrxId)
-	}
+	//prefix := CNT_PREFIX
+	//item := &quorumpb.Object{}
+	//err = proto.Unmarshal(trx.Data, item)
+	//if err != nil {
+	//	item := &quorumpb.Person{}
+	//	err = proto.Unmarshal(trx.Data, item)
+	//	if err == nil {
+	//		prefix = PRF_PREFIX
+	//	}
+	//}
+	//if err != nil {
+	//	return fmt.Errorf("unknown data in the trx %s", trx.TrxId)
+	//}
 
-	key := GRP_PREFIX + prefix + trx.GroupId + "_" + trx.TrxId + "_" + fmt.Sprint(trx.TimeStamp)
+	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + trx.TrxId + "_" + fmt.Sprint(trx.TimeStamp)
 
 	dbmgr_log.Infof("Add trx with key %s", key)
 	//update ContentDb
@@ -414,16 +414,16 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 }
 
 func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string) ([]*quorumpb.PostItem, error) {
-	var prefix string
-	switch ctntype {
-	case "profile":
-		prefix = PRF_PREFIX
-	default:
-		prefix = CNT_PREFIX
-	}
+	//var prefix string
+	//switch ctntype {
+	//case "profile":
+	//	prefix = PRF_PREFIX
+	//default:
+	//	prefix = CNT_PREFIX
+	//}
 	var ctnList []*quorumpb.PostItem
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
-		key := GRP_PREFIX + prefix + groupId + "_"
+		key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 10
 		it := txn.NewIterator(opts)

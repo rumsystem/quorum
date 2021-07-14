@@ -152,8 +152,8 @@ func (grp *GroupPoa) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte) 
 	return trx.TrxId, nil
 }
 
-func (grp *GroupPoa) PostAny(content interface{}) (string, error) {
-	group_log.Infof("Post any")
+func (grp *GroupPoa) PostAny(content proto.Message) (string, error) {
+
 	encodedcontent, err := quorumpb.ContentToBytes(content)
 	if err != nil {
 		return "", err
