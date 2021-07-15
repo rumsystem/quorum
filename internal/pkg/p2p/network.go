@@ -286,3 +286,32 @@ func (node *Node) EnsureConnect(ctx context.Context, rendezvousString string, f 
 	}
 	f()
 }
+
+func (node *Node) PeersProtocol() *map[string][]string {
+	protocolpeers := make(map[string][]string)
+	peerstore := node.Host.Peerstore()
+	peers := peerstore.Peers()
+	for _, peerid := range peers {
+		if node.Host.Network().Connectedness(peerid) == network.Connected {
+			if node.Host.ID() != peerid {
+				conns := node.Host.Network().ConnsToPeer(peerid)
+				for _, c := range conns {
+				check:
+					for _, s := range c.GetStreams() {
+						if protocolpeers[string(s.Protocol())] == nil {
+							protocolpeers[string(s.Protocol())] = []string{peerid.String()}
+						} else {
+							for _, id := range protocolpeers[string(s.Protocol())] {
+								if id == peerid.String() {
+									break check
+								}
+							}
+							protocolpeers[string(s.Protocol())] = append(protocolpeers[string(s.Protocol())], peerid.String())
+						}
+					}
+				}
+			}
+		}
+	}
+	return &protocolpeers
+}
