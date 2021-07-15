@@ -22,12 +22,9 @@ type GroupPoa struct {
 	ProduceTimer *time.Timer
 	ProduceDone  chan bool
 
-	WaitTimer *time.Timer
-	WaitDone  chan bool
-
 	//Ask next block ticker
-	AskNextTicker     *time.Ticker
-	AskNextTickerDone chan bool
+	AskNextTimer     *time.Timer
+	AskNextTimerDone chan bool
 }
 
 func (grp *GroupPoa) Init(item *quorumpb.GroupItem) {
@@ -44,7 +41,7 @@ func (grp *GroupPoa) initProduce() {
 //teardown group
 func (grp *GroupPoa) Teardown() {
 	if grp.Status == GROUP_DIRTY {
-		grp.stopAskNextBlock()
+		grp.stopWaitBlock()
 	}
 }
 
@@ -52,13 +49,14 @@ func (grp *GroupPoa) Teardown() {
 func (grp *GroupPoa) StartSync() error {
 	group_log.Infof("Group %s start syncing", grp.Item.GroupId)
 
-	pubkey, _ := getPubKey()
+	pubkey, _ := GetChainCtx().GetPubKey()
 	if pubkey == grp.Item.OwnerPubKey {
 		group_log.Infof("I am the owner, no need to ask new block")
 		grp.Status = GROUP_CLEAN
 	} else {
 		grp.Status = GROUP_DIRTY
-		grp.startAskNextBlock()
+		grp.askNextBlock()
+		grp.waitBlock()
 	}
 	return nil
 }
@@ -66,8 +64,121 @@ func (grp *GroupPoa) StartSync() error {
 //Stop sync group
 func (grp *GroupPoa) StopSync() error {
 	group_log.Infof("Group stop sync")
+	grp.stopWaitBlock()
 	grp.Status = GROUP_CLEAN
-	grp.stopAskNextBlock()
+	return nil
+}
+
+func (grp *GroupPoa) askNextBlock() {
+	group_log.Infof("Ask NEXT_BLOCK")
+	//send ask next block msg out
+	topBlock, err := grp.GetTopBlock()
+	if err != nil {
+		group_log.Fatalf(err.Error())
+	}
+
+	var reqBlockItem quorumpb.ReqBlock
+	reqBlockItem.BlockId = topBlock.BlockId
+	reqBlockItem.GroupId = grp.Item.GroupId
+	reqBlockItem.UserId = GetChainCtx().PeerId.Pretty()
+
+	bItemBytes, err := proto.Marshal(&reqBlockItem)
+	if err != nil {
+		group_log.Warningf(err.Error())
+		return
+	}
+
+	//send ask next block trx out
+	trx, err := CreateTrx(quorumpb.TrxType_REQ_BLOCK, grp.Item.GroupId, bItemBytes)
+	if err != nil {
+		group_log.Warningf(err.Error())
+		return
+	}
+
+	err = grp.sendTrxPackage(trx)
+	if err != nil {
+		group_log.Warningf(err.Error())
+	}
+
+	// grp.sendTrxPackage(trx)
+}
+
+//ask next block
+func (grp *GroupPoa) waitBlock() {
+	grp.AskNextTimer = (time.NewTimer)(time.Duration(WAIT_BLOCK_TIME_S) * time.Second)
+	grp.AskNextTimerDone = make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-grp.AskNextTimerDone:
+				group_log.Infof("Wait stopped by signal")
+				return
+			case <-grp.AskNextTimer.C:
+				group_log.Infof("Wait done, no new BLOCK_IN_TRX received in 5 sec, set group status to Clean")
+				grp.Status = GROUP_CLEAN
+			}
+		}
+	}()
+}
+
+func (grp *GroupPoa) stopWaitBlock() {
+	grp.AskNextTimer.Stop()
+	grp.AskNextTimerDone <- true
+}
+
+func (grp *GroupPoa) HandleReqBlockResp(reqBlockResp *quorumpb.ReqBlockResp) error {
+	var newBlock quorumpb.Block
+	if err := proto.Unmarshal(reqBlockResp.Block, &newBlock); err != nil {
+		return err
+	}
+
+	//block from group owner
+	if reqBlockResp.Provider == grp.Item.OwnerPubKey {
+		group_log.Infof("Block form group owner, accept it")
+		if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_ON_TOP {
+			chain_log.Infof("Block from Group owner: BLOCK_ON_TOP, stop sync, set Group Status to GROUP_READY")
+			grp.StopSync()
+		} else if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_IN_TRX {
+			chain_log.Infof("Block from Group owner: BLOCK_IN_TRX, add it if don't have it yet")
+			topBlock, _ := grp.GetTopBlock()
+			if valid, _ := IsBlockValid(&newBlock, topBlock); valid {
+				chain_log.Infof("block is valid, add it")
+				//add block to db
+				GetDbMgr().AddBlock(&newBlock)
+				//update group block seq map
+				grp.AddBlock(&newBlock)
+			} else {
+				//already have the block from someone else in this group
+				chain_log.Infof("Block from GroupOwner, already got it from other group member")
+			}
+			//ask next block
+			grp.stopWaitBlock()
+			grp.askNextBlock()
+			grp.waitBlock()
+		}
+	} else {
+		if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_IN_TRX {
+			chain_log.Infof("Block from Group member: BLOCK_IN_TRX, add it if don't have it yet")
+			topBlock, _ := grp.GetTopBlock()
+			if valid, _ := IsBlockValid(&newBlock, topBlock); valid {
+				chain_log.Infof("block is valid, add it")
+				//add block to db
+				GetDbMgr().AddBlock(&newBlock)
+				//update group block seq map
+				grp.AddBlock(&newBlock)
+
+				//ask next block
+				grp.stopWaitBlock()
+				grp.askNextBlock()
+				grp.waitBlock()
+
+			} else {
+				chain_log.Infof("Block from group member, already got it or invalid block")
+			}
+		} else if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_ON_TOP {
+			chain_log.Infof("Block from Group member: BLOCK_ON_TOP, do nothing, wait till timeout")
+		}
+	}
 	return nil
 }
 
@@ -128,7 +239,7 @@ func (grp *GroupPoa) LeaveGrp() error {
 //Add trx to trx pool, prepare for produce block
 func (grp *GroupPoa) AddTrx(trx *quorumpb.Trx) {
 
-	pubkey, _ := getPubKey()
+	pubkey, _ := GetChainCtx().GetPubKey()
 
 	//only group owner collect trxs
 	if pubkey == grp.Item.OwnerPubKey {
@@ -137,6 +248,8 @@ func (grp *GroupPoa) AddTrx(trx *quorumpb.Trx) {
 		if len(grp.TrxPool) == 1 {
 			grp.LaunchProduce()
 		}
+	} else {
+		group_log.Infof("receive trx, wait block from group owner")
 	}
 }
 
@@ -194,24 +307,6 @@ func (grp *GroupPoa) startProduceBlock() {
 		}
 	}
 }
-
-/*
-func (grp *GroupPoa) startWaitBlock() {
-	group_log.Infof("start wait block...")
-	grp.WaitTimer = time.NewTimer(5 * time.Second)
-	defer grp.WaitTimer.Stop()
-
-	for {
-		select {
-		case t := <-grp.WaitTimer.C:
-			group_log.Infof("wait done at " + t.UTC().String())
-		case <-grp.WaitDone:
-			group_log.Infof("Wait finished by channel")
-			return
-		}
-	}
-}
-*/
 
 func (grp *GroupPoa) AddBlock(block *quorumpb.Block) error {
 	group_log.Infof("add block")
@@ -335,60 +430,6 @@ func (grp *GroupPoa) produceBlock() {
 	if err != nil {
 		group_log.Infof(err.Error())
 	}
-}
-
-//ask next block
-func (grp *GroupPoa) startAskNextBlock() {
-	grp.AskNextTicker = time.NewTicker(1000 * time.Millisecond)
-	grp.AskNextTickerDone = make(chan bool)
-	//send ask_next_block every 1 sec till get "on_top response"
-	go func() {
-		for {
-			select {
-			case <-grp.AskNextTickerDone:
-				group_log.Infof("Ask next block done")
-				return
-			case t := <-grp.AskNextTicker.C:
-				group_log.Infof("Ask NEXT_BLOCK " + t.UTC().String())
-				//send ask next block msg out
-				topBlock, err := grp.GetTopBlock()
-				if err != nil {
-					group_log.Fatalf(err.Error())
-				}
-
-				var reqBlockItem quorumpb.ReqBlock
-				reqBlockItem.BlockId = topBlock.BlockId
-				reqBlockItem.GroupId = grp.Item.GroupId
-				reqBlockItem.UserId = GetChainCtx().PeerId.Pretty()
-
-				bItemBytes, err := proto.Marshal(&reqBlockItem)
-				if err != nil {
-					group_log.Warningf(err.Error())
-					return
-				}
-
-				//send ask next block trx out
-				trx, err := CreateTrx(quorumpb.TrxType_REQ_BLOCK, grp.Item.GroupId, bItemBytes)
-				if err != nil {
-					group_log.Warningf(err.Error())
-					return
-				}
-
-				err = grp.sendTrxPackage(trx)
-				if err != nil {
-					group_log.Warningf(err.Error())
-					return
-				}
-				grp.sendTrxPackage(trx)
-			}
-		}
-	}()
-}
-
-func (grp *GroupPoa) stopAskNextBlock() {
-	grp.AskNextTicker.Stop()
-	grp.AskNextTickerDone <- true
-	grp.Status = GROUP_CLEAN
 }
 
 func (grp *GroupPoa) sendTrxPackage(trx *quorumpb.Trx) error {

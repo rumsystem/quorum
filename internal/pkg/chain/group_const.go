@@ -10,3 +10,5 @@ const (
 	GROUP_CLEAN = 0
 	GROUP_DIRTY = 1
 )
+
+var WAIT_BLOCK_TIME_S = 10

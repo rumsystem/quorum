@@ -157,33 +157,15 @@ func handleReqBlockResp(trx *quorumpb.Trx) error {
 		return err
 	}
 
+	pubkey, _ := GetChainCtx().GetPubKey()
 	if group, ok := GetChainCtx().Groups[trx.GroupId]; ok {
-
-		if reqBlockResp.Requester != GetChainCtx().PeerId.Pretty() {
+		if reqBlockResp.Requester != pubkey {
 			chain_log.Infof("Not asked by me, ignore")
 		} else if group.Status == GROUP_CLEAN {
 			chain_log.Infof("Group is clean, ignore")
-		} else if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_ON_TOP {
-			chain_log.Infof("On Group Top, Set Group Status to GROUP_READY")
-			group.StopSync()
-		} else if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_IN_TRX {
-			chain_log.Infof("new block incoming")
-			var newBlock quorumpb.Block
-			if err := proto.Unmarshal(reqBlockResp.Block, &newBlock); err != nil {
-				return err
-			}
-
-			topBlock, _ := group.GetTopBlock()
-			if valid, _ := IsBlockValid(&newBlock, topBlock); valid {
-				chain_log.Infof("block is valid, add it")
-				//add block to db
-				GetDbMgr().AddBlock(&newBlock)
-
-				//update group block seq map
-				group.AddBlock(&newBlock)
-			} else {
-				chain_log.Infof("block not vaild, skip it")
-			}
+		} else {
+			chain_log.Infof("Give reqBlockResp to group")
+			group.HandleReqBlockResp(&reqBlockResp)
 		}
 	} else {
 		chain_log.Infof("Can not find group")
@@ -216,8 +198,9 @@ func handleNewBLockResp(trx *quorumpb.Trx) error {
 
 func SendReqBlockResp(trx *quorumpb.Trx, req *quorumpb.ReqBlock, block *quorumpb.Block, result quorumpb.ReqBlkResult) error {
 	var reqBlockRespItem quorumpb.ReqBlockResp
-	reqBlockRespItem.Result = result // quorumpb.ReqBlkResult_BLOCK_ON_TOP
-	reqBlockRespItem.Provider = GetChainCtx().PeerId.Pretty()
+	reqBlockRespItem.Result = result
+	pubkey, _ := GetChainCtx().GetPubKey()
+	reqBlockRespItem.Provider = pubkey
 	reqBlockRespItem.Requester = trx.Sender
 	reqBlockRespItem.GroupId = trx.GroupId
 	reqBlockRespItem.BlockId = req.BlockId

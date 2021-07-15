@@ -67,7 +67,7 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
     - 查看节点A所拥有的组
 
         执行：
-            curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/group
+            curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/groups
 
             Method: GET
             Endpoint : /api/v1/group ，返回节点所加入（含自己创建）的所有组
@@ -180,7 +180,10 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
             node_publickey: 组创建者的pubkey
             node_status   : 节点状态，值可以是 “NODE_ONLINE"和”NODE_OFFLINE“
             node_version  : 节点的协议版本号
-            user_id       : 节点用户的user_id 
+            node_id       : 节点的node_id
+
+            *之前的user_id取消了(实际上是peer_id)
+            *现在只返回真正的node_id，前端可以用pubkey来当user_id（唯一标识）
 
         - 获取一个块的完整内容
         例子：
