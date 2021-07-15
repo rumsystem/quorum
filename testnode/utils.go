@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -74,13 +75,17 @@ func CheckNodeRunning(ctx context.Context, url string) bool {
 						ticker.Stop()
 						return true
 					} else if objmap["peers"] != nil {
-						peers := []string{}
-						for _, peer := range objmap["peers"].([]interface{}) {
-							peers = append(peers, peer.(string))
-						}
-						if len(peers) >= 0 {
-							ticker.Stop()
-							return true
+						for key, peers := range objmap["peers"].(map[string]interface{}) {
+							reqpeers := []string{}
+							if strings.Index(key, "/quorum/meshsub/") >= 0 {
+								for _, p := range peers.([]interface{}) {
+									reqpeers = append(reqpeers, p.(string))
+								}
+							}
+							if len(reqpeers) >= 0 {
+								ticker.Stop()
+								return true
+							}
 						}
 					}
 				}

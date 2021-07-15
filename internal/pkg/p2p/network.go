@@ -298,15 +298,17 @@ func (node *Node) PeersProtocol() *map[string][]string {
 				for _, c := range conns {
 				check:
 					for _, s := range c.GetStreams() {
-						if protocolpeers[string(s.Protocol())] == nil {
-							protocolpeers[string(s.Protocol())] = []string{peerid.String()}
-						} else {
-							for _, id := range protocolpeers[string(s.Protocol())] {
-								if id == peerid.String() {
-									break check
+						if string(s.Protocol()) != "" {
+							if protocolpeers[string(s.Protocol())] == nil {
+								protocolpeers[string(s.Protocol())] = []string{peerid.String()}
+							} else {
+								for _, id := range protocolpeers[string(s.Protocol())] {
+									if id == peerid.String() {
+										break check
+									}
 								}
+								protocolpeers[string(s.Protocol())] = append(protocolpeers[string(s.Protocol())], peerid.String())
 							}
-							protocolpeers[string(s.Protocol())] = append(protocolpeers[string(s.Protocol())], peerid.String())
 						}
 					}
 				}
