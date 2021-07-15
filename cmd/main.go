@@ -10,6 +10,7 @@ import (
 	"path"
 	"syscall"
 
+	badgeroptions "github.com/dgraph-io/badger/v3/options"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
@@ -26,6 +27,7 @@ import (
 	"github.com/huo-ju/quorum/internal/pkg/api"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 
+	"github.com/huo-ju/quorum/internal/pkg/appdata"
 	"github.com/huo-ju/quorum/internal/pkg/cli"
 	"github.com/huo-ju/quorum/internal/pkg/options"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
@@ -126,6 +128,10 @@ func mainRet(config cli.Config) int {
 		chain.GetChainCtx().Privatekey = keys.PrivKey
 		chain.GetChainCtx().PublicKey = keys.PubKey
 		chain.GetChainCtx().PeerId = peerid
+
+		appdbopts := &chain.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
+		appdb := appdata.InitDb(datapath, appdbopts)
+		fmt.Println(appdb)
 
 		//join public channel
 		//err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)

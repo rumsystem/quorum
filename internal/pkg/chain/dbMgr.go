@@ -385,7 +385,7 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + trx.TrxId + "_" + fmt.Sprint(trx.TimeStamp)
+	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + fmt.Sprint(trx.TimeStamp) + "_" + trx.TrxId
 
 	dbmgr_log.Infof("Add trx with key %s", key)
 	//update ContentDb
