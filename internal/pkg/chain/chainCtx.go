@@ -113,6 +113,17 @@ func (chainctx *ChainCtx) Peers() *[]string {
 	return &connectedpeers
 }
 
+func (chainctx *ChainCtx) GetPubKey() (string, error) {
+	var pubkey string
+	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
+	if err != nil {
+		return pubkey, err
+	}
+
+	pubkey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
+	return pubkey, nil
+}
+
 func (chainctx *ChainCtx) JoinGroupChannel(groupId string, ctx context.Context) error {
 	var err error
 	groupTopic := chainctx.GroupTopic(groupId)
@@ -239,10 +250,13 @@ func handleGroupChannel(ctx context.Context, groupchannel *pubsub.Subscription, 
 						if err == nil {
 							if trx.Version != GetChainCtx().Version {
 								chain_log.Infof("Version mismatch")
-							} else if trx.Sender != GetChainCtx().PeerId.Pretty() {
-								HandleTrx(&trx)
 							} else {
-								//chain_log.Info("Trx from myself")
+								pubkey, _ := GetChainCtx().GetPubKey()
+								if trx.Sender != pubkey {
+									HandleTrx(&trx)
+								} else {
+									//chain_log.Info("Trx from myself")
+								}
 							}
 						} else {
 							chain_log.Warning(err.Error())

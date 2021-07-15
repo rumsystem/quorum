@@ -3,20 +3,7 @@ package chain
 import (
 	"bytes"
 	"math/big"
-
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
-
-func getPubKey() (string, error) {
-	var pubkey string
-	pubkeybytes, err := p2pcrypto.MarshalPublicKey(GetChainCtx().PublicKey)
-	if err != nil {
-		return pubkey, err
-	}
-
-	pubkey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	return pubkey, nil
-}
 
 var b58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
