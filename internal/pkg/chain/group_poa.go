@@ -25,6 +25,8 @@ type GroupPoa struct {
 	//Ask next block ticker
 	AskNextTimer     *time.Timer
 	AskNextTimerDone chan bool
+
+	receivedBlock int
 }
 
 func (grp *GroupPoa) Init(item *quorumpb.GroupItem) {
@@ -72,6 +74,9 @@ func (grp *GroupPoa) StopSync() error {
 func (grp *GroupPoa) askNextBlock() {
 	group_log.Infof("Ask NEXT_BLOCK")
 	//send ask next block msg out
+	//set received block in this round to 0
+	grp.receivedBlock = 0
+
 	topBlock, err := grp.GetTopBlock()
 	if err != nil {
 		group_log.Fatalf(err.Error())
@@ -114,8 +119,14 @@ func (grp *GroupPoa) waitBlock() {
 				group_log.Infof("Wait stopped by signal")
 				return
 			case <-grp.AskNextTimer.C:
-				group_log.Infof("Wait done, no new BLOCK_IN_TRX received in 5 sec, set group status to Clean")
-				grp.Status = GROUP_CLEAN
+				group_log.Infof("Wait done, no new BLOCK_IN_TRX received in 10 sec")
+				if grp.receivedBlock == 0 {
+					group_log.Infof("Nothing received in this round, start new round(ASK_NEXT_BLOCK)")
+					grp.askNextBlock()
+					grp.waitBlock()
+				} else {
+					group_log.Infof("ask next done")
+				}
 			}
 		}
 	}()
@@ -132,8 +143,10 @@ func (grp *GroupPoa) HandleReqBlockResp(reqBlockResp *quorumpb.ReqBlockResp) err
 		return err
 	}
 
-	//block from group owner
-	if reqBlockResp.Provider == grp.Item.OwnerPubKey {
+	//count block received
+	grp.receivedBlock++
+
+	if reqBlockResp.Provider == grp.Item.OwnerPubKey { //block from group owner
 		group_log.Infof("Block form group owner, accept it")
 		if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_ON_TOP {
 			chain_log.Infof("Block from Group owner: BLOCK_ON_TOP, stop sync, set Group Status to GROUP_READY")
@@ -156,7 +169,7 @@ func (grp *GroupPoa) HandleReqBlockResp(reqBlockResp *quorumpb.ReqBlockResp) err
 			grp.askNextBlock()
 			grp.waitBlock()
 		}
-	} else {
+	} else { //block from group memeber
 		if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_IN_TRX {
 			chain_log.Infof("Block from Group member: BLOCK_IN_TRX, add it if don't have it yet")
 			topBlock, _ := grp.GetTopBlock()
@@ -166,7 +179,6 @@ func (grp *GroupPoa) HandleReqBlockResp(reqBlockResp *quorumpb.ReqBlockResp) err
 				GetDbMgr().AddBlock(&newBlock)
 				//update group block seq map
 				grp.AddBlock(&newBlock)
-
 				//ask next block
 				grp.stopWaitBlock()
 				grp.askNextBlock()
