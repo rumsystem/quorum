@@ -18,7 +18,8 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	"github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p-discovery"
+
 	//"github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -211,6 +212,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *
 		r.POST("/v1/network/peers", h.AddPeers)
 		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
 		r.GET("/v1/group/blacklist", h.GetBlockedUsrList)
+		r.POST("/v1/group/:group_id/startsync", h.StartSync)
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}
