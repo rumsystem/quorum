@@ -125,7 +125,7 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
     - 节点 B 查询新的刚刚获得内容
         
         执行:
-            curl -X GET -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' http://127.0.0.1:8003/api/v1/group/content
+            curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8003/api/v1/group846011a8-1c58-4a35-b70f-83195c3bc2e8/content
         
         参数：
             group_id : 组id
@@ -373,12 +373,25 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
 	    "nat_type": "Public",
 	    "peerid": "16Uiu2HAm8XVpfQrJYaeL7XtrHC3FvfKt2QW7P8R3MBenYyHxu8Kk"
 	  }
-	}
+	}    
 
 这里需要注意， nat_type和addrs都会改变，开始的时候没有公网地址，类型是Unknown 之后会变成Private，再过一段时间反向链接成功的话，就变成Public，同时Addrs里面出现公网地址。
 
+    - 手动发起同步block
 
-            
+    客户端可以手动触发某个组和组内其他节点同步块
+
+    例子：
+
+    curl -X POST -H 'Content-Type: application/json' -d '' http://<IP_ADDR>/api/v1/group/<GROUP_ID>/startsync
+
+    参数:
+        group_id, 需要发起同步的组的group_id
+    
+    返回值：
+        200 ： {"GroupId":<GROUP_ID>,"Error":""}， GROUP_ID的组正常开始同步，同时组的状态会变为SYNCING
+        500 ： {"GroupId":<GROUP_ID>,"Error":"GROUP_ALREADY_IN_SYNCING"}, GROUP_ID的组当前正在同步中
+
 
 
 
