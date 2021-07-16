@@ -125,7 +125,8 @@ func (grp *GroupPoa) waitBlock() {
 					grp.askNextBlock()
 					grp.waitBlock()
 				} else {
-					group_log.Infof("ask next done")
+					group_log.Infof("ask next done, set group status to CLEAN")
+					grp.Status = GROUP_CLEAN
 				}
 			}
 		}

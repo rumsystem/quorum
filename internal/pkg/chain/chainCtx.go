@@ -7,7 +7,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/proto"
 
@@ -97,19 +96,8 @@ func Release() {
 	//close ctx db
 	dbMgr.CloseDb()
 }
-
-func (chainctx *ChainCtx) Peers() *[]string {
-	connectedpeers := []string{}
-	peerstore := chainctx.node.Host.Peerstore()
-	peers := peerstore.Peers()
-	for _, peerid := range peers {
-		if chainctx.node.Host.Network().Connectedness(peerid) == network.Connected {
-			if chainctx.node.Host.ID() != peerid {
-				connectedpeers = append(connectedpeers, peerid.Pretty())
-			}
-		}
-	}
-	return &connectedpeers
+func (chainctx *ChainCtx) PeersProtocol() *map[string][]string {
+	return chainctx.node.PeersProtocol()
 }
 
 func (chainctx *ChainCtx) GetPubKey() (string, error) {

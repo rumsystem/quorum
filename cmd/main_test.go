@@ -63,32 +63,6 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-func TestNodeStatus(t *testing.T) {
-	for _, peerapi := range peerapilist {
-		if peerapi == "" {
-			t.Fail()
-			t.Logf("peerapi should not be nil.")
-		}
-		t.Logf("request API at: %s", peerapi)
-		resp, err := testnode.RequestAPI(peerapi, "/api/v1/node", "GET", "")
-		if err == nil {
-			var objmap map[string]interface{}
-			if err := json.Unmarshal(resp, &objmap); err != nil {
-				t.Errorf("Data Unmarshal error %s", err)
-			} else {
-				if objmap["node_publickey"] == "" {
-					t.Fail()
-					t.Logf("Expected node publickey not nil")
-				} else {
-					t.Logf("api %s status ok", peerapi)
-				}
-			}
-		} else {
-			t.Errorf("api request error %s", err)
-		}
-	}
-}
-
 func TestGroups(t *testing.T) {
 	// create n groups on each peer, and join all groups, then verify peerN groups == peerM groups
 
@@ -245,7 +219,6 @@ func TestGroupsContent(t *testing.T) {
 
 			t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
 			resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
-			// t.Logf("resp: %s", resp)
 			groupcontentlist := []api.GroupContentObjectItem{}
 
 			if err == nil {

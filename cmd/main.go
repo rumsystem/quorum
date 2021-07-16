@@ -19,7 +19,8 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	"github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p-discovery"
+
 	//"github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -205,7 +206,8 @@ func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *
 		r.POST("/v1/group/leave", h.LeaveGroup)
 		r.POST("/v1/group/content", h.PostToGroup)
 		r.GET("/v1/node", h.GetNodeInfo)
-		r.GET("/v1/block/:block_id", h.GetBlock)
+		r.GET("/v1/block/:block_id", h.GetBlockById)
+		r.GET("/v1/block/:group_id/:block_num", h.GetBlockByNum)
 		r.GET("/v1/trx/:trx_id", h.GetTrx)
 		r.GET("/v1/group/:group_id/content", h.GetGroupCtn)
 		r.GET("/v1/groups", h.GetGroups)
@@ -214,6 +216,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *
 		r.POST("/v1/network/peers", h.AddPeers)
 		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
 		r.GET("/v1/group/blacklist", h.GetBlockedUsrList)
+		r.POST("/v1/group/:group_id/startsync", h.StartSync)
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}
