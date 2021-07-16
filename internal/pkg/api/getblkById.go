@@ -7,11 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type GetBlockParam struct {
-	BlockId string `from:"block_id" json:"block_id" validate:"required"`
-}
-
-func (h *Handler) GetBlock(c echo.Context) (err error) {
+func (h *Handler) GetBlockById(c echo.Context) (err error) {
 	output := make(map[string]string)
 	blockid := c.Param("block_id")
 	if blockid == "" {
