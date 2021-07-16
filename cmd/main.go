@@ -129,10 +129,6 @@ func mainRet(config cli.Config) int {
 		chain.GetChainCtx().PublicKey = keys.PubKey
 		chain.GetChainCtx().PeerId = peerid
 
-		appdbopts := &chain.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
-		appdb := appdata.InitDb(datapath, appdbopts)
-		fmt.Println(appdb)
-
 		//join public channel
 		//err = chain.GetChainCtx().JoinPublicChannel(node, PUBLIC_CHANNEL, ctx, config)
 		//if err != nil {
