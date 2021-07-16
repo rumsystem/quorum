@@ -40,7 +40,7 @@ func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	}
 
 	output[NODE_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	output[USER_ID] = chain.GetChainCtx().PeerId.Pretty()
+	output[NODE_ID] = chain.GetChainCtx().PeerId.Pretty()
 
 	peers := chain.GetChainCtx().Peers()
 	output[PEERS] = *peers

@@ -28,11 +28,11 @@ func CreateBlock(oldBlock *quorumpb.Block, trxs []*quorumpb.Trx) (*quorumpb.Bloc
 	newBlock.BlockNum = oldBlock.BlockNum + 1
 	newBlock.Timestamp = time.Now().UnixNano()
 	newBlock.PreviousHash = oldBlock.Hash
-	newBlock.ProducerId = GetChainCtx().PeerId.Pretty()
-	pubkey, err := getPubKey()
+	pubkey, err := GetChainCtx().GetPubKey()
 	if err != nil {
 		return nil, err
 	}
+	newBlock.ProducerId = pubkey
 	newBlock.ProducerPubKey = pubkey
 
 	for _, trx := range trxs {
@@ -73,11 +73,12 @@ func CreateGenesisBlock(groupId string) (*quorumpb.Block, error) {
 	genesisBlock.PreviousHash = nil
 	genesisBlock.BlockNum = 1
 	genesisBlock.Timestamp = t
-	genesisBlock.ProducerId = GetChainCtx().PeerId.Pretty()
-	pubkey, err := getPubKey()
+
+	pubkey, err := GetChainCtx().GetPubKey()
 	if err != nil {
 		return nil, err
 	}
+	genesisBlock.ProducerId = pubkey
 	genesisBlock.ProducerPubKey = pubkey
 	genesisBlock.Trxs = nil
 

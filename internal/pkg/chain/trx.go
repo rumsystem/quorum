@@ -23,12 +23,11 @@ func CreateTrx(msgType quorumpb.TrxType, groupId string, data []byte) (*quorumpb
 	trx.TrxId = trxId.String()
 	trx.Type = msgType
 	trx.GroupId = groupId
-	trx.Sender = GetChainCtx().PeerId.Pretty()
-
-	pubkey, err := getPubKey()
+	pubkey, err := GetChainCtx().GetPubKey()
 	if err != nil {
 		return &trx, err
 	}
+	trx.Sender = pubkey
 	trx.Pubkey = pubkey
 	trx.Data = data
 	trx.TimeStamp = time.Now().UnixNano()
