@@ -33,6 +33,7 @@ import (
 	"github.com/huo-ju/quorum/internal/pkg/options"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 	"github.com/huo-ju/quorum/internal/pkg/utils"
+	appapi "github.com/huo-ju/quorum/pkg/app/api"
 )
 
 //const PUBLIC_CHANNEL = "all_node_public_channel"
@@ -99,7 +100,7 @@ func mainRet(config cli.Config) int {
 
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
 		h := &api.Handler{GitCommit: GitCommit}
-		go StartAPIServer(config, h, node, nodeoptions, keys.EthAddr, true)
+		go StartAPIServer(config, h, nil, node, nodeoptions, keys.EthAddr, true)
 	} else {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
@@ -142,10 +143,22 @@ func mainRet(config cli.Config) int {
 			return 0
 		}
 
+		appdbopts := &chain.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
+		appdb := appdata.InitDb(datapath, appdbopts)
+
 		//run local http api service
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx, GitCommit: GitCommit}
 
-		go StartAPIServer(config, h, node, nodeoptions, keys.EthAddr, false)
+		apiaddress := "http://%s/api/v1"
+		if config.APIListenAddresses[:1] == ":" {
+			apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses)
+		} else {
+			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
+		}
+		appsync := appdata.NewAppSyncAgent(apiaddress, appdb)
+		appsync.Start(10)
+		apph := &appapi.Handler{Appdb: appdb, GitCommit: GitCommit, Apiroot: apiaddress}
+		go StartAPIServer(config, h, apph, node, nodeoptions, keys.EthAddr, false)
 		//nat := node.Host.GetAutoNat()
 		//natstatus := nat.Status()
 		//pubaddr := nat.PublicAddr()
@@ -192,12 +205,13 @@ func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
 }
 
 //StartAPIServer : Start local web server
-func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ethaddr string, isbootstrapnode bool) {
+func StartAPIServer(config cli.Config, h *api.Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ethaddr string, isbootstrapnode bool) {
 	e := echo.New()
 	e.Binder = new(CustomBinder)
 	e.Use(middleware.Logger())
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
+	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 	if isbootstrapnode == false {
 		r.POST("/v1/group", h.CreateGroup)
@@ -217,9 +231,13 @@ func StartAPIServer(config cli.Config, h *api.Handler, node *p2p.Node, nodeopt *
 		r.POST("/v1/group/blacklist", h.MgrGrpBlkList)
 		r.GET("/v1/group/blacklist", h.GetBlockedUsrList)
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
+
+		a.GET("/v1/group/:group_id/content", apph.Content)
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}
+
+	//pkg/app/api/syn
 
 	e.Logger.Fatal(e.Start(config.APIListenAddresses))
 }

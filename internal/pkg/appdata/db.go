@@ -1,8 +1,10 @@
 package appdata
 
 import (
+	"encoding/binary"
 	"fmt"
 	badger "github.com/dgraph-io/badger/v3"
+	"github.com/google/orderedcode"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
@@ -15,6 +17,7 @@ const CNT_PREFIX string = "cnt_"
 const SDR_PREFIX string = "sdr_"
 const SEQ_PREFIX string = "seq_"
 const TRX_PREFIX string = "trx_"
+const term = "\x00\x01"
 
 type AppDb struct {
 	Db       *badger.DB
@@ -49,39 +52,60 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb *badger.DB) error {
 	return nil
 }
 
-func (appdb *AppDb) GetData(prefix string, start uint64, num uint64) error {
-	//key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
-	//"cnt_grp_9adced87-3381-404b-8282-489278662c16"
+func (appdb *AppDb) GetMaxBlockNum(groupid string) (uint64, error) {
+	key := fmt.Sprintf("max_%s%s", GRP_PREFIX, groupid)
+	var max uint64
 	err := appdb.Db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
-		opts.PrefetchValues = false
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Seek([]byte(prefix)); it.ValidForPrefix([]byte(prefix)); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			fmt.Printf("key=%s\n", k)
-			//err := item.Value(func(v []byte) error {
-			//	contentitem := &quorumpb.PostItem{}
-			//	ctnerr := proto.Unmarshal(v, contentitem)
-			//	if ctnerr == nil {
-			//		ctnList = append(ctnList, contentitem)
-			//	}
-			//	return ctnerr
-			//})
-
-			//if err != nil {
-			//	return err
-			//}
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
 		}
 
-		return nil
+		b, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		max = binary.LittleEndian.Uint64(b)
+		return err
 	})
-	return err
+	return max, err
 }
 
-func (appdb *AppDb) AddMetaByTrx(trx *quorumpb.Trx) error {
+func (appdb *AppDb) GetGroupContent(groupid string, start uint64, num int) ([]string, error) {
+
+	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
+
+	startidx := uint64(0)
+	trxids := []string{}
+	err := appdb.Db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 20
+		opts.PrefetchValues = false
+		opts.Reverse = true
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		p := []byte(prefix)
+		for it.Seek(append(p, 0xff)); it.ValidForPrefix([]byte(prefix)); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			if startidx >= start { //college
+				trxids = append(trxids, string(k[len(k)-37-1:len(k)-1-1]))
+			}
+			if len(trxids) == num {
+				break
+			}
+			startidx++
+		}
+		return nil
+	})
+	return trxids, err
+}
+
+func getKey(prefix string, seqid uint64, tailing string) ([]byte, error) {
+	return orderedcode.Append(nil, prefix, "-", orderedcode.Infinity, uint64(seqid), "-", tailing)
+}
+
+func (appdb *AppDb) AddMetaByTrx(blocknum uint64, groupid string, trx *quorumpb.Trx) error {
 	var err error
 
 	seqkey := SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + trx.GroupId
@@ -89,35 +113,51 @@ func (appdb *AppDb) AddMetaByTrx(trx *quorumpb.Trx) error {
 	if err != nil {
 		return err
 	}
-	key := fmt.Sprintf("%s%s%s_%d_%s", CNT_PREFIX, GRP_PREFIX, trx.GroupId, seqid, trx.TrxId)
-	err = appdb.Db.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry([]byte(key), nil)
-		err := txn.SetEntry(e)
-		return err
-	})
 
-	seqkey = SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + trx.GroupId + SDR_PREFIX
-	seqid, err = appdb.GetSeqId(seqkey)
+	key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, trx.GroupId), seqid, trx.TrxId)
+	fmt.Println(key)
+	fmt.Println(string(key))
 	if err != nil {
 		return err
 	}
-	fmt.Println("insert key:", key)
 
-	key = fmt.Sprintf("%s%s%s_%s_%d_%s", SDR_PREFIX, GRP_PREFIX, trx.GroupId, trx.Sender, seqid, trx.TrxId)
-	err = appdb.Db.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry([]byte(key), nil)
-		err := txn.SetEntry(e)
-		return err
-	})
+	seqkey1 := SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + trx.GroupId + SDR_PREFIX
+	seqid1, err := appdb.GetSeqId(seqkey1)
 	if err != nil {
 		return err
 	}
-	fmt.Println("insert key:", key)
 
-	//trx.TrxId
-	//trx.Sender
-	//Index 1: order by insert sequence
-	//
+	key1, err := getKey(fmt.Sprintf("%s%s-%s", SDR_PREFIX, GRP_PREFIX, trx.GroupId), seqid1, fmt.Sprintf("%s:%s", trx.Sender, trx.TrxId))
+	if err != nil {
+		return err
+	}
+
+	txn := appdb.Db.NewTransaction(true)
+	defer txn.Discard()
+
+	e := badger.NewEntry(key, nil)
+	err = txn.SetEntry(e)
+	if err != nil {
+		return err
+	}
+
+	e = badger.NewEntry(key1, nil)
+	err = txn.SetEntry(e)
+	if err != nil {
+		return err
+	}
+
+	maxnum := make([]byte, 8)
+	binary.LittleEndian.PutUint64(maxnum, uint64(blocknum))
+	e = badger.NewEntry([]byte(fmt.Sprintf("max_%s%s", GRP_PREFIX, groupid)), maxnum)
+	err = txn.SetEntry(e)
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Commit(); err != nil {
+		return err
+	}
 	return err
 }
 
