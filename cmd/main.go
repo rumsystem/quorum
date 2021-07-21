@@ -233,6 +233,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, apph *appapi.Handler, nod
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
 
 		a.GET("/v1/group/:group_id/content", apph.Content)
+		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}

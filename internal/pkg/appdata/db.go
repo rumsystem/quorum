@@ -1,6 +1,7 @@
 package appdata
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	badger "github.com/dgraph-io/badger/v3"
@@ -71,6 +72,42 @@ func (appdb *AppDb) GetMaxBlockNum(groupid string) (uint64, error) {
 	return max, err
 }
 
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, start uint64, num int) ([]string, error) {
+	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
+	sendermap := make(map[string]bool)
+	for _, s := range senders {
+		sendermap[s] = true
+	}
+	startidx := uint64(0)
+	trxids := []string{}
+	err := appdb.Db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 20
+		opts.PrefetchValues = false
+		opts.Reverse = true
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		p := []byte(prefix)
+		for it.Seek(append(p, 0xff)); it.ValidForPrefix([]byte(prefix)); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			if startidx >= start {
+				dataidx := bytes.LastIndexByte(k, byte('_'))
+				sender := string(k[dataidx+1+2 : len(k)-37-2]) //+2/-2 for remove the term, len(term)=2
+				if len(senders) == 0 || sendermap[sender] == true {
+					trxids = append(trxids, string(k[len(k)-37-1:len(k)-1-1]))
+				}
+			}
+			if len(trxids) == num {
+				break
+			}
+			startidx++
+		}
+		return nil
+	})
+	return trxids, err
+}
+
 func (appdb *AppDb) GetGroupContent(groupid string, start uint64, num int) ([]string, error) {
 
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
@@ -102,7 +139,7 @@ func (appdb *AppDb) GetGroupContent(groupid string, start uint64, num int) ([]st
 }
 
 func getKey(prefix string, seqid uint64, tailing string) ([]byte, error) {
-	return orderedcode.Append(nil, prefix, "-", orderedcode.Infinity, uint64(seqid), "-", tailing)
+	return orderedcode.Append(nil, prefix, "-", orderedcode.Infinity, uint64(seqid), "_", tailing)
 }
 
 func (appdb *AppDb) AddMetaByTrx(blocknum uint64, groupid string, trx *quorumpb.Trx) error {
@@ -114,34 +151,14 @@ func (appdb *AppDb) AddMetaByTrx(blocknum uint64, groupid string, trx *quorumpb.
 		return err
 	}
 
-	key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, trx.GroupId), seqid, trx.TrxId)
-	fmt.Println(key)
-	fmt.Println(string(key))
+	key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, trx.GroupId), seqid, fmt.Sprintf("%s:%s", trx.Sender, trx.TrxId))
 	if err != nil {
 		return err
 	}
-
-	seqkey1 := SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + trx.GroupId + SDR_PREFIX
-	seqid1, err := appdb.GetSeqId(seqkey1)
-	if err != nil {
-		return err
-	}
-
-	key1, err := getKey(fmt.Sprintf("%s%s-%s", SDR_PREFIX, GRP_PREFIX, trx.GroupId), seqid1, fmt.Sprintf("%s:%s", trx.Sender, trx.TrxId))
-	if err != nil {
-		return err
-	}
-
 	txn := appdb.Db.NewTransaction(true)
 	defer txn.Discard()
 
 	e := badger.NewEntry(key, nil)
-	err = txn.SetEntry(e)
-	if err != nil {
-		return err
-	}
-
-	e = badger.NewEntry(key1, nil)
 	err = txn.SetEntry(e)
 	if err != nil {
 		return err

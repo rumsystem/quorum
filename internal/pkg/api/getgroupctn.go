@@ -47,7 +47,6 @@ func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 			var typeurl string
 			ctnobj, err = anyobj.UnmarshalNew()
 			if err != nil { //old data pb.Object{} compatibility
-				c.Logger().Debugf("Unmarshal Content %s Err: %s, try to unmarshal as Object{}", ctn.TrxId, err)
 				ctnobj = &quorumpb.Object{}
 				err = proto.Unmarshal(ctn.Content, ctnobj)
 				if err != nil {
