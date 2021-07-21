@@ -1,8 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"net/http"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
@@ -10,21 +16,21 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type CustomValidatorPost struct {
+type CustomValidatorProfile struct {
 	Validator *validator.Validate
 }
 
-func (cv *CustomValidatorPost) Validate(i interface{}) error {
+func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 	switch i.(type) {
 	case *quorumpb.Activity:
 		inputobj := i.(*quorumpb.Activity)
-		if inputobj.Type == Add {
-			if inputobj.Object != nil && inputobj.Target != nil {
+		if inputobj.Type == Update {
+			if inputobj.Person != nil && inputobj.Target != nil {
 				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Object.Type == Note && inputobj.Object.Content != "" {
+					if inputobj.Person.Name != "" || inputobj.Person.Image != nil {
 						return nil
 					}
-					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unsupported object type: %s", inputobj.Object.Type))
+					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Person must have name or image fields"))
 				}
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Target Group must not be nil"))
 			}
@@ -39,7 +45,7 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 	return nil
 }
 
-func (h *Handler) PostToGroup(c echo.Context) (err error) {
+func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 	output := make(map[string]string)
 	paramspb := new(quorumpb.Activity)
 	if err = c.Bind(paramspb); err != nil {
@@ -47,14 +53,27 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	validate := &CustomValidatorPost{Validator: validator.New()}
+	validate := &CustomValidatorProfile{Validator: validator.New()}
 	if err = validate.Validate(paramspb); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
 	if group, ok := chain.GetChainCtx().Groups[paramspb.Target.Id]; ok {
-		trxId, err := group.PostAny(paramspb.Object)
+		if paramspb.Person.Image != nil {
+			_, formatname, err := image.Decode(bytes.NewReader(paramspb.Person.Image.Content))
+			if err != nil {
+				output[ERROR_INFO] = err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
+			if fmt.Sprintf("image/%s", formatname) != strings.ToLower(paramspb.Person.Image.MediaType) {
+				output[ERROR_INFO] = fmt.Sprintf("image format don't match, mediatype is %s but the file is %s", strings.ToLower(paramspb.Person.Image.MediaType), fmt.Sprintf("image/%s", formatname))
+				return c.JSON(http.StatusBadRequest, output)
+			}
+		}
+
+		//trxId, err := group.UpdateProfile(paramspb.Person)
+		trxId, err := group.PostAny(paramspb.Person)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

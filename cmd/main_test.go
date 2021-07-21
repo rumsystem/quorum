@@ -215,29 +215,42 @@ func TestGroupsContent(t *testing.T) {
 			trxStatus := map[string]bool{}
 			for _, trxId := range trxIds {
 				trxStatus[trxId] = false
-			}
-
-			t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
-			resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
-			groupcontentlist := []api.GroupContentObjectItem{}
-
-			if err == nil {
-				if err := json.Unmarshal(resp, &groupcontentlist); err != nil {
-					t.Errorf("Data Unmarshal error %s", err)
-				}
-			} else {
-				t.Errorf("get /api/v1/group/content err: %s", err)
-			}
-			for _, contentitem := range groupcontentlist {
-				if contentitem.Content != nil {
-					if _, found := trxStatus[contentitem.TrxId]; found {
-						trxStatus[contentitem.TrxId] = true
-						t.Logf("trx %s ok", contentitem.TrxId)
-					} else {
-						t.Errorf("trx %s not exists in this groups", contentitem.TrxId)
+				resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/trx/%s", trxId), "GET", "")
+				if err == nil {
+					var data map[string]interface{}
+					if err := json.Unmarshal(resp, &data); err != nil {
+						t.Errorf("Data Unmarshal error %s", err)
 					}
+					fmt.Println(data)
+					if data["TrxId"] == trxId {
+						trxStatus[trxId] = true
+					}
+				} else {
+					t.Errorf("get /api/v1/trx/%s err: %s", trxId, err)
 				}
 			}
+
+			//t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
+			//resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
+			//groupcontentlist := []api.GroupContentObjectItem{}
+
+			//if err == nil {
+			//	if err := json.Unmarshal(resp, &groupcontentlist); err != nil {
+			//		t.Errorf("Data Unmarshal error %s", err)
+			//	}
+			//} else {
+			//	t.Errorf("get /api/v1/group/content err: %s", err)
+			//}
+			//for _, contentitem := range groupcontentlist {
+			//	if contentitem.Content != nil {
+			//		if _, found := trxStatus[contentitem.TrxId]; found {
+			//			trxStatus[contentitem.TrxId] = true
+			//			t.Logf("trx %s ok", contentitem.TrxId)
+			//		} else {
+			//			t.Errorf("trx %s not exists in this groups", contentitem.TrxId)
+			//		}
+			//	}
+			//}
 
 			// check trxStatus, if it has some false value
 			for k, v := range trxStatus {

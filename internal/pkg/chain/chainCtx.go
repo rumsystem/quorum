@@ -1,9 +1,8 @@
 package chain
 
 import (
-	"fmt"
-
 	"context"
+	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"

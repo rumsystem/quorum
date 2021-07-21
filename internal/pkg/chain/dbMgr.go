@@ -385,7 +385,7 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + trx.TrxId + "_" + fmt.Sprint(trx.TimeStamp)
+	key := GRP_PREFIX + CNT_PREFIX + trx.GroupId + "_" + fmt.Sprint(trx.TimeStamp) + "_" + trx.TrxId
 
 	dbmgr_log.Infof("Add trx with key %s", key)
 	//update ContentDb
@@ -398,7 +398,7 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx) error {
 	return err
 }
 
-func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.PostItem, error) {
+func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string) ([]*quorumpb.PostItem, error) {
 	var ctnList []*quorumpb.PostItem
 	err := dbMgr.Db.View(func(txn *badger.Txn) error {
 		key := GRP_PREFIX + CNT_PREFIX + groupId + "_"
@@ -414,7 +414,6 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string) ([]*quorumpb.PostItem, error) {
 				if ctnerr == nil {
 					ctnList = append(ctnList, contentitem)
 				}
-
 				return ctnerr
 			})
 
