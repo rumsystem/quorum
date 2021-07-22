@@ -72,7 +72,7 @@ func (appdb *AppDb) GetMaxBlockNum(groupid string) (uint64, error) {
 	return max, err
 }
 
-func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, start uint64, num int) ([]string, error) {
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool) ([]string, error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
 	sendermap := make(map[string]bool)
 	for _, s := range senders {
@@ -84,49 +84,30 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 20
 		opts.PrefetchValues = false
-		opts.Reverse = true
+		opts.Reverse = reverse
 		it := txn.NewIterator(opts)
 		defer it.Close()
 		p := []byte(prefix)
-		for it.Seek(append(p, 0xff)); it.ValidForPrefix([]byte(prefix)); it.Next() {
+		if reverse == true {
+			p = append(p, 0xff)
+		}
+		runcollector := false
+		if starttrx == "" {
+			runcollector = true //no trxid, start collecting from the first item
+		}
+		for it.Seek(p); it.ValidForPrefix([]byte(prefix)); it.Next() {
 			item := it.Item()
 			k := item.Key()
-			if startidx >= start {
-				dataidx := bytes.LastIndexByte(k, byte('_'))
+			dataidx := bytes.LastIndexByte(k, byte('_'))
+			trxid := string(k[len(k)-37-1 : len(k)-1-1])
+			if runcollector == true {
 				sender := string(k[dataidx+1+2 : len(k)-37-2]) //+2/-2 for remove the term, len(term)=2
 				if len(senders) == 0 || sendermap[sender] == true {
-					trxids = append(trxids, string(k[len(k)-37-1:len(k)-1-1]))
+					trxids = append(trxids, trxid)
 				}
 			}
-			if len(trxids) == num {
-				break
-			}
-			startidx++
-		}
-		return nil
-	})
-	return trxids, err
-}
-
-func (appdb *AppDb) GetGroupContent(groupid string, start uint64, num int) ([]string, error) {
-
-	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
-
-	startidx := uint64(0)
-	trxids := []string{}
-	err := appdb.Db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 20
-		opts.PrefetchValues = false
-		opts.Reverse = true
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		p := []byte(prefix)
-		for it.Seek(append(p, 0xff)); it.ValidForPrefix([]byte(prefix)); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			if startidx >= start { //college
-				trxids = append(trxids, string(k[len(k)-37-1:len(k)-1-1]))
+			if trxid == starttrx { //start collecting after this item
+				runcollector = true
 			}
 			if len(trxids) == num {
 				break
