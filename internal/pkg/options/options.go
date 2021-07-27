@@ -2,10 +2,12 @@ package options
 
 import (
 	//"fmt"
+
+	"path/filepath"
+
+	"github.com/huo-ju/quorum/internal/pkg/utils"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/spf13/viper"
-	"os"
-	"path/filepath"
 )
 
 var optionslog = logging.Logger("options")
@@ -21,19 +23,11 @@ func writeDefaultToconfig() error {
 }
 
 func Load(dir string, keyname string) (*NodeOptions, error) {
-	if dir[len(dir)-1:] != "/" && dir[len(dir)-1:] != "\\" { // add \\ for windows
-		dir = dir + "/"
-		if _, err := os.Stat(dir); err != nil {
-			if os.IsNotExist(err) {
-				err := os.Mkdir(dir, 0755)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				return nil, err
-			}
-		}
+	if err := utils.EnsureDir(dir); err != nil {
+		optionslog.Errorf("check config directory failed: %s", err)
+		return nil, err
 	}
+
 	viper.AddConfigPath(filepath.Dir(dir))
 	viper.SetConfigName(keyname + "_options")
 	viper.SetConfigType("toml")
