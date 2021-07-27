@@ -1,2 +1,16 @@
-export GIT_COMMIT=$(git rev-list -1 HEAD) && env GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -ldflags "-X main.GitCommit=$GIT_COMMIT" -o dist/linux_amd64/quorum cmd/main.go
-export GIT_COMMIT=$(git rev-list -1 HEAD) && env GOOS=windows CGO_ENABLED=0 GOARCH=amd64 go build -ldflags "-X main.GitCommit=$GIT_COMMIT" -o dist/windows_amd64/quorum.exe cmd/main.go
+#!/bin/bash
+
+GIT_COMMIT=$(git rev-list -1 HEAD)
+
+for GOOS in linux darwin windows; do
+    for GOARCH in amd64; do
+        if [[ "$GOOS" == "windows" ]]; then
+            bin="quorum.exe"
+        else
+            bin="quorum"
+        fi
+        env CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH \
+            go build -ldflags "-X main.GitCommit=$GIT_COMMIT" \
+            -o dist/${GOOS}_${GOARCH}/$bin cmd/main.go
+    done
+done

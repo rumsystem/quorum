@@ -50,7 +50,7 @@ func mainRet(config cli.Config) int {
 	if GitCommit == "" {
 		GitCommit = "devel"
 	}
-	mainlog.Info("Version: %s", GitCommit)
+	mainlog.Infof("Version: %s", GitCommit)
 	peername := config.PeerName
 
 	if config.IsBootstrap == true {
@@ -276,17 +276,8 @@ func main() {
 
 	}
 
-	if _, err := os.Stat(config.DataDir); err != nil {
-		if os.IsNotExist(err) {
-			err := os.Mkdir(config.DataDir, 0755)
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			if err != nil {
-				panic(err)
-			}
-		}
+	if err := utils.EnsureDir(config.DataDir); err != nil {
+		panic(err)
 	}
 
 	if *help {
