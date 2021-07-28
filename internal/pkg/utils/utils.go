@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"errors"
-	"fmt"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -22,24 +20,34 @@ func StringsToAddrs(addrStrings []string) (maddrs []maddr.Multiaddr, err error) 
 	return
 }
 
+// FileExist check if file is exist
+func FileExist(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return !info.IsDir()
+}
+
+// DirExist check if file is exist
+func DirExist(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return info.IsDir()
+}
+
 // EnsureDir make sure `dir` exist, or create it
 func EnsureDir(dir string) error {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
+	if !DirExist(dir) {
 		logger.Infof("try to create directory: %s", dir)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			logger.Errorf("make directory %s failed: %s", dir, err)
 			return err
 		}
-	}
-
-	if fileInfo, err := os.Stat(dir); err != nil {
-		logger.Errorf("os.Stat on %s failed: %s", dir, err)
-		return err
-	} else if !fileInfo.IsDir() {
-		msg := fmt.Sprintf("config path %s is not a directory",
-			dir)
-		logger.Error(msg)
-		return errors.New(msg)
 	}
 
 	return nil
