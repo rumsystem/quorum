@@ -159,7 +159,13 @@ func mainRet(config cli.Config) int {
 		}
 		appsync := appdata.NewAppSyncAgent(apiaddress, appdb)
 		appsync.Start(10)
-		apph := &appapi.Handler{Appdb: appdb, GitCommit: GitCommit, Apiroot: apiaddress}
+		apph := &appapi.Handler{
+			Appdb:     appdb,
+			GitCommit: GitCommit,
+			Apiroot:   apiaddress,
+			ConfigDir: config.ConfigDir,
+			PeerName:  config.PeerName,
+		}
 		go StartAPIServer(config, h, apph, node, nodeoptions, keys.EthAddr, false)
 		//nat := node.Host.GetAutoNat()
 		//natstatus := nat.Status()
@@ -211,6 +217,7 @@ func StartAPIServer(config cli.Config, h *api.Handler, apph *appapi.Handler, nod
 	e := echo.New()
 	e.Binder = new(CustomBinder)
 	e.Use(middleware.Logger())
+	e.Use(middleware.JWTWithConfig(appapi.CustomJWTConfig(nodeopt.JWTKey)))
 	e.Logger.SetLevel(log.DEBUG)
 	r := e.Group("/api")
 	a := e.Group("/app/api")
@@ -236,6 +243,8 @@ func StartAPIServer(config cli.Config, h *api.Handler, apph *appapi.Handler, nod
 
 		//a.GET("/v1/group/:group_id/content", apph.Content)
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
+		a.POST("/v1/token/apply", apph.ApplyToken)
+		a.POST("/v1/token/refresh", apph.RefreshToken)
 	} else {
 		r.GET("/v1/node", h.GetBootStropNodeInfo)
 	}

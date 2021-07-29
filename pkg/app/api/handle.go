@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/huo-ju/quorum/internal/pkg/appdata"
 )
 
@@ -10,4 +11,6 @@ type Handler struct {
 	Appdb     *appdata.AppDb
 	Apiroot   string
 	GitCommit string
+	ConfigDir string
+	PeerName  string
 }

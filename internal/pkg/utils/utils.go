@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math/rand"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -51,4 +52,16 @@ func EnsureDir(dir string) error {
 	}
 
 	return nil
+}
+
+func GetRandomStr(n int) string {
+	const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const lettersLength = int64(len(letters))
+
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Int63()%lettersLength]
+	}
+	return string(b)
+
 }
