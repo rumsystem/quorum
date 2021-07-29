@@ -38,10 +38,12 @@ import (
 
 //const PUBLIC_CHANNEL = "all_node_public_channel"
 
-var GitCommit string
-var node *p2p.Node
-var signalch chan os.Signal
-var mainlog = logging.Logger("main")
+var (
+	GitCommit string
+	node      *p2p.Node
+	signalch  chan os.Signal
+	mainlog   = logging.Logger("main")
+)
 
 func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -149,7 +151,7 @@ func mainRet(config cli.Config) int {
 		//run local http api service
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx, GitCommit: GitCommit}
 
-		apiaddress := "http://%s/api/v1"
+		apiaddress := "https://%s/api/v1"
 		if config.APIListenAddresses[:1] == ":" {
 			apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses)
 		} else {
@@ -239,8 +241,11 @@ func StartAPIServer(config cli.Config, h *api.Handler, apph *appapi.Handler, nod
 	}
 
 	//pkg/app/api/syn
-
-	e.Logger.Fatal(e.Start(config.APIListenAddresses))
+	certPath, keyPath, err := utils.GetTLSCerts()
+	if err != nil {
+		panic(err)
+	}
+	e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, keyPath))
 }
 
 func quitapp(c echo.Context) (err error) {
@@ -291,6 +296,11 @@ func main() {
 	if *version {
 		fmt.Println("1.0.0 - " + GitCommit)
 		return
+	}
+
+	_, _, err = utils.NewTLSCert()
+	if err != nil {
+		panic(err)
 	}
 
 	os.Exit(mainRet(config))

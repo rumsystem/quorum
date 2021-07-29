@@ -3,12 +3,14 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
-	"github.com/labstack/echo/v4"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/huo-ju/quorum/internal/pkg/utils"
+	"github.com/labstack/echo/v4"
+	"google.golang.org/protobuf/proto"
 )
 
 type GroupContentObjectItem struct {
@@ -54,7 +56,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			continue
 		}
 		req.Header.Add("Content-Type", "application/json")
-		client := &http.Client{}
+		client := utils.NewHTTPClient()
 		resp, err := client.Do(req)
 		if err != nil {
 			c.Logger().Errorf("request %s Err: %s", apiurl, err)

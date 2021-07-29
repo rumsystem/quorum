@@ -3,11 +3,13 @@ package appdata
 import (
 	"encoding/json"
 	"fmt"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
-	logging "github.com/ipfs/go-log/v2"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/huo-ju/quorum/internal/pkg/utils"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var appsynclog = logging.Logger("appsync")
@@ -29,7 +31,7 @@ func (appsync *AppSync) GetGroupsIds() ([]string, error) {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	client := &http.Client{}
+	client := utils.NewHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -58,7 +60,7 @@ func (appsync *AppSync) GetGroupsIds() ([]string, error) {
 		}
 	} else {
 		//404?
-		return nil, fmt.Errorf("api response err: %s", resp.StatusCode)
+		return nil, fmt.Errorf("api response err: %d", resp.StatusCode)
 	}
 }
 
@@ -70,7 +72,7 @@ func (appsync *AppSync) SyncBlock(groupid string, blocknum uint64) error {
 			return err
 		}
 		req.Header.Add("Content-Type", "application/json")
-		client := &http.Client{}
+		client := utils.NewHTTPClient()
 
 		resp, err := client.Do(req)
 		if err != nil {
