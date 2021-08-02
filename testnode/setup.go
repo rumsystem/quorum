@@ -79,8 +79,8 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 
 	// wait bootstrap node
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
-	log.Printf("request: %s", fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport))
-	result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport))
+	log.Printf("request: %s", fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport))
+	result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport))
 	if result == false {
 		return "", []string{}, "", fmt.Errorf("bootstrap node start failed")
 	}
@@ -104,12 +104,12 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 		Fork(pidch, gocmd, "run", "main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
 
 		checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
-		result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", peerapiport))
+		result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", peerapiport))
 		if result == false {
 			return "", []string{}, "", fmt.Errorf("%s node start failed", peername)
 		}
 
-		peerapiurl := fmt.Sprintf("http://127.0.0.1:%d", peerapiport)
+		peerapiurl := fmt.Sprintf("https://127.0.0.1:%d", peerapiport)
 		peers = append(peers, peerapiurl)
 
 		i++
@@ -138,8 +138,8 @@ func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string,
 	Fork(pidch, gocmd, "run", "main.go", "-bootstrap", "-listen", "/ip4/0.0.0.0/tcp/20666", "-apilisten", bootstrapapiport, "-configdir", testconfdir, "-datadir", testdatadir)
 
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
-	log.Printf("request: %s", fmt.Sprintf("http://127.0.0.1%s", bootstrapapiport))
-	result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", bootstrapapiport))
+	log.Printf("request: %s", fmt.Sprintf("https://127.0.0.1%s", bootstrapapiport))
+	result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1%s", bootstrapapiport))
 	if result == false {
 		return "", "", "", "", fmt.Errorf("bootstrap node start failed")
 	}
@@ -155,18 +155,18 @@ func Run2NodeProcessWith1Bootstrap(ctx context.Context, pidch chan int) (string,
 	Fork(pidch, gocmd, "run", "main.go", "-peername", "peer2", "-listen", "/ip4/0.0.0.0/tcp/17002", "-apilisten", peer2apiport, "-peer", bootstrapaddr, "-configdir", testconfdir, "-datadir", testdatadir)
 
 	checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
-	resultpeer1 := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", peer1apiport))
+	resultpeer1 := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1%s", peer1apiport))
 	if resultpeer1 == false {
 		return "", "", "", "", fmt.Errorf("peer1 node start failed")
 	}
 	checkctx, _ = context.WithTimeout(ctx, 20*time.Second)
-	resultpeer2 := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1%s", peer2apiport))
+	resultpeer2 := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1%s", peer2apiport))
 	if resultpeer2 == false {
 		return "", "", "", "", fmt.Errorf("peer2 node start failed")
 	}
 	if resultpeer1 == true && resultpeer1 == true {
 		log.Println("all set, testing start")
-		return bootstrapaddr, fmt.Sprintf("http://127.0.0.1%s", peer1apiport), fmt.Sprintf("http://127.0.0.1%s", peer2apiport), testtempdir, nil
+		return bootstrapaddr, fmt.Sprintf("https://127.0.0.1%s", peer1apiport), fmt.Sprintf("https://127.0.0.1%s", peer2apiport), testtempdir, nil
 	}
 	return "", "", "", "", fmt.Errorf("unknown error")
 }
@@ -201,7 +201,7 @@ func Cleanup(dir string, peerapilist []string) {
 	log.Printf("Clean testdata path: %s ...", dir)
 	log.Println("peer api list", peerapilist)
 	//add bootstrap node
-	peerapilist = append(peerapilist, fmt.Sprintf("http://127.0.0.1:%d", 18010))
+	peerapilist = append(peerapilist, fmt.Sprintf("https://127.0.0.1:%d", 18010))
 	for _, peerapi := range peerapilist {
 		_, err := RequestAPI(peerapi, "/api/quit", "GET", "")
 		if err == nil {
