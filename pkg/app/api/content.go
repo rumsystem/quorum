@@ -56,15 +56,19 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			continue
 		}
 		req.Header.Add("Content-Type", "application/json")
-		client := utils.NewHTTPClient()
+		client, err := utils.NewHTTPClient()
+		if err != nil {
+			c.Logger().Errorf("request %s Err: %s", apiurl, err)
+			continue
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			c.Logger().Errorf("request %s Err: %s", apiurl, err)
 			continue
 		}
 		if resp.StatusCode == 200 {
-			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 			if err != nil {
 				c.Logger().Errorf("read %s Err: %s", apiurl, err)
 				continue
@@ -82,7 +86,6 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			}
 			ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: trx.Sender, Content: ctnobj, TimeStamp: trx.TimeStamp, TypeUrl: typeurl}
 			ctnobjList = append(ctnobjList, ctnobjitem)
-
 		} else {
 			output[ERROR_INFO] = resp.Status
 			return c.JSON(http.StatusBadRequest, output)

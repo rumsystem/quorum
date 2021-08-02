@@ -31,15 +31,16 @@ func (appsync *AppSync) GetGroupsIds() ([]string, error) {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	client := utils.NewHTTPClient()
+	client, err := utils.NewHTTPClient()
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
+	defer resp.Body.Close()
 	if resp.StatusCode == 200 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err == nil {
@@ -72,20 +73,21 @@ func (appsync *AppSync) SyncBlock(groupid string, blocknum uint64) error {
 			return err
 		}
 		req.Header.Add("Content-Type", "application/json")
-		client := utils.NewHTTPClient()
+		client, err := utils.NewHTTPClient()
+		if err != nil {
+			return err
+		}
 
 		resp, err := client.Do(req)
 		if err != nil {
 			return err
-		}
-		if resp.Body != nil {
-			defer resp.Body.Close()
 		}
 		if resp.StatusCode == 200 {
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}
+			resp.Body.Close()
 
 			var b *quorumpb.Block
 			err = json.Unmarshal(body, &b)
@@ -102,6 +104,7 @@ func (appsync *AppSync) SyncBlock(groupid string, blocknum uint64) error {
 			}
 			blocknum += 1
 		} else {
+			resp.Body.Close()
 			appsynclog.Infof("read group %s block %d err or no new blocks.", groupid, blocknum)
 			return nil
 		}
@@ -125,7 +128,6 @@ func (appsync *AppSync) Start(interval int) {
 				}
 			}
 			time.Sleep(time.Duration(interval) * time.Second)
-
 		}
 	}()
 }
