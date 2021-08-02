@@ -85,22 +85,22 @@ func NewTLSCert() (string, string, error) {
 }
 
 // NewHTTPClient return *http.Client with `cacert` config
-func NewHTTPClient() *http.Client {
+func NewHTTPClient() (*http.Client, error) {
 	certPath, keyPath, err := NewTLSCert()
 	if err != nil {
-		logger.Fatalf("get cert path failed: %s", err)
+		return nil, err
 	}
 
 	caCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		logger.Fatalf("read %s failed: %s", certPath, err)
+		return nil, err
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
-		logger.Fatalf("load TLS cert failed: %s", err)
+		return nil, err
 	}
 
 	tlsConfig := &tls.Config{
@@ -109,8 +109,8 @@ func NewHTTPClient() *http.Client {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
 	tlsConfig.BuildNameToCertificate()
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	client := &http.Client{Transport: transport}
+	transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
+	client := &http.Client{Timeout: 30 * time.Second, Transport: transport}
 
-	return client
+	return client, nil
 }

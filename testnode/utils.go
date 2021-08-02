@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/huo-ju/quorum/internal/pkg/utils"
 )
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {
@@ -23,9 +25,11 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 			return []byte(""), err
 		}
 		req.Header.Add("Content-Type", "application/json")
-		client := &http.Client{}
+		client, err := utils.NewHTTPClient()
+		if err != nil {
+			return []byte(""), err
+		}
 
-		//resp, err := http.Get(url)
 		resp, err := client.Do(req)
 		if err != nil {
 			return []byte(""), err
@@ -38,13 +42,21 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 		return body, nil
 	case "POST":
 		log.Printf("%s %s", method, url)
-		resp, err := http.Post(url, "application/json", bytes.NewBufferString(data))
-
+		client, err := utils.NewHTTPClient()
 		if err != nil {
 			return []byte(""), err
 		}
-
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(data))
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		if err != nil {
+			return nil, err
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
 		defer resp.Body.Close()
+
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return []byte(""), err
