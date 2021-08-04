@@ -6,9 +6,11 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/huo-ju/quorum/cmd/cli/config"
 )
@@ -73,7 +75,8 @@ func Groups() (groupsInfo *GroupInfoListStruct, err error) {
 }
 
 func Content(groupId string) (contents *[]ContentStruct, err error) {
-	url := ApiServer + "/app/api/v1/group/" + groupId + "/content?start=0&num=1000&reverse=true"
+	url := fmt.Sprintf(
+		"%s/app/api/v1/group/%s/content?start=0&num=%d&reverse=true", ApiServer, groupId, 20)
 	ret := []ContentStruct{}
 	body, err := httpPost(url, []byte("{}"))
 	if err != nil {
@@ -280,7 +283,7 @@ func newHTTPClient() (*http.Client, error) {
 		}
 		tlsConfig.BuildNameToCertificate()
 		transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
-		client = &http.Client{Transport: transport}
+		client = &http.Client{Transport: transport, Timeout: 30 * time.Second}
 	}
 	return client, nil
 }

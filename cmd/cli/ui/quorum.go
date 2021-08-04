@@ -14,10 +14,12 @@ import (
 
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
+	"github.com/gdamore/tcell/v2"
 	"github.com/huo-ju/quorum/cmd/cli/api"
 	"github.com/huo-ju/quorum/cmd/cli/config"
-	"github.com/gdamore/tcell/v2"
 )
+
+var refreshing bool = false
 
 // model
 type quorumDataModel struct {
@@ -751,11 +753,16 @@ func goQuorumContent() {
 // update ui if new content comes in
 // run in a goroutine
 func goQuorumRefresh() {
+	if refreshing {
+		return
+	}
+	refreshing = true
 	// must in order
 	goQuorumNetwork()
 	goQuorumNode()
 	goQuorumGroups()
 	goQuorumContent()
+	refreshing = false
 }
 
 func goQuorumTrxInfo(trxId string) {
