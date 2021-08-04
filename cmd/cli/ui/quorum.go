@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"runtime"
 	"sort"
@@ -18,8 +19,6 @@ import (
 	"github.com/huo-ju/quorum/cmd/cli/api"
 	"github.com/huo-ju/quorum/cmd/cli/config"
 )
-
-var refreshing bool = false
 
 // model
 type quorumDataModel struct {
@@ -206,7 +205,7 @@ func Quorum(apiServer string) {
 	rootPanels.SendToFront("quorum")
 	App.SetFocus(contentView)
 
-	go goQuorumRefresh()
+	QuorumRefreshAll()
 
 	if !quorumData.tickerRunning {
 		ticker := time.NewTicker(500 * time.Millisecond)
@@ -216,7 +215,7 @@ func Quorum(apiServer string) {
 				select {
 				case <-ticker.C:
 					if api.IsValidApiServer() {
-						goQuorumRefresh()
+						QuorumRefreshAll()
 					}
 				case <-quorumData.tickerCh:
 					ticker.Stop()
@@ -680,6 +679,9 @@ func drawQuorumContentInfo(trx api.TrxStruct) {
 func goQuorumNetwork() {
 	networkInfo, err := api.Network()
 	if err != nil {
+		if err, ok := err.(net.Error); ok && err.Timeout() {
+			return
+		}
 		Error("Failed to connect api server", err.Error())
 	} else {
 		quorumData.SetNetworkInfo(*networkInfo)
@@ -690,6 +692,9 @@ func goQuorumNetwork() {
 func goQuorumNode() {
 	nodeInfo, err := api.Node()
 	if err != nil {
+		if err, ok := err.(net.Error); ok && err.Timeout() {
+			return
+		}
 		Error("Failed to connect api server", err.Error())
 	} else {
 		quorumData.SetNodeInfo(*nodeInfo)
@@ -699,6 +704,9 @@ func goQuorumNode() {
 func goQuorumGroups() {
 	groupsInfo, err := api.Groups()
 	if err != nil {
+		if err, ok := err.(net.Error); ok && err.Timeout() {
+			return
+		}
 		Error("Failed to get groups", err.Error())
 	} else {
 		sort.Sort(groupsInfo)
@@ -716,6 +724,9 @@ func goQuorumContent() {
 	if curGroup != "" {
 		contents, err := api.Content(curGroup)
 		if err != nil {
+			if err, ok := err.(net.Error); ok && err.Timeout() {
+				return
+			}
 			Error("Failed to get content", err.Error())
 		} else {
 			posts := []api.ContentStruct{}
@@ -752,17 +763,15 @@ func goQuorumContent() {
 // Refresh all data
 // update ui if new content comes in
 // run in a goroutine
-func goQuorumRefresh() {
-	if refreshing {
-		return
-	}
-	refreshing = true
-	// must in order
-	goQuorumNetwork()
-	goQuorumNode()
-	goQuorumGroups()
-	goQuorumContent()
-	refreshing = false
+func QuorumRefreshAll() {
+	go func() {
+		// groups and content must in order
+		goQuorumGroups()
+		goQuorumContent()
+	}()
+
+	go goQuorumNetwork()
+	go goQuorumNode()
 }
 
 func goQuorumTrxInfo(trxId string) {

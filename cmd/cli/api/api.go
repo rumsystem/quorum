@@ -287,7 +287,8 @@ func newHTTPClient() (*http.Client, error) {
 		}
 		tlsConfig.BuildNameToCertificate()
 		transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
-		client = &http.Client{Transport: transport, Timeout: 30 * time.Second}
+		// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
+		client = &http.Client{Transport: transport, Timeout: 5 * time.Second}
 	}
 	return client, nil
 }
