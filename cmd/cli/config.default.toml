@@ -1,0 +1,5 @@
+[Quorum]
+  Server = "https://127.0.0.1:8002"
+  ServerSSLCertificate = "/path/to/certs/server.crt"
+  ServerSSLCertificateKey = "/path/to/certs/server.key"
+  Following = []

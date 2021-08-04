@@ -5,11 +5,16 @@ go 1.15
 replace github.com/libp2p/go-libp2p-autonat => github.com/huo-ju/go-libp2p-autonat v0.4.3
 
 require (
+	code.rocketnine.space/tslocum/cbind v0.1.5 // indirect
+	code.rocketnine.space/tslocum/cview v1.5.6 // indirect
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/RichardKnop/machinery v1.10.5
+	github.com/adrg/xdg v0.3.3 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/dgraph-io/badger v1.6.1
 	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/ethereum/go-ethereum v1.10.3
+	github.com/gdamore/tcell/v2 v2.4.0 // indirect
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/spec v0.20.3 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
