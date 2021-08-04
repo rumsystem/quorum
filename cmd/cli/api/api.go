@@ -75,8 +75,12 @@ func Groups() (groupsInfo *GroupInfoListStruct, err error) {
 }
 
 func Content(groupId string) (contents *[]ContentStruct, err error) {
+	num := 1000
+	if config.RumConfig.Quorum.MaxContentSize > 0 {
+		num = config.RumConfig.Quorum.MaxContentSize
+	}
 	url := fmt.Sprintf(
-		"%s/app/api/v1/group/%s/content?start=0&num=%d&reverse=true", ApiServer, groupId, 20)
+		"%s/app/api/v1/group/%s/content?start=0&num=%d&reverse=true", ApiServer, groupId, num)
 	ret := []ContentStruct{}
 	body, err := httpPost(url, []byte("{}"))
 	if err != nil {
