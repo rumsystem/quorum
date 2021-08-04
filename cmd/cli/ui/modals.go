@@ -5,6 +5,7 @@ import (
 
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
+	"github.com/huo-ju/quorum/cmd/cli/config"
 )
 
 // global modal
@@ -103,12 +104,15 @@ func Error(title, text string) {
 	// Add spaces to title for aesthetic reasons
 	title = " " + strings.TrimSpace(title) + " "
 
+	config.Logger.Printf("%s: %s\n", title, text)
+
 	errorModal.GetFrame().SetTitle(title)
 	errorModal.SetText(text)
 	rootPanels.ShowPanel("error")
 	rootPanels.SendToFront("error")
 	App.SetFocus(errorModal)
 	App.Draw()
+
 }
 
 func Info(title, text string) {

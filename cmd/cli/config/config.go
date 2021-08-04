@@ -22,6 +22,7 @@ type RumCliConfig struct {
 }
 
 var RumConfig RumCliConfig
+var Logger *log.Logger
 
 func Init() {
 	configFilePath, err := xdg.ConfigFile("rumcli/config.toml")
@@ -38,6 +39,30 @@ func Init() {
 	}
 	if _, err := toml.DecodeFile(configFilePath, &RumConfig); err != nil {
 		log.Fatal(err)
+	}
+	initLogger()
+}
+
+func initLogger() {
+	// init log file
+	logFilePath, err := xdg.ConfigFile("rumcli/error.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
+		// path/to/whatever does not exist
+		f, err := os.OpenFile(logFilePath, os.O_CREATE, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		f.Close()
+	}
+	if Logger == nil {
+		f, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		Logger = log.New(f, "rumcli", log.Lshortfile)
 	}
 }
 

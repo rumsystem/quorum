@@ -5,8 +5,8 @@ import (
 
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
-	"github.com/huo-ju/quorum/cmd/cli/config"
 	"github.com/gdamore/tcell/v2"
+	"github.com/huo-ju/quorum/cmd/cli/config"
 )
 
 var App = cview.NewApplication()
