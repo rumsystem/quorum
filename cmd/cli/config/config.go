@@ -7,6 +7,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/adrg/xdg"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 type QuorumConfig struct {
@@ -22,7 +23,7 @@ type RumCliConfig struct {
 }
 
 var RumConfig RumCliConfig
-var Logger *log.Logger
+var Logger *logging.ZapEventLogger
 
 func Init() {
 	configFilePath, err := xdg.ConfigFile("rumcli/config.toml")
@@ -49,20 +50,21 @@ func initLogger() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
-		// path/to/whatever does not exist
-		f, err := os.OpenFile(logFilePath, os.O_CREATE, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-		f.Close()
+	// truncate error log on each starts
+	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Fatal(err)
 	}
+	f.Close()
 	if Logger == nil {
-		f, err := os.OpenFile(logFilePath, os.O_RDWR|os.O_TRUNC, 0644)
-		if err != nil {
-			log.Fatal(err)
+		cfg := logging.Config{
+			Format: logging.PlaintextOutput,
+			Stderr: false,
+			Level:  logging.LevelError,
+			File:   logFilePath,
 		}
-		Logger = log.New(f, "rumcli", log.Lshortfile)
+		logging.SetupLogging(cfg)
+		Logger = logging.Logger("rumcli")
 	}
 }
 

@@ -104,7 +104,7 @@ func Error(title, text string) {
 	// Add spaces to title for aesthetic reasons
 	title = " " + strings.TrimSpace(title) + " "
 
-	config.Logger.Printf("%s: %s\n", title, text)
+	config.Logger.Errorf("%s: %s\n", title, text)
 
 	errorModal.GetFrame().SetTitle(title)
 	errorModal.SetText(text)
