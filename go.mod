@@ -5,11 +5,16 @@ go 1.15
 replace github.com/libp2p/go-libp2p-autonat => github.com/huo-ju/go-libp2p-autonat v0.4.3
 
 require (
+	code.rocketnine.space/tslocum/cbind v0.1.5 // indirect
+	code.rocketnine.space/tslocum/cview v1.5.6 // indirect
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/RichardKnop/machinery v1.10.5
+	github.com/adrg/xdg v0.3.3 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/dgraph-io/badger v1.6.1
 	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/ethereum/go-ethereum v1.10.3
+	github.com/gdamore/tcell/v2 v2.4.0 // indirect
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/spec v0.20.3 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
@@ -26,7 +31,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.3
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/ipfs/go-graphsync v0.6.0
-	github.com/ipfs/go-log/v2 v2.1.3
+	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/labstack/echo/v4 v4.3.0
 	github.com/labstack/gommon v0.3.0
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -48,6 +53,9 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/swaggo/echo-swagger v1.1.0 // indirect
 	github.com/swaggo/swag v1.7.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.7.0 // indirect
+	go.uber.org/zap v1.18.1 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
