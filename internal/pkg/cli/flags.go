@@ -2,8 +2,11 @@ package cli
 
 import (
 	"flag"
-	maddr "github.com/multiformats/go-multiaddr"
+	"log"
+	"path/filepath"
 	"strings"
+
+	maddr "github.com/multiformats/go-multiaddr"
 )
 
 type addrList []maddr.Multiaddr
@@ -53,6 +56,18 @@ func ParseFlags() (Config, error) {
 	flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flag.BoolVar(&config.IsDebug, "debug", false, "show debug log")
 	flag.Parse()
+
+	configDir, err := filepath.Abs(config.ConfigDir)
+	if err != nil {
+		log.Fatalf("get absolute path for config dir failed: %s", err)
+	}
+	config.ConfigDir = configDir
+
+	dataDir, err := filepath.Abs(config.DataDir)
+	if err != nil {
+		log.Fatalf("get absolute path for data dir failed: %s", err)
+	}
+	config.DataDir = dataDir
 
 	return config, nil
 }

@@ -1,8 +1,9 @@
 package utils
 
 import (
-	maddr "github.com/multiformats/go-multiaddr"
 	"testing"
+
+	maddr "github.com/multiformats/go-multiaddr"
 )
 
 func TestStringsToAddrs(t *testing.T) {
@@ -19,5 +20,20 @@ func TestStringsToAddrs(t *testing.T) {
 		if !mitem.Equal(excepted[i]) {
 			t.Errorf("Test failed: %s not %s", mitem, excepted[i])
 		}
+	}
+}
+
+func TestGetRandomStr(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		s := GetRandomStr(i)
+		if len(s) != i {
+			t.Errorf("Test failed, len(%s) != %d", s, i)
+		}
+	}
+
+	a := GetRandomStr(10)
+	b := GetRandomStr(10)
+	if a == b {
+		t.Errorf("random two string are equal: %s, %s", a, b)
 	}
 }
