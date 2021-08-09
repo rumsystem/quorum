@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strings"
 	"syscall"
 
 	badgeroptions "github.com/dgraph-io/badger/v3/options"
@@ -45,6 +46,17 @@ var (
 	mainlog   = logging.Logger("main")
 )
 
+// reutrn EBUSY if LOCK is exist
+func checkLockError(err error) {
+	if err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "Another process is using this Badger database.") {
+			mainlog.Errorf(errStr)
+			os.Exit(16)
+		}
+	}
+}
+
 func mainRet(config cli.Config) int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -62,32 +74,29 @@ func mainRet(config cli.Config) int {
 	//Load node options
 	nodeoptions, err := options.Load(config.ConfigDir, peername)
 	if err != nil {
-		mainlog.Fatalf(err.Error())
 		cancel()
-		return 0
+		mainlog.Fatalf(err.Error())
 	}
 
 	//Load keys
 	keys, err := localcrypto.LoadKeysFrom(config.ConfigDir, peername, "txt")
 	if err != nil {
-		mainlog.Fatalf(err.Error())
 		cancel()
-		return 0
+		mainlog.Fatalf(err.Error())
 	}
 	peerid, err := peer.IDFromPublicKey(keys.PubKey)
 	if err != nil {
-		mainlog.Fatalf(err.Error())
 		cancel()
-		return 0
+		mainlog.Fatalf(err.Error())
 	}
 
 	mainlog.Infof("eth addresss: <%s>", keys.EthAddr)
 
 	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
+	checkLockError(err)
 	if err != nil {
-		mainlog.Fatalf(err.Error())
 		cancel()
-		return 0
+		mainlog.Fatalf(err.Error())
 	}
 
 	if config.IsBootstrap == true {
@@ -97,7 +106,6 @@ func mainRet(config cli.Config) int {
 
 		if err != nil {
 			mainlog.Fatalf(err.Error())
-			return 0
 		}
 
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
@@ -128,7 +136,10 @@ func mainRet(config cli.Config) int {
 		//}
 
 		datapath := config.DataDir + "/" + config.PeerName
-		chain.InitCtx(ctx, node, datapath, GitCommit)
+
+		err := chain.InitCtx(ctx, node, datapath, GitCommit)
+		checkLockError(err)
+
 		chain.GetChainCtx().Privatekey = keys.PrivKey
 		chain.GetChainCtx().PublicKey = keys.PubKey
 		chain.GetChainCtx().PeerId = peerid
@@ -142,11 +153,11 @@ func mainRet(config cli.Config) int {
 		err = chain.GetChainCtx().SyncAllGroup()
 		if err != nil {
 			mainlog.Fatalf(err.Error())
-			return 0
 		}
 
 		appdbopts := &chain.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
-		appdb := appdata.InitDb(datapath, appdbopts)
+		appdb, err := appdata.InitDb(datapath, appdbopts)
+		checkLockError(err)
 
 		//run local http api service
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx, GitCommit: GitCommit}
