@@ -72,19 +72,23 @@ func GetDbMgr() *DbMgr {
 	return dbMgr
 }
 
-func InitCtx(ctx context.Context, node *p2p.Node, dataPath string, gitcommit string) {
+func InitCtx(ctx context.Context, node *p2p.Node, dataPath string, gitcommit string) error {
 	chainCtx = &ChainCtx{}
 	chainCtx.node = node
 	dbMgr = &DbMgr{}
 	chainCtx.Groups = make(map[string]*GroupPoa)
 
 	dbopts := &DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: options.Snappy}
-	dbMgr.InitDb(dataPath, dbopts)
+	err := dbMgr.InitDb(dataPath, dbopts)
+	if err != nil {
+		return nil
+	}
 
 	chainCtx.TrxSignReq = 1
 	chainCtx.Status = NODE_OFFLINE
 	chainCtx.Ctx = ctx
 	chainCtx.Version = "ver 0.01"
+	return nil
 }
 
 func Release() {

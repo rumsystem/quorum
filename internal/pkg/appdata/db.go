@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/google/orderedcode"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
@@ -26,14 +27,14 @@ type AppDb struct {
 	DataPath string
 }
 
-func InitDb(datapath string, dbopts *chain.DbOption) *AppDb {
+func InitDb(datapath string, dbopts *chain.DbOption) (*AppDb, error) {
 	newdb, err := badger.Open(badger.DefaultOptions(datapath + "_appdb").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		appdatalog.Fatal(err.Error())
+		return nil, err
 	}
 	seq := make(map[string]*badger.Sequence)
 	appdatalog.Infof("Appdb initialized")
-	return &AppDb{Db: newdb, DataPath: datapath, seq: seq}
+	return &AppDb{Db: newdb, DataPath: datapath, seq: seq}, nil
 }
 
 func (appdb *AppDb) GetSeqId(seqkey string) (uint64, error) {

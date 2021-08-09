@@ -24,21 +24,22 @@ const GRP_PREFIX string = "grp_"
 const CNT_PREFIX string = "cnt_"
 const ATH_PREFIX string = "ath_"
 
-func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) {
+func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) error {
 	var err error
 	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		dbmgr_log.Fatal(err.Error())
+		return err
 	}
 
 	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression))
 	if err != nil {
-		dbmgr_log.Fatal(err.Error())
+		return err
 	}
 
 	dbMgr.DataPath = datapath
 
 	dbmgr_log.Infof("ChainCtx DbMgf initialized")
+	return nil
 }
 
 func (dbMgr *DbMgr) CloseDb() {
