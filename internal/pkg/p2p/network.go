@@ -124,6 +124,7 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 	}
 
 	options = append(options, pubsub.WithGossipSubProtocols(protos, features))
+	options = append(options, pubsub.WithPeerOutboundQueueSize(128))
 
 	ps, err = pubsub.NewGossipSub(ctx, host, options...)
 
