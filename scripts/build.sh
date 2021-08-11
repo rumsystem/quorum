@@ -2,7 +2,7 @@
 
 GIT_COMMIT=$(git rev-list -1 HEAD)
 
-for GOOS in linux darwin windows; do
+for GOOS in linux darwin windows freebsd; do
     for GOARCH in amd64; do
         if [[ "$GOOS" == "windows" ]]; then
             bin="quorum.exe"
