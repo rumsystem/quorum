@@ -392,6 +392,45 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
         200 ： {"GroupId":<GROUP_ID>,"Error":""}， GROUP_ID的组正常开始同步，同时组的状态会变为SYNCING
         500 ： {"GroupId":<GROUP_ID>,"Error":"GROUP_ALREADY_IN_SYNCING"}, GROUP_ID的组当前正在同步中
 
+    - Update Profile
+    
+    Update Users Profile .
+    
+    Post a Person Object to the target Group.
+    
+```
+    message Person {
+      string id = 1;
+      string name = 2;
+      Image image = 3;
+      repeated Payment wallet = 11;
+    }
+```
+    
+Example:
+
+    Update mixin Payment id
+
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Update","person":{"wallet":[ {"id":"2222-2222-2222","type":"mixin","name":"mixin messenger"} ]},"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/profile```
+
+    Update Profile Name
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Update","person":{"name":"HuoJu"},"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/profile```
+
+    Update Profile Avatar
+
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Update","person":{"name":"Rob","image":{"mediaType":"image/png", "content":"" }},"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/profile```
+
+    content is the image with  base64 encoding.
+
+    - Reply Object
+
+    Reply to a Object with trxid
+
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"reply to note a","name":" A TEST simple", "inreplyto":{ "trxid":"4308db96-56a7-4c0c-bde9-de182b0e6b6a"} },"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/content```
+
+
+
+
 
 App API:
 
