@@ -27,7 +27,7 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 		if inputobj.Type == Update {
 			if inputobj.Person != nil && inputobj.Target != nil {
 				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Person.Name != "" || inputobj.Person.Image != nil {
+					if inputobj.Person.Name != "" || inputobj.Person.Image != nil || inputobj.Person.Wallet != nil {
 						return nil
 					}
 					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Person must have name or image fields"))

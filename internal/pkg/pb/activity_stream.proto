@@ -63,6 +63,13 @@ message Person {
   string id = 1;
   string name = 2;
   Image image = 3;
+  repeated Payment wallet = 11;
+}
+
+message Payment {
+    string id = 1;
+    string type = 2;
+    string name = 3;
 }
 
 message Activity {
