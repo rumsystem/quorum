@@ -163,11 +163,7 @@ func mainRet(config cli.Config) int {
 		h := &api.Handler{Node: node, ChainCtx: chain.GetChainCtx(), Ctx: ctx, GitCommit: GitCommit}
 
 		apiaddress := "https://%s/api/v1"
-		if config.APIListenAddresses[:1] == ":" {
-			apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses)
-		} else {
-			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
-		}
+		apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses[strings.Index(config.APIListenAddresses, ":"):])
 		appsync := appdata.NewAppSyncAgent(apiaddress, appdb)
 		appsync.Start(10)
 		apph := &appapi.Handler{
