@@ -378,7 +378,6 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
 这里需要注意， nat_type和addrs都会改变，开始的时候没有公网地址，类型是Unknown 之后会变成Private，再过一段时间反向链接成功的话，就变成Public，同时Addrs里面出现公网地址。
 
     - 手动发起同步block
-
     客户端可以手动触发某个组和组内其他节点同步块
 
     例子：
@@ -391,6 +390,28 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
     返回值：
         200 ： {"GroupId":<GROUP_ID>,"Error":""}， GROUP_ID的组正常开始同步，同时组的状态会变为SYNCING
         500 ： {"GroupId":<GROUP_ID>,"Error":"GROUP_ALREADY_IN_SYNCING"}, GROUP_ID的组当前正在同步中
+
+    
+    - Update Profile    
+    Update Users Profile . 
+    Post a Person Object to the target Group.
+      
+    Update mixin Payment id
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Update","person":{"wallet":[ {"id":"2222-2222-2222","type":"mixin","name":"mixin messenger"} ]},"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/profile```
+
+    Update Profile Name
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Update","person":{"name":"HuoJu"},"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/profile```
+
+    Update Profile Avatar
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Update","person":{"name":"Rob","image":{"mediaType":"image/png", "content":"" }},"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/profile```
+
+    content is the image with  base64 encoding.
+
+    - Reply Object
+    Reply to a Object with trxid
+
+    ```curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"reply to note a","name":" A TEST simple", "inreplyto":{ "trxid":"4308db96-56a7-4c0c-bde9-de182b0e6b6a"} },"target":{"id":"b1b60370-9e96-41fb-84cc-4546d529ccc6","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/content```
+
 
 
 App API:

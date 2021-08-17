@@ -22,7 +22,7 @@ message Object {
   Object generator= 10;
   repeated Object icon = 11;
   repeated Image image = 12;
-  Object inReplyTo = 13;
+  Reply inreplyto = 13;
   Object location = 14;
   Object preview = 15;
   google.protobuf.Timestamp published = 16;
@@ -51,6 +51,12 @@ message Link {
   uint32 width = 7;
   Object preview =8;
 }
+
+message Reply {
+    string trxid = 1;
+    string  groupid  = 2;
+}
+
 message Image {
   string id = 1;
   string name = 2;
@@ -63,6 +69,13 @@ message Person {
   string id = 1;
   string name = 2;
   Image image = 3;
+  repeated Payment wallet = 11;
+}
+
+message Payment {
+    string id = 1;
+    string type = 2;
+    string name = 3;
 }
 
 message Activity {
