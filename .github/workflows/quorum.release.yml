@@ -1,0 +1,30 @@
+on: 
+  release:
+    types: [created]
+
+jobs:
+  releases-matrix:
+    name: Release Go Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # build and publish in parallel: linux/386, linux/amd64, windows/386, windows/amd64, darwin/amd64 
+        goos: [linux, windows, darwin]
+        goarch: ["386", amd64]
+        exclude:  
+          - goarch: "386"
+            goos: darwin 
+    steps:
+    - uses: actions/checkout@v2
+    - uses: chux0519/go-release-action@v2.1.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        # only needs to set following 2 secrets
+        signify_sec_key: ${{ secrets.SIGNIFY_SEC_KEY }}
+        signify_sec_key_pass: ${{ secrets.SIGNIFY_SEC_KEY_PASS }}
+        signify: TRUE
+        project_path: "./cmd"
+        binary_name: "quorum"
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
+        extra_files: README.md
