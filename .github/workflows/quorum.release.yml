@@ -24,6 +24,7 @@ jobs:
         signify_sec_key_pass: ${{ secrets.SIGNIFY_SEC_KEY_PASS }}
         signify: TRUE
         project_path: "./cmd"
+        binary_name: "quorum"
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
         extra_files: README.md
