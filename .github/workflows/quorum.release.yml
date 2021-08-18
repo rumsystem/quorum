@@ -16,7 +16,7 @@ jobs:
             goos: darwin 
     steps:
     - uses: actions/checkout@v2
-    - uses: chux0519/go-release-action@v2.1.0
+    - uses: chux0519/go-release-action@v2.2.1
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         # only needs to set following 2 secrets
@@ -24,6 +24,7 @@ jobs:
         signify_sec_key_pass: ${{ secrets.SIGNIFY_SEC_KEY_PASS }}
         signify: TRUE
         project_path: "./cmd"
+        build_command: "go build main.go"
         binary_name: "quorum"
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
