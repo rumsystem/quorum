@@ -1,4 +1,4 @@
-# RUM: The internet alternative 
+# RUM: The internet alternatives 
 
 ### An open source peer-to-peer application infrastructure to offer the internet alternatives in a decentralized and privacy oriented way.
 
