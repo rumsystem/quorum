@@ -25,7 +25,9 @@ import (
 	appapi "github.com/huo-ju/quorum/pkg/app/api"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	peerstore "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	_ "google.golang.org/protobuf/proto"     //import for swaggo
@@ -341,6 +343,49 @@ func main() {
 		return
 	}
 
+	if config.IsPing {
+		if len(config.BootstrapPeers) == 0 {
+			fmt.Println("Usage:", os.Args[0], "-ping", "-peer <peer> [-peer <peer> ...]")
+			return
+		}
+
+		// FIXME: hardcode
+		tcpAddr := "/ip4/127.0.0.1/tcp/0"
+		wsAddr := "/ip4/127.0.0.1/tcp/0/ws"
+		ctx := context.Background()
+		node, err := libp2p.New(
+			ctx,
+			libp2p.ListenAddrStrings(tcpAddr, wsAddr),
+			libp2p.Ping(false),
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		// configure our ping protocol
+		pingService := &p2p.PingService{Host: node}
+		node.SetStreamHandler(p2p.PingID, pingService.PingHandler)
+
+		for _, addr := range config.BootstrapPeers {
+			peer, err := peerstore.AddrInfoFromP2pAddr(addr)
+			if err != nil {
+				panic(err)
+			}
+
+			if err := node.Connect(ctx, *peer); err != nil {
+				panic(err)
+			}
+			ch := pingService.Ping(ctx, peer.ID)
+			fmt.Println()
+			fmt.Println("pinging remote peer at", addr)
+			for i := 0; i < 4; i++ {
+				res := <-ch
+				fmt.Println("PING", addr, "in", res.RTT)
+			}
+		}
+
+		return
+	}
 	if err := utils.EnsureDir(config.DataDir); err != nil {
 		panic(err)
 	}

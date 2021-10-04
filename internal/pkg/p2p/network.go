@@ -87,6 +87,7 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
 		libp2p.ConnectionManager(cmgr),
+		libp2p.Ping(false),
 		identity,
 	}
 
@@ -109,7 +110,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 	if err != nil {
 		return nil, err
 	}
-
+	// configure our own ping protocol
+	pingService := &PingService{Host: host}
+	host.SetStreamHandler(PingID, pingService.PingHandler)
 	options := []pubsub.Option{pubsub.WithPeerExchange(true)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
