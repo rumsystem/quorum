@@ -53,7 +53,7 @@ RUM uses a different approach to rebuild the online service. Users will control 
 
 ## Ecosystem (WIP)
 
-The [RUM tokens](https://etherscan.io/token/0x72313959c0346016bfba17fa29dcea109f3aa348) can be mined by anon-GPU proof of X algorithm with less energy consuming. After the mainnet launch, the chances of winning the reward is linked to the user's contribution to the network, including the data storage and network traffic.
+The [RUM tokens](https://etherscan.io/token/0x72313959c0346016bfba17fa29dcea109f3aa348) can be mined by a non-GPU proof of X algorithm with less energy consuming. After the mainnet launch, the chances of winning the reward is linked to the user's contribution to the network, including the data storage and network traffic.
 
 ### Why Do We Need RUM Tokens?
 
