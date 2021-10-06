@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	pubsubconn "github.com/huo-ju/quorum/internal/pkg/pubsubconn"
 	logging "github.com/ipfs/go-log/v2"
@@ -62,16 +63,16 @@ func (chain *Chain) Init(group *Group) error {
 	chain_log.Infof("Init called")
 	chain.group = group
 	chain.trxMgrs = make(map[string]*TrxMgr)
-	chain.nodename = GetNodeCtx().Name
+	chain.nodename = nodectx.GetNodeCtx().Name
 
 	//create user channel
 	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
 	chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
 
-	producerPsconn := pubsubconn.InitP2pPubSubConn(GetNodeCtx().Ctx, GetNodeCtx().node.Pubsub, GetNodeCtx().Name)
+	producerPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	producerPsconn.JoinChannel(chain.producerChannelId, chain)
 
-	userPsconn := pubsubconn.InitP2pPubSubConn(GetNodeCtx().Ctx, GetNodeCtx().node.Pubsub, GetNodeCtx().Name)
+	userPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	userPsconn.JoinChannel(chain.userChannelId, chain)
 
 	//create user trx manager
@@ -145,7 +146,7 @@ func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 }
 
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
-	if trx.Version != GetNodeCtx().Version {
+	if trx.Version != nodectx.GetNodeCtx().Version {
 		chain_log.Errorf("Trx Version mismatch %s", trx.TrxId)
 		return errors.New("Trx Version mismatch")
 	}
@@ -297,7 +298,7 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	chain_log.Infof("userAddBlock called")
 
 	//check if block is already in chain
-	isSaved, err := GetDbMgr().IsBlockExist(block.BlockId, false, chain.nodename)
+	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -307,7 +308,7 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	}
 
 	//check if block is in cache
-	isCached, err := GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
+	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -317,13 +318,13 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	}
 
 	//Save block to cache
-	err = GetDbMgr().AddBlock(block, true, chain.nodename)
+	err = nodectx.GetDbMgr().AddBlock(block, true, chain.nodename)
 	if err != nil {
 		return err
 	}
 
 	//check if parent of block exist
-	parentExist, err := GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
+	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -334,7 +335,7 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	}
 
 	//get parent block
-	parentBlock, err := GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
+	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -346,7 +347,7 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	}
 
 	//search cache, gather all blocks can be connected with this block
-	blocks, err := GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
+	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -367,12 +368,12 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	//move gathered blocks from cache to chain
 	for _, block := range blocks {
 		chain_log.Infof("Move block %s from cache to normal", block.BlockId)
-		err := GetDbMgr().AddBlock(block, false, chain.nodename)
+		err := nodectx.GetDbMgr().AddBlock(block, false, chain.nodename)
 		if err != nil {
 			return err
 		}
 
-		err = GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
+		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
 		if err != nil {
 			return err
 		}
@@ -407,7 +408,7 @@ func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
 	chain.group.Item.HighestHeight = newHeight
 	chain.group.Item.HighestBlockId = newHighestBlockId
 	chain.group.Item.LastUpdate = time.Now().UnixNano()
-	dbMgr.UpdGroup(chain.group.Item)
+	nodectx.GetDbMgr().UpdGroup(chain.group.Item)
 
 	chain_log.Infof("userAddBlock ended")
 
@@ -419,7 +420,7 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	chain_log.Infof("producerAddBlock called")
 
 	//check if block is already in chain
-	isSaved, err := GetDbMgr().IsBlockExist(block.BlockId, false, chain.nodename)
+	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -428,7 +429,7 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	}
 
 	//check if block is in cache
-	isCached, err := GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
+	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -438,12 +439,12 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	}
 
 	//Save block to cache
-	err = GetDbMgr().AddBlock(block, true, chain.nodename)
+	err = nodectx.GetDbMgr().AddBlock(block, true, chain.nodename)
 	if err != nil {
 		return err
 	}
 
-	parentExist, err := GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
+	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -454,7 +455,7 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	}
 
 	//get parent block
-	parentBlock, err := GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
+	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -466,7 +467,7 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	}
 
 	//search cache, gather all blocks can be connected with this block
-	blocks, err := GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
+	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -487,12 +488,12 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	//move blocks from cache to normal
 	for _, block := range blocks {
 		chain_log.Infof("Move block %s from cache to normal", block.BlockId)
-		err := GetDbMgr().AddBlock(block, false, chain.nodename)
+		err := nodectx.GetDbMgr().AddBlock(block, false, chain.nodename)
 		if err != nil {
 			return err
 		}
 
-		err = GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
+		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
 		if err != nil {
 			return err
 		}
@@ -506,7 +507,7 @@ func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
 	chain.group.Item.HighestHeight = newHeight
 	chain.group.Item.HighestBlockId = newHighestBlockId
 	chain.group.Item.LastUpdate = time.Now().UnixNano()
-	dbMgr.UpdGroup(chain.group.Item)
+	nodectx.GetDbMgr().UpdGroup(chain.group.Item)
 
 	return nil
 }
@@ -516,7 +517,7 @@ func (chain *Chain) recalChainHeight(blocks []*quorumpb.Block, currentHeight int
 	var highestBlockId []string
 	newHeight := currentHeight
 	for _, block := range blocks {
-		blockHeight, err := GetDbMgr().GetBlockHeight(block.BlockId, chain.nodename)
+		blockHeight, err := nodectx.GetDbMgr().GetBlockHeight(block.BlockId, chain.nodename)
 		if err != nil {
 			return -1, highestBlockId, err
 		}
@@ -558,7 +559,7 @@ func (chain *Chain) dfs(blocks []*quorumpb.Block, cache map[string]bool, result 
 		if _, ok := cache[block.BlockId]; !ok {
 			cache[block.BlockId] = true
 			result = append(result, block.BlockId)
-			subBlocks, err := GetDbMgr().GetSubBlock(block.BlockId, chain.nodename)
+			subBlocks, err := nodectx.GetDbMgr().GetSubBlock(block.BlockId, chain.nodename)
 			if err != nil {
 				return err
 			}
@@ -574,7 +575,7 @@ func (chain *Chain) getMyTrxs(blockIds []string) ([]*quorumpb.Trx, error) {
 	var trxs []*quorumpb.Trx
 
 	for _, blockId := range blockIds {
-		block, err := GetDbMgr().GetBlock(blockId, false, chain.nodename)
+		block, err := nodectx.GetDbMgr().GetBlock(blockId, false, chain.nodename)
 		if err != nil {
 			chain_log.Warnf(err.Error())
 			continue
@@ -624,7 +625,7 @@ func (chain *Chain) userApplyTrx(trxs []*quorumpb.Trx) error {
 	chain_log.Infof("applyTrxs called")
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := GetDbMgr().IsTrxExist(trx.TrxId, chain.nodename)
+		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, chain.nodename)
 		if err != nil {
 			chain_log.Infof(err.Error())
 			continue
@@ -632,7 +633,7 @@ func (chain *Chain) userApplyTrx(trxs []*quorumpb.Trx) error {
 
 		if isExist {
 			chain_log.Infof("Trx %s existed, update trx only", trx.TrxId)
-			GetDbMgr().AddTrx(trx)
+			nodectx.GetDbMgr().AddTrx(trx)
 			continue
 		}
 
@@ -665,27 +666,27 @@ func (chain *Chain) userApplyTrx(trxs []*quorumpb.Trx) error {
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
 			chain_log.Infof("Apply POST trx")
-			GetDbMgr().AddPost(trx, chain.nodename)
+			nodectx.GetDbMgr().AddPost(trx, chain.nodename)
 		case quorumpb.TrxType_AUTH:
 			chain_log.Infof("Apply AUTH trx")
-			GetDbMgr().UpdateBlkListItem(trx, chain.nodename)
+			nodectx.GetDbMgr().UpdateBlkListItem(trx, chain.nodename)
 		case quorumpb.TrxType_PRODUCER:
 			chain_log.Infof("Apply PRODUCER Trx")
-			GetDbMgr().UpdateProducer(trx, chain.nodename)
+			nodectx.GetDbMgr().UpdateProducer(trx, chain.nodename)
 			chain.updProducerList()
 			chain.updProducer()
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Infof("Apply ANNOUNCE trx")
-			GetDbMgr().UpdateAnnounce(trx, chain.nodename)
+			nodectx.GetDbMgr().UpdateAnnounce(trx, chain.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			chain_log.Infof("Apply SCHEMA trx ")
-			GetDbMgr().UpdateSchema(trx, chain.nodename)
+			nodectx.GetDbMgr().UpdateSchema(trx, chain.nodename)
 		default:
 			chain_log.Infof("Unsupported msgType %s", trx.Type)
 		}
 
 		//save trx to db
-		GetDbMgr().AddTrx(trx, chain.nodename)
+		nodectx.GetDbMgr().AddTrx(trx, chain.nodename)
 	}
 
 	return nil
@@ -695,7 +696,7 @@ func (chain *Chain) producerApplyTrxs(trxs []*quorumpb.Trx) error {
 	chain_log.Infof("applyTrxs called")
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := GetDbMgr().IsTrxExist(trx.TrxId, chain.nodename)
+		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, chain.nodename)
 		if err != nil {
 			chain_log.Infof(err.Error())
 			continue
@@ -703,7 +704,7 @@ func (chain *Chain) producerApplyTrxs(trxs []*quorumpb.Trx) error {
 
 		if isExist {
 			chain_log.Infof("Trx %s existed, update trx", trx.TrxId)
-			GetDbMgr().AddTrx(trx)
+			nodectx.GetDbMgr().AddTrx(trx)
 			continue
 		}
 
@@ -756,27 +757,27 @@ func (chain *Chain) producerApplyTrxs(trxs []*quorumpb.Trx) error {
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
 			chain_log.Infof("Apply POST trx")
-			GetDbMgr().AddPost(copiedTrx, chain.nodename)
+			nodectx.GetDbMgr().AddPost(copiedTrx, chain.nodename)
 		case quorumpb.TrxType_AUTH:
 			chain_log.Infof("Apply AUTH trx")
-			GetDbMgr().UpdateBlkListItem(copiedTrx, chain.nodename)
+			nodectx.GetDbMgr().UpdateBlkListItem(copiedTrx, chain.nodename)
 		case quorumpb.TrxType_PRODUCER:
 			chain_log.Infof("Apply PRODUCER Trx")
-			GetDbMgr().UpdateProducer(copiedTrx, chain.nodename)
+			nodectx.GetDbMgr().UpdateProducer(copiedTrx, chain.nodename)
 			chain.updProducerList()
 			chain.updProducer()
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Infof("Apply ANNOUNCE trx")
-			GetDbMgr().UpdateAnnounce(copiedTrx, chain.nodename)
+			nodectx.GetDbMgr().UpdateAnnounce(copiedTrx, chain.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			chain_log.Infof("Apply SCHEMA trx ")
-			GetDbMgr().UpdateSchema(copiedTrx, chain.nodename)
+			nodectx.GetDbMgr().UpdateSchema(copiedTrx, chain.nodename)
 		default:
 			chain_log.Infof("Unsupported msgType %s", copiedTrx.Type)
 		}
 
 		//save trx to db
-		GetDbMgr().AddTrx(copiedTrx, chain.nodename)
+		nodectx.GetDbMgr().AddTrx(copiedTrx, chain.nodename)
 	}
 
 	return nil
@@ -785,7 +786,7 @@ func (chain *Chain) producerApplyTrxs(trxs []*quorumpb.Trx) error {
 func (chain *Chain) updProducerList() {
 	//create and load group producer pool
 	chain.ProducerPool = make(map[string]*quorumpb.ProducerItem)
-	producers, _ := GetDbMgr().GetProducers(chain.group.Item.GroupId, chain.nodename)
+	producers, _ := nodectx.GetDbMgr().GetProducers(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range producers {
 		chain.ProducerPool[item.ProducerPubkey] = item
 		ownerPrefix := ""

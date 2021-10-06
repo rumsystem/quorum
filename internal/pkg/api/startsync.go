@@ -21,8 +21,8 @@ func (h *Handler) StartSync(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[groupid]; ok {
-
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupid]; ok {
 		if group.ChainCtx.Syncer.Status == chain.SYNCING_BACKWARD || group.ChainCtx.Syncer.Status == chain.SYNCING_FORWARD {
 			error_info := "GROUP_ALREADY_IN_SYNCING"
 			startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: error_info}

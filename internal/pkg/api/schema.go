@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -79,7 +80,8 @@ func (h *Handler) Schema(c echo.Context) (err error) {
 
 	item.Memo = paramspb.Type
 
-	if group, ok := chain.GetNodeCtx().Groups[item.GroupId]; !ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		output[ERROR_INFO] = "Can not find group"
 		return c.JSON(http.StatusBadRequest, output)
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
@@ -96,7 +98,7 @@ func (h *Handler) Schema(c echo.Context) (err error) {
 
 		//pbkeyByte, err := p2pcrypto.ConfigDecodeKey(item.GroupOwnerPubkey)
 		//signature, err := chain.Sign(hash, pbkeyByte)
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
 
 		if err != nil {

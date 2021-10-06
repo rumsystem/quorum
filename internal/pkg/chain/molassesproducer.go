@@ -11,6 +11,7 @@ import (
 
 	guuid "github.com/google/uuid"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -95,7 +96,7 @@ func (producer *MolassesProducer) produceBlock() {
 	sort.Strings(producer.grp.Item.HighestBlockId)
 	highestBlockIdWinner := producer.grp.Item.HighestBlockId[0]
 
-	topBlock, err := GetDbMgr().GetBlock(highestBlockIdWinner, false, producer.NodeName)
+	topBlock, err := nodectx.GetDbMgr().GetBlock(highestBlockIdWinner, false, producer.NodeName)
 	if err != nil {
 		molaproducer_log.Infof(err.Error())
 		return
@@ -246,7 +247,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
 
 	if isBlocked {
 		chain_log.Warning("user is blocked by group owner")
@@ -254,7 +255,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	subBlocks, err := GetDbMgr().GetSubBlock(reqBlockItem.BlockId, producer.NodeName)
+	subBlocks, err := nodectx.GetDbMgr().GetSubBlock(reqBlockItem.BlockId, producer.NodeName)
 
 	if err != nil {
 		return err
@@ -300,7 +301,7 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
 
 	if isBlocked {
 		molaproducer_log.Warning("user is blocked by group owner")
@@ -308,26 +309,26 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	isExist, err := GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, producer.NodeName)
+	isExist, err := nodectx.GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, producer.NodeName)
 	if err != nil {
 		return err
 	} else if !isExist {
 		return errors.New("Block not exist")
 	}
 
-	block, err := GetDbMgr().GetBlock(reqBlockItem.BlockId, false, producer.NodeName)
+	block, err := nodectx.GetDbMgr().GetBlock(reqBlockItem.BlockId, false, producer.NodeName)
 	if err != nil {
 		return err
 	}
 
-	isParentExit, err := GetDbMgr().IsParentExist(block.PrevBlockId, false, producer.NodeName)
+	isParentExit, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, producer.NodeName)
 	if err != nil {
 		return err
 	}
 
 	if isParentExit {
 		molaproducer_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
-		parentBlock, err := GetDbMgr().GetParentBlock(reqBlockItem.BlockId, producer.NodeName)
+		parentBlock, err := nodectx.GetDbMgr().GetParentBlock(reqBlockItem.BlockId, producer.NodeName)
 		if err != nil {
 			return err
 		}

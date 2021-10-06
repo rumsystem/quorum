@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	"github.com/huo-ju/quorum/internal/pkg/p2p"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -18,18 +18,18 @@ type NodeInfo struct {
 }
 
 func updateNodeStatus() {
-	peersprotocol := chain.GetNodeCtx().PeersProtocol()
+	peersprotocol := nodectx.GetNodeCtx().PeersProtocol()
 	for protocol, peerlist := range *peersprotocol {
 
 		if strings.HasPrefix(protocol, fmt.Sprintf("%s/meshsub", p2p.ProtocolPrefix)) {
 			if len(peerlist) > 0 {
-				chain.GetNodeCtx().UpdateOnlineStatus(chain.NODE_ONLINE)
+				nodectx.GetNodeCtx().UpdateOnlineStatus(nodectx.NODE_ONLINE)
 				return
 			}
 		}
 	}
-	if chain.GetNodeCtx().Status != chain.NODE_OFFLINE {
-		chain.GetNodeCtx().UpdateOnlineStatus(chain.NODE_OFFLINE)
+	if nodectx.GetNodeCtx().Status != nodectx.NODE_OFFLINE {
+		nodectx.GetNodeCtx().UpdateOnlineStatus(nodectx.NODE_OFFLINE)
 	}
 }
 
@@ -43,25 +43,25 @@ func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 
 	output := make(map[string]interface{})
 
-	output[NODE_VERSION] = chain.GetNodeCtx().Version + " - " + h.GitCommit
+	output[NODE_VERSION] = nodectx.GetNodeCtx().Version + " - " + h.GitCommit
 	output[NODETYPE] = "peer"
 	updateNodeStatus()
-	if chain.GetNodeCtx().Status == chain.NODE_ONLINE {
+	if nodectx.GetNodeCtx().Status == nodectx.NODE_ONLINE {
 		output[NODE_STATUS] = "NODE_ONLINE"
 	} else {
 		output[NODE_STATUS] = "NODE_OFFLINE"
 	}
 
-	pubkeybytes, err := p2pcrypto.MarshalPublicKey(chain.GetNodeCtx().PublicKey)
+	pubkeybytes, err := p2pcrypto.MarshalPublicKey(nodectx.GetNodeCtx().PublicKey)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
 	output[NODE_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	output[NODE_ID] = chain.GetNodeCtx().PeerId.Pretty()
+	output[NODE_ID] = nodectx.GetNodeCtx().PeerId.Pretty()
 
-	peers := chain.GetNodeCtx().PeersProtocol()
+	peers := nodectx.GetNodeCtx().PeersProtocol()
 	output[PEERS] = *peers
 
 	return c.JSON(http.StatusOK, output)

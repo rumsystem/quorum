@@ -3,6 +3,7 @@ package appdata
 import (
 	"github.com/huo-ju/quorum/internal/pkg/chain"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/huo-ju/quorum/internal/pkg/storage"
 	logging "github.com/ipfs/go-log/v2"
 	"sort"
 	"strings"
@@ -13,19 +14,21 @@ var appsynclog = logging.Logger("appsync")
 
 type AppSync struct {
 	appdb    *AppDb
-	dbmgr    *chain.DbMgr
+	dbmgr    *storage.DbMgr
+	groupmgr *chain.GroupMgr
 	apiroot  string
 	nodename string
 }
 
-func NewAppSyncAgent(apiroot string, nodename string, appdb *AppDb, dbmgr *chain.DbMgr) *AppSync {
-	appsync := &AppSync{appdb, dbmgr, apiroot, nodename}
+func NewAppSyncAgent(apiroot string, nodename string, appdb *AppDb, dbmgr *storage.DbMgr) *AppSync {
+	groupmgr := chain.GetGroupMgr()
+	appsync := &AppSync{appdb, dbmgr, groupmgr, apiroot, nodename}
 	return appsync
 }
 
 func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
 	var items []*quorumpb.GroupItem
-	for _, grp := range chain.GetNodeCtx().Groups {
+	for _, grp := range appsync.groupmgr.Groups {
 		items = append(items, grp.Item)
 	}
 	return items

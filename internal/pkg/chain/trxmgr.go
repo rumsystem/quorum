@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	pubsubconn "github.com/huo-ju/quorum/internal/pkg/pubsubconn"
 	logging "github.com/ipfs/go-log/v2"
@@ -52,7 +53,7 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	if msgType == quorumpb.TrxType_POST && trxMgr.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
 		var err error
-		announcedUser, err := GetDbMgr().GetAnnouncedUsers(trxMgr.groupItem.GroupId)
+		announcedUser, err := nodectx.GetDbMgr().GetAnnouncedUsers(trxMgr.groupItem.GroupId)
 
 		var pubkeys []string
 		for _, item := range announcedUser {
@@ -79,7 +80,7 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	trx.Data = encryptdData
 
 	trx.TimeStamp = time.Now().UnixNano()
-	trx.Version = GetNodeCtx().Version
+	trx.Version = nodectx.GetNodeCtx().Version
 	timein := time.Now().Local().Add(time.Hour*time.Duration(Hours) +
 		time.Minute*time.Duration(Mins) +
 		time.Second*time.Duration(Sec))
@@ -99,7 +100,7 @@ func (trxMgr *TrxMgr) CreateTrx(msgType quorumpb.TrxType, data []byte) (*quorump
 	if err != nil {
 		return trx, err
 	}
-	ks := GetNodeCtx().Keystore
+	ks := nodectx.GetNodeCtx().Keystore
 	keyname := trxMgr.groupItem.GroupId
 	if trxMgr.nodename != "" {
 		keyname = fmt.Sprintf("%s_%s", trxMgr.nodename, trxMgr.groupItem.GroupId)

@@ -17,6 +17,7 @@ import (
 	guuid "github.com/google/uuid"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
@@ -76,7 +77,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 
 		var groupSignPubkey []byte
 		var p2ppubkey p2pcrypto.PubKey
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(groupid.String(), localcrypto.Sign)
@@ -171,7 +172,8 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		chain.GetNodeCtx().Groups[group.Item.GroupId] = group
+		groupmgr := chain.GetGroupMgr()
+		groupmgr.Groups[group.Item.GroupId] = group
 
 		//create result
 		var buffer bytes.Buffer

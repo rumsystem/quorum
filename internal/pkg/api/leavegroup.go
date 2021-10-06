@@ -46,7 +46,8 @@ func (h *Handler) LeaveGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[params.GroupId]; ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[params.GroupId]; ok {
 		err := group.LeaveGrp()
 
 		if err != nil {
@@ -54,9 +55,7 @@ func (h *Handler) LeaveGroup(c echo.Context) (err error) {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		delete(chain.GetNodeCtx().Groups, params.GroupId)
-
-		//pubkeybytes, err := p2pcrypto.MarshalPublicKey(chain.GetNodeCtx().PublicKey)
+		delete(groupmgr.Groups, params.GroupId)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

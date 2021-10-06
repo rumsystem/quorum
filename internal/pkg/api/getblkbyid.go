@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	_ "github.com/huo-ju/quorum/internal/pkg/pb" //import for swaggo
 	"github.com/labstack/echo/v4"
 )
@@ -32,7 +33,8 @@ func (h *Handler) GetBlockById(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[groupid]; ok {
+	groupmgr := chain.InitGroupMgr(nodectx.GetDbMgr())
+	if group, ok := groupmgr.Groups[groupid]; ok {
 		block, err := group.GetBlock(blockid)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

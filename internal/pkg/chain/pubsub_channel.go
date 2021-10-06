@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -22,7 +23,7 @@ func (channel *PubsubChannel) JoinChannel(cId string, chain *Chain) error {
 	channel.chain = chain
 
 	var err error
-	channel.Topic, err = GetNodeCtx().node.Pubsub.Join(cId)
+	channel.Topic, err = nodectx.GetNodeCtx().Node.Pubsub.Join(cId)
 	if err != nil {
 		channel_log.Infof("Join <%s> failed", cId)
 		return err
@@ -45,12 +46,12 @@ func (channel *PubsubChannel) JoinChannel(cId string, chain *Chain) error {
 }
 
 func (channel *PubsubChannel) Publish(data []byte) error {
-	return channel.Topic.Publish(GetNodeCtx().Ctx, data)
+	return channel.Topic.Publish(nodectx.GetNodeCtx().Ctx, data)
 }
 
 func (channel *PubsubChannel) handleGroupChannel() error {
 	for {
-		msg, err := channel.Subscription.Next(GetNodeCtx().Ctx)
+		msg, err := channel.Subscription.Next(nodectx.GetNodeCtx().Ctx)
 		if err == nil {
 			var pkg quorumpb.Package
 			err = proto.Unmarshal(msg.Data, &pkg)
@@ -70,7 +71,7 @@ func (channel *PubsubChannel) handleGroupChannel() error {
 					trx = &quorumpb.Trx{}
 					err := proto.Unmarshal(pkg.Data, trx)
 					if err == nil {
-						if trx.Version != GetNodeCtx().Version {
+						if trx.Version != nodectx.GetNodeCtx().Version {
 							channel_log.Infof("Version mismatch")
 						} else {
 							channel.chain.HandleTrx(trx)

@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/huo-ju/quorum/internal/pkg/chain"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
@@ -48,7 +49,8 @@ func (h *Handler) RmGroup(c echo.Context) (err error) {
 	}
 
 	shouldRemove := false
-	if group, ok := chain.GetNodeCtx().Groups[params.GroupId]; ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[params.GroupId]; ok {
 		err := group.DelGrp()
 
 		if err != nil {
@@ -63,11 +65,11 @@ func (h *Handler) RmGroup(c echo.Context) (err error) {
 	}
 
 	if shouldRemove {
-		delete(chain.GetNodeCtx().Groups, params.GroupId)
+		delete(groupmgr.Groups, params.GroupId)
 	}
 
 	var groupSignPubkey []byte
-	ks := chain.GetNodeCtx().Keystore
+	ks := nodectx.GetNodeCtx().Keystore
 	dirks, ok := ks.(*localcrypto.DirKeyStore)
 	if ok == true {
 		//use "default" key for all groups

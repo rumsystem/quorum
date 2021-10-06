@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 )
 
 type GrpProducerResult struct {
@@ -53,7 +54,8 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[params.GroupId]; !ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
 		output[ERROR_INFO] = "Can not find group"
 		return c.JSON(http.StatusBadRequest, output)
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
@@ -72,7 +74,7 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		buffer.Write([]byte(item.GroupOwnerPubkey))
 		hash := chain.Hash(buffer.Bytes())
 
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
 
 		if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -235,7 +236,7 @@ func (syncer *Syncer) stopWaitBlock() {
 }
 
 func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (string, error) {
-	blk, err := GetDbMgr().GetBlock(blockid, false, syncer.nodeName)
+	blk, err := nodectx.GetDbMgr().GetBlock(blockid, false, syncer.nodeName)
 	if err != nil {
 		return "", err
 	}

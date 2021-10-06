@@ -6,8 +6,8 @@ import (
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/google/orderedcode"
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/huo-ju/quorum/internal/pkg/storage"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -27,7 +27,7 @@ type AppDb struct {
 	DataPath string
 }
 
-func InitDb(datapath string, dbopts *chain.DbOption) (*AppDb, error) {
+func InitDb(datapath string, dbopts *storage.DbOption) (*AppDb, error) {
 	newdb, err := badger.Open(badger.DefaultOptions(datapath + "_appdb").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		return nil, err

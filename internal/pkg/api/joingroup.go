@@ -11,6 +11,7 @@ import (
 	"time"
 
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	"github.com/huo-ju/quorum/internal/pkg/options"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 
@@ -80,7 +81,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		nodeoptions := options.GetNodeOptions()
 
 		var groupSignPubkey []byte
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
@@ -228,7 +229,8 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		}
 
 		//add group to context
-		chain.GetNodeCtx().Groups[group.Item.GroupId] = group
+		groupmgr := chain.GetGroupMgr()
+		groupmgr.Groups[group.Item.GroupId] = group
 
 		var bufferResult bytes.Buffer
 		bufferResult.Write(genesisBlockBytes)

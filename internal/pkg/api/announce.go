@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/huo-ju/quorum/internal/pkg/chain"
 	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 )
@@ -57,12 +58,13 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 	item.Action = params.Action
 	item.Type = params.Type // "userpubkey"
 
-	if group, ok := chain.GetNodeCtx().Groups[item.GroupId]; !ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		output[ERROR_INFO] = "Can not find group"
 		return c.JSON(http.StatusBadRequest, output)
 	} else {
 
-		item.AnnouncedPubkey, err = chain.GetNodeCtx().Keystore.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
+		item.AnnouncedPubkey, err = nodectx.GetNodeCtx().Keystore.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -73,7 +75,7 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 		buffer.Write([]byte(item.Type))
 		buffer.Write([]byte(item.Action))
 		hash := chain.Hash(buffer.Bytes())
-		signature, err := chain.GetNodeCtx().Keystore.SignByKeyName(item.GroupId, hash)
+		signature, err := nodectx.GetNodeCtx().Keystore.SignByKeyName(item.GroupId, hash)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

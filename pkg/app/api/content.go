@@ -61,9 +61,9 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue
 		}
-		ctnobj, typeurl, err := quorumpb.BytesToMessage(trx.TrxId, trx.Data)
-		if err != nil {
-			c.Logger().Errorf("Unmarshal trx.Data %s Err: %s", trx.TrxId, err)
+		ctnobj, typeurl, errum := quorumpb.BytesToMessage(trx.TrxId, trx.Data)
+		if errum != nil {
+			c.Logger().Errorf("Unmarshal trx.Data %s Err: %s", trx.TrxId, errum)
 		}
 		ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: trx.SenderPubkey, Content: ctnobj, TimeStamp: trx.TimeStamp, TypeUrl: typeurl}
 		ctnobjList = append(ctnobjList, ctnobjitem)

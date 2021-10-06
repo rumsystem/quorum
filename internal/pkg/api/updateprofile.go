@@ -60,7 +60,8 @@ func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[paramspb.Target.Id]; ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
 		if paramspb.Person.Image != nil {
 			_, formatname, err := image.Decode(bytes.NewReader(paramspb.Person.Image.Content))
 			if err != nil {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -47,7 +48,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	grp.Init(item)
 
-	err := GetDbMgr().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
+	err := nodectx.GetDbMgr().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	buffer.Write([]byte(pItem.GroupOwnerPubkey))
 	hash := Hash(buffer.Bytes())
 
-	ks := GetNodeCtx().Keystore
+	ks := nodectx.GetNodeCtx().Keystore
 	signature, err := ks.SignByKeyName(item.GroupId, hash)
 	if err != nil {
 		return err
@@ -76,7 +77,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	pItem.Memo = "Owner Registrate as the first oroducer"
 	pItem.TimeStamp = time.Now().UnixNano()
 
-	err = GetDbMgr().AddProducer(pItem, grp.ChainCtx.nodename)
+	err = nodectx.GetDbMgr().AddProducer(pItem, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
@@ -84,7 +85,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	//reload producers
 	grp.ChainCtx.LoadProducer()
 
-	return GetDbMgr().AddGroup(grp.Item)
+	return nodectx.GetDbMgr().AddGroup(grp.Item)
 
 }
 
@@ -100,7 +101,7 @@ func (grp *Group) DelGrp() error {
 		return err
 	}
 
-	return GetDbMgr().RmGroup(grp.Item)
+	return nodectx.GetDbMgr().RmGroup(grp.Item)
 }
 
 func (grp *Group) LeaveGrp() error {
@@ -115,7 +116,7 @@ func (grp *Group) LeaveGrp() error {
 		return err
 	}
 
-	return GetDbMgr().RmGroup(grp.Item)
+	return nodectx.GetDbMgr().RmGroup(grp.Item)
 }
 
 func (grp *Group) clearGroup() error {
@@ -146,7 +147,7 @@ func (grp *Group) StartSync() error {
 	}
 
 	for _, blockId := range grp.ChainCtx.group.Item.HighestBlockId {
-		topBlock, err := GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
+		topBlock, err := nodectx.GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
 		if err != nil {
 			group_log.Warningf("Get top block error, blockId %s at %s, %s", blockId, grp.ChainCtx.nodename, err.Error())
 			return err
@@ -169,25 +170,25 @@ func (grp *Group) StopSync() error {
 
 func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
 	group_log.Infof("GetGroupCtn called")
-	return GetDbMgr().GetGrpCtnt(grp.Item.GroupId, filter, grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetGrpCtnt(grp.Item.GroupId, filter, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 	group_log.Infof("GetBlock called")
-	return GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
 	group_log.Infof("GetTrx called")
-	return GetDbMgr().GetTrx(trxId, grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetTrx(trxId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetBlockedUser() ([]*quorumpb.DenyUserItem, error) {
 	group_log.Infof("GetBlockedUser called")
-	return GetDbMgr().GetBlkedUsers(grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetBlkedUsers(grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	group_log.Infof("GetProducers called")
-	return GetDbMgr().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
