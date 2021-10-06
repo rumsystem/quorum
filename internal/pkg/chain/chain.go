@@ -41,7 +41,7 @@ func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn
 
 	chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
 	producerTrxMgr := &TrxMgr{}
-	producerTrxMgr.Init(chain.group, producerPubsubconn)
+	producerTrxMgr.Init(chain.group.Item, producerPubsubconn)
 	producerTrxMgr.SetNodeName(nodename)
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
@@ -50,7 +50,7 @@ func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn
 
 	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
 	userTrxMgr := &TrxMgr{}
-	userTrxMgr.Init(chain.group, userPubsubconn)
+	userTrxMgr.Init(chain.group.Item, userPubsubconn)
 	userTrxMgr.SetNodeName(nodename)
 	chain.trxMgrs[chain.userChannelId] = userTrxMgr
 
@@ -77,12 +77,12 @@ func (chain *Chain) Init(group *Group) error {
 	//create user trx manager
 	var userTrxMgr *TrxMgr
 	userTrxMgr = &TrxMgr{}
-	userTrxMgr.Init(chain.group, userPsconn)
+	userTrxMgr.Init(chain.group.Item, userPsconn)
 	chain.trxMgrs[chain.userChannelId] = userTrxMgr
 
 	var producerTrxMgr *TrxMgr
 	producerTrxMgr = &TrxMgr{}
-	producerTrxMgr.Init(chain.group, producerPsconn)
+	producerTrxMgr.Init(chain.group.Item, producerPsconn)
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
 	chain.Syncer = &Syncer{nodeName: chain.nodename}

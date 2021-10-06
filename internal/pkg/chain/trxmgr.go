@@ -22,15 +22,15 @@ const (
 )
 
 type TrxMgr struct {
-	nodename string
-	group    *Group
-	psconn   pubsubconn.PubSubConn
+	nodename  string
+	groupItem *quorumpb.GroupItem
+	psconn    pubsubconn.PubSubConn
 }
 
 var trxmgr_log = logging.Logger("trx_mgr")
 
-func (trxMgr *TrxMgr) Init(grp *Group, psconn pubsubconn.PubSubConn) {
-	trxMgr.group = grp
+func (trxMgr *TrxMgr) Init(groupItem *quorumpb.GroupItem, psconn pubsubconn.PubSubConn) {
+	trxMgr.groupItem = groupItem
 	trxMgr.psconn = psconn
 }
 
@@ -44,15 +44,15 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	trxId := guuid.New()
 	trx.TrxId = trxId.String()
 	trx.Type = msgType
-	trx.GroupId = trxMgr.group.Item.GroupId
-	trx.SenderPubkey = trxMgr.group.Item.UserSignPubkey
+	trx.GroupId = trxMgr.groupItem.GroupId
+	trx.SenderPubkey = trxMgr.groupItem.UserSignPubkey
 
 	var encryptdData []byte
 
-	if msgType == quorumpb.TrxType_POST && trxMgr.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+	if msgType == quorumpb.TrxType_POST && trxMgr.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
 		var err error
-		announcedUser, err := GetDbMgr().GetAnnouncedUsers(trxMgr.group.Item.GroupId)
+		announcedUser, err := GetDbMgr().GetAnnouncedUsers(trxMgr.groupItem.GroupId)
 
 		var pubkeys []string
 		for _, item := range announcedUser {
@@ -66,7 +66,7 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 		}
 	} else {
 		var err error
-		ciperKey, err := hex.DecodeString(trxMgr.group.Item.CipherKey)
+		ciperKey, err := hex.DecodeString(trxMgr.groupItem.CipherKey)
 		if err != nil {
 			return &trx, []byte(""), err
 		}
@@ -100,9 +100,9 @@ func (trxMgr *TrxMgr) CreateTrx(msgType quorumpb.TrxType, data []byte) (*quorump
 		return trx, err
 	}
 	ks := GetNodeCtx().Keystore
-	keyname := trxMgr.group.Item.GroupId
+	keyname := trxMgr.groupItem.GroupId
 	if trxMgr.nodename != "" {
-		keyname = fmt.Sprintf("%s_%s", trxMgr.nodename, trxMgr.group.Item.GroupId)
+		keyname = fmt.Sprintf("%s_%s", trxMgr.nodename, trxMgr.groupItem.GroupId)
 	}
 	signature, err := ks.SignByKeyName(keyname, hashed)
 
@@ -218,7 +218,7 @@ func (trxMgr *TrxMgr) SendReqBlockResp(req *quorumpb.ReqBlock, block *quorumpb.B
 
 	var reqBlockRespItem quorumpb.ReqBlockResp
 	reqBlockRespItem.Result = result
-	reqBlockRespItem.ProviderPubkey = trxMgr.group.Item.UserSignPubkey
+	reqBlockRespItem.ProviderPubkey = trxMgr.groupItem.UserSignPubkey
 	reqBlockRespItem.RequesterPubkey = req.UserId
 	reqBlockRespItem.GroupId = req.GroupId
 	reqBlockRespItem.BlockId = req.BlockId
@@ -250,7 +250,7 @@ func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
 	var reqBlockItem quorumpb.ReqBlock
 	reqBlockItem.BlockId = block.BlockId
 	reqBlockItem.GroupId = block.GroupId
-	reqBlockItem.UserId = trxMgr.group.Item.UserSignPubkey
+	reqBlockItem.UserId = trxMgr.groupItem.UserSignPubkey
 
 	bItemBytes, err := proto.Marshal(&reqBlockItem)
 	if err != nil {
@@ -273,7 +273,7 @@ func (trxMgr *TrxMgr) SendReqBlockBackward(block *quorumpb.Block) error {
 	var reqBlockItem quorumpb.ReqBlock
 	reqBlockItem.BlockId = block.BlockId
 	reqBlockItem.GroupId = block.GroupId
-	reqBlockItem.UserId = trxMgr.group.Item.UserSignPubkey
+	reqBlockItem.UserId = trxMgr.groupItem.UserSignPubkey
 
 	bItemBytes, err := proto.Marshal(&reqBlockItem)
 	if err != nil {
