@@ -102,7 +102,7 @@ func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
 
 		item.GroupOwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.ChainCtx.UpdBlkList(item)
+		trxId, err := group.UpdBlkList(item)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

@@ -195,7 +195,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 
 	mergeTimer := time.NewTimer(MERGE_TIMER * time.Second)
 	t := <-mergeTimer.C
-	chain_log.Infof("%s merge timer ticker...%s", producer.NodeName, t.UTC().String())
+	molaproducer_log.Infof("%s merge timer ticker...%s", producer.NodeName, t.UTC().String())
 
 	candidateBlkid := ""
 	var oHash []byte
@@ -208,17 +208,17 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		}
 	}
 
-	chain_log.Debugf("Candidate block decided, block Id : %s", candidateBlkid)
-	err := producer.grp.ChainCtx.ProducerAddBlock(producer.blockPool[candidateBlkid])
+	molaproducer_log.Debugf("Candidate block decided, block Id : %s", candidateBlkid)
+	err := producer.AddBlock(producer.blockPool[candidateBlkid])
 
 	if err != nil {
-		chain_log.Errorf("save block %s error %s", candidateBlkid, err)
+		molaproducer_log.Errorf("save block %s error %s", candidateBlkid, err)
 	} else {
-		chain_log.Debugf("saved, HighestHeight: %d Highestblkid: %s", producer.grp.Item.HighestHeight, producer.grp.Item.HighestBlockId)
-		chain_log.Infof("Send new block out")
+		molaproducer_log.Debugf("saved, HighestHeight: %d Highestblkid: %s", producer.grp.Item.HighestHeight, producer.grp.Item.HighestBlockId)
+		molaproducer_log.Infof("Send new block out")
 		err := producer.trxMgr[producer.grp.ChainCtx.userChannelId].SendBlock(producer.blockPool[candidateBlkid])
 		if err != nil {
-			chain_log.Warnf(err.Error())
+			molaproducer_log.Warnf(err.Error())
 		}
 	}
 
@@ -250,7 +250,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
 
 	if isBlocked {
-		chain_log.Warning("user is blocked by group owner")
+		molaproducer_log.Warning("user is blocked by group owner")
 		err := errors.New("user auth failed")
 		return err
 	}
@@ -263,10 +263,10 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 
 	if len(subBlocks) != 0 {
 		for _, block := range subBlocks {
-			chain_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
+			molaproducer_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)")
 			err := producer.trxMgr[producer.grp.ChainCtx.producerChannelId].SendReqBlockResp(&reqBlockItem, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 			if err != nil {
-				chain_log.Warnf(err.Error())
+				molaproducer_log.Warnf(err.Error())
 			}
 		}
 		return nil
@@ -276,7 +276,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 		//set producer pubkey of empty block
 		emptyBlock.BlockId = guuid.New().String()
 		emptyBlock.ProducerPubKey = producer.grp.Item.UserSignPubkey
-		chain_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)")
+		molaproducer_log.Infof("send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)")
 		return producer.trxMgr[producer.grp.ChainCtx.producerChannelId].SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
 	}
 }
@@ -351,4 +351,186 @@ func (producer *MolassesProducer) isSyncing() bool {
 	}
 
 	return false
+}
+
+//addBlock for producer
+func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
+	molaproducer_log.Infof("producerAddBlock called")
+
+	//check if block is already in chain
+	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, producer.NodeName)
+	if err != nil {
+		return err
+	}
+	if isSaved {
+		return errors.New("Block already saved, ignore")
+	}
+
+	//check if block is in cache
+	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, producer.NodeName)
+	if err != nil {
+		return err
+	}
+
+	if isCached {
+		return errors.New("Block already cached, ignore")
+	}
+
+	//Save block to cache
+	err = nodectx.GetDbMgr().AddBlock(block, true, producer.NodeName)
+	if err != nil {
+		return err
+	}
+
+	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, producer.NodeName)
+	if err != nil {
+		return err
+	}
+
+	if !parentExist {
+		molaproducer_log.Infof("Block Parent not exist, sync backward")
+		return errors.New("PARENT_NOT_EXIST")
+	}
+
+	//get parent block
+	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, producer.NodeName)
+	if err != nil {
+		return err
+	}
+
+	//valid block with parent block
+	valid, err := IsBlockValid(block, parentBlock)
+	if !valid {
+		return err
+	}
+
+	//search cache, gather all blocks can be connected with this block
+	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, producer.NodeName)
+	if err != nil {
+		return err
+	}
+
+	//get all trxs in those new blocks
+	var trxs []*quorumpb.Trx
+	trxs, err = GetAllTrxs(blocks)
+	if err != nil {
+		return err
+	}
+
+	//apply those trxs
+	err = producer.applyTrxs(trxs)
+	if err != nil {
+		return err
+	}
+
+	//move blocks from cache to normal
+	for _, block := range blocks {
+		molaproducer_log.Infof("Move block %s from cache to normal", block.BlockId)
+		err := nodectx.GetDbMgr().AddBlock(block, false, producer.NodeName)
+		if err != nil {
+			return err
+		}
+
+		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, producer.NodeName)
+		if err != nil {
+			return err
+		}
+	}
+
+	molaproducer_log.Infof("height before recal: %d", producer.grp.Item.HighestHeight)
+	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, producer.grp.Item.HighestHeight, producer.NodeName)
+	molaproducer_log.Infof("new height %d, new highest blockId %v", newHeight, newHighestBlockId)
+
+	return producer.grp.ChainCtx.group.ChainCtx.UpdChainInfo(newHeight, newHighestBlockId)
+}
+
+func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
+	molaproducer_log.Infof("applyTrxs called")
+	for _, trx := range trxs {
+		//check if trx already applied
+		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, producer.NodeName)
+		if err != nil {
+			molaproducer_log.Infof(err.Error())
+			continue
+		}
+
+		if isExist {
+			molaproducer_log.Infof("Trx %s existed, update trx", trx.TrxId)
+			nodectx.GetDbMgr().AddTrx(trx)
+			continue
+		}
+
+		//make deep copy trx to avoid modify data of the original trx
+		var copiedTrx *quorumpb.Trx
+		copiedTrx = &quorumpb.Trx{}
+		copiedTrx.TrxId = trx.TrxId
+		copiedTrx.Type = trx.Type
+		copiedTrx.GroupId = trx.GroupId
+		copiedTrx.TimeStamp = trx.TimeStamp
+		copiedTrx.Version = trx.Version
+		copiedTrx.Expired = trx.Expired
+		copiedTrx.ResendCount = trx.ResendCount
+		copiedTrx.Nonce = trx.Nonce
+		copiedTrx.SenderPubkey = trx.SenderPubkey
+		copiedTrx.SenderSign = trx.SenderSign
+
+		if trx.Type == quorumpb.TrxType_POST && producer.grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+			//for post, private group, encrypted by pgp for all announced group user
+			//just try decrypt it, if failed, save the original encrypted data
+			//the reason for that is, for private group, before owner add producer, owner is the only producer,
+			//since owner also needs to show POST data, and all announced user will encrypt for owner pubkey
+			//owner can actually decrypt POST
+			//for other producer, they can not decrpyt POST
+			ks := localcrypto.GetKeystore()
+			decryptData, err := ks.Decrypt(producer.grp.Item.UserEncryptPubkey, trx.Data)
+			if err != nil {
+				copiedTrx.Data = trx.Data
+			} else {
+				copiedTrx.Data = decryptData
+			}
+
+		} else {
+			//decode trx data
+			ciperKey, err := hex.DecodeString(producer.grp.Item.CipherKey)
+			if err != nil {
+				return err
+			}
+
+			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+			if err != nil {
+				return err
+			}
+
+			copiedTrx.Data = decryptData
+		}
+
+		molaproducer_log.Infof("try apply trx %s", trx.TrxId)
+		//apply trx content
+		switch trx.Type {
+		case quorumpb.TrxType_POST:
+			molaproducer_log.Infof("Apply POST trx")
+			nodectx.GetDbMgr().AddPost(copiedTrx, producer.NodeName)
+		case quorumpb.TrxType_AUTH:
+			molaproducer_log.Infof("Apply AUTH trx")
+			nodectx.GetDbMgr().UpdateBlkListItem(copiedTrx, producer.NodeName)
+		case quorumpb.TrxType_PRODUCER:
+			molaproducer_log.Infof("Apply PRODUCER Trx")
+			nodectx.GetDbMgr().UpdateProducer(copiedTrx, producer.NodeName)
+			producer.grp.ChainCtx.UpdProducerList()
+			producer.grp.ChainCtx.UpdProducer()
+		case quorumpb.TrxType_ANNOUNCE:
+			molaproducer_log.Infof("Apply ANNOUNCE trx")
+			nodectx.GetDbMgr().UpdateAnnounce(copiedTrx, producer.NodeName)
+		case quorumpb.TrxType_SCHEMA:
+			molaproducer_log.Infof("Apply SCHEMA trx ")
+			nodectx.GetDbMgr().UpdateSchema(copiedTrx, producer.NodeName)
+		default:
+			molaproducer_log.Infof("Unsupported msgType %s", copiedTrx.Type)
+		}
+
+		//save trx to db
+		nodectx.GetDbMgr().AddTrx(copiedTrx, producer.NodeName)
+	}
+
+	return nil
 }

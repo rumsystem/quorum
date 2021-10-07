@@ -139,13 +139,13 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 	if syncer.Status == SYNCING_FORWARD {
 		if producer {
 			syncer_log.Infof("SYNCING_FORWARD, PRODUCER ADD BLOCK")
-			err := syncer.group.ChainCtx.ProducerAddBlock(block)
+			err := syncer.group.ChainCtx.Consensus.Producer().AddBlock(block)
 			if err != nil {
 				syncer_log.Infof(err.Error())
 			}
 		} else {
 			syncer_log.Infof("SYNCING_FORWARD, USER ADD BLOCK")
-			err := syncer.group.ChainCtx.UserAddBlock(block)
+			err := syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 			if err != nil {
 				syncer_log.Infof(err.Error())
 			}
@@ -156,10 +156,10 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 		var err error
 		if producer {
 			syncer_log.Infof("SYNCING_BACKWARD, PRODUCER ADD BLOCK")
-			err = syncer.group.ChainCtx.ProducerAddBlock(block)
+			err = syncer.group.ChainCtx.Consensus.Producer().AddBlock(block)
 		} else {
 			syncer_log.Infof("SYNCING_BACKWARD, USER ADD BLOCK")
-			err = syncer.group.ChainCtx.UserAddBlock(block)
+			err = syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 		}
 		if err.Error() == "PARENT_NOT_EXIST" {
 			syncer_log.Infof("SYNCING_BACKWARD, CONTINUE")

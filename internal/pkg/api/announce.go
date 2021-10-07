@@ -85,7 +85,7 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 		item.AnnouncerSignature = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
 
-		trxId, err := group.ChainCtx.UpdAnnounce(item)
+		trxId, err := group.UpdAnnounce(item)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

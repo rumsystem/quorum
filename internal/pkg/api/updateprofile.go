@@ -74,7 +74,7 @@ func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 			}
 		}
 
-		trxId, err := group.ChainCtx.PostToGroup(paramspb.Person)
+		trxId, err := group.PostToGroup(paramspb.Person)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

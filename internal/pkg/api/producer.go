@@ -86,7 +86,7 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		item.Action = params.Action //add or remove
 		item.Memo = params.Memo
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.ChainCtx.UpdProducer(item)
+		trxId, err := group.UpdProducer(item)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

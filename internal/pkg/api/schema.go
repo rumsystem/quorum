@@ -108,7 +108,7 @@ func (h *Handler) Schema(c echo.Context) (err error) {
 
 		item.GroupOwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.ChainCtx.UpdSchema(item)
+		trxId, err := group.UpdSchema(item)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

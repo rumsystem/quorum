@@ -68,7 +68,7 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
-		trxId, err := group.ChainCtx.PostToGroup(paramspb.Object)
+		trxId, err := group.PostToGroup(paramspb.Object)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

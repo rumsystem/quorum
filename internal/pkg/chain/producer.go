@@ -11,4 +11,5 @@ type Producer interface {
 	GetBlockForward(trx *quorumpb.Trx) error
 	GetBlockBackward(trx *quorumpb.Trx) error
 	AddProducedBlock(trx *quorumpb.Trx) error
+	AddBlock(block *quorumpb.Block) error
 }

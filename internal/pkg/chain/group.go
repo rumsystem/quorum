@@ -9,6 +9,7 @@ import (
 	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -191,4 +192,24 @@ func (grp *Group) GetBlockedUser() ([]*quorumpb.DenyUserItem, error) {
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	group_log.Infof("GetProducers called")
 	return nodectx.GetDbMgr().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
+	return grp.ChainCtx.Consensus.User().UpdAnnounce(item)
+}
+
+func (grp *Group) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
+	return grp.ChainCtx.Consensus.User().UpdBlkList(item)
+}
+
+func (grp *Group) PostToGroup(content proto.Message) (string, error) {
+	return grp.ChainCtx.Consensus.User().PostToGroup(content)
+}
+
+func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
+	return grp.ChainCtx.Consensus.User().UpdProducer(item)
+}
+
+func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
+	return grp.ChainCtx.Consensus.User().UpdSchema(item)
 }

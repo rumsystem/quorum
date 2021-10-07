@@ -46,8 +46,9 @@ func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn
 	producerTrxMgr.SetNodeName(nodename)
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
-	chain.Consensus = NewMolasses(&MolassesProducer{NodeName: nodename})
+	chain.Consensus = NewMolasses(&MolassesProducer{NodeName: nodename}, &MolassesUser{NodeName: nodename})
 	chain.Consensus.Producer().Init(group, chain.trxMgrs, chain.nodename)
+	chain.Consensus.User().Init(group)
 
 	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
 	userTrxMgr := &TrxMgr{}
@@ -94,10 +95,10 @@ func (chain *Chain) Init(group *Group) error {
 
 func (chain *Chain) LoadProducer() {
 	//load producer list
-	chain.updProducerList()
+	chain.UpdProducerList()
 
 	//check if need to create molass producer
-	chain.updProducer()
+	chain.UpdProducer()
 }
 
 func (chain *Chain) StartInitialSync(block *quorumpb.Block) error {
@@ -116,33 +117,20 @@ func (chain *Chain) StopSync() error {
 	return nil
 }
 
-func (chain *Chain) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
-	chain_log.Infof("UpdAnnounce called")
-	return chain.trxMgrs[chain.producerChannelId].SendAnnounceTrx(item)
-}
-
-func (chain *Chain) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
-	chain_log.Infof("UpdBlkList called")
-	return chain.trxMgrs[chain.producerChannelId].SendUpdAuthTrx(item)
-}
-
-func (chain *Chain) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
-	chain_log.Infof("UpdSchema called")
-	return chain.trxMgrs[chain.producerChannelId].SendUpdSchemaTrx(item)
-}
-
-func (chain *Chain) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
-	chain_log.Infof("UpdSchema called")
-	return chain.trxMgrs[chain.producerChannelId].SendRegProducerTrx(item)
-}
-
-func (chain *Chain) PostToGroup(content proto.Message) (string, error) {
-	chain_log.Infof("PostToGroup called to channel %s", chain.producerChannelId)
-	return chain.trxMgrs[chain.producerChannelId].PostAny(content)
-}
-
 func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 	return chain.trxMgrs[chain.producerChannelId]
+}
+
+func (chain *Chain) GetUserTrxMgr() *TrxMgr {
+	return chain.trxMgrs[chain.userChannelId]
+}
+
+func (chain *Chain) UpdChainInfo(height int64, blockId []string) error {
+	//update group info
+	chain.group.Item.HighestHeight = height
+	chain.group.Item.HighestBlockId = blockId
+	chain.group.Item.LastUpdate = time.Now().UnixNano()
+	return nodectx.GetDbMgr().UpdGroup(chain.group.Item)
 }
 
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
@@ -205,7 +193,7 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 	}
 
 	if shouldAccept {
-		err := chain.UserAddBlock(block)
+		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
 			chain_log.Infof(err.Error())
 		}
@@ -294,496 +282,7 @@ func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
 	return chain.Consensus.Producer().AddProducedBlock(trx)
 }
 
-func (chain *Chain) UserAddBlock(block *quorumpb.Block) error {
-	chain_log.Infof("userAddBlock called")
-
-	//check if block is already in chain
-	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	if isSaved {
-		return errors.New("Block already saved, ignore")
-	}
-
-	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	if isCached {
-		return errors.New("Block already cached, ignore")
-	}
-
-	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	//check if parent of block exist
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	if !parentExist {
-		chain_log.Infof("Block Parent not exist, sync backward")
-		return errors.New("PARENT_NOT_EXIST")
-	}
-
-	//get parent block
-	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	//valid block with parent block
-	valid, err := IsBlockValid(block, parentBlock)
-	if !valid {
-		return err
-	}
-
-	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	//get all trxs from those blocks
-	var trxs []*quorumpb.Trx
-	trxs, err = chain.getAllTrxs(blocks)
-	if err != nil {
-		return err
-	}
-
-	//apply those trxs
-	err = chain.userApplyTrx(trxs)
-	if err != nil {
-		return err
-	}
-
-	//move gathered blocks from cache to chain
-	for _, block := range blocks {
-		chain_log.Infof("Move block %s from cache to normal", block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
-		if err != nil {
-			return err
-		}
-	}
-
-	//calculate new height
-	chain_log.Debugf("height before recal %d", chain.group.Item.HighestHeight)
-	newHeight, newHighestBlockId, err := chain.recalChainHeight(blocks, chain.group.Item.HighestHeight)
-	chain_log.Debugf("new height %d, new highest blockId %v", newHeight, newHighestBlockId)
-
-	//if the new block is not highest block after recalculate, we need to "trim" the chain
-	if newHeight < chain.group.Item.HighestHeight {
-
-		//from parent of the new blocks, get all blocks not belong to the longest path
-		resendBlocks, err := chain.getTrimedBlocks(blocks)
-		if err != nil {
-			return err
-		}
-
-		var resendTrxs []*quorumpb.Trx
-		resendTrxs, err = chain.getMyTrxs(resendBlocks)
-
-		if err != nil {
-			return err
-		}
-
-		chain.updateResendCount(resendTrxs)
-		err = chain.resendTrx(resendTrxs)
-	}
-
-	//update group info
-	chain.group.Item.HighestHeight = newHeight
-	chain.group.Item.HighestBlockId = newHighestBlockId
-	chain.group.Item.LastUpdate = time.Now().UnixNano()
-	nodectx.GetDbMgr().UpdGroup(chain.group.Item)
-
-	chain_log.Infof("userAddBlock ended")
-
-	return nil
-}
-
-//addBlock for producer
-func (chain *Chain) ProducerAddBlock(block *quorumpb.Block) error {
-	chain_log.Infof("producerAddBlock called")
-
-	//check if block is already in chain
-	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-	if isSaved {
-		return errors.New("Block already saved, ignore")
-	}
-
-	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	if isCached {
-		return errors.New("Block already cached, ignore")
-	}
-
-	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	if !parentExist {
-		chain_log.Infof("Block Parent not exist, sync backward")
-		return errors.New("PARENT_NOT_EXIST")
-	}
-
-	//get parent block
-	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	//valid block with parent block
-	valid, err := IsBlockValid(block, parentBlock)
-	if !valid {
-		return err
-	}
-
-	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
-	if err != nil {
-		return err
-	}
-
-	//get all trxs in those new blocks
-	var trxs []*quorumpb.Trx
-	trxs, err = chain.getAllTrxs(blocks)
-	if err != nil {
-		return err
-	}
-
-	//apply those trxs
-	err = chain.producerApplyTrxs(trxs)
-	if err != nil {
-		return err
-	}
-
-	//move blocks from cache to normal
-	for _, block := range blocks {
-		chain_log.Infof("Move block %s from cache to normal", block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
-		if err != nil {
-			return err
-		}
-	}
-
-	chain_log.Infof("height before recal: %d", chain.group.Item.HighestHeight)
-	newHeight, newHighestBlockId, err := chain.recalChainHeight(blocks, chain.group.Item.HighestHeight)
-	chain_log.Infof("new height %d, new highest blockId %v", newHeight, newHighestBlockId)
-
-	//update group info
-	chain.group.Item.HighestHeight = newHeight
-	chain.group.Item.HighestBlockId = newHighestBlockId
-	chain.group.Item.LastUpdate = time.Now().UnixNano()
-	nodectx.GetDbMgr().UpdGroup(chain.group.Item)
-
-	return nil
-}
-
-//find the highest block from the block tree
-func (chain *Chain) recalChainHeight(blocks []*quorumpb.Block, currentHeight int64) (int64, []string, error) {
-	var highestBlockId []string
-	newHeight := currentHeight
-	for _, block := range blocks {
-		blockHeight, err := nodectx.GetDbMgr().GetBlockHeight(block.BlockId, chain.nodename)
-		if err != nil {
-			return -1, highestBlockId, err
-		}
-		if blockHeight > newHeight {
-			newHeight = blockHeight
-			highestBlockId = nil
-			highestBlockId = append(highestBlockId, block.BlockId)
-		} else if blockHeight == newHeight {
-			highestBlockId = append(highestBlockId, block.BlockId)
-		} else {
-			// do nothing
-		}
-	}
-	return newHeight, highestBlockId, nil
-}
-
-//from root of the new block tree, get all blocks trimed when not belong to longest path
-func (chain *Chain) getTrimedBlocks(blocks []*quorumpb.Block) ([]string, error) {
-	var cache map[string]bool
-	var longestPath []string
-	var result []string
-
-	cache = make(map[string]bool)
-
-	err := chain.dfs(blocks, cache, longestPath)
-
-	for _, blockId := range longestPath {
-		if _, ok := cache[blockId]; !ok {
-			result = append(result, blockId)
-		}
-	}
-
-	return result, err
-}
-
-//TODO: need more test
-func (chain *Chain) dfs(blocks []*quorumpb.Block, cache map[string]bool, result []string) error {
-	for _, block := range blocks {
-		if _, ok := cache[block.BlockId]; !ok {
-			cache[block.BlockId] = true
-			result = append(result, block.BlockId)
-			subBlocks, err := nodectx.GetDbMgr().GetSubBlock(block.BlockId, chain.nodename)
-			if err != nil {
-				return err
-			}
-			err = chain.dfs(subBlocks, cache, result)
-		}
-	}
-	return nil
-}
-
-//get all trx belongs to me from the block list
-func (chain *Chain) getMyTrxs(blockIds []string) ([]*quorumpb.Trx, error) {
-	chain_log.Infof("getMyTrxs called")
-	var trxs []*quorumpb.Trx
-
-	for _, blockId := range blockIds {
-		block, err := nodectx.GetDbMgr().GetBlock(blockId, false, chain.nodename)
-		if err != nil {
-			chain_log.Warnf(err.Error())
-			continue
-		}
-
-		for _, trx := range block.Trxs {
-			if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-				trxs = append(trxs, trx)
-			}
-		}
-	}
-	return trxs, nil
-}
-
-//get all trx from the block list
-func (chain *Chain) getAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
-	chain_log.Infof("getAllTrxs called")
-	var trxs []*quorumpb.Trx
-	for _, block := range blocks {
-		for _, trx := range block.Trxs {
-			trxs = append(trxs, trx)
-		}
-	}
-	return trxs, nil
-}
-
-//update resend count (+1) for all trxs
-func (chain *Chain) updateResendCount(trxs []*quorumpb.Trx) ([]*quorumpb.Trx, error) {
-	chain_log.Infof("updateResendCount called")
-	for _, trx := range trxs {
-		trx.ResendCount++
-	}
-	return trxs, nil
-}
-
-//resend all trx in the list
-func (chain *Chain) resendTrx(trxs []*quorumpb.Trx) error {
-	chain_log.Infof("resendTrx")
-	for _, trx := range trxs {
-		chain_log.Infof("Resend Trx %s", trx.TrxId)
-		chain.trxMgrs[chain.producerChannelId].ResendTrx(trx)
-	}
-	return nil
-}
-
-func (chain *Chain) userApplyTrx(trxs []*quorumpb.Trx) error {
-	chain_log.Infof("applyTrxs called")
-	for _, trx := range trxs {
-		//check if trx already applied
-		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, chain.nodename)
-		if err != nil {
-			chain_log.Infof(err.Error())
-			continue
-		}
-
-		if isExist {
-			chain_log.Infof("Trx %s existed, update trx only", trx.TrxId)
-			nodectx.GetDbMgr().AddTrx(trx)
-			continue
-		}
-
-		//new trx, apply it
-		if trx.Type == quorumpb.TrxType_POST && chain.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(chain.group.Item.UserEncryptPubkey, trx.Data)
-			if err != nil {
-				return err
-			}
-			trx.Data = decryptData
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-
-			trx.Data = decryptData
-		}
-
-		chain_log.Infof("try apply trx %s", trx.TrxId)
-		//apply trx content
-		switch trx.Type {
-		case quorumpb.TrxType_POST:
-			chain_log.Infof("Apply POST trx")
-			nodectx.GetDbMgr().AddPost(trx, chain.nodename)
-		case quorumpb.TrxType_AUTH:
-			chain_log.Infof("Apply AUTH trx")
-			nodectx.GetDbMgr().UpdateBlkListItem(trx, chain.nodename)
-		case quorumpb.TrxType_PRODUCER:
-			chain_log.Infof("Apply PRODUCER Trx")
-			nodectx.GetDbMgr().UpdateProducer(trx, chain.nodename)
-			chain.updProducerList()
-			chain.updProducer()
-		case quorumpb.TrxType_ANNOUNCE:
-			chain_log.Infof("Apply ANNOUNCE trx")
-			nodectx.GetDbMgr().UpdateAnnounce(trx, chain.nodename)
-		case quorumpb.TrxType_SCHEMA:
-			chain_log.Infof("Apply SCHEMA trx ")
-			nodectx.GetDbMgr().UpdateSchema(trx, chain.nodename)
-		default:
-			chain_log.Infof("Unsupported msgType %s", trx.Type)
-		}
-
-		//save trx to db
-		nodectx.GetDbMgr().AddTrx(trx, chain.nodename)
-	}
-
-	return nil
-}
-
-func (chain *Chain) producerApplyTrxs(trxs []*quorumpb.Trx) error {
-	chain_log.Infof("applyTrxs called")
-	for _, trx := range trxs {
-		//check if trx already applied
-		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, chain.nodename)
-		if err != nil {
-			chain_log.Infof(err.Error())
-			continue
-		}
-
-		if isExist {
-			chain_log.Infof("Trx %s existed, update trx", trx.TrxId)
-			nodectx.GetDbMgr().AddTrx(trx)
-			continue
-		}
-
-		//make deep copy trx to avoid modify data of the original trx
-		var copiedTrx *quorumpb.Trx
-		copiedTrx = &quorumpb.Trx{}
-		copiedTrx.TrxId = trx.TrxId
-		copiedTrx.Type = trx.Type
-		copiedTrx.GroupId = trx.GroupId
-		copiedTrx.TimeStamp = trx.TimeStamp
-		copiedTrx.Version = trx.Version
-		copiedTrx.Expired = trx.Expired
-		copiedTrx.ResendCount = trx.ResendCount
-		copiedTrx.Nonce = trx.Nonce
-		copiedTrx.SenderPubkey = trx.SenderPubkey
-		copiedTrx.SenderSign = trx.SenderSign
-
-		if trx.Type == quorumpb.TrxType_POST && chain.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
-			//just try decrypt it, if failed, save the original encrypted data
-			//the reason for that is, for private group, before owner add producer, owner is the only producer,
-			//since owner also needs to show POST data, and all announced user will encrypt for owner pubkey
-			//owner can actually decrypt POST
-			//for other producer, they can not decrpyt POST
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(chain.group.Item.UserEncryptPubkey, trx.Data)
-			if err != nil {
-				copiedTrx.Data = trx.Data
-			} else {
-				copiedTrx.Data = decryptData
-			}
-
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-
-			copiedTrx.Data = decryptData
-		}
-
-		chain_log.Infof("try apply trx %s", trx.TrxId)
-		//apply trx content
-		switch trx.Type {
-		case quorumpb.TrxType_POST:
-			chain_log.Infof("Apply POST trx")
-			nodectx.GetDbMgr().AddPost(copiedTrx, chain.nodename)
-		case quorumpb.TrxType_AUTH:
-			chain_log.Infof("Apply AUTH trx")
-			nodectx.GetDbMgr().UpdateBlkListItem(copiedTrx, chain.nodename)
-		case quorumpb.TrxType_PRODUCER:
-			chain_log.Infof("Apply PRODUCER Trx")
-			nodectx.GetDbMgr().UpdateProducer(copiedTrx, chain.nodename)
-			chain.updProducerList()
-			chain.updProducer()
-		case quorumpb.TrxType_ANNOUNCE:
-			chain_log.Infof("Apply ANNOUNCE trx")
-			nodectx.GetDbMgr().UpdateAnnounce(copiedTrx, chain.nodename)
-		case quorumpb.TrxType_SCHEMA:
-			chain_log.Infof("Apply SCHEMA trx ")
-			nodectx.GetDbMgr().UpdateSchema(copiedTrx, chain.nodename)
-		default:
-			chain_log.Infof("Unsupported msgType %s", copiedTrx.Type)
-		}
-
-		//save trx to db
-		nodectx.GetDbMgr().AddTrx(copiedTrx, chain.nodename)
-	}
-
-	return nil
-}
-
-func (chain *Chain) updProducerList() {
+func (chain *Chain) UpdProducerList() {
 	//create and load group producer pool
 	chain.ProducerPool = make(map[string]*quorumpb.ProducerItem)
 	producers, _ := nodectx.GetDbMgr().GetProducers(chain.group.Item.GroupId, chain.nodename)
@@ -797,12 +296,13 @@ func (chain *Chain) updProducerList() {
 	}
 }
 
-func (chain *Chain) updProducer() {
+func (chain *Chain) UpdProducer() {
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
 		//Yes, I am producer, create censensus and group producer
 		chain_log.Infof("Create and initial molasses producer")
-		chain.Consensus = NewMolasses(&MolassesProducer{})
+		chain.Consensus = NewMolasses(&MolassesProducer{NodeName: chain.nodename}, &MolassesUser{NodeName: chain.nodename})
 		chain.Consensus.Producer().Init(chain.group, chain.trxMgrs, chain.nodename)
+		chain.Consensus.User().Init(chain.group)
 	} else {
 		chain_log.Infof("Set molasses producer to nil")
 		chain.Consensus = nil
