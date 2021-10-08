@@ -101,7 +101,6 @@ func (a ContentList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 type TrxStruct struct {
 	TrxId        string `json:"TrxId"`
 	GroupId      string `json:"GroupId"`
-	Pubkey       string `json:"Pubkey"`
 	Data         []byte `json:"Data"`
 	TimeStamp    int64  `json:"TimeStamp"`
 	Version      string `json:"Version"`

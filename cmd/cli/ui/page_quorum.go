@@ -715,7 +715,6 @@ func goQuorumGroups() {
 		}
 		Error("Failed to get groups", err.Error())
 	} else {
-		// sort.Sort(groupsInfo)
 		oldGroups := quorumData.GetGroups().GroupInfos
 		quorumData.SetGroups(*groupsInfo)
 		if len(groupsInfo.GroupInfos) != len(oldGroups) {

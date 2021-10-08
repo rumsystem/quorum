@@ -218,7 +218,6 @@ func goBlocksGroups() {
 		}
 		Error("Failed to get groups", err.Error())
 	} else {
-		// sort.Sort(groupsInfo)
 		oldGroups := blocksData.GetGroups().GroupInfos
 		blocksData.SetGroups(*groupsInfo)
 		if len(groupsInfo.GroupInfos) != len(oldGroups) {
@@ -232,7 +231,7 @@ func goBlocksGroups() {
 }
 
 func goBlocksContent() {
-	// TODO: fixme
+	// TODO: no block id info
 	curGroup := blocksData.GetCurrentGroup()
 	if curGroup != "" {
 		var blocks []api.BlockStruct = []api.BlockStruct{}
