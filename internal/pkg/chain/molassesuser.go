@@ -12,52 +12,50 @@ import (
 )
 
 type MolassesUser struct {
-	grp      *Group
-	NodeName string
+	//grp      *Group
+	grpItem  *quorumpb.GroupItem
+	nodename string
+	cIface   ChainMolassesIface
 }
 
 var molauser_log = logging.Logger("user")
 
-func (user *MolassesUser) Init(grp *Group) {
-	user.grp = grp
-	user.NodeName = grp.ChainCtx.nodename
+func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
+	user.grpItem = item
+	user.nodename = nodename
+	user.cIface = iface
 }
 
 func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	molauser_log.Infof("UpdAnnounce called")
-	trxMgr := user.grp.ChainCtx.GetProducerTrxMgr()
-	return trxMgr.SendAnnounceTrx(item)
+	return user.cIface.GetProducerTrxMgr().SendAnnounceTrx(item)
 }
 
 func (user *MolassesUser) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
 	molauser_log.Infof("UpdBlkList called")
-	trxMgr := user.grp.ChainCtx.GetProducerTrxMgr()
-	return trxMgr.SendUpdAuthTrx(item)
+	return user.cIface.GetProducerTrxMgr().SendUpdAuthTrx(item)
 }
 
 func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	molauser_log.Infof("UpdSchema called")
-	trxMgr := user.grp.ChainCtx.GetProducerTrxMgr()
-	return trxMgr.SendUpdSchemaTrx(item)
+	return user.cIface.GetProducerTrxMgr().SendUpdSchemaTrx(item)
 }
 
 func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
 	molauser_log.Infof("UpdSchema called")
-	trxMgr := user.grp.ChainCtx.GetProducerTrxMgr()
-	return trxMgr.SendRegProducerTrx(item)
+	return user.cIface.GetProducerTrxMgr().SendRegProducerTrx(item)
 }
 
 func (user *MolassesUser) PostToGroup(content proto.Message) (string, error) {
 	molauser_log.Infof("PostToGroup called")
-	trxMgr := user.grp.ChainCtx.GetProducerTrxMgr()
-	return trxMgr.PostAny(content)
+	return user.cIface.GetProducerTrxMgr().PostAny(content)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Infof("AddBlock called")
 
 	//check if block is already in chain
-	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, user.NodeName)
+	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -67,7 +65,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, user.NodeName)
+	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -77,13 +75,13 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, user.NodeName)
+	err = nodectx.GetDbMgr().AddBlock(block, true, user.nodename)
 	if err != nil {
 		return err
 	}
 
 	//check if parent of block exist
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, user.NodeName)
+	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -94,7 +92,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//get parent block
-	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, user.NodeName)
+	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -106,7 +104,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, user.NodeName)
+	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -119,7 +117,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply those trxs
-	err = user.applyTrxs(trxs, user.NodeName)
+	err = user.applyTrxs(trxs, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -127,33 +125,33 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	//move gathered blocks from cache to chain
 	for _, block := range blocks {
 		molauser_log.Infof("Move block %s from cache to normal", block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, user.NodeName)
+		err := nodectx.GetDbMgr().AddBlock(block, false, user.nodename)
 		if err != nil {
 			return err
 		}
 
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.NodeName)
+		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.nodename)
 		if err != nil {
 			return err
 		}
 	}
 
 	//calculate new height
-	molauser_log.Debugf("height before recal %d", user.grp.Item.HighestHeight)
-	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, user.grp.Item.HighestHeight, user.NodeName)
+	molauser_log.Debugf("height before recal %d", user.grpItem.HighestHeight)
+	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, user.grpItem.HighestHeight, user.nodename)
 	molauser_log.Debugf("new height %d, new highest blockId %v", newHeight, newHighestBlockId)
 
 	//if the new block is not highest block after recalculate, we need to "trim" the chain
-	if newHeight < user.grp.Item.HighestHeight {
+	if newHeight < user.grpItem.HighestHeight {
 
 		//from parent of the new blocks, get all blocks not belong to the longest path
-		resendBlocks, err := GetTrimedBlocks(blocks, user.NodeName)
+		resendBlocks, err := GetTrimedBlocks(blocks, user.nodename)
 		if err != nil {
 			return err
 		}
 
 		var resendTrxs []*quorumpb.Trx
-		resendTrxs, err = GetMyTrxs(resendBlocks, user.NodeName, user.grp.Item.UserSignPubkey)
+		resendTrxs, err = GetMyTrxs(resendBlocks, user.nodename, user.grpItem.UserSignPubkey)
 
 		if err != nil {
 			return err
@@ -163,16 +161,15 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		err = user.resendTrx(resendTrxs)
 	}
 
-	return user.grp.ChainCtx.group.ChainCtx.UpdChainInfo(newHeight, newHighestBlockId)
+	return user.cIface.UpdChainInfo(newHeight, newHighestBlockId)
 }
 
 //resend all trx in the list
 func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	molauser_log.Infof("resendTrx")
-	trxMgr := user.grp.ChainCtx.GetProducerTrxMgr()
 	for _, trx := range trxs {
 		molauser_log.Infof("Resend Trx %s", trx.TrxId)
-		trxMgr.ResendTrx(trx)
+		user.cIface.GetProducerTrxMgr().ResendTrx(trx)
 	}
 	return nil
 }
@@ -194,17 +191,17 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		}
 
 		//new trx, apply it
-		if trx.Type == quorumpb.TrxType_POST && user.grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		if trx.Type == quorumpb.TrxType_POST && user.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(user.grp.Item.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(user.grpItem.UserEncryptPubkey, trx.Data)
 			if err != nil {
 				return err
 			}
 			trx.Data = decryptData
 		} else {
 			//decode trx data
-			ciperKey, err := hex.DecodeString(user.grp.Item.CipherKey)
+			ciperKey, err := hex.DecodeString(user.grpItem.CipherKey)
 			if err != nil {
 				return err
 			}
@@ -229,8 +226,8 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		case quorumpb.TrxType_PRODUCER:
 			molauser_log.Infof("Apply PRODUCER Trx")
 			nodectx.GetDbMgr().UpdateProducer(trx, nodename)
-			user.grp.ChainCtx.UpdProducerList()
-			user.grp.ChainCtx.UpdProducer()
+			user.cIface.UpdProducerList()
+			user.cIface.UpdProducer()
 		case quorumpb.TrxType_ANNOUNCE:
 			molauser_log.Infof("Apply ANNOUNCE trx")
 			nodectx.GetDbMgr().UpdateAnnounce(trx, nodename)

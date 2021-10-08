@@ -46,9 +46,9 @@ func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn
 	producerTrxMgr.SetNodeName(nodename)
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
-	chain.Consensus = NewMolasses(&MolassesProducer{NodeName: nodename}, &MolassesUser{NodeName: nodename})
+	chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
 	chain.Consensus.Producer().Init(group, chain.trxMgrs, chain.nodename)
-	chain.Consensus.User().Init(group)
+	chain.Consensus.User().Init(group.Item, group.ChainCtx.nodename, chain)
 
 	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
 	userTrxMgr := &TrxMgr{}

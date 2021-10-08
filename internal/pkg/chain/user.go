@@ -6,8 +6,7 @@ import (
 )
 
 type User interface {
-	Init(grp *Group)
-
+	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	UpdAnnounce(item *quorumpb.AnnounceItem) (string, error)
 	UpdBlkList(item *quorumpb.DenyUserItem) (string, error)
 	UpdSchema(item *quorumpb.SchemaItem) (string, error)

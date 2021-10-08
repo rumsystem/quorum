@@ -46,7 +46,7 @@ type MolassesProducer struct {
 
 func (producer *MolassesProducer) Init(grp *Group, trxMgr map[string]*TrxMgr, nodeName string) {
 	molaproducer_log.Infof("Init called")
-	producer.grp = grp
+	//producer.grp = grp
 	producer.trxMgr = trxMgr
 	producer.trxPool = make(map[string]*quorumpb.Trx)
 	producer.blockPool = make(map[string]*quorumpb.Block)
