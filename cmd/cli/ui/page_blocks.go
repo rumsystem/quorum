@@ -232,6 +232,7 @@ func goBlocksGroups() {
 }
 
 func goBlocksContent() {
+	// TODO: fixme
 	curGroup := blocksData.GetCurrentGroup()
 	if curGroup != "" {
 		var blocks []api.BlockStruct = []api.BlockStruct{}

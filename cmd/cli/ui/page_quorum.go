@@ -663,13 +663,12 @@ func drawQuorumContentInfo(trx api.TrxStruct) {
 	contentInfoView.Clear()
 	fmt.Fprintf(contentInfoView, "TrxId:     %s\n", trx.TrxId)
 	fmt.Fprintf(contentInfoView, "GroupId:   %s\n", trx.GroupId)
-	fmt.Fprintf(contentInfoView, "Sender:    %s\n", trx.Sender)
-	fmt.Fprintf(contentInfoView, "Pubkey:    %s\n", trx.Pubkey)
-	fmt.Fprintf(contentInfoView, "Signature: %s\n", trx.Signature)
+	fmt.Fprintf(contentInfoView, "Sender:    %s\n", trx.SenderPubkey)
+	fmt.Fprintf(contentInfoView, "Signature: %s\n", trx.SenderSign)
 	fmt.Fprintf(contentInfoView, "TimeStamp: %s\n", time.Unix(0, trx.TimeStamp))
 	fmt.Fprintf(contentInfoView, "Version:   %s\n", trx.Version)
 
-	mixinUID := quorumData.GetUserMixinUID(trx.Pubkey, trx.GroupId)
+	mixinUID := quorumData.GetUserMixinUID(trx.SenderPubkey, trx.GroupId)
 	if mixinUID != "" {
 		fmt.Fprintf(contentInfoView, "MixinUID:   %s\n", mixinUID)
 	}
@@ -809,7 +808,12 @@ func QuorumRefreshAll() {
 }
 
 func goQuorumTrxInfo(trxId string) {
-	trxInfo, err := api.TrxInfo(trxId)
+	curGroup := quorumData.GetCurrentGroup()
+	if curGroup == "" {
+		Error("Failed to set nickname", "Select a group first.")
+		return
+	}
+	trxInfo, err := api.TrxInfo(curGroup, trxId)
 	if err != nil {
 		Error("Failed to get trx", err.Error())
 	} else {
@@ -859,7 +863,7 @@ func goQuorumCreateContent(content string) {
 			go func() {
 				select {
 				case <-time.After(30 * time.Second):
-					trxInfo, err := api.TrxInfo(ret.TrxId)
+					trxInfo, err := api.TrxInfo(curGroup, ret.TrxId)
 					if err != nil {
 						Error("Timed Out", fmt.Sprintf(
 							"Content not found in 30s.\nTRX: %s\n%s\n%s", ret.TrxId, content, err.Error()))

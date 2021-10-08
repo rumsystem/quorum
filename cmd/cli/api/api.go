@@ -274,11 +274,11 @@ func DelGroup(gid string) (*GroupDelRetStruct, error) {
 	return &ret, nil
 }
 
-func TrxInfo(trxId string) (trx *TrxStruct, err error) {
+func TrxInfo(groupId string, trxId string) (trx *TrxStruct, err error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
-	url := ApiServer + "/api/v1/trx/" + trxId
+	url := fmt.Sprintf("%s/api/v1/trx/%s/%s", ApiServer, groupId, trxId)
 	ret := TrxStruct{}
 	body, err := httpGet(url)
 	if err != nil {

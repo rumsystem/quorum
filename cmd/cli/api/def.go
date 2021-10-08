@@ -99,15 +99,15 @@ func (a ContentList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 // /api/v1/trx/$id
 type TrxStruct struct {
-	TrxId     string `json:"TrxId"`
-	GroupId   string `json:"GroupId"`
-	Sender    string `json:"Sender"`
-	Pubkey    string `json:"Pubkey"`
-	Data      []byte `json:"Data"`
-	TimeStamp int64  `json:"TimeStamp"`
-	Version   string `json:"Version"`
-	Expired   int64  `json:"Expired"`
-	Signature string `json:"Signature"`
+	TrxId        string `json:"TrxId"`
+	GroupId      string `json:"GroupId"`
+	Pubkey       string `json:"Pubkey"`
+	Data         []byte `json:"Data"`
+	TimeStamp    int64  `json:"TimeStamp"`
+	Version      string `json:"Version"`
+	Expired      int64  `json:"Expired"`
+	SenderPubkey string `json:"SenderPubkey"`
+	SenderSign   string `json:"SenderSign"`
 }
 
 type TrxRespStruct struct {
