@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -164,10 +163,8 @@ func QuorumCmdSendHandler(cmd string) {
 }
 
 // CMD /group.create handler
-func QuorumNewGroupHandler(cmd string) {
-	groupName := strings.Replace(cmd, CMD_QUORUM_NEW_GROUP, "", -1)
-	groupName = strings.TrimSpace(groupName)
-	go goQuorumCreateGroup(groupName)
+func QuorumNewGroupHandler() {
+	CreateGroupForm()
 }
 
 // CMD /group.leave handler
@@ -875,33 +872,6 @@ func goQuorumCreateContent(content string) {
 			}()
 			App.SetFocus(contentView)
 		}
-	}
-}
-
-func goQuorumCreateGroup(name string) {
-	ret, err := api.CreateGroup(name)
-	if err != nil {
-		Error("Failed to create group", err.Error())
-	} else {
-		cmdInput.SetLabel(fmt.Sprintf("Group %s: ", name))
-		cmdInput.SetText("Created")
-		seedInfo, _ := json.Marshal(ret)
-
-		tmpFile, err := ioutil.TempFile(os.TempDir(), "quorum-seed-")
-		if err != nil {
-			Error("Cannot create temporary file to save seed", err.Error())
-			return
-		}
-		if _, err = tmpFile.Write(seedInfo); err != nil {
-			Error("Failed to write to seed file", err.Error())
-			return
-		}
-
-		if err := tmpFile.Close(); err != nil {
-			Error("Failed to close the seed file", err.Error())
-			return
-		}
-		Info(fmt.Sprintf("Group %s created", name), fmt.Sprintf("Seed saved at: %s. Be sure to keep it well.", tmpFile.Name()))
 	}
 }
 

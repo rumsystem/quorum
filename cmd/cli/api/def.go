@@ -162,7 +162,10 @@ type JoinRespStruct struct {
 
 // POST /api/v1/group
 type CreateGroupReqStruct struct {
-	Name string `json:"group_name"`
+	Name           string `json:"group_name"`
+	ConsensusType  string `json:"consensus_type"`  // poa(proof of authority)
+	EncryptionType string `json:"encryption_type"` // public | private
+	AppKey         string `json:"app_key"`         // mode
 }
 
 type GenesisBlockStruct struct {
@@ -174,14 +177,6 @@ type GenesisBlockStruct struct {
 	ProducerPubKey string `json:"ProducerPubKey"`
 	Hash           string `json:"Hash"`
 	Signature      string `json:"Signature"`
-}
-
-type GroupSeedStruct struct {
-	GenesisBlock GenesisBlockStruct `json:"genesis_block"`
-	GroupId      string             `json:"group_id"`
-	GroupName    string             `json:"group_name"`
-	OwnerPubKey  string             `json:"owner_pubkey"`
-	Signature    string             `json:"signature"`
 }
 
 type LeaveGroupReqStruct struct {

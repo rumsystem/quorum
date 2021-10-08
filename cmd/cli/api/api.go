@@ -222,24 +222,14 @@ func CreateContent(groupId string, content string) (*ContentRespStruct, error) {
 	return &ret, nil
 }
 
-func CreateGroup(name string) (*GroupSeedStruct, error) {
-	data := CreateGroupReqStruct{name}
+func CreateGroup(data CreateGroupReqStruct) ([]byte, error) {
 	json_data, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
 	url := ApiServer + "/api/v1/group"
-	ret := GroupSeedStruct{}
-	body, err := httpPost(url, json_data)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(body, &ret)
-	if err != nil {
-		return nil, errors.New(string(body))
-	}
-	return &ret, nil
+	return httpPost(url, json_data)
 }
 
 func LeaveGroup(gid string) (*GroupLeaveRetStruct, error) {
