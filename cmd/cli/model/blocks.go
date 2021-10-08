@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
+	qApi "github.com/huo-ju/quorum/internal/pkg/api"
 )
 
 type BlockRangeOpt struct {
@@ -19,7 +20,7 @@ var DefaultBlockRange = BlockRangeOpt{
 
 type BlocksDataModel struct {
 	Pager         map[string]BlockRangeOpt
-	Groups        api.GroupInfoListStruct
+	Groups        qApi.GroupInfoList
 	Blocks        []api.BlockStruct
 	NextBlocks    map[string][]string
 	Cache         map[string][]api.BlockStruct
@@ -73,14 +74,14 @@ func (m *BlocksDataModel) StopTicker() {
 	}
 }
 
-func (m *BlocksDataModel) SetGroups(groups api.GroupInfoListStruct) {
+func (m *BlocksDataModel) SetGroups(groups qApi.GroupInfoList) {
 	m.RWMutex.Lock()
 	defer m.RWMutex.Unlock()
 
 	m.Groups = groups
 }
 
-func (m *BlocksDataModel) GetGroups() api.GroupInfoListStruct {
+func (m *BlocksDataModel) GetGroups() qApi.GroupInfoList {
 	m.RLock()
 	defer m.RUnlock()
 

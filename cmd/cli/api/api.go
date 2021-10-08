@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/config"
+	qApi "github.com/huo-ju/quorum/internal/pkg/api"
 )
 
 var ApiServer string
@@ -74,9 +75,9 @@ func Ping() (res *map[string]PingInfoItemStruct, err error) {
 	return &ret, nil
 }
 
-func Groups() (groupsInfo *GroupInfoListStruct, err error) {
+func Groups() (groupsInfo *qApi.GroupInfoList, err error) {
 	url := ApiServer + "/api/v1/groups"
-	ret := GroupInfoListStruct{}
+	ret := qApi.GroupInfoList{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err

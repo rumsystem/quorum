@@ -174,7 +174,7 @@ func QuorumLeaveGroupHandler() {
 		return
 	}
 	curGroupOwner := ""
-	for _, group := range quorumData.GetGroups().Groups {
+	for _, group := range quorumData.GetGroups().GroupInfos {
 		if group.GroupId == quorumData.GetCurrentGroup() {
 			curGroupOwner = group.OwnerPubKey
 			break
@@ -195,7 +195,7 @@ func QuorumDelGroupHandler() {
 		return
 	}
 	curGroupOwner := ""
-	for _, group := range quorumData.GetGroups().Groups {
+	for _, group := range quorumData.GetGroups().GroupInfos {
 		if group.GroupId == quorumData.GetCurrentGroup() {
 			curGroupOwner = group.OwnerPubKey
 			break
@@ -524,14 +524,14 @@ func drawQuorumNetwork() {
 func drawQuorumGroups() {
 	// draw groupListView's content
 	groupListView.Clear()
-	for i, group := range quorumData.GetGroups().Groups {
+	for i, group := range quorumData.GetGroups().GroupInfos {
 		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.GroupStatus))
 		item.SetShortcut(rune('a' + i))
 		groupListView.AddItem(item)
 	}
 
 	groupListView.SetSelectedFunc(func(idx int, group *cview.ListItem) {
-		targetGroup := quorumData.GetGroups().Groups[idx]
+		targetGroup := quorumData.GetGroups().GroupInfos[idx]
 		contents, ok := quorumData.GetCache(targetGroup.GroupId)
 		if !ok {
 			contents = []api.ContentStruct{}
@@ -558,12 +558,12 @@ func drawQuorumGroups() {
 
 // called by drawQuorumGroups
 func drawQuorumCurrentGroup() {
-	if quorumData.GetCurrentGroup() == "" && len(quorumData.GetGroups().Groups) > 0 {
+	if quorumData.GetCurrentGroup() == "" && len(quorumData.GetGroups().GroupInfos) > 0 {
 		// set default to the first group
-		quorumData.SetCurrentGroup(quorumData.GetGroups().Groups[0].GroupId)
+		quorumData.SetCurrentGroup(quorumData.GetGroups().GroupInfos[0].GroupId)
 	}
 
-	if quorumData.GetCurrentGroup() != "" && len(quorumData.GetGroups().Groups) > 0 {
+	if quorumData.GetCurrentGroup() != "" && len(quorumData.GetGroups().GroupInfos) > 0 {
 		// draw current group info including
 		// 1. contentView's title
 		// 2. groupInfoView's content
@@ -581,16 +581,16 @@ func drawQuorumCurrentGroup() {
 
 		// update groupInfoView
 		groupInfoView.Clear()
-		for _, group := range quorumData.GetGroups().Groups {
+		for _, group := range quorumData.GetGroups().GroupInfos {
 			if group.GroupId == quorumData.GetCurrentGroup() {
 				fmt.Fprintf(groupInfoView, "Name:   %s\n", group.GroupName)
 				fmt.Fprintf(groupInfoView, "ID:     %s\n", group.GroupId)
 				fmt.Fprintf(groupInfoView, "Owner:  %s\n", group.OwnerPubKey)
-				fmt.Fprintf(groupInfoView, "Blocks: %d\n", group.LatestBlockNum)
+				fmt.Fprintf(groupInfoView, "HighestHeight: %d\n", group.HighestHeight)
 				fmt.Fprintf(groupInfoView, "Status: %s\n", group.GroupStatus)
 				fmt.Fprintf(groupInfoView, "\n")
-				fmt.Fprintf(groupInfoView, "Last Update:  %s\n", time.Unix(0, group.LastUpdate))
-				fmt.Fprintf(groupInfoView, "Latest Block: %s\n", group.LatestBlockId)
+				fmt.Fprintf(groupInfoView, "Last Update:  %s\n", time.Unix(0, group.LastUpdated))
+				fmt.Fprintf(groupInfoView, "Latest Block: %s\n", group.HighestBlockId)
 				break
 			}
 		}
@@ -716,10 +716,10 @@ func goQuorumGroups() {
 		}
 		Error("Failed to get groups", err.Error())
 	} else {
-		sort.Sort(groupsInfo)
-		oldGroups := quorumData.GetGroups().Groups
+		// sort.Sort(groupsInfo)
+		oldGroups := quorumData.GetGroups().GroupInfos
 		quorumData.SetGroups(*groupsInfo)
-		if len(groupsInfo.Groups) != len(oldGroups) {
+		if len(groupsInfo.GroupInfos) != len(oldGroups) {
 			drawQuorumGroups()
 		}
 		drawQuorumCurrentGroup()

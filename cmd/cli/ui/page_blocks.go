@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -219,15 +218,15 @@ func goBlocksGroups() {
 		}
 		Error("Failed to get groups", err.Error())
 	} else {
-		sort.Sort(groupsInfo)
-		oldGroups := blocksData.GetGroups().Groups
+		// sort.Sort(groupsInfo)
+		oldGroups := blocksData.GetGroups().GroupInfos
 		blocksData.SetGroups(*groupsInfo)
-		if len(groupsInfo.Groups) != len(oldGroups) {
+		if len(groupsInfo.GroupInfos) != len(oldGroups) {
 			drawBlocksGroups()
 		}
 		curGroup := blocksData.GetCurrentGroup()
-		if curGroup == "" && len(groupsInfo.Groups) > 0 {
-			blocksData.SetCurrentGroup(groupsInfo.Groups[0].GroupId)
+		if curGroup == "" && len(groupsInfo.GroupInfos) > 0 {
+			blocksData.SetCurrentGroup(groupsInfo.GroupInfos[0].GroupId)
 		}
 	}
 }
@@ -271,14 +270,14 @@ func goBlocksContent() {
 
 func drawBlocksGroups() {
 	blocksPageLeft.Clear()
-	for i, group := range blocksData.GetGroups().Groups {
+	for i, group := range blocksData.GetGroups().GroupInfos {
 		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.GroupStatus))
 		item.SetShortcut(rune('a' + i))
 		blocksPageLeft.AddItem(item)
 	}
 
 	blocksPageLeft.SetSelectedFunc(func(idx int, group *cview.ListItem) {
-		targetGroup := blocksData.GetGroups().Groups[idx]
+		targetGroup := blocksData.GetGroups().GroupInfos[idx]
 		blocks, ok := blocksData.GetCache(targetGroup.GroupId)
 		if !ok {
 			blocks = []api.BlockStruct{}
@@ -305,16 +304,16 @@ func drawBlocksGroups() {
 
 func drawBlocksContent() {
 	blocksPageRight.Clear()
-	for _, group := range blocksData.GetGroups().Groups {
+	for _, group := range blocksData.GetGroups().GroupInfos {
 		if group.GroupId == blocksData.GetCurrentGroup() {
 			fmt.Fprintf(blocksPageRight, "Name:   %s\n", group.GroupName)
 			fmt.Fprintf(blocksPageRight, "ID:     %s\n", group.GroupId)
 			fmt.Fprintf(blocksPageRight, "Owner:  %s\n", group.OwnerPubKey)
-			fmt.Fprintf(blocksPageRight, "Blocks: %d\n", group.LatestBlockNum)
+			fmt.Fprintf(blocksPageRight, "HighestHeight: %d\n", group.HighestHeight)
 			fmt.Fprintf(blocksPageRight, "Status: %s\n", group.GroupStatus)
 			fmt.Fprintf(blocksPageRight, "\n")
-			fmt.Fprintf(blocksPageRight, "Last Update:  %s\n", time.Unix(0, group.LastUpdate))
-			fmt.Fprintf(blocksPageRight, "Latest Block: %s\n", group.LatestBlockId)
+			fmt.Fprintf(blocksPageRight, "Last Update:  %s\n", time.Unix(0, group.LastUpdated))
+			fmt.Fprintf(blocksPageRight, "Highest Block: %s\n", group.HighestBlockId)
 			break
 		}
 	}
