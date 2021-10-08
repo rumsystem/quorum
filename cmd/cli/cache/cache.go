@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/adrg/xdg"
-	"github.com/huo-ju/quorum/cmd/cli/config"
+	"github.com/rumsystem/quorum/cmd/cli/config"
 
 	badger "github.com/dgraph-io/badger/v3"
 	badgerOptions "github.com/dgraph-io/badger/v3/options"

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"math/big"
 
-	localCrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	localCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 var b58Alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")

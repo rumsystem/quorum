@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/protobuf/proto"
 )

@@ -1,4 +1,4 @@
-![Main Test](https://github.com/huo-ju/quorum/actions/workflows/maintest.yml/badge.svg)
+![Main Test](https://github.com/rumsystem/quorum/actions/workflows/maintest.yml/badge.svg)
 
 设置测试环境
 
@@ -15,7 +15,7 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
 本地开发环境配置
 
     1. 安装go
-    2. 下载  https://github.com/huo-ju/quorum.git
+    2. 下载  https://github.com/rumsystem/quorum.git
 
     共需要3个本地节点，进入本地目录，例如 ~/work/quorum
     

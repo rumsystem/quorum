@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/huo-ju/quorum/cmd/cli/api"
-	"github.com/huo-ju/quorum/cmd/cli/cache"
-	"github.com/huo-ju/quorum/cmd/cli/config"
+	"github.com/rumsystem/quorum/cmd/cli/api"
+	"github.com/rumsystem/quorum/cmd/cli/cache"
+	"github.com/rumsystem/quorum/cmd/cli/config"
 )
 
 var DefaultPagerOpt = api.PagerOpt{StartTrxId: "", Reverse: true, Page: 0}

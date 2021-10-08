@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	guuid "github.com/google/uuid"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"google.golang.org/protobuf/proto"
 	"time"

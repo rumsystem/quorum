@@ -1,7 +1,7 @@
 package pubsubconn
 
 import (
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
 type Chain interface {
