@@ -5,7 +5,7 @@ import (
 
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
-	"github.com/huo-ju/quorum/cmd/cli/config"
+	"github.com/rumsystem/quorum/cmd/cli/config"
 )
 
 // global modal

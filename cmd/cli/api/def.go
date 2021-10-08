@@ -1,6 +1,6 @@
 package api
 
-import qApi "github.com/huo-ju/quorum/internal/pkg/api"
+import qApi "github.com/rumsystem/quorum/internal/pkg/api"
 
 type PagerOpt struct {
 	StartTrxId string

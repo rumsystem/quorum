@@ -1,8 +1,8 @@
 package appdata
 
 import (
-	"github.com/huo-ju/quorum/internal/pkg/chain"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	"sort"
 	"strings"

@@ -14,15 +14,15 @@ import (
 	badgeroptions "github.com/dgraph-io/badger/v3/options"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
-	"github.com/huo-ju/quorum/internal/pkg/api"
-	"github.com/huo-ju/quorum/internal/pkg/appdata"
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	"github.com/huo-ju/quorum/internal/pkg/cli"
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
-	"github.com/huo-ju/quorum/internal/pkg/options"
-	"github.com/huo-ju/quorum/internal/pkg/p2p"
-	"github.com/huo-ju/quorum/internal/pkg/utils"
-	appapi "github.com/huo-ju/quorum/pkg/app/api"
+	"github.com/rumsystem/quorum/internal/pkg/api"
+	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -31,6 +31,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	_ "google.golang.org/protobuf/proto"     //import for swaggo
+
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
 	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
 )
@@ -109,7 +110,9 @@ func mainRet(config cli.Config) int {
 				cancel()
 				return 0
 			}
-			fmt.Print("Please keeping your password safe, We can't recover or reset your password.\nYour password: %s\n", password)
+			fmt.Println("Please keeping your password safe, We can't recover or reset your password.")
+			fmt.Println("Your password:", password)
+			fmt.Println("After saving the password, press any key to continue.")
 			os.Stdin.Read(make([]byte, 1))
 		}
 

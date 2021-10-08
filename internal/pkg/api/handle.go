@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	"github.com/huo-ju/quorum/internal/pkg/p2p"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
 type (

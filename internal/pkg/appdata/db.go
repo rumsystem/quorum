@@ -6,8 +6,8 @@ import (
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/google/orderedcode"
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 )
 

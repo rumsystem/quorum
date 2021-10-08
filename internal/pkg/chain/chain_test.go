@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	"github.com/huo-ju/quorum/testnode"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/testnode"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 

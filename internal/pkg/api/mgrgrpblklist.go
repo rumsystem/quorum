@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )

@@ -12,7 +12,7 @@ Use following command to start a local api server with a remote peer.
 quorum -peername chux0519_peer -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/167.114.61.179/tcp/10666/p2p/16Uiu2HAmE7TYnrYtC6tAsWvz4EUGQke1wsdrkw2kt8GFv6brfHFw  -debug true
 ```
 
-The quorum project: https://github.com/huo-ju/quorum
+The quorum project: https://github.com/rumsystem/quorum
 
 ## Start
 

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/huo-ju/quorum/internal/pkg/api"
-	"github.com/huo-ju/quorum/testnode"
+	"github.com/rumsystem/quorum/internal/pkg/api"
+	"github.com/rumsystem/quorum/testnode"
 )
 
 var (

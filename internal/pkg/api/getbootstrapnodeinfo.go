@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )

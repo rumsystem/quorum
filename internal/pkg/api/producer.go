@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type GrpProducerResult struct {

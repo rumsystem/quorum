@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
-	pubsubconn "github.com/huo-ju/quorum/internal/pkg/pubsubconn"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 var chain_log = logging.Logger("chain")
