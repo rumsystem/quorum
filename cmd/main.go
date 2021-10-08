@@ -31,6 +31,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	_ "google.golang.org/protobuf/proto"     //import for swaggo
+
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
 	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
 )
@@ -109,7 +110,9 @@ func mainRet(config cli.Config) int {
 				cancel()
 				return 0
 			}
-			fmt.Print("Please keeping your password safe, We can't recover or reset your password.\nYour password: %s\n", password)
+			fmt.Println("Please keeping your password safe, We can't recover or reset your password.")
+			fmt.Println("Your password:", password)
+			fmt.Println("After saving the password, press any key to continue.")
 			os.Stdin.Read(make([]byte, 1))
 		}
 
