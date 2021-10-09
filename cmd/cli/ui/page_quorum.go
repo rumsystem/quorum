@@ -758,6 +758,11 @@ func goQuorumContent() {
 					quorumData.SetForceUpdate(false)
 				}
 
+				if len(*contents) == 0 {
+					cmdInput.SetLabel(fmt.Sprintf("No more posts"))
+					return
+				}
+
 				cmdInput.SetLabel(fmt.Sprintf("[%d] New posts come: ", len(*contents)))
 
 				var firstContent = ""
