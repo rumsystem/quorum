@@ -39,25 +39,6 @@ type NetworkInfoStruct struct {
 }
 
 // /api/v1/groups
-type GroupInfoStruct struct {
-	OwnerPubKey    string `json:"OwnerPubKey"`
-	GroupId        string `json:"GroupId"`
-	GroupName      string `json:"GroupName"`
-	LastUpdate     int64  `json:"LastUpdate"`
-	LatestBlockNum int64  `json:"LatestBlockNum"`
-	LatestBlockId  string `json:"LatestBlockId"`
-	GroupStatus    string `json:"GroupStatus"`
-}
-
-type GroupInfoListStruct struct {
-	Groups []GroupInfoStruct `json:"groups"`
-}
-
-func (a GroupInfoListStruct) Len() int { return len(a.Groups) }
-func (a GroupInfoListStruct) Less(i, j int) bool {
-	return a.Groups[i].GroupName < a.Groups[j].GroupName
-}
-func (a GroupInfoListStruct) Swap(i, j int) { a.Groups[i], a.Groups[j] = a.Groups[j], a.Groups[i] }
 
 // /api/v1/group/$group/content
 type ContentInnerStruct map[string]interface{}
@@ -202,19 +183,18 @@ type GroupForceSyncRetStruct struct {
 	Error   string `json:"Error"`
 }
 
-// Get /v1/block/:group_id/:block_num and /v1/block/:block_id
+// Get /v1/block/:group_id/:block_id
 type BlockStruct struct {
 	BlockId        string       `json:"BlockId,omitempty"`
 	GroupId        string       `json:"GroupId,omitempty"`
 	PrevBlockId    string       `json:"PrevBlockId,omitempty"`
-	BlockNum       int64        `json:"BlockNum,omitempty"`
-	Timestamp      int64        `json:"Timestamp,omitempty"`
 	PreviousHash   []byte       `json:"PreviousHash,omitempty"`
+	Trxs           []*TrxStruct `json:"Trxs,omitempty"`
 	ProducerId     string       `json:"ProducerId,omitempty"`
 	ProducerPubKey string       `json:"ProducerPubKey,omitempty"`
-	Trxs           []*TrxStruct `json:"Trxs,omitempty"`
 	Hash           []byte       `json:"Hash,omitempty"`
 	Signature      []byte       `json:"Signature,omitempty"`
+	Timestamp      int64        `json:"Timestamp,omitempty"`
 }
 
 // GET /api/v1/network/peers/ping

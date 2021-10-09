@@ -8,15 +8,15 @@ import (
 	qApi "github.com/huo-ju/quorum/internal/pkg/api"
 )
 
+// can only check from back to front
 type BlockRangeOpt struct {
-	Start uint64
-	End   uint64
+	CurBlockId  string
+	NextBlockId string
+	Count       int
+	Done        bool
 }
 
-var DefaultBlockRange = BlockRangeOpt{
-	Start: 1,
-	End:   20,
-}
+var DefaultBlockRange = BlockRangeOpt{"", "", 20, false}
 
 type BlocksDataModel struct {
 	Pager         map[string]BlockRangeOpt
@@ -120,15 +120,26 @@ func (m *BlocksDataModel) GetBlocks() []api.BlockStruct {
 	return m.Blocks
 }
 
-func (m *BlocksDataModel) GetBlockByNum(num int) *api.BlockStruct {
+func (m *BlocksDataModel) GetBlockById(id string) *api.BlockStruct {
 	m.RLock()
 	defer m.RUnlock()
 
 	blocks := m.Blocks
 	for _, block := range blocks {
-		if block.BlockNum == int64(num) {
+		if block.BlockId == id {
 			return &block
 		}
+	}
+	return nil
+}
+
+func (m *BlocksDataModel) GetBlockByIndex(i int) *api.BlockStruct {
+	m.RLock()
+	defer m.RUnlock()
+
+	blocks := m.Blocks
+	if i < len(blocks) {
+		return &blocks[i]
 	}
 	return nil
 }

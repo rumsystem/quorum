@@ -305,11 +305,11 @@ func JoinGroup(seed string) (*JoinRespStruct, error) {
 	return &ret, nil
 }
 
-func GetBlockByNum(groupId string, num int) (*BlockStruct, error) {
+func GetBlockById(groupId string, id string) (*BlockStruct, error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
-	url := fmt.Sprintf("%s/api/v1/block/%s/%d", ApiServer, groupId, num)
+	url := fmt.Sprintf("%s/api/v1/block/%s/%s", ApiServer, groupId, id)
 	ret := BlockStruct{}
 	body, err := httpGet(url)
 	if err != nil {
