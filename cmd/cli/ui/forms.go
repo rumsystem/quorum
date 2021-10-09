@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"code.rocketnine.space/tslocum/cview"
-	"github.com/huo-ju/quorum/cmd/cli/api"
+	"github.com/rumsystem/quorum/cmd/cli/api"
 )
 
 // global forms
