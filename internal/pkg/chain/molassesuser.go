@@ -12,47 +12,53 @@ import (
 )
 
 type MolassesUser struct {
-	//grp      *Group
 	grpItem  *quorumpb.GroupItem
 	nodename string
 	cIface   ChainMolassesIface
+	groupId  string
 }
 
 var molauser_log = logging.Logger("user")
 
 func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
+	molauser_log.Debugf("Init called")
 	user.grpItem = item
 	user.nodename = nodename
 	user.cIface = iface
+	user.groupId = item.GroupId
+	molaproducer_log.Infof("<%s> User created", user.groupId)
 }
 
 func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
-	molauser_log.Infof("UpdAnnounce called")
+	molauser_log.Debugf("<%s> UpdAnnounce called", user.groupId)
 	return user.cIface.GetProducerTrxMgr().SendAnnounceTrx(item)
 }
 
 func (user *MolassesUser) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
-	molauser_log.Infof("UpdBlkList called")
+	molauser_log.Debugf("<%s> UpdBlkList called", user.groupId)
 	return user.cIface.GetProducerTrxMgr().SendUpdAuthTrx(item)
 }
 
 func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
-	molauser_log.Infof("UpdSchema called")
+	molauser_log.Debugf("<%s> UpdSchema called", user.groupId)
 	return user.cIface.GetProducerTrxMgr().SendUpdSchemaTrx(item)
 }
 
 func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
-	molauser_log.Infof("UpdSchema called")
+	molauser_log.Debugf("<%s> UpdSchema called", user.groupId)
 	return user.cIface.GetProducerTrxMgr().SendRegProducerTrx(item)
 }
 
 func (user *MolassesUser) PostToGroup(content proto.Message) (string, error) {
-	molauser_log.Infof("PostToGroup called")
+	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
+	if user.cIface.IsSyncerReady() {
+		return "", errors.New("can not post to group, group is in syncing or sync failed")
+	}
 	return user.cIface.GetProducerTrxMgr().PostAny(content)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
-	molauser_log.Infof("AddBlock called")
+	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 
 	//check if block is already in chain
 	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, user.nodename)
@@ -87,7 +93,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if !parentExist {
-		molauser_log.Infof("Block Parent not exist, sync backward")
+		molauser_log.Debugf("<%s> block parent not exist, sync backward", user.groupId)
 		return errors.New("PARENT_NOT_EXIST")
 	}
 
@@ -124,7 +130,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//move gathered blocks from cache to chain
 	for _, block := range blocks {
-		molauser_log.Infof("Move block %s from cache to normal", block.BlockId)
+		molauser_log.Debugf("<%s> move block <%s> from cache to normal", user.groupId, block.BlockId)
 		err := nodectx.GetDbMgr().AddBlock(block, false, user.nodename)
 		if err != nil {
 			return err
@@ -137,9 +143,9 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//calculate new height
-	molauser_log.Debugf("height before recal %d", user.grpItem.HighestHeight)
+	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.HighestHeight)
 	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, user.grpItem.HighestHeight, user.nodename)
-	molauser_log.Debugf("new height %d, new highest blockId %v", newHeight, newHighestBlockId)
+	molauser_log.Debugf("<%s> new height <%d>, new highest blockId %v", user.groupId, newHeight, newHighestBlockId)
 
 	//if the new block is not highest block after recalculate, we need to "trim" the chain
 	if newHeight < user.grpItem.HighestHeight {
@@ -166,26 +172,26 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 //resend all trx in the list
 func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
-	molauser_log.Infof("resendTrx")
+	molauser_log.Debugf("<%s> resendTrx called", user.groupId)
 	for _, trx := range trxs {
-		molauser_log.Infof("Resend Trx %s", trx.TrxId)
+		molauser_log.Debugf("<%s> resend Trx <%s>", user.groupId, trx.TrxId)
 		user.cIface.GetProducerTrxMgr().ResendTrx(trx)
 	}
 	return nil
 }
 
 func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error {
-	molauser_log.Infof("applyTrxs called")
+	molauser_log.Debugf("<%s> applyTrxs called", user.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
 		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, nodename)
 		if err != nil {
-			molauser_log.Infof(err.Error())
+			molauser_log.Debugf("<%s> %s", user.groupId, err.Error())
 			continue
 		}
 
 		if isExist {
-			molauser_log.Infof("Trx %s existed, update trx only", trx.TrxId)
+			molauser_log.Debugf("<%s> trx <%s> existed, update trx only", user.groupId, trx.TrxId)
 			nodectx.GetDbMgr().AddTrx(trx)
 			continue
 		}
@@ -214,28 +220,28 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			trx.Data = decryptData
 		}
 
-		molauser_log.Infof("try apply trx %s", trx.TrxId)
+		molauser_log.Debugf("<%s> try apply trx <%s>", user.groupId, trx.TrxId)
 		//apply trx content
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
-			molauser_log.Infof("Apply POST trx")
+			molauser_log.Debugf("<%s> apply POST trx", user.groupId)
 			nodectx.GetDbMgr().AddPost(trx, nodename)
 		case quorumpb.TrxType_AUTH:
-			molauser_log.Infof("Apply AUTH trx")
+			molauser_log.Debugf("<%s> apply AUTH trx", user.groupId)
 			nodectx.GetDbMgr().UpdateBlkListItem(trx, nodename)
 		case quorumpb.TrxType_PRODUCER:
-			molauser_log.Infof("Apply PRODUCER Trx")
+			molauser_log.Debugf("<%s> apply PRODUCER trx", user.groupId)
 			nodectx.GetDbMgr().UpdateProducer(trx, nodename)
 			user.cIface.UpdProducerList()
-			user.cIface.UpdProducer()
+			user.cIface.CreateConsensus()
 		case quorumpb.TrxType_ANNOUNCE:
-			molauser_log.Infof("Apply ANNOUNCE trx")
+			molauser_log.Debugf("<%s> apply ANNOUNCE trx", user.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, nodename)
 		case quorumpb.TrxType_SCHEMA:
-			molauser_log.Infof("Apply SCHEMA trx ")
+			molauser_log.Debugf("<%s> apply SCHEMA trx", user.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
 		default:
-			molauser_log.Infof("Unsupported msgType %s", trx.Type)
+			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}
 
 		//save trx to db

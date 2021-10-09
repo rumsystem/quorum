@@ -1,9 +1,9 @@
 package chain
 
 import (
-	"fmt"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	"github.com/huo-ju/quorum/internal/pkg/storage"
+	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -14,12 +14,15 @@ type GroupMgr struct {
 
 var groupMgr *GroupMgr
 
+var groupMgr_log = logging.Logger("groupmgr")
+
 func GetGroupMgr() *GroupMgr {
 	return groupMgr
 }
 
 //TODO: singlaton
 func InitGroupMgr(dbMgr *storage.DbMgr) *GroupMgr {
+	groupMgr_log.Debug("InitGroupMgr called")
 	groupMgr = &GroupMgr{dbMgr: dbMgr}
 	groupMgr.Groups = make(map[string]*Group)
 	return groupMgr
@@ -27,7 +30,7 @@ func InitGroupMgr(dbMgr *storage.DbMgr) *GroupMgr {
 
 //load and group and start syncing
 func (groupmgr *GroupMgr) SyncAllGroup() error {
-	chain_log.Infof("Start Sync all groups")
+	groupMgr_log.Debug("SyncAllGroup called")
 
 	//open all groups
 	groupItemsBytes, err := groupmgr.dbMgr.GetGroupsBytes()
@@ -46,12 +49,12 @@ func (groupmgr *GroupMgr) SyncAllGroup() error {
 		proto.Unmarshal(b, item)
 		group.Init(item)
 		if err == nil {
-			chain_log.Infof(fmt.Sprintf("Start sync group: %s", item.GroupId))
+			groupMgr_log.Debugf("Start sync group: %s", item.GroupId)
 			go group.StartSync()
 			groupmgr.Groups[item.GroupId] = group
 		} else {
-			chain_log.Infof(fmt.Sprintf("can't init group: %s", item.GroupId))
-			chain_log.Fatalf(err.Error())
+			groupMgr_log.Fatalf("can't sync group: %s", item.GroupId)
+			groupMgr_log.Fatalf(err.Error())
 		}
 	}
 
@@ -59,13 +62,14 @@ func (groupmgr *GroupMgr) SyncAllGroup() error {
 }
 
 func (groupmgr *GroupMgr) StopSyncAllGroup() error {
+	groupMgr_log.Debug("StopSyncAllGroup called")
 	return nil
 }
 
 func (groupmgr *GroupMgr) Release() {
-	//close all groups
+	groupMgr_log.Debug("Release called")
 	for groupId, group := range groupmgr.Groups {
-		fmt.Println("group:", groupId, " teardown")
+		groupMgr_log.Debugf("group: <%s> teardown", groupId)
 		group.Teardown()
 	}
 	//close ctx db

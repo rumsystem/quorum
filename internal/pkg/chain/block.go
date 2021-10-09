@@ -3,12 +3,13 @@ package chain
 import (
 	"bytes"
 	"errors"
+	"time"
+
 	guuid "github.com/google/uuid"
 	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 func CreateBlock(oldBlock *quorumpb.Block, trxs []*quorumpb.Trx, groupPublicKey []byte, opts ...string) (*quorumpb.Block, error) {

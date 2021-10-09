@@ -33,36 +33,40 @@ type Syncer struct {
 	retryCount       int8
 	statusBeforeFail int8
 	responses        map[string]*quorumpb.ReqBlockResp
+	groupId          string
 }
 
 func (syncer *Syncer) Init(grp *Group, trxMgr *TrxMgr) {
+	syncer_log.Debug("Init called")
 	syncer.Status = IDLE
 	syncer.group = grp
 	syncer.trxMgr = trxMgr
 	syncer.retryCount = 0
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
+	syncer.groupId = grp.Item.GroupId
+	syncer_log.Infof("<%s> syncer initialed", syncer.groupId)
 }
 
 // sync block "forward"
 func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
-	syncer_log.Infof("Group %s start syncing forward on node %s", syncer.group.Item.GroupId, syncer.nodeName)
+	syncer_log.Debugf("<%s> SyncForward called", syncer.group.Item.GroupId)
 
 	//no need to sync for producers(owner)
 	if syncer.group.Item.OwnerPubKey == syncer.group.Item.UserSignPubkey {
 		if len(syncer.group.ChainCtx.ProducerPool) == 1 {
-			syncer_log.Infof("I am the owner, no producer exist, no need to sync")
-			return errors.New("I am the owner, no producer exist, no need to sync")
+			syncer_log.Debugf("<%s> group owner, no registed producer, no need to sync", syncer.groupId)
+			return errors.New("group owner, no registed producer, no need to sync")
 		} else {
-			syncer_log.Infof("I am the owner, producer exist, sync missing block")
+			syncer_log.Debugf("<%s> owner, has registed producer, start sync missing block", syncer.groupId)
 		}
 	} else if _, ok := syncer.group.ChainCtx.ProducerPool[syncer.group.Item.UserSignPubkey]; ok {
-		syncer_log.Infof("I am a producer, no need to sync forward (sync backward when new block produced and found missing block(s)")
-		return errors.New("I am a producer, no need to sync forward (sync backward when new block produced and found missing block(s)")
+		syncer_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", syncer.groupId)
+		return errors.New("producer, no need to sync forward (sync backward when new block produced and found missing block(s)")
 	} else if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
 		return errors.New("already in SYNCING")
 	}
 
-	syncer_log.Infof("try sync forward from block %s", block.BlockId)
+	syncer_log.Debugf("<%s> try sync forward from block <%s>", syncer.groupId, block.BlockId)
 	syncer.Status = SYNCING_FORWARD
 	syncer.askNextBlock(block)
 	syncer.waitBlock(block)
@@ -71,13 +75,12 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 
 //Sync block "backward"
 func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
-	syncer_log.Infof("Group %s start syncing backward on node %s", syncer.group.Item.GroupId, syncer.nodeName)
-	syncer_log.Infof("try sync backward from block %s", block.BlockId)
+	syncer_log.Debugf("<%s> SyncBackward called", syncer.group.Item.GroupId)
 
 	//if I am the owner
 	if syncer.group.Item.OwnerPubKey == syncer.group.Item.UserSignPubkey &&
 		len(syncer.group.ChainCtx.ProducerPool) == 1 {
-		syncer_log.Warningf("I am the owner, no producer exist, no need to sync, SOMETHING WRONG HAPPENED")
+		syncer_log.Warningf("<%s> owner, no producer exist, no need to sync, SOMETHING WRONG HAPPENED", syncer.groupId)
 		return nil
 	}
 
@@ -92,15 +95,15 @@ func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
 }
 
 func (syncer *Syncer) StopSync() error {
-	syncer_log.Infof("Group stop sync")
+	syncer_log.Debugf("<%s> StopSync called", syncer.groupId)
 	syncer.stopWaitBlock()
 	syncer.Status = IDLE
-	syncer_log.Infof("Group stop done")
+	syncer_log.Debugf("<%s> sync stopped", syncer.groupId)
 	return nil
 }
 
 func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
-	syncer_log.Infof("ContinueSync called")
+	syncer_log.Debugf("<%s> ContinueSync called", syncer.groupId)
 	syncer.stopWaitBlock()
 	if syncer.Status == SYNCING_FORWARD {
 		syncer.askNextBlock(block)
@@ -109,28 +112,28 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 		syncer.askPreviousBlock(block)
 		syncer.waitBlock(block)
 	} else if syncer.Status == SYNC_FAILED {
-		syncer_log.Infof("TBD, Sync faileld, should manually start sync")
+		syncer_log.Debugf("<%s> TBD, Sync faileld, should manually start sync", syncer.groupId)
 	} else {
 		//idle
-		syncer_log.Warningf("Syncer idle, can not continue")
+		syncer_log.Debugf("<%s> syncer idle, can not continue", syncer.groupId)
 	}
 
 	return nil
 }
 
 func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.Block) error {
-
+	syncer_log.Debugf("<%s> AddBlockSynced called", syncer.groupId)
 	if !(syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD) {
-		syncer_log.Warningf("Not in syncing, ignore block")
+		syncer_log.Warningf("<%s> Not in syncing, ignore block", syncer.groupId)
 		return nil
 	}
 
 	//block in trx
-	syncer_log.Infof("Add response from %s", resp.ProviderPubkey)
+	syncer_log.Debugf("<%s> synced block incoming, provider <%s>", syncer.groupId, resp.ProviderPubkey)
 	syncer.responses[resp.ProviderPubkey] = resp
 
 	if resp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
-		syncer_log.Infof("receive BLOCK_NOT_FOUND response, do nothing(wait for timeout)")
+		syncer_log.Debugf("<%s> receive BLOCK_NOT_FOUND response, do nothing(wait for timeout)", syncer.groupId)
 		return nil
 	}
 
@@ -138,43 +141,42 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 
 	if syncer.Status == SYNCING_FORWARD {
 		if producer {
-			syncer_log.Infof("SYNCING_FORWARD, PRODUCER ADD BLOCK")
+			syncer_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", syncer.groupId)
 			err := syncer.group.ChainCtx.Consensus.Producer().AddBlock(block)
 			if err != nil {
 				syncer_log.Infof(err.Error())
 			}
 		} else {
-			syncer_log.Infof("SYNCING_FORWARD, USER ADD BLOCK")
+			syncer_log.Debugf("<%s> SYNCING_FORWARD, USER ADD BLOCK", syncer.groupId)
 			err := syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 			if err != nil {
 				syncer_log.Infof(err.Error())
 			}
 		}
-		syncer_log.Infof("SYNCING_FORWARD, CONTINUE")
+		syncer_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", syncer.groupId)
 		syncer.ContinueSync(block)
 	} else { //sync backward
 		var err error
 		if producer {
-			syncer_log.Infof("SYNCING_BACKWARD, PRODUCER ADD BLOCK")
+			syncer_log.Debugf("<%s> SYNCING_BACKWARD, PRODUCER ADD BLOCK", syncer.groupId)
 			err = syncer.group.ChainCtx.Consensus.Producer().AddBlock(block)
 		} else {
-			syncer_log.Infof("SYNCING_BACKWARD, USER ADD BLOCK")
+			syncer_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", syncer.groupId)
 			err = syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 		}
 		if err.Error() == "PARENT_NOT_EXIST" {
-			syncer_log.Infof("SYNCING_BACKWARD, CONTINUE")
+			syncer_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", syncer.groupId)
 			syncer.ContinueSync(block)
 		} else if err != nil {
-			syncer_log.Infof(err.Error())
+			syncer_log.Debugf(err.Error())
 		}
 	}
 
 	return nil
-
 }
 
 func (syncer *Syncer) askNextBlock(block *quorumpb.Block) {
-	syncer_log.Infof("askNextBlock called")
+	syncer_log.Debugf("<%s> askNextBlock called", syncer.groupId)
 
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
@@ -183,7 +185,8 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) {
 }
 
 func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) {
-	syncer_log.Infof("askPreviousBlock called")
+	syncer_log.Debugf("<%s> askPreviousBlock called", syncer.groupId)
+
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block backward msg out
@@ -192,22 +195,22 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) {
 
 //wait block coming
 func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
-	syncer_log.Infof("Start waiting block")
+	syncer_log.Debugf("<%s> waitBlock called", syncer.groupId)
 	syncer.AskNextTimer = (time.NewTimer)(time.Duration(WAIT_BLOCK_TIME_S) * time.Second)
 	syncer.AskNextTimerDone = make(chan bool)
 	go func() {
 		for {
 			select {
 			case <-syncer.AskNextTimerDone:
-				syncer_log.Infof("Wait stopped by signal")
+				syncer_log.Debugf("<%s> wait stopped by signal", syncer.groupId)
 				return
 			case <-syncer.AskNextTimer.C:
-				syncer_log.Infof("Wait done")
+				syncer_log.Debugf("<%s> wait done", syncer.groupId)
 				if len(syncer.responses) == 0 {
 					syncer.retryCount++
-					syncer_log.Infof("Nothing received in this round, start new round (retry time: %d)", syncer.retryCount)
+					syncer_log.Debugf("<%s> nothing received in this round, start new round (retry time: <%d>)", syncer.groupId, syncer.retryCount)
 					if syncer.retryCount == int8(RETRY_LIMIT) {
-						syncer_log.Warnf("Reach retry limit %d, SYNC FAILED, check network connection", RETRY_LIMIT)
+						syncer_log.Debugf("<%s> reach retry limit <%d>, SYNC FAILED, check network connection", syncer.groupId, RETRY_LIMIT)
 						//save syncer status
 						syncer.statusBeforeFail = syncer.Status
 						syncer.Status = SYNC_FAILED
@@ -222,7 +225,7 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 					}
 					syncer.ShowChainStruct()
 				} else { // all BLOCK_NOT_FOUND
-					syncer_log.Infof("received %d BLOCK_NOT_FOUND resp, sync done, set to IDLE", len(syncer.responses))
+					syncer_log.Debugf("<%s> received <%d> BLOCK_NOT_FOUND resp, sync done, set to IDLE", syncer.groupId, len(syncer.responses))
 					syncer.Status = IDLE
 				}
 			}
@@ -231,11 +234,13 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 }
 
 func (syncer *Syncer) stopWaitBlock() {
+	syncer_log.Debugf("<%s> stopWaitBlock called", syncer.groupId)
 	syncer.AskNextTimer.Stop()
 	syncer.AskNextTimerDone <- true
 }
 
 func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (string, error) {
+	syncer_log.Debugf("<%s> GetBlockToGenesis called", syncer.groupId)
 	blk, err := nodectx.GetDbMgr().GetBlock(blockid, false, syncer.nodeName)
 	if err != nil {
 		return "", err
@@ -253,14 +258,14 @@ func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (st
 }
 
 func (syncer *Syncer) ShowChainStruct() {
-	syncer_log.Infof("ShowChainStruct called: %s", syncer.nodeName)
+	syncer_log.Debugf("<%s> ShowChainStruct called", syncer.groupId)
 	genesisblkid := syncer.group.ChainCtx.group.Item.GenesisBlock.BlockId
 	for _, blockId := range syncer.group.ChainCtx.group.Item.HighestBlockId {
 		chainstruct, err := syncer.GetBlockToGenesis(blockId, genesisblkid)
 		if err != nil {
-			syncer_log.Errorf("%s ChainStruct genesis %s err %s", syncer.nodeName, genesisblkid, err)
+			syncer_log.Errorf("<%s> ChainStruct genesis <%s> err <%s>", syncer.groupId, genesisblkid, err)
 		} else {
-			syncer_log.Debugf("%s ChainStruct genesis %s struct: %s", syncer.nodeName, genesisblkid, chainstruct)
+			syncer_log.Debugf("<%s> ChainStruct genesis <%s> struct: <%s>", syncer.groupId, genesisblkid, chainstruct)
 		}
 	}
 }

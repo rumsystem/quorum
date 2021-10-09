@@ -5,7 +5,7 @@ import (
 )
 
 type Producer interface {
-	Init(grp *Group, trxMgr map[string]*TrxMgr, nodeName string)
+	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	AddTrx(trx *quorumpb.Trx)
 	AddBlockToPool(block *quorumpb.Block)
 	GetBlockForward(trx *quorumpb.Trx) error

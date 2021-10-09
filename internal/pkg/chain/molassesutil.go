@@ -1,12 +1,17 @@
 package chain
 
 import (
+	localCrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
 	"github.com/huo-ju/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var molautil_log = logging.Logger("util")
 
 //find the highest block from the block tree
 func RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, nodename string) (int64, []string, error) {
+	molautil_log.Debug("RecalChainHeight called")
 	var highestBlockId []string
 	newHeight := currentHeight
 	for _, block := range blocks {
@@ -29,6 +34,7 @@ func RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, nodename st
 
 //from root of the new block tree, get all blocks trimed when not belong to longest path
 func GetTrimedBlocks(blocks []*quorumpb.Block, nodename string) ([]string, error) {
+	molautil_log.Debug("GetTrimedBlocks called")
 	var cache map[string]bool
 	var longestPath []string
 	var result []string
@@ -47,6 +53,7 @@ func GetTrimedBlocks(blocks []*quorumpb.Block, nodename string) ([]string, error
 }
 
 func dfs(blocks []*quorumpb.Block, cache map[string]bool, result []string, nodename string) error {
+	molautil_log.Debug("dfs called")
 	for _, block := range blocks {
 		if _, ok := cache[block.BlockId]; !ok {
 			cache[block.BlockId] = true
@@ -63,7 +70,7 @@ func dfs(blocks []*quorumpb.Block, cache map[string]bool, result []string, noden
 
 //get all trx belongs to me from the block list
 func GetMyTrxs(blockIds []string, nodename string, userSignPubkey string) ([]*quorumpb.Trx, error) {
-	chain_log.Infof("getMyTrxs called")
+	molautil_log.Debug("GetMyTrxs called")
 	var trxs []*quorumpb.Trx
 
 	for _, blockId := range blockIds {
@@ -84,7 +91,7 @@ func GetMyTrxs(blockIds []string, nodename string, userSignPubkey string) ([]*qu
 
 //get all trx from the block list
 func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
-	chain_log.Infof("getAllTrxs called")
+	molautil_log.Debug("GetAllTrxs called")
 	var trxs []*quorumpb.Trx
 	for _, block := range blocks {
 		for _, trx := range block.Trxs {
@@ -96,9 +103,13 @@ func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
 
 //update resend count (+1) for all trxs
 func UpdateResendCount(trxs []*quorumpb.Trx) ([]*quorumpb.Trx, error) {
-	chain_log.Infof("updateResendCount called")
+	molautil_log.Debug("UpdateResendCount called")
 	for _, trx := range trxs {
 		trx.ResendCount++
 	}
 	return trxs, nil
+}
+
+func Hash(data []byte) []byte {
+	return localCrypto.Hash(data)
 }

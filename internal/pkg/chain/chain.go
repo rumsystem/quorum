@@ -33,6 +33,8 @@ type Chain struct {
 	Syncer    *Syncer
 	Consensus Consensus
 	statusmu  sync.RWMutex
+
+	groupId string
 }
 
 func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn pubsubconn.PubSubConn, userPubsubconn pubsubconn.PubSubConn) {
@@ -47,7 +49,7 @@ func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
 	chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
-	chain.Consensus.Producer().Init(group, chain.trxMgrs, chain.nodename)
+	chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 	chain.Consensus.User().Init(group.Item, group.ChainCtx.nodename, chain)
 
 	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
@@ -58,10 +60,12 @@ func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn
 
 	chain.Syncer = &Syncer{nodeName: nodename}
 	chain.Syncer.Init(chain.group, producerTrxMgr)
+
+	chain.groupId = group.Item.GroupId
 }
 
 func (chain *Chain) Init(group *Group) error {
-	chain_log.Infof("Init called")
+	chain_log.Debugf("<%s> Init called", group.Item.GroupId)
 	chain.group = group
 	chain.trxMgrs = make(map[string]*TrxMgr)
 	chain.nodename = nodectx.GetNodeCtx().Name
@@ -90,19 +94,14 @@ func (chain *Chain) Init(group *Group) error {
 	chain.Syncer = &Syncer{nodeName: chain.nodename}
 	chain.Syncer.Init(chain.group, producerTrxMgr)
 
+	chain.groupId = group.Item.GroupId
+
+	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
 
-func (chain *Chain) LoadProducer() {
-	//load producer list
-	chain.UpdProducerList()
-
-	//check if need to create molass producer
-	chain.UpdProducer()
-}
-
 func (chain *Chain) StartInitialSync(block *quorumpb.Block) error {
-	chain_log.Infof("StartSync called")
+	chain_log.Debugf("<%s> StartInitialSync called", chain.groupId)
 	if chain.Syncer != nil {
 		return chain.Syncer.SyncForward(block)
 	}
@@ -110,7 +109,7 @@ func (chain *Chain) StartInitialSync(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) StopSync() error {
-	chain_log.Infof("StopSync called")
+	chain_log.Debugf("<%s> StopSync called", chain.groupId)
 	if chain.Syncer != nil {
 		return chain.Syncer.StopSync()
 	}
@@ -118,37 +117,41 @@ func (chain *Chain) StopSync() error {
 }
 
 func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
+	chain_log.Debugf("<%s> GetProducerTrxMgr called", chain.groupId)
 	return chain.trxMgrs[chain.producerChannelId]
 }
 
 func (chain *Chain) GetUserTrxMgr() *TrxMgr {
+	chain_log.Debugf("<%s> GetUserTrxMgr called", chain.groupId)
 	return chain.trxMgrs[chain.userChannelId]
 }
 
 func (chain *Chain) UpdChainInfo(height int64, blockId []string) error {
-	//update group info
+	chain_log.Debugf("<%s> UpdChainInfo called", chain.groupId)
 	chain.group.Item.HighestHeight = height
 	chain.group.Item.HighestBlockId = blockId
 	chain.group.Item.LastUpdate = time.Now().UnixNano()
+	chain_log.Infof("<%s> Chain Info updated %d, %v", chain.group.Item.GroupId, height, blockId)
 	return nodectx.GetDbMgr().UpdGroup(chain.group.Item)
 }
 
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> HandleTrx called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
 		chain_log.Errorf("Trx Version mismatch %s", trx.TrxId)
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
 	case quorumpb.TrxType_AUTH:
-		chain.handleTrx(trx)
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_POST:
-		chain.handleTrx(trx)
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_ANNOUNCE:
-		chain.handleTrx(trx)
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_PRODUCER:
-		chain.handleTrx(trx)
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
-		chain.handleTrx(trx)
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -168,6 +171,7 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 		chain.handleBlockProduced(trx)
 		return nil
 	default:
+		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
 		return err
 	}
@@ -175,13 +179,13 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
-	chain_log.Infof("HandleBlock called")
+	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
 
 	var shouldAccept bool
 
 	// check if block produced by registed producer or group owner
-	if len(chain.ProducerPool) == 0 && block.ProducerPubKey == chain.group.Item.OwnerPubKey {
-		//from owner, no registed producer
+	if len(chain.ProducerPool) == 1 && block.ProducerPubKey == chain.group.Item.OwnerPubKey {
+		//from owner and no other registed producer
 		shouldAccept = true
 	} else if _, ok := chain.ProducerPool[block.ProducerPubKey]; ok {
 		//from registed producer
@@ -189,23 +193,22 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 	} else {
 		//from someone else
 		shouldAccept = false
-		chain_log.Warnf("received block from unknow node with producer key %s", block.ProducerPubKey)
+		chain_log.Warningf("<%s> received block <%s> from unregisted producer <%s>, reject it", chain.group.Item.GroupId, block.BlockId, block.ProducerPubKey)
 	}
 
 	if shouldAccept {
 		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
-			chain_log.Infof(err.Error())
+			chain_log.Debug(err.Error())
 		}
 	}
 
 	return nil
 }
 
-func (chain *Chain) handleTrx(trx *quorumpb.Trx) error {
-	chain_log.Infof("handleTrx called")
-	//if I am not a producer, do nothing
-	if chain.Consensus == nil {
+func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
+	if chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain.Consensus.Producer().AddTrx(trx)
@@ -213,23 +216,23 @@ func (chain *Chain) handleTrx(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
-	chain_log.Infof("handleReqBlockForward called")
-	if chain.Consensus == nil {
+	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
+	if chain.Consensus.Producer() == nil {
 		return nil
 	}
 	return chain.Consensus.Producer().GetBlockForward(trx)
 }
 
 func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx) error {
-	chain_log.Infof("handleReqBlockBackward called")
-	if chain.Consensus == nil {
+	chain_log.Debugf("<%s> handleReqBlockBackward called", chain.groupId)
+	if chain.Consensus.Producer() == nil {
 		return nil
 	}
 	return chain.Consensus.Producer().GetBlockBackward(trx)
 }
 
 func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
-	chain_log.Infof("handleReqBlockResp called")
+	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
 
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
@@ -246,8 +249,8 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 		return err
 	}
 
+	//if asked by myself, do nothing
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
-		chain_log.Infof("Not asked by me, ignore")
 		return nil
 	}
 
@@ -258,7 +261,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 
 	var shouldAccept bool
 
-	chain_log.Debugf("block producer %s, block_id %s", newBlock.ProducerPubKey, newBlock.BlockId)
+	chain_log.Infof("<%s> REQ_BLOCK_RESP, block <%s> from producer <%s>", chain.groupId, newBlock.BlockId, newBlock.ProducerPubKey)
 
 	if _, ok := chain.ProducerPool[newBlock.ProducerPubKey]; ok {
 		shouldAccept = true
@@ -267,7 +270,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 	}
 
 	if !shouldAccept {
-		chain_log.Warnf("Block not produced by registed producer, reject it")
+		chain_log.Warnf(" <%s> Block producer <%s> not registed, reject", chain.groupId, newBlock.ProducerPubKey)
 		return nil
 	}
 
@@ -275,14 +278,15 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
-	chain_log.Infof("handleBlockProduced called")
-	if chain.Consensus == nil {
+	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
+	if chain.Consensus.Producer() == nil {
 		return nil
 	}
 	return chain.Consensus.Producer().AddProducedBlock(trx)
 }
 
 func (chain *Chain) UpdProducerList() {
+	chain_log.Debugf("<%s> UpdProducerList called", chain.groupId)
 	//create and load group producer pool
 	chain.ProducerPool = make(map[string]*quorumpb.ProducerItem)
 	producers, _ := nodectx.GetDbMgr().GetProducers(chain.group.Item.GroupId, chain.nodename)
@@ -290,21 +294,35 @@ func (chain *Chain) UpdProducerList() {
 		chain.ProducerPool[item.ProducerPubkey] = item
 		ownerPrefix := ""
 		if item.ProducerPubkey == chain.group.Item.OwnerPubKey {
-			ownerPrefix = "(owner)"
+			ownerPrefix = "(group owner)"
 		}
-		chain_log.Infof("Load producer %s %s", item.ProducerPubkey, ownerPrefix)
+		chain_log.Infof("<%s> Load producer <%s%s>", chain.groupId, item.ProducerPubkey, ownerPrefix)
 	}
 }
 
-func (chain *Chain) UpdProducer() {
+func (chain *Chain) CreateConsensus() {
+	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
-		//Yes, I am producer, create censensus and group producer
-		chain_log.Infof("Create and initial molasses producer")
-		chain.Consensus = NewMolasses(&MolassesProducer{NodeName: chain.nodename}, &MolassesUser{NodeName: chain.nodename})
-		chain.Consensus.Producer().Init(chain.group, chain.trxMgrs, chain.nodename)
-		chain.Consensus.User().Init(chain.group)
+		//Yes, I am producer, create group producer/user
+		chain_log.Infof("<%s> Create and initial molasses producer/user", chain.groupId)
+		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
+		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+		chain.Consensus.User().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 	} else {
-		chain_log.Infof("Set molasses producer to nil")
-		chain.Consensus = nil
+		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
+		chain.Consensus = NewMolasses(nil, &MolassesUser{})
+		chain.Consensus.User().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 	}
+}
+
+func (chain *Chain) IsSyncerReady() bool {
+	chain_log.Debugf("<%s> IsSyncerReady called", chain.groupId)
+	if chain.Syncer.Status == SYNCING_BACKWARD ||
+		chain.Syncer.Status == SYNCING_FORWARD ||
+		chain.Syncer.Status == SYNC_FAILED {
+		chain_log.Debugf("<%s>group is syncing or sync failed", chain.groupId)
+		return true
+	}
+
+	return false
 }

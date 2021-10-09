@@ -33,6 +33,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	_ "google.golang.org/protobuf/proto"     //import for swaggo
+
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
 	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
 )
@@ -319,6 +320,10 @@ func main() {
 		logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
 		logging.SetLogLevel("group", "debug")
+		logging.SetLogLevel("syncer", "debug")
+		logging.SetLogLevel("producer", "debug")
+		logging.SetLogLevel("user", "debug")
+		logging.SetLogLevel("groupmgr", "debug")
 
 	}
 
