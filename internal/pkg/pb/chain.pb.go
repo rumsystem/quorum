@@ -389,7 +389,7 @@ type Trx struct {
 	Type         TrxType `protobuf:"varint,2,opt,name=Type,proto3,enum=quorum.pb.TrxType" json:"Type,omitempty"`
 	GroupId      string  `protobuf:"bytes,3,opt,name=GroupId,proto3" json:"GroupId,omitempty"`
 	Data         []byte  `protobuf:"bytes,4,opt,name=Data,proto3" json:"Data,omitempty"`
-	TimeStamp    int64   `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp    int64   `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Version      string  `protobuf:"bytes,6,opt,name=Version,proto3" json:"Version,omitempty"`
 	Expired      int64   `protobuf:"varint,7,opt,name=Expired,proto3" json:"Expired,omitempty"`
 	ResendCount  int64   `protobuf:"varint,8,opt,name=ResendCount,proto3" json:"ResendCount,omitempty"`
@@ -949,7 +949,7 @@ type PostItem struct {
 	TrxId           string `protobuf:"bytes,1,opt,name=TrxId,proto3" json:"TrxId,omitempty"`
 	PublisherPubkey string `protobuf:"bytes,2,opt,name=PublisherPubkey,proto3" json:"PublisherPubkey,omitempty"`
 	Content         []byte `protobuf:"bytes,3,opt,name=Content,proto3" json:"Content,omitempty"`
-	TimeStamp       int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp       int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 }
 
 func (x *PostItem) Reset() {
@@ -1021,7 +1021,7 @@ type DenyUserItem struct {
 	PeerId           string `protobuf:"bytes,2,opt,name=PeerId,proto3" json:"PeerId,omitempty"`
 	GroupOwnerPubkey string `protobuf:"bytes,3,opt,name=GroupOwnerPubkey,proto3" json:"GroupOwnerPubkey,omitempty"`
 	GroupOwnerSign   string `protobuf:"bytes,4,opt,name=GroupOwnerSign,proto3" json:"GroupOwnerSign,omitempty"`
-	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Action           string `protobuf:"bytes,6,opt,name=Action,proto3" json:"Action,omitempty"`
 	Memo             string `protobuf:"bytes,7,opt,name=Memo,proto3" json:"Memo,omitempty"`
 }
@@ -1116,7 +1116,7 @@ type ProducerItem struct {
 	ProducerPubkey   string `protobuf:"bytes,2,opt,name=ProducerPubkey,proto3" json:"ProducerPubkey,omitempty"`
 	GroupOwnerPubkey string `protobuf:"bytes,3,opt,name=GroupOwnerPubkey,proto3" json:"GroupOwnerPubkey,omitempty"`
 	GroupOwnerSign   string `protobuf:"bytes,4,opt,name=GroupOwnerSign,proto3" json:"GroupOwnerSign,omitempty"`
-	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Action           string `protobuf:"bytes,6,opt,name=Action,proto3" json:"Action,omitempty"`
 	Memo             string `protobuf:"bytes,7,opt,name=Memo,proto3" json:"Memo,omitempty"`
 }
@@ -1210,7 +1210,7 @@ type AnnounceItem struct {
 	GroupId            string `protobuf:"bytes,1,opt,name=GroupId,proto3" json:"GroupId,omitempty"`
 	AnnouncedPubkey    string `protobuf:"bytes,2,opt,name=AnnouncedPubkey,proto3" json:"AnnouncedPubkey,omitempty"`
 	AnnouncerSignature string `protobuf:"bytes,3,opt,name=AnnouncerSignature,proto3" json:"AnnouncerSignature,omitempty"`
-	TimeStamp          int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp          int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Type               string `protobuf:"bytes,5,opt,name=Type,proto3" json:"Type,omitempty"`
 	Action             string `protobuf:"bytes,6,opt,name=Action,proto3" json:"Action,omitempty"`
 }
@@ -1298,7 +1298,7 @@ type SchemaItem struct {
 	SchemaJson       string `protobuf:"bytes,2,opt,name=SchemaJson,proto3" json:"SchemaJson,omitempty"`
 	GroupOwnerPubkey string `protobuf:"bytes,3,opt,name=GroupOwnerPubkey,proto3" json:"GroupOwnerPubkey,omitempty"`
 	GroupOwnerSign   string `protobuf:"bytes,4,opt,name=GroupOwnerSign,proto3" json:"GroupOwnerSign,omitempty"`
-	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Memo             string `protobuf:"bytes,6,opt,name=Memo,proto3" json:"Memo,omitempty"`
 }
 
