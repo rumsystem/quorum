@@ -48,7 +48,7 @@ message Block {
     string   ProducerPubKey = 6;   
 	bytes    Hash           = 7;      
     bytes    Signature      = 8;
-	int64    Timestamp      = 9; 
+	int64    TimeStamp      = 9; 
 }
 
 message BlockDbChunk {

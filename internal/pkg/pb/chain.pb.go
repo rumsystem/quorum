@@ -389,7 +389,7 @@ type Trx struct {
 	Type         TrxType `protobuf:"varint,2,opt,name=Type,proto3,enum=quorum.pb.TrxType" json:"Type,omitempty"`
 	GroupId      string  `protobuf:"bytes,3,opt,name=GroupId,proto3" json:"GroupId,omitempty"`
 	Data         []byte  `protobuf:"bytes,4,opt,name=Data,proto3" json:"Data,omitempty"`
-	TimeStamp    int64   `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp    int64   `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Version      string  `protobuf:"bytes,6,opt,name=Version,proto3" json:"Version,omitempty"`
 	Expired      int64   `protobuf:"varint,7,opt,name=Expired,proto3" json:"Expired,omitempty"`
 	ResendCount  int64   `protobuf:"varint,8,opt,name=ResendCount,proto3" json:"ResendCount,omitempty"`
@@ -520,7 +520,7 @@ type Block struct {
 	ProducerPubKey string `protobuf:"bytes,6,opt,name=ProducerPubKey,proto3" json:"ProducerPubKey,omitempty"`
 	Hash           []byte `protobuf:"bytes,7,opt,name=Hash,proto3" json:"Hash,omitempty"`
 	Signature      []byte `protobuf:"bytes,8,opt,name=Signature,proto3" json:"Signature,omitempty"`
-	Timestamp      int64  `protobuf:"varint,9,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
+	TimeStamp      int64  `protobuf:"varint,9,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 }
 
 func (x *Block) Reset() {
@@ -611,9 +611,9 @@ func (x *Block) GetSignature() []byte {
 	return nil
 }
 
-func (x *Block) GetTimestamp() int64 {
+func (x *Block) GetTimeStamp() int64 {
 	if x != nil {
-		return x.Timestamp
+		return x.TimeStamp
 	}
 	return 0
 }
@@ -949,7 +949,7 @@ type PostItem struct {
 	TrxId           string `protobuf:"bytes,1,opt,name=TrxId,proto3" json:"TrxId,omitempty"`
 	PublisherPubkey string `protobuf:"bytes,2,opt,name=PublisherPubkey,proto3" json:"PublisherPubkey,omitempty"`
 	Content         []byte `protobuf:"bytes,3,opt,name=Content,proto3" json:"Content,omitempty"`
-	TimeStamp       int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp       int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 }
 
 func (x *PostItem) Reset() {
@@ -1021,7 +1021,7 @@ type DenyUserItem struct {
 	PeerId           string `protobuf:"bytes,2,opt,name=PeerId,proto3" json:"PeerId,omitempty"`
 	GroupOwnerPubkey string `protobuf:"bytes,3,opt,name=GroupOwnerPubkey,proto3" json:"GroupOwnerPubkey,omitempty"`
 	GroupOwnerSign   string `protobuf:"bytes,4,opt,name=GroupOwnerSign,proto3" json:"GroupOwnerSign,omitempty"`
-	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Action           string `protobuf:"bytes,6,opt,name=Action,proto3" json:"Action,omitempty"`
 	Memo             string `protobuf:"bytes,7,opt,name=Memo,proto3" json:"Memo,omitempty"`
 }
@@ -1116,7 +1116,7 @@ type ProducerItem struct {
 	ProducerPubkey   string `protobuf:"bytes,2,opt,name=ProducerPubkey,proto3" json:"ProducerPubkey,omitempty"`
 	GroupOwnerPubkey string `protobuf:"bytes,3,opt,name=GroupOwnerPubkey,proto3" json:"GroupOwnerPubkey,omitempty"`
 	GroupOwnerSign   string `protobuf:"bytes,4,opt,name=GroupOwnerSign,proto3" json:"GroupOwnerSign,omitempty"`
-	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Action           string `protobuf:"bytes,6,opt,name=Action,proto3" json:"Action,omitempty"`
 	Memo             string `protobuf:"bytes,7,opt,name=Memo,proto3" json:"Memo,omitempty"`
 }
@@ -1210,7 +1210,7 @@ type AnnounceItem struct {
 	GroupId            string `protobuf:"bytes,1,opt,name=GroupId,proto3" json:"GroupId,omitempty"`
 	AnnouncedPubkey    string `protobuf:"bytes,2,opt,name=AnnouncedPubkey,proto3" json:"AnnouncedPubkey,omitempty"`
 	AnnouncerSignature string `protobuf:"bytes,3,opt,name=AnnouncerSignature,proto3" json:"AnnouncerSignature,omitempty"`
-	TimeStamp          int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp          int64  `protobuf:"varint,4,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Type               string `protobuf:"bytes,5,opt,name=Type,proto3" json:"Type,omitempty"`
 	Action             string `protobuf:"bytes,6,opt,name=Action,proto3" json:"Action,omitempty"`
 }
@@ -1298,7 +1298,7 @@ type SchemaItem struct {
 	SchemaJson       string `protobuf:"bytes,2,opt,name=SchemaJson,proto3" json:"SchemaJson,omitempty"`
 	GroupOwnerPubkey string `protobuf:"bytes,3,opt,name=GroupOwnerPubkey,proto3" json:"GroupOwnerPubkey,omitempty"`
 	GroupOwnerSign   string `protobuf:"bytes,4,opt,name=GroupOwnerSign,proto3" json:"GroupOwnerSign,omitempty"`
-	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty"`
+	TimeStamp        int64  `protobuf:"varint,5,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
 	Memo             string `protobuf:"bytes,6,opt,name=Memo,proto3" json:"Memo,omitempty"`
 }
 
@@ -1572,9 +1572,9 @@ var file_chain_proto_rawDesc = []byte{
 	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x48, 0x61, 0x73, 0x68, 0x18, 0x07, 0x20,
 	0x01, 0x28, 0x0c, 0x52, 0x04, 0x48, 0x61, 0x73, 0x68, 0x12, 0x1c, 0x0a, 0x09, 0x53, 0x69, 0x67,
 	0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x53, 0x69,
-	0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x54, 0x69, 0x6d, 0x65, 0x73,
+	0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x54, 0x69, 0x6d, 0x65, 0x53,
 	0x74, 0x61, 0x6d, 0x70, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x54, 0x69, 0x6d, 0x65,
-	0x73, 0x74, 0x61, 0x6d, 0x70, 0x22, 0xb6, 0x01, 0x0a, 0x0c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x44,
+	0x53, 0x74, 0x61, 0x6d, 0x70, 0x22, 0xb6, 0x01, 0x0a, 0x0c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x44,
 	0x62, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x12, 0x18, 0x0a, 0x07, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x49,
 	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x49, 0x64,
 	0x12, 0x2e, 0x0a, 0x09, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x49, 0x74, 0x65, 0x6d, 0x18, 0x02, 0x20,
@@ -1737,10 +1737,11 @@ var file_chain_proto_rawDesc = []byte{
 	0x50, 0x4f, 0x41, 0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x50, 0x4f, 0x53, 0x10, 0x01, 0x2a, 0x2a,
 	0x0a, 0x04, 0x52, 0x6f, 0x6c, 0x65, 0x12, 0x12, 0x0a, 0x0e, 0x47, 0x52, 0x4f, 0x55, 0x50, 0x5f,
 	0x50, 0x52, 0x4f, 0x44, 0x55, 0x43, 0x45, 0x52, 0x10, 0x00, 0x12, 0x0e, 0x0a, 0x0a, 0x47, 0x52,
-	0x4f, 0x55, 0x50, 0x5f, 0x55, 0x53, 0x45, 0x52, 0x10, 0x01, 0x42, 0x2a, 0x5a, 0x28, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x75, 0x6f, 0x2d, 0x6a, 0x75, 0x2f,
-	0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f,
-	0x70, 0x6b, 0x67, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x4f, 0x55, 0x50, 0x5f, 0x55, 0x53, 0x45, 0x52, 0x10, 0x01, 0x42, 0x2d, 0x5a, 0x2b, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x72, 0x75, 0x6d, 0x73, 0x79, 0x73, 0x74,
+	0x65, 0x6d, 0x2f, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e,
+	0x61, 0x6c, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
