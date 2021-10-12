@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
 type DenyListParam struct {
@@ -56,7 +57,7 @@ func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
 	}
 
 	var groupSignPubkey []byte
-	ks := chain.GetNodeCtx().Keystore
+	ks := nodectx.GetNodeCtx().Keystore
 	dirks, ok := ks.(*localcrypto.DirKeyStore)
 	if ok == true {
 		hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
@@ -76,7 +77,8 @@ func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
 	item.Action = params.Action
 	item.Memo = params.Memo
 
-	if group, ok := chain.GetNodeCtx().Groups[item.GroupId]; !ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		output[ERROR_INFO] = "Can not find group"
 		return c.JSON(http.StatusBadRequest, output)
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
@@ -100,7 +102,7 @@ func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
 
 		item.GroupOwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.ChainCtx.UpdBlkList(item)
+		trxId, err := group.UpdBlkList(item)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

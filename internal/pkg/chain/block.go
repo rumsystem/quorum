@@ -3,11 +3,13 @@ package chain
 import (
 	"bytes"
 	"errors"
+	"time"
+
 	guuid "github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 func CreateBlock(oldBlock *quorumpb.Block, trxs []*quorumpb.Trx, groupPublicKey []byte, opts ...string) (*quorumpb.Block, error) {
@@ -41,7 +43,7 @@ func CreateBlock(oldBlock *quorumpb.Block, trxs []*quorumpb.Trx, groupPublicKey 
 
 	hash := Hash(bbytes)
 	newBlock.Hash = hash
-	signature, err := GetNodeCtx().Keystore.SignByKeyName(newBlock.GroupId, hash, opts...)
+	signature, err := nodectx.GetNodeCtx().Keystore.SignByKeyName(newBlock.GroupId, hash, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +77,7 @@ func CreateGenesisBlock(groupId string, groupPublicKey p2pcrypto.PubKey) (*quoru
 	hash := Hash(bbytes)
 	genesisBlock.Hash = hash
 
-	signature, err := GetNodeCtx().Keystore.SignByKeyName(genesisBlock.GroupId, hash)
+	signature, err := nodectx.GetNodeCtx().Keystore.SignByKeyName(genesisBlock.GroupId, hash)
 	if err != nil {
 		return nil, err
 	}

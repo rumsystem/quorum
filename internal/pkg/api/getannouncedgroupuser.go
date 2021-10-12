@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type AnnouncedUserListItem struct {
@@ -27,8 +28,9 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[groupid]; ok {
-		usrList, err := chain.GetDbMgr().GetAnnouncedUsers(group.Item.GroupId, chain.GetNodeCtx().Name)
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupid]; ok {
+		usrList, err := nodectx.GetDbMgr().GetAnnouncedUsers(group.Item.GroupId, nodectx.GetNodeCtx().Name)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

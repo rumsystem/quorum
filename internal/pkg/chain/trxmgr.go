@@ -3,16 +3,16 @@ package chain
 import (
 	"encoding/hex"
 	"fmt"
-	"time"
-
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
-	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
+	"time"
 
 	guuid "github.com/google/uuid"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 const (
@@ -22,16 +22,18 @@ const (
 )
 
 type TrxMgr struct {
-	nodename string
-	group    *Group
-	psconn   pubsubconn.PubSubConn
+	nodename  string
+	groupItem *quorumpb.GroupItem
+	psconn    pubsubconn.PubSubConn
+	groupId   string
 }
 
 var trxmgr_log = logging.Logger("trx_mgr")
 
-func (trxMgr *TrxMgr) Init(grp *Group, psconn pubsubconn.PubSubConn) {
-	trxMgr.group = grp
+func (trxMgr *TrxMgr) Init(groupItem *quorumpb.GroupItem, psconn pubsubconn.PubSubConn) {
+	trxMgr.groupItem = groupItem
 	trxMgr.psconn = psconn
+	trxMgr.groupId = groupItem.GroupId
 }
 
 func (trxMgr *TrxMgr) SetNodeName(nodename string) {
@@ -44,15 +46,15 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	trxId := guuid.New()
 	trx.TrxId = trxId.String()
 	trx.Type = msgType
-	trx.GroupId = trxMgr.group.Item.GroupId
-	trx.SenderPubkey = trxMgr.group.Item.UserSignPubkey
+	trx.GroupId = trxMgr.groupItem.GroupId
+	trx.SenderPubkey = trxMgr.groupItem.UserSignPubkey
 
 	var encryptdData []byte
 
-	if msgType == quorumpb.TrxType_POST && trxMgr.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+	if msgType == quorumpb.TrxType_POST && trxMgr.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
 		var err error
-		announcedUser, err := GetDbMgr().GetAnnouncedUsers(trxMgr.group.Item.GroupId)
+		announcedUser, err := nodectx.GetDbMgr().GetAnnouncedUsers(trxMgr.groupItem.GroupId)
 
 		var pubkeys []string
 		for _, item := range announcedUser {
@@ -66,7 +68,7 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 		}
 	} else {
 		var err error
-		ciperKey, err := hex.DecodeString(trxMgr.group.Item.CipherKey)
+		ciperKey, err := hex.DecodeString(trxMgr.groupItem.CipherKey)
 		if err != nil {
 			return &trx, []byte(""), err
 		}
@@ -79,7 +81,7 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	trx.Data = encryptdData
 
 	trx.TimeStamp = time.Now().UnixNano()
-	trx.Version = GetNodeCtx().Version
+	trx.Version = nodectx.GetNodeCtx().Version
 	timein := time.Now().Local().Add(time.Hour*time.Duration(Hours) +
 		time.Minute*time.Duration(Mins) +
 		time.Second*time.Duration(Sec))
@@ -99,10 +101,10 @@ func (trxMgr *TrxMgr) CreateTrx(msgType quorumpb.TrxType, data []byte) (*quorump
 	if err != nil {
 		return trx, err
 	}
-	ks := GetNodeCtx().Keystore
-	keyname := trxMgr.group.Item.GroupId
+	ks := nodectx.GetNodeCtx().Keystore
+	keyname := trxMgr.groupItem.GroupId
 	if trxMgr.nodename != "" {
-		keyname = fmt.Sprintf("%s_%s", trxMgr.nodename, trxMgr.group.Item.GroupId)
+		keyname = fmt.Sprintf("%s_%s", trxMgr.nodename, trxMgr.groupItem.GroupId)
 	}
 	signature, err := ks.SignByKeyName(keyname, hashed)
 
@@ -150,7 +152,7 @@ func (trxMgr *TrxMgr) VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 }
 
 func (trxMgr *TrxMgr) SendUpdAuthTrx(item *quorumpb.DenyUserItem) (string, error) {
-	trxmgr_log.Infof("Send UPD AUTH Trx")
+	trxmgr_log.Debugf("<%s> SendUpdAuthTrx called", trxMgr.groupId)
 
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
@@ -167,7 +169,7 @@ func (trxMgr *TrxMgr) SendUpdAuthTrx(item *quorumpb.DenyUserItem) (string, error
 }
 
 func (trxMgr *TrxMgr) SendRegProducerTrx(item *quorumpb.ProducerItem) (string, error) {
-	trxmgr_log.Infof("Send Reg Producer Trx")
+	trxmgr_log.Debugf("<%s> SendRegProducerTrx called", trxMgr.groupId)
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return "", err
@@ -182,7 +184,7 @@ func (trxMgr *TrxMgr) SendRegProducerTrx(item *quorumpb.ProducerItem) (string, e
 }
 
 func (trxMgr *TrxMgr) SendAnnounceTrx(item *quorumpb.AnnounceItem) (string, error) {
-	trxmgr_log.Infof("Send Announce Trx")
+	trxmgr_log.Debugf("<%s> SendAnnounceTrx called", trxMgr.groupId)
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return "", err
@@ -198,7 +200,7 @@ func (trxMgr *TrxMgr) SendAnnounceTrx(item *quorumpb.AnnounceItem) (string, erro
 }
 
 func (trxMgr *TrxMgr) SendUpdSchemaTrx(item *quorumpb.SchemaItem) (string, error) {
-	trxmgr_log.Infof("Send Upd Schema Trx")
+	trxmgr_log.Debugf("<%s> SendUpdSchemaTrx called", trxMgr.groupId)
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return "", err
@@ -214,11 +216,11 @@ func (trxMgr *TrxMgr) SendUpdSchemaTrx(item *quorumpb.SchemaItem) (string, error
 }
 
 func (trxMgr *TrxMgr) SendReqBlockResp(req *quorumpb.ReqBlock, block *quorumpb.Block, result quorumpb.ReqBlkResult) error {
-	chain_log.Infof("SendReqBlockResp called")
+	trxmgr_log.Debugf("<%s> SendReqBlockResp called", trxMgr.groupId)
 
 	var reqBlockRespItem quorumpb.ReqBlockResp
 	reqBlockRespItem.Result = result
-	reqBlockRespItem.ProviderPubkey = trxMgr.group.Item.UserSignPubkey
+	reqBlockRespItem.ProviderPubkey = trxMgr.groupItem.UserSignPubkey
 	reqBlockRespItem.RequesterPubkey = req.UserId
 	reqBlockRespItem.GroupId = req.GroupId
 	reqBlockRespItem.BlockId = req.BlockId
@@ -245,12 +247,12 @@ func (trxMgr *TrxMgr) SendReqBlockResp(req *quorumpb.ReqBlock, block *quorumpb.B
 }
 
 func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
-	trxmgr_log.Infof("SendReqBlock called")
+	trxmgr_log.Debugf("<%s> SendReqBlockForward called", trxMgr.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 	reqBlockItem.BlockId = block.BlockId
 	reqBlockItem.GroupId = block.GroupId
-	reqBlockItem.UserId = trxMgr.group.Item.UserSignPubkey
+	reqBlockItem.UserId = trxMgr.groupItem.UserSignPubkey
 
 	bItemBytes, err := proto.Marshal(&reqBlockItem)
 	if err != nil {
@@ -268,12 +270,12 @@ func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
 }
 
 func (trxMgr *TrxMgr) SendReqBlockBackward(block *quorumpb.Block) error {
-	trxmgr_log.Infof("SendReqBlock called")
+	trxmgr_log.Debugf("<%s> SendReqBlockBackward called", trxMgr.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 	reqBlockItem.BlockId = block.BlockId
 	reqBlockItem.GroupId = block.GroupId
-	reqBlockItem.UserId = trxMgr.group.Item.UserSignPubkey
+	reqBlockItem.UserId = trxMgr.groupItem.UserSignPubkey
 
 	bItemBytes, err := proto.Marshal(&reqBlockItem)
 	if err != nil {
@@ -291,7 +293,7 @@ func (trxMgr *TrxMgr) SendReqBlockBackward(block *quorumpb.Block) error {
 }
 
 func (trxMgr *TrxMgr) SendBlockProduced(blk *quorumpb.Block) error {
-	trxmgr_log.Infof("SendBlockProduced called")
+	trxmgr_log.Debugf("<%s> SendBlockProduced called", trxMgr.groupId)
 	encodedcontent, err := proto.Marshal(blk)
 	if err != nil {
 		return err
@@ -304,7 +306,7 @@ func (trxMgr *TrxMgr) SendBlockProduced(blk *quorumpb.Block) error {
 }
 
 func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte) (string, error) {
-	trxmgr_log.Infof("PostBytes called")
+	trxmgr_log.Debugf("<%s> PostBytes called", trxMgr.groupId)
 	trx, err := trxMgr.CreateTrx(trxtype, encodedcontent)
 	err = trxMgr.sendTrx(trx)
 	if err != nil {
@@ -315,7 +317,7 @@ func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte)
 }
 
 func (trxMgr *TrxMgr) PostAny(content proto.Message) (string, error) {
-	trxmgr_log.Infof("PostAny called")
+	trxmgr_log.Debugf("<%s> PostAny called", trxMgr.groupId)
 	encodedcontent, err := quorumpb.ContentToBytes(content)
 	if err != nil {
 		return "", err
@@ -324,15 +326,17 @@ func (trxMgr *TrxMgr) PostAny(content proto.Message) (string, error) {
 }
 
 func (trxMgr *TrxMgr) ResendTrx(trx *quorumpb.Trx) error {
+	trxmgr_log.Debugf("<%s> ResendTrx called", trxMgr.groupId)
 	return trxMgr.sendTrx(trx)
 }
 
 func (trxMgr *TrxMgr) CustomSendTrx(trx *quorumpb.Trx) error {
+	trxmgr_log.Debugf("<%s> CustomSendTrx called", trxMgr.groupId)
 	return trxMgr.sendTrx(trx)
 }
 
 func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
-	trxmgr_log.Infof("SendBlock called")
+	trxmgr_log.Debugf("<%s> SendBlock called", trxMgr.groupId)
 
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
@@ -354,6 +358,7 @@ func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
 }
 
 func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
+	trxmgr_log.Debugf("<%s> sendTrx called", trxMgr.groupId)
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 

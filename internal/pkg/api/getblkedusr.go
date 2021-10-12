@@ -35,7 +35,8 @@ func (h *Handler) GetDeniedUserList(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[groupid]; ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupid]; ok {
 		blkList, err := group.GetBlockedUser()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

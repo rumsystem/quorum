@@ -11,13 +11,14 @@ import (
 	"time"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 type JoinGroupParam struct {
@@ -80,7 +81,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		nodeoptions := options.GetNodeOptions()
 
 		var groupSignPubkey []byte
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
@@ -228,7 +229,8 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		}
 
 		//add group to context
-		chain.GetNodeCtx().Groups[group.Item.GroupId] = group
+		groupmgr := chain.GetGroupMgr()
+		groupmgr.Groups[group.Item.GroupId] = group
 
 		var bufferResult bytes.Buffer
 		bufferResult.Write(genesisBlockBytes)

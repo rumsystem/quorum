@@ -14,15 +14,6 @@ import (
 	badgeroptions "github.com/dgraph-io/badger/v3/options"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
-	"github.com/rumsystem/quorum/internal/pkg/api"
-	"github.com/rumsystem/quorum/internal/pkg/appdata"
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -30,7 +21,18 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
-	_ "google.golang.org/protobuf/proto"     //import for swaggo
+	"github.com/rumsystem/quorum/internal/pkg/api"
+	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	appapi "github.com/rumsystem/quorum/pkg/app/api"
+	_ "google.golang.org/protobuf/proto" //import for swaggo
 
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
 	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
@@ -203,13 +205,13 @@ func mainRet(config cli.Config) int {
 		}
 
 		datapath := config.DataDir + "/" + config.PeerName
-		chain.InitCtx(ctx, "", node, datapath, "pubsub", GitCommit)
-		chain.GetNodeCtx().Keystore = ksi
-		chain.GetNodeCtx().PublicKey = keys.PubKey
-		chain.GetNodeCtx().PeerId = peerid
+		nodectx.InitCtx(ctx, "", node, datapath, "pubsub", GitCommit)
+		nodectx.GetNodeCtx().Keystore = ksi
+		nodectx.GetNodeCtx().PublicKey = keys.PubKey
+		nodectx.GetNodeCtx().PeerId = peerid
 
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
-		h := &api.Handler{Node: node, NodeCtx: chain.GetNodeCtx(), GitCommit: GitCommit}
+		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
 	} else {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
@@ -231,22 +233,23 @@ func mainRet(config cli.Config) int {
 		go node.ConnectPeers(ctx, peerok, 3, config)
 
 		datapath := config.DataDir + "/" + config.PeerName
-		chain.InitCtx(ctx, "default", node, datapath, "pubsub", GitCommit)
-		chain.GetNodeCtx().Keystore = ksi
-		chain.GetNodeCtx().PublicKey = keys.PubKey
-		chain.GetNodeCtx().PeerId = peerid
+		nodectx.InitCtx(ctx, "default", node, datapath, "pubsub", GitCommit)
+		nodectx.GetNodeCtx().Keystore = ksi
+		nodectx.GetNodeCtx().PublicKey = keys.PubKey
+		nodectx.GetNodeCtx().PeerId = peerid
+		groupmgr := chain.InitGroupMgr(nodectx.GetDbMgr())
 
-		err = chain.GetNodeCtx().SyncAllGroup()
+		err = groupmgr.SyncAllGroup()
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
 
-		appdbopts := &chain.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
+		appdbopts := &storage.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
 		appdb, err := appdata.InitDb(datapath, appdbopts)
 		checkLockError(err)
 
 		//run local http api service
-		h := &api.Handler{Node: node, NodeCtx: chain.GetNodeCtx(), Ctx: ctx, GitCommit: GitCommit}
+		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), Ctx: ctx, GitCommit: GitCommit}
 
 		apiaddress := "https://%s/api/v1"
 		if config.APIListenAddresses[:1] == ":" {
@@ -254,16 +257,16 @@ func mainRet(config cli.Config) int {
 		} else {
 			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
 		}
-		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, chain.GetDbMgr())
+		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, nodectx.GetDbMgr())
 		appsync.Start(10)
 		apph := &appapi.Handler{
 			Appdb:     appdb,
-			Chaindb:   chain.GetDbMgr(),
+			Chaindb:   nodectx.GetDbMgr(),
 			GitCommit: GitCommit,
 			Apiroot:   apiaddress,
 			ConfigDir: config.ConfigDir,
 			PeerName:  config.PeerName,
-			NodeName:  chain.GetNodeCtx().Name,
+			NodeName:  nodectx.GetNodeCtx().Name,
 		}
 		go api.StartAPIServer(config, signalch, h, apph, node, nodeoptions, ks, ethaddr, false)
 	}
@@ -274,7 +277,8 @@ func mainRet(config cli.Config) int {
 	signal.Stop(signalch)
 
 	if config.IsBootstrap != true {
-		chain.Release()
+		groupmgr := chain.GetGroupMgr()
+		groupmgr.Release()
 	}
 
 	//cleanup before exit
@@ -318,6 +322,10 @@ func main() {
 		logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
 		logging.SetLogLevel("group", "debug")
+		logging.SetLogLevel("syncer", "debug")
+		logging.SetLogLevel("producer", "debug")
+		logging.SetLogLevel("user", "debug")
+		logging.SetLogLevel("groupmgr", "debug")
 
 	}
 

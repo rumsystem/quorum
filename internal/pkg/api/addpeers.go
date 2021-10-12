@@ -2,12 +2,11 @@ package api
 
 import (
 	"fmt"
-	"net/http"
-
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/peer"
 	maddr "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"net/http"
 )
 
 type AddPeerResult struct {
@@ -51,7 +50,7 @@ func (h *Handler) AddPeers(c echo.Context) (err error) {
 	result := &AddPeerResult{SuccCount: 0, ErrCount: len(peerserr)}
 
 	if len(peersaddrinfo) > 0 {
-		count := chain.GetNodeCtx().AddPeers(peersaddrinfo)
+		count := nodectx.GetNodeCtx().AddPeers(peersaddrinfo)
 		result.SuccCount = count
 	}
 	return c.JSON(http.StatusOK, result)

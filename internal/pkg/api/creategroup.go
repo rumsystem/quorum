@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/labstack/echo/v4"
 
 	guuid "github.com/google/uuid"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type CreateGroupParam struct {
@@ -76,7 +77,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 
 		var groupSignPubkey []byte
 		var p2ppubkey p2pcrypto.PubKey
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(groupid.String(), localcrypto.Sign)
@@ -171,7 +172,8 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		chain.GetNodeCtx().Groups[group.Item.GroupId] = group
+		groupmgr := chain.GetGroupMgr()
+		groupmgr.Groups[group.Item.GroupId] = group
 
 		//create result
 		var buffer bytes.Buffer

@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type GrpProducerResult struct {
@@ -53,7 +54,8 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[params.GroupId]; !ok {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
 		output[ERROR_INFO] = "Can not find group"
 		return c.JSON(http.StatusBadRequest, output)
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
@@ -72,7 +74,7 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		buffer.Write([]byte(item.GroupOwnerPubkey))
 		hash := chain.Hash(buffer.Bytes())
 
-		ks := chain.GetNodeCtx().Keystore
+		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
 
 		if err != nil {
@@ -84,7 +86,7 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		item.Action = params.Action //add or remove
 		item.Memo = params.Memo
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.ChainCtx.UpdProducer(item)
+		trxId, err := group.UpdProducer(item)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

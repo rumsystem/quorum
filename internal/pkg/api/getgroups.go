@@ -34,7 +34,8 @@ type GroupInfoList struct {
 // @Router /api/v1/groups [get]
 func (h *Handler) GetGroups(c echo.Context) (err error) {
 	var groups []*groupInfo
-	for _, value := range chain.GetNodeCtx().Groups {
+	groupmgr := chain.GetGroupMgr()
+	for _, value := range groupmgr.Groups {
 		var group *groupInfo
 		group = &groupInfo{}
 

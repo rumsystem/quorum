@@ -1,12 +1,13 @@
-package chain
+package storage
 
 import (
 	"errors"
 	"fmt"
 
 	badger "github.com/dgraph-io/badger/v3"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/dgraph-io/badger/v3/options"
 	logging "github.com/ipfs/go-log/v2"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -22,6 +23,21 @@ const PRD_PREFIX string = "prd" //producer
 const ANN_PREFIX string = "ann" //announce
 const SMA_PREFIX string = "sma" //schema
 const CHD_PREFIX string = "chd" //cached
+
+type DbOption struct {
+	LogFileSize    int64
+	MemTableSize   int64
+	LogMaxEntries  uint32
+	BlockCacheSize int64
+	Compression    options.CompressionType
+}
+
+type DbMgr struct {
+	GroupInfoDb *badger.DB
+	Db          *badger.DB
+	Auth        *badger.DB
+	DataPath    string
+}
 
 func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) error {
 	var err error

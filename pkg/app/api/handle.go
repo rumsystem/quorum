@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 type Handler struct {
 	Ctx       context.Context
 	Appdb     *appdata.AppDb
-	Chaindb   *chain.DbMgr
+	Chaindb   *storage.DbMgr
 	Apiroot   string
 	GitCommit string
 	ConfigDir string

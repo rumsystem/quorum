@@ -66,8 +66,9 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	if group, ok := chain.GetNodeCtx().Groups[paramspb.Target.Id]; ok {
-		trxId, err := group.ChainCtx.PostToGroup(paramspb.Object)
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
+		trxId, err := group.PostToGroup(paramspb.Object)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

@@ -3,13 +3,14 @@ package api
 import (
 	"net/http"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
-	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	maddr "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
 type groupNetworkInfo struct {
@@ -40,11 +41,12 @@ func (h *Handler) GetNetwork(nodehost *host.Host, nodeinfo *p2p.NodeInfo, nodeop
 		result := &NetworkInfo{}
 		node := make(map[string]interface{})
 		groupnetworklist := []*groupNetworkInfo{}
-		for _, group := range chain.GetNodeCtx().Groups {
+		groupmgr := chain.GetGroupMgr()
+		for _, group := range groupmgr.Groups {
 			groupnetwork := &groupNetworkInfo{}
 			groupnetwork.GroupId = group.Item.GroupId
 			groupnetwork.GroupName = group.Item.GroupName
-			groupnetwork.Peers = chain.GetNodeCtx().ListGroupPeers(group.Item.GroupId)
+			groupnetwork.Peers = nodectx.GetNodeCtx().ListGroupPeers(group.Item.GroupId)
 			groupnetworklist = append(groupnetworklist, groupnetwork)
 		}
 		result.Peerid = (*nodehost).ID().Pretty()
