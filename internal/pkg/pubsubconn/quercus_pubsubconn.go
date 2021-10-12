@@ -5,7 +5,7 @@ import (
 	"fmt"
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
 	"github.com/huo-ju/quercus/pkg/quality"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 	"strings"

@@ -21,7 +21,7 @@ RWStFU9JBrtWhvm1VVzbH63KKj/2CdSqM82HldQmDzS8kLq2rQPLeQJG
 `
 
 // export GITHUB_TOKEN=xxxxx before this project is opensourced
-const LatestReleaseUrl = "https://api.github.com/repos/huo-ju/quorum/releases/latest"
+const LatestReleaseUrl = "https://api.github.com/repos/rumsystem/quorum/releases/latest"
 const LatestReleaseUrlQingCloud = "https://static-assets.pek3b.qingstor.com"
 
 func getGithub(url string, isRaw bool) ([]byte, error) {

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/huo-ju/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )

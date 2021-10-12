@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/huo-ju/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {

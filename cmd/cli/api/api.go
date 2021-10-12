@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/huo-ju/quorum/cmd/cli/config"
+	"github.com/rumsystem/quorum/cmd/cli/config"
 )
 
 var ApiServer string

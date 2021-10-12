@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"context"
-	"github.com/huo-ju/quorum/testnode"
+	"github.com/rumsystem/quorum/testnode"
 	"log"
 	"testing"
 	"time"

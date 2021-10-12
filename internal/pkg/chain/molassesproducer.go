@@ -10,9 +10,9 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
-	"github.com/huo-ju/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"google.golang.org/protobuf/proto"

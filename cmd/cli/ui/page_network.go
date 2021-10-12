@@ -8,8 +8,8 @@ import (
 
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
-	"github.com/huo-ju/quorum/cmd/cli/api"
-	"github.com/huo-ju/quorum/cmd/cli/model"
+	"github.com/rumsystem/quorum/cmd/cli/api"
+	"github.com/rumsystem/quorum/cmd/cli/model"
 )
 
 var networkPage = cview.NewFlex()

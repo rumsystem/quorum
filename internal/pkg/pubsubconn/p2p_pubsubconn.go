@@ -3,7 +3,7 @@ package pubsubconn
 import (
 	"context"
 
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"google.golang.org/protobuf/proto"

@@ -1,4 +1,4 @@
-module github.com/huo-ju/quorum
+module github.com/rumsystem/quorum
 
 go 1.15
 

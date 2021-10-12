@@ -14,10 +14,10 @@ import (
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
-	"github.com/huo-ju/quorum/cmd/cli/api"
-	"github.com/huo-ju/quorum/cmd/cli/config"
-	"github.com/huo-ju/quorum/cmd/cli/model"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/cmd/cli/api"
+	"github.com/rumsystem/quorum/cmd/cli/config"
+	"github.com/rumsystem/quorum/cmd/cli/model"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
 var blocksPage = cview.NewFlex()

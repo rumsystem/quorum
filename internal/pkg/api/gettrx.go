@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	chain "github.com/huo-ju/quorum/internal/pkg/chain"
-	_ "github.com/huo-ju/quorum/internal/pkg/pb" //import for swaggo
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	_ "github.com/rumsystem/quorum/internal/pkg/pb" //import for swaggo
 	"github.com/labstack/echo/v4"
 )
 

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/huo-ju/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

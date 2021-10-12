@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 
-	localcrypto "github.com/huo-ju/quorum/internal/pkg/crypto"
-	"github.com/huo-ju/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )

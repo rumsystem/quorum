@@ -6,7 +6,7 @@ import (
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )

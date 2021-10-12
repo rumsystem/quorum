@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/huo-ju/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	quorumpb "github.com/huo-ju/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
 type GroupContentObjectItem struct {

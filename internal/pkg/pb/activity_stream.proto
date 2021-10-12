@@ -1,6 +1,6 @@
 syntax = "proto3";
 package quorum.pb;
-option go_package = "github.com/huo-ju/quorum/internal/pkg/pb";
+option go_package = "github.com/rumsystem/quorum/internal/pkg/pb";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
