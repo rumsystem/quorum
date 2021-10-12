@@ -23,7 +23,7 @@ var termW, termH int
 
 func wrapGlobal(f func()) func(ev *tcell.EventKey) *tcell.EventKey {
 	return func(ev *tcell.EventKey) *tcell.EventKey {
-		if !cmdMode {
+		if !cmdMode && !formMode {
 			f()
 			return nil
 		}
@@ -34,6 +34,7 @@ func wrapGlobal(f func()) func(ev *tcell.EventKey) *tcell.EventKey {
 func Init() {
 	cmdInputInit()
 	modalInit()
+	formInit()
 
 	helpPageInit()
 	welcomePageInit()

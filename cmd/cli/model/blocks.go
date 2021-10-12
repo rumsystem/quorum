@@ -5,21 +5,22 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
+	qApi "github.com/rumsystem/quorum/internal/pkg/api"
 )
 
+// can only check from back to front
 type BlockRangeOpt struct {
-	Start uint64
-	End   uint64
+	CurBlockId  string
+	NextBlockId string
+	Count       int
+	Done        bool
 }
 
-var DefaultBlockRange = BlockRangeOpt{
-	Start: 1,
-	End:   20,
-}
+var DefaultBlockRange = BlockRangeOpt{"", "", 20, false}
 
 type BlocksDataModel struct {
 	Pager         map[string]BlockRangeOpt
-	Groups        api.GroupInfoListStruct
+	Groups        qApi.GroupInfoList
 	Blocks        []api.BlockStruct
 	NextBlocks    map[string][]string
 	Cache         map[string][]api.BlockStruct
@@ -73,14 +74,14 @@ func (m *BlocksDataModel) StopTicker() {
 	}
 }
 
-func (m *BlocksDataModel) SetGroups(groups api.GroupInfoListStruct) {
+func (m *BlocksDataModel) SetGroups(groups qApi.GroupInfoList) {
 	m.RWMutex.Lock()
 	defer m.RWMutex.Unlock()
 
 	m.Groups = groups
 }
 
-func (m *BlocksDataModel) GetGroups() api.GroupInfoListStruct {
+func (m *BlocksDataModel) GetGroups() qApi.GroupInfoList {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -119,15 +120,26 @@ func (m *BlocksDataModel) GetBlocks() []api.BlockStruct {
 	return m.Blocks
 }
 
-func (m *BlocksDataModel) GetBlockByNum(num int) *api.BlockStruct {
+func (m *BlocksDataModel) GetBlockById(id string) *api.BlockStruct {
 	m.RLock()
 	defer m.RUnlock()
 
 	blocks := m.Blocks
 	for _, block := range blocks {
-		if block.BlockNum == int64(num) {
+		if block.BlockId == id {
 			return &block
 		}
+	}
+	return nil
+}
+
+func (m *BlocksDataModel) GetBlockByIndex(i int) *api.BlockStruct {
+	m.RLock()
+	defer m.RUnlock()
+
+	blocks := m.Blocks
+	if i < len(blocks) {
+		return &blocks[i]
 	}
 	return nil
 }

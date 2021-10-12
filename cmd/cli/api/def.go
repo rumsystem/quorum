@@ -39,25 +39,6 @@ type NetworkInfoStruct struct {
 }
 
 // /api/v1/groups
-type GroupInfoStruct struct {
-	OwnerPubKey    string `json:"OwnerPubKey"`
-	GroupId        string `json:"GroupId"`
-	GroupName      string `json:"GroupName"`
-	LastUpdate     int64  `json:"LastUpdate"`
-	LatestBlockNum int64  `json:"LatestBlockNum"`
-	LatestBlockId  string `json:"LatestBlockId"`
-	GroupStatus    string `json:"GroupStatus"`
-}
-
-type GroupInfoListStruct struct {
-	Groups []GroupInfoStruct `json:"groups"`
-}
-
-func (a GroupInfoListStruct) Len() int { return len(a.Groups) }
-func (a GroupInfoListStruct) Less(i, j int) bool {
-	return a.Groups[i].GroupName < a.Groups[j].GroupName
-}
-func (a GroupInfoListStruct) Swap(i, j int) { a.Groups[i], a.Groups[j] = a.Groups[j], a.Groups[i] }
 
 // /api/v1/group/$group/content
 type ContentInnerStruct map[string]interface{}
@@ -99,15 +80,14 @@ func (a ContentList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 // /api/v1/trx/$id
 type TrxStruct struct {
-	TrxId     string `json:"TrxId"`
-	GroupId   string `json:"GroupId"`
-	Sender    string `json:"Sender"`
-	Pubkey    string `json:"Pubkey"`
-	Data      []byte `json:"Data"`
-	TimeStamp int64  `json:"TimeStamp"`
-	Version   string `json:"Version"`
-	Expired   int64  `json:"Expired"`
-	Signature string `json:"Signature"`
+	TrxId        string `json:"TrxId"`
+	GroupId      string `json:"GroupId"`
+	Data         []byte `json:"Data"`
+	TimeStamp    int64  `json:"TimeStamp"`
+	Version      string `json:"Version"`
+	Expired      int64  `json:"Expired"`
+	SenderPubkey string `json:"SenderPubkey"`
+	SenderSign   string `json:"SenderSign"`
 }
 
 type TrxRespStruct struct {
@@ -162,7 +142,10 @@ type JoinRespStruct struct {
 
 // POST /api/v1/group
 type CreateGroupReqStruct struct {
-	Name string `json:"group_name"`
+	Name           string `json:"group_name"`
+	ConsensusType  string `json:"consensus_type"`  // poa(proof of authority)
+	EncryptionType string `json:"encryption_type"` // public | private
+	AppKey         string `json:"app_key"`         // mode
 }
 
 type GenesisBlockStruct struct {
@@ -174,14 +157,6 @@ type GenesisBlockStruct struct {
 	ProducerPubKey string `json:"ProducerPubKey"`
 	Hash           string `json:"Hash"`
 	Signature      string `json:"Signature"`
-}
-
-type GroupSeedStruct struct {
-	GenesisBlock GenesisBlockStruct `json:"genesis_block"`
-	GroupId      string             `json:"group_id"`
-	GroupName    string             `json:"group_name"`
-	OwnerPubKey  string             `json:"owner_pubkey"`
-	Signature    string             `json:"signature"`
 }
 
 type LeaveGroupReqStruct struct {
@@ -208,19 +183,18 @@ type GroupForceSyncRetStruct struct {
 	Error   string `json:"Error"`
 }
 
-// Get /v1/block/:group_id/:block_num and /v1/block/:block_id
+// Get /v1/block/:group_id/:block_id
 type BlockStruct struct {
 	BlockId        string       `json:"BlockId,omitempty"`
 	GroupId        string       `json:"GroupId,omitempty"`
 	PrevBlockId    string       `json:"PrevBlockId,omitempty"`
-	BlockNum       int64        `json:"BlockNum,omitempty"`
-	Timestamp      int64        `json:"Timestamp,omitempty"`
 	PreviousHash   []byte       `json:"PreviousHash,omitempty"`
+	Trxs           []*TrxStruct `json:"Trxs,omitempty"`
 	ProducerId     string       `json:"ProducerId,omitempty"`
 	ProducerPubKey string       `json:"ProducerPubKey,omitempty"`
-	Trxs           []*TrxStruct `json:"Trxs,omitempty"`
 	Hash           []byte       `json:"Hash,omitempty"`
 	Signature      []byte       `json:"Signature,omitempty"`
+	Timestamp      int64        `json:"Timestamp,omitempty"`
 }
 
 // GET /api/v1/network/peers/ping

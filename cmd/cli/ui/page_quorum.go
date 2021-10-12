@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -164,10 +163,8 @@ func QuorumCmdSendHandler(cmd string) {
 }
 
 // CMD /group.create handler
-func QuorumNewGroupHandler(cmd string) {
-	groupName := strings.Replace(cmd, CMD_QUORUM_NEW_GROUP, "", -1)
-	groupName = strings.TrimSpace(groupName)
-	go goQuorumCreateGroup(groupName)
+func QuorumNewGroupHandler() {
+	CreateGroupForm()
 }
 
 // CMD /group.leave handler
@@ -177,7 +174,7 @@ func QuorumLeaveGroupHandler() {
 		return
 	}
 	curGroupOwner := ""
-	for _, group := range quorumData.GetGroups().Groups {
+	for _, group := range quorumData.GetGroups().GroupInfos {
 		if group.GroupId == quorumData.GetCurrentGroup() {
 			curGroupOwner = group.OwnerPubKey
 			break
@@ -198,7 +195,7 @@ func QuorumDelGroupHandler() {
 		return
 	}
 	curGroupOwner := ""
-	for _, group := range quorumData.GetGroups().Groups {
+	for _, group := range quorumData.GetGroups().GroupInfos {
 		if group.GroupId == quorumData.GetCurrentGroup() {
 			curGroupOwner = group.OwnerPubKey
 			break
@@ -527,14 +524,14 @@ func drawQuorumNetwork() {
 func drawQuorumGroups() {
 	// draw groupListView's content
 	groupListView.Clear()
-	for i, group := range quorumData.GetGroups().Groups {
+	for i, group := range quorumData.GetGroups().GroupInfos {
 		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.GroupStatus))
 		item.SetShortcut(rune('a' + i))
 		groupListView.AddItem(item)
 	}
 
 	groupListView.SetSelectedFunc(func(idx int, group *cview.ListItem) {
-		targetGroup := quorumData.GetGroups().Groups[idx]
+		targetGroup := quorumData.GetGroups().GroupInfos[idx]
 		contents, ok := quorumData.GetCache(targetGroup.GroupId)
 		if !ok {
 			contents = []api.ContentStruct{}
@@ -561,12 +558,12 @@ func drawQuorumGroups() {
 
 // called by drawQuorumGroups
 func drawQuorumCurrentGroup() {
-	if quorumData.GetCurrentGroup() == "" && len(quorumData.GetGroups().Groups) > 0 {
+	if quorumData.GetCurrentGroup() == "" && len(quorumData.GetGroups().GroupInfos) > 0 {
 		// set default to the first group
-		quorumData.SetCurrentGroup(quorumData.GetGroups().Groups[0].GroupId)
+		quorumData.SetCurrentGroup(quorumData.GetGroups().GroupInfos[0].GroupId)
 	}
 
-	if quorumData.GetCurrentGroup() != "" && len(quorumData.GetGroups().Groups) > 0 {
+	if quorumData.GetCurrentGroup() != "" && len(quorumData.GetGroups().GroupInfos) > 0 {
 		// draw current group info including
 		// 1. contentView's title
 		// 2. groupInfoView's content
@@ -584,16 +581,16 @@ func drawQuorumCurrentGroup() {
 
 		// update groupInfoView
 		groupInfoView.Clear()
-		for _, group := range quorumData.GetGroups().Groups {
+		for _, group := range quorumData.GetGroups().GroupInfos {
 			if group.GroupId == quorumData.GetCurrentGroup() {
 				fmt.Fprintf(groupInfoView, "Name:   %s\n", group.GroupName)
 				fmt.Fprintf(groupInfoView, "ID:     %s\n", group.GroupId)
 				fmt.Fprintf(groupInfoView, "Owner:  %s\n", group.OwnerPubKey)
-				fmt.Fprintf(groupInfoView, "Blocks: %d\n", group.LatestBlockNum)
+				fmt.Fprintf(groupInfoView, "HighestHeight: %d\n", group.HighestHeight)
 				fmt.Fprintf(groupInfoView, "Status: %s\n", group.GroupStatus)
 				fmt.Fprintf(groupInfoView, "\n")
-				fmt.Fprintf(groupInfoView, "Last Update:  %s\n", time.Unix(0, group.LastUpdate))
-				fmt.Fprintf(groupInfoView, "Latest Block: %s\n", group.LatestBlockId)
+				fmt.Fprintf(groupInfoView, "Last Update:  %s\n", time.Unix(0, group.LastUpdated))
+				fmt.Fprintf(groupInfoView, "Latest Block: %s\n", group.HighestBlockId)
 				break
 			}
 		}
@@ -666,13 +663,12 @@ func drawQuorumContentInfo(trx api.TrxStruct) {
 	contentInfoView.Clear()
 	fmt.Fprintf(contentInfoView, "TrxId:     %s\n", trx.TrxId)
 	fmt.Fprintf(contentInfoView, "GroupId:   %s\n", trx.GroupId)
-	fmt.Fprintf(contentInfoView, "Sender:    %s\n", trx.Sender)
-	fmt.Fprintf(contentInfoView, "Pubkey:    %s\n", trx.Pubkey)
-	fmt.Fprintf(contentInfoView, "Signature: %s\n", trx.Signature)
+	fmt.Fprintf(contentInfoView, "Sender:    %s\n", trx.SenderPubkey)
+	fmt.Fprintf(contentInfoView, "Signature: %s\n", trx.SenderSign)
 	fmt.Fprintf(contentInfoView, "TimeStamp: %s\n", time.Unix(0, trx.TimeStamp))
 	fmt.Fprintf(contentInfoView, "Version:   %s\n", trx.Version)
 
-	mixinUID := quorumData.GetUserMixinUID(trx.Pubkey, trx.GroupId)
+	mixinUID := quorumData.GetUserMixinUID(trx.SenderPubkey, trx.GroupId)
 	if mixinUID != "" {
 		fmt.Fprintf(contentInfoView, "MixinUID:   %s\n", mixinUID)
 	}
@@ -719,10 +715,9 @@ func goQuorumGroups() {
 		}
 		Error("Failed to get groups", err.Error())
 	} else {
-		sort.Sort(groupsInfo)
-		oldGroups := quorumData.GetGroups().Groups
+		oldGroups := quorumData.GetGroups().GroupInfos
 		quorumData.SetGroups(*groupsInfo)
-		if len(groupsInfo.Groups) != len(oldGroups) {
+		if len(groupsInfo.GroupInfos) != len(oldGroups) {
 			drawQuorumGroups()
 		}
 		drawQuorumCurrentGroup()
@@ -761,6 +756,11 @@ func goQuorumContent() {
 			if shouldUpdate || quorumData.ForceUpdate {
 				if quorumData.ForceUpdate {
 					quorumData.SetForceUpdate(false)
+				}
+
+				if len(*contents) == 0 {
+					cmdInput.SetLabel(fmt.Sprintf("No more posts"))
+					return
 				}
 
 				cmdInput.SetLabel(fmt.Sprintf("[%d] New posts come: ", len(*contents)))
@@ -812,7 +812,12 @@ func QuorumRefreshAll() {
 }
 
 func goQuorumTrxInfo(trxId string) {
-	trxInfo, err := api.TrxInfo(trxId)
+	curGroup := quorumData.GetCurrentGroup()
+	if curGroup == "" {
+		Error("Failed to set nickname", "Select a group first.")
+		return
+	}
+	trxInfo, err := api.TrxInfo(curGroup, trxId)
 	if err != nil {
 		Error("Failed to get trx", err.Error())
 	} else {
@@ -862,7 +867,7 @@ func goQuorumCreateContent(content string) {
 			go func() {
 				select {
 				case <-time.After(30 * time.Second):
-					trxInfo, err := api.TrxInfo(ret.TrxId)
+					trxInfo, err := api.TrxInfo(curGroup, ret.TrxId)
 					if err != nil {
 						Error("Timed Out", fmt.Sprintf(
 							"Content not found in 30s.\nTRX: %s\n%s\n%s", ret.TrxId, content, err.Error()))
@@ -875,33 +880,6 @@ func goQuorumCreateContent(content string) {
 			}()
 			App.SetFocus(contentView)
 		}
-	}
-}
-
-func goQuorumCreateGroup(name string) {
-	ret, err := api.CreateGroup(name)
-	if err != nil {
-		Error("Failed to create group", err.Error())
-	} else {
-		cmdInput.SetLabel(fmt.Sprintf("Group %s: ", name))
-		cmdInput.SetText("Created")
-		seedInfo, _ := json.Marshal(ret)
-
-		tmpFile, err := ioutil.TempFile(os.TempDir(), "quorum-seed-")
-		if err != nil {
-			Error("Cannot create temporary file to save seed", err.Error())
-			return
-		}
-		if _, err = tmpFile.Write(seedInfo); err != nil {
-			Error("Failed to write to seed file", err.Error())
-			return
-		}
-
-		if err := tmpFile.Close(); err != nil {
-			Error("Failed to close the seed file", err.Error())
-			return
-		}
-		Info(fmt.Sprintf("Group %s created", name), fmt.Sprintf("Seed saved at: %s. Be sure to keep it well.", tmpFile.Name()))
 	}
 }
 

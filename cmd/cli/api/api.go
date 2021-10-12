@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/config"
+	qApi "github.com/rumsystem/quorum/internal/pkg/api"
 )
 
 var ApiServer string
@@ -74,9 +75,9 @@ func Ping() (res *map[string]PingInfoItemStruct, err error) {
 	return &ret, nil
 }
 
-func Groups() (groupsInfo *GroupInfoListStruct, err error) {
+func Groups() (groupsInfo *qApi.GroupInfoList, err error) {
 	url := ApiServer + "/api/v1/groups"
-	ret := GroupInfoListStruct{}
+	ret := qApi.GroupInfoList{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err
@@ -222,24 +223,14 @@ func CreateContent(groupId string, content string) (*ContentRespStruct, error) {
 	return &ret, nil
 }
 
-func CreateGroup(name string) (*GroupSeedStruct, error) {
-	data := CreateGroupReqStruct{name}
+func CreateGroup(data CreateGroupReqStruct) ([]byte, error) {
 	json_data, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
 
 	url := ApiServer + "/api/v1/group"
-	ret := GroupSeedStruct{}
-	body, err := httpPost(url, json_data)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(body, &ret)
-	if err != nil {
-		return nil, errors.New(string(body))
-	}
-	return &ret, nil
+	return httpPost(url, json_data)
 }
 
 func LeaveGroup(gid string) (*GroupLeaveRetStruct, error) {
@@ -283,11 +274,11 @@ func DelGroup(gid string) (*GroupDelRetStruct, error) {
 	return &ret, nil
 }
 
-func TrxInfo(trxId string) (trx *TrxStruct, err error) {
+func TrxInfo(groupId string, trxId string) (trx *TrxStruct, err error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
-	url := ApiServer + "/api/v1/trx/" + trxId
+	url := fmt.Sprintf("%s/api/v1/trx/%s/%s", ApiServer, groupId, trxId)
 	ret := TrxStruct{}
 	body, err := httpGet(url)
 	if err != nil {
@@ -314,11 +305,11 @@ func JoinGroup(seed string) (*JoinRespStruct, error) {
 	return &ret, nil
 }
 
-func GetBlockByNum(groupId string, num int) (*BlockStruct, error) {
+func GetBlockById(groupId string, id string) (*BlockStruct, error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
-	url := fmt.Sprintf("%s/api/v1/block/%s/%d", ApiServer, groupId, num)
+	url := fmt.Sprintf("%s/api/v1/block/%s/%s", ApiServer, groupId, id)
 	ret := BlockStruct{}
 	body, err := httpGet(url)
 	if err != nil {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
@@ -24,6 +25,15 @@ type groupInfo struct {
 
 type GroupInfoList struct {
 	GroupInfos []*groupInfo `json:"groups"`
+}
+
+func (s *GroupInfoList) Len() int { return len(s.GroupInfos) }
+func (s *GroupInfoList) Swap(i, j int) {
+	s.GroupInfos[i], s.GroupInfos[j] = s.GroupInfos[j], s.GroupInfos[i]
+}
+
+func (s *GroupInfoList) Less(i, j int) bool {
+	return s.GroupInfos[i].GroupName < s.GroupInfos[j].GroupName
 }
 
 // @Tags Groups
@@ -65,5 +75,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		groups = append(groups, group)
 	}
 
-	return c.JSON(http.StatusOK, &GroupInfoList{groups})
+	ret := GroupInfoList{groups}
+	sort.Sort(&ret)
+	return c.JSON(http.StatusOK, &ret)
 }

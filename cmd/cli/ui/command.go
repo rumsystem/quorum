@@ -121,7 +121,7 @@ func cmdInputInit() {
 			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_NEW_GROUP) {
 				// send data
 				reset("Creating: ")
-				QuorumNewGroupHandler(cmdStr)
+				QuorumNewGroupHandler()
 				return
 			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_LEAVE_GROUP) {
 				reset("")

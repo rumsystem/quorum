@@ -8,6 +8,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/cache"
 	"github.com/rumsystem/quorum/cmd/cli/config"
+	qApi "github.com/rumsystem/quorum/internal/pkg/api"
 )
 
 var DefaultPagerOpt = api.PagerOpt{StartTrxId: "", Reverse: true, Page: 0}
@@ -19,7 +20,7 @@ type QuorumDataModel struct {
 	Users         map[string]api.ContentStruct
 	Node          api.NodeInfoStruct
 	Network       api.NetworkInfoStruct
-	Groups        api.GroupInfoListStruct
+	Groups        qApi.GroupInfoList
 	Contents      []api.ContentStruct
 	ContentFilter string
 	// in memory cache
@@ -230,14 +231,14 @@ func (q *QuorumDataModel) GetNodeInfo() api.NodeInfoStruct {
 	return q.Node
 }
 
-func (q *QuorumDataModel) SetGroups(groups api.GroupInfoListStruct) {
+func (q *QuorumDataModel) SetGroups(groups qApi.GroupInfoList) {
 	q.RWMutex.Lock()
 	defer q.RWMutex.Unlock()
 
 	q.Groups = groups
 }
 
-func (q *QuorumDataModel) GetGroups() api.GroupInfoListStruct {
+func (q *QuorumDataModel) GetGroups() qApi.GroupInfoList {
 	q.RLock()
 	defer q.RUnlock()
 
