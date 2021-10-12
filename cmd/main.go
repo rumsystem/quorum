@@ -16,6 +16,7 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	"github.com/rumsystem/quorum/internal/pkg/api"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+<<<<<<< HEAD
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -23,6 +24,13 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+=======
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
+>>>>>>> main
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
@@ -112,7 +120,9 @@ func mainRet(config cli.Config) int {
 				cancel()
 				return 0
 			}
-			fmt.Print("Please keeping your password safe, We can't recover or reset your password.\nYour password: %s\n", password)
+			fmt.Println("Please keeping your password safe, We can't recover or reset your password.")
+			fmt.Println("Your password:", password)
+			fmt.Println("After saving the password, press any key to continue.")
 			os.Stdin.Read(make([]byte, 1))
 		}
 

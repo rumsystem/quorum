@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/labstack/echo/v4"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"

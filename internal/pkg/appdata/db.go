@@ -6,9 +6,9 @@ import (
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/google/orderedcode"
+	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var appdatalog = logging.Logger("appdata")

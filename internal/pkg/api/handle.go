@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )

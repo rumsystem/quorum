@@ -2,10 +2,11 @@ package api
 
 import (
 	"fmt"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	"net/http"
 	"strings"
 )
@@ -17,11 +18,11 @@ type NodeInfo struct {
 	User_id        string `json:"user_id"`
 }
 
-func updateNodeStatus() {
+func updateNodeStatus(nodenetworkname string) {
 	peersprotocol := nodectx.GetNodeCtx().PeersProtocol()
+	networknamewithprefix := fmt.Sprintf("%s/%s", p2p.ProtocolPrefix, nodenetworkname)
 	for protocol, peerlist := range *peersprotocol {
-
-		if strings.HasPrefix(protocol, fmt.Sprintf("%s/meshsub", p2p.ProtocolPrefix)) {
+		if strings.HasPrefix(protocol, networknamewithprefix) {
 			if len(peerlist) > 0 {
 				nodectx.GetNodeCtx().UpdateOnlineStatus(nodectx.NODE_ONLINE)
 				return
@@ -41,11 +42,12 @@ func updateNodeStatus() {
 // @Router /api/v1/node [get]
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 
+	//nodeopt *options.NodeOptions
 	output := make(map[string]interface{})
 
 	output[NODE_VERSION] = nodectx.GetNodeCtx().Version + " - " + h.GitCommit
 	output[NODETYPE] = "peer"
-	updateNodeStatus()
+	updateNodeStatus(h.Node.NetworkName)
 	if nodectx.GetNodeCtx().Status == nodectx.NODE_ONLINE {
 		output[NODE_STATUS] = "NODE_ONLINE"
 	} else {

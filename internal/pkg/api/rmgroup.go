@@ -7,11 +7,11 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/labstack/echo/v4"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 type RmGroupParam struct {

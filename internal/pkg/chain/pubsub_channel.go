@@ -1,37 +1,28 @@
-package pubsubconn
+package chain
 
 import (
-	"context"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 var channel_log = logging.Logger("chan")
 
-type P2pPubSubConn struct {
+type PubsubChannel struct {
 	Cid          string
 	Topic        *pubsub.Topic
 	Subscription *pubsub.Subscription
-	chain        Chain
-	ps           *pubsub.PubSub
-	nodename     string
-	Ctx          context.Context
+	chain        *Chain
 }
 
-func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
-	return &P2pPubSubConn{Ctx: ctx, ps: ps, nodename: nodename}
-}
+func (channel *PubsubChannel) JoinChannel(cId string, chain *Chain) error {
 
-func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
-	psconn.Cid = cId
-	psconn.chain = chain
+	channel.Cid = cId
+	channel.chain = chain
 
 	var err error
-	//channel.Topic, err = GetNodeCtx().node.Pubsub.Join(cId)
-	//TODO: share the ps
-	psconn.Topic, err = psconn.ps.Join(cId)
+	channel.Topic, err = GetNodeCtx().node.Pubsub.Join(cId)
 	if err != nil {
 		channel_log.Infof("Join <%s> failed", cId)
 		return err
@@ -39,7 +30,7 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 		channel_log.Infof("Join <%s> done", cId)
 	}
 
-	psconn.Subscription, err = psconn.Topic.Subscribe()
+	channel.Subscription, err = channel.Topic.Subscribe()
 	if err != nil {
 		channel_log.Fatalf("Subscribe <%s> failed", cId)
 		channel_log.Fatalf(err.Error())
@@ -48,17 +39,18 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 		channel_log.Infof("Subscribe <%s> done", cId)
 	}
 
-	go psconn.handleGroupChannel()
+	go channel.handleGroupChannel()
+
 	return nil
 }
 
-func (psconn *P2pPubSubConn) Publish(data []byte) error {
-	return psconn.Topic.Publish(psconn.Ctx, data)
+func (channel *PubsubChannel) Publish(data []byte) error {
+	return channel.Topic.Publish(GetNodeCtx().Ctx, data)
 }
 
-func (psconn *P2pPubSubConn) handleGroupChannel() error {
+func (channel *PubsubChannel) handleGroupChannel() error {
 	for {
-		msg, err := psconn.Subscription.Next(psconn.Ctx)
+		msg, err := channel.Subscription.Next(GetNodeCtx().Ctx)
 		if err == nil {
 			var pkg quorumpb.Package
 			err = proto.Unmarshal(msg.Data, &pkg)
@@ -69,16 +61,20 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 					blk = &quorumpb.Block{}
 					err := proto.Unmarshal(pkg.Data, blk)
 					if err == nil {
-						psconn.chain.HandleBlock(blk)
+						channel.chain.HandleBlock(blk)
 					} else {
-						channel_log.Warning(err.Error())
+						chain_log.Warning(err.Error())
 					}
 				} else if pkg.Type == quorumpb.PackageType_TRX {
 					var trx *quorumpb.Trx
 					trx = &quorumpb.Trx{}
 					err := proto.Unmarshal(pkg.Data, trx)
 					if err == nil {
-						psconn.chain.HandleTrx(trx)
+						if trx.Version != GetNodeCtx().Version {
+							channel_log.Infof("Version mismatch")
+						} else {
+							channel.chain.HandleTrx(trx)
+						}
 					} else {
 						channel_log.Warningf(err.Error())
 					}

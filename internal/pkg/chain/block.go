@@ -6,9 +6,9 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -33,7 +33,7 @@ func CreateBlock(oldBlock *quorumpb.Block, trxs []*quorumpb.Trx, groupPublicKey 
 		newBlock.Trxs = append(newBlock.Trxs, trxclone)
 	}
 	newBlock.ProducerPubKey = p2pcrypto.ConfigEncodeKey(groupPublicKey)
-	newBlock.Timestamp = time.Now().UnixNano()
+	newBlock.TimeStamp = time.Now().UnixNano()
 
 	bbytes, err := proto.Marshal(&newBlock)
 
@@ -64,7 +64,7 @@ func CreateGenesisBlock(groupId string, groupPublicKey p2pcrypto.PubKey) (*quoru
 	genesisBlock.GroupId = groupId
 	genesisBlock.PrevBlockId = ""
 	genesisBlock.PreviousHash = nil
-	genesisBlock.Timestamp = time.Now().UnixNano()
+	genesisBlock.TimeStamp = time.Now().UnixNano()
 
 	genesisBlock.ProducerPubKey = p2pcrypto.ConfigEncodeKey(encodedgroupPubkey)
 	genesisBlock.Trxs = nil

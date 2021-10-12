@@ -5,8 +5,6 @@ import (
 	"fmt"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
-	"github.com/rumsystem/quorum/internal/pkg/options"
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -25,6 +23,8 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	maddr "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"sync"
 	"time"
 )
@@ -40,6 +40,7 @@ type NodeInfo struct {
 type Node struct {
 	PeerID           peer.ID
 	Host             host.Host
+	NetworkName      string
 	Pubsub           *pubsub.PubSub
 	Ddht             *dual.DHT
 	Info             *NodeInfo
@@ -159,7 +160,7 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	newnode := &Node{Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
 
 	//reconnect peers
 

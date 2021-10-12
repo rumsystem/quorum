@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"net/http"
 )
 

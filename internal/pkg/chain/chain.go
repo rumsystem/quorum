@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
-	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"

@@ -2,12 +2,11 @@ package api
 
 import (
 	"fmt"
-	"net/http"
-
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/peer"
 	maddr "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"net/http"
 )
 
 type AddPeerResult struct {

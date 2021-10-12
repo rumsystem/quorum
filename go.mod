@@ -15,7 +15,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Press-One/go-update v1.0.0
 	github.com/adrg/xdg v0.3.3
-	github.com/dgraph-io/badger v1.6.2
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/gdamore/tcell/v2 v2.4.0
@@ -34,7 +34,6 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/labstack/echo/v4 v4.3.0
-	github.com/labstack/gommon v0.3.0
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libp2p/go-libp2p v0.14.2
 	github.com/libp2p/go-libp2p-connmgr v0.2.4

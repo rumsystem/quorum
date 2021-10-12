@@ -16,9 +16,9 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 type JoinGroupParam struct {

@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/labstack/echo/v4"
 
 	guuid "github.com/google/uuid"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 type CreateGroupParam struct {
