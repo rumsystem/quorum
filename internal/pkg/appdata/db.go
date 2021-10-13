@@ -78,7 +78,8 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 	if starttrx == "" {
 		runcollector = true //no trxid, start collecting from the first item
 	}
-	err := appdb.Db.PrefixForeach(p, func(k []byte, v []byte, err error) error {
+
+	err := appdb.Db.PrefixForeachKey(p, []byte(prefix), reverse, func(k []byte, err error) error {
 		if err != nil {
 			return err
 		}

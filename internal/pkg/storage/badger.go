@@ -87,6 +87,28 @@ func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) e
 	return err
 }
 
+func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error {
+	// FIXME:
+	err := s.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 20
+		opts.PrefetchValues = false
+		opts.Reverse = reverse
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(valid); it.Next() {
+			item := it.Item()
+			key := item.KeyCopy(nil)
+			ferr := fn(key, nil)
+			if ferr != nil {
+				return ferr
+			}
+		}
+		return nil
+	})
+	return err
+}
+
 func (s *QSBadger) Foreach(fn func([]byte, []byte, error) error) error {
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions

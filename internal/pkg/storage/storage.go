@@ -7,6 +7,7 @@ type QuorumStorage interface {
 	Delete(key []byte) error
 	Get(key []byte) ([]byte, error)
 	PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error
+	PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error
 	Foreach(fn func([]byte, []byte, error) error) error
 
 	// For appdb, atomic batch write

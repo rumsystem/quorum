@@ -298,11 +298,11 @@ func mainRet(config cli.Config) int {
 		} else {
 			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
 		}
-		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, nodectx.GetDbMgr())
+		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
 		appsync.Start(10)
 		apph := &appapi.Handler{
 			Appdb:     appdb,
-			Chaindb:   nodectx.GetDbMgr(),
+			Chaindb:   dbManager,
 			GitCommit: GitCommit,
 			Apiroot:   apiaddress,
 			ConfigDir: config.ConfigDir,
