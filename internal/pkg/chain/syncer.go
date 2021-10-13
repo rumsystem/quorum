@@ -13,7 +13,7 @@ import (
 var syncer_log = logging.Logger("syncer")
 
 var WAIT_BLOCK_TIME_S = 10 //wait time period
-var RETRY_LIMIT = 50       //retry times
+var RETRY_LIMIT = 30       //retry times
 
 //syncer status
 const (
