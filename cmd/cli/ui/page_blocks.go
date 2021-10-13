@@ -327,7 +327,10 @@ func drawBlocksContent() {
 	blocks := blocksData.GetBlocks()
 	for i, block := range blocks {
 		fmt.Fprintf(blocksPageRight, "[\"%d\"][::b]%s[-:-:-]\n", i, block.BlockId)
-		fmt.Fprintf(blocksPageRight, "%s\n", time.Unix(0, block.Timestamp))
+		ts, err := strconv.Atoi(block.Timestamp)
+		if err != nil {
+			fmt.Fprintf(blocksPageRight, "%s\n", time.Unix(0, int64(ts)))
+		}
 		fmt.Fprintf(blocksPageRight, "Hash: %s\n", hex.EncodeToString(block.Hash))
 		fmt.Fprintf(blocksPageRight, "Signature: %s\n", hex.EncodeToString(block.Signature))
 		fmt.Fprintf(blocksPageRight, "Trxs:\n")
