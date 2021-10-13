@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	badger "github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/badger/v3/options"
 	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -24,29 +23,21 @@ const ANN_PREFIX string = "ann" //announce
 const SMA_PREFIX string = "sma" //schema
 const CHD_PREFIX string = "chd" //cached
 
-type DbOption struct {
-	LogFileSize    int64
-	MemTableSize   int64
-	LogMaxEntries  uint32
-	BlockCacheSize int64
-	Compression    options.CompressionType
-}
-
 type DbMgr struct {
-	GroupInfoDb *badger.DB
-	Db          *badger.DB
-	Auth        *badger.DB
+	GroupInfoDb QuorumStorage
+	Db          QuorumStorage
+	Auth        QuorumStorage
 	DataPath    string
 }
 
-func (dbMgr *DbMgr) InitDb(datapath string, dbopts *DbOption) error {
+func (dbMgr *DbMgr) InitDb(datapath string) error {
 	var err error
-	dbMgr.GroupInfoDb, err = badger.Open(badger.DefaultOptions(datapath + "_groups").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression).WithLoggingLevel(badger.ERROR))
+	err = dbMgr.GroupInfoDb.Init(datapath + "_groups")
 	if err != nil {
 		return err
 	}
 
-	dbMgr.Db, err = badger.Open(badger.DefaultOptions(datapath + "_db").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression).WithLoggingLevel(badger.ERROR))
+	err = dbMgr.Db.Init(datapath + "_db")
 	if err != nil {
 		return err
 	}

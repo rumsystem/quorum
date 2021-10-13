@@ -11,7 +11,6 @@ import (
 	"strings"
 	"syscall"
 
-	badgeroptions "github.com/dgraph-io/badger/v3/options"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
@@ -29,7 +28,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
@@ -244,8 +242,7 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 
-		appdbopts := &storage.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
-		appdb, err := appdata.InitDb(datapath, appdbopts)
+		appdb, err := appdata.InitDb(datapath)
 		checkLockError(err)
 
 		//run local http api service

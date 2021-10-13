@@ -8,7 +8,6 @@ import (
 	"github.com/google/orderedcode"
 	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 var appdatalog = logging.Logger("appdata")
@@ -22,12 +21,13 @@ const STATUS_PREFIX string = "stu_"
 const term = "\x00\x01"
 
 type AppDb struct {
-	Db       *badger.DB
+	Db *badger.DB
+	// TODO:
 	seq      map[string]*badger.Sequence
 	DataPath string
 }
 
-func InitDb(datapath string, dbopts *storage.DbOption) (*AppDb, error) {
+func InitDb(datapath string) (*AppDb, error) {
 	newdb, err := badger.Open(badger.DefaultOptions(datapath + "_appdb").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		return nil, err
