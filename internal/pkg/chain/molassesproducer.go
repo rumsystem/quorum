@@ -108,7 +108,7 @@ func (producer *MolassesProducer) produceBlock() {
 	//package all trx
 	//producer.trxpoolmu.Lock()
 	//defer producer.trxpoolmu.Unlock()
-	molaproducer_log.Debug("<%s> package <%d> trxs", producer.groupId, len(producer.trxPool))
+	molaproducer_log.Debugf("<%s> package <%d> trxs", producer.groupId, len(producer.trxPool))
 	trxs := make([]*quorumpb.Trx, 0, len(producer.trxPool))
 	for key, value := range producer.trxPool {
 		copyValue := value
@@ -132,8 +132,8 @@ func (producer *MolassesProducer) produceBlock() {
 	}
 
 	//CREATE AND BROADCAST NEW BLOCK BY USING BLOCK_PRODUCED MSG ON PRODUCER CHANNEL
+	molaproducer_log.Debugf("<%s> broadcast produced block", producer.groupId)
 	producer.cIface.GetProducerTrxMgr().SendBlockProduced(newBlock)
-
 	molaproducer_log.Debugf("<%s> produce done, wait for merge", producer.groupId)
 }
 
@@ -166,7 +166,7 @@ func (producer *MolassesProducer) AddProducedBlock(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	molaproducer_log.Debugf("<%s> add Block to Pool and set merge timer to 5s", producer.groupId)
+	molaproducer_log.Debugf("<%s> add produced block to Pool", producer.groupId)
 	producer.AddBlockToPool(block)
 
 	//if merge already started
@@ -174,15 +174,17 @@ func (producer *MolassesProducer) AddProducedBlock(trx *quorumpb.Trx) error {
 		return nil
 	}
 
+	producer.statusmu.Lock()
+	producer.status = StatusMerging
+	molaproducer_log.Debugf("<%s> set StatusMerging", producer.groupId)
 	go producer.startMergeBlock()
+
 	return nil
 }
 
 func (producer *MolassesProducer) startMergeBlock() error {
 	molaproducer_log.Debugf("<%s> startMergeBlock called", producer.groupId)
-	producer.statusmu.Lock()
-	producer.status = StatusMerging
-	molaproducer_log.Debugf("<%s> set StatusMerging", producer.groupId)
+
 	defer func() {
 		molaproducer_log.Infof("<%s> set StatusIdle", producer.groupId)
 		producer.status = StatusIdle
@@ -193,7 +195,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 			producer.startProduceBlock()
 		}
 	}()
-
+	molaproducer_log.Debugf("<%s> set merge timer to <%d>s", producer.groupId, MERGE_TIMER)
 	mergeTimer := time.NewTimer(MERGE_TIMER * time.Second)
 	t := <-mergeTimer.C
 	molaproducer_log.Debugf("<%s> merge timer ticker...<%s>", producer.groupId, t.UTC().String())
@@ -210,16 +212,28 @@ func (producer *MolassesProducer) startMergeBlock() error {
 	}
 
 	molaproducer_log.Debugf("<%s> candidate block decided, block Id : %s", producer.groupId, candidateBlkid)
+
+	surfix := ""
+	if producer.blockPool[candidateBlkid].ProducerPubKey == producer.grpItem.OwnerPubKey {
+		surfix = "OWNER"
+	} else {
+		surfix = "PRODUCER"
+	}
+
+	molaproducer_log.Debugf("<%s> winner <%s> (%s)", producer.groupId, producer.blockPool[candidateBlkid].ProducerPubKey, surfix)
 	err := producer.AddBlock(producer.blockPool[candidateBlkid])
 
 	if err != nil {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 	} else {
 		molaproducer_log.Debugf("<%s> block saved", producer.groupId)
-		molaproducer_log.Debugf("<%s> send new block out", producer.groupId)
-		err := producer.cIface.GetUserTrxMgr().SendBlock(producer.blockPool[candidateBlkid])
-		if err != nil {
-			molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
+		//check if I am the winner
+		if producer.blockPool[candidateBlkid].ProducerPubKey == producer.grpItem.UserSignPubkey {
+			molaproducer_log.Debugf("<%s> winner send new block out", producer.groupId)
+			err := producer.cIface.GetUserTrxMgr().SendBlock(producer.blockPool[candidateBlkid])
+			if err != nil {
+				molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
+			}
 		}
 	}
 
