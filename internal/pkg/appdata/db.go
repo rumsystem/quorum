@@ -2,12 +2,14 @@ package appdata
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/google/orderedcode"
 	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 var appdatalog = logging.Logger("appdata")
@@ -21,49 +23,41 @@ const STATUS_PREFIX string = "stu_"
 const term = "\x00\x01"
 
 type AppDb struct {
-	Db *badger.DB
-	// TODO:
-	seq      map[string]*badger.Sequence
+	Db       storage.QuorumStorage
+	seq      map[string]storage.Sequence
 	DataPath string
 }
 
 func InitDb(datapath string) (*AppDb, error) {
-	newdb, err := badger.Open(badger.DefaultOptions(datapath + "_appdb").WithValueLogFileSize(dbopts.LogFileSize).WithMemTableSize(dbopts.MemTableSize).WithValueLogMaxEntries(dbopts.LogMaxEntries).WithBlockCacheSize(dbopts.BlockCacheSize).WithCompression(dbopts.Compression).WithLoggingLevel(badger.ERROR))
+	app := AppDb{}
+	err := app.Db.Init(datapath + "_appdb")
 	if err != nil {
 		return nil, err
 	}
-	seq := make(map[string]*badger.Sequence)
+	app.seq = make(map[string]storage.Sequence)
+	app.DataPath = datapath
+
 	appdatalog.Infof("Appdb initialized")
-	return &AppDb{Db: newdb, DataPath: datapath, seq: seq}, nil
+	return &app, nil
 }
 
 func (appdb *AppDb) GetGroupStatus(groupid string, name string) (string, error) {
 	key := fmt.Sprintf("%s%s_%s", STATUS_PREFIX, groupid, name)
-	result := ""
-	err := appdb.Db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-
-		b, err := item.ValueCopy(nil)
-		result = string(b)
-		return err
-	})
-	if err == badger.ErrKeyNotFound {
-		return "", nil
+	value, err := appdb.Db.Get([]byte(key))
+	if err != nil {
+		return "", err
 	}
-
-	return result, err
+	return string(value), err
 }
 
 func (appdb *AppDb) GetSeqId(seqkey string) (uint64, error) {
-	var err error
 	if appdb.seq[seqkey] == nil {
-		appdb.seq[seqkey], err = appdb.Db.GetSequence([]byte(seqkey), 100)
+		seq, err := appdb.Db.GetSequence([]byte(seqkey), 100)
 		if err != nil {
 			return 0, err
 		}
+		appdb.seq[seqkey] = seq
+
 	}
 
 	return appdb.seq[seqkey].Next()
@@ -80,44 +74,44 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 	for _, s := range senders {
 		sendermap[s] = true
 	}
-	startidx := uint64(0)
 	trxids := []string{}
-	err := appdb.Db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 20
-		opts.PrefetchValues = false
-		opts.Reverse = reverse
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		p := []byte(prefix)
-		if reverse == true {
-			p = append(p, 0xff, 0xff, 0xff, 0xff) // add the postfix 0xffffffff, badger will search the seqid <= 4294967295, it's big enough?
+
+	p := []byte(prefix)
+	if reverse == true {
+		p = append(p, 0xff, 0xff, 0xff, 0xff) // add the postfix 0xffffffff, badger will search the seqid <= 4294967295, it's big enough?
+	}
+
+	runcollector := false
+	if starttrx == "" {
+		runcollector = true //no trxid, start collecting from the first item
+	}
+	err := appdb.Db.PrefixForeach(p, func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
 		}
-		runcollector := false
-		if starttrx == "" {
-			runcollector = true //no trxid, start collecting from the first item
+
+		dataidx := bytes.LastIndexByte(k, byte('_'))
+		trxid := string(k[len(k)-37-1 : len(k)-1-1])
+		if runcollector == true {
+			sender := string(k[dataidx+1+2 : len(k)-37-2]) //+2/-2 for remove the term, len(term)=2
+			if len(senders) == 0 || sendermap[sender] == true {
+				trxids = append(trxids, trxid)
+			}
 		}
-		for it.Seek(p); it.ValidForPrefix([]byte(prefix)); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			dataidx := bytes.LastIndexByte(k, byte('_'))
-			trxid := string(k[len(k)-37-1 : len(k)-1-1])
-			if runcollector == true {
-				sender := string(k[dataidx+1+2 : len(k)-37-2]) //+2/-2 for remove the term, len(term)=2
-				if len(senders) == 0 || sendermap[sender] == true {
-					trxids = append(trxids, trxid)
-				}
-			}
-			if trxid == starttrx { //start collecting after this item
-				runcollector = true
-			}
-			if len(trxids) == num {
-				break
-			}
-			startidx++
+		if trxid == starttrx { //start collecting after this item
+			runcollector = true
+		}
+		if len(trxids) == num {
+			// use this to break loop
+			return errors.New("OK")
 		}
 		return nil
 	})
+
+	if err.Error() == "OK" {
+		err = nil
+	}
+
 	return trxids, err
 }
 
@@ -146,34 +140,30 @@ func (appdb *AppDb) AddMetaByTrx(blockId string, groupid string, trxs []*quorump
 		}
 	}
 
-	txn := appdb.Db.NewTransaction(true)
-	defer txn.Discard()
+	keys := [][]byte{}
+	values := [][]byte{}
 
 	for _, key := range keylist {
-		e := badger.NewEntry(key, nil)
-		err = txn.SetEntry(e)
-		if err != nil {
-			return err
-		}
+		keys = append(keys, key)
+		values = append(values, nil)
 	}
 
 	valuename := "HighestBlockId"
 	groupLastestBlockidkey := fmt.Sprintf("%s%s_%s", STATUS_PREFIX, groupid, valuename)
-	e := badger.NewEntry([]byte(groupLastestBlockidkey), []byte(blockId))
-	err = txn.SetEntry(e)
-	if err != nil {
-		return err
-	}
+	keys = append(keys, []byte(groupLastestBlockidkey))
+	values = append(values, []byte(blockId))
 
-	if err := txn.Commit(); err != nil {
-		return err
-	}
+	err = appdb.Db.BatchWrite(keys, values)
+
 	return err
 }
 
 func (appdb *AppDb) Release() error {
 	for seqkey := range appdb.seq {
-		appdb.seq[seqkey].Release()
+		err := appdb.seq[seqkey].Release()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

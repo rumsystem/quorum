@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"errors"
+
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
 )
@@ -106,4 +108,28 @@ func (s *QSBadger) Foreach(fn func([]byte, []byte, error) error) error {
 		return nil
 	})
 	return err
+}
+
+func (s *QSBadger) BatchWrite(keys [][]byte, values [][]byte) error {
+	if len(keys) != len(values) {
+		return errors.New("keys' and values' length should be equal")
+	}
+
+	txn := s.db.NewTransaction(true)
+	defer txn.Discard()
+
+	for i, k := range keys {
+		v := values[i]
+		e := badger.NewEntry(k, v)
+		err := txn.SetEntry(e)
+		if err != nil {
+			return err
+		}
+	}
+	return txn.Commit()
+
+}
+
+func (s *QSBadger) GetSequence(key []byte, bandwidth uint64) (Sequence, error) {
+	return s.db.GetSequence(key, bandwidth)
 }
