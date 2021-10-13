@@ -29,24 +29,6 @@ type DbMgr struct {
 	DataPath    string
 }
 
-func (dbMgr *DbMgr) InitDb(datapath string) error {
-	var err error
-	err = dbMgr.GroupInfoDb.Init(datapath + "_groups")
-	if err != nil {
-		return err
-	}
-
-	err = dbMgr.Db.Init(datapath + "_db")
-	if err != nil {
-		return err
-	}
-
-	dbMgr.DataPath = datapath
-
-	dbmgr_log.Infof("ChainCtx DbMgf initialized")
-	return nil
-}
-
 func (dbMgr *DbMgr) CloseDb() {
 	dbMgr.GroupInfoDb.Close()
 	dbMgr.Db.Close()

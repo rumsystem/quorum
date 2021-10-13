@@ -50,12 +50,13 @@ func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }
 
-func InitCtx(ctx context.Context, name string, node *p2p.Node, dataPath string, channeltype string, gitcommit string) {
+func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, channeltype string, gitcommit string) {
 	nodeCtx = &NodeCtx{}
 	nodeCtx.Name = name
 	nodeCtx.Node = node
-	dbMgr = &storage.DbMgr{}
-	dbMgr.InitDb(dataPath)
+
+	dbMgr = db
+
 	nodeCtx.Status = NODE_OFFLINE
 	nodeCtx.Ctx = ctx
 	nodeCtx.Version = "1.0.0"

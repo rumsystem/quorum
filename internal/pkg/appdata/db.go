@@ -28,17 +28,10 @@ type AppDb struct {
 	DataPath string
 }
 
-func InitDb(datapath string) (*AppDb, error) {
+func NewAppDb() *AppDb {
 	app := AppDb{}
-	err := app.Db.Init(datapath + "_appdb")
-	if err != nil {
-		return nil, err
-	}
 	app.seq = make(map[string]storage.Sequence)
-	app.DataPath = datapath
-
-	appdatalog.Infof("Appdb initialized")
-	return &app, nil
+	return &app
 }
 
 func (appdb *AppDb) GetGroupStatus(groupid string, name string) (string, error) {
@@ -108,7 +101,7 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		return nil
 	})
 
-	if err.Error() == "OK" {
+	if err != nil && err.Error() == "OK" {
 		err = nil
 	}
 

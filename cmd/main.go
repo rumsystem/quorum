@@ -28,6 +28,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
@@ -55,6 +56,38 @@ func checkLockError(err error) {
 			os.Exit(16)
 		}
 	}
+}
+
+func createDb(path string) (*storage.DbMgr, error) {
+	var err error
+	groupDb := storage.QSBadger{}
+	dataDb := storage.QSBadger{}
+	err = groupDb.Init(path + "_groups")
+	if err != nil {
+		return nil, err
+	}
+
+	err = dataDb.Init(path + "_db")
+	if err != nil {
+		return nil, err
+	}
+
+	manager := storage.DbMgr{&groupDb, &dataDb, nil, path}
+	return &manager, nil
+}
+
+func createAppDb(path string) (*appdata.AppDb, error) {
+	var err error
+	db := storage.QSBadger{}
+	err = db.Init(path + "_appdb")
+	if err != nil {
+		return nil, err
+	}
+
+	app := appdata.NewAppDb()
+	app.Db = &db
+	app.DataPath = path
+	return app, nil
 }
 
 func mainRet(config cli.Config) int {
@@ -203,7 +236,11 @@ func mainRet(config cli.Config) int {
 		}
 
 		datapath := config.DataDir + "/" + config.PeerName
-		nodectx.InitCtx(ctx, "", node, datapath, "pubsub", GitCommit)
+		dbManager, err := createDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		nodectx.InitCtx(ctx, "", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -231,7 +268,11 @@ func mainRet(config cli.Config) int {
 		go node.ConnectPeers(ctx, peerok, 3, config)
 
 		datapath := config.DataDir + "/" + config.PeerName
-		nodectx.InitCtx(ctx, "default", node, datapath, "pubsub", GitCommit)
+		dbManager, err := createDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		nodectx.InitCtx(ctx, "default", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -242,7 +283,10 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 
-		appdb, err := appdata.InitDb(datapath)
+		appdb, err := createAppDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
 		checkLockError(err)
 
 		//run local http api service
