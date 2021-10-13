@@ -665,7 +665,10 @@ func drawQuorumContentInfo(trx api.TrxStruct) {
 	fmt.Fprintf(contentInfoView, "GroupId:   %s\n", trx.GroupId)
 	fmt.Fprintf(contentInfoView, "Sender:    %s\n", trx.SenderPubkey)
 	fmt.Fprintf(contentInfoView, "Signature: %s\n", trx.SenderSign)
-	fmt.Fprintf(contentInfoView, "TimeStamp: %s\n", time.Unix(0, trx.TimeStamp))
+	ts, err := strconv.Atoi(trx.TimeStamp)
+	if err != nil {
+		fmt.Fprintf(contentInfoView, "TimeStamp: %s\n", time.Unix(0, int64(ts)))
+	}
 	fmt.Fprintf(contentInfoView, "Version:   %s\n", trx.Version)
 
 	mixinUID := quorumData.GetUserMixinUID(trx.SenderPubkey, trx.GroupId)

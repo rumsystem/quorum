@@ -83,7 +83,7 @@ type TrxStruct struct {
 	TrxId        string `json:"TrxId"`
 	GroupId      string `json:"GroupId"`
 	Data         []byte `json:"Data"`
-	TimeStamp    int64  `json:"TimeStamp"`
+	TimeStamp    string `json:"TimeStamp"`
 	Version      string `json:"Version"`
 	Expired      int64  `json:"Expired"`
 	SenderPubkey string `json:"SenderPubkey"`
@@ -194,7 +194,7 @@ type BlockStruct struct {
 	ProducerPubKey string       `json:"ProducerPubKey,omitempty"`
 	Hash           []byte       `json:"Hash,omitempty"`
 	Signature      []byte       `json:"Signature,omitempty"`
-	Timestamp      int64        `json:"Timestamp,omitempty"`
+	Timestamp      string       `json:"Timestamp,omitempty"`
 }
 
 // GET /api/v1/network/peers/ping
