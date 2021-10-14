@@ -36,10 +36,15 @@ func NewAppDb() *AppDb {
 
 func (appdb *AppDb) GetGroupStatus(groupid string, name string) (string, error) {
 	key := fmt.Sprintf("%s%s_%s", STATUS_PREFIX, groupid, name)
-	value, err := appdb.Db.Get([]byte(key))
+	exist, err := appdb.Db.IsExist([]byte(key))
 	if err != nil {
 		return "", err
 	}
+	if !exist {
+		return "", nil
+	}
+
+	value, _ := appdb.Db.Get([]byte(key))
 	return string(value), err
 }
 
