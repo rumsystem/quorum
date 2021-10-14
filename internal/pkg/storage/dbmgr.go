@@ -535,6 +535,32 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string)
 	return ctnList, err
 }
 
+//func (dbMgr *DbMgr) GetTrxContent(trxId string, prefix ...string) (*quorumpb.Trx, error) {
+//	nodeprefix := getPrefix(prefix...)
+//	var trx quorumpb.Trx
+//	key := nodeprefix + TRX_PREFIX + "_" + trxId
+//	err := dbMgr.Db.View(func(txn *badger.Txn) error {
+//		item, err := txn.Get([]byte(key))
+//		if err != nil {
+//			return err
+//		}
+//
+//		trxBytes, err := item.ValueCopy(nil)
+//		if err != nil {
+//			return err
+//		}
+//
+//		err = proto.Unmarshal(trxBytes, &trx)
+//		if err != nil {
+//			return err
+//		}
+//
+//		return nil
+//	})
+//
+//	return &trx, err
+//}
+
 func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx, prefix ...string) (err error) {
 
 	nodeprefix := getPrefix(prefix...)
