@@ -3,6 +3,7 @@ package ui
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -16,6 +17,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
+	qCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
@@ -29,6 +31,22 @@ var blocksData = model.BlocksDataModel{
 	TickerRunning: false,
 	Counter:       0,
 	Cache:         make(map[string][]api.BlockStruct),
+}
+
+func decodeTrxData(gType, key string, data []byte) ([]byte, error) {
+	if gType == "PUBLIC" {
+		k, err := hex.DecodeString(key)
+		if err != nil {
+			return nil, err
+		}
+		return qCrypto.AesDecode(data, k)
+	} else if gType == "PRIVATE" {
+		// FIXME: need to know UserEncryptPubkey
+		// have to save it when join/create the private group ?
+		ks := qCrypto.GetKeystore()
+		return ks.Decrypt(key, data)
+	}
+	return nil, errors.New(fmt.Sprintf("Unknown type: %s", gType))
 }
 
 func Blocks() {
@@ -309,8 +327,12 @@ func drawBlocksGroups() {
 
 func drawBlocksContent() {
 	blocksPageRight.Clear()
+	cipherKey := ""
+	groupType := "PUBLIC"
 	for _, group := range blocksData.GetGroups().GroupInfos {
 		if group.GroupId == blocksData.GetCurrentGroup() {
+			cipherKey = group.CipherKey
+			groupType = group.EncryptionType
 			fmt.Fprintf(blocksPageRight, "Name:   %s\n", group.GroupName)
 			fmt.Fprintf(blocksPageRight, "ID:     %s\n", group.GroupId)
 			fmt.Fprintf(blocksPageRight, "Owner:  %s\n", group.OwnerPubKey)
@@ -336,19 +358,24 @@ func drawBlocksContent() {
 		fmt.Fprintf(blocksPageRight, "Trxs:\n")
 		for _, trx := range block.Trxs {
 			fmt.Fprintf(blocksPageRight, "\t- trx %s\n", trx.TrxId)
-
-			blockContent, typeUrl, err := quorumpb.BytesToMessage(trx.TrxId, trx.Data)
+			trxData, err := decodeTrxData(groupType, cipherKey, trx.Data)
 			if err != nil {
-				config.Logger.Error(err)
 				fmt.Fprintf(blocksPageRight, "\t[red:]Failed to decode: %s[-:-:-]\n", err.Error())
 			} else {
-				fmt.Fprintf(blocksPageRight, "\t\t - TypeUrl: %s\n", typeUrl)
-				contentStr := fmt.Sprintf("%s", blockContent)
-				if len(contentStr) > 1024 {
-					contentStr = contentStr[0:1024] + "..."
+				blockContent, typeUrl, err := quorumpb.BytesToMessage(trx.TrxId, trxData)
+				if err != nil {
+					config.Logger.Error(err)
+					fmt.Fprintf(blocksPageRight, "\t[red:]Failed to decode: %s[-:-:-]\n", err.Error())
+				} else {
+					fmt.Fprintf(blocksPageRight, "\t\t - TypeUrl: %s\n", typeUrl)
+					contentStr := fmt.Sprintf("%s", blockContent)
+					if len(contentStr) > 1024 {
+						contentStr = contentStr[0:1024] + "..."
+					}
+					fmt.Fprintf(blocksPageRight, "\t\t - Content: %s\n", contentStr)
 				}
-				fmt.Fprintf(blocksPageRight, "\t\t - Content: %s\n", contentStr)
 			}
+
 		}
 
 		fmt.Fprintf(blocksPageRight, "Children:\n")
