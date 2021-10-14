@@ -376,7 +376,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if isCached {
-		return errors.New("Block already cached, ignore")
+		molaproducer_log.Debugf("<%s> Block cached, update block", producer.groupId)
 	}
 
 	//Save block to cache
@@ -404,7 +404,9 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	//valid block with parent block
 	valid, err := IsBlockValid(block, parentBlock)
 	if !valid {
-		return err
+		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", producer.groupId, block.BlockId)
+		molauser_log.Warningf("<%s> invalid block <%s>", producer.groupId, err.Error())
+		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, producer.nodename)
 	}
 
 	//search cache, gather all blocks can be connected with this block
@@ -428,7 +430,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 
 	//move blocks from cache to normal
 	for _, block := range blocks {
-		molaproducer_log.Debugf("<%s> move block <%s> from cache to normal", producer.groupId, block.BlockId)
+		molaproducer_log.Debugf("<%s> move block <%s> from cache to chain", producer.groupId, block.BlockId)
 		err := nodectx.GetDbMgr().AddBlock(block, false, producer.nodename)
 		if err != nil {
 			return err
@@ -463,19 +465,7 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			continue
 		}
 
-		//make deep copy trx to avoid modify data of the original trx
-		var copiedTrx *quorumpb.Trx
-		copiedTrx = &quorumpb.Trx{}
-		copiedTrx.TrxId = trx.TrxId
-		copiedTrx.Type = trx.Type
-		copiedTrx.GroupId = trx.GroupId
-		copiedTrx.TimeStamp = trx.TimeStamp
-		copiedTrx.Version = trx.Version
-		copiedTrx.Expired = trx.Expired
-		copiedTrx.ResendCount = trx.ResendCount
-		copiedTrx.Nonce = trx.Nonce
-		copiedTrx.SenderPubkey = trx.SenderPubkey
-		copiedTrx.SenderSign = trx.SenderSign
+		originalData := trx.Data
 
 		if trx.Type == quorumpb.TrxType_POST && producer.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
@@ -486,12 +476,9 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			//for other producer, they can not decrpyt POST
 			ks := localcrypto.GetKeystore()
 			decryptData, err := ks.Decrypt(producer.grpItem.UserEncryptPubkey, trx.Data)
-			if err != nil {
-				copiedTrx.Data = trx.Data
-			} else {
-				copiedTrx.Data = decryptData
+			if err == nil {
+				trx.Data = decryptData
 			}
-
 		} else {
 			//decode trx data
 			ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
@@ -503,8 +490,7 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			if err != nil {
 				return err
 			}
-
-			copiedTrx.Data = decryptData
+			trx.Data = decryptData
 		}
 
 		molaproducer_log.Debugf("<%s> apply trx <%s>", producer.groupId, trx.TrxId)
@@ -512,27 +498,30 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
 			molaproducer_log.Debugf("<%s> apply POST trx", producer.groupId)
-			nodectx.GetDbMgr().AddPost(copiedTrx, producer.nodename)
+			nodectx.GetDbMgr().AddPost(trx, producer.nodename)
 		case quorumpb.TrxType_AUTH:
 			molaproducer_log.Debugf("<%s> apply AUTH trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateBlkListItem(copiedTrx, producer.nodename)
+			nodectx.GetDbMgr().UpdateBlkListItem(trx, producer.nodename)
 		case quorumpb.TrxType_PRODUCER:
 			molaproducer_log.Debugf("<%s> apply PRODUCER trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateProducer(copiedTrx, producer.nodename)
+			nodectx.GetDbMgr().UpdateProducer(trx, producer.nodename)
 			producer.cIface.UpdProducerList()
 			producer.cIface.CreateConsensus()
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateAnnounce(copiedTrx, producer.nodename)
+			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateSchema(copiedTrx, producer.nodename)
+			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)
 		default:
-			molaproducer_log.Warningf("<%s> unsupported msgType <%s>", producer.groupId, copiedTrx.Type)
+			molaproducer_log.Warningf("<%s> unsupported msgType <%s>", producer.groupId, trx.Type)
 		}
 
+		//set trx data to original (encrypted)
+		trx.Data = originalData
+
 		//save trx to db
-		nodectx.GetDbMgr().AddTrx(copiedTrx, producer.nodename)
+		nodectx.GetDbMgr().AddTrx(trx, producer.nodename)
 	}
 
 	return nil
