@@ -136,9 +136,9 @@ func (chain *Chain) UpdChainInfo(height int64, blockId []string) error {
 }
 
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> HandleTrx called", chain.groupId)
+	//chain_log.Debugf("<%s> HandleTrx called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Errorf("Trx Version mismatch %s", trx.TrxId)
+		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s", trx.TrxId)
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
@@ -207,33 +207,31 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
+	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
 	chain.Consensus.Producer().AddTrx(trx)
 	return nil
 }
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
+	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
 	return chain.Consensus.Producer().GetBlockForward(trx)
 }
 
 func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> handleReqBlockBackward called", chain.groupId)
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
+	chain_log.Debugf("<%s> producer handleReqBlockBackward called", chain.groupId)
 	return chain.Consensus.Producer().GetBlockBackward(trx)
 }
 
 func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
-
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
 		return err
@@ -249,10 +247,12 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	//if asked by myself, do nothing
+	//if not asked by myself, ignore it
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
 		return nil
 	}
+
+	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
 
 	var newBlock quorumpb.Block
 	if err := proto.Unmarshal(reqBlockResp.Block, &newBlock); err != nil {
@@ -261,7 +261,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 
 	var shouldAccept bool
 
-	chain_log.Infof("<%s> REQ_BLOCK_RESP, block <%s> from producer <%s>", chain.groupId, newBlock.BlockId, newBlock.ProducerPubKey)
+	chain_log.Infof("<%s> REQ_BLOCK_RESP, block_id <%s>, block_producer <%s>", chain.groupId, newBlock.BlockId, newBlock.ProducerPubKey)
 
 	if _, ok := chain.ProducerPool[newBlock.ProducerPubKey]; ok {
 		shouldAccept = true
@@ -278,10 +278,10 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
+	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
 	return chain.Consensus.Producer().AddProducedBlock(trx)
 }
 
@@ -320,9 +320,9 @@ func (chain *Chain) IsSyncerReady() bool {
 	if chain.Syncer.Status == SYNCING_BACKWARD ||
 		chain.Syncer.Status == SYNCING_FORWARD ||
 		chain.Syncer.Status == SYNC_FAILED {
-		chain_log.Debugf("<%s>group is syncing or sync failed", chain.groupId)
+		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.Syncer.Status)
 		return true
 	}
-
+	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
 }

@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"errors"
 
+	logging "github.com/ipfs/go-log/v2"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -77,7 +77,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if isCached {
-		return errors.New("Block already cached, ignore")
+		molaproducer_log.Debugf("<%s> Block cached, update block", user.groupId)
 	}
 
 	//Save block to cache
@@ -106,7 +106,9 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	//valid block with parent block
 	valid, err := IsBlockValid(block, parentBlock)
 	if !valid {
-		return err
+		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", user.groupId, block.BlockId)
+		molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
+		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.nodename)
 	}
 
 	//search cache, gather all blocks can be connected with this block
@@ -130,7 +132,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//move gathered blocks from cache to chain
 	for _, block := range blocks {
-		molauser_log.Debugf("<%s> move block <%s> from cache to normal", user.groupId, block.BlockId)
+		molauser_log.Debugf("<%s> move block <%s> from cache to chain", user.groupId, block.BlockId)
 		err := nodectx.GetDbMgr().AddBlock(block, false, user.nodename)
 		if err != nil {
 			return err
@@ -196,6 +198,8 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			continue
 		}
 
+		originalData := trx.Data
+
 		//new trx, apply it
 		if trx.Type == quorumpb.TrxType_POST && user.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
@@ -243,6 +247,9 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		default:
 			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}
+
+		//set trx data to original(encrypted)
+		trx.Data = originalData
 
 		//save trx to db
 		nodectx.GetDbMgr().AddTrx(trx, nodename)
