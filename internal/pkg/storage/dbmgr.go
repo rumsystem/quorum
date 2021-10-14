@@ -80,13 +80,7 @@ func (dbMgr *DbMgr) IsTrxExist(trxId string, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + trxId
 
-	_, err := dbMgr.Db.Get([]byte(key))
-
-	if err == nil {
-		return true, nil
-	}
-
-	return false, err
+	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string) error {
@@ -117,13 +111,7 @@ func (dbMgr *DbMgr) IsBlockExist(blockId string, cached bool, prefix ...string) 
 		key = nodeprefix + BLK_PREFIX + "_" + blockId
 	}
 
-	_, err := dbMgr.Db.Get([]byte(key))
-
-	if err == nil {
-		return true, nil
-	}
-
-	return false, err
+	return dbMgr.Db.IsExist([]byte(key))
 }
 
 //check if parent block existed
@@ -136,12 +124,7 @@ func (dbMgr *DbMgr) IsParentExist(parentBlockId string, cached bool, prefix ...s
 		pKey = nodeprefix + BLK_PREFIX + "_" + parentBlockId
 	}
 
-	_, err := dbMgr.Db.Get([]byte(pKey))
-
-	if err == nil {
-		return true, nil
-	}
-	return false, err
+	return dbMgr.Db.IsExist([]byte(pKey))
 }
 
 //add block
@@ -319,9 +302,8 @@ func (dbMgr *DbMgr) saveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, pr
 
 func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	//check if group exist
-	_, err := dbMgr.GroupInfoDb.Get([]byte(groupItem.GroupId))
-
-	if err == nil {
+	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(groupItem.GroupId))
+	if exist {
 		return errors.New("Group with same GroupId existed")
 	}
 
@@ -345,9 +327,12 @@ func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
 
 func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 	//check if group exist
-	_, err := dbMgr.GroupInfoDb.Get([]byte(item.GroupId))
-	if err != nil {
-		return err
+	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(item.GroupId))
+	if !exist {
+		if err != nil {
+			return err
+		}
+		return errors.New("Group Not Found")
 	}
 
 	//delete group
@@ -450,9 +435,12 @@ func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx, prefix ...string) (err 
 		key := nodeprefix + ATH_PREFIX + "_" + item.GroupId + "_" + item.PeerId
 
 		//check if group exist
-		_, err = dbMgr.Db.Get([]byte(key))
-		if err != nil {
-			return err
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("Group Not Found")
 		}
 		return dbMgr.Db.Delete([]byte(key))
 	} else {
@@ -490,11 +478,7 @@ func (dbMgr *DbMgr) IsUserBlocked(groupId, userId string, prefix ...string) (boo
 	key := nodeprefix + ATH_PREFIX + "_" + groupId + "_" + userId
 
 	//check if group exist
-	_, err := dbMgr.Db.Get([]byte(key))
-	if err == nil {
-		return true, nil
-	}
-	return false, err
+	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) UpdateProducer(trx *quorumpb.Trx, prefix ...string) (err error) {
@@ -516,9 +500,12 @@ func (dbMgr *DbMgr) UpdateProducer(trx *quorumpb.Trx, prefix ...string) (err err
 	} else if item.Action == "remove" {
 		//check if group exist
 		dbmgr_log.Infof("Remove producer")
-		_, err = dbMgr.Db.Get([]byte(key))
-		if err != nil {
-			return err
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("Producer Not Found")
 		}
 
 		return dbMgr.Db.Delete([]byte(key))
@@ -567,11 +554,7 @@ func (dbMgr *DbMgr) IsProducer(groupId, producerPubKey string, prefix ...string)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_" + producerPubKey
 
 	//check if group exist
-	_, err := dbMgr.Db.Get([]byte(key))
-	if err == nil {
-		return true, nil
-	}
-	return false, nil
+	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) UpdateAnnounce(trx *quorumpb.Trx, prefix ...string) (err error) {
@@ -587,9 +570,12 @@ func (dbMgr *DbMgr) UpdateAnnounce(trx *quorumpb.Trx, prefix ...string) (err err
 		return dbMgr.Db.Set([]byte(key), trx.Data)
 	} else if item.Action == "del" {
 		//check if item exist
-		_, err = dbMgr.Db.Get([]byte(key))
-		if err != nil {
-			return err
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("Announce Not Found")
 		}
 
 		return dbMgr.Db.Delete([]byte(key))
@@ -597,8 +583,6 @@ func (dbMgr *DbMgr) UpdateAnnounce(trx *quorumpb.Trx, prefix ...string) (err err
 		err := errors.New("unknow msgType")
 		return err
 	}
-
-	return nil
 }
 
 func (dbMgr *DbMgr) GetAnnouncedUsers(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
@@ -627,11 +611,7 @@ func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, 
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + userPubKey
 
 	//check if group user (announced) exist
-	_, err := dbMgr.Db.Get([]byte(key))
-	if err == nil {
-		return true, nil
-	}
-	return false, err
+	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error) {
@@ -647,10 +627,14 @@ func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error
 		return dbMgr.Db.Set([]byte(key), trx.Data)
 	} else if item.Memo == "Remove" {
 		//check if item exist
-		_, err = dbMgr.Db.Get([]byte(key))
-		if err != nil {
-			return err
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("SchemaItem Not Found")
 		}
+
 		return dbMgr.Db.Delete([]byte(key))
 	} else {
 		return errors.New("unknow msgType")
