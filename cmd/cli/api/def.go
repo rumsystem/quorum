@@ -194,7 +194,7 @@ type BlockStruct struct {
 	ProducerPubKey string       `json:"ProducerPubKey,omitempty"`
 	Hash           []byte       `json:"Hash,omitempty"`
 	Signature      []byte       `json:"Signature,omitempty"`
-	Timestamp      string       `json:"Timestamp,omitempty"`
+	TimeStamp      string       `json:"TimeStamp,omitempty"`
 }
 
 // GET /api/v1/network/peers/ping

@@ -327,7 +327,7 @@ func drawBlocksContent() {
 	blocks := blocksData.GetBlocks()
 	for i, block := range blocks {
 		fmt.Fprintf(blocksPageRight, "[\"%d\"][::b]%s[-:-:-]\n", i, block.BlockId)
-		ts, err := strconv.Atoi(block.Timestamp)
+		ts, err := strconv.Atoi(block.TimeStamp)
 		if err != nil {
 			fmt.Fprintf(blocksPageRight, "%s\n", time.Unix(0, int64(ts)))
 		}
