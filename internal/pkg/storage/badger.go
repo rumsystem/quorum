@@ -88,7 +88,6 @@ func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) e
 }
 
 func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error {
-	// FIXME:
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 20
