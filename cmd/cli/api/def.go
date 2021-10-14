@@ -152,7 +152,7 @@ type GenesisBlockStruct struct {
 	BlockId        string `json:"BlockId"`
 	GroupId        string `json:"GroupId"`
 	BlockNum       int    `json:"BlockNum"`
-	Timestamp      int64  `json:"Timestamp"`
+	TimeStamp      int64  `json:"TimeStamp"`
 	ProducerId     string `json:"ProducerId"`
 	ProducerPubKey string `json:"ProducerPubKey"`
 	Hash           string `json:"Hash"`
