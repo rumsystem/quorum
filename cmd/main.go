@@ -11,7 +11,6 @@ import (
 	"strings"
 	"syscall"
 
-	badgeroptions "github.com/dgraph-io/badger/v3/options"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
@@ -57,6 +56,38 @@ func checkLockError(err error) {
 			os.Exit(16)
 		}
 	}
+}
+
+func createDb(path string) (*storage.DbMgr, error) {
+	var err error
+	groupDb := storage.QSBadger{}
+	dataDb := storage.QSBadger{}
+	err = groupDb.Init(path + "_groups")
+	if err != nil {
+		return nil, err
+	}
+
+	err = dataDb.Init(path + "_db")
+	if err != nil {
+		return nil, err
+	}
+
+	manager := storage.DbMgr{&groupDb, &dataDb, nil, path}
+	return &manager, nil
+}
+
+func createAppDb(path string) (*appdata.AppDb, error) {
+	var err error
+	db := storage.QSBadger{}
+	err = db.Init(path + "_appdb")
+	if err != nil {
+		return nil, err
+	}
+
+	app := appdata.NewAppDb()
+	app.Db = &db
+	app.DataPath = path
+	return app, nil
 }
 
 func mainRet(config cli.Config) int {
@@ -205,7 +236,11 @@ func mainRet(config cli.Config) int {
 		}
 
 		datapath := config.DataDir + "/" + config.PeerName
-		nodectx.InitCtx(ctx, "", node, datapath, "pubsub", GitCommit)
+		dbManager, err := createDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		nodectx.InitCtx(ctx, "", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -233,7 +268,11 @@ func mainRet(config cli.Config) int {
 		go node.ConnectPeers(ctx, peerok, 3, config)
 
 		datapath := config.DataDir + "/" + config.PeerName
-		nodectx.InitCtx(ctx, "default", node, datapath, "pubsub", GitCommit)
+		dbManager, err := createDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		nodectx.InitCtx(ctx, "default", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -244,8 +283,10 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 
-		appdbopts := &storage.DbOption{LogFileSize: 16 << 20, MemTableSize: 8 << 20, LogMaxEntries: 50000, BlockCacheSize: 32 << 20, Compression: badgeroptions.Snappy}
-		appdb, err := appdata.InitDb(datapath, appdbopts)
+		appdb, err := createAppDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
 		checkLockError(err)
 
 		//run local http api service
@@ -257,11 +298,11 @@ func mainRet(config cli.Config) int {
 		} else {
 			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
 		}
-		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, nodectx.GetDbMgr())
+		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
 		appsync.Start(10)
 		apph := &appapi.Handler{
 			Appdb:     appdb,
-			Chaindb:   nodectx.GetDbMgr(),
+			Chaindb:   dbManager,
 			GitCommit: GitCommit,
 			Apiroot:   apiaddress,
 			ConfigDir: config.ConfigDir,
