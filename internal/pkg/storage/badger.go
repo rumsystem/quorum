@@ -65,15 +65,22 @@ func (s *QSBadger) Get(key []byte) ([]byte, error) {
 }
 
 func (s *QSBadger) IsExist(key []byte) (bool, error) {
+	var ret bool
+
 	err := s.db.View(func(txn *badger.Txn) error {
-		_, err := txn.Get([]byte(key))
-		return err
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 1
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		it.Seek(key)
+		ret = it.ValidForPrefix(key)
+		return nil
 	})
+
 	if err == nil {
-		return true, nil
-	}
-	if err == badger.ErrKeyNotFound {
-		return false, nil
+		return ret, nil
 	}
 	return false, err
 }
