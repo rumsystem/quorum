@@ -159,15 +159,14 @@ func (grp *Group) StartSync() error {
 		return errors.New("Group is syncing, don't start again")
 	}
 
-	for _, blockId := range grp.ChainCtx.group.Item.HighestBlockId {
-		topBlock, err := nodectx.GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
-		if err != nil {
-			group_log.Warningf("Get top block error, blockId %s at %s, %s", blockId, grp.ChainCtx.nodename, err.Error())
-			return err
-		}
-
-		return grp.ChainCtx.StartInitialSync(topBlock)
+	higestBId := grp.ChainCtx.group.Item.HighestBlockId
+	topBlock, err := nodectx.GetDbMgr().GetBlock(higestBId, false, grp.ChainCtx.nodename)
+	if err != nil {
+		group_log.Warningf("Get top block error, blockId <%s> at <%s>, <%s>", higestBId, grp.ChainCtx.nodename, err.Error())
+		return err
 	}
+
+	return grp.ChainCtx.StartInitialSync(topBlock)
 
 	group_log.Infof("Group <%s> start sync", grp.Item.GroupId)
 	return nil

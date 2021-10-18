@@ -159,7 +159,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 		item.CipherKey = hex.EncodeToString(cipherKey)
 		item.AppKey = params.AppKey
 		item.HighestHeight = 0
-		item.HighestBlockId = append(item.HighestBlockId, genesisBlock.BlockId)
+		item.HighestBlockId = genesisBlock.BlockId
 		item.LastUpdate = time.Now().UnixNano()
 		item.GenesisBlock = genesisBlock
 

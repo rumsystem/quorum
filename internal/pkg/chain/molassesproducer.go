@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"sort"
 	"sync"
 	"time"
 
@@ -93,12 +92,7 @@ func (producer *MolassesProducer) startProduceBlock() {
 
 func (producer *MolassesProducer) produceBlock() {
 	molaproducer_log.Debugf("<%s> produceBlock called", producer.groupId)
-
-	//for multi longest chains, sort and use the first BlockId as the winner.
-	sort.Strings(producer.grpItem.HighestBlockId)
-	highestBlockIdWinner := producer.grpItem.HighestBlockId[0]
-
-	topBlock, err := nodectx.GetDbMgr().GetBlock(highestBlockIdWinner, false, producer.nodename)
+	topBlock, err := nodectx.GetDbMgr().GetBlock(producer.grpItem.HighestBlockId, false, producer.nodename)
 	if err != nil {
 		molaproducer_log.Info(err.Error())
 		return
@@ -225,6 +219,10 @@ func (producer *MolassesProducer) startMergeBlock() error {
 
 	if err != nil {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
+		if err.Error() == "PARENT_NOT_EXIST" {
+			molaproducer_log.Debugf("<%s> parent not found, sync backward for missing blocks from <%s>", producer.groupId, candidateBlkid, err)
+			producer.cIface.SyncBackward(producer.blockPool[candidateBlkid])
+		}
 	} else {
 		molaproducer_log.Debugf("<%s> block saved", producer.groupId)
 		//check if I am the winner
@@ -391,7 +389,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if !parentExist {
-		molaproducer_log.Debugf("<%s> block parent is not exist, sync backward", producer.groupId)
+		molaproducer_log.Debugf("<%s> parent of block <%s> is not exist", producer.groupId, block.BlockId)
 		return errors.New("PARENT_NOT_EXIST")
 	}
 
@@ -443,7 +441,16 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	molaproducer_log.Debugf("<%s> chain height before recal: <%d>", producer.groupId, producer.grpItem.HighestHeight)
-	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, producer.grpItem.HighestHeight, producer.nodename)
+	topBlock, err := nodectx.GetDbMgr().GetBlock(producer.grpItem.HighestBlockId, false, producer.nodename)
+	if err != nil {
+		return err
+	}
+
+	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, producer.grpItem.HighestHeight, topBlock, producer.nodename)
+	if err != nil {
+		return err
+	}
+
 	molaproducer_log.Debugf("<%s> new height <%d>, new highest blockId %v", producer.groupId, newHeight, newHighestBlockId)
 
 	return producer.cIface.UpdChainInfo(newHeight, newHighestBlockId)
@@ -477,6 +484,7 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			ks := localcrypto.GetKeystore()
 			decryptData, err := ks.Decrypt(producer.grpItem.UserEncryptPubkey, trx.Data)
 			if err == nil {
+				//set trx.Data to decrypted []byte
 				trx.Data = decryptData
 			}
 		} else {
@@ -490,6 +498,8 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			if err != nil {
 				return err
 			}
+
+			//set trx.Data to decrypted []byte
 			trx.Data = decryptData
 		}
 

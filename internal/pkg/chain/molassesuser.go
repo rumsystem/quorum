@@ -77,7 +77,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if isCached {
-		molaproducer_log.Debugf("<%s> Block cached, update block", user.groupId)
+		molaproducer_log.Debugf("<%s> cached block, update block", user.groupId)
 	}
 
 	//Save block to cache
@@ -93,7 +93,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if !parentExist {
-		molauser_log.Debugf("<%s> block parent not exist, sync backward", user.groupId)
+		molauser_log.Debugf("<%s> parent of block <%s> is not exist", user.groupId, block.BlockId)
 		return errors.New("PARENT_NOT_EXIST")
 	}
 
@@ -146,7 +146,14 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//calculate new height
 	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.HighestHeight)
-	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, user.grpItem.HighestHeight, user.nodename)
+	topBlock, err := nodectx.GetDbMgr().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
+	if err != nil {
+		return err
+	}
+	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, user.grpItem.HighestHeight, topBlock, user.nodename)
+	if err != nil {
+		return err
+	}
 	molauser_log.Debugf("<%s> new height <%d>, new highest blockId %v", user.groupId, newHeight, newHighestBlockId)
 
 	//if the new block is not highest block after recalculate, we need to "trim" the chain
@@ -208,6 +215,8 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			if err != nil {
 				return err
 			}
+
+			//set trx.Data to decrypted []byte
 			trx.Data = decryptData
 		} else {
 			//decode trx data
@@ -221,6 +230,7 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 				return err
 			}
 
+			//set trx.Data to decrypted []byte
 			trx.Data = decryptData
 		}
 

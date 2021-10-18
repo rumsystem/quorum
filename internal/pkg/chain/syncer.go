@@ -240,7 +240,6 @@ func (syncer *Syncer) stopWaitBlock() {
 }
 
 func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (string, error) {
-	syncer_log.Debugf("<%s> GetBlockToGenesis called", syncer.groupId)
 	blk, err := nodectx.GetDbMgr().GetBlock(blockid, false, syncer.nodeName)
 	if err != nil {
 		return "", err
@@ -260,12 +259,11 @@ func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (st
 func (syncer *Syncer) ShowChainStruct() {
 	syncer_log.Debugf("<%s> ShowChainStruct called", syncer.groupId)
 	genesisblkid := syncer.group.ChainCtx.group.Item.GenesisBlock.BlockId
-	for _, blockId := range syncer.group.ChainCtx.group.Item.HighestBlockId {
-		chainstruct, err := syncer.GetBlockToGenesis(blockId, genesisblkid)
-		if err != nil {
-			syncer_log.Errorf("<%s> ChainStruct genesis <%s> err <%s>", syncer.groupId, genesisblkid, err)
-		} else {
-			syncer_log.Debugf("<%s> ChainStruct genesis <%s> struct: <%s>", syncer.groupId, genesisblkid, chainstruct)
-		}
+
+	chainstruct, err := syncer.GetBlockToGenesis(syncer.group.Item.HighestBlockId, genesisblkid)
+	if err != nil {
+		syncer_log.Errorf("<%s> ChainStruct genesis <%s> err <%s>", syncer.groupId, genesisblkid, err)
+	} else {
+		syncer_log.Debugf("<%s> ChainStruct genesis <%s> struct: <%s>", syncer.groupId, genesisblkid, chainstruct)
 	}
 }
