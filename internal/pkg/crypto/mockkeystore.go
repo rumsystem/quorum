@@ -8,9 +8,9 @@ import (
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"os"
@@ -365,7 +365,7 @@ func (ks *MockKeyStore) GetEncodedPubkey(keyname string, keytype KeyType) (strin
 			}
 			return encryptk.Recipient().String(), nil
 		}
-		return "", fmt.Errorf("unknown keyType of %s", keytype)
+		return "", fmt.Errorf("unknown keyType of %s", keyname)
 	} else {
 		return "", fmt.Errorf("key not exist :%s", keyname)
 	}

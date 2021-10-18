@@ -8,11 +8,17 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/adrg/xdg"
 	logging "github.com/ipfs/go-log/v2"
+	qCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
+
+var signKeyMap = map[string]string{}
 
 type QuorumConfig struct {
 	Server               string
 	ServerSSLCertificate string
+	KeyStoreName         string
+	KeyStoreDir          string
+	KeyStorePass         string
 	JWT                  string
 	MaxContentSize       int
 	Muted                []string
@@ -42,6 +48,8 @@ func Init() {
 	if _, err := toml.DecodeFile(configFilePath, &RumConfig); err != nil {
 		Logger.Fatal(err)
 	}
+
+	initKeyStore()
 }
 
 func initLogger() {
@@ -68,7 +76,36 @@ func initLogger() {
 	}
 }
 
+func initKeyStore() {
+	if RumConfig.Quorum.KeyStoreName != "" && RumConfig.Quorum.KeyStoreDir != "" {
+		kCount, err := qCrypto.InitKeystore(RumConfig.Quorum.KeyStoreName, RumConfig.Quorum.KeyStoreDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ksi := qCrypto.GetKeystore()
+		ks, ok := ksi.(*qCrypto.DirKeyStore)
+		if !ok {
+			log.Fatal(err)
+		}
+		if kCount > 0 {
+			password := RumConfig.Quorum.KeyStorePass
+			if password == "" {
+				password, err = qCrypto.PassphrasePromptForUnlock()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			err = ks.Unlock(signKeyMap, password)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		Logger.Infof("keystore OK, %d keys loaded", kCount)
+	}
+}
+
 func Save() string {
+
 	var configBuffer bytes.Buffer
 	e := toml.NewEncoder(&configBuffer)
 	if RumConfig.Quorum.MaxContentSize == 0 {

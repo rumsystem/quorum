@@ -1,10 +1,10 @@
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 name: MainTest
 jobs:
@@ -22,4 +22,4 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: MainTest
-      run: go test cmd/main_test.go -v -nodes=3 -posts=10 -timerange=1 -groups=5 -synctime=10
+      run: go test cmd/main_test.go -v -nodes=3 -posts=10 -timerange=5 -groups=5 -synctime=20

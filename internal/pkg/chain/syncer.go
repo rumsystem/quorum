@@ -223,7 +223,7 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 						syncer.askPreviousBlock(block)
 						syncer.waitBlock(block)
 					}
-					syncer.ShowChainStruct()
+					//syncer.ShowChainStruct()
 				} else { // all BLOCK_NOT_FOUND
 					syncer_log.Debugf("<%s> received <%d> BLOCK_NOT_FOUND resp, sync done, set to IDLE", syncer.groupId, len(syncer.responses))
 					syncer.Status = IDLE

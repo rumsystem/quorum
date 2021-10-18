@@ -438,7 +438,7 @@ func (ks *DirKeyStore) GetEncodedPubkey(keyname string, keytype KeyType) (string
 			}
 			return encryptk.Recipient().String(), nil
 		}
-		return "", fmt.Errorf("unknown keyType of %s", keytype)
+		return "", fmt.Errorf("unknown keyType of %s", keyname)
 	} else {
 		return "", fmt.Errorf("key not exist :%s", keyname)
 	}

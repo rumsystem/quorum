@@ -1,9 +1,10 @@
 package chain
 
 import (
+	"fmt"
+	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -74,4 +75,12 @@ func (groupmgr *GroupMgr) Release() {
 	}
 	//close ctx db
 	groupmgr.dbMgr.CloseDb()
+}
+
+func (groupmgr *GroupMgr) GetGroupItem(groupId string) (*quorumpb.GroupItem, error) {
+	if grp, ok := groupmgr.Groups[groupId]; ok {
+		return grp.Item, nil
+	}
+	return nil, fmt.Errorf("group not exist: %s", groupId)
+
 }
