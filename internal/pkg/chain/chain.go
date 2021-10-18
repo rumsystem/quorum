@@ -126,7 +126,7 @@ func (chain *Chain) GetUserTrxMgr() *TrxMgr {
 	return chain.trxMgrs[chain.userChannelId]
 }
 
-func (chain *Chain) UpdChainInfo(height int64, blockId []string) error {
+func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 	chain_log.Debugf("<%s> UpdChainInfo called", chain.groupId)
 	chain.group.Item.HighestHeight = height
 	chain.group.Item.HighestBlockId = blockId
@@ -183,10 +183,9 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 
 	var shouldAccept bool
 
-	// check if block produced by registed producer or group owner
-	if len(chain.ProducerPool) == 1 && block.ProducerPubKey == chain.group.Item.OwnerPubKey {
-		//from owner and no other registed producer
-		shouldAccept = true
+	if chain.Consensus.Producer() != nil {
+		//if I am a producer, no need to addBlock since block just produced is already saved
+		shouldAccept = false
 	} else if _, ok := chain.ProducerPool[block.ProducerPubKey]; ok {
 		//from registed producer
 		shouldAccept = true
@@ -199,7 +198,11 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 	if shouldAccept {
 		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
-			chain_log.Debug(err.Error())
+			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
+			if err.Error() == "PARENT_NOT_EXIST" {
+				chain_log.Infof("<%s>, parent not exist, sync backward from block <%s>", chain.groupId, block.BlockId)
+				chain.Syncer.SyncBackward(block)
+			}
 		}
 	}
 
@@ -325,4 +328,8 @@ func (chain *Chain) IsSyncerReady() bool {
 	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
+}
+
+func (chain *Chain) SyncBackward(block *quorumpb.Block) error {
+	return chain.Syncer.SyncBackward(block)
 }

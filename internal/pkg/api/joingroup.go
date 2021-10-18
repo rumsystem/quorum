@@ -207,7 +207,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
 		}
 
-		item.HighestBlockId = append(item.HighestBlockId, params.GenesisBlock.BlockId)
+		item.HighestBlockId = params.GenesisBlock.BlockId
 		item.HighestHeight = 0
 		item.LastUpdate = time.Now().UnixNano()
 		item.GenesisBlock = params.GenesisBlock

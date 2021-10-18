@@ -1,35 +1,44 @@
 package chain
 
 import (
+	"bytes"
+
+	logging "github.com/ipfs/go-log/v2"
 	localCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var molautil_log = logging.Logger("util")
 
 //find the highest block from the block tree
-func RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, nodename string) (int64, []string, error) {
+func RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, currentHighestBlock *quorumpb.Block, nodename string) (int64, string, error) {
 	molautil_log.Debug("RecalChainHeight called")
-	var highestBlockId []string
-	newHeight := currentHeight
+
+	newHighestHeight := currentHeight
+	newHighestBlockId := currentHighestBlock.BlockId
+	newHighestBlock := currentHighestBlock
+
 	for _, block := range blocks {
 		blockHeight, err := nodectx.GetDbMgr().GetBlockHeight(block.BlockId, nodename)
 		if err != nil {
-			return -1, highestBlockId, err
+			return -1, "INVALID_BLOCK_ID", err
 		}
-		if blockHeight > newHeight {
-			newHeight = blockHeight
-			highestBlockId = nil
-			highestBlockId = append(highestBlockId, block.BlockId)
-		} else if blockHeight == newHeight {
-			highestBlockId = append(highestBlockId, block.BlockId)
-		} else {
-			// do nothing
+		if blockHeight > newHighestHeight {
+			newHighestHeight = blockHeight
+			newHighestBlockId = block.BlockId
+			newHighestBlock = block
+		} else if blockHeight == newHighestHeight {
+			//comparing two hash bytes lexicographicall
+			if bytes.Compare(newHighestBlock.Hash[:], block.Hash[:]) == -1 { //-1 means ohash < nhash, and we want keep the larger one
+				newHighestHeight = blockHeight
+				newHighestBlockId = block.BlockId
+				newHighestBlock = block
+			}
 		}
 	}
-	return newHeight, highestBlockId, nil
+
+	return newHighestHeight, newHighestBlockId, nil
 }
 
 //from root of the new block tree, get all blocks trimed when not belong to longest path

@@ -1,13 +1,12 @@
 package appdata
 
 import (
+	"time"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	"sort"
-	"strings"
-	"time"
 )
 
 var appsynclog = logging.Logger("appsync")
@@ -34,6 +33,7 @@ func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
 	return items
 }
 
+/*
 func highestBlockIdToStr(HighestBlockId []string) string {
 	if len(HighestBlockId) > 1 {
 		sort.Strings(HighestBlockId)
@@ -43,7 +43,7 @@ func highestBlockIdToStr(HighestBlockId []string) string {
 	}
 	return ""
 }
-
+*/
 func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) ([]*quorumpb.Block, error) {
 	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s", len(block.Trxs), groupid)
 	err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
@@ -89,9 +89,9 @@ func (appsync *AppSync) Start(interval int) {
 					if lastBlockId == "" {
 						lastBlockId = groupitem.GenesisBlock.BlockId
 					}
-					newBlockid := highestBlockIdToStr(groupitem.HighestBlockId)
-					if lastBlockId != newBlockid {
-						appsync.RunSync(groupitem.GroupId, lastBlockId, newBlockid)
+					//newBlockid := highestBlockIdToStr(groupitem.HighestBlockId)
+					if lastBlockId != groupitem.HighestBlockId {
+						appsync.RunSync(groupitem.GroupId, lastBlockId, groupitem.HighestBlockId)
 					}
 				} else {
 					appsynclog.Errorf("sync group : %s Get HighestBlockId err %s", groupitem.GroupId, err)

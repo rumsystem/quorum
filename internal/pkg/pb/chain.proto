@@ -156,7 +156,7 @@ message GroupItem {
     Role   UserRole                = 6;
 	int64  LastUpdate              = 7;
 	int64  HighestHeight           = 8;
-	repeated string HighestBlockId = 9;
+	string HighestBlockId          = 9;
 	Block  GenesisBlock            = 10;
     GroupEncryptType EncryptType   = 11;
     GroupConsenseType ConsenseType = 12;

@@ -4,23 +4,23 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type groupInfo struct {
-	GroupId        string   `json:"group_id"`
-	GroupName      string   `json:"group_name"`
-	OwnerPubKey    string   `json:"owner_pubkey"`
-	UserPubkey     string   `json:"user_pubkey"`
-	ConsensusType  string   `json:"consensus_type"`
-	EncryptionType string   `json:"encryption_type"`
-	CipherKey      string   `json:"cipher_key"`
-	AppKey         string   `json:"app_key"`
-	LastUpdated    int64    `json:"last_updated"`
-	HighestHeight  int64    `json:"highest_height"`
-	HighestBlockId []string `json:"highest_block_id"`
-	GroupStatus    string   `json:"group_status"`
+	GroupId        string `json:"group_id"`
+	GroupName      string `json:"group_name"`
+	OwnerPubKey    string `json:"owner_pubkey"`
+	UserPubkey     string `json:"user_pubkey"`
+	ConsensusType  string `json:"consensus_type"`
+	EncryptionType string `json:"encryption_type"`
+	CipherKey      string `json:"cipher_key"`
+	AppKey         string `json:"app_key"`
+	LastUpdated    int64  `json:"last_updated"`
+	HighestHeight  int64  `json:"highest_height"`
+	HighestBlockId string `json:"highest_block_id"`
+	GroupStatus    string `json:"group_status"`
 }
 
 type GroupInfoList struct {
