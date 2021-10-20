@@ -7,11 +7,14 @@ import (
 	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
 )
@@ -25,7 +28,7 @@ func registerCallbacks() {
 			qChan = make(chan struct{}, 0)
 		}
 		bootAddr := args[0].String()
-		StartQuorum(bootAddr)
+		go StartQuorum(bootAddr)
 		return js.ValueOf(true).Bool()
 	}))
 
@@ -44,10 +47,6 @@ func registerCallbacks() {
 		WSTest()
 		return js.ValueOf(true).Bool()
 	}))
-}
-
-func handleStream(stream network.Stream) {
-	println("Got a new stream!")
 }
 
 type addrList []maddr.Multiaddr
@@ -84,15 +83,13 @@ func StringsToAddrs(addrStrings []string) (maddrs []maddr.Multiaddr, err error) 
 type Config struct {
 	RendezvousString string
 	BootstrapPeers   addrList
-	ProtocolID       string
 }
 
 func GetConfig(boot string) Config {
 	bootAddrs, _ := StringsToAddrs([]string{boot})
 	var DefaultConfig = Config{
-		"test",
+		"e6629921-b5cd-4855-9fcd-08bcc39caef7",
 		bootAddrs,
-		"/quorum/test",
 	}
 	return DefaultConfig
 }
@@ -137,18 +134,27 @@ func arrayBufferToBytes(buffer js.Value) []byte {
 
 func StartQuorum(bootAddr string) {
 	ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-
-	// config := GetConfig("/ip4/127.0.0.1/tcp/3001/ws", "/ip4/127.0.0.1/tcp/3002/ws")
 	config := GetConfig(bootAddr)
 
-	// id, _ := peer.IDFromPrivateKey(priv)
-	//priv, _, _ := test.RandTestKeyPair(crypto.Ed25519, 256)
-	// id, _ := peer.IDFromPrivateKey(priv)
+	var routingDiscovery *discovery.RoutingDiscovery
+	routeProtoPrefix := "/quorum/nevis"
+	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
+		dhtOpts := dual.DHTOption(
+			dht.Mode(dht.ModeClient),
+			dht.Concurrency(10),
+			dht.ProtocolPrefix(protocol.ID(routeProtoPrefix)),
+		)
+
+		var err error
+		ddht, err := dual.New(ctx, host, dhtOpts)
+		routingDiscovery = discovery.NewRoutingDiscovery(ddht)
+		return ddht, err
+	})
 
 	// WebSockets only:
 	h, err := libp2p.New(
 		ctx,
+		routing,
 		libp2p.Transport(ws.New),
 		libp2p.ListenAddrs(),
 	)
@@ -158,34 +164,45 @@ func StartQuorum(bootAddr string) {
 
 	println("id: ", h.ID().String())
 
-	protocolID := "/p2p/quorum"
-	h.SetStreamHandler(protocol.ID(protocolID), handleStream)
+	psOptions := []pubsub.Option{pubsub.WithPeerExchange(true)}
 
-	kademliaDHT, _ := dht.New(ctx, h, dht.Option(dht.Mode(dht.ModeClient)))
-
-	if err := kademliaDHT.Bootstrap(ctx); err != nil {
-		panic(err)
+	qProto := protocol.ID("/quorum/nevis/meshsub/1.1.0")
+	protos := []protocol.ID{qProto}
+	features := func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
+		if proto == qProto {
+			return true
+		}
+		return false
 	}
+	psOptions = append(psOptions, pubsub.WithGossipSubProtocols(protos, features))
 
-	// var wg sync.WaitGroup
+	psOptions = append(psOptions, pubsub.WithPeerOutboundQueueSize(128))
+
+	ps, err := pubsub.NewGossipSub(ctx, h, psOptions...)
+
+	println(ps)
+
+	//kademliaDHT, _ := dht.New(ctx, h, dht.Option(dht.Mode(dht.ModeClient)))
+
+	//if err := kademliaDHT.Bootstrap(ctx); err != nil {
+	//	panic(err)
+	//}
+
+	// Do not use sync.WaitGroup, it will block this thread
+	// and the socket will never opened
 	for _, peerAddr := range config.BootstrapPeers {
 		peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
 		url := peerAddr.String()
-		// wg.Add(1)
-		go func() {
-			// defer wg.Done()
-			println("connecting: ", url)
-			if err := h.Connect(ctx, *peerinfo); err != nil {
-				panic(err)
-			} else {
-				println("Connection established with bootstrap node: ", url)
-			}
-		}()
+		println("connecting: ", url)
+		if err := h.Connect(ctx, *peerinfo); err != nil {
+			panic(err)
+		} else {
+			println("Connection established with bootstrap node: ", url)
+
+		}
 	}
-	// wg.Wait()
 
 	println("Announcing ourselves...")
-	routingDiscovery := discovery.NewRoutingDiscovery(kademliaDHT)
 	discovery.Advertise(ctx, routingDiscovery, config.RendezvousString)
 	println("Successfully announced!")
 
@@ -213,7 +230,6 @@ func StartQuorum(bootAddr string) {
 				cancel()
 			}
 		}
-
 	}()
 }
 
