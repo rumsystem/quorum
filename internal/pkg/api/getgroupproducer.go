@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type ProducerListItem struct {
 	ProducerPubkey string
+	OwnerPubkey    string
+	OwnerSign      string
+	TimeStamp      int64
+	BlockProduced  int64
 }
 
 // @Tags Management
@@ -42,6 +46,10 @@ func (h *Handler) GetGroupProducers(c echo.Context) (err error) {
 			var item *ProducerListItem
 			item = &ProducerListItem{}
 			item.ProducerPubkey = prd.ProducerPubkey
+			item.OwnerPubkey = prd.GroupOwnerPubkey
+			item.OwnerSign = prd.GroupOwnerSign
+			item.TimeStamp = prd.TimeStamp
+			item.BlockProduced = prd.BlockProduced
 			prdResultList = append(prdResultList, item)
 		}
 

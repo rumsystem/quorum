@@ -440,17 +440,22 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
+	for _, block := range blocks {
+		err := nodectx.GetDbMgr().AddProducedBlockCount(producer.groupId, block.ProducerPubKey, producer.nodename)
+		if err != nil {
+			return err
+		}
+	}
+
 	molaproducer_log.Debugf("<%s> chain height before recal: <%d>", producer.groupId, producer.grpItem.HighestHeight)
 	topBlock, err := nodectx.GetDbMgr().GetBlock(producer.grpItem.HighestBlockId, false, producer.nodename)
 	if err != nil {
 		return err
 	}
-
 	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, producer.grpItem.HighestHeight, topBlock, producer.nodename)
 	if err != nil {
 		return err
 	}
-
 	molaproducer_log.Debugf("<%s> new height <%d>, new highest blockId %v", producer.groupId, newHeight, newHighestBlockId)
 
 	return producer.cIface.UpdChainInfo(newHeight, newHighestBlockId)

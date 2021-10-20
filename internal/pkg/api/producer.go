@@ -63,6 +63,17 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	} else {
 
+		isAnnounced, err := group.IsProducerAnnounced(params.ProducerPubkey)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		if !isAnnounced {
+			output[ERROR_INFO] = "Producer is not announced"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
 		item := &quorumpb.ProducerItem{}
 		item.GroupId = params.GroupId
 		item.ProducerPubkey = params.ProducerPubkey
@@ -83,7 +94,15 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		}
 
 		item.GroupOwnerSign = hex.EncodeToString(signature)
-		item.Action = params.Action //add or remove
+		if params.Action == "add" {
+			item.Action = quorumpb.ActionType_ADD
+		} else if params.Action == "remove" {
+			item.Action = quorumpb.ActionType_REMOVE
+		} else {
+			output[ERROR_INFO] = "Unknown action"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
 		item.Memo = params.Memo
 		item.TimeStamp = time.Now().UnixNano()
 		trxId, err := group.UpdProducer(item)
@@ -94,7 +113,7 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		}
 
 		var blockGrpUserResult *GrpProducerResult
-		blockGrpUserResult = &GrpProducerResult{GroupId: item.GroupId, ProducerPubkey: item.ProducerPubkey, OwnerPubkey: item.GroupOwnerPubkey, Sign: item.GroupOwnerSign, Action: item.Action, Memo: item.Memo, TrxId: trxId}
+		blockGrpUserResult = &GrpProducerResult{GroupId: item.GroupId, ProducerPubkey: item.ProducerPubkey, OwnerPubkey: item.GroupOwnerPubkey, Sign: item.GroupOwnerSign, Action: item.Action.String(), Memo: item.Memo, TrxId: trxId}
 
 		return c.JSON(http.StatusOK, blockGrpUserResult)
 	}

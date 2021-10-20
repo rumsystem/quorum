@@ -144,6 +144,14 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
+	//update block produced count
+	for _, block := range blocks {
+		err := nodectx.GetDbMgr().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
+		if err != nil {
+			return err
+		}
+	}
+
 	//calculate new height
 	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.HighestHeight)
 	topBlock, err := nodectx.GetDbMgr().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
