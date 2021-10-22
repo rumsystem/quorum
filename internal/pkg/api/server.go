@@ -6,6 +6,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -13,8 +15,6 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -44,6 +44,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
+		r.POST("/v1/psping", h.PSPingPeer(node))
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.GET("/v1/groups", h.GetGroups)
