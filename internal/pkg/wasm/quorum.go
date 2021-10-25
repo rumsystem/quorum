@@ -4,25 +4,20 @@ package wasm
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
 	"time"
 
-	libp2p "github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
+	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
-type QuorumWasmNode struct {
-	Ps               *pubsub.PubSub
-	Host             host.Host
-	RoutingDiscovery *discovery.RoutingDiscovery
+type QuorumWasmContext struct {
+	QNode *quorumP2P.Node
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
@@ -30,12 +25,9 @@ type QuorumWasmNode struct {
 	Qchan chan struct{}
 }
 
-func newQuorumWasmNode(ps *pubsub.PubSub, host host.Host, routingDiscovery *discovery.RoutingDiscovery, ctx context.Context, cancel context.CancelFunc, qchan chan struct{}) *QuorumWasmNode {
-	ret := QuorumWasmNode{
-		ps, host, routingDiscovery, ctx, cancel, qchan,
-	}
-
-	return &ret
+func NewQuorumWasmContext(qchan chan struct{}, node *quorumP2P.Node, ctx context.Context, cancel context.CancelFunc) *QuorumWasmContext {
+	qCtx := QuorumWasmContext{node, ctx, cancel, qchan}
+	return &qCtx
 }
 
 func StringsToAddrs(addrStrings []string) (maddrs []ma.Multiaddr, err error) {
@@ -50,81 +42,49 @@ func StringsToAddrs(addrStrings []string) (maddrs []ma.Multiaddr, err error) {
 	return
 }
 
+// TODO: read from config
 var DefaultRendezvousString = "e6629921-b5cd-4855-9fcd-08bcc39caef7"
 var DefaultRoutingProtoPrefix = "/quorum/nevis"
+var DefaultNetworkName = "nevis"
 var DefaultPubsubProtocol = "/quorum/nevis/meshsub/1.1.0"
 
 func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	bootAddrs, _ := StringsToAddrs([]string{bootAddrsStr})
 
-	var routingDiscovery *discovery.RoutingDiscovery
-	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
-		dhtOpts := dual.DHTOption(
-			dht.Mode(dht.ModeClient),
-			dht.Concurrency(10),
-			dht.ProtocolPrefix(protocol.ID(DefaultRoutingProtoPrefix)),
-		)
+	// TODO: load options and key
+	nodeOpt := options.NodeOptions{}
+	nodeOpt.EnableDevNetwork = false
+	nodeOpt.EnableNat = false
+	nodeOpt.NetworkName = DefaultNetworkName
 
-		var err error
-		ddht, err := dual.New(ctx, host, dhtOpts)
-		routingDiscovery = discovery.NewRoutingDiscovery(ddht)
-		return ddht, err
-	})
+	key := ethKeystore.NewKeyForDirectICAP(rand.Reader)
 
-	// WebSockets only:
-	h, err := libp2p.New(
-		ctx,
-		routing,
-		libp2p.Transport(ws.New),
-		libp2p.ListenAddrs(),
-	)
+	node, err := quorumP2P.NewBrowserNode(ctx, &nodeOpt, key)
 	if err != nil {
-		panic(err)
+		panic(nil)
 	}
 
-	println("id: ", h.ID().String())
-
-	psOptions := []pubsub.Option{pubsub.WithPeerExchange(true)}
-
-	qProto := protocol.ID(DefaultPubsubProtocol)
-	protos := []protocol.ID{qProto}
-	features := func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
-		if proto == qProto {
-			return true
-		}
-		return false
-	}
-	psOptions = append(psOptions, pubsub.WithGossipSubProtocols(protos, features))
-
-	psOptions = append(psOptions, pubsub.WithPeerOutboundQueueSize(128))
-
-	ps, err := pubsub.NewGossipSub(ctx, h, psOptions...)
-
-	println(ps)
-
+	// TODO: connect to boot address from peerstore
+	peers := []peer.AddrInfo{}
 	for _, peerAddr := range bootAddrs {
 		peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
-		url := peerAddr.String()
-		println("connecting: ", url)
-		if err := h.Connect(ctx, *peerinfo); err != nil {
-			panic(err)
-		} else {
-			println("Connection established with bootstrap node: ", url)
-
-		}
+		peers = append(peers, *peerinfo)
 	}
 
+	connectedPeers := node.AddPeers(ctx, peers)
+	println(fmt.Sprintf("Connected to %d peers", connectedPeers))
+
+	// annouce self
 	println("Announcing ourselves...")
-	discovery.Advertise(ctx, routingDiscovery, DefaultRendezvousString)
+	discovery.Advertise(ctx, node.RoutingDiscovery, DefaultRendezvousString)
 	println("Successfully announced!")
 
-	node := newQuorumWasmNode(ps, h, routingDiscovery, ctx, cancel, qchan)
-
-	go startBackgroundWork(node)
+	wasmCtx := NewQuorumWasmContext(qchan, node, ctx, cancel)
+	go startBackgroundWork(wasmCtx)
 }
 
-func startBackgroundWork(node *QuorumWasmNode) {
+func startBackgroundWork(wasmCtx *QuorumWasmContext) {
 	ticker := time.NewTicker(3 * time.Second)
 	for {
 		select {
@@ -132,21 +92,21 @@ func startBackgroundWork(node *QuorumWasmNode) {
 			// Now, look for others who have announced
 			// This is like your friend telling you the location to meet you.
 			println("Searching for other peers...")
-			peerChan, err := node.RoutingDiscovery.FindPeers(node.Ctx, DefaultRendezvousString)
+			peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, DefaultRendezvousString)
 			if err != nil {
 				panic(err)
 			}
 
 			for peer := range peerChan {
-				if peer.ID == node.Host.ID() {
+				if peer.ID == wasmCtx.QNode.Host.ID() {
 					// println("Found peer(self):", peer.String())
 				} else {
 					println("Found peer:", peer.String())
 				}
 			}
-		case <-node.Qchan:
+		case <-wasmCtx.Qchan:
 			ticker.Stop()
-			node.Cancel()
+			wasmCtx.Cancel()
 		}
 	}
 }
