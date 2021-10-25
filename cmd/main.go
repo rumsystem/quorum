@@ -367,7 +367,7 @@ func main() {
 		logging.SetLogLevel("producer", "debug")
 		logging.SetLogLevel("user", "debug")
 		logging.SetLogLevel("groupmgr", "debug")
-
+		logging.SetLogLevel("trxmgr", "debug")
 	}
 
 	if *help {
