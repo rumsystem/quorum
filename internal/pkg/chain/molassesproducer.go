@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"sync"
@@ -21,6 +22,8 @@ var molaproducer_log = logging.Logger("producer")
 
 const PRODUCE_TIMER time.Duration = 5 //5s
 const MERGE_TIMER time.Duration = 5   //5s
+
+const TRXS_TOTAL_SIZE int = 900 * 1024
 
 type ProducerStatus int
 
@@ -102,14 +105,24 @@ func (producer *MolassesProducer) produceBlock() {
 	//package all trx
 	//producer.trxpoolmu.Lock()
 	//defer producer.trxpoolmu.Unlock()
-	molaproducer_log.Debugf("<%s> package <%d> trxs", producer.groupId, len(producer.trxPool))
 	trxs := make([]*quorumpb.Trx, 0, len(producer.trxPool))
+
+	totalSizeBytes := 0
+	totalTrx := 0
+
 	for key, value := range producer.trxPool {
-		copyValue := value
-		trxs = append(trxs, copyValue)
-		//remove trx from pool
-		delete(producer.trxPool, key)
+		encodedcontent, _ := quorumpb.ContentToBytes(value)
+		totalSizeBytes += binary.Size(encodedcontent)
+
+		if totalSizeBytes < TRXS_TOTAL_SIZE {
+			trxs = append(trxs, value)
+			//remove trx from pool
+			delete(producer.trxPool, key)
+			totalTrx++
+		}
 	}
+
+	molaproducer_log.Debugf("<%s> package <%d> trxs, size <%d>", producer.groupId, totalTrx, totalSizeBytes)
 
 	//create block
 	pubkeyBytes, err := p2pcrypto.ConfigDecodeKey(producer.grpItem.UserSignPubkey)
