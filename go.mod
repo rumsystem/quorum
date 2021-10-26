@@ -28,6 +28,7 @@ require (
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.2.0
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
+	github.com/hack-pad/go-indexeddb v0.1.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/huo-ju/quercus v0.0.0-20210909192534-3740345b9ab8
 	github.com/ipfs/go-ds-badger2 v0.1.0

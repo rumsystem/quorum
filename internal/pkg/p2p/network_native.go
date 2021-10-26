@@ -1,5 +1,6 @@
 //go:build !js
 // +build !js
+
 package p2p
 
 import (

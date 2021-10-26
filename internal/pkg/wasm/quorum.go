@@ -14,6 +14,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
+	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 type QuorumWasmContext struct {
@@ -108,5 +109,36 @@ func startBackgroundWork(wasmCtx *QuorumWasmContext) {
 			ticker.Stop()
 			wasmCtx.Cancel()
 		}
+	}
+}
+
+func IndexDBTest() {
+	dbMgr := quorumStorage.QSIndexDB{}
+	err := dbMgr.Init("test")
+	if err != nil {
+		panic(err)
+	}
+
+	k := []byte("key")
+	v := []byte("value")
+	err = dbMgr.Set(k, v)
+	if err != nil {
+		panic(err)
+	}
+
+	val, err := dbMgr.Get(k)
+	if err != nil {
+		panic(err)
+	}
+	println(string(k), string(val))
+
+	err = dbMgr.Delete(k)
+	if err != nil {
+		panic(err)
+	}
+
+	val, err = dbMgr.Get(k)
+	if err != nil {
+		println("not found (OK)")
 	}
 }

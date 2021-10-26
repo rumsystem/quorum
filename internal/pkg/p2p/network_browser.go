@@ -1,5 +1,6 @@
 //go:build js && wasm
 // +build js,wasm
+
 package p2p
 
 import (

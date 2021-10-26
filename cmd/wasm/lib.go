@@ -37,6 +37,11 @@ func registerCallbacks() {
 		WSTest()
 		return js.ValueOf(true).Bool()
 	}))
+
+	js.Global().Set("IndexDBTest", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		go quorum.IndexDBTest()
+		return js.ValueOf(true).Bool()
+	}))
 }
 
 func WSTest() {
