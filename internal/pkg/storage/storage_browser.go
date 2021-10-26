@@ -3,6 +3,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"syscall/js"
@@ -77,15 +78,85 @@ func (s *QSIndexDB) Get(key []byte) ([]byte, error) {
 	return bytes, nil
 }
 
-// TODO: implement followings
 func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
-	return nil
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
+	if err != nil {
+		return err
+	}
+	cursorRequest, err := store.OpenCursorRange(kRange, idb.CursorNext)
+	if err != nil {
+		return err
+	}
+	return cursorRequest.Iter(s.ctx, func(cursor *idb.CursorWithValue) error {
+		key, err := cursor.Cursor.Key()
+		if err != nil {
+			return err
+		}
+		value, err := cursor.Value()
+		if err != nil {
+			return err
+		}
+		ferr := fn(ArrayBufferToBytes(key), ArrayBufferToBytes(value), nil)
+		if ferr != nil {
+			return ferr
+		}
+		return nil
+	})
 }
 
+// for reverse, prefix is the upper bound, and valid is the actual prefix
 func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error {
-	return nil
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	if !reverse {
+		kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
+		if err != nil {
+			return err
+		}
+		cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorNext)
+		if err != nil {
+			return err
+		}
+		return cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
+			key, err := cursor.Key()
+			if err != nil {
+				return err
+			}
+			ferr := fn(ArrayBufferToBytes(key), nil)
+			if ferr != nil {
+				return ferr
+			}
+			return nil
+		})
+	} else {
+		kRange, err := idb.NewKeyRangeUpperBound(BytesToArrayBuffer(prefix), false)
+		if err != nil {
+			return err
+		}
+		cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorPrevious)
+		if err != nil {
+			return err
+		}
+		return cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
+			key, err := cursor.Key()
+			if err != nil {
+				return err
+			}
+			k := ArrayBufferToBytes(key)
+			if bytes.HasPrefix(k, valid) {
+				ferr := fn(k, nil)
+				if ferr != nil {
+					return ferr
+				}
+			}
+			return nil
+		})
+	}
 }
 
+// TODO: implement followings
 func (s *QSIndexDB) Foreach(fn func([]byte, []byte, error) error) error {
 	return nil
 }

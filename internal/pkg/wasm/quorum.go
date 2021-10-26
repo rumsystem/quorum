@@ -3,12 +3,15 @@
 package wasm
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"time"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/google/orderedcode"
 	"github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	ma "github.com/multiformats/go-multiaddr"
@@ -119,26 +122,82 @@ func IndexDBTest() {
 		panic(err)
 	}
 
-	k := []byte("key")
-	v := []byte("value")
-	err = dbMgr.Set(k, v)
-	if err != nil {
-		panic(err)
+	{
+		k := []byte("key")
+		v := []byte("value")
+		err = dbMgr.Set(k, v)
+		if err != nil {
+			panic(err)
+		}
+
+		val, err := dbMgr.Get(k)
+		if err != nil {
+			panic(err)
+		}
+		println(string(k), string(val))
+
+		err = dbMgr.Delete(k)
+		if err != nil {
+			panic(err)
+		}
+
+		val, err = dbMgr.Get(k)
+		if err != nil {
+			println("not found (OK)")
+		}
+	}
+	{
+		keys := []string{}
+		values := []string{}
+		keyPrefix := "key"
+		i := 0
+		for i < 100 {
+			k, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(i))
+			keys = append(keys, string(k))
+			values = append(values, fmt.Sprintf("value-%d", i))
+			i += 1
+		}
+		for idx, k := range keys {
+			err = dbMgr.Set([]byte(k), []byte(values[idx]))
+			if err != nil {
+				panic(err)
+			}
+		}
+		rKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(100))
+		i = 0
+		err = dbMgr.PrefixForeachKey(rKey, []byte(keyPrefix), true, func(k []byte, err error) error {
+			i += 1
+			curKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(100-i))
+			if !bytes.Equal(k, curKey) {
+				return errors.New("wrong key")
+			}
+			return nil
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		i = 0
+		err = dbMgr.PrefixForeachKey([]byte(keyPrefix), []byte(keyPrefix), false, func(k []byte, err error) error {
+			curKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(i))
+			i += 1
+			if !bytes.Equal(k, curKey) {
+				return errors.New("wrong key")
+			}
+			return nil
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		for _, k := range keys {
+			err = dbMgr.Delete([]byte(k))
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		println("Test Done: OK")
 	}
 
-	val, err := dbMgr.Get(k)
-	if err != nil {
-		panic(err)
-	}
-	println(string(k), string(val))
-
-	err = dbMgr.Delete(k)
-	if err != nil {
-		panic(err)
-	}
-
-	val, err = dbMgr.Get(k)
-	if err != nil {
-		println("not found (OK)")
-	}
 }
