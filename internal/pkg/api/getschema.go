@@ -1,43 +1,50 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type SchemaListItem struct {
-	schema string
+	Type      string
+	Rule      string
+	TimeStamp int64
 }
 
 func (h *Handler) GetGroupAppSchema(c echo.Context) (err error) {
-	/*
-		output := make(map[string]string)
-		groupid := c.Param("group_id")
-		if groupid == "" {
-			output[ERROR_INFO] = "group_id can't be nil."
+
+	output := make(map[string]string)
+	groupid := c.Param("group_id")
+	if groupid == "" {
+		output[ERROR_INFO] = "group_id can't be nil."
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupid]; ok {
+		schemaList, err := group.GetSchemas()
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		if group, ok := chain.GetChainCtx().Groups[groupid]; ok {
-			smaList, err := chain.GetDbMgr().GetSchemaByGroup(group.Item.GroupId)
-			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
-			}
-
-			var smaResultList []*SchemaListItem
-			for _, sma := range smaList {
-				var item *SchemaListItem
-				item = &SchemaListItem{}
-				item.schema = sma.SchemaJson
-				smaResultList = append(smaResultList, item)
-			}
-
-			return c.JSON(http.StatusOK, smaResultList)
-		} else {
-			output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
-			return c.JSON(http.StatusBadRequest, output)
+		schemaResultList := []*SchemaListItem{}
+		for _, schema := range schemaList {
+			var item *SchemaListItem
+			item = &SchemaListItem{}
+			item.Type = schema.Type
+			item.Rule = schema.Rule
+			item.TimeStamp = schema.TimeStamp
+			schemaResultList = append(schemaResultList, item)
 		}
-	*/
 
-	return nil
+		return c.JSON(http.StatusOK, schemaResultList)
+
+	} else {
+		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
+		return c.JSON(http.StatusBadRequest, output)
+	}
 }
