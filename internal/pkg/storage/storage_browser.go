@@ -1,15 +1,33 @@
-//go:build js && wasm
+// go:build js && wasm
 // +build js,wasm
+
 package storage
 
 import (
 	"bytes"
 	"context"
 	"errors"
+	"sync/atomic"
 	"syscall/js"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 )
+
+type IndexDBSequence struct {
+	id uint64
+}
+
+func NewIndexDBSequence() *IndexDBSequence {
+	return &IndexDBSequence{0}
+}
+
+func (seq *IndexDBSequence) Next() (uint64, error) {
+	return atomic.AddUint64(&seq.id, 1), nil
+}
+
+func (seq *IndexDBSequence) Release() error {
+	return nil
+}
 
 type QSIndexDB struct {
 	db   *idb.Database
@@ -209,9 +227,8 @@ func (s *QSIndexDB) BatchWrite(keys [][]byte, values [][]byte) error {
 	return txn.Await(s.ctx)
 }
 
-// TODO: implement Sequence
 func (s *QSIndexDB) GetSequence([]byte, uint64) (Sequence, error) {
-	return nil, nil
+	return NewIndexDBSequence(), nil
 }
 
 func ArrayBufferToBytes(buffer js.Value) []byte {
