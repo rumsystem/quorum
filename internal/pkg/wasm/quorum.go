@@ -134,7 +134,9 @@ func IndexDBTest() {
 		if err != nil {
 			panic(err)
 		}
-		println(string(k), string(val))
+		if !bytes.Equal(v, val) {
+			panic("Get")
+		}
 
 		err = dbMgr.Delete(k)
 		if err != nil {
@@ -142,27 +144,31 @@ func IndexDBTest() {
 		}
 
 		val, err = dbMgr.Get(k)
-		if err != nil {
-			println("not found (OK)")
+		if err == nil {
+			panic("key should not found")
+		}
+		exist, err := dbMgr.IsExist(k)
+		if !(exist == false && err == nil) {
+			panic("dbMgr.IsExist")
 		}
 	}
+
 	{
-		keys := []string{}
-		values := []string{}
+		keys := [][]byte{}
+		values := [][]byte{}
 		keyPrefix := "key"
 		i := 0
 		for i < 100 {
 			k, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(i))
-			keys = append(keys, string(k))
-			values = append(values, fmt.Sprintf("value-%d", i))
+			keys = append(keys, k)
+			values = append(values, []byte(fmt.Sprintf("value-%d", i)))
 			i += 1
 		}
-		for idx, k := range keys {
-			err = dbMgr.Set([]byte(k), []byte(values[idx]))
-			if err != nil {
-				panic(err)
-			}
+		err := dbMgr.BatchWrite(keys, values)
+		if err != nil {
+			panic(err)
 		}
+
 		rKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(100))
 		i = 0
 		err = dbMgr.PrefixForeachKey(rKey, []byte(keyPrefix), true, func(k []byte, err error) error {
@@ -189,6 +195,11 @@ func IndexDBTest() {
 		if err != nil {
 			panic(err)
 		}
+
+		dbMgr.Foreach(func(k []byte, v []byte, err error) error {
+			println(string(k), string(v))
+			return nil
+		})
 
 		for _, k := range keys {
 			err = dbMgr.Delete([]byte(k))

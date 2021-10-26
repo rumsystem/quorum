@@ -156,20 +156,60 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 	}
 }
 
-// TODO: implement followings
 func (s *QSIndexDB) Foreach(fn func([]byte, []byte, error) error) error {
-	return nil
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	cursorRequest, err := store.OpenCursor(idb.CursorNext)
+	if err != nil {
+		return err
+	}
+	return cursorRequest.Iter(s.ctx, func(cursor *idb.CursorWithValue) error {
+		key, err := cursor.Cursor.Key()
+		if err != nil {
+			return err
+		}
+		value, err := cursor.Value()
+		if err != nil {
+			return err
+		}
+		ferr := fn(ArrayBufferToBytes(key), ArrayBufferToBytes(value), nil)
+		if ferr != nil {
+			return ferr
+		}
+		return nil
+	})
 }
 
-func (s *QSIndexDB) IsExist([]byte) (bool, error) {
-	return false, nil
+func (s *QSIndexDB) IsExist(key []byte) (bool, error) {
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	req, err := store.Get(BytesToArrayBuffer(key))
+	if err != nil {
+		return false, err
+	}
+	jsVal, err := req.Await(s.ctx)
+	if err != nil {
+		return false, err
+	}
+	bytes := ArrayBufferToBytes(jsVal)
+	if len(bytes) == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 // For appdb, atomic batch write
 func (s *QSIndexDB) BatchWrite(keys [][]byte, values [][]byte) error {
-	return nil
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	for i, k := range keys {
+		v := values[i]
+		store.AddKey(BytesToArrayBuffer(k), BytesToArrayBuffer(v))
+	}
+	return txn.Await(s.ctx)
 }
 
+// TODO: implement Sequence
 func (s *QSIndexDB) GetSequence([]byte, uint64) (Sequence, error) {
 	return nil, nil
 }
