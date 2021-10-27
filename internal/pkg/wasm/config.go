@@ -25,7 +25,7 @@ func NewBrowserConfig(bootstrapStrs []string) *BrowserConfig {
 	ret.RendezvousString = DefaultRendezvousString
 	ret.RoutingProtoPrefix = DefaultRoutingProtoPrefix
 	ret.NetworkName = DefaultNetworkName
-	ret.UseTestNet = true
+	ret.UseTestNet = false
 	ret.PubSubProtocol = DefaultPubSubProtocol
 	return &ret
 }

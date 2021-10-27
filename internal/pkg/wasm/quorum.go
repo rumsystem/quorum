@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
@@ -41,6 +42,7 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
 	/* TODO: should also try to connect known peers in peerstore which is
 	   not implemented yet */
 
+	/* keep finding peers, and try to connect to them */
 	go startBackgroundWork(wasmCtx)
 }
 
@@ -56,28 +58,47 @@ func Bootstrap(wasmCtx *QuorumWasmContext) {
 }
 
 func startBackgroundWork(wasmCtx *QuorumWasmContext) {
-	ticker := time.NewTicker(3 * time.Second)
+	/* first job will start after 1 second */
+	go func() {
+		time.Sleep(1 * time.Second)
+		backgroundWork(wasmCtx)
+	}()
+
+	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case <-ticker.C:
-			// Now, look for others who have announced
-			// This is like your friend telling you the location to meet you.
-			println("Searching for other peers...")
-			peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, DefaultRendezvousString)
-			if err != nil {
-				panic(err)
-			}
-
-			for peer := range peerChan {
-				if peer.ID == wasmCtx.QNode.Host.ID() {
-					// println("Found peer(self):", peer.String())
-				} else {
-					println("Found peer:", peer.String())
-				}
-			}
+			backgroundWork(wasmCtx)
 		case <-wasmCtx.Qchan:
 			ticker.Stop()
 			wasmCtx.Cancel()
 		}
+	}
+}
+
+func backgroundWork(wasmCtx *QuorumWasmContext) {
+	println("Searching for other peers...")
+	peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, DefaultRendezvousString)
+	if err != nil {
+		panic(err)
+	}
+
+	var connectCount uint32 = 0
+
+	for peer := range peerChan {
+		curPeer := peer
+		println("Found peer:", curPeer.String())
+		go func() {
+			pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
+			defer cancel()
+			err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
+			if err != nil {
+				println("Failed to connect peer: ", curPeer.String())
+				cancel()
+			} else {
+				curConnectedCount := atomic.AddUint32(&connectCount, 1)
+				println(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
+			}
+		}()
 	}
 }
