@@ -11,8 +11,12 @@ import (
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
@@ -24,6 +28,11 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
 	nodeOpt.NetworkName = config.NetworkName
 	nodeOpt.EnableDevNetwork = config.UseTestNet
 
+	dbMgr, err := newStoreManager()
+	if err != nil {
+		panic(err)
+	}
+
 	/* Randomly genrate a key
 	TODO: should load from somewhere(IndexedDB or user localfile etc.) */
 	key := ethKeystore.NewKeyForDirectICAP(rand.Reader)
@@ -32,6 +41,22 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
 	if err != nil {
 		panic(nil)
 	}
+
+	nodectx.InitCtx(ctx, "default", node, dbMgr, "pubsub", "wasm-version")
+	// TODO: init keystore
+	// ksi: keystore load from local by calling `InitDirKeyStore`
+	//nodectx.GetNodeCtx().Keystore = ksi
+	//nodectx.GetNodeCtx().PublicKey = keys.PubKey
+	//nodectx.GetNodeCtx().PeerId = peerid
+
+	groupmgr := chain.InitGroupMgr(dbMgr)
+
+	err = groupmgr.SyncAllGroup()
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO: app db
 
 	wasmCtx := NewQuorumWasmContext(qchan, config, node, ctx, cancel)
 
@@ -101,4 +126,25 @@ func backgroundWork(wasmCtx *QuorumWasmContext) {
 			}
 		}()
 	}
+}
+
+func newStoreManager() (*storage.DbMgr, error) {
+	groupDb := quorumStorage.QSIndexDB{}
+	err := groupDb.Init("quorum_groups")
+	if err != nil {
+		return nil, err
+	}
+	dataDb := quorumStorage.QSIndexDB{}
+	err = dataDb.Init("quorum_data")
+	if err != nil {
+		return nil, err
+	}
+
+	storeMgr := storage.DbMgr{}
+	storeMgr.GroupInfoDb = &groupDb
+	storeMgr.Db = &dataDb
+	storeMgr.Auth = nil
+	storeMgr.DataPath = "."
+
+	return &storeMgr, nil
 }
