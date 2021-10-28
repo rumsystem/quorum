@@ -124,15 +124,8 @@ func (ks *DirKeyStore) GetPeerInfo(keyname string) (peerid peer.ID, ethaddr stri
 }
 
 func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
-	//key, ok := ks.unlocked[k]
-	//if ok == false {
-	//	//load key
-	//} else {
-
-	//}
-
-	//signk, ok := ks.unlocked[k].(*ethkeystore.Key)
-
+	ks.mu.Lock()
+	defer ks.mu.Unlock()
 	if val, ok := ks.unlocked[keyname]; ok {
 		return val, nil
 	}
@@ -142,8 +135,6 @@ func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
 		if addr != "" {
 			key, err := ks.LoadSignKey(keyname, common.HexToAddress(addr), ks.password)
 			if err == nil {
-				ks.mu.Lock()
-				defer ks.mu.Unlock()
 				ks.unlocked[keyname] = key
 			} else {
 				cryptolog.Warningf("key: %s can't be unlocked, err:%s", keyname, err)
@@ -157,8 +148,6 @@ func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
 	} else if strings.HasPrefix(keyname, Encrypt.Prefix()) {
 		key, err := ks.LoadEncryptKey(keyname, ks.password)
 		if err == nil {
-			ks.mu.Lock()
-			defer ks.mu.Unlock()
 			ks.unlocked[keyname] = key
 		} else {
 			cryptolog.Warningf("key: %s can't be unlocked, err:%s", keyname, err)
