@@ -25,6 +25,7 @@ type DirKeyStore struct {
 	KeystorePath string
 	password     string
 	unlocked     map[string]interface{} //eth *Key or *X25519Identity, will be upgrade to generics
+	signkeymap   map[string]string
 	unlockTime   time.Time
 	mu           sync.RWMutex
 }
@@ -47,7 +48,7 @@ func InitDirKeyStore(name string, keydir string) (*DirKeyStore, int, error) {
 			signkeycount++
 		}
 	}
-	ks := &DirKeyStore{Name: name, KeystorePath: keydir, unlocked: make(map[string]interface{})}
+	ks := &DirKeyStore{Name: name, KeystorePath: keydir, unlocked: make(map[string]interface{}), signkeymap: make(map[string]string)}
 	return ks, signkeycount, nil
 }
 
@@ -62,36 +63,7 @@ func (ks *DirKeyStore) UnlockedKeyCount(keytype KeyType) int {
 }
 
 func (ks *DirKeyStore) Unlock(signkeymap map[string]string, password string) error {
-	files, err := ioutil.ReadDir(ks.KeystorePath)
-	if err != nil {
-		return err
-	}
-	ks.mu.Lock()
-	defer ks.mu.Unlock()
-	for _, f := range files {
-		if strings.HasPrefix(f.Name(), Encrypt.Prefix()) == true {
-			key, err := ks.LoadEncryptKey(f.Name(), password)
-			if err == nil {
-				ks.unlocked[f.Name()] = key
-			} else {
-				cryptolog.Warningf("key: %s can't be unlocked, err:%s", f.Name(), err)
-				return err
-			}
-		} else if strings.HasPrefix(f.Name(), Sign.Prefix()) == true {
-			addr := signkeymap[f.Name()[len(Sign.Prefix()):]]
-			if addr != "" {
-				key, err := ks.LoadSignKey(f.Name(), common.HexToAddress(addr), password)
-				if err == nil {
-					ks.unlocked[f.Name()] = key
-				} else {
-					cryptolog.Warningf("key: %s can't be unlocked, err:%s", f.Name(), err)
-					return err
-				}
-			} else {
-				cryptolog.Warningf("can't find sign key %s addr", f.Name())
-			}
-		}
-	}
+	ks.signkeymap = signkeymap
 	ks.password = password
 	return nil
 }
@@ -152,9 +124,49 @@ func (ks *DirKeyStore) GetPeerInfo(keyname string) (peerid peer.ID, ethaddr stri
 }
 
 func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
+	//key, ok := ks.unlocked[k]
+	//if ok == false {
+	//	//load key
+	//} else {
+
+	//}
+
+	//signk, ok := ks.unlocked[k].(*ethkeystore.Key)
+
 	if val, ok := ks.unlocked[keyname]; ok {
 		return val, nil
 	}
+	//try unlock it
+	if strings.HasPrefix(keyname, Sign.Prefix()) {
+		addr := ks.signkeymap[keyname[len(Sign.Prefix()):]]
+		if addr != "" {
+			key, err := ks.LoadSignKey(keyname, common.HexToAddress(addr), ks.password)
+			if err == nil {
+				ks.mu.Lock()
+				defer ks.mu.Unlock()
+				ks.unlocked[keyname] = key
+			} else {
+				cryptolog.Warningf("key: %s can't be unlocked, err:%s", keyname, err)
+				return nil, err
+			}
+			return ks.unlocked[keyname], nil
+		} else {
+			cryptolog.Warningf("can't find sign key %s addr", keyname)
+		}
+
+	} else if strings.HasPrefix(keyname, Encrypt.Prefix()) {
+		key, err := ks.LoadEncryptKey(keyname, ks.password)
+		if err == nil {
+			ks.mu.Lock()
+			defer ks.mu.Unlock()
+			ks.unlocked[keyname] = key
+		} else {
+			cryptolog.Warningf("key: %s can't be unlocked, err:%s", keyname, err)
+			return nil, err
+		}
+		return ks.unlocked[keyname], nil
+	}
+
 	return nil, fmt.Errorf("key %s not exist or not be unlocked", keyname)
 }
 
@@ -298,8 +310,6 @@ func (ks *DirKeyStore) NewKeyWithDefaultPassword(keyname string, keytype KeyType
 
 func (ks *DirKeyStore) NewKey(keyname string, keytype KeyType, password string) (string, error) {
 	//interface{} eth *PublicKey address or *X25519Recipient string, will be upgrade to generics
-	ks.mu.Lock()
-	defer ks.mu.Unlock()
 
 	keyname = keytype.NameString(keyname)
 	exist, err := ks.IfKeyExist(keyname)
@@ -320,6 +330,8 @@ func (ks *DirKeyStore) NewKey(keyname string, keytype KeyType, password string) 
 			return "", err
 		}
 
+		ks.mu.Lock()
+		defer ks.mu.Unlock()
 		ks.unlocked[keyname] = key
 		return key.Recipient().String(), nil
 	case Sign:
@@ -340,6 +352,8 @@ func (ks *DirKeyStore) NewKey(keyname string, keytype KeyType, password string) 
 		if err != nil {
 			return "", err
 		}
+		ks.mu.Lock()
+		defer ks.mu.Unlock()
 		ks.unlocked[keyname] = key
 		return key.Address.String(), nil
 	default:
