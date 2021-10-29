@@ -235,7 +235,7 @@ func goBlocksContent() {
 			for _, group := range blocksData.GetGroups().GroupInfos {
 				if group.GroupId == curGroup {
 					if len(group.HighestBlockId) > 0 {
-						opt.CurBlockId = group.HighestBlockId[0]
+						opt.CurBlockId = group.HighestBlockId
 						blocksData.SetPager(curGroup, model.BlockRangeOpt{CurBlockId: opt.CurBlockId, NextBlockId: opt.NextBlockId, Count: opt.Count})
 					}
 				}

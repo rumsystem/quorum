@@ -178,3 +178,10 @@ message GroupItem {
     string CipherKey               = 12;
     string AppKey                  = 13;
 }
+
+message PSPing {
+    int32 Seqnum        = 1;
+    bool  IsResp        = 2;
+    int64 TimeStamp     = 3;
+    bytes Payload       = 4;
+}

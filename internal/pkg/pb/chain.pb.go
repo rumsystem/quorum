@@ -1649,6 +1649,77 @@ func (x *GroupItem) GetAppKey() string {
 	return ""
 }
 
+type PSPing struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Seqnum    int32  `protobuf:"varint,1,opt,name=Seqnum,proto3" json:"Seqnum,omitempty"`
+	IsResp    bool   `protobuf:"varint,2,opt,name=IsResp,proto3" json:"IsResp,omitempty"`
+	TimeStamp int64  `protobuf:"varint,3,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
+	Payload   []byte `protobuf:"bytes,4,opt,name=Payload,proto3" json:"Payload,omitempty"`
+}
+
+func (x *PSPing) Reset() {
+	*x = PSPing{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_chain_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PSPing) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PSPing) ProtoMessage() {}
+
+func (x *PSPing) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PSPing.ProtoReflect.Descriptor instead.
+func (*PSPing) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PSPing) GetSeqnum() int32 {
+	if x != nil {
+		return x.Seqnum
+	}
+	return 0
+}
+
+func (x *PSPing) GetIsResp() bool {
+	if x != nil {
+		return x.IsResp
+	}
+	return false
+}
+
+func (x *PSPing) GetTimeStamp() int64 {
+	if x != nil {
+		return x.TimeStamp
+	}
+	return 0
+}
+
+func (x *PSPing) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
 var File_chain_proto protoreflect.FileDescriptor
 
 var file_chain_proto_rawDesc = []byte{
@@ -2109,6 +2180,18 @@ func file_chain_proto_init() {
 		}
 		file_chain_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GroupItem); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_chain_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PSPing); i {
 			case 0:
 				return &v.state
 			case 1:

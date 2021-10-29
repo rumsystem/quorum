@@ -67,7 +67,7 @@ A peer-to-peer system must provide economic incentive to minimize the Free-rider
 
 ## Getting Started
 
-**TL;DR**:  Try [rum-app](https://github.com/press-one/rum-app), a cross platform RUM GUI application.
+**TL;DR**:  Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application.
 
 ### Build: 
 Build the quorum binary by running the build.sh script.

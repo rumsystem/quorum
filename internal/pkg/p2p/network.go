@@ -158,6 +158,8 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		return nil, err
 	}
 
+	psping := NewPSPingService(ctx, ps, host.ID())
+	psping.EnablePing()
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
 	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}

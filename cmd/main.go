@@ -187,9 +187,10 @@ func mainRet(config cli.Config) int {
 		fmt.Printf("load signkey: %d press any key to continue...\n", signkeycount)
 	}
 
+	_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
 	signkeycount = ks.UnlockedKeyCount(localcrypto.Sign)
 	if signkeycount == 0 {
-		mainlog.Fatalf("load signkey error, exit...")
+		mainlog.Fatalf("load signkey error, exit... %s", err)
 		cancel()
 		return 0
 	}
