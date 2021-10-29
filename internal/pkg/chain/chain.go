@@ -295,12 +295,24 @@ func (chain *Chain) UpdProducerList() {
 	producers, _ := nodectx.GetDbMgr().GetProducers(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range producers {
 		chain.ProducerPool[item.ProducerPubkey] = item
-		ownerPrefix := ""
+		ownerPrefix := "(producer)"
 		if item.ProducerPubkey == chain.group.Item.OwnerPubKey {
-			ownerPrefix = "(group owner)"
+			ownerPrefix = "(owner)"
 		}
 		chain_log.Infof("<%s> Load producer <%s%s>", chain.groupId, item.ProducerPubkey, ownerPrefix)
 	}
+
+	//update announced producer result
+	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range announcedProducers {
+		if _, ok := chain.ProducerPool[item.SignPubkey]; ok {
+			err := nodectx.GetDbMgr().UpdateProducerAnnounceResult(chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+			if err != nil {
+				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
+			}
+		}
+	}
+
 }
 
 func (chain *Chain) CreateConsensus() {

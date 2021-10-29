@@ -25,6 +25,22 @@ enum TrxType {
   BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
 }
 
+enum AnnounceType {
+   AS_USER     = 0;
+   AS_PRODUCER = 1;
+}
+
+enum ApproveType {
+    ANNOUCNED = 0;
+    APPROVED  = 1;
+    REJECTED  = 2;
+}
+
+enum ActionType {
+    ADD    = 0;
+    REMOVE = 1;
+}
+
 message Trx {
   string  TrxId        = 1;
   TrxType Type         = 2;    
@@ -105,22 +121,27 @@ message DenyUserItem {
 }
 
 message ProducerItem {
-   string GroupId             = 1;
-   string ProducerPubkey      = 2;
-   string GroupOwnerPubkey    = 3;   
-   string GroupOwnerSign      = 4;
-   int64  TimeStamp           = 5;    
-   string Action              = 6;
-   string Memo                = 7;
+   string     GroupId             = 1;
+   string     ProducerPubkey      = 2;
+   string     GroupOwnerPubkey    = 3;   
+   string     GroupOwnerSign      = 4;
+   int64      TimeStamp           = 5;    
+   ActionType Action              = 6;
+   int64      BlockProduced       = 7;
+   string     Memo                = 8;
 }
 
 message AnnounceItem {
-    string GroupId            = 1;
-    string AnnouncedPubkey    = 2;
-    string AnnouncerSignature = 3;
-    int64  TimeStamp          = 4;
-    string Type               = 5;
-    string Action             = 6;
+    string       GroupId            = 1;
+    string       SignPubkey         = 2;
+    string       EncryptPubkey      = 3;
+    string       AnnouncerSignature = 4;
+    AnnounceType Type               = 5;
+    string       OwnerPubkey        = 6;
+    string       OwnerSignature     = 7;
+    ApproveType  Result             = 8;    
+    int64        TimeStamp          = 9; 
+    ActionType   Action             = 10;
 }
 
 message SchemaItem {
@@ -142,26 +163,20 @@ enum GroupConsenseType {
     POS = 1;
 }
 
-enum Role {
-    GROUP_PRODUCER = 0;
-    GROUP_USER     = 1;
-}
-
 message GroupItem {
 	string GroupId                 = 1;
 	string GroupName               = 2;
 	string OwnerPubKey             = 3;
     string UserSignPubkey          = 4;
     string UserEncryptPubkey       = 5;
-    Role   UserRole                = 6;
-	int64  LastUpdate              = 7;
-	int64  HighestHeight           = 8;
-	string HighestBlockId          = 9;
-	Block  GenesisBlock            = 10;
-    GroupEncryptType EncryptType   = 11;
-    GroupConsenseType ConsenseType = 12;
-    string CipherKey               = 13;
-    string AppKey                  = 14;
+	int64  LastUpdate              = 6;
+	int64  HighestHeight           = 7;
+	string HighestBlockId          = 8;
+	Block  GenesisBlock            = 9;
+    GroupEncryptType EncryptType   = 10;
+    GroupConsenseType ConsenseType = 11;
+    string CipherKey               = 12;
+    string AppKey                  = 13;
 }
 
 message PSPing {

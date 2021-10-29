@@ -1,14 +1,17 @@
 package chain
 
 import (
+	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"time"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
-	"time"
 
 	guuid "github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -21,6 +24,8 @@ const (
 	Sec   = 0
 )
 
+const OBJECT_SIZE_LIMIT = 200 * 1024 //(200Kb)
+
 type TrxMgr struct {
 	nodename  string
 	groupItem *quorumpb.GroupItem
@@ -28,7 +33,7 @@ type TrxMgr struct {
 	groupId   string
 }
 
-var trxmgr_log = logging.Logger("trx_mgr")
+var trxmgr_log = logging.Logger("trxmgr")
 
 func (trxMgr *TrxMgr) Init(groupItem *quorumpb.GroupItem, psconn pubsubconn.PubSubConn) {
 	trxMgr.groupItem = groupItem
@@ -54,11 +59,13 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	if msgType == quorumpb.TrxType_POST && trxMgr.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
 		var err error
-		announcedUser, err := nodectx.GetDbMgr().GetAnnouncedUsers(trxMgr.groupItem.GroupId)
+		announcedUser, err := nodectx.GetDbMgr().GetAnnouncedUsersByGroup(trxMgr.groupItem.GroupId)
 
 		var pubkeys []string
 		for _, item := range announcedUser {
-			pubkeys = append(pubkeys, item.AnnouncedPubkey)
+			if item.Result == quorumpb.ApproveType_APPROVED {
+				pubkeys = append(pubkeys, item.EncryptPubkey)
+			}
 		}
 
 		ks := localcrypto.GetKeystore()
@@ -318,10 +325,18 @@ func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte)
 
 func (trxMgr *TrxMgr) PostAny(content proto.Message) (string, error) {
 	trxmgr_log.Debugf("<%s> PostAny called", trxMgr.groupId)
+
 	encodedcontent, err := quorumpb.ContentToBytes(content)
 	if err != nil {
 		return "", err
 	}
+
+	trxmgr_log.Debugf("<%s> content size <%d>", trxMgr.groupId, binary.Size(encodedcontent))
+	if binary.Size(encodedcontent) > OBJECT_SIZE_LIMIT {
+		err := errors.New("Content size over 200Kb")
+		return "", err
+	}
+
 	return trxMgr.PostBytes(quorumpb.TrxType_POST, encodedcontent)
 }
 

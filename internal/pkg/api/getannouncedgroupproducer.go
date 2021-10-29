@@ -8,11 +8,11 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
-type AnnouncedUserListItem struct {
-	AnnouncedSignPubkey    string
-	AnnouncedEncryptPubkey string
-	AnnouncerSign          string
-	Result                 string
+type AnnouncedProducerListItem struct {
+	AnnouncedPubkey string
+	AnnouncerSign   string
+	Result          string
+	TimeStamp       int64
 }
 
 // @Tags User
@@ -22,7 +22,7 @@ type AnnouncedUserListItem struct {
 // @Param group_id path string true "Group Id"
 // @Success 200 {array} AnnouncedUserListItem
 // @Router /api/v1/group/{group_id}/announced/users [get]
-func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) (err error) {
+func (h *Handler) GetAnnouncedGroupProducer(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
 
@@ -33,24 +33,24 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		usrList, err := group.GetAnnouncedUser()
+		prdList, err := group.GetAnnouncedProducer()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		usrResultList := []*AnnouncedUserListItem{}
-		for _, usr := range usrList {
-			var item *AnnouncedUserListItem
-			item = &AnnouncedUserListItem{}
-			item.AnnouncedSignPubkey = usr.SignPubkey
-			item.AnnouncedEncryptPubkey = usr.EncryptPubkey
-			item.AnnouncerSign = usr.AnnouncerSignature
-			item.Result = usr.Result.String()
-			usrResultList = append(usrResultList, item)
+		prdResultList := []*AnnouncedProducerListItem{}
+		for _, prd := range prdList {
+			var item *AnnouncedProducerListItem
+			item = &AnnouncedProducerListItem{}
+			item.AnnouncedPubkey = prd.SignPubkey
+			item.AnnouncerSign = prd.AnnouncerSignature
+			item.Result = prd.Result.String()
+			item.TimeStamp = prd.TimeStamp
+			prdResultList = append(prdResultList, item)
 		}
 
-		return c.JSON(http.StatusOK, usrResultList)
+		return c.JSON(http.StatusOK, prdResultList)
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
 		return c.JSON(http.StatusBadRequest, output)

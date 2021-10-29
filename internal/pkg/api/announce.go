@@ -15,18 +15,20 @@ import (
 )
 
 type AnnounceResult struct {
-	GroupId         string `json:"group_id"`
-	AnnouncedPubkey string `json:"announced_pubkey"`
-	Sign            string `json:"sign"`
-	TrxId           string `json:"trx_id"`
-	Action          string `json:"action"`
-	Type            string `json:"type"`
+	GroupId                string `json:"group_id"`
+	AnnouncedSignPubkey    string `json:"sign_pubkey"`
+	AnnouncedEncryptPubkey string `json:"encrypt_pubkey"`
+	Type                   string `json:"type"`
+	Action                 string `json:"action"`
+	Sign                   string `json:"sign"`
+	TrxId                  string `json:"trx_id"`
 }
 
 type AnnounceParam struct {
-	GroupId string `from:"group_id"      json:"group_id"      validate:"required"`
-	Action  string `from:"action"      json:"action"      validate:"required,oneof=add del"`
-	Type    string `from:"type"      json:"type"      validate:"required,oneof=userpubkey"`
+	GroupId string `from:"group_id"    json:"group_id"    validate:"required"`
+	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove"`
+	Type    string `from:"type"        json:"type"        validate:"required,oneof=user producer"`
+	Memo    string `from:"memo"        json:"memo"        validate:"required"`
 }
 
 // @Tags User
@@ -55,25 +57,50 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 	var item *quorumpb.AnnounceItem
 	item = &quorumpb.AnnounceItem{}
 	item.GroupId = params.GroupId
-	item.Action = params.Action
-	item.Type = params.Type // "userpubkey"
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		output[ERROR_INFO] = "Can not find group"
 		return c.JSON(http.StatusBadRequest, output)
 	} else {
+		if params.Type == "user" {
+			item.Type = quorumpb.AnnounceType_AS_USER
+		} else if params.Type == "producer" {
+			item.Type = quorumpb.AnnounceType_AS_PRODUCER
+		} else {
+			output[ERROR_INFO] = "Unknown type"
+			return c.JSON(http.StatusBadRequest, output)
+		}
 
-		item.AnnouncedPubkey, err = nodectx.GetNodeCtx().Keystore.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
+		if params.Action == "add" {
+			item.Action = quorumpb.ActionType_ADD
+		} else if params.Action == "remove" {
+			item.Action = quorumpb.ActionType_REMOVE
+		} else {
+			output[ERROR_INFO] = "Unknown action"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		item.SignPubkey = group.Item.UserSignPubkey
+
+		if item.Type == quorumpb.AnnounceType_AS_USER {
+			item.EncryptPubkey, err = nodectx.GetNodeCtx().Keystore.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
+		}
+
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
+
+		item.OwnerPubkey = ""
+		item.OwnerSignature = ""
+		item.Result = quorumpb.ApproveType_ANNOUCNED
+
 		var buffer bytes.Buffer
 		buffer.Write([]byte(item.GroupId))
-		buffer.Write([]byte(item.AnnouncedPubkey))
-		buffer.Write([]byte(item.Type))
-		buffer.Write([]byte(item.Action))
+		buffer.Write([]byte(item.SignPubkey))
+		buffer.Write([]byte(item.EncryptPubkey))
+		buffer.Write([]byte(item.Type.String()))
 		hash := chain.Hash(buffer.Bytes())
 		signature, err := nodectx.GetNodeCtx().Keystore.SignByKeyName(item.GroupId, hash)
 
@@ -93,7 +120,7 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 		}
 
 		var announceResult *AnnounceResult
-		announceResult = &AnnounceResult{GroupId: item.GroupId, AnnouncedPubkey: item.AnnouncedPubkey, Sign: hex.EncodeToString(signature), Type: item.Type, TrxId: trxId}
+		announceResult = &AnnounceResult{GroupId: item.GroupId, AnnouncedSignPubkey: item.SignPubkey, AnnouncedEncryptPubkey: item.EncryptPubkey, Type: item.Type.String(), Action: item.Action.String(), Sign: hex.EncodeToString(signature), TrxId: trxId}
 
 		return c.JSON(http.StatusOK, announceResult)
 	}
