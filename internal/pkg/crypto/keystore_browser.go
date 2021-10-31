@@ -5,13 +5,18 @@ package crypto
 
 import (
 	"bytes"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"filippo.io/age"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
@@ -119,6 +124,126 @@ func (ks *BrowserKeystore) Import(keyname string, encodedkey string, keytype Key
 	return "", nil
 }
 
+func (ks *BrowserKeystore) Sign(data []byte, privKey p2pcrypto.PrivKey) ([]byte, error) {
+	return privKey.Sign(data)
+}
+
+func (ks *BrowserKeystore) VerifySign(data, sig []byte, pubKey p2pcrypto.PubKey) (bool, error) {
+	return pubKey.Verify(data, sig)
+}
+
+func (ks *BrowserKeystore) SignByKeyName(keyname string, data []byte, opts ...string) ([]byte, error) {
+	key, err := ks.GetUnlockedKey(Sign.NameString(keyname))
+	if err != nil {
+		return nil, err
+	}
+	signk, ok := key.(*ethkeystore.Key)
+	if ok != true {
+		return nil, fmt.Errorf("The key %s is not a Sign key", keyname)
+	}
+	priv, _, err := p2pcrypto.ECDSAKeyPairFromKey(signk.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return priv.Sign(data)
+}
+
+func (ks *BrowserKeystore) VerifySignByKeyName(keyname string, data []byte, sig []byte, opts ...string) (bool, error) {
+	key, err := ks.GetUnlockedKey(Sign.NameString(keyname))
+	if err != nil {
+		return false, err
+	}
+	signk, ok := key.(*ethkeystore.Key)
+	if ok != true {
+		return false, fmt.Errorf("The key %s is not a Sign key", keyname)
+	}
+	_, pub, err := p2pcrypto.ECDSAKeyPairFromKey(signk.PrivateKey)
+	if err != nil {
+		return false, err
+	}
+	return pub.Verify(data, sig)
+}
+
+func (ks *BrowserKeystore) EncryptTo(to []string, data []byte) ([]byte, error) {
+	recipients := []age.Recipient{}
+	for _, key := range to {
+		r, err := age.ParseX25519Recipient(key)
+		if err != nil {
+			return nil, err
+		}
+		recipients = append(recipients, r)
+	}
+
+	out := new(bytes.Buffer)
+	err := AgeEncrypt(recipients, bytes.NewReader(data), out)
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(out)
+}
+
+func (ks *BrowserKeystore) Decrypt(keyname string, data []byte) ([]byte, error) {
+	key, err := ks.GetUnlockedKey(Encrypt.NameString(keyname))
+	if err != nil {
+		return nil, err
+	}
+	encryptk, ok := key.(*age.X25519Identity)
+
+	if ok != true {
+		return nil, fmt.Errorf("The key %s is not a encrypt key", keyname)
+	}
+	r, err := age.Decrypt(bytes.NewReader(data), encryptk)
+	return ioutil.ReadAll(r)
+}
+
+func (ks *BrowserKeystore) GetEncodedPubkey(keyname string, keytype KeyType) (string, error) {
+	key, err := ks.GetUnlockedKey(keytype.NameString(keyname))
+	if err != nil {
+		return "", err
+	}
+	switch keytype {
+	case Sign:
+		signk, ok := key.(*ethkeystore.Key)
+		if ok != true {
+			return "", fmt.Errorf("The key %s is not a Sign key", keyname)
+		}
+		return hex.EncodeToString(ethcrypto.FromECDSAPub(&signk.PrivateKey.PublicKey)), nil
+	case Encrypt:
+		encryptk, ok := key.(*age.X25519Identity)
+		if ok != true {
+			return "", fmt.Errorf("The key %s is not a encrypt key", keyname)
+		}
+		return encryptk.Recipient().String(), nil
+	}
+	return "", fmt.Errorf("unknown keyType of %s", keyname)
+}
+
+func (ks *BrowserKeystore) GetPeerInfo(keyname string) (peerid peer.ID, ethaddr string, err error) {
+	key, err := ks.GetUnlockedKey(Sign.NameString(keyname))
+	if err != nil {
+		return "", "", err
+	}
+	signk, ok := key.(*ethkeystore.Key)
+	if ok != true {
+		return "", "", fmt.Errorf("The key %s is not a Sign key", keyname)
+	}
+
+	ethprivkey := signk.PrivateKey
+	pubkeybytes := ethcrypto.FromECDSAPub(&ethprivkey.PublicKey)
+	pub, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+	if err != nil {
+		return "", "", err
+	}
+
+	peerid, err = peer.IDFromPublicKey(pub)
+	if err != nil {
+		return "", "", err
+	}
+	address := ethcrypto.PubkeyToAddress(ethprivkey.PublicKey).Hex()
+
+	return peerid, address, nil
+}
+
 // =============================== helpers
 func (ks *BrowserKeystore) StoreEncryptKey(k string, key *age.X25519Identity) error {
 	r, err := age.NewScryptRecipient(ks.password)
@@ -159,4 +284,34 @@ func (ks *BrowserKeystore) StoreSignKey(k string, key *ethkeystore.Key) error {
 	}
 
 	return ks.store.Set([]byte(k), enc)
+}
+
+func (ks *BrowserKeystore) GetUnlockedKey(keyname string) (interface{}, error) {
+	exist, _ := ks.store.IsExist([]byte(keyname))
+	if !exist {
+		return nil, errors.New("Key not exists")
+	}
+
+	keyBytes, err := ks.store.Get([]byte(keyname))
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.HasPrefix(keyname, Sign.Prefix()) {
+		key, err := ethkeystore.DecryptKey(keyBytes, ks.password)
+		if err != nil {
+			return nil, err
+		}
+		privKey := key.PrivateKey
+		addr := ethcrypto.PubkeyToAddress(privKey.PublicKey)
+		// Make sure we're really operating on the requested key (no swap attacks)
+		if key.Address != addr {
+			return nil, fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
+		}
+		return key, nil
+	} else if strings.HasPrefix(keyname, Encrypt.Prefix()) {
+		return AgeDecryptIdentityWithPassword(bytes.NewReader(keyBytes), nil, ks.password)
+	}
+
+	return nil, fmt.Errorf("key %s not exist or not be unlocked", keyname)
 }
