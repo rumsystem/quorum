@@ -23,7 +23,7 @@ type PingResult struct {
 // @Produce json
 // @Param data body PSPingParam true "pingparam"
 // @Success 200 {object} PingResult
-// @Router api/v1/psping [post]
+// @Router /api/v1/psping [post]
 func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 	return func(c echo.Context) (err error) {
 
