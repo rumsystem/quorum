@@ -1,11 +1,15 @@
-// go:build js && wasm
+//go:build js && wasm
 // +build js,wasm
+
+// go:build js && wasm
 package main
 
 import (
+	"encoding/json"
 	"syscall/js"
 
 	quorum "github.com/rumsystem/quorum/internal/pkg/wasm"
+	quorumAPI "github.com/rumsystem/quorum/internal/pkg/wasm/api"
 )
 
 // quit channel
@@ -20,6 +24,19 @@ func registerCallbacks() {
 		bootAddr := args[0].String()
 		go quorum.StartQuorum(qChan, bootAddr)
 		return js.ValueOf(true).Bool()
+	}))
+
+	js.Global().Set("JoinGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		seed := args[0].String()
+		res, err := quorumAPI.JoinGroup([]byte(seed))
+		if err != nil {
+			println(err.Error())
+		}
+		retBytes, err := json.Marshal(res)
+		if err != nil {
+			println(err.Error())
+		}
+		return js.ValueOf(string(retBytes))
 	}))
 
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {

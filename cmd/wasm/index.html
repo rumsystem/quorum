@@ -4,53 +4,26 @@
 <head>
   <meta charset="utf-8" />
   <title>quorum wasm</title>
+  <style>
+textarea {
+  margin: 10px 0;
+  width: 600px;
+  height: 400px;
+}
+  </style>
 </head>
 
 <body>
   <script src="wasm_exec.js"></script>
 
-  <script>
-    if (!WebAssembly.instantiateStreaming) {
-      // polyfill
-      WebAssembly.instantiateStreaming = async (resp, importObject) => {
-        const source = await (await resp).arrayBuffer();
-        return await WebAssembly.instantiate(source, importObject);
-      };
-    }
-
-    const go = new Go();
-
-    let mod, inst;
-
-    WebAssembly.instantiateStreaming(fetch("lib.wasm"), go.importObject).then(
-      result => {
-        mod = result.module;
-        inst = result.instance;
-        document.getElementById("connectBtn").disabled = false;
-      }
-    )
-      .then(run);
-
-    async function run() {
-      await go.run(inst);
-      await reset();
-    }
-
-
-    async function connect() {
-      var url = document.getElementById("bootstrap").value
-      console.log("connect to ", url)
-      StartQuorum(url)
-    }
-
-    async function reset() {
-      inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
-    }
-
-  </script>
+  <script src="index.js"></script>
 
   <input id="bootstrap" />
   <button onClick="connect();" id="connectBtn" disabled>connect</button>
+
+  <br />
+  <textarea id="seed" ></textarea>
+  <button onClick="join();" id="joinBtn" disabled>join</button>
 </body>
 
 </html>
