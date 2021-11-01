@@ -5,16 +5,19 @@ package wasm
 
 import (
 	"context"
-	"crypto/rand"
+	"errors"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
+	quorumCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 )
+
+const DEFAUT_KEY_NAME string = "default"
 
 /* global, JS should interact with it */
 var wasmCtx *QuorumWasmContext = nil
@@ -33,21 +36,40 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
 		panic(err)
 	}
 
-	/* Randomly genrate a key
-	TODO: should load from somewhere(IndexedDB or user localfile etc.) */
-	key := ethKeystore.NewKeyForDirectICAP(rand.Reader)
+	// TODO: read from user
+	password := "password"
 
-	node, err := quorumP2P.NewBrowserNode(ctx, &nodeOpt, key)
+	/* init browser keystore */
+	k, err := quorumCrypto.InitBrowserKeystore(password)
+	if err != nil {
+		panic(err)
+	}
+	ks := k.(*quorumCrypto.BrowserKeystore)
+
+	/* get default sign key */
+	key, err := ks.GetUnlockedKey(quorumCrypto.Sign.NameString(DEFAUT_KEY_NAME))
+	if err != nil {
+		panic(err)
+	}
+
+	defaultKey, ok := key.(*ethKeystore.Key)
+	if !ok {
+		panic(errors.New("failed to cast key"))
+	}
+
+	node, err := quorumP2P.NewBrowserNode(ctx, &nodeOpt, defaultKey)
 	if err != nil {
 		panic(nil)
 	}
 
 	nodectx.InitCtx(ctx, "default", node, dbMgr, "pubsub", "wasm-version")
-	// TODO: init keystore
-	// ksi: keystore load from local by calling `InitDirKeyStore`
-	//nodectx.GetNodeCtx().Keystore = ksi
-	//nodectx.GetNodeCtx().PublicKey = keys.PubKey
-	//nodectx.GetNodeCtx().PeerId = peerid
+	nodectx.GetNodeCtx().Keystore = k
+
+	keys, err := quorumCrypto.SignKeytoPeerKeys(defaultKey)
+	nodectx.GetNodeCtx().PublicKey = keys.PubKey
+
+	peerId, _, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
+	nodectx.GetNodeCtx().PeerId = peerId
 
 	/* quorum has global groupmgr, init it here */
 	groupmgr := chain.InitGroupMgr(dbMgr)
@@ -75,12 +97,12 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) {
 
 func newStoreManager() (*storage.DbMgr, error) {
 	groupDb := quorumStorage.QSIndexDB{}
-	err := groupDb.Init("quorum_groups")
+	err := groupDb.Init("groups")
 	if err != nil {
 		return nil, err
 	}
 	dataDb := quorumStorage.QSIndexDB{}
-	err = dataDb.Init("quorum_data")
+	err = dataDb.Init("data")
 	if err != nil {
 		return nil, err
 	}

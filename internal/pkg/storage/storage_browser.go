@@ -1,4 +1,5 @@
 // go:build js && wasm
+//go:build js && wasm
 // +build js,wasm
 
 package storage
@@ -7,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"syscall/js"
 
@@ -48,11 +50,14 @@ var DefaultDBName = "quorum"
 
 func (s *QSIndexDB) Init(store string) error {
 	ctx := context.Background()
-	openRequest, _ := idb.Global().Open(ctx, DefaultDBName, 1, func(db *idb.Database, oldVersion, newVersion uint) error {
+	openRequest, _ := idb.Global().Open(ctx, fmt.Sprintf("%s_%s", DefaultDBName, store), 1, func(db *idb.Database, oldVersion, newVersion uint) error {
 		db.CreateObjectStore(store, idb.ObjectStoreOptions{})
 		return nil
 	})
 	db, err := openRequest.Await(ctx)
+	if err != nil {
+		panic(err)
+	}
 	s.db = db
 	s.name = store
 	s.ctx = ctx
@@ -245,4 +250,14 @@ func BytesToArrayBuffer(bytes []byte) js.Value {
 	jsVal := js.Global().Get("Uint8Array").New(len(bytes))
 	js.CopyBytesToJS(jsVal, bytes)
 	return jsVal
+}
+
+func (s *QSIndexDB) Count() (uint, error) {
+	txn, _ := s.db.Transaction(idb.TransactionReadOnly, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	req, err := store.Count()
+	if err != nil {
+		return 0, err
+	}
+	return req.Await(s.ctx)
 }

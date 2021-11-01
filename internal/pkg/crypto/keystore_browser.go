@@ -25,6 +25,32 @@ type BrowserKeystore struct {
 	password string
 }
 
+func InitBrowserKeystore(password string) (Keystore, error) {
+	bks := BrowserKeystore{}
+	db := quorumStorage.QSIndexDB{}
+	db.Init("keystore")
+	bks.store = &db
+	bks.password = password
+	ks = &bks
+
+	_, err := bks.store.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultKeyName := "default"
+	k, err := bks.GetUnlockedKey(Sign.NameString(defaultKeyName))
+	if k == nil && strings.HasPrefix(err.Error(), "Key not exists") {
+		// init default signkey
+		_, err := ks.NewKey(defaultKeyName, Sign, password)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &bks, nil
+}
+
 func (ks *BrowserKeystore) Unlock(signkeymap map[string]string, password string) error {
 	ks.password = password
 	return nil
@@ -34,7 +60,7 @@ func (ks *BrowserKeystore) Lock() error {
 	return nil
 }
 
-func (ks *BrowserKeystore) NewKey(keyname string, keytype KeyType) (string, error) {
+func (ks *BrowserKeystore) NewKey(keyname string, keytype KeyType, _ string) (string, error) {
 	keyname = keytype.NameString(keyname)
 	exist, err := ks.store.IsExist([]byte(keyname))
 	if err != nil {
@@ -79,7 +105,7 @@ func (ks *BrowserKeystore) NewKey(keyname string, keytype KeyType) (string, erro
 	}
 }
 
-func (ks *BrowserKeystore) Import(keyname string, encodedkey string, keytype KeyType) (string, error) {
+func (ks *BrowserKeystore) Import(keyname string, encodedkey string, keytype KeyType, _ string) (string, error) {
 	cryptolog.Warningf("======= import key ==========")
 
 	keyname = keytype.NameString(keyname)
