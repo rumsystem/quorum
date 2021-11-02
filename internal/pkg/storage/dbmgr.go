@@ -35,6 +35,44 @@ func (dbMgr *DbMgr) CloseDb() {
 	dbmgr_log.Infof("ChainCtx Db closed")
 }
 
+func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
+	if nodeDataVer == 0 { //try migration 0 (Upgrade the GroupItem)
+
+		dbmgr_log.Infof("db migration v0")
+		groupItemsBytes, err := dbMgr.GetGroupsBytes()
+		if err == nil {
+			for _, b := range groupItemsBytes {
+				var item *quorumpb.GroupItem
+				item = &quorumpb.GroupItem{}
+				proto.Unmarshal(b, item)
+				if item.CipherKey == "" {
+					itemv0 := &quorumpb.GroupItemV0{}
+					proto.Unmarshal(b, itemv0)
+					if itemv0.CipherKey != "" { //ok
+						item.LastUpdate = itemv0.LastUpdate
+						item.HighestHeight = itemv0.HighestHeight
+						item.HighestBlockId = itemv0.HighestBlockId
+						item.GenesisBlock = itemv0.GenesisBlock
+						item.EncryptType = itemv0.EncryptType
+						item.ConsenseType = itemv0.ConsenseType
+						item.CipherKey = itemv0.CipherKey
+						item.AppKey = itemv0.AppKey
+						//add group to db
+						value, err := proto.Marshal(item)
+						if err == nil {
+							dbMgr.GroupInfoDb.Set([]byte(item.GroupId), value)
+							dbmgr_log.Infof("db migration v0 for group %s", item.GroupId)
+						}
+					}
+				}
+			}
+
+		}
+
+	}
+
+}
+
 //save trx
 func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)

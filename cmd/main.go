@@ -241,6 +241,7 @@ func mainRet(config cli.Config) int {
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
+		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 		nodectx.InitCtx(ctx, "", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
@@ -273,6 +274,7 @@ func mainRet(config cli.Config) int {
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
+		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 		nodectx.InitCtx(ctx, "default", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey

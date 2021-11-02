@@ -179,6 +179,28 @@ message GroupItem {
     string AppKey                  = 13;
 }
 
+enum RoleV0 {
+    GROUP_PRODUCER = 0;
+    GROUP_USER     = 1;
+}
+
+message GroupItemV0 {
+	string GroupId                 = 1;
+	string GroupName               = 2;
+	string OwnerPubKey             = 3;
+    string UserSignPubkey          = 4;
+    string UserEncryptPubkey       = 5;
+    RoleV0 UserRole                = 6;
+	int64  LastUpdate              = 7;
+	int64  HighestHeight           = 8;
+	string HighestBlockId          = 9;
+	Block  GenesisBlock            = 10;
+    GroupEncryptType EncryptType   = 11;
+    GroupConsenseType ConsenseType = 12;
+    string CipherKey               = 13;
+    string AppKey                  = 14;
+}
+
 message PSPing {
     int32 Seqnum        = 1;
     bool  IsResp        = 2;
