@@ -52,6 +52,12 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 	return nil
 }
 
+func (psconn *P2pPubSubConn) LeaveChannel(cId string) {
+	psconn.Subscription.Cancel()
+	psconn.Topic.Close()
+	channel_log.Infof("Leave channel <%s> done", cId)
+}
+
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
 	return psconn.Topic.Publish(psconn.Ctx, data)
 }
@@ -87,7 +93,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 				channel_log.Warningf(err.Error())
 			}
 		} else {
-			channel_log.Fatalf(err.Error())
+			channel_log.Errorf(err.Error())
 			return err
 		}
 	}

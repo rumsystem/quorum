@@ -95,8 +95,12 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 					}
 					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				} else {
-					output[ERROR_INFO] = "create new group key err:" + err.Error()
-					return c.JSON(http.StatusBadRequest, output)
+					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(params.GroupId))
+					if err != nil {
+						output[ERROR_INFO] = "create new group key err:" + err.Error()
+						return c.JSON(http.StatusBadRequest, output)
+					}
+					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				}
 			}
 
@@ -139,10 +143,13 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "key not exist ") {
 				groupEncryptkey, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
+
+				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(params.GroupId))
 				if err != nil {
 					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
 					return c.JSON(http.StatusBadRequest, output)
 				}
+				groupEncryptkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 			} else {
 				output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
 				return c.JSON(http.StatusBadRequest, output)
