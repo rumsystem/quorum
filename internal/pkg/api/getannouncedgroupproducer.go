@@ -33,7 +33,7 @@ func (h *Handler) GetAnnouncedGroupProducer(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		prdList, err := group.GetAnnouncedProducer()
+		prdList, err := group.GetAnnouncedProducers()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
