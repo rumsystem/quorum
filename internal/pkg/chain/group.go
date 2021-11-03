@@ -122,6 +122,9 @@ func (grp *Group) LeaveGrp() error {
 		return err
 	}
 
+	grp.ChainCtx.StopSync()
+	//leave pubsub channel
+	grp.ChainCtx.LeaveChannel()
 	err := grp.clearGroup()
 	if err != nil {
 		return err
@@ -166,10 +169,8 @@ func (grp *Group) StartSync() error {
 		return err
 	}
 
-	return grp.ChainCtx.StartInitialSync(topBlock)
-
 	group_log.Infof("Group <%s> start sync", grp.Item.GroupId)
-	return nil
+	return grp.ChainCtx.StartInitialSync(topBlock)
 }
 
 func (grp *Group) StopSync() error {

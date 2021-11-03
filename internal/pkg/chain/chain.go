@@ -100,6 +100,20 @@ func (chain *Chain) Init(group *Group) error {
 	return nil
 }
 
+func (chain *Chain) LeaveChannel() error {
+	if userTrxMgr, ok := chain.trxMgrs[chain.userChannelId]; ok {
+		userTrxMgr.LeaveChannel(chain.userChannelId)
+		delete(chain.trxMgrs, chain.userChannelId)
+
+	}
+	if producerTrxMgr, ok := chain.trxMgrs[chain.producerChannelId]; ok {
+		producerTrxMgr.LeaveChannel(chain.producerChannelId)
+		delete(chain.trxMgrs, chain.producerChannelId)
+	}
+
+	return nil
+}
+
 func (chain *Chain) StartInitialSync(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> StartInitialSync called", chain.groupId)
 	if chain.Syncer != nil {
