@@ -866,27 +866,28 @@ func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error
 	}
 
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + SMA_PREFIX + "_" + item.GroupId + "_" + item.SchemaJson
+	key := nodeprefix + SMA_PREFIX + "_" + item.GroupId + "_" + item.Type
 
-	if item.Memo == "Add" || item.Memo == "Update" {
+	if item.Action == quorumpb.ActionType_ADD {
 		return dbMgr.Db.Set([]byte(key), trx.Data)
-	} else if item.Memo == "Remove" {
+	} else if item.Action == quorumpb.ActionType_REMOVE {
 		//check if item exist
 		exist, err := dbMgr.Db.IsExist([]byte(key))
 		if !exist {
 			if err != nil {
 				return err
 			}
-			return errors.New("SchemaItem Not Found")
+			return errors.New("Announce Not Found")
 		}
 
 		return dbMgr.Db.Delete([]byte(key))
 	} else {
-		return errors.New("unknow msgType")
+		err := errors.New("unknow msgType")
+		return err
 	}
 }
 
-func (dbMgr *DbMgr) GetSchemaByGroup(groupId string, prefix ...string) ([]*quorumpb.SchemaItem, error) {
+func (dbMgr *DbMgr) GetAllSchemasByGroup(groupId string, prefix ...string) ([]*quorumpb.SchemaItem, error) {
 	var scmList []*quorumpb.SchemaItem
 
 	nodeprefix := getPrefix(prefix...)
@@ -906,6 +907,24 @@ func (dbMgr *DbMgr) GetSchemaByGroup(groupId string, prefix ...string) ([]*quoru
 	})
 
 	return scmList, err
+}
+
+func (dbMgr *DbMgr) GetSchemaByGroup(groupId, schemaType string, prefix ...string) (*quorumpb.SchemaItem, error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + SMA_PREFIX + "_" + groupId + "_" + schemaType
+
+	schema := quorumpb.SchemaItem{}
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	err = proto.Unmarshal(value, &schema)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema, err
 }
 
 func getPrefix(prefix ...string) string {

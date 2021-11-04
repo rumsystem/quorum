@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -18,66 +17,45 @@ type CustomValidatorSchema struct {
 	Validator *validator.Validate
 }
 
-func (cv *CustomValidatorSchema) Validate(i interface{}) error {
-	switch i.(type) {
-	case *quorumpb.Activity:
-		inputobj := i.(*quorumpb.Activity)
-		if inputobj.Type == Add || inputobj.Type == Remove || inputobj.Type == Update {
-			if inputobj.Object != nil && inputobj.Target != nil {
-				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Object.Type == App {
-						if inputobj.Object.Content != "" {
-							return nil
-						}
-						return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Schema added can not be empty"))
-					}
-					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unsupported object type: %s or Object Id can not be empty", inputobj.Object.Type))
-				}
-				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Target Group must not be nil"))
-			}
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Object and Target Object must not be nil"))
-		}
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unknown type of Actitity: %s", inputobj.Type))
-	default:
-		if err := cv.Validator.Struct(i); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-	}
-	return nil
+type SchemaParam struct {
+	GroupId string `from:"group_id"    json:"group_id"    validate:"required"`
+	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove"`
+	Type    string `from:"type"        json:"type"        validate:"required"`
+	Rule    string `from:"rule"	       json:"rule"        validate:"required:`
+	Memo    string `from:"memo"        json:"memo"        validate:"required"`
 }
 
 type SchemaResult struct {
 	GroupId     string `json:"group_id"`
 	OwnerPubkey string `json:"owner_pubkey"`
-	Schema      string `json:"schema"`
+	SchemaType  string `json:"schema_type"`
+	SchemaRule  string `json:"schema_rule"`
+	Action      string `json:"action"`
 	Sign        string `json:"sign"`
 	TrxId       string `json:"trx_id"`
-	Memo        string `json:"memo"`
 }
 
 func (h *Handler) Schema(c echo.Context) (err error) {
 
 	output := make(map[string]string)
-	paramspb := new(quorumpb.Activity)
+	validate := validator.New()
+	params := new(SchemaParam)
 
-	if err = c.Bind(paramspb); err != nil {
+	if err = c.Bind(params); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	validate := &CustomValidatorSchema{Validator: validator.New()}
-
-	if err = validate.Validate(paramspb); err != nil {
+	if err = validate.Struct(params); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
 	var item *quorumpb.SchemaItem
 	item = &quorumpb.SchemaItem{}
-	item.GroupId = paramspb.Target.Id
-	item.SchemaJson = paramspb.Object.Content
-
-	item.Memo = paramspb.Type
+	item.GroupId = params.GroupId
+	item.Type = params.Type
+	item.Rule = params.Rule
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
@@ -88,15 +66,23 @@ func (h *Handler) Schema(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	} else {
 		item.GroupOwnerPubkey = group.Item.OwnerPubKey
+
+		if params.Action == "add" {
+			item.Action = quorumpb.ActionType_ADD
+		} else if params.Action == "remove" {
+			item.Action = quorumpb.ActionType_REMOVE
+		} else {
+			output[ERROR_INFO] = "Unknown action"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
 		var buffer bytes.Buffer
 		buffer.Write([]byte(item.GroupId))
-		buffer.Write([]byte(item.SchemaJson))
+		buffer.Write([]byte(item.Type))
+		buffer.Write([]byte(item.Rule))
 		buffer.Write([]byte(item.GroupOwnerPubkey))
-		buffer.Write([]byte(item.Memo))
 		hash := chain.Hash(buffer.Bytes())
 
-		//pbkeyByte, err := p2pcrypto.ConfigDecodeKey(item.GroupOwnerPubkey)
-		//signature, err := chain.Sign(hash, pbkeyByte)
 		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
 
@@ -114,8 +100,8 @@ func (h *Handler) Schema(c echo.Context) (err error) {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		blockGrpUserResult := &DenyUserResult{GroupId: item.GroupId, GroupOwnerPubkey: item.GroupOwnerPubkey, Sign: item.GroupOwnerSign, Memo: item.Memo, TrxId: trxId}
+		schemaResult := &SchemaResult{GroupId: item.GroupId, OwnerPubkey: item.GroupOwnerPubkey, SchemaType: item.Type, SchemaRule: item.Rule, Action: item.Action.String(), Sign: item.GroupOwnerSign, TrxId: trxId}
 
-		return c.JSON(http.StatusOK, blockGrpUserResult)
+		return c.JSON(http.StatusOK, schemaResult)
 	}
 }

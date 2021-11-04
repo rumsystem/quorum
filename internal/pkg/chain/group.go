@@ -173,6 +173,11 @@ func (grp *Group) GetAnnouncedUser() ([]*quorumpb.AnnounceItem, error) {
 	return nodectx.GetDbMgr().GetAnnouncedUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
+func (grp *Group) GetSchemas() ([]*quorumpb.SchemaItem, error) {
+	group_log.Debugf("<%s> GetSchema called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
 func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetAnnounceProducersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)

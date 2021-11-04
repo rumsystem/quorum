@@ -85,11 +85,10 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 
 		if item.Type == quorumpb.AnnounceType_AS_USER {
 			item.EncryptPubkey, err = nodectx.GetNodeCtx().Keystore.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
-		}
-
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			if err != nil {
+				output[ERROR_INFO] = err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
 		}
 
 		item.OwnerPubkey = ""
