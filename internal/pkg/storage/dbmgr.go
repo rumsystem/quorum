@@ -411,20 +411,24 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 		})
 
 		if err != nil {
+
 			return err
 		}
 	}
 
+	dbmgr_log.Debugf("xxxxxxxxxxxxxx")
+
 	keys = nil
 	//remove all cached block
-	key = nodeprefix + "_" + BLK_PREFIX
+	key = nodeprefix + BLK_PREFIX + "_"
 	keys = append(keys, key)
-	key = nodeprefix + "_" + CHD_PREFIX + "_" + BLK_PREFIX
+	key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
 	keys = append(keys, key)
 
 	for _, key_prefix := range keys {
-
 		err := dbMgr.Db.PrefixForeach([]byte(key_prefix), func(k []byte, v []byte, err error) error {
+			dbmgr_log.Debugf("blockChunck %s", string(k))
+
 			if err != nil {
 				return err
 			}
@@ -450,31 +454,29 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 	}
 
 	//remove all trx
-	key = nodeprefix + TRX_PREFIX
-	for _, key_prefix := range keys {
-		err := dbMgr.Db.PrefixForeach([]byte(key_prefix), func(k []byte, v []byte, err error) error {
-			if err != nil {
-				return err
-			}
-
-			trx := quorumpb.Trx{}
-			perr := proto.Unmarshal(v, &trx)
-
-			if perr != nil {
-				return perr
-			}
-
-			if trx.GroupId == item.GroupId {
-				dbmgr_log.Debugf("Remove key %s", string(k))
-				return dbMgr.Db.Delete(k)
-			}
-
-			return nil
-		})
-
+	key = nodeprefix + TRX_PREFIX + "_"
+	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
+
+		trx := quorumpb.Trx{}
+		perr := proto.Unmarshal(v, &trx)
+
+		if perr != nil {
+			return perr
+		}
+
+		if trx.GroupId == item.GroupId {
+			dbmgr_log.Debugf("Remove key %s", string(k))
+			return dbMgr.Db.Delete(k)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
 
 	return nil

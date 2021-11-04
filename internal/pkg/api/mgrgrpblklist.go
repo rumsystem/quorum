@@ -60,6 +60,12 @@ func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
 	ks := nodectx.GetNodeCtx().Keystore
 	dirks, ok := ks.(*localcrypto.DirKeyStore)
 	if ok == true {
+		_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(params.GroupId))
+		if err != nil {
+			output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
 		hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 		pubkeybytes, err := hex.DecodeString(hexkey)
 		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
