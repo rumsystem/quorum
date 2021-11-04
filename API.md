@@ -223,17 +223,30 @@ API
                 group_id :  组id
                 signature : 签名
 
-    - /api/v1/group ，删除一个组
+    - *** 删除组API以废除，所有节点只能“离开”一个组，不管是不是自己创建的 ***
 
+    - /api/vi/group/clear，删除一个组的全部内容，包括如下内容
+        - block
+        - trx
+        - announced
+        - scheam
+        - denied_list
+        - post
+        - producer
+        
         例子：
+           curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b791-4d17-a52f-f69266fc3f18"}' https://127.0.0.1:8002/api/v1/group/clear | jq
 
-            curl -k -X DELETE -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8003/api/v1/group
+        参数：
+            group_id
 
-        返回值:
-            {"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8","owner_pubkey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDGfeXQnKNIZpZeKDkj+FgAnVwBMa/GLjNrglsZduWWopYiPMBv9NEv59kG7JjYAaVZsWD5t2tgHPSYzHO6uc6DB9rphFprvx3dH8N/GDNh52J+FuS65Bw56sSIv/Y0e4D15WJsQV2/AQQvW90qpLTnRPY2VVUWiuETJQFDBvm1tmTRz+QOHQEqye0ogQSTtIvCdFcf3u7Bb2IAVTqFOIQlB98zwd1UNST9mkzgIYv3jIQ7lgA85/EC7v77J4Igin6/76aUgFbz++4f05Lns1nzvnGcorXSB7Dz//L+94Pyi00Y5ekN/YE3dk01PEr5Ucvi7bF1YfX2S+B4ruliZeTab05kysO5eKJF5Fd17YaEsIJb1d5kTXWL93/TJ5DkajLYmv9JGPjz78OUSMkz2FgS25hy4wIQpg0pP2We+mUoYK5B22FYdOuIropKq0VAzQeG/dFMAt7rFGNP8GLmQF0qV/KEE4xO3+kJdcWMDykMLdzOGwJzG9NHksIZPj4yxJP+jFdffZ9hHR0AuQlyCTg4Us13PTAYn6pTtwkvy0aS7J2Q8+IwNLuMJrfwjZYxTkdqJcvlck6+2IbLHYyBVi5TxT2zERB4Eg0iuJYq2VFWEkEWsUMtDda5G3jEI9yL/afjhVn6xmyo1D7aoeYqXqIx9Y/8jpRC4nN1wMfpsO+qdQIDAQAB","signature":"owner_signature"}
+        返回值： 
+            {
+             "group_id": "13a25432-b791-4d17-a52f-f69266fc3f18",
+            "signature": "30450221009634af1636bf7374453cd73088ff992d9020777eb617795e3c93ea5d5008f56d022035342a852e87afa87b5e038147dedf10bb847f60808ec78a470b92dfbff91504"
+        }
 
-        参数
-            group_id : 组id
+    *** 目前前端在离开组时需一起调用该API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可 *** 
 
     - /api/v1/node , 获取节点信息
 
@@ -309,6 +322,7 @@ API
                 2. 被组屏蔽的节点如果退出并再次打开，此时发送的ASK_NEXT请求将被Owner或Producer拒绝，因此无法获取节点中最新的块
 
         返回值：
+    
             {"group_id":"f4273294-2792-4141-80ba-687ce706bc5b","peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","owner_pubkey":"CAISIQMOjdI2nm
 Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268429a08f8b0ede03b4ddc8014d470d84e707a80d600022100b1616d4662f3e7f0c75
 94381e425e0c26cf25b66a2cef9437d320cccb0871e5b","trx_id":"2f434ac3-c2a8-494a-9c58-d03a8b51dab5","action":"add","memo":""}
@@ -418,6 +432,7 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                             "AnnouncedPubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
                             "AnnouncerSign": "3046022100a853ca31f6f6719be213231b6428cecf64de5b1042dd8af1e140499507c85c40022100abd6828478f56da213ec10d361be8709333ff44cd0fa037409af9c0b67e6d0f5",
                             "Result": "ANNOUCNED",
+                            "Action" : "Add", *
                             "TimeStamp": 1634756064250457600
                         }
                     ]
@@ -425,7 +440,10 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                     AnnouncedPubkey ： producer pubkey
                     AnnouncerSign： producer的签名
                     Result ： ANNOUNCED or APPROVED，producer刚Announce完毕的状态是ANNOUNCED
+                    Action : "ADD" or "REMOVE" 
                     TimeStamp : timestamp
+
+                *ACTION 可以有2种状态，“ADD”表示Producer正常，“REMOVE”表示Producer已经announce自己离开改组
 
         6. Owner批准某个Producer
             例：curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}}' https://127.0.0.1:8002/api/v1/group/producer | jq
@@ -454,8 +472,7 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                 trx_id: trx id
                 action : Add or REMOVE
                 memo : memo
-            * 请注意，Owner只可以选择在组内Announce过自己的Producer，
-              没有Announce过的producer是不可以添加的
+            * 请注意，Owner只可以选择在组内Announce过自己的Producer，并且producer的状态应该为“ADD”，没有Announce过的producer是不可以添加的        
         
         7. 查看组内目前的实际批准的producer
             例：curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8005/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/producers | jq
@@ -498,28 +515,34 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                         "AnnouncedPubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
                         "AnnouncerSign": "3046022100a853ca31f6f6719be213231b6428cecf64de5b1042dd8af1e140499507c85c40022100abd6828478f56da213ec10d361be8709333ff44cd0fa037409af9c0b67e6d0f5",
                         "Result": "APPROVED",
+                        "Action": "ADD"
                         "TimeStamp": 1634756064250457600
                     }
                 ]
             
             可以看出，经过Owner批准，该Producer的状态（result)变为 APPROVED
 
+        9. Owenr删除组内Producer
+           例：curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"remove"}}' https://127.0.0.1:8002/api/v1/group/producer | jq
+
+           *Owner可以随时删除一个Producer, 不管Producer是否Announce离开
+           *在实际环境中，Producer完全可以不Announce Remove而直接离开，Owner需要注意到并及时将该Producer从Producer列表中删除
+
     - 添加组内App Schema
         添加组内app的schema json
- curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema
+        例子：curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema
 
     - 查看组内App Schema
-    curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/13a25432-b791-4d17-a52f-f69266fc3f18/app/schema | jq
+        curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/13a25432-b791-4d17-a52f-f69266fc3f18/app/schema | jq
 
-    [
-  {
-    "Type": "schema_type",
-    "Rule": "new_schema",
-    "TimeStamp": 1636047963013888300
-  }
-]
-
-
+        返回值：
+            [
+                {
+                    "Type": "schema_type",
+                    "Rule": "new_schema",
+                    "TimeStamp": 1636047963013888300
+                }
+            ]
 
     - Trx生命周期，加密和出块过程
 
@@ -548,7 +571,6 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
             一个Trx被push到链上后，根据group的不同共识类型，将被采取不同形式对待：
 
             - 链上共识方式，参见RUM设计文档
-
         
     - Trx状态判断
         

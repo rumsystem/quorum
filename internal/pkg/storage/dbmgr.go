@@ -415,6 +415,7 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 			return err
 		}
 	}
+
 	keys = nil
 	//remove all cached block
 	key = nodeprefix + BLK_PREFIX + "_"
