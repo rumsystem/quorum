@@ -406,7 +406,8 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 			if err != nil {
 				return err
 			}
-			return dbMgr.Db.Delete([]byte(key))
+			dbmgr_log.Debugf("Remove key %s", string(k))
+			return dbMgr.Db.Delete(k)
 		})
 
 		if err != nil {
@@ -422,6 +423,7 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 	keys = append(keys, key)
 
 	for _, key_prefix := range keys {
+
 		err := dbMgr.Db.PrefixForeach([]byte(key_prefix), func(k []byte, v []byte, err error) error {
 			if err != nil {
 				return err
@@ -433,9 +435,10 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 			if perr != nil {
 				return perr
 			}
-
+			dbmgr_log.Debugf("try Remove key %s", blockChunk.BlockItem.BlockId)
 			if blockChunk.BlockItem.GroupId == item.GroupId {
-				return dbMgr.Db.Delete([]byte(key))
+				dbmgr_log.Debugf("Remove key %s", string(k))
+				return dbMgr.Db.Delete(k)
 			}
 
 			return nil
@@ -462,7 +465,8 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 			}
 
 			if trx.GroupId == item.GroupId {
-				return dbMgr.Db.Delete([]byte(key))
+				dbmgr_log.Debugf("Remove key %s", string(k))
+				return dbMgr.Db.Delete(k)
 			}
 
 			return nil

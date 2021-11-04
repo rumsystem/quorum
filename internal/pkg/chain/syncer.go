@@ -55,13 +55,13 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 	if syncer.group.Item.OwnerPubKey == syncer.group.Item.UserSignPubkey {
 		if len(syncer.group.ChainCtx.ProducerPool) == 1 {
 			syncer_log.Debugf("<%s> group owner, no registed producer, no need to sync", syncer.groupId)
-			return errors.New("group owner, no registed producer, no need to sync")
+			return nil
 		} else {
 			syncer_log.Debugf("<%s> owner, has registed producer, start sync missing block", syncer.groupId)
 		}
 	} else if _, ok := syncer.group.ChainCtx.ProducerPool[syncer.group.Item.UserSignPubkey]; ok {
 		syncer_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", syncer.groupId)
-		return errors.New("producer, no need to sync forward (sync backward when new block produced and found missing block(s)")
+		return nil
 	} else if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
 		return errors.New("already in SYNCING")
 	}

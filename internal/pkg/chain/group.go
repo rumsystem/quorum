@@ -96,7 +96,6 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	group_log.Infof("Group <%s> created", grp.Item.GroupId)
 
 	return nodectx.GetDbMgr().AddGroup(grp.Item)
-
 }
 
 func (grp *Group) LeaveGrp() error {
