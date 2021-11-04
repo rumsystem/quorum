@@ -28,15 +28,19 @@ func registerCallbacks() {
 
 	js.Global().Set("JoinGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		seed := args[0].String()
-		res, err := quorumAPI.JoinGroup([]byte(seed))
-		if err != nil {
-			println(err.Error())
-		}
-		retBytes, err := json.Marshal(res)
-		if err != nil {
-			println(err.Error())
-		}
-		return js.ValueOf(string(retBytes))
+		go func() {
+			res, err := quorumAPI.JoinGroup([]byte(seed))
+			if err != nil {
+				println(err.Error())
+			}
+			retBytes, err := json.Marshal(res)
+			if err != nil {
+				println(err.Error())
+			}
+			println(string(retBytes))
+		}()
+
+		return js.ValueOf(true)
 	}))
 
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
