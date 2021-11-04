@@ -21,7 +21,7 @@ type SchemaParam struct {
 	GroupId string `from:"group_id"    json:"group_id"    validate:"required"`
 	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove"`
 	Type    string `from:"type"        json:"type"        validate:"required"`
-	Rule    string `from:"rule"	       json:"rule"        validate:"required:`
+	Rule    string `from:"rule"	       json:"rule"        validate:"required"`
 	Memo    string `from:"memo"        json:"memo"        validate:"required"`
 }
 

@@ -505,7 +505,21 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
             可以看出，经过Owner批准，该Producer的状态（result)变为 APPROVED
 
     - 添加组内App Schema
-        添加组内app的schema json (only API works, parse and apply schema TBD)
+        添加组内app的schema json
+ curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema
+
+    - 查看组内App Schema
+    curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/13a25432-b791-4d17-a52f-f69266fc3f18/app/schema | jq
+
+    [
+  {
+    "Type": "schema_type",
+    "Rule": "new_schema",
+    "TimeStamp": 1636047963013888300
+  }
+]
+
+
 
     - Trx生命周期，加密和出块过程
 

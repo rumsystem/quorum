@@ -45,7 +45,7 @@ func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 }
 
 func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdSchema called", user.groupId)
+	molauser_log.Debugf("<%s> UpdProducer called", user.groupId)
 	return user.cIface.GetProducerTrxMgr().SendRegProducerTrx(item)
 }
 

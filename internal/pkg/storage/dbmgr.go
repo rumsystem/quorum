@@ -415,9 +415,6 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 			return err
 		}
 	}
-
-	dbmgr_log.Debugf("xxxxxxxxxxxxxx")
-
 	keys = nil
 	//remove all cached block
 	key = nodeprefix + BLK_PREFIX + "_"
@@ -427,19 +424,16 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 
 	for _, key_prefix := range keys {
 		err := dbMgr.Db.PrefixForeach([]byte(key_prefix), func(k []byte, v []byte, err error) error {
-			dbmgr_log.Debugf("blockChunck %s", string(k))
-
 			if err != nil {
 				return err
 			}
 
 			blockChunk := quorumpb.BlockDbChunk{}
 			perr := proto.Unmarshal(v, &blockChunk)
-
 			if perr != nil {
 				return perr
 			}
-			dbmgr_log.Debugf("try Remove key %s", blockChunk.BlockItem.BlockId)
+
 			if blockChunk.BlockItem.GroupId == item.GroupId {
 				dbmgr_log.Debugf("Remove key %s", string(k))
 				return dbMgr.Db.Delete(k)
@@ -733,26 +727,6 @@ func (dbMgr *DbMgr) UpdateAnnounce(trx *quorumpb.Trx, prefix ...string) (err err
 	}
 	key := nodeprefix + ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + item.SignPubkey
 	return dbMgr.Db.Set([]byte(key), trx.Data)
-
-	/*
-		if item.Action == quorumpb.ActionType_ADD {
-			return dbMgr.Db.Set([]byte(key), trx.Data)
-		} else if item.Action == quorumpb.ActionType_REMOVE {
-			//check if item exist
-			exist, err := dbMgr.Db.IsExist([]byte(key))
-			if !exist {
-				if err != nil {
-					return err
-				}
-				return errors.New("Announce Not Found")
-			}
-
-			return dbMgr.Db.Delete([]byte(key))
-		} else {
-			err := errors.New("unknow msgType")
-			return err
-		}
-	*/
 }
 
 func (dbMgr *DbMgr) GetAnnouncedUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
@@ -799,7 +773,7 @@ func (dbMgr *DbMgr) GetAnnounceProducersByGroup(groupId string, prefix ...string
 
 func (dbMgr *DbMgr) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_" + pubkey
+	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pubkey
 
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
