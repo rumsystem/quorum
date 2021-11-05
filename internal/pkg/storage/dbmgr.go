@@ -816,7 +816,7 @@ func (dbMgr *DbMgr) UpdateProducerAnnounceResult(groupId, producerSignPubkey str
 	if result {
 		pAnnounced.Result = quorumpb.ApproveType_APPROVED
 	} else {
-		pAnnounced.Result = quorumpb.ApproveType_ANNOUCNED
+		pAnnounced.Result = quorumpb.ApproveType_ANNOUNCED
 	}
 
 	value, err = proto.Marshal(pAnnounced)

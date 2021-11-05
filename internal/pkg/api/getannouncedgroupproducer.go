@@ -13,6 +13,7 @@ type AnnouncedProducerListItem struct {
 	AnnouncerSign   string
 	Result          string
 	Action          string
+	Memo            string
 	TimeStamp       int64
 }
 
@@ -49,6 +50,7 @@ func (h *Handler) GetAnnouncedGroupProducer(c echo.Context) (err error) {
 			item.Result = prd.Result.String()
 			item.Action = prd.Action.String()
 			item.TimeStamp = prd.TimeStamp
+			item.Memo = prd.Memo
 			prdResultList = append(prdResultList, item)
 		}
 

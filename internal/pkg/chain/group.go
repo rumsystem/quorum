@@ -100,10 +100,6 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
-	if grp.Item.UserSignPubkey == grp.Item.OwnerPubKey {
-		err := errors.New("Group creator can not leave the group they created, use 'delete' instead")
-		return err
-	}
 
 	grp.ChainCtx.StopSync()
 	//leave pubsub channel
