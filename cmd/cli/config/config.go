@@ -16,6 +16,7 @@ var signKeyMap = map[string]string{}
 type QuorumConfig struct {
 	Server               string
 	ServerSSLCertificate string
+	ServerSSLInsecure    bool
 	KeyStoreName         string
 	KeyStoreDir          string
 	KeyStorePass         string
