@@ -110,6 +110,7 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 
 		item.AnnouncerSignature = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
+		item.Memo = params.Memo
 
 		trxId, err := group.UpdAnnounce(item)
 

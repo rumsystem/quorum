@@ -235,8 +235,10 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 
 func (syncer *Syncer) stopWaitBlock() {
 	syncer_log.Debugf("<%s> stopWaitBlock called", syncer.groupId)
-	syncer.AskNextTimer.Stop()
-	syncer.AskNextTimerDone <- true
+	if syncer.AskNextTimer != nil {
+		syncer.AskNextTimer.Stop()
+		syncer.AskNextTimerDone <- true
+	}
 }
 
 func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (string, error) {
