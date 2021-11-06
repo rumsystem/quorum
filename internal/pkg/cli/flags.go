@@ -37,11 +37,15 @@ func (al *addrList) String() string {
 }
 
 func (al *addrList) Set(value string) error {
-	addr, err := maddr.NewMultiaddr(value)
-	if err != nil {
-		return err
+	addrlist := strings.Split(value, ",")
+
+	for _, v := range addrlist {
+		addr, err := maddr.NewMultiaddr(v)
+		if err != nil {
+			return err
+		}
+		*al = append(*al, addr)
 	}
-	*al = append(*al, addr)
 	return nil
 }
 
