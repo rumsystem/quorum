@@ -117,11 +117,16 @@ func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) 
 		if err != nil {
 			return err
 		}
+		k := ArrayBufferToBytes(key)
+		/* Validate prefix */
+		if !bytes.HasPrefix(k, prefix) {
+			return nil
+		}
 		value, err := cursor.Value()
 		if err != nil {
 			return err
 		}
-		ferr := fn(ArrayBufferToBytes(key), ArrayBufferToBytes(value), nil)
+		ferr := fn(k, ArrayBufferToBytes(value), nil)
 		if ferr != nil {
 			return ferr
 		}
@@ -147,7 +152,11 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 			if err != nil {
 				return err
 			}
-			ferr := fn(ArrayBufferToBytes(key), nil)
+			k := ArrayBufferToBytes(key)
+			if !bytes.HasPrefix(k, valid) {
+				return nil
+			}
+			ferr := fn(k, nil)
 			if ferr != nil {
 				return ferr
 			}

@@ -43,6 +43,19 @@ func registerCallbacks() {
 		return js.ValueOf(true)
 	}))
 
+	js.Global().Set("GetGroups", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		res, err := quorumAPI.GetGroups()
+		if err != nil {
+			println(err.Error())
+		}
+		retBytes, err := json.Marshal(res)
+		if err != nil {
+			println(err.Error())
+		}
+		println(string(retBytes))
+		return js.ValueOf(string(retBytes))
+	}))
+
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if qChan != nil {
 			close(qChan)
