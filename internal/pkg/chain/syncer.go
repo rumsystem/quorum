@@ -164,11 +164,15 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 			syncer_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", syncer.groupId)
 			err = syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 		}
-		if err.Error() == "PARENT_NOT_EXIST" {
-			syncer_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", syncer.groupId)
-			syncer.ContinueSync(block)
-		} else if err != nil {
+
+		if err != nil {
 			syncer_log.Debugf(err.Error())
+			if err.Error() == "PARENT_NOT_EXIST" {
+				syncer_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", syncer.groupId)
+				syncer.ContinueSync(block)
+			}
+		} else {
+			syncer_log.Debugf("<%s> SYNCING_BACKWARD err is nil", syncer.groupId)
 		}
 	}
 
