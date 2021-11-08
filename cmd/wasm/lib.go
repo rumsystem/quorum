@@ -56,6 +56,24 @@ func registerCallbacks() {
 		return js.ValueOf(string(retBytes))
 	}))
 
+	js.Global().Set("GetBlockById", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		blockId := args[1].String()
+		go func() {
+			block, err := quorumAPI.GetBlockById(groupId, blockId)
+			if err != nil {
+				println(err.Error())
+			}
+			retBytes, err := json.Marshal(block)
+			if err != nil {
+				println(err.Error())
+			}
+			println(string(retBytes))
+		}()
+
+		return js.ValueOf(true)
+	}))
+
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if qChan != nil {
 			close(qChan)

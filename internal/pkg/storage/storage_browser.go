@@ -72,7 +72,22 @@ func (s *QSIndexDB) Close() error {
 func (s *QSIndexDB) Set(key []byte, val []byte) error {
 	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
 	store, _ := txn.ObjectStore(s.name)
-	store.AddKey(BytesToArrayBuffer(key), BytesToArrayBuffer(val))
+
+	k := BytesToArrayBuffer(key)
+	req, err := store.CountKey(k)
+	if err != nil {
+		return err
+	}
+	count, err := req.Await(s.ctx)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		store.AddKey(k, BytesToArrayBuffer(val))
+	} else {
+		store.PutKey(k, BytesToArrayBuffer(val))
+	}
+
 	return txn.Await(s.ctx)
 }
 
