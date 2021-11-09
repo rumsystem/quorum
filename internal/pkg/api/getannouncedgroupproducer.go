@@ -12,6 +12,8 @@ type AnnouncedProducerListItem struct {
 	AnnouncedPubkey string
 	AnnouncerSign   string
 	Result          string
+	Action          string
+	Memo            string
 	TimeStamp       int64
 }
 
@@ -33,7 +35,7 @@ func (h *Handler) GetAnnouncedGroupProducer(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		prdList, err := group.GetAnnouncedProducer()
+		prdList, err := group.GetAnnouncedProducers()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -46,7 +48,9 @@ func (h *Handler) GetAnnouncedGroupProducer(c echo.Context) (err error) {
 			item.AnnouncedPubkey = prd.SignPubkey
 			item.AnnouncerSign = prd.AnnouncerSignature
 			item.Result = prd.Result.String()
+			item.Action = prd.Action.String()
 			item.TimeStamp = prd.TimeStamp
+			item.Memo = prd.Memo
 			prdResultList = append(prdResultList, item)
 		}
 

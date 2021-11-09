@@ -31,7 +31,7 @@ enum AnnounceType {
 }
 
 enum ApproveType {
-    ANNOUCNED = 0;
+    ANNOUNCED = 0;
     APPROVED  = 1;
     REJECTED  = 2;
 }
@@ -142,15 +142,17 @@ message AnnounceItem {
     ApproveType  Result             = 8;    
     int64        TimeStamp          = 9; 
     ActionType   Action             = 10;
+    string       Memo               = 11;
 }
 
 message SchemaItem {
-    string GroupId          = 1;
-    string SchemaJson       = 2;
-    string GroupOwnerPubkey = 3;
-    string GroupOwnerSign   = 4;
-    int64  TimeStamp        = 5;    
-    string Memo             = 6;
+    string       GroupId          = 1;    
+    string       GroupOwnerPubkey = 2;
+    string       GroupOwnerSign   = 3;    
+    string       Type             = 4;    
+    string       Rule             = 5;
+    int64        TimeStamp        = 6;    
+    ActionType   Action           = 7;
 }
 
 enum GroupEncryptType {

@@ -9,32 +9,23 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
-type LeaveGroupParam struct {
+type ClearGroupDataParam struct {
 	GroupId string `from:"group_id" json:"group_id" validate:"required"`
 }
 
-type LeaveGroupResult struct {
+type ClearGroupDataResult struct {
 	GroupId   string `json:"group_id"`
 	Signature string `json:"signature"`
 }
 
-// @Tags Groups
-// @Summary LeaveGroup
-// @Description Leave a new group
-// @Accept json
-// @Produce json
-// @Param data body LeaveGroupParam true "LeaveGroupParam"
-// @success 200 {object} LeaveGroupResult "LeaveGroupResult"
-// @Router /api/v1/group/leave [post]
-func (h *Handler) LeaveGroup(c echo.Context) (err error) {
-
+func (h *Handler) ClearGroupData(c echo.Context) (err error) {
 	output := make(map[string]string)
 	validate := validator.New()
-	params := new(LeaveGroupParam)
+	params := new(ClearGroupDataParam)
 
 	if err := c.Bind(params); err != nil {
 		output[ERROR_INFO] = err.Error()
@@ -48,14 +39,7 @@ func (h *Handler) LeaveGroup(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; ok {
-		err := group.LeaveGrp()
-
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		delete(groupmgr.Groups, params.GroupId)
+		err := group.ClearGroup()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -81,7 +65,6 @@ func (h *Handler) LeaveGroup(c echo.Context) (err error) {
 		hash := chain.Hash(buffer.Bytes())
 		signature, err := ks.SignByKeyName(params.GroupId, hash)
 		encodedString := hex.EncodeToString(signature)
-
 		return c.JSON(http.StatusOK, &LeaveGroupResult{GroupId: params.GroupId, Signature: encodedString})
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", params.GroupId)

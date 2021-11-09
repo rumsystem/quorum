@@ -55,13 +55,13 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 	if syncer.group.Item.OwnerPubKey == syncer.group.Item.UserSignPubkey {
 		if len(syncer.group.ChainCtx.ProducerPool) == 1 {
 			syncer_log.Debugf("<%s> group owner, no registed producer, no need to sync", syncer.groupId)
-			return errors.New("group owner, no registed producer, no need to sync")
+			return nil
 		} else {
 			syncer_log.Debugf("<%s> owner, has registed producer, start sync missing block", syncer.groupId)
 		}
 	} else if _, ok := syncer.group.ChainCtx.ProducerPool[syncer.group.Item.UserSignPubkey]; ok {
 		syncer_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", syncer.groupId)
-		return errors.New("producer, no need to sync forward (sync backward when new block produced and found missing block(s)")
+		return nil
 	} else if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
 		return errors.New("already in SYNCING")
 	}
@@ -164,11 +164,15 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 			syncer_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", syncer.groupId)
 			err = syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 		}
-		if err.Error() == "PARENT_NOT_EXIST" {
-			syncer_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", syncer.groupId)
-			syncer.ContinueSync(block)
-		} else if err != nil {
+
+		if err != nil {
 			syncer_log.Debugf(err.Error())
+			if err.Error() == "PARENT_NOT_EXIST" {
+				syncer_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", syncer.groupId)
+				syncer.ContinueSync(block)
+			}
+		} else {
+			syncer_log.Debugf("<%s> SYNCING_BACKWARD err is nil", syncer.groupId)
 		}
 	}
 
@@ -235,8 +239,10 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 
 func (syncer *Syncer) stopWaitBlock() {
 	syncer_log.Debugf("<%s> stopWaitBlock called", syncer.groupId)
-	syncer.AskNextTimer.Stop()
-	syncer.AskNextTimerDone <- true
+	if syncer.AskNextTimer != nil {
+		syncer.AskNextTimer.Stop()
+		syncer.AskNextTimerDone <- true
+	}
 }
 
 func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (string, error) {

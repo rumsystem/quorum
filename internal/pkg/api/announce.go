@@ -85,16 +85,15 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 
 		if item.Type == quorumpb.AnnounceType_AS_USER {
 			item.EncryptPubkey, err = nodectx.GetNodeCtx().Keystore.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
-		}
-
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			if err != nil {
+				output[ERROR_INFO] = err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
 		}
 
 		item.OwnerPubkey = ""
 		item.OwnerSignature = ""
-		item.Result = quorumpb.ApproveType_ANNOUCNED
+		item.Result = quorumpb.ApproveType_ANNOUNCED
 
 		var buffer bytes.Buffer
 		buffer.Write([]byte(item.GroupId))
@@ -111,6 +110,7 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 
 		item.AnnouncerSignature = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
+		item.Memo = params.Memo
 
 		trxId, err := group.UpdAnnounce(item)
 

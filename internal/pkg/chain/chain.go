@@ -278,7 +278,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 
 	var shouldAccept bool
 
-	chain_log.Infof("<%s> REQ_BLOCK_RESP, block_id <%s>, block_producer <%s>", chain.groupId, newBlock.BlockId, newBlock.ProducerPubKey)
+	chain_log.Debugf("<%s> REQ_BLOCK_RESP, block_id <%s>, block_producer <%s>", chain.groupId, newBlock.BlockId, newBlock.ProducerPubKey)
 
 	if _, ok := chain.ProducerPool[newBlock.ProducerPubKey]; ok {
 		shouldAccept = true

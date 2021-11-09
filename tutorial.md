@@ -1,140 +1,162 @@
+# RUM development tutorial 
+
 ![Main Test](https://github.com/rumsystem/quorum/actions/workflows/maintest.yml/badge.svg)
 
-设置测试环境
-
-Run testing
+## Run testing
 
 ```go test cmd/main* -v```
 
-API Docs
+## Generate API Docs
 
 ```go run cmd/docs.go```
 
 Open url ```http://localhost:1323/swagger/index.html``` in the browser. 
 
-本地开发环境配置
+## Setup local test network
 
-    1. 安装go
-    2. 下载  https://github.com/rumsystem/quorum.git
+1. Download and install go (ver 1.15.2)
+2. Clone quorum project from 
+```https://github.com/rumsystem/quorum.git```
+3. 3 local nodes will be created
+    - bootstrap_node (bootstrap)
+    - owner_node   (group owner node)
+    - user_node    (group user node)
+4. cd to quorum souce code path and create config/ dir
+```bash
+mkdir -p config 
+```
+5. start bootstrap node 
+```bash
+go run cmd/main.go -bootstrap -listen /ip4/0.0.0.0/tcp/10666 -logtostderr=true
+```
+output
+```bash
+I0420 14:58:47.719592     332 keys.go:47] Load keys from config
+I0420 14:58:47.781916     332 main.go:64] Host created, ID:<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR>, Address:<[/ip4/172.28.230.210/tcp/10666 /ip4/127.0.0.1/tcp/10666]>
+```
+Record <HOST_ID>, for example:
+    QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR
+5. Start owner node
+```bash
+go run cmd/main.go -peername owner -listen /ip4/127.0.0.1/tcp/7002 -apilisten :8002 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer ownertracer.json -debug true 
+```        
+- For the first time, user will be asked to input a password for the node, if not given, a password will be created for the node
+- After a password is created, next time user will be asked to input the password to open node.
+- env RUM_KSPASSWD can be used to input node password, like:
+```bash
+RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
+```
+6. Start user node
+```bash
+go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug true 
+``` 
 
-    共需要3个本地节点，进入本地目录，例如 ~/work/quorum
-    
-    - 启动BootStrap节点 (mkdir -p config): 
-        
-        go run cmd/main.go -bootstrap -listen /ip4/0.0.0.0/tcp/10666 -logtostderr=true
-        I0420 14:58:47.719592     332 keys.go:47] Load keys from config
-        I0420 14:58:47.781916     332 main.go:64] Host created, ID:<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR>, Address:<[/ip4/172.28.230.210/tcp/10666 /ip4/127.0.0.1/tcp/10666]>    
-        记下ID <#ID>，例如 QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR
-        
-    - 启动本地节点:
-        RUM_KSPASSWD=<PASSWORD> go run cmd/main.go -peername peer2 -listen /ip4/127.0.0.1/tcp/<NETWORK_PORT> -apilisten :<API_PORT> -peer /ip4/127.0.0.1/tcp/10666/p2p/<BOOT_STRAP_NODE_ID> -configdir <PATH_TO_CONFIG> -datadir <PATH_TO_DATA> -keystoredir <PATH_TO_KEY_STORE> -jsontracer <JSON_TRACER_FILE_NAME> -debug true 
-        * 密码第一次启动节点时生成，通过环境变量传入
-        * 用bootstrap节点的ID替代 <#ID>
-        * 节点A的本地HTTP端口地址为8002，以下所有curl命令中发给8002端口的API Call都是调用节点A
+## Owner node create "test_group"
+```bash
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group
+```
+- API:/api/v1/group 
+- Method:POST
+- Usage : create new group
+- Params : 
+    * group_name：string, group name, requested
+    * consensus_type:string, group consensus type, must be "poa", requested
+    * encryption_type: string, group encryption type, must be "public", requested
+    * app_key: string, group app key, requested, length should between 5 to 20
+- API return value:
+```json
+{
+"genesis_block": {
+    "BlockId": "80e3dbd6-24de-46cd-9290-ed2ae93ec3ac",
+    "GroupId": "c0020941-e648-40c9-92dc-682645acd17e",
+    "ProducerPubKey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
+    "Hash": "LOZa0CLITIpuQqpvXb6LyXV9z+2rSoU4JwBq0BCXttc=",
+    "Signature": "MEQCICAXCicQ6f4hRNSoJR89DF3a6AKpe6ZgLXsjXqH9H3jxAiA8dpukcriwEu8amouh2ZEKA2peXr3ctKQwxI3R6+nrfg==",
+    "Timestamp": 1632503907836381400
+},
+"group_id": "c0020941-e648-40c9-92dc-682645acd17e",
+"group_name": "my_test_group",
+"owner_pubkey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
+"owner_encryptpubkey": "age18kngxt6lkxqulldvxu8xs2ey77rrzwjhqpdey527ad4gkn3euu9sj3ah5j",
+"consensus_type": "poa",
+"encryption_type": "public",
+"cipher_key": "8e9bd83f84cf1408484d24f486861947a1db3fbe6eb3c61e31af55a4803aedc1",
+"app_key": "test_app",
+"signature": "304502206897c3c67247cba2e8d5991501b3fd471fcca06f15915efdcd814b9e99c9a48a022100aa3024eb5663da6cbbde150132a4ff52c6c6aeeb49e0c039b4c28e72b071382f"
+}
+```
+- Params:        
+    * genesis_block       //genesis block, the first block of the group
+    * group_id            
+    * group_name          
+    * owner_pubkey        //owner pubkey(ecdsa)               
+    * owner_encryptpubkey //owner encryption key(age)
+    * consensus_type      
+    * encryption_type     
+    * cipher_key          //aes key*
+    * app_key             
+    * signature           //owner signature
 
-API
-    - 节点A创建组 "my_test_group"
+    \*neglect group encryption type (public or private), all trx except "POST" will be encrypted by cipher_key
 
-        执行：
+returned json string from API call is the "seed" of the newly created group.
 
-        curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group
-
-            API：  /api/v1/group  ，创建新组
-            参数：
-                "group_name"      string, 组名称，必填
-                "consensus_type"  string, 组共识类型，必填，目前仅支持 "poa" (proof of authority)
-                "encryption_type" string, 组加密类型，必填， "public" or "private"
-                "app_key"         strnig, 组 app key, 必填，长度为5到20的字符串，用来标识本组的对应的app
-       
-        API返回值：
+## Owner node list all groups
+```bash
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/groups
+```
+- API: /api/v1/group 
+- Method: GET
+- Params: none
+- API return value:
+```json
+{
+    "groups": 
+    [
         {
-        "genesis_block": {
-            "BlockId": "80e3dbd6-24de-46cd-9290-ed2ae93ec3ac",
-            "GroupId": "c0020941-e648-40c9-92dc-682645acd17e",
-            "ProducerPubKey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-            "Hash": "LOZa0CLITIpuQqpvXb6LyXV9z+2rSoU4JwBq0BCXttc=",
-            "Signature": "MEQCICAXCicQ6f4hRNSoJR89DF3a6AKpe6ZgLXsjXqH9H3jxAiA8dpukcriwEu8amouh2ZEKA2peXr3ctKQwxI3R6+nrfg==",
-            "Timestamp": 1632503907836381400
-        },
-        "group_id": "c0020941-e648-40c9-92dc-682645acd17e",
-        "group_name": "my_test_group",
-        "owner_pubkey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-        "owner_encryptpubkey": "age18kngxt6lkxqulldvxu8xs2ey77rrzwjhqpdey527ad4gkn3euu9sj3ah5j",
-        "consensus_type": "poa",
-        "encryption_type": "public",
-        "cipher_key": "8e9bd83f84cf1408484d24f486861947a1db3fbe6eb3c61e31af55a4803aedc1",
-        "app_key": "test_app",
-        "signature": "304502206897c3c67247cba2e8d5991501b3fd471fcca06f15915efdcd814b9e99c9a48a022100aa3024eb5663da6cbbde150132a4ff52c6c6aeeb49e0c039b4c28e72b071382f"
+            "group_id": "90387012-431e-495e-b0a1-8d8060f6a296",
+            "group_name": "my_test_group",
+            "owner_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
+            "user_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
+            "consensus_type": "POA",
+            "encryption_type": "PUBLIC",
+            "cipher_key": "f4ee312ef7331a2897b547da0387d56a7fe3ea5796e0b628f892786d1e7ec15d",
+            "app_key": "test_app",
+            "last_updated": 1631725187659332400,
+            "highest_height": 0,
+            "highest_block_id": "a865ae03-d8ce-40fc-abf6-ea6f6132c35a"
+            "group_status": "IDLE"
         }
-            
-            参数：
-                genesis_block       组的genesis block
-                group_id            组id   
-                group_name          组名称
-                owner_pubkey        组owner签名用公钥(ecdsa)               
-                owner_encryptpubkey 组owner加密key(age)
-                consensus_type      组共识类型
-                encryption_type     组加密类型 
-                cipher_key          组内协议对称加密密钥(aes)
-                app_key             组app key
-                signature           组owner对结果的签名 
-            
-            *不管组内加密类型如何设置，组内除了POST之外的其他协议都通过该key进行对称加密/解密            
+    ]
+}
+```
+- Params:
+    * group_id           
+    * group_name        
+    * owner_pubkey      
+    * user_pubkey       \*
+    * consensus_type     
+    * encryption_type     
+    * cipher_key          
+    * app_key                  
+    * last_updated        
+    * highest_height      \*\*
+    * highest_block_id    \*\*\*                 
+    * group_status        \*\*\*\*
 
-        该调用返回的json串就是新创建组的“种子”，保存到文件中
+    \* When join a new group, a user public key will be created for this group, for group owner, user_pubkey is as same as owner_pubkey
+    
+    \*\* Heighty of the "highest" block in this group 
+    
+    \*\*\* block_id of the "highest" block in this group
+    
+    \*\*\*\* status of group, a group can has 3 different status
+    - SYNCING
+    - SYNC_FAILED  
+    - IDLE
 
-    - 查看节点A所拥有的组
+    for detail please check RUM design document          
 
-        执行：
-
-            curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/groups
-
-            Endpoint : /api/v1/group ，返回节点所加入（含自己创建）的所有组
-            参数 : 无
-
-        API返回值：
-            {
-            "groups": [
-                {
-                "group_id": "90387012-431e-495e-b0a1-8d8060f6a296",
-                "group_name": "my_test_group",
-                "owner_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
-                "user_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
-                "consensus_type": "POA",
-                "encryption_type": "PUBLIC",
-                "cipher_key": "f4ee312ef7331a2897b547da0387d56a7fe3ea5796e0b628f892786d1e7ec15d",
-                "app_key": "test_app",
-                "last_updated": 1631725187659332400,
-                "highest_height": 0,
-                "highest_block_id": [
-                    "a865ae03-d8ce-40fc-abf6-ea6f6132c35a"
-                ],
-                "group_status": "IDLE"
-                }
-            ]
-            }
-
-            group_id            组id
-            group_name          组名称
-            owner_pubkey        组owner的公钥
-            user_pubkey         本节点在组内的公钥
-            consensus_type      组共识类型（POA POS)
-            encryption_type     组加密类型（PRIVATE PUBLIC）
-            cipher_key          组内协议对称加密密钥
-            app_key             组app key                  
-            last_updated        最后收到块的时间戳
-            highest_height      组内最"高"的块高度 **
-            highest_block_id    组内最高的块的block_id ***                 
-            group_status        组状态 *
-
-                * 该参数有3个可能的返回值，这个参数可以用来显示组状态，详见设计文档
-                    - SYNCING
-                    - SYNC_FAILED
-                    - IDLE
-                ** genesis block高度是0
-                ***  注意：有多条等长链存在时，可能存在多个块
-        
-        刚刚创建的组处于IDLE状态
 
     - 节点B加入组"my_test_group"
 
@@ -223,30 +245,17 @@ API
                 group_id :  组id
                 signature : 签名
 
-    - *** 删除组API以废除，所有节点只能“离开”一个组，不管是不是自己创建的 ***
+    - /api/v1/group ，删除一个组
 
-    - /api/vi/group/clear，删除一个组的全部内容，包括如下内容
-        - block
-        - trx
-        - announced
-        - scheam
-        - denied_list
-        - post
-        - producer
-        
         例子：
-           curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b791-4d17-a52f-f69266fc3f18"}' https://127.0.0.1:8002/api/v1/group/clear | jq
 
-        参数：
-            group_id
+            curl -k -X DELETE -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8003/api/v1/group
 
-        返回值： 
-            {
-             "group_id": "13a25432-b791-4d17-a52f-f69266fc3f18",
-            "signature": "30450221009634af1636bf7374453cd73088ff992d9020777eb617795e3c93ea5d5008f56d022035342a852e87afa87b5e038147dedf10bb847f60808ec78a470b92dfbff91504"
-        }
+        返回值:
+            {"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8","owner_pubkey":"CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDGfeXQnKNIZpZeKDkj+FgAnVwBMa/GLjNrglsZduWWopYiPMBv9NEv59kG7JjYAaVZsWD5t2tgHPSYzHO6uc6DB9rphFprvx3dH8N/GDNh52J+FuS65Bw56sSIv/Y0e4D15WJsQV2/AQQvW90qpLTnRPY2VVUWiuETJQFDBvm1tmTRz+QOHQEqye0ogQSTtIvCdFcf3u7Bb2IAVTqFOIQlB98zwd1UNST9mkzgIYv3jIQ7lgA85/EC7v77J4Igin6/76aUgFbz++4f05Lns1nzvnGcorXSB7Dz//L+94Pyi00Y5ekN/YE3dk01PEr5Ucvi7bF1YfX2S+B4ruliZeTab05kysO5eKJF5Fd17YaEsIJb1d5kTXWL93/TJ5DkajLYmv9JGPjz78OUSMkz2FgS25hy4wIQpg0pP2We+mUoYK5B22FYdOuIropKq0VAzQeG/dFMAt7rFGNP8GLmQF0qV/KEE4xO3+kJdcWMDykMLdzOGwJzG9NHksIZPj4yxJP+jFdffZ9hHR0AuQlyCTg4Us13PTAYn6pTtwkvy0aS7J2Q8+IwNLuMJrfwjZYxTkdqJcvlck6+2IbLHYyBVi5TxT2zERB4Eg0iuJYq2VFWEkEWsUMtDda5G3jEI9yL/afjhVn6xmyo1D7aoeYqXqIx9Y/8jpRC4nN1wMfpsO+qdQIDAQAB","signature":"owner_signature"}
 
-    *** 目前前端在离开组时需一起调用该API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可 *** 
+        参数
+            group_id : 组id
 
     - /api/v1/node , 获取节点信息
 
@@ -322,7 +331,6 @@ API
                 2. 被组屏蔽的节点如果退出并再次打开，此时发送的ASK_NEXT请求将被Owner或Producer拒绝，因此无法获取节点中最新的块
 
         返回值：
-    
             {"group_id":"f4273294-2792-4141-80ba-687ce706bc5b","peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","owner_pubkey":"CAISIQMOjdI2nm
 Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268429a08f8b0ede03b4ddc8014d470d84e707a80d600022100b1616d4662f3e7f0c75
 94381e425e0c26cf25b66a2cef9437d320cccb0871e5b","trx_id":"2f434ac3-c2a8-494a-9c58-d03a8b51dab5","action":"add","memo":""}
@@ -432,7 +440,6 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                             "AnnouncedPubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
                             "AnnouncerSign": "3046022100a853ca31f6f6719be213231b6428cecf64de5b1042dd8af1e140499507c85c40022100abd6828478f56da213ec10d361be8709333ff44cd0fa037409af9c0b67e6d0f5",
                             "Result": "ANNOUCNED",
-                            "Action" : "Add", *
                             "TimeStamp": 1634756064250457600
                         }
                     ]
@@ -440,10 +447,7 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                     AnnouncedPubkey ： producer pubkey
                     AnnouncerSign： producer的签名
                     Result ： ANNOUNCED or APPROVED，producer刚Announce完毕的状态是ANNOUNCED
-                    Action : "ADD" or "REMOVE" 
                     TimeStamp : timestamp
-
-                *ACTION 可以有2种状态，“ADD”表示Producer正常，“REMOVE”表示Producer已经announce自己离开改组
 
         6. Owner批准某个Producer
             例：curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}}' https://127.0.0.1:8002/api/v1/group/producer | jq
@@ -472,7 +476,8 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                 trx_id: trx id
                 action : Add or REMOVE
                 memo : memo
-            * 请注意，Owner只可以选择在组内Announce过自己的Producer，并且producer的状态应该为“ADD”，没有Announce过的producer是不可以添加的        
+            * 请注意，Owner只可以选择在组内Announce过自己的Producer，
+              没有Announce过的producer是不可以添加的
         
         7. 查看组内目前的实际批准的producer
             例：curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8005/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/producers | jq
@@ -515,34 +520,14 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
                         "AnnouncedPubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
                         "AnnouncerSign": "3046022100a853ca31f6f6719be213231b6428cecf64de5b1042dd8af1e140499507c85c40022100abd6828478f56da213ec10d361be8709333ff44cd0fa037409af9c0b67e6d0f5",
                         "Result": "APPROVED",
-                        "Action": "ADD"
                         "TimeStamp": 1634756064250457600
                     }
                 ]
             
             可以看出，经过Owner批准，该Producer的状态（result)变为 APPROVED
 
-        9. Owenr删除组内Producer
-           例：curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"remove"}}' https://127.0.0.1:8002/api/v1/group/producer | jq
-
-           *Owner可以随时删除一个Producer, 不管Producer是否Announce离开
-           *在实际环境中，Producer完全可以不Announce Remove而直接离开，Owner需要注意到并及时将该Producer从Producer列表中删除
-
     - 添加组内App Schema
-        添加组内app的schema json
-        例子：curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema
-
-    - 查看组内App Schema
-        curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/13a25432-b791-4d17-a52f-f69266fc3f18/app/schema | jq
-
-        返回值：
-            [
-                {
-                    "Type": "schema_type",
-                    "Rule": "new_schema",
-                    "TimeStamp": 1636047963013888300
-                }
-            ]
+        添加组内app的schema json (only API works, parse and apply schema TBD)
 
     - Trx生命周期，加密和出块过程
 
@@ -571,6 +556,7 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
             一个Trx被push到链上后，根据group的不同共识类型，将被采取不同形式对待：
 
             - 链上共识方式，参见RUM设计文档
+
         
     - Trx状态判断
         

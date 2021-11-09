@@ -62,7 +62,6 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		output[ERROR_INFO] = "Only group owner can add or remove producer"
 		return c.JSON(http.StatusBadRequest, output)
 	} else {
-
 		isAnnounced, err := group.IsProducerAnnounced(params.ProducerPubkey)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
@@ -71,6 +70,17 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 
 		if !isAnnounced {
 			output[ERROR_INFO] = "Producer is not announced"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		producer, err := group.GetAnnouncedProducer(params.ProducerPubkey)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		if producer.Action == quorumpb.ActionType_REMOVE && params.Action == "add" {
+			output[ERROR_INFO] = "Can not add a none active producer"
 			return c.JSON(http.StatusBadRequest, output)
 		}
 

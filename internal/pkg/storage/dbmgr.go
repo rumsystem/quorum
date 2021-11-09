@@ -13,7 +13,6 @@ var dbmgr_log = logging.Logger("dbmgr")
 
 const TRX_PREFIX string = "trx" //trx
 const BLK_PREFIX string = "blk" //block
-const SEQ_PREFIX string = "seq" //sequence
 const GRP_PREFIX string = "grp" //group
 const CNT_PREFIX string = "cnt" //content
 const ATH_PREFIX string = "ath" //auth
@@ -377,6 +376,107 @@ func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 	return dbMgr.GroupInfoDb.Delete([]byte(item.GroupId))
 }
 
+func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
+	nodeprefix := getPrefix(prefix...)
+	var keys []string
+
+	//remove all group POST
+	key := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + item.GroupId
+	keys = append(keys, key)
+
+	//all group producer
+	key = nodeprefix + PRD_PREFIX + "_" + item.GroupId
+	keys = append(keys, key)
+
+	//all group block list
+	key = nodeprefix + ATH_PREFIX + "_" + item.GroupId
+	keys = append(keys, key)
+
+	//all group announced item
+	key = nodeprefix + ANN_PREFIX + "_" + item.GroupId
+	keys = append(keys, key)
+
+	//all group schema item
+	key = nodeprefix + SMA_PREFIX + "_" + item.GroupId
+	keys = append(keys, key)
+
+	//remove all
+	for _, key_prefix := range keys {
+		err := dbMgr.Db.PrefixForeachKey([]byte(key_prefix), []byte(key_prefix), false, func(k []byte, err error) error {
+			if err != nil {
+				return err
+			}
+			dbmgr_log.Debugf("Remove key %s", string(k))
+			return dbMgr.Db.Delete(k)
+		})
+
+		if err != nil {
+
+			return err
+		}
+	}
+
+	keys = nil
+	//remove all cached block
+	key = nodeprefix + BLK_PREFIX + "_"
+	keys = append(keys, key)
+	key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
+	keys = append(keys, key)
+
+	for _, key_prefix := range keys {
+		err := dbMgr.Db.PrefixForeach([]byte(key_prefix), func(k []byte, v []byte, err error) error {
+			if err != nil {
+				return err
+			}
+
+			blockChunk := quorumpb.BlockDbChunk{}
+			perr := proto.Unmarshal(v, &blockChunk)
+			if perr != nil {
+				return perr
+			}
+
+			if blockChunk.BlockItem.GroupId == item.GroupId {
+				dbmgr_log.Debugf("Remove key %s", string(k))
+				return dbMgr.Db.Delete(k)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	//remove all trx
+	key = nodeprefix + TRX_PREFIX + "_"
+	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+
+		trx := quorumpb.Trx{}
+		perr := proto.Unmarshal(v, &trx)
+
+		if perr != nil {
+			return perr
+		}
+
+		if trx.GroupId == item.GroupId {
+			dbmgr_log.Debugf("Remove key %s", string(k))
+			return dbMgr.Db.Delete(k)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //Get group list
 func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	var groupItemList [][]byte
@@ -626,26 +726,8 @@ func (dbMgr *DbMgr) UpdateAnnounce(trx *quorumpb.Trx, prefix ...string) (err err
 	if err := proto.Unmarshal(trx.Data, item); err != nil {
 		return err
 	}
-
 	key := nodeprefix + ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + item.SignPubkey
-
-	if item.Action == quorumpb.ActionType_ADD {
-		return dbMgr.Db.Set([]byte(key), trx.Data)
-	} else if item.Action == quorumpb.ActionType_REMOVE {
-		//check if item exist
-		exist, err := dbMgr.Db.IsExist([]byte(key))
-		if !exist {
-			if err != nil {
-				return err
-			}
-			return errors.New("Announce Not Found")
-		}
-
-		return dbMgr.Db.Delete([]byte(key))
-	} else {
-		err := errors.New("unknow msgType")
-		return err
-	}
+	return dbMgr.Db.Set([]byte(key), trx.Data)
 }
 
 func (dbMgr *DbMgr) GetAnnouncedUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
@@ -690,6 +772,24 @@ func (dbMgr *DbMgr) GetAnnounceProducersByGroup(groupId string, prefix ...string
 	return aList, err
 }
 
+func (dbMgr *DbMgr) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pubkey
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var ann quorumpb.AnnounceItem
+	err = proto.Unmarshal(value, &ann)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ann, err
+}
+
 func (dbMgr *DbMgr) IsProducerAnnounced(groupId, producerSignPubkey string, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + producerSignPubkey
@@ -716,7 +816,7 @@ func (dbMgr *DbMgr) UpdateProducerAnnounceResult(groupId, producerSignPubkey str
 	if result {
 		pAnnounced.Result = quorumpb.ApproveType_APPROVED
 	} else {
-		pAnnounced.Result = quorumpb.ApproveType_ANNOUCNED
+		pAnnounced.Result = quorumpb.ApproveType_ANNOUNCED
 	}
 
 	value, err = proto.Marshal(pAnnounced)
@@ -741,27 +841,28 @@ func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error
 	}
 
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + SMA_PREFIX + "_" + item.GroupId + "_" + item.SchemaJson
+	key := nodeprefix + SMA_PREFIX + "_" + item.GroupId + "_" + item.Type
 
-	if item.Memo == "Add" || item.Memo == "Update" {
+	if item.Action == quorumpb.ActionType_ADD {
 		return dbMgr.Db.Set([]byte(key), trx.Data)
-	} else if item.Memo == "Remove" {
+	} else if item.Action == quorumpb.ActionType_REMOVE {
 		//check if item exist
 		exist, err := dbMgr.Db.IsExist([]byte(key))
 		if !exist {
 			if err != nil {
 				return err
 			}
-			return errors.New("SchemaItem Not Found")
+			return errors.New("Announce Not Found")
 		}
 
 		return dbMgr.Db.Delete([]byte(key))
 	} else {
-		return errors.New("unknow msgType")
+		err := errors.New("unknow msgType")
+		return err
 	}
 }
 
-func (dbMgr *DbMgr) GetSchemaByGroup(groupId string, prefix ...string) ([]*quorumpb.SchemaItem, error) {
+func (dbMgr *DbMgr) GetAllSchemasByGroup(groupId string, prefix ...string) ([]*quorumpb.SchemaItem, error) {
 	var scmList []*quorumpb.SchemaItem
 
 	nodeprefix := getPrefix(prefix...)
@@ -781,6 +882,24 @@ func (dbMgr *DbMgr) GetSchemaByGroup(groupId string, prefix ...string) ([]*quoru
 	})
 
 	return scmList, err
+}
+
+func (dbMgr *DbMgr) GetSchemaByGroup(groupId, schemaType string, prefix ...string) (*quorumpb.SchemaItem, error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + SMA_PREFIX + "_" + groupId + "_" + schemaType
+
+	schema := quorumpb.SchemaItem{}
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	err = proto.Unmarshal(value, &schema)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema, err
 }
 
 func getPrefix(prefix ...string) string {
@@ -811,21 +930,3 @@ func getPrefix(prefix ...string) string {
 		}
 		return nil
 	})*/
-
-/*
-func (dbMgr *DbMgr) IsAnnouncedGroupProducer(groupId, pubKey string) (bool, error) {
-	key := ANN_PREFIX + "_" + groupId + "_Producer" + "_" + pubKey
-
-	//check if group producer (announce) exist
-	err := dbMgr.Db.View(func(txn *badger.Txn) error {
-		_, err := txn.Get([]byte(key))
-		return err
-	})
-
-	if err == nil {
-		return true, nil
-	}
-
-	return false, err
-}
-*/

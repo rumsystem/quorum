@@ -96,64 +96,20 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	group_log.Infof("Group <%s> created", grp.Item.GroupId)
 
 	return nodectx.GetDbMgr().AddGroup(grp.Item)
-
-}
-
-func (grp *Group) DelGrp() error {
-	group_log.Debugf("<%s> DelGrp called", grp.Item.GroupId)
-	if grp.Item.UserSignPubkey != grp.Item.OwnerPubKey {
-		err := errors.New("You can not 'delete' group created by others, use 'leave' instead")
-		return err
-	}
-
-	err := grp.clearGroup()
-	if err != nil {
-		return err
-	}
-
-	group_log.Infof("Group <%s> deleted", grp.Item.GroupId)
-	return nodectx.GetDbMgr().RmGroup(grp.Item)
 }
 
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
-	if grp.Item.UserSignPubkey == grp.Item.OwnerPubKey {
-		err := errors.New("Group creator can not leave the group they created, use 'delete' instead")
-		return err
-	}
 
 	grp.ChainCtx.StopSync()
 	//leave pubsub channel
 	grp.ChainCtx.LeaveChannel()
-	err := grp.clearGroup()
-	if err != nil {
-		return err
-	}
-
 	group_log.Infof("Group <%s> leaved", grp.Item.GroupId)
-
 	return nodectx.GetDbMgr().RmGroup(grp.Item)
 }
 
-func (grp *Group) clearGroup() error {
-
-	//remove all group blocks (both cached and normal)
-
-	//remove all group producers
-
-	//remove all group trx
-
-	//remove all group POST
-
-	//remove all group CONTENT
-
-	//remove all group Auth
-
-	//remove all group Announce
-
-	//remove all group schema
-
-	return nil
+func (grp *Group) ClearGroup() error {
+	return nodectx.GetDbMgr().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StartSync() error {
@@ -213,9 +169,19 @@ func (grp *Group) GetAnnouncedUser() ([]*quorumpb.AnnounceItem, error) {
 	return nodectx.GetDbMgr().GetAnnouncedUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetAnnouncedProducer() ([]*quorumpb.AnnounceItem, error) {
+func (grp *Group) GetSchemas() ([]*quorumpb.SchemaItem, error) {
+	group_log.Debugf("<%s> GetSchema called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetAnnounceProducersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
+	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
