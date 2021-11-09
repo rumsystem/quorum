@@ -22,11 +22,13 @@ import (
 
 type BrowserKeystore struct {
 	store    *quorumStorage.QSIndexDB
+	cache    map[string]interface{}
 	password string
 }
 
 func InitBrowserKeystore(password string) (Keystore, error) {
 	bks := BrowserKeystore{}
+	bks.cache = make(map[string]interface{})
 	db := quorumStorage.QSIndexDB{}
 	db.Init("keystore")
 	bks.store = &db
@@ -57,6 +59,21 @@ func (ks *BrowserKeystore) Unlock(signkeymap map[string]string, password string)
 }
 
 func (ks *BrowserKeystore) Lock() error {
+	for k, _ := range ks.cache {
+		if strings.HasPrefix(k, Sign.Prefix()) { //zero the signkey in the memory
+			signk, ok := ks.cache[k].(*ethkeystore.Key)
+			if ok != true {
+				return fmt.Errorf("The key %s is not a Sign key", k)
+			}
+			zeroSignKey(signk.PrivateKey)
+			ks.cache[k] = nil
+		}
+		if strings.HasPrefix(k, Encrypt.Prefix()) {
+			var zero = &age.X25519Identity{}
+			ks.cache[k] = zero
+		}
+	}
+	ks.cache = make(map[string]interface{})
 	return nil
 }
 
@@ -292,27 +309,19 @@ func (ks *BrowserKeystore) StoreSignKey(k string, key *ethkeystore.Key) error {
 		return err
 	}
 
-	dec, err := ethkeystore.DecryptKey(enc, ks.password)
-	if err != nil {
-		return err
-	}
-	// Make sure we're really operating on the requested key (no swap attacks)
-	if dec.Address != key.Address {
-		return fmt.Errorf("key content mismatch: have account %x, want %x", dec.Address, key.Address)
-	}
-	if err != nil {
-		msg := "An error was encountered when saving and verifying the keystore content. \n" +
-			"This indicates that the keystore is corrupted. \n" +
-			"Please file a ticket at:\n\n" +
-			"https://github.com/ethereum/go-ethereum/issues." +
-			"The error was : %s"
-		return fmt.Errorf(msg, err)
-	}
-
+	// Skip address validate for browser, it's very slow
 	return ks.store.Set([]byte(k), enc)
 }
 
+/* this operation is very slow in browser(ethkeystore.DecryptKey) */
 func (ks *BrowserKeystore) GetUnlockedKey(keyname string) (interface{}, error) {
+	/* check cache first */
+	data, ok := ks.cache[keyname]
+	if ok && data != nil {
+		return data, nil
+	}
+
+	/* not in cache, we find it in the encrypted store */
 	exist, _ := ks.store.IsExist([]byte(keyname))
 	if !exist {
 		return nil, errors.New("Key not exists")
@@ -334,9 +343,14 @@ func (ks *BrowserKeystore) GetUnlockedKey(keyname string) (interface{}, error) {
 		if key.Address != addr {
 			return nil, fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
 		}
+		ks.cache[keyname] = key
 		return key, nil
 	} else if strings.HasPrefix(keyname, Encrypt.Prefix()) {
-		return AgeDecryptIdentityWithPassword(bytes.NewReader(keyBytes), nil, ks.password)
+		key, err := AgeDecryptIdentityWithPassword(bytes.NewReader(keyBytes), nil, ks.password)
+		if err != nil {
+			ks.cache[keyname] = key
+		}
+		return key, err
 	}
 
 	return nil, fmt.Errorf("key %s not exist or not be unlocked", keyname)

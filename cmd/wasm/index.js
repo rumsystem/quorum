@@ -28,14 +28,16 @@ async function run() {
 async function connect() {
   var url = document.getElementById("bootstrap").value
   console.log("connect to ", url)
-  StartQuorum(url)
-  document.getElementById("joinBtn").disabled = false;
+  StartQuorum(url).then(res => {
+    console.log(res)
+    document.getElementById("joinBtn").disabled = false;
+  }).catch(err => console.error(err))
 }
 
 async function join() {
   var seed = document.getElementById("seed").value
   console.log("join to group", seed)
-  JoinGroup(seed)
+  JoinGroup(seed).then(res => console.log(res))
 }
 
 async function reset() {

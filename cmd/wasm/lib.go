@@ -1,7 +1,6 @@
 //go:build js && wasm
 // +build js,wasm
 
-// go:build js && wasm
 package main
 
 import (
@@ -20,60 +19,18 @@ func registerCallbacks() {
 		if qChan == nil {
 			qChan = make(chan struct{}, 0)
 		}
-		// TODO: load some config here?
 		bootAddr := args[0].String()
-		go quorum.StartQuorum(qChan, bootAddr)
-		return js.ValueOf(true).Bool()
-	}))
-
-	js.Global().Set("JoinGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		seed := args[0].String()
-		go func() {
-			res, err := quorumAPI.JoinGroup([]byte(seed))
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			ok, err := quorum.StartQuorum(qChan, bootAddr)
+			ret["ok"] = ok
 			if err != nil {
-				println(err.Error())
+				return ret, err
 			}
-			retBytes, err := json.Marshal(res)
-			if err != nil {
-				println(err.Error())
-			}
-			println(string(retBytes))
-		}()
-
-		return js.ValueOf(true)
-	}))
-
-	js.Global().Set("GetGroups", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		res, err := quorumAPI.GetGroups()
-		if err != nil {
-			println(err.Error())
+			return ret, nil
 		}
-		retBytes, err := json.Marshal(res)
-		if err != nil {
-			println(err.Error())
-		}
-		println(string(retBytes))
-		return js.ValueOf(string(retBytes))
+		return quorum.Promisefy(handler)
 	}))
-
-	js.Global().Set("GetBlockById", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		groupId := args[0].String()
-		blockId := args[1].String()
-		go func() {
-			block, err := quorumAPI.GetBlockById(groupId, blockId)
-			if err != nil {
-				println(err.Error())
-			}
-			retBytes, err := json.Marshal(block)
-			if err != nil {
-				println(err.Error())
-			}
-			println(string(retBytes))
-		}()
-
-		return js.ValueOf(true)
-	}))
-
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if qChan != nil {
 			close(qChan)
@@ -82,56 +39,56 @@ func registerCallbacks() {
 		return js.ValueOf(true).Bool()
 	}))
 
-	js.Global().Set("WSTest", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		if qChan == nil {
-			qChan = make(chan struct{}, 0)
+	js.Global().Set("JoinGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		seed := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.JoinGroup([]byte(seed))
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
 		}
-		WSTest()
-		return js.ValueOf(true).Bool()
+		return quorum.Promisefy(handler)
+	}))
+
+	js.Global().Set("GetGroups", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetGroups()
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return quorum.Promisefy(handler)
+	}))
+
+	js.Global().Set("GetBlockById", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		blockId := args[1].String()
+
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetBlockById(groupId, blockId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return quorum.Promisefy(handler)
 	}))
 
 	js.Global().Set("IndexDBTest", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		go quorum.IndexDBTest()
 		return js.ValueOf(true).Bool()
 	}))
-}
-
-func WSTest() {
-	go func() {
-		openSignal := make(chan struct{})
-		ws := js.Global().Get("WebSocket").New("ws://127.0.0.1:4000")
-		ws.Set("binaryType", "arraybuffer")
-
-		ws.Call("addEventListener", "open", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			println("opened!!")
-			close(openSignal)
-			return nil
-		}))
-
-		messageHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			arrayBuffer := args[0].Get("data")
-			data := arrayBufferToBytes(arrayBuffer)
-			println(data)
-			return nil
-		})
-		ws.Call("addEventListener", "message", messageHandler)
-
-		// this will block, and websocket will never open
-		// do not do this
-		<-openSignal
-		println("openSignal fired")
-
-	}()
-}
-
-func arrayBufferToBytes(buffer js.Value) []byte {
-	view := js.Global().Get("Uint8Array").New(buffer)
-	dataLen := view.Length()
-	data := make([]byte, dataLen)
-	if js.CopyBytesToGo(data, view) != dataLen {
-		panic("expected to copy all bytes")
-	}
-	return data
 }
 
 func main() {
