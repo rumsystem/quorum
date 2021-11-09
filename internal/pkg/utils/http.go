@@ -16,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/rumsystem/quorum/internal/pkg/cli"
 )
 
 // GetTLSCerts get cert file path, return (certPath, keyPath, error)
@@ -54,6 +56,11 @@ func NewTLSCert() (string, string, error) {
 		log.Fatalf("Failed to generate serial number: %v", err)
 	}
 
+	ipAddrs := []net.IP{net.ParseIP("127.0.0.1")}
+	for _, ip := range cli.GetConfig().SSLCertIPAddresses {
+		ipAddrs = append(ipAddrs, ip)
+	}
+
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
@@ -64,8 +71,7 @@ func NewTLSCert() (string, string, error) {
 		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
-		DNSNames:              []string{"localhost"},
+		IPAddresses:           ipAddrs,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}

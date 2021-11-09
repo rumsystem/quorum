@@ -339,6 +339,10 @@ func newHTTPClient() (*http.Client, error) {
 		tlsConfig := &tls.Config{
 			RootCAs: caCertPool,
 		}
+		if config.RumConfig.Quorum.ServerSSLInsecure {
+			tlsConfig.InsecureSkipVerify = true
+		}
+
 		tlsConfig.BuildNameToCertificate()
 		transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
 		// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
