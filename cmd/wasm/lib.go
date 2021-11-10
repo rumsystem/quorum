@@ -85,6 +85,23 @@ func registerCallbacks() {
 		return quorum.Promisefy(handler)
 	}))
 
+	js.Global().Set("GetDecodedBlockById", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		blockId := args[1].String()
+
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetDecodedBlockById(groupId, blockId)
+			if err != nil {
+				return ret, err
+			}
+			resBytes, err := json.Marshal(res)
+			json.Unmarshal(resBytes, &ret)
+			return ret, nil
+		}
+		return quorum.Promisefy(handler)
+	}))
+
 	js.Global().Set("IndexDBTest", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		go quorum.IndexDBTest()
 		return js.ValueOf(true).Bool()
