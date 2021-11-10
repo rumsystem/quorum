@@ -29,6 +29,7 @@ type Chain struct {
 	producerChannelId string
 	trxMgrs           map[string]*TrxMgr
 	ProducerPool      map[string]*quorumpb.ProducerItem
+	UserPool          map[string]*quorumpb.UserItem
 
 	Syncer    *Syncer
 	Consensus Consensus
@@ -163,6 +164,8 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_ANNOUNCE:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_PRODUCER:
+		chain.producerAddTrx(trx)
+	case quorumpb.TrxType_USER:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
 		chain.producerAddTrx(trx)
@@ -320,7 +323,34 @@ func (chain *Chain) UpdProducerList() {
 	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
 		if _, ok := chain.ProducerPool[item.SignPubkey]; ok {
-			err := nodectx.GetDbMgr().UpdateProducerAnnounceResult(chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+			err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+			if err != nil {
+				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
+			}
+		}
+	}
+
+}
+
+func (chain *Chain) UpdUserList() {
+	chain_log.Debugf("<%s> UpdUserList called", chain.groupId)
+	//create and load group user pool
+	chain.UserPool = make(map[string]*quorumpb.UserItem)
+	users, _ := nodectx.GetDbMgr().GetUsers(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range users {
+		chain.UserPool[item.UserPubkey] = item
+		ownerPrefix := "(user)"
+		if item.UserPubkey == chain.group.Item.OwnerPubKey {
+			ownerPrefix = "(owner)"
+		}
+		chain_log.Infof("<%s> Load Users <%s%s>", chain.groupId, item.UserPubkey, ownerPrefix)
+	}
+
+	//update announced User result
+	announcedUsers, _ := nodectx.GetDbMgr().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range announcedUsers {
+		if _, ok := chain.UserPool[item.SignPubkey]; ok {
+			err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
 			if err != nil {
 				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 			}

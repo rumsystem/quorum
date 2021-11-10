@@ -528,6 +528,82 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
            *Owner可以随时删除一个Producer, 不管Producer是否Announce离开
            *在实际环境中，Producer完全可以不Announce Remove而直接离开，Owner需要注意到并及时将该Producer从Producer列表中删除
 
+    - Private Group
+        1. Announce user's encrypt pubkey to a group
+           Example: curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"user", "memo":"invitation code:a423b3"}' https://127.0.0.1:8003/api/v1/group/announce | jq
+
+           API：/v1/group/announce
+           Params：
+               group_id：group id
+               action ： add or remove
+               type   :  user
+               memo   ： memo
+           Result：
+               {
+                 "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+                 "sign_pubkey": "CAISIQJwgOXjCltm1ijvB26u3DDroKqdw1xjYF/w1fBRVdScYQ==",
+                 "encrypt_pubkey": "age1fx3ju9a2f3kpdh76375dect95wmvk084p8wxczeqdw8q2m0jtfks2k8pm9",
+                 "type": "AS_USER",
+                 "action": "ADD",
+                 "sign": "304402206a68e3393f4382c9978a19751496e730de94136a15ab77e30bab2f184bcb5646022041a9898bb5ff563a6efeea29b30bac4bebf0d3464eb326fd84322d98919b3715",
+                 "trx_id": "8a4ae55d-d576-490a-9b9a-80a21c761cef"
+               }
+           Params：
+               group_id : group id
+               sign_pubkey : user's sign pubkey
+               encrypt_pubkey : user's encrypt pubkey
+               type: AS_USER
+               action: ADD
+               sign: user's signature
+               trx_id : trx_id
+        2. view announced users
+           Example ：curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/users
+
+           API: /v1/group/{group_id}/announced/users
+           Params：
+               group_id : group id
+           Result：
+               [
+                   {
+                     "AnnouncedSignPubkey": "CAISIQIWQX/5Nmy2/YoBbdO9jn4tDgn22prqOWMYusBR6axenw==",
+                     "AnnouncedEncryptPubkey": "age1a68u5gafkt3yfsz7pr45j5ku3tyyk4xh9ydp3xwpaphksz54kgns99me0g",
+                     "AnnouncerSign": "30450221009974a5e0f3ea114de8469a806894410d12b5dc5d6d7ee21e49b5482cb062f1740220168185ad84777675ba29773942596f2db0fa5dd810185d2b8113ac0eaf4d7603",
+                     "Result": "ANNOUNCED"
+                   },
+               ]
+           Params：
+               AnnouncedPubkey ： user's pubkey
+               AnnouncerSign： user's signture
+               Result ： ANNOUNCED or APPROVED
+
+        3. Owner approve a users
+            Example：curl -k -X POST -H 'Content-Type: application/json' -d '{"user_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}}' https://127.0.0.1:8002/api/v1/group/user | jq
+
+            API: /v1/group/user
+            参数:
+                "action":"add" // add or remove
+                "user_pubkey": user public key
+                "group_id": group id 
+                "memo" : optional
+            返回值：
+            {    
+                "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+                "user_pubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
+                "owner_pubkey": "CAISIQNVGW0jrrKvo9/40lAyz/uICsyBbk465PmDKdWfcCM4JA==",
+                "sign": "304402202cbca750600cd0aeb3a1076e4aa20e9d1110fe706a553df90d0cd69289628eed022042188b48fa75d0197d9f5ce03499d3b95ffcdfb0ace707cf3eda9f12473db0ea",
+                "trx_id": "6bff5556-4dc9-4cb6-a595-2181aaebdc26",
+                "memo": "",
+                "action": "ADD"
+            }
+            参数：
+                group_id: group id
+                user_pubkey : public key for user just added 
+                owner_pubkey: group owner public key                
+                sign: signature
+                trx_id: trx id
+                action : Add or REMOVE
+                memo : memo
+
     - 添加组内App Schema
         添加组内app的schema json
         例子：curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema

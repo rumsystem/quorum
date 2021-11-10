@@ -164,11 +164,6 @@ func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	return nodectx.GetDbMgr().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetAnnouncedUser() ([]*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAnnouncedUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
 func (grp *Group) GetSchemas() ([]*quorumpb.SchemaItem, error) {
 	group_log.Debugf("<%s> GetSchema called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
@@ -179,9 +174,19 @@ func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 	return nodectx.GetDbMgr().GetAnnounceProducersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
+func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
+	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error) {
+	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
@@ -204,6 +209,11 @@ func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
 	return grp.ChainCtx.Consensus.User().UpdProducer(item)
 }
 
+func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
+	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
+	return grp.ChainCtx.Consensus.User().UpdUser(item)
+}
+
 func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	group_log.Debugf("<%s> UpdSchema called", grp.Item.GroupId)
 	return grp.ChainCtx.Consensus.User().UpdSchema(item)
@@ -212,4 +222,9 @@ func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
 	group_log.Debugf("<%s> IsProducerAnnounced called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().IsProducerAnnounced(grp.Item.GroupId, producerSignPubkey, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {
+	group_log.Debugf("<%s> IsUserAnnounced called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().IsUserAnnounced(grp.Item.GroupId, userSignPubkey, grp.ChainCtx.nodename)
 }

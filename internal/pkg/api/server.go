@@ -39,6 +39,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/network/peers", h.AddPeers)
 		r.POST("/v1/group/deniedlist", h.MgrGrpBlkList)
 		r.POST("/v1/group/producer", h.GroupProducer)
+		r.POST("/v1/group/user", h.GroupUser)
 		r.POST("/v1/group/announce", h.Announce)
 		r.POST("/v1/group/schema", h.Schema)
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)

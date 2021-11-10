@@ -49,6 +49,11 @@ func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, erro
 	return user.cIface.GetProducerTrxMgr().SendRegProducerTrx(item)
 }
 
+func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
+	molauser_log.Debugf("<%s> UpdUser called", user.groupId)
+	return user.cIface.GetProducerTrxMgr().SendRegUserTrx(item)
+}
+
 func (user *MolassesUser) PostToGroup(content proto.Message) (string, error) {
 	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
 	if user.cIface.IsSyncerReady() {
@@ -255,6 +260,11 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			molauser_log.Debugf("<%s> apply PRODUCER trx", user.groupId)
 			nodectx.GetDbMgr().UpdateProducer(trx, nodename)
 			user.cIface.UpdProducerList()
+			user.cIface.CreateConsensus()
+		case quorumpb.TrxType_USER:
+			molauser_log.Debugf("<%s> apply USER trx", user.groupId)
+			nodectx.GetDbMgr().UpdateUser(trx, nodename)
+			user.cIface.UpdUserList()
 			user.cIface.CreateConsensus()
 		case quorumpb.TrxType_ANNOUNCE:
 			molauser_log.Debugf("<%s> apply ANNOUNCE trx", user.groupId)

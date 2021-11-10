@@ -63,7 +63,7 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	if msgType == quorumpb.TrxType_POST && trxMgr.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
 		var err error
-		announcedUser, err := nodectx.GetDbMgr().GetAnnouncedUsersByGroup(trxMgr.groupItem.GroupId)
+		announcedUser, err := nodectx.GetDbMgr().GetAnnounceUsersByGroup(trxMgr.groupItem.GroupId)
 
 		var pubkeys []string
 		for _, item := range announcedUser {
@@ -186,6 +186,21 @@ func (trxMgr *TrxMgr) SendRegProducerTrx(item *quorumpb.ProducerItem) (string, e
 		return "", err
 	}
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_PRODUCER, encodedcontent)
+	err = trxMgr.sendTrx(trx)
+	if err != nil {
+		return "INVALID_TRX", err
+	}
+
+	return trx.TrxId, nil
+}
+
+func (trxMgr *TrxMgr) SendRegUserTrx(item *quorumpb.UserItem) (string, error) {
+	trxmgr_log.Debugf("<%s> SendRegUserTrx called", trxMgr.groupId)
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return "", err
+	}
+	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_USER, encodedcontent)
 	err = trxMgr.sendTrx(trx)
 	if err != nil {
 		return "INVALID_TRX", err

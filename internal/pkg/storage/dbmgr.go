@@ -17,6 +17,7 @@ const GRP_PREFIX string = "grp" //group
 const CNT_PREFIX string = "cnt" //content
 const ATH_PREFIX string = "ath" //auth
 const PRD_PREFIX string = "prd" //producer
+const USR_PREFIX string = "prd" //user
 const ANN_PREFIX string = "ann" //announce
 const SMA_PREFIX string = "sma" //schema
 const CHD_PREFIX string = "chd" //cached
@@ -388,6 +389,10 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 	key = nodeprefix + PRD_PREFIX + "_" + item.GroupId
 	keys = append(keys, key)
 
+	//all group users
+	key = nodeprefix + USR_PREFIX + "_" + item.GroupId
+	keys = append(keys, key)
+
 	//all group block list
 	key = nodeprefix + ATH_PREFIX + "_" + item.GroupId
 	keys = append(keys, key)
@@ -653,6 +658,40 @@ func (dbMgr *DbMgr) UpdateProducer(trx *quorumpb.Trx, prefix ...string) (err err
 	}
 }
 
+func (dbMgr *DbMgr) UpdateUser(trx *quorumpb.Trx, prefix ...string) (err error) {
+
+	nodeprefix := getPrefix(prefix...)
+
+	item := &quorumpb.UserItem{}
+	if err := proto.Unmarshal(trx.Data, item); err != nil {
+		return err
+	}
+
+	key := nodeprefix + USR_PREFIX + "_" + item.GroupId + "_" + item.UserPubkey
+
+	dbmgr_log.Infof("upd user with key %s", key)
+
+	if item.Action == quorumpb.ActionType_ADD {
+		dbmgr_log.Infof("Add user")
+		return dbMgr.Db.Set([]byte(key), trx.Data)
+	} else if item.Action == quorumpb.ActionType_REMOVE {
+		//check if group exist
+		dbmgr_log.Infof("Remove user")
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("User Not Found")
+		}
+
+		return dbMgr.Db.Delete([]byte(key))
+	} else {
+		dbmgr_log.Infof("Remove user")
+		return errors.New("unknow msgType")
+	}
+}
+
 func (dbMgr *DbMgr) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
 
 	nodeprefix := getPrefix(prefix...)
@@ -711,6 +750,26 @@ func (dbMgr *DbMgr) GetProducers(groupId string, prefix ...string) ([]*quorumpb.
 	return pList, err
 }
 
+func (dbMgr *DbMgr) GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserItem, error) {
+	var pList []*quorumpb.UserItem
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + USR_PREFIX + "_" + groupId
+
+	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		item := quorumpb.UserItem{}
+		perr := proto.Unmarshal(v, &item)
+		if perr != nil {
+			return perr
+		}
+		pList = append(pList, &item)
+		return nil
+	})
+	return pList, err
+}
+
 func (dbMgr *DbMgr) IsProducer(groupId, producerPubKey string, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_" + producerPubKey
@@ -730,7 +789,7 @@ func (dbMgr *DbMgr) UpdateAnnounce(trx *quorumpb.Trx, prefix ...string) (err err
 	return dbMgr.Db.Set([]byte(key), trx.Data)
 }
 
-func (dbMgr *DbMgr) GetAnnouncedUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
+func (dbMgr *DbMgr) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
 	var aList []*quorumpb.AnnounceItem
 
 	nodeprefix := getPrefix(prefix...)
@@ -790,15 +849,39 @@ func (dbMgr *DbMgr) GetAnnouncedProducer(groupId string, pubkey string, prefix .
 	return &ann, err
 }
 
+func (dbMgr *DbMgr) GetAnnouncedUser(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pubkey
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var ann quorumpb.AnnounceItem
+	err = proto.Unmarshal(value, &ann)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ann, err
+}
+
 func (dbMgr *DbMgr) IsProducerAnnounced(groupId, producerSignPubkey string, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + producerSignPubkey
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
-func (dbMgr *DbMgr) UpdateProducerAnnounceResult(groupId, producerSignPubkey string, result bool, prefix ...string) error {
+func (dbMgr *DbMgr) IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + producerSignPubkey
+	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userSignPubkey
+	return dbMgr.Db.IsExist([]byte(key))
+}
+
+func (dbMgr *DbMgr) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, producerSignPubkey string, result bool, prefix ...string) error {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + producerSignPubkey
 
 	var pAnnounced *quorumpb.AnnounceItem
 	pAnnounced = &quorumpb.AnnounceItem{}
