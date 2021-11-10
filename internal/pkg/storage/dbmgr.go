@@ -17,7 +17,7 @@ const GRP_PREFIX string = "grp" //group
 const CNT_PREFIX string = "cnt" //content
 const ATH_PREFIX string = "ath" //auth
 const PRD_PREFIX string = "prd" //producer
-const USR_PREFIX string = "prd" //user
+const USR_PREFIX string = "usr" //user
 const ANN_PREFIX string = "ann" //announce
 const SMA_PREFIX string = "sma" //schema
 const CHD_PREFIX string = "chd" //cached
@@ -687,7 +687,7 @@ func (dbMgr *DbMgr) UpdateUser(trx *quorumpb.Trx, prefix ...string) (err error) 
 
 		return dbMgr.Db.Delete([]byte(key))
 	} else {
-		dbmgr_log.Infof("Remove user")
+		dbmgr_log.Infof("unknow msgType")
 		return errors.New("unknow msgType")
 	}
 }
@@ -879,9 +879,9 @@ func (dbMgr *DbMgr) IsUserAnnounced(groupId, userSignPubkey string, prefix ...st
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
-func (dbMgr *DbMgr) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, producerSignPubkey string, result bool, prefix ...string) error {
+func (dbMgr *DbMgr) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + producerSignPubkey
+	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
 
 	var pAnnounced *quorumpb.AnnounceItem
 	pAnnounced = &quorumpb.AnnounceItem{}

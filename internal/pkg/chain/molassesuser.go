@@ -265,7 +265,6 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			molauser_log.Debugf("<%s> apply USER trx", user.groupId)
 			nodectx.GetDbMgr().UpdateUser(trx, nodename)
 			user.cIface.UpdUserList()
-			user.cIface.CreateConsensus()
 		case quorumpb.TrxType_ANNOUNCE:
 			molauser_log.Debugf("<%s> apply ANNOUNCE trx", user.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, nodename)

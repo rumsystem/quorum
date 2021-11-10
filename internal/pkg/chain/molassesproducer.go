@@ -539,7 +539,6 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			molaproducer_log.Debugf("<%s> apply USER trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateUser(trx, producer.nodename)
 			producer.cIface.UpdUserList()
-			producer.cIface.CreateConsensus()
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)

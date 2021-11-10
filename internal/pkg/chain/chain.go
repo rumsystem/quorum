@@ -153,7 +153,7 @@ func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	//chain_log.Debugf("<%s> HandleTrx called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s", trx.TrxId)
+		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
@@ -322,11 +322,10 @@ func (chain *Chain) UpdProducerList() {
 	//update announced producer result
 	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
-		if _, ok := chain.ProducerPool[item.SignPubkey]; ok {
-			err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
-			if err != nil {
-				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
-			}
+		_, ok := chain.ProducerPool[item.SignPubkey]
+		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
 	}
 
@@ -349,11 +348,10 @@ func (chain *Chain) UpdUserList() {
 	//update announced User result
 	announcedUsers, _ := nodectx.GetDbMgr().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedUsers {
-		if _, ok := chain.UserPool[item.SignPubkey]; ok {
-			err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
-			if err != nil {
-				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
-			}
+		_, ok := chain.UserPool[item.SignPubkey]
+		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
 	}
 
