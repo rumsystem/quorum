@@ -27,6 +27,7 @@ type Chain struct {
 	group             *Group
 	userChannelId     string
 	producerChannelId string
+	syncChannelId     string
 	trxMgrs           map[string]*TrxMgr
 	ProducerPool      map[string]*quorumpb.ProducerItem
 
@@ -38,30 +39,39 @@ type Chain struct {
 }
 
 func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn pubsubconn.PubSubConn, userPubsubconn pubsubconn.PubSubConn) {
-	chain.group = group
-	chain.trxMgrs = make(map[string]*TrxMgr)
-	chain.nodename = nodename
 
-	chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
-	producerTrxMgr := &TrxMgr{}
-	producerTrxMgr.Init(chain.group.Item, producerPubsubconn)
-	producerTrxMgr.SetNodeName(nodename)
-	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
+	/*
+		chain.group = group
+		chain.trxMgrs = make(map[string]*TrxMgr)
+		chain.nodename = nodename
 
-	chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
-	chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-	chain.Consensus.User().Init(group.Item, group.ChainCtx.nodename, chain)
+		chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
+		producerTrxMgr := &TrxMgr{}
+		producerTrxMgr.Init(chain.group.Item, producerPubsubconn)
+		producerTrxMgr.SetNodeName(nodename)
+		chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
-	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
-	userTrxMgr := &TrxMgr{}
-	userTrxMgr.Init(chain.group.Item, userPubsubconn)
-	userTrxMgr.SetNodeName(nodename)
-	chain.trxMgrs[chain.userChannelId] = userTrxMgr
+		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
+		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+		chain.Consensus.User().Init(group.Item, group.ChainCtx.nodename, chain)
 
-	chain.Syncer = &Syncer{nodeName: nodename}
-	chain.Syncer.Init(chain.group, producerTrxMgr)
+		chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
+		userTrxMgr := &TrxMgr{}
+		userTrxMgr.Init(chain.group.Item, userPubsubconn)
+		userTrxMgr.SetNodeName(nodename)
+		chain.trxMgrs[chain.userChannelId] = userTrxMgr
 
-	chain.groupId = group.Item.GroupId
+		chain.syncChannelId = SYNC_CHANNEL_PREFIX + group.Item.GroupId + "_" + group.Item.UserSignPubkey
+		syncTrxMgr := &TrxMgr{}
+		syncTrxMgr.Init(chain.group.Item, userPubsubconn)
+		syncTrxMgr.SetNodeName(nodename)
+		chain.trxMgrs[chain.userChannelId] = userTrxMgr
+
+		chain.Syncer = &Syncer{nodeName: nodename}
+		chain.Syncer.Init(chain.group, producerTrxMgr, userTrxMgr, syncTrxMgr)
+
+		chain.groupId = group.Item.GroupId
+	*/
 }
 
 func (chain *Chain) Init(group *Group) error {
@@ -73,12 +83,16 @@ func (chain *Chain) Init(group *Group) error {
 	//create user channel
 	chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
 	chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
+	chain.syncChannelId = SYNC_CHANNEL_PREFIX + group.Item.GroupId + "_" + group.Item.UserSignPubkey
 
 	producerPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	producerPsconn.JoinChannel(chain.producerChannelId, chain)
 
 	userPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	userPsconn.JoinChannel(chain.userChannelId, chain)
+
+	syncPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
+	syncPsconn.JoinChannel(chain.syncChannelId, chain)
 
 	//create user trx manager
 	var userTrxMgr *TrxMgr
@@ -91,8 +105,13 @@ func (chain *Chain) Init(group *Group) error {
 	producerTrxMgr.Init(chain.group.Item, producerPsconn)
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 
+	var syncTrxMgr *TrxMgr
+	syncTrxMgr = &TrxMgr{}
+	syncTrxMgr.Init(chain.group.Item, syncPsconn)
+	chain.trxMgrs[chain.syncChannelId] = syncTrxMgr
+
 	chain.Syncer = &Syncer{nodeName: chain.nodename}
-	chain.Syncer.Init(chain.group, producerTrxMgr)
+	chain.Syncer.Init(chain.group, producerTrxMgr, userTrxMgr, syncTrxMgr)
 
 	chain.groupId = group.Item.GroupId
 
@@ -101,6 +120,7 @@ func (chain *Chain) Init(group *Group) error {
 }
 
 func (chain *Chain) LeaveChannel() error {
+	chain_log.Debugf("<%s> LeaveChannel called", chain.groupId)
 	if userTrxMgr, ok := chain.trxMgrs[chain.userChannelId]; ok {
 		userTrxMgr.LeaveChannel(chain.userChannelId)
 		delete(chain.trxMgrs, chain.userChannelId)
@@ -109,6 +129,10 @@ func (chain *Chain) LeaveChannel() error {
 	if producerTrxMgr, ok := chain.trxMgrs[chain.producerChannelId]; ok {
 		producerTrxMgr.LeaveChannel(chain.producerChannelId)
 		delete(chain.trxMgrs, chain.producerChannelId)
+	}
+	if syncTrxMgr, ok := chain.trxMgrs[chain.syncChannelId]; ok {
+		syncTrxMgr.LeaveChannel(chain.syncChannelId)
+		delete(chain.trxMgrs, chain.syncChannelId)
 	}
 
 	return nil
@@ -128,6 +152,10 @@ func (chain *Chain) StopSync() error {
 		return chain.Syncer.StopSync()
 	}
 	return nil
+}
+
+func (chain *Chain) GetChainCtx() *Chain {
+	return chain
 }
 
 func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
