@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	badger "github.com/dgraph-io/badger/v3"
 	"github.com/google/orderedcode"
 	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -61,7 +60,7 @@ func (appdb *AppDb) GetSeqId(seqkey string) (uint64, error) {
 	return appdb.seq[seqkey].Next()
 }
 
-func (appdb *AppDb) Rebuild(vertag string, chainDb *badger.DB) error {
+func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error {
 
 	return nil
 }

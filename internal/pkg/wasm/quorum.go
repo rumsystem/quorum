@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	quorumCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -113,7 +114,27 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 		return false, err
 	}
 
+	appIndexedDb, err := newAppDb()
+	if err != nil {
+		return false, err
+	}
+	appDb := appdata.NewAppDb()
+	appDb.Db = appIndexedDb
+
+	appsync := appdata.NewAppSyncAgent("", "default", appDb, dbMgr)
+	appsync.Start(10)
+	println("App Syncer Started")
+
 	return true, nil
+}
+
+func newAppDb() (*storage.QSIndexDB, error) {
+	appDb := quorumStorage.QSIndexDB{}
+	err := appDb.Init("app")
+	if err != nil {
+		return nil, err
+	}
+	return &appDb, nil
 }
 
 func newStoreManager() (*storage.DbMgr, error) {
