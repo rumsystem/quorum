@@ -18,8 +18,8 @@ type LeaveGroupParam struct {
 }
 
 type LeaveGroupResult struct {
-	GroupId   string `json:"group_id"`
-	Signature string `json:"signature"`
+	GroupId   string `json:"group_id" validate:"required"`
+	Signature string `json:"signature" validate:"required"`
 }
 
 // @Tags Groups

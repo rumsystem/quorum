@@ -18,10 +18,16 @@ type ClearGroupDataParam struct {
 }
 
 type ClearGroupDataResult struct {
-	GroupId   string `json:"group_id"`
-	Signature string `json:"signature"`
+	GroupId   string `json:"group_id" validate:"required"`
+	Signature string `json:"signature" validate:"required"`
 }
 
+// @Tags Groups
+// @Summary ClearGroupData
+// @Description Clear group data
+// @Produce json
+// @Success 200 {object} ClearGroupDataResult
+// @Router /v1/group/clear [post]
 func (h *Handler) ClearGroupData(c echo.Context) (err error) {
 	output := make(map[string]string)
 	validate := validator.New()
@@ -38,36 +44,37 @@ func (h *Handler) ClearGroupData(c echo.Context) (err error) {
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[params.GroupId]; ok {
-		err := group.ClearGroup()
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		var groupSignPubkey []byte
-		ks := localcrypto.GetKeystore()
-		dirks, ok := ks.(*localcrypto.DirKeyStore)
-		if ok == true {
-			hexkey, err := dirks.GetEncodedPubkey("default", localcrypto.Sign)
-			pubkeybytes, err := hex.DecodeString(hexkey)
-			p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-			groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
-			if err != nil {
-				output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
-				return c.JSON(http.StatusBadRequest, output)
-			}
-		}
-
-		var buffer bytes.Buffer
-		buffer.Write(groupSignPubkey)
-		buffer.Write([]byte(params.GroupId))
-		hash := chain.Hash(buffer.Bytes())
-		signature, err := ks.SignByKeyName(params.GroupId, hash)
-		encodedString := hex.EncodeToString(signature)
-		return c.JSON(http.StatusOK, &LeaveGroupResult{GroupId: params.GroupId, Signature: encodedString})
-	} else {
+	group, ok := groupmgr.Groups[params.GroupId]
+	if !ok {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", params.GroupId)
 		return c.JSON(http.StatusBadRequest, output)
 	}
+
+	if err := group.ClearGroup(); err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	var groupSignPubkey []byte
+	ks := localcrypto.GetKeystore()
+	dirks, ok := ks.(*localcrypto.DirKeyStore)
+	if ok {
+		hexkey, err := dirks.GetEncodedPubkey("default", localcrypto.Sign)
+		pubkeybytes, err := hex.DecodeString(hexkey)
+		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+		groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
+		if err != nil {
+			output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+	}
+
+	var buffer bytes.Buffer
+	buffer.Write(groupSignPubkey)
+	buffer.Write([]byte(params.GroupId))
+	hash := chain.Hash(buffer.Bytes())
+	signature, err := ks.SignByKeyName(params.GroupId, hash)
+	encodedString := hex.EncodeToString(signature)
+
+	return c.JSON(http.StatusOK, &ClearGroupDataResult{GroupId: params.GroupId, Signature: encodedString})
 }

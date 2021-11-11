@@ -2,19 +2,22 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
-	"net/http"
-	"strings"
 )
 
 type NodeInfo struct {
-	Node_publickey string `json:"node_publickey"`
-	Node_status    string `json:"node_status"`
-	Node_version   string `json:"node_version"`
-	User_id        string `json:"user_id"`
+	NodeID        string              `json:"node_id" validate:"required"`
+	NodePublickey string              `json:"node_publickey" validate:"required"`
+	NodeStatus    string              `json:"node_status" validate:"required"`
+	NodeType      string              `json:"node_type" validate:"required"`
+	NodeVersion   string              `json:"node_version" validate:"required"`
+	Peers         map[string][]string `json:"peers" validate:"required"`
 }
 
 func updateNodeStatus(nodenetworkname string) {
@@ -40,17 +43,16 @@ func updateNodeStatus(nodenetworkname string) {
 // @Success 200 {object} NodeInfo
 // @Router /api/v1/node [get]
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
-
-	//nodeopt *options.NodeOptions
 	output := make(map[string]interface{})
+	var info NodeInfo
 
-	output[NODE_VERSION] = nodectx.GetNodeCtx().Version + " - " + h.GitCommit
-	output[NODETYPE] = "peer"
+	info.NodeVersion = nodectx.GetNodeCtx().Version + " - " + h.GitCommit
+	info.NodeType = "peer"
 	updateNodeStatus(h.Node.NetworkName)
 	if nodectx.GetNodeCtx().Status == nodectx.NODE_ONLINE {
-		output[NODE_STATUS] = "NODE_ONLINE"
+		info.NodeStatus = "NODE_ONLINE"
 	} else {
-		output[NODE_STATUS] = "NODE_OFFLINE"
+		info.NodeStatus = "NODE_OFFLINE"
 	}
 
 	pubkeybytes, err := p2pcrypto.MarshalPublicKey(nodectx.GetNodeCtx().PublicKey)
@@ -59,11 +61,11 @@ func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	output[NODE_PUBKEY] = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	output[NODE_ID] = nodectx.GetNodeCtx().PeerId.Pretty()
+	info.NodePublickey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
+	info.NodeID = nodectx.GetNodeCtx().PeerId.Pretty()
 
 	peers := nodectx.GetNodeCtx().PeersProtocol()
-	output[PEERS] = *peers
+	info.Peers = *peers
 
-	return c.JSON(http.StatusOK, output)
+	return c.JSON(http.StatusOK, info)
 }

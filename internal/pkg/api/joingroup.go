@@ -34,16 +34,16 @@ type JoinGroupParam struct {
 }
 
 type JoinGroupResult struct {
-	GroupId           string `json:"group_id"`
-	GroupName         string `json:"group_name"`
-	OwnerPubkey       string `json:"owner_pubkey"`
-	UserPubkey        string `json:"user_pubkey"`
-	UserEncryptPubkey string `json:"user_encryptpubkey"`
-	ConsensusType     string `json:"consensus_type"`
-	EncryptionType    string `json:"encryption_type"`
-	CipherKey         string `json:"cipher_key"`
-	AppKey            string `json:"app_key"`
-	Signature         string `json:"signature"`
+	GroupId           string `json:"group_id" validate:"required"`
+	GroupName         string `json:"group_name" validate:"required"`
+	OwnerPubkey       string `json:"owner_pubkey" validate:"required"`
+	UserPubkey        string `json:"user_pubkey" validate:"required"`
+	UserEncryptPubkey string `json:"user_encryptpubkey" validate:"required"`
+	ConsensusType     string `json:"consensus_type" validate:"required"`
+	EncryptionType    string `json:"encryption_type" validate:"required"`
+	CipherKey         string `json:"cipher_key" validate:"required"`
+	AppKey            string `json:"app_key" validate:"required"`
+	Signature         string `json:"signature" validate:"required"`
 }
 
 // @Tags Groups

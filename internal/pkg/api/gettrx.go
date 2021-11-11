@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	_ "github.com/rumsystem/quorum/internal/pkg/pb" //import for swaggo
-	"github.com/labstack/echo/v4"
 )
-
-type GetTrxParam struct {
-	TrxId string `from:"trx_id" json:"trx_id" validate:"required"`
-}
 
 // @Tags Chain
 // @Summary GetTrx

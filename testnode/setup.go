@@ -3,12 +3,20 @@ package testnode
 import (
 	"context"
 	"fmt"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"go/build"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"time"
+
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+)
+
+var (
+	_, b, _, _ = runtime.Caller(0)
+	basepath   = filepath.Join(filepath.Dir(b), "../")
 )
 
 func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, []string, string, error) {
@@ -30,12 +38,17 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 	}
 	gocmd := gopath + "/bin/go"
 
-	Fork(pidch, "a_temp_password", gocmd, "run", "main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-keystoredir", testkeystoredir, "-datadir", testdatadir)
+	if err := os.Chdir(basepath); err != nil {
+		return "", []string{}, "", fmt.Errorf("os.Chdir(%s) failed: %s", basepath, err)
+	}
+
+	Fork(pidch, "a_temp_password", gocmd, "run", "cmd/main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-keystoredir", testkeystoredir, "-datadir", testdatadir)
 
 	// wait bootstrap node
+	bootstrapBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport)
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
-	log.Printf("request: %s", fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport))
-	bootstrappeerid, result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport))
+	log.Printf("request: %s", bootstrapBaseUrl)
+	bootstrappeerid, result := CheckNodeRunning(checkctx, bootstrapBaseUrl)
 	if result == false {
 		return "", []string{}, "", fmt.Errorf("bootstrap node start failed")
 	}
@@ -53,7 +66,7 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 
 		testpeerkeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", peername)
 
-		Fork(pidch, "a_temp_password", gocmd, "run", "main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir)
+		Fork(pidch, "a_temp_password", gocmd, "run", "cmd/main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir)
 
 		checkctx, _ = context.WithTimeout(ctx, 60*time.Second)
 		_, result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", peerapiport))
@@ -67,7 +80,7 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 		i++
 	}
 
-	return bootstrapaddr, peers, testtempdir, nil
+	return bootstrapBaseUrl, peers, testtempdir, nil
 }
 
 func newSignKeyfromKeystore(keyname string, ks *localcrypto.DirKeyStore) {

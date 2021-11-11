@@ -29,16 +29,16 @@ type CreateGroupParam struct {
 }
 
 type CreateGroupResult struct {
-	GenesisBlock       *quorumpb.Block `json:"genesis_block"`
-	GroupId            string          `json:"group_id"`
-	GroupName          string          `json:"group_name"`
-	OwnerPubkey        string          `json:"owner_pubkey"`
-	OwnerEncryptPubkey string          `json:"owner_encryptpubkey"`
-	ConsensusType      string          `json:"consensus_type"`
-	EncryptionType     string          `json:"encryption_type"`
-	CipherKey          string          `json:"cipher_key"`
-	AppKey             string          `json:"app_key"`
-	Signature          string          `json:"signature"`
+	GenesisBlock       *quorumpb.Block `json:"genesis_block" validate:"required"`
+	GroupId            string          `json:"group_id" validate:"required"`
+	GroupName          string          `json:"group_name" validate:"required,max=20,min=5"`
+	OwnerPubkey        string          `json:"owner_pubkey" validate:"required"`
+	OwnerEncryptPubkey string          `json:"owner_encryptpubkey" validate:"required"`
+	ConsensusType      string          `json:"consensus_type" validate:"required,oneof=pos poa"`
+	EncryptionType     string          `json:"encryption_type" validate:"required,oneof=public private"`
+	CipherKey          string          `json:"cipher_key" validate:"required"`
+	AppKey             string          `json:"app_key" validate:"required"`
+	Signature          string          `json:"signature" validate:"required"`
 }
 
 // @Tags Groups

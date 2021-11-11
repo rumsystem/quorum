@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"net/http"
 
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type DeniedUserListItem struct {
-	GroupId          string
-	PeerId           string
-	GroupOwnerPubkey string
-	GroupOwnerSign   string
-	TimeStamp        int64
-	Action           string
-	Memo             string
+	GroupId          string `validate:"required"`
+	PeerId           string `validate:"required"`
+	GroupOwnerPubkey string `validate:"required"`
+	GroupOwnerSign   string `validate:"required"`
+	TimeStamp        int64  `validate:"required"`
+	Action           string `validate:"required"`
+	Memo             string `validate:"required"`
 }
 
 // @Tags Management
@@ -24,7 +24,7 @@ type DeniedUserListItem struct {
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Success 200 {array} DeniedUserListItem
-// @Router /api/v1/trx/{group_id}/deniedlist [get]
+// @Router /api/v1/group/{group_id}/deniedlist [get]
 func (h *Handler) GetDeniedUserList(c echo.Context) (err error) {
 	output := make(map[string]string)
 	var result []*DeniedUserListItem
