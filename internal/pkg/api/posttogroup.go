@@ -25,7 +25,7 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 		if inputobj.Type == Add {
 			if inputobj.Object != nil && inputobj.Target != nil {
 				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Object.Type == Note && inputobj.Object.Content != "" {
+					if inputobj.Object.Type == Note && (inputobj.Object.Content != "" || len(inputobj.Object.Image) > 0) {
 						return nil
 					}
 					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unsupported object type: %s", inputobj.Object.Type))
