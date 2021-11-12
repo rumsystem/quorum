@@ -136,10 +136,11 @@ message ProducerItem {
 message UserItem {
    string     GroupId             = 1;
    string     UserPubkey          = 2;
-   string     GroupOwnerPubkey    = 3;   
-   string     GroupOwnerSign      = 4;
-   int64      TimeStamp           = 5;    
-   ActionType Action              = 6;
+   string     EncryptPubkey       = 3;
+   string     GroupOwnerPubkey    = 4;
+   string     GroupOwnerSign      = 5;
+   int64      TimeStamp           = 6;
+   ActionType Action              = 7;
    string     Memo                = 8;
 }
 

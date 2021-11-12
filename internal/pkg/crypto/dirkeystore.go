@@ -423,28 +423,26 @@ func (ks *DirKeyStore) VerifySignByKeyName(keyname string, data []byte, sig []by
 }
 
 func (ks *DirKeyStore) GetEncodedPubkey(keyname string, keytype KeyType) (string, error) {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-
-	if key, ok := ks.unlocked[keytype.NameString(keyname)]; ok {
-		switch keytype {
-		case Sign:
-			signk, ok := key.(*ethkeystore.Key)
-			if ok != true {
-				return "", fmt.Errorf("The key %s is not a Sign key", keyname)
-			}
-			return hex.EncodeToString(ethcrypto.FromECDSAPub(&signk.PrivateKey.PublicKey)), nil
-		case Encrypt:
-			encryptk, ok := key.(*age.X25519Identity)
-			if ok != true {
-				return "", fmt.Errorf("The key %s is not a encrypt key", keyname)
-			}
-			return encryptk.Recipient().String(), nil
-		}
-		return "", fmt.Errorf("unknown keyType of %s", keyname)
-	} else {
-		return "", fmt.Errorf("key not exist :%s", keyname)
+	key, err := ks.GetKeyFromUnlocked(keytype.NameString(keyname))
+	if err != nil {
+		return "", err
 	}
+
+	switch keytype {
+	case Sign:
+		signk, ok := key.(*ethkeystore.Key)
+		if ok != true {
+			return "", fmt.Errorf("The key %s is not a Sign key", keyname)
+		}
+		return hex.EncodeToString(ethcrypto.FromECDSAPub(&signk.PrivateKey.PublicKey)), nil
+	case Encrypt:
+		encryptk, ok := key.(*age.X25519Identity)
+		if ok != true {
+			return "", fmt.Errorf("The key %s is not a encrypt key", keyname)
+		}
+		return encryptk.Recipient().String(), nil
+	}
+	return "", fmt.Errorf("unknown keyType of %s", keyname)
 }
 
 func (ks *DirKeyStore) EncryptTo(to []string, data []byte) ([]byte, error) {
@@ -476,5 +474,8 @@ func (ks *DirKeyStore) Decrypt(keyname string, data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("The key %s is not a encrypt key", keyname)
 	}
 	r, err := age.Decrypt(bytes.NewReader(data), encryptk)
-	return ioutil.ReadAll(r)
+	if err == nil {
+		return ioutil.ReadAll(r)
+	}
+	return nil, err
 }

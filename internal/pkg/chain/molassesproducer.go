@@ -500,7 +500,7 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			//owner can actually decrypt POST
 			//for other producer, they can not decrpyt POST
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(producer.grpItem.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(producer.grpItem.GroupId, trx.Data)
 			if err == nil {
 				//set trx.Data to decrypted []byte
 				trx.Data = decryptData

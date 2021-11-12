@@ -33,6 +33,7 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
+
 		usrList, err := group.GetAnnouncedUsers()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

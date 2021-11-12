@@ -15,13 +15,14 @@ import (
 )
 
 type GrpUserResult struct {
-	GroupId     string `json:"group_id"`
-	UserPubkey  string `json:"user_pubkey"`
-	OwnerPubkey string `json:"owner_pubkey"`
-	Sign        string `json:"sign"`
-	TrxId       string `json:"trx_id"`
-	Memo        string `json:"memo"`
-	Action      string `json:"action"`
+	GroupId       string `json:"group_id"`
+	UserPubkey    string `json:"user_pubkey"`
+	EncryptPubkey string `json:"encrypt_pubkey"`
+	OwnerPubkey   string `json:"owner_pubkey"`
+	Sign          string `json:"sign"`
+	TrxId         string `json:"trx_id"`
+	Memo          string `json:"memo"`
+	Action        string `json:"action"`
 }
 
 type GrpUserParam struct {
@@ -97,11 +98,13 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		item := &quorumpb.UserItem{}
 		item.GroupId = params.GroupId
 		item.UserPubkey = params.UserPubkey
+		item.EncryptPubkey = user.EncryptPubkey
 		item.GroupOwnerPubkey = group.Item.OwnerPubKey
 
 		var buffer bytes.Buffer
 		buffer.Write([]byte(item.GroupId))
 		buffer.Write([]byte(item.UserPubkey))
+		buffer.Write([]byte(item.EncryptPubkey))
 		buffer.Write([]byte(item.GroupOwnerPubkey))
 		hash := chain.Hash(buffer.Bytes())
 
@@ -133,7 +136,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		}
 
 		var blockGrpUserResult *GrpUserResult
-		blockGrpUserResult = &GrpUserResult{GroupId: item.GroupId, UserPubkey: item.UserPubkey, OwnerPubkey: item.GroupOwnerPubkey, Sign: item.GroupOwnerSign, Action: item.Action.String(), Memo: item.Memo, TrxId: trxId}
+		blockGrpUserResult = &GrpUserResult{GroupId: item.GroupId, UserPubkey: item.UserPubkey, EncryptPubkey: item.EncryptPubkey, OwnerPubkey: item.GroupOwnerPubkey, Sign: item.GroupOwnerSign, Action: item.Action.String(), Memo: item.Memo, TrxId: trxId}
 
 		return c.JSON(http.StatusOK, blockGrpUserResult)
 	}

@@ -692,6 +692,11 @@ func (dbMgr *DbMgr) UpdateUser(trx *quorumpb.Trx, prefix ...string) (err error) 
 	}
 }
 
+func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (pubkeylist []string, err error) {
+	keys := []string{}
+	return keys, nil
+}
+
 func (dbMgr *DbMgr) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
 
 	nodeprefix := getPrefix(prefix...)

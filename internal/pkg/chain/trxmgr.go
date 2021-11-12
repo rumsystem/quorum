@@ -49,7 +49,7 @@ func (trxMgr *TrxMgr) LeaveChannel(cId string) {
 	trxMgr.psconn.LeaveChannel(cId)
 }
 
-func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte) (*quorumpb.Trx, []byte, error) {
+func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx
 
 	trxId := guuid.New()
@@ -62,21 +62,21 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 
 	if msgType == quorumpb.TrxType_POST && trxMgr.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
-		var err error
-		announcedUser, err := nodectx.GetDbMgr().GetAnnounceUsersByGroup(trxMgr.groupItem.GroupId)
-
-		var pubkeys []string
-		for _, item := range announcedUser {
-			if item.Result == quorumpb.ApproveType_APPROVED {
-				pubkeys = append(pubkeys, item.EncryptPubkey)
+		if len(encryptto) == 1 {
+			var err error
+			ks := localcrypto.GetKeystore()
+			if len(encryptto[0]) == 0 {
+				return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %g", trxMgr.groupItem.GroupId)
 			}
+			encryptdData, err = ks.EncryptTo(encryptto[0], data)
+			if err != nil {
+				return &trx, []byte(""), err
+			}
+
+		} else {
+			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %g", trxMgr.groupItem.GroupId)
 		}
 
-		ks := localcrypto.GetKeystore()
-		encryptdData, err = ks.EncryptTo(pubkeys, data)
-		if err != nil {
-			return &trx, []byte(""), err
-		}
 	} else {
 		var err error
 		ciperKey, err := hex.DecodeString(trxMgr.groupItem.CipherKey)
@@ -106,9 +106,9 @@ func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte
 	return &trx, hashed, nil
 }
 
-func (trxMgr *TrxMgr) CreateTrx(msgType quorumpb.TrxType, data []byte) (*quorumpb.Trx, error) {
+func (trxMgr *TrxMgr) CreateTrx(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
 
-	trx, hashed, err := trxMgr.CreateTrxWithoutSign(msgType, data)
+	trx, hashed, err := trxMgr.CreateTrxWithoutSign(msgType, data, encryptto...)
 	if err != nil {
 		return trx, err
 	}
@@ -331,9 +331,9 @@ func (trxMgr *TrxMgr) SendBlockProduced(blk *quorumpb.Block) error {
 	return trxMgr.sendTrx(trx)
 }
 
-func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte) (string, error) {
+func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte, encryptto ...[]string) (string, error) {
 	trxmgr_log.Debugf("<%s> PostBytes called", trxMgr.groupId)
-	trx, err := trxMgr.CreateTrx(trxtype, encodedcontent)
+	trx, err := trxMgr.CreateTrx(trxtype, encodedcontent, encryptto...)
 	err = trxMgr.sendTrx(trx)
 	if err != nil {
 		return "INVALID_TRX", err
@@ -342,7 +342,7 @@ func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte)
 	return trx.TrxId, nil
 }
 
-func (trxMgr *TrxMgr) PostAny(content proto.Message) (string, error) {
+func (trxMgr *TrxMgr) PostAny(content proto.Message, encryptto ...[]string) (string, error) {
 	trxmgr_log.Debugf("<%s> PostAny called", trxMgr.groupId)
 
 	encodedcontent, err := quorumpb.ContentToBytes(content)
@@ -356,7 +356,7 @@ func (trxMgr *TrxMgr) PostAny(content proto.Message) (string, error) {
 		return "", err
 	}
 
-	return trxMgr.PostBytes(quorumpb.TrxType_POST, encodedcontent)
+	return trxMgr.PostBytes(quorumpb.TrxType_POST, encodedcontent, encryptto...)
 }
 
 func (trxMgr *TrxMgr) ResendTrx(trx *quorumpb.Trx) error {

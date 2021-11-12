@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	//"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -201,7 +202,16 @@ func (grp *Group) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
 
 func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
+	//if private group?
+	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
+		if err != nil {
+			return "", err
+		}
+		return grp.ChainCtx.Consensus.User().PostToGroup(content, keys)
+	}
 	return grp.ChainCtx.Consensus.User().PostToGroup(content)
+
 }
 
 func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {

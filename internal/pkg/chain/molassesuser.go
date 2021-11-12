@@ -54,12 +54,12 @@ func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
 	return user.cIface.GetProducerTrxMgr().SendRegUserTrx(item)
 }
 
-func (user *MolassesUser) PostToGroup(content proto.Message) (string, error) {
+func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]string) (string, error) {
 	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
 	if user.cIface.IsSyncerReady() {
 		return "", errors.New("can not post to group, group is in syncing or sync failed")
 	}
-	return user.cIface.GetProducerTrxMgr().PostAny(content)
+	return user.cIface.GetProducerTrxMgr().PostAny(content, encryptto...)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
@@ -224,13 +224,15 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		if trx.Type == quorumpb.TrxType_POST && user.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(user.grpItem.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(user.grpItem.GroupId, trx.Data)
 			if err != nil {
-				return err
+				trx.Data = []byte("")
+				//return err
+			} else {
+				//set trx.Data to decrypted []byte
+				trx.Data = decryptData
 			}
 
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
 		} else {
 			//decode trx data
 			ciperKey, err := hex.DecodeString(user.grpItem.CipherKey)
