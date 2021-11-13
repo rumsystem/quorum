@@ -26,28 +26,24 @@ const (
 type Syncer struct {
 	nodeName         string
 	group            *Group
-	producerTrxMgr   *TrxMgr
-	userTrxMgr       *TrxMgr
-	SyncTrxMgr       *TrxMgr
 	AskNextTimer     *time.Timer
 	AskNextTimerDone chan bool
 	Status           int8
 	retryCount       int8
 	statusBeforeFail int8
 	responses        map[string]*quorumpb.ReqBlockResp
+	cIface           ChainMolassesIface
 	groupId          string
 }
 
-func (syncer *Syncer) Init(grp *Group, ptrxMgr, utrxMgr, strxMgr *TrxMgr) {
+func (syncer *Syncer) Init(grp *Group, iface ChainMolassesIface) {
 	syncer_log.Debug("Init called")
 	syncer.Status = IDLE
 	syncer.group = grp
-	syncer.producerTrxMgr = ptrxMgr
-	syncer.userTrxMgr = utrxMgr
-	syncer.SyncTrxMgr = strxMgr
 	syncer.retryCount = 0
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	syncer.groupId = grp.Item.GroupId
+	syncer.cIface = iface
 	syncer_log.Infof("<%s> syncer initialed", syncer.groupId)
 }
 
@@ -189,7 +185,7 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block forward msg out
-	syncer.producerTrxMgr.SendReqBlockForward(block)
+	syncer.cIface.GetProducerTrxMgr().SendReqBlockForward(block)
 }
 
 func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) {
@@ -198,7 +194,7 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block backward msg out
-	syncer.producerTrxMgr.SendReqBlockBackward(block)
+	syncer.cIface.GetProducerTrxMgr().SendReqBlockBackward(block)
 }
 
 //wait block coming
