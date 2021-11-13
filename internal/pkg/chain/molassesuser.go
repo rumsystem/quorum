@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -67,7 +68,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if isSaved {
-		return errors.New("Block already saved, ignore")
+		return fmt.Errorf("Block %s already saved, ignore", block.BlockId)
 	}
 
 	//check if block is in cache

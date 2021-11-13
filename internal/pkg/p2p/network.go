@@ -272,23 +272,25 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 		case <-ticker.C:
 			//TODO: check peers status and max connect peers
 			connectedCount := 0
-			peers, err := node.FindPeers(ctx, config.RendezvousString)
-			if err != nil {
-				return err
-			}
-			for _, peer := range peers {
-				if peer.ID == node.Host.ID() {
-					continue
-				}
-				pctx, cancel := context.WithTimeout(ctx, time.Second*10)
-				defer cancel()
-				err := node.Host.Connect(pctx, peer)
+			if notify == true {
+				peers, err := node.FindPeers(ctx, config.RendezvousString)
 				if err != nil {
-					networklog.Warningf("connect peer failure: %s \n", peer)
-					cancel()
-					continue
-				} else {
-					connectedCount++
+					return err
+				}
+				for _, peer := range peers {
+					if peer.ID == node.Host.ID() {
+						continue
+					}
+					pctx, cancel := context.WithTimeout(ctx, time.Second*10)
+					defer cancel()
+					err := node.Host.Connect(pctx, peer)
+					if err != nil {
+						networklog.Warningf("connect peer failure: %s \n", peer)
+						cancel()
+						continue
+					} else {
+						connectedCount++
+					}
 				}
 			}
 			if connectedCount >= maxpeers {
