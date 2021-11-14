@@ -250,6 +250,7 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	if chain.Consensus.Producer() == nil {
+		chain_log.Debugf("????????")
 		return nil
 	}
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
@@ -259,6 +260,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
 	if chain.Consensus.Producer() == nil {
+		chain_log.Debugf("!!!!!!!!!!")
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
@@ -361,10 +363,11 @@ func (chain *Chain) CreateConsensus() {
 		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
 		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 		chain.createProducerTrxMgr()
+	} else {
+		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
+		chain.Consensus = NewMolasses(nil, &MolassesUser{})
 	}
 
-	chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
-	chain.Consensus = NewMolasses(nil, &MolassesUser{})
 	chain.Consensus.User().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 
 	chain.createUserTrxMgr()
