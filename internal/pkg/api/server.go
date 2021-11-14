@@ -59,7 +59,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		a.POST("/v1/token/apply", apph.ApplyToken)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
 	} else {
-		r.GET("/v1/node", h.GetBootStropNodeInfo)
+		r.GET("/v1/node", h.GetBootstrapNodeInfo)
 	}
 
 	certPath, keyPath, err := utils.GetTLSCerts()

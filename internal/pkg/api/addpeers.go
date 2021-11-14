@@ -2,12 +2,15 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/peer"
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"net/http"
 )
+
+type AddPeerParam []string
 
 type AddPeerResult struct {
 	SuccCount int `json:"succ_count"`
@@ -15,7 +18,7 @@ type AddPeerResult struct {
 }
 
 // @Tags Node
-// @Summary AddPeer
+// @Summary AddPeers
 // @Description Connect to peers
 // @Accept json
 // @Produce json
@@ -23,8 +26,8 @@ type AddPeerResult struct {
 // @Success 200 {object} AddPeerResult
 // @Router /api/v1/network/peers [post]
 func (h *Handler) AddPeers(c echo.Context) (err error) {
+	var input AddPeerParam
 	output := make(map[string]string)
-	input := []string{}
 	peerserr := make(map[string]string)
 
 	if err = c.Bind(&input); err != nil {

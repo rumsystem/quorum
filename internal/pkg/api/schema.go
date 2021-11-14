@@ -26,15 +26,23 @@ type SchemaParam struct {
 }
 
 type SchemaResult struct {
-	GroupId     string `json:"group_id"`
-	OwnerPubkey string `json:"owner_pubkey"`
-	SchemaType  string `json:"schema_type"`
-	SchemaRule  string `json:"schema_rule"`
-	Action      string `json:"action"`
-	Sign        string `json:"sign"`
-	TrxId       string `json:"trx_id"`
+	GroupId     string `json:"group_id" validate:"required"`
+	OwnerPubkey string `json:"owner_pubkey" validate:"required"`
+	SchemaType  string `json:"schema_type" validate:"required"`
+	SchemaRule  string `json:"schema_rule" validate:"required"`
+	Action      string `json:"action" validate:"required"`
+	Sign        string `json:"sign" validate:"required"`
+	TrxId       string `json:"trx_id" validate:"required"`
 }
 
+// @Tags Group
+// @Summary Schema
+// @Description Add schema to group
+// @Accept json
+// @Produce json
+// @Param data body SchemaParam true "schema param"
+// @Success 200 {object} SchemaResult
+// @Router /api/v1/group/schema [post]
 func (h *Handler) Schema(c echo.Context) (err error) {
 
 	output := make(map[string]string)

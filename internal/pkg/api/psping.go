@@ -2,10 +2,11 @@ package api
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
-	"net/http"
 )
 
 type PSPingParam struct {
@@ -49,9 +50,8 @@ func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
-		} else {
-
-			return c.JSON(http.StatusOK, &PingResult{result})
 		}
+
+		return c.JSON(http.StatusOK, &PingResult{result})
 	}
 }

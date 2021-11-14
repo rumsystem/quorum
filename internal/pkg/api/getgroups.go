@@ -9,18 +9,18 @@ import (
 )
 
 type groupInfo struct {
-	GroupId        string `json:"group_id"`
-	GroupName      string `json:"group_name"`
-	OwnerPubKey    string `json:"owner_pubkey"`
-	UserPubkey     string `json:"user_pubkey"`
-	ConsensusType  string `json:"consensus_type"`
-	EncryptionType string `json:"encryption_type"`
-	CipherKey      string `json:"cipher_key"`
-	AppKey         string `json:"app_key"`
-	LastUpdated    int64  `json:"last_updated"`
-	HighestHeight  int64  `json:"highest_height"`
-	HighestBlockId string `json:"highest_block_id"`
-	GroupStatus    string `json:"group_status"`
+	GroupId        string `json:"group_id" validate:"required,uuid4"`
+	GroupName      string `json:"group_name" validate:"required"`
+	OwnerPubKey    string `json:"owner_pubkey" validate:"required"`
+	UserPubkey     string `json:"user_pubkey" validate:"required"`
+	ConsensusType  string `json:"consensus_type" validate:"required"`
+	EncryptionType string `json:"encryption_type" validate:"required"`
+	CipherKey      string `json:"cipher_key" validate:"required"`
+	AppKey         string `json:"app_key" validate:"required"`
+	LastUpdated    int64  `json:"last_updated" validate:"required"`
+	HighestHeight  int64  `json:"highest_height" validate:"required"`
+	HighestBlockId string `json:"highest_block_id" validate:"required,uuid4"`
+	GroupStatus    string `json:"group_status" validate:"required"`
 }
 
 type GroupInfoList struct {

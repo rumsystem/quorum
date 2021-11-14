@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/labstack/echo/v4"
 )
 
 type CustomValidatorProfile struct {
@@ -24,19 +24,23 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 	switch i.(type) {
 	case *quorumpb.Activity:
 		inputobj := i.(*quorumpb.Activity)
-		if inputobj.Type == Update {
-			if inputobj.Person != nil && inputobj.Target != nil {
-				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Person.Name != "" || inputobj.Person.Image != nil || inputobj.Person.Wallet != nil {
-						return nil
-					}
-					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Person must have name or image fields"))
-				}
+		if inputobj.Type != Update {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unknown type of Actitity: %s, expect: %s", inputobj.Type, Update))
+		}
+
+		if inputobj.Person == nil || inputobj.Target == nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Person or Target is nil"))
+		}
+
+		if inputobj.Target.Type == Group {
+			if inputobj.Target.Id == "" {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Target Group must not be nil"))
 			}
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Object and Target Object must not be nil"))
+
+			if inputobj.Person.Name == "" && inputobj.Person.Image == nil && inputobj.Person.Wallet == nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Person must have name or image fields"))
+			}
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unknown type of Actitity: %s", inputobj.Type))
 	default:
 		if err := cv.Validator.Struct(i); err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -45,6 +49,18 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 	return nil
 }
 
+type UpdateProfileResult struct {
+	TrxID string `json:"trx_id" validate:"required"`
+}
+
+// @Tags User
+// @Summary UpdateProfile
+// @Description Update user profile
+// @Accept json
+// @Produce json
+// @Param data body quorumpb.Activity true "Activity object"
+// @Success 200 {object} SchemaResult
+// @Router /api/v1/group/profile [post]
 func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 
 	output := make(map[string]string)
@@ -80,8 +96,8 @@ func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		output[TRX_ID] = trxId
-		return c.JSON(http.StatusOK, output)
+		result := &UpdateProfileResult{TrxID: trxId}
+		return c.JSON(http.StatusOK, result)
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", paramspb.Target.Id)
 		return c.JSON(http.StatusBadRequest, output)
