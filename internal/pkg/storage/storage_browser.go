@@ -7,6 +7,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -15,19 +16,51 @@ import (
 	"github.com/hack-pad/go-indexeddb/idb"
 )
 
+var DefaultDBName = "quorum"
+var DefaultSequenceStoreName = "sequence"
+
+var quorumSequenceStore *QSIndexDB = nil
+
 type IndexDBSequence struct {
 	id uint64
+	k  []byte
 }
 
-func NewIndexDBSequence() *IndexDBSequence {
-	return &IndexDBSequence{0}
+func InitSeqenceDB() {
+	if quorumSequenceStore == nil {
+		quorumSequenceStore = &QSIndexDB{}
+		_ = quorumSequenceStore.Init(DefaultSequenceStoreName)
+	}
+}
+
+func NewIndexDBSequence(seqK []byte) *IndexDBSequence {
+	v, _ := quorumSequenceStore.Get(seqK)
+	if v == nil {
+		s := make([]byte, 8)
+		binary.LittleEndian.PutUint64(s, uint64(0))
+		quorumSequenceStore.Set(seqK, s)
+		return &IndexDBSequence{0, seqK}
+	}
+
+	// read as uint64
+	s := binary.LittleEndian.Uint64(v)
+	return &IndexDBSequence{s, seqK}
 }
 
 func (seq *IndexDBSequence) Next() (uint64, error) {
-	return atomic.AddUint64(&seq.id, 1), nil
+	n := atomic.AddUint64(&seq.id, 1)
+
+	go func() {
+		s := make([]byte, 8)
+		binary.LittleEndian.PutUint64(s, n)
+		quorumSequenceStore.Set(seq.k, s)
+	}()
+
+	return n, nil
 }
 
 func (seq *IndexDBSequence) Release() error {
+	// should store the index seq back, but since user could close the tab, we should sync entry every time
 	return nil
 }
 
@@ -36,17 +69,6 @@ type QSIndexDB struct {
 	name string
 	ctx  context.Context
 }
-
-type QSIndexDBEntry struct {
-	Key   []byte `json:"key"`
-	Value []byte `json:"value"`
-}
-
-func NewIndexDBEntry(key []byte, value []byte) QSIndexDBEntry {
-	return QSIndexDBEntry{key, value}
-}
-
-var DefaultDBName = "quorum"
 
 func (s *QSIndexDB) Init(store string) error {
 	ctx := context.Background()
@@ -192,6 +214,7 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 				return err
 			}
 			k := ArrayBufferToBytes(key)
+			println("reverse, key: ", string(k))
 			if bytes.HasPrefix(k, valid) {
 				ferr := fn(k, nil)
 				if ferr != nil {
@@ -251,13 +274,27 @@ func (s *QSIndexDB) BatchWrite(keys [][]byte, values [][]byte) error {
 	store, _ := txn.ObjectStore(s.name)
 	for i, k := range keys {
 		v := values[i]
-		store.AddKey(BytesToArrayBuffer(k), BytesToArrayBuffer(v))
+
+		k := BytesToArrayBuffer(k)
+		req, err := store.CountKey(k)
+		if err != nil {
+			return err
+		}
+		count, err := req.Await(s.ctx)
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			store.AddKey(k, BytesToArrayBuffer(v))
+		} else {
+			store.PutKey(k, BytesToArrayBuffer(v))
+		}
 	}
 	return txn.Await(s.ctx)
 }
 
-func (s *QSIndexDB) GetSequence([]byte, uint64) (Sequence, error) {
-	return NewIndexDBSequence(), nil
+func (s *QSIndexDB) GetSequence(seqK []byte, _ uint64) (Sequence, error) {
+	return NewIndexDBSequence(seqK), nil
 }
 
 func ArrayBufferToBytes(buffer js.Value) []byte {

@@ -106,6 +106,8 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 
 	quorumContext.Init(qchan, config, node, appDb, dbMgr, ctx, cancel)
 
+	storage.InitSeqenceDB()
+
 	/* Bootstrap will connect to all bootstrap nodes in config.
 	since we can not listen in browser, there is no need to anounce */
 	err = Bootstrap()
