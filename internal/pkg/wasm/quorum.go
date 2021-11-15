@@ -23,6 +23,10 @@ const DEFAUT_KEY_NAME string = "default"
 /* global, JS should interact with it */
 var wasmCtx *QuorumWasmContext = nil
 
+func GetWASMContext() *QuorumWasmContext {
+	return wasmCtx
+}
+
 func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -94,9 +98,29 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 	groupmgr := chain.InitGroupMgr(dbMgr)
 
 	println("InitGroupMgr OK")
-	// TODO: construct app db
 
-	wasmCtx = NewQuorumWasmContext(qchan, config, node, ctx, cancel)
+	// TODO: move this into context task
+	/* start syncing all local groups */
+	err = groupmgr.SyncAllGroup()
+	if err != nil {
+		cancel()
+		return false, err
+	}
+
+	appIndexedDb, err := newAppDb()
+	if err != nil {
+		cancel()
+		return false, err
+	}
+	appDb := appdata.NewAppDb()
+	appDb.Db = appIndexedDb
+
+	wasmCtx = NewQuorumWasmContext(qchan, config, node, appDb, dbMgr, ctx, cancel)
+
+	// TODO: move this into context task
+	appsync := appdata.NewAppSyncAgent("", "default", appDb, dbMgr)
+	appsync.Start(10)
+	println("App Syncer Started")
 
 	/* Bootstrap will connect to all bootstrap nodes in config.
 	since we can not listen in browser, there is no need to anounce */
@@ -107,23 +131,6 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 
 	/* keep finding peers, and try to connect to them */
 	go wasmCtx.StartDiscoverTask()
-
-	/* start syncing all local groups */
-	err = groupmgr.SyncAllGroup()
-	if err != nil {
-		return false, err
-	}
-
-	appIndexedDb, err := newAppDb()
-	if err != nil {
-		return false, err
-	}
-	appDb := appdata.NewAppDb()
-	appDb.Db = appIndexedDb
-
-	appsync := appdata.NewAppSyncAgent("", "default", appDb, dbMgr)
-	appsync.Start(10)
-	println("App Syncer Started")
 
 	return true, nil
 }
