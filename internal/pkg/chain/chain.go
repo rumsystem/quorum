@@ -250,7 +250,6 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	if chain.Consensus.Producer() == nil {
-		chain_log.Debugf("????????")
 		return nil
 	}
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
@@ -260,7 +259,6 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
 	if chain.Consensus.Producer() == nil {
-		chain_log.Debugf("!!!!!!!!!!")
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
@@ -380,6 +378,12 @@ func (chain *Chain) CreateConsensus() {
 
 func (chain *Chain) createUserTrxMgr() {
 	chain_log.Infof("<%s> Create and join group user channel", chain.groupId)
+
+	if _, ok := chain.trxMgrs[chain.userChannelId]; ok {
+		chain_log.Infof("<%s> reuse user channel", chain.groupId)
+		return
+	}
+
 	userPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	userPsconn.JoinChannel(chain.userChannelId, chain)
 
@@ -392,6 +396,12 @@ func (chain *Chain) createUserTrxMgr() {
 
 func (chain *Chain) createSyncTrxMgr() {
 	chain_log.Infof("<%s> Create and join group syncer channel", chain.groupId)
+
+	if _, ok := chain.trxMgrs[chain.syncChannelId]; ok {
+		chain_log.Infof("<%s> reuse syncer channel", chain.groupId)
+		return
+	}
+
 	syncPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	syncPsconn.JoinChannel(chain.syncChannelId, chain)
 
@@ -400,10 +410,15 @@ func (chain *Chain) createSyncTrxMgr() {
 	syncTrxMgr = &TrxMgr{}
 	syncTrxMgr.Init(chain.group.Item, syncPsconn)
 	chain.trxMgrs[chain.syncChannelId] = syncTrxMgr
-}
 
+}
 func (chain *Chain) createProducerTrxMgr() {
 	chain_log.Infof("<%s> Create and join group producer channel", chain.groupId)
+	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
+		chain_log.Infof("<%s> reuse producer channel", chain.groupId)
+		return
+	}
+
 	producerPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
 	producerPsconn.JoinChannel(chain.producerChannelId, chain)
 
