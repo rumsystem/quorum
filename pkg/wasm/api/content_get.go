@@ -10,7 +10,7 @@ import (
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/rumsystem/quorum/internal/pkg/wasm"
+	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,7 +29,7 @@ type GroupContentResp struct {
 func GetContent(groupId string, num int, startTrx string, reverse bool, senders []string) (*GroupContentResp, error) {
 	data := []GroupContent{}
 
-	wasmCtx := wasm.GetWASMContext()
+	wasmCtx := quorumContext.GetWASMContext()
 	trxids, err := wasmCtx.AppDb.GetGroupContentBySenders(groupId, senders, startTrx, num, reverse)
 	if err != nil {
 		return nil, err

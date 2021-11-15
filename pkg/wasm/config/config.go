@@ -1,6 +1,7 @@
+//go:build js && wasm
 // +build js,wasm
 
-package wasm
+package config
 
 import ma "github.com/multiformats/go-multiaddr"
 

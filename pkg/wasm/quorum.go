@@ -6,8 +6,12 @@ package wasm
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync/atomic"
+	"time"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	quorumCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -16,21 +20,16 @@ import (
 	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumConfig "github.com/rumsystem/quorum/pkg/wasm/config"
+	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 )
 
 const DEFAUT_KEY_NAME string = "default"
 
-/* global, JS should interact with it */
-var wasmCtx *QuorumWasmContext = nil
-
-func GetWASMContext() *QuorumWasmContext {
-	return wasmCtx
-}
-
 func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	config := NewBrowserConfig([]string{bootAddrsStr})
+	config := quorumConfig.NewBrowserConfig([]string{bootAddrsStr})
 
 	nodeOpt := options.NodeOptions{}
 	nodeOpt.EnableNat = false
@@ -92,20 +91,10 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 		return false, err
 	}
 	nodectx.GetNodeCtx().PeerId = peerId
-
 	println("GetPeerInfo OK")
-	/* quorum has global groupmgr, init it here */
-	groupmgr := chain.InitGroupMgr(dbMgr)
 
+	chain.InitGroupMgr(dbMgr)
 	println("InitGroupMgr OK")
-
-	// TODO: move this into context task
-	/* start syncing all local groups */
-	err = groupmgr.SyncAllGroup()
-	if err != nil {
-		cancel()
-		return false, err
-	}
 
 	appIndexedDb, err := newAppDb()
 	if err != nil {
@@ -115,22 +104,14 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 	appDb := appdata.NewAppDb()
 	appDb.Db = appIndexedDb
 
-	wasmCtx = NewQuorumWasmContext(qchan, config, node, appDb, dbMgr, ctx, cancel)
-
-	// TODO: move this into context task
-	appsync := appdata.NewAppSyncAgent("", "default", appDb, dbMgr)
-	appsync.Start(10)
-	println("App Syncer Started")
+	quorumContext.Init(qchan, config, node, appDb, dbMgr, ctx, cancel)
 
 	/* Bootstrap will connect to all bootstrap nodes in config.
 	since we can not listen in browser, there is no need to anounce */
-	wasmCtx.Bootstrap()
-
-	/* TODO: should also try to connect known peers in peerstore which is
-	   not implemented yet */
-
-	/* keep finding peers, and try to connect to them */
-	go wasmCtx.StartDiscoverTask()
+	err = Bootstrap()
+	if err != nil {
+		return false, err
+	}
 
 	return true, nil
 }
@@ -163,4 +144,81 @@ func newStoreManager() (*storage.DbMgr, error) {
 	storeMgr.DataPath = "."
 
 	return &storeMgr, nil
+}
+
+func Bootstrap() error {
+	wasmCtx := quorumContext.GetWASMContext()
+
+	/* connect to bootstraps */
+	bootstraps := []peer.AddrInfo{}
+	for _, peerAddr := range wasmCtx.Config.BootstrapPeers {
+		peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
+		bootstraps = append(bootstraps, *peerinfo)
+	}
+	connectedPeers := wasmCtx.QNode.AddPeers(wasmCtx.Ctx, bootstraps)
+	println(fmt.Sprintf("Connected to %d peers", connectedPeers))
+
+	/* keep finding peers, and try to connect to them */
+	go StartDiscoverTask()
+
+	/* start syncing all local groups */
+	groupMgr := chain.GetGroupMgr()
+	err := groupMgr.SyncAllGroup()
+	if err != nil {
+		return err
+	}
+	println("Group Syncer Started")
+
+	/* new syncer for app data */
+	appsync := appdata.NewAppSyncAgent("", "default", wasmCtx.AppDb, wasmCtx.DbMgr)
+	appsync.Start(10)
+	println("App Syncer Started")
+
+	return nil
+}
+
+func StartDiscoverTask() {
+	wasmCtx := quorumContext.GetWASMContext()
+	var doDiscoverTask = func() {
+		println("Searching for other peers...")
+		peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, quorumConfig.DefaultRendezvousString)
+		if err != nil {
+			panic(err)
+		}
+
+		var connectCount uint32 = 0
+
+		for peer := range peerChan {
+			curPeer := peer
+			println("Found peer:", curPeer.String())
+			go func() {
+				pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
+				defer cancel()
+				err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
+				if err != nil {
+					println("Failed to connect peer: ", curPeer.String())
+					cancel()
+				} else {
+					curConnectedCount := atomic.AddUint32(&connectCount, 1)
+					println(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
+				}
+			}()
+		}
+	}
+	/* first job will start after 1 second */
+	go func() {
+		time.Sleep(1 * time.Second)
+		doDiscoverTask()
+	}()
+
+	ticker := time.NewTicker(30 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			doDiscoverTask()
+		case <-wasmCtx.Qchan:
+			ticker.Stop()
+			wasmCtx.Cancel()
+		}
+	}
 }
