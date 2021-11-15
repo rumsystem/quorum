@@ -26,10 +26,10 @@ import (
 
 const DEFAUT_KEY_NAME string = "default"
 
-func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
+func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	config := quorumConfig.NewBrowserConfig([]string{bootAddrsStr})
+	config := quorumConfig.NewBrowserConfig(bootAddrs)
 
 	nodeOpt := options.NodeOptions{}
 	nodeOpt.EnableNat = false
@@ -41,9 +41,6 @@ func StartQuorum(qchan chan struct{}, bootAddrsStr string) (bool, error) {
 		cancel()
 		return false, err
 	}
-
-	// TODO: read from user
-	password := "password"
 
 	/* init browser keystore */
 	k, err := quorumCrypto.InitBrowserKeystore(password)
@@ -217,7 +214,7 @@ func StartDiscoverTask() {
 	for {
 		select {
 		case <-ticker.C:
-			doDiscoverTask()
+			go doDiscoverTask()
 		case <-wasmCtx.Qchan:
 			ticker.Stop()
 			wasmCtx.Cancel()

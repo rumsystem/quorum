@@ -5,6 +5,7 @@ package wasm
 
 import (
 	"encoding/json"
+	"strings"
 	"syscall/js"
 
 	quorumAPI "github.com/rumsystem/quorum/pkg/wasm/api"
@@ -18,10 +19,16 @@ func RegisterJSFunctions() {
 		if qChan == nil {
 			qChan = make(chan struct{}, 0)
 		}
-		bootAddr := args[0].String()
+		if len(args) < 2 {
+			return nil
+		}
+		password := args[0].String()
+		bootAddrsStr := args[1].String()
+		bootAddrs := strings.Split(bootAddrsStr, ",")
+
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			ok, err := StartQuorum(qChan, bootAddr)
+			ok, err := StartQuorum(qChan, password, bootAddrs)
 			ret["ok"] = ok
 			if err != nil {
 				return ret, err
