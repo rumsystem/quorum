@@ -5,25 +5,120 @@
   <meta charset="utf-8" />
   <title>quorum wasm</title>
   <style>
-textarea {
-  margin: 10px 0;
-  width: 600px;
-  height: 400px;
-}
+    body {
+      margin: 0;
+    }
+
+    div.console {
+      font-size: 14px
+    }
+
+    div.console div.jquery-console-inner {
+      width: 100vw;
+      height: 100vh;
+      background: #333;
+      overflow: auto
+    }
+
+    div.console div.jquery-console-prompt-box {
+      color: #fff;
+      font-family: monospace;
+    }
+
+    div.console div.jquery-console-message {
+      color: #fff;
+      font-family: monospace;
+    }
+
+    div.console div.jquery-console-focus span.jquery-console-cursor {
+      background: #fefefe;
+      color: #333;
+      font-weight: bold
+    }
+
+    div.console div.jquery-console-message-error {
+      color: #ef0505;
+      font-family: sans-serif;
+      font-weight: bold;
+      padding: 0.1em;
+    }
+
+    div.console div.jquery-console-message-value {
+      color: #1ad027;
+      font-family: monospace;
+      padding: 0.1em;
+    }
+
+    div.console div.jquery-console-message-type {
+      color: #52666f;
+      font-family: monospace;
+      padding: 0.1em;
+    }
+
+    div.console span.jquery-console-prompt-label {
+      font-weight: bold
+    }
   </style>
 </head>
 
 <body>
+  <script type="text/javascript" src="lib/jquery-2.1.1.min.js"></script>
+  <script type="text/javascript" src="lib/jquery.console.js"></script>
   <script src="wasm_exec.js"></script>
+  <script>
+    var container = $('<div class="console">');
+    $('body').append(container);
+    var controller;
+    function notify(msg) {
+      console.log(msg)
+      controller.report(JSON.stringify(msg, null, 2), "jquery-console-message-success");
+    }
+    controller = container.console({
+      promptLabel: 'Quorum> ',
+      commandValidate: function (line) {
+        if (line == "") return false;
+        else return true;
+      },
+      commandHandle: function (line) {
+        try {
+          var ret = eval(line);
+          if (ret.then) {
+            ret.then(notify)
+          }
+          return "running..."
+        }
+        catch (e) {return e.toString();}
+      },
+      animateScroll: true,
+      promptHistory: true,
+      welcomeMessage: 'Enter some commands'
+    });
 
-  <script src="index.js"></script>
+    if (!WebAssembly.instantiateStreaming) {
+      // polyfill
+      WebAssembly.instantiateStreaming = async (resp, importObject) => {
+        const source = await (await resp).arrayBuffer();
+        return await WebAssembly.instantiate(source, importObject);
+      };
+    }
 
-  <input id="bootstrap" />
-  <button onClick="connect();" id="connectBtn" disabled>connect</button>
+    const go = new Go();
 
-  <br />
-  <textarea id="seed" ></textarea>
-  <button onClick="join();" id="joinBtn" disabled>join</button>
+    let mod, inst;
+
+    WebAssembly.instantiateStreaming(fetch("lib.wasm"), go.importObject).then(
+      result => {
+        mod = result.module;
+        inst = result.instance;
+      }
+    )
+      .then(run);
+
+    async function run() {
+      await go.run(inst);
+      await reset();
+    }
+  </script>
 </body>
 
 </html>
