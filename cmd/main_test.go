@@ -190,8 +190,12 @@ func TestGroupsContent(t *testing.T) {
 				// store trx id, verify it later on each group
 				t.Errorf("Data Unmarshal error %s", err)
 			}
-			t.Logf("post with trxid: %s created", objmap["trx_id"].(string))
-			groupIdToTrxIds[groupId] = append(groupIdToTrxIds[groupId], objmap["trx_id"].(string))
+			if objmap["trx_id"] != nil {
+				t.Logf("post with trxid: %s created", objmap["trx_id"].(string))
+				groupIdToTrxIds[groupId] = append(groupIdToTrxIds[groupId], objmap["trx_id"].(string))
+			} else {
+				t.Errorf("Resp body was not included trx_id %s", string(resp))
+			}
 			// use normal distribution time range
 			// half range  == 3 * stddev (99.7%)
 			mean := float64(timerange) / 2.0
