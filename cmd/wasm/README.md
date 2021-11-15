@@ -26,3 +26,9 @@ in browser console:
 ```
 StartQuorum("/ip4/127.0.0.1/tcp/10666/ws/p2p/16Uiu2HAkxcVyepsYE2YNTTr89ghBW6n6qpEe6tRrZGBJckV3oCZ3")
 ```
+
+## 3rd-party
+
+- [jquery-console](https://github.com/chrisdone/jquery-console): BSD-2-clause license
+- jquery: MIT license
+
