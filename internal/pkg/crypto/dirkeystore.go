@@ -156,7 +156,7 @@ func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
 		return ks.unlocked[keyname], nil
 	}
 
-	return nil, fmt.Errorf("key %s not exist or not be unlocked", keyname)
+	return nil, fmt.Errorf("key not exist or not be unlocked %s", keyname)
 }
 
 func JoinKeyStorePath(keysDirPath string, filename string) string {
