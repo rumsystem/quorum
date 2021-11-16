@@ -15,13 +15,15 @@ import (
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
 )
 
 var molaproducer_log = logging.Logger("producer")
 
-const PRODUCE_TIMER time.Duration = 5 //5s
-const MERGE_TIMER time.Duration = 5   //5s
+const PRODUCE_TIMER time.Duration = 5    //5s
+const MERGE_TIMER time.Duration = 5      //5s
+const CLOSE_CONN_TIMER time.Duration = 5 //5s
 
 const TRXS_TOTAL_SIZE int = 900 * 1024
 
@@ -34,25 +36,28 @@ const (
 )
 
 type MolassesProducer struct {
-	grpItem      *quorumpb.GroupItem
-	blockPool    map[string]*quorumpb.Block
-	trxPool      map[string]*quorumpb.Trx
-	trxMgr       map[string]*TrxMgr
-	status       ProducerStatus
-	ProduceTimer *time.Timer
-	ProduceDone  chan bool
-	statusmu     sync.RWMutex
-	nodename     string
-	cIface       ChainMolassesIface
-	groupId      string
+	grpItem           *quorumpb.GroupItem
+	blockPool         map[string]*quorumpb.Block
+	trxPool           map[string]*quorumpb.Trx
+	trxMgr            map[string]*TrxMgr
+	syncConnTimerPool map[string]*time.Timer
+	status            ProducerStatus
+	ProduceTimer      *time.Timer
+	ProduceDone       chan bool
+	statusmu          sync.RWMutex
+	nodename          string
+	cIface            ChainMolassesIface
+	groupId           string
 }
 
 func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
 	molaproducer_log.Debug("Init called")
 	producer.grpItem = item
 	producer.cIface = iface
-	producer.trxPool = make(map[string]*quorumpb.Trx)
 	producer.blockPool = make(map[string]*quorumpb.Block)
+	producer.trxPool = make(map[string]*quorumpb.Trx)
+	producer.trxMgr = make(map[string]*TrxMgr)
+	producer.syncConnTimerPool = make(map[string]*time.Timer)
 	producer.status = StatusIdle
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
@@ -63,6 +68,15 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 // Add trx to trx pool
 func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
+
+	//check if trx sender is in group block list
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+
+	if isBlocked {
+		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
+		return
+	}
+
 	if producer.cIface.IsSyncerReady() {
 		return
 	}
@@ -286,10 +300,13 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 		return err
 	}
 
+	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
+	trxMgr, _ := producer.getSyncConn(channelId)
+
 	if len(subBlocks) != 0 {
 		for _, block := range subBlocks {
 			molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", producer.groupId)
-			err := producer.cIface.GetProducerTrxMgr().SendReqBlockResp(&reqBlockItem, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+			err := trxMgr.SendReqBlockResp(&reqBlockItem, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 			if err != nil {
 				molaproducer_log.Warnf(err.Error())
 			}
@@ -302,7 +319,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 		emptyBlock.BlockId = guuid.New().String()
 		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
 		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
-		return producer.cIface.GetProducerTrxMgr().SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
+		return trxMgr.SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
 	}
 }
 
@@ -350,21 +367,60 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 		return err
 	}
 
+	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
+	trxMgr, _ := producer.getSyncConn(channelId)
+
 	if isParentExit {
 		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", producer.groupId)
 		parentBlock, err := nodectx.GetDbMgr().GetParentBlock(reqBlockItem.BlockId, producer.nodename)
 		if err != nil {
 			return err
 		}
-		return producer.cIface.GetProducerTrxMgr().SendReqBlockResp(&reqBlockItem, parentBlock, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+		return trxMgr.SendReqBlockResp(&reqBlockItem, parentBlock, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 	} else {
 		var emptyBlock *quorumpb.Block
 		emptyBlock = &quorumpb.Block{}
 		emptyBlock.BlockId = guuid.New().String()
 		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
 		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
-		return producer.cIface.GetProducerTrxMgr().SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
+		return trxMgr.SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
 	}
+}
+
+func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error) {
+	var syncTrxMgr *TrxMgr
+
+	if _, ok := producer.trxMgr[channelId]; ok {
+		syncTrxMgr = producer.trxMgr[channelId]
+
+		//reset timer
+		molaproducer_log.Debugf("<%s> reset timer for sync channel <%s>", producer.groupId, channelId)
+		timer := producer.syncConnTimerPool[channelId]
+		timer.Stop()
+		timer.Reset(CLOSE_CONN_TIMER * time.Second)
+	} else {
+		molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
+		syncPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
+		syncPsconn.JoinChannel(channelId, producer.cIface.GetChainCtx())
+		syncTrxMgr = &TrxMgr{}
+		syncTrxMgr.Init(producer.grpItem, syncPsconn)
+		producer.trxMgr[channelId] = syncTrxMgr
+
+		molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
+		timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
+			if syncTrxMgr, ok := producer.trxMgr[channelId]; ok {
+				molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
+				syncTrxMgr.LeaveChannel(channelId)
+				delete(producer.trxMgr, channelId)
+			}
+		})
+		producer.syncConnTimerPool[channelId] = timer
+	}
+	return syncTrxMgr, nil
+}
+
+func (producer *MolassesProducer) GetRecentSnapshot(trx *quorumpb.Trx) error {
+	return nil
 }
 
 //addBlock for producer

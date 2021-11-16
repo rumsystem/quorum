@@ -39,6 +39,7 @@ func (trxMgr *TrxMgr) Init(groupItem *quorumpb.GroupItem, psconn pubsubconn.PubS
 	trxMgr.groupItem = groupItem
 	trxMgr.psconn = psconn
 	trxMgr.groupId = groupItem.GroupId
+	trxmgr_log.Debugf("<%s> trxMgr inited", trxMgr.groupId)
 }
 
 func (trxMgr *TrxMgr) SetNodeName(nodename string) {

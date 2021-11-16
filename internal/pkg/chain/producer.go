@@ -10,6 +10,7 @@ type Producer interface {
 	AddBlockToPool(block *quorumpb.Block)
 	GetBlockForward(trx *quorumpb.Trx) error
 	GetBlockBackward(trx *quorumpb.Trx) error
+	GetRecentSnapshot(trx *quorumpb.Trx) error
 	AddProducedBlock(trx *quorumpb.Trx) error
 	AddBlock(block *quorumpb.Block) error
 }

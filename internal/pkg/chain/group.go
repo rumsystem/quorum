@@ -15,6 +15,7 @@ import (
 const (
 	USER_CHANNEL_PREFIX     = "user_channel_"
 	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
+	SYNC_CHANNEL_PREFIX     = "sync_channel_"
 )
 
 type Group struct {
@@ -33,6 +34,7 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.Init(grp)
 
+	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 
@@ -53,7 +55,11 @@ func (grp *Group) Teardown() {
 func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	group_log.Debugf("<%s> CreateGrp called", item.GroupId)
 
-	grp.Init(item)
+	grp.Item = item
+
+	//create and initial chain
+	grp.ChainCtx = &Chain{}
+	grp.ChainCtx.Init(grp)
 
 	err := nodectx.GetDbMgr().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
 	if err != nil {
@@ -81,10 +87,17 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	}
 
 	pItem.GroupOwnerSign = hex.EncodeToString(signature)
-	pItem.Memo = "Owner Registate as the first oroducer"
+	pItem.Memo = "Owner Registated as the first oroducer"
 	pItem.TimeStamp = time.Now().UnixNano()
 
 	err = nodectx.GetDbMgr().AddProducer(pItem, grp.ChainCtx.nodename)
+	if err != nil {
+		return err
+	}
+
+	group_log.Infof("Group <%s> created", grp.Item.GroupId)
+
+	err = nodectx.GetDbMgr().AddGroup(grp.Item)
 	if err != nil {
 		return err
 	}
@@ -93,9 +106,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 
-	group_log.Infof("Group <%s> created", grp.Item.GroupId)
-
-	return nodectx.GetDbMgr().AddGroup(grp.Item)
+	return nil
 }
 
 func (grp *Group) LeaveGrp() error {
