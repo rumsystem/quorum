@@ -82,7 +82,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	println("SignKeytoPeerKeys OK")
 
-	peerId, _, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
+	peerId, ethAddr, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
 	if err != nil {
 		cancel()
 		return false, err
@@ -101,7 +101,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	appDb := appdata.NewAppDb()
 	appDb.Db = appIndexedDb
 
-	quorumContext.Init(qchan, config, node, appDb, dbMgr, ctx, cancel)
+	quorumContext.Init(qchan, config, node, ethAddr, &nodeOpt, appDb, dbMgr, ctx, cancel)
 
 	storage.InitSeqenceDB()
 
