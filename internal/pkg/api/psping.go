@@ -1,11 +1,11 @@
 package api
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
@@ -42,10 +42,7 @@ func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		psping := p2p.NewPSPingService(ctx, node.Pubsub, node.Host.ID())
-		result, err := psping.PingReq(params.PeerId)
-		defer cancel()
+		result, err := handlers.Ping(node.Pubsub, node.Host.ID(), params.PeerId)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
