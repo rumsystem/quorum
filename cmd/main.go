@@ -404,6 +404,7 @@ func main() {
 	if GitCommit == "" {
 		GitCommit = "devel"
 	}
+	utils.SetGitCommit(GitCommit)
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")
 	update := flag.Bool("update", false, "Update to the latest version")

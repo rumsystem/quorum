@@ -45,6 +45,20 @@ func RegisterJSFunctions() {
 		return js.ValueOf(true).Bool()
 	}))
 
+	js.Global().Set("GetNodeInfo", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetNodeInfo()
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("GetContent", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if len(args) < 4 {
 			return nil
