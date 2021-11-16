@@ -253,7 +253,7 @@ func mainRet(config cli.Config) int {
 	} else {
 		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, 50, 60), listenaddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), listenaddresses, config.JsonTracer)
 		_ = node.Bootstrap(ctx, config)
 
 		for _, addr := range node.Host.Addrs() {
@@ -267,7 +267,7 @@ func mainRet(config cli.Config) int {
 		mainlog.Infof("Successfully announced!")
 
 		peerok := make(chan struct{})
-		go node.ConnectPeers(ctx, peerok, 8, config)
+		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
 
 		datapath := config.DataDir + "/" + config.PeerName
 		dbManager, err := createDb(datapath)
