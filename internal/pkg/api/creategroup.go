@@ -81,7 +81,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(groupid.String(), localcrypto.Sign)
-			if err != nil && strings.HasPrefix(err.Error(), "key not exist ") {
+			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(groupid.String(), localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
 					_, err = dirks.NewKeyWithDefaultPassword(groupid.String(), localcrypto.Encrypt)
@@ -134,7 +134,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 
 		groupEncryptPubkey, err := dirks.GetEncodedPubkey(groupid.String(), localcrypto.Encrypt)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), "key not exist ") {
+			if strings.HasPrefix(err.Error(), "key not exist") {
 				groupEncryptPubkey, err = dirks.NewKeyWithDefaultPassword(groupid.String(), localcrypto.Encrypt)
 				if err != nil {
 					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()

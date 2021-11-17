@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"filippo.io/age"
 	"fmt"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
@@ -202,6 +203,10 @@ func (ks *DirKeyStore) LoadEncryptKey(filename string, password string) (*age.X2
 	storefilename := JoinKeyStorePath(ks.KeystorePath, filename)
 	f, err := os.OpenFile(storefilename, os.O_RDONLY, 0600)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("key not exist.")
+
+		}
 		return nil, err
 	}
 	return AgeDecryptIdentityWithPassword(f, nil, password)

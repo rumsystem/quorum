@@ -85,9 +85,10 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
-			if err != nil && strings.HasPrefix(err.Error(), "key not exist ") {
+			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
+					_, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 					err = nodeoptions.SetSignKeyMap(params.GroupId, newsignaddr)
 					if err != nil {
 						output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
@@ -141,7 +142,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 		groupEncryptkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), "key not exist ") {
+			if strings.HasPrefix(err.Error(), "key not exist") {
 				groupEncryptkey, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 
 				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(params.GroupId))
@@ -193,7 +194,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 		userEncryptKey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), "key not exist ") {
+			if strings.HasPrefix(err.Error(), "key not exist") {
 				userEncryptKey, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 				if err != nil {
 					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
