@@ -1,0 +1,10 @@
+package api
+
+import (
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/pb"
+)
+
+func GetTrx(groupId string, trxId string) (*pb.Trx, error) {
+	return handlers.GetTrx(groupId, trxId)
+}
