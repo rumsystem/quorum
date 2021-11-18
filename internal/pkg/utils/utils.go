@@ -59,9 +59,12 @@ func GetRandomStr(n int) string {
 	const lettersLength = int64(len(letters))
 
 	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[rand.Read(b)%lettersLength]
-	}
-	return string(b)
-
+        _, err := rand.Read(b)
+        if err != nil {
+            return ""
+        }
+        for i, v := range b {
+            b[i] = letters[v%byte(lettersLength)]
+        }
+        return string(b)
 }
