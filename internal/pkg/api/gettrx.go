@@ -1,11 +1,10 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	_ "github.com/rumsystem/quorum/internal/pkg/pb" //import for swaggo
 )
 
@@ -33,17 +32,11 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[groupid]; ok {
-		trx, err := group.GetTrx(trxid)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		return c.JSON(http.StatusOK, trx)
-	} else {
-		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
+	trx, err := handlers.GetTrx(groupid, trxid)
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
+
+	return c.JSON(http.StatusOK, trx)
 }
