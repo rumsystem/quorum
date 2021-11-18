@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -60,7 +60,7 @@ func GetRandomStr(n int) string {
 
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[rand.Int63()%lettersLength]
+		b[i] = letters[rand.Read(b)%lettersLength]
 	}
 	return string(b)
 
