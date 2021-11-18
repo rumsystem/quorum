@@ -45,6 +45,7 @@ type Keystore interface {
 	Unlock(signkeymap map[string]string, password string) error
 	Lock() error
 	NewKey(keyname string, keytype KeyType, password string) (string, error)
+	NewKeyWithDefaultPassword(keyname string, keytype KeyType) (string, error)
 	Import(keyname string, encodedkey string, keytype KeyType, password string) (string, error)
 	Sign(data []byte, privKey p2pcrypto.PrivKey) ([]byte, error)
 	VerifySign(data, signature []byte, pubKey p2pcrypto.PubKey) (bool, error)

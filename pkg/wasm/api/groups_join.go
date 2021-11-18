@@ -80,11 +80,11 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 	println("Verify Seed: OK")
 
 	/* Load or generate sign/encode key */
-	groupSignPubkey, err := initSignKey(&params, bks)
+	groupSignPubkey, err := initSignKey(params.GroupId, bks)
 	if err != nil {
 		return nil, err
 	}
-	userEncryptKey, err := initEncodeKey(&params, bks)
+	userEncryptKey, err := initEncodeKey(params.GroupId, bks)
 	if err != nil {
 		return nil, err
 	}
@@ -152,13 +152,13 @@ func verifySeed(params *JoinGroupParam, ownerPubkeyBytes []byte, genesisBlockByt
 	return ownerPubkey.Verify(hash, decodedSignature)
 }
 
-func initSignKey(params *JoinGroupParam, bks *localcrypto.BrowserKeystore) ([]byte, error) {
-	hexKey, err := bks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
-	if err != nil && strings.HasPrefix(err.Error(), "Key not exists") {
+func initSignKey(groupId string, bks *localcrypto.BrowserKeystore) ([]byte, error) {
+	hexKey, err := bks.GetEncodedPubkey(groupId, localcrypto.Sign)
+	if err != nil && strings.HasPrefix(err.Error(), "key not exists") {
 		/* Create one */
-		newSignAddr, err := bks.NewKey(params.GroupId, localcrypto.Sign, "")
+		newSignAddr, err := bks.NewKey(groupId, localcrypto.Sign, "")
 		if err == nil && newSignAddr != "" {
-			hexKey, err = bks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+			hexKey, err = bks.GetEncodedPubkey(groupId, localcrypto.Sign)
 		} else {
 			return nil, err
 		}
@@ -169,11 +169,11 @@ func initSignKey(params *JoinGroupParam, bks *localcrypto.BrowserKeystore) ([]by
 	return p2pcrypto.MarshalPublicKey(p2pPubKey)
 }
 
-func initEncodeKey(params *JoinGroupParam, bks *localcrypto.BrowserKeystore) (string, error) {
-	userEncryptKey, err := bks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
+func initEncodeKey(groupId string, bks *localcrypto.BrowserKeystore) (string, error) {
+	userEncryptKey, err := bks.GetEncodedPubkey(groupId, localcrypto.Encrypt)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "Key not exists") {
-			userEncryptKey, err = bks.NewKey(params.GroupId, localcrypto.Encrypt, "")
+		if strings.HasPrefix(err.Error(), "key not exists") {
+			userEncryptKey, err = bks.NewKey(groupId, localcrypto.Encrypt, "")
 			if err != nil {
 				return "", err
 			}

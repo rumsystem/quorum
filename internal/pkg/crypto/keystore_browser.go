@@ -6,7 +6,6 @@ package crypto
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -42,7 +41,7 @@ func InitBrowserKeystore(password string) (Keystore, error) {
 
 	defaultKeyName := "default"
 	k, err := bks.GetUnlockedKey(Sign.NameString(defaultKeyName))
-	if k == nil && strings.HasPrefix(err.Error(), "Key not exists") {
+	if k == nil && strings.HasPrefix(err.Error(), "key not exists") {
 		// init default signkey
 		_, err := ks.NewKey(defaultKeyName, Sign, password)
 		if err != nil {
@@ -77,7 +76,7 @@ func (ks *BrowserKeystore) Lock() error {
 	return nil
 }
 
-func (ks *BrowserKeystore) NewKey(keyname string, keytype KeyType, _ string) (string, error) {
+func (ks *BrowserKeystore) NewKey(keyname string, keytype KeyType, password string) (string, error) {
 	keyname = keytype.NameString(keyname)
 	exist, err := ks.store.IsExist([]byte(keyname))
 	if err != nil {
@@ -120,6 +119,10 @@ func (ks *BrowserKeystore) NewKey(keyname string, keytype KeyType, _ string) (st
 	default:
 		return "", fmt.Errorf("unsupported key type")
 	}
+}
+
+func (ks *BrowserKeystore) NewKeyWithDefaultPassword(keyname string, keytype KeyType) (string, error) {
+	return ks.NewKey(keyname, keytype, ks.password)
 }
 
 func (ks *BrowserKeystore) Import(keyname string, encodedkey string, keytype KeyType, _ string) (string, error) {
@@ -324,7 +327,7 @@ func (ks *BrowserKeystore) GetUnlockedKey(keyname string) (interface{}, error) {
 	/* not in cache, we find it in the encrypted store */
 	exist, _ := ks.store.IsExist([]byte(keyname))
 	if !exist {
-		return nil, errors.New("Key not exists")
+		return nil, fmt.Errorf("key not exist :%s", keyname)
 	}
 
 	keyBytes, err := ks.store.Get([]byte(keyname))
