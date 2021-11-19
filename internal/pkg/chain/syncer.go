@@ -32,6 +32,7 @@ type Syncer struct {
 	retryCount       int8
 	statusBeforeFail int8
 	responses        map[string]*quorumpb.ReqBlockResp
+	blockReceived    map[string]string
 	cIface           ChainMolassesIface
 	groupId          string
 }
@@ -42,6 +43,7 @@ func (syncer *Syncer) Init(grp *Group, iface ChainMolassesIface) {
 	syncer.group = grp
 	syncer.retryCount = 0
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
+	syncer.blockReceived = make(map[string]string)
 	syncer.groupId = grp.Item.GroupId
 	syncer.cIface = iface
 	syncer_log.Infof("<%s> syncer initialed", syncer.groupId)
@@ -67,6 +69,7 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 	}
 
 	syncer_log.Debugf("<%s> try sync forward from block <%s>", syncer.groupId, block.BlockId)
+	syncer.blockReceived = make(map[string]string)
 	syncer.Status = SYNCING_FORWARD
 	syncer.askNextBlock(block)
 	syncer.waitBlock(block)
@@ -87,7 +90,7 @@ func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
 	if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
 		return errors.New("already in SYNCING")
 	}
-
+	syncer.blockReceived = make(map[string]string)
 	syncer.Status = SYNCING_BACKWARD
 	syncer.askPreviousBlock(block)
 	syncer.waitBlock(block)
@@ -137,6 +140,11 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 		return nil
 	}
 
+	if _, blockReceived := syncer.blockReceived[resp.BlockId]; blockReceived {
+		syncer_log.Debugf("<%s> Block with Id <%s> already received", syncer.groupId, resp.BlockId)
+		return nil
+	}
+
 	_, producer := syncer.group.ChainCtx.ProducerPool[syncer.group.Item.UserSignPubkey]
 
 	if syncer.Status == SYNCING_FORWARD {
@@ -153,7 +161,9 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 				syncer_log.Infof(err.Error())
 			}
 		}
+
 		syncer_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", syncer.groupId)
+		syncer.blockReceived[resp.BlockId] = resp.ProviderPubkey
 		syncer.ContinueSync(block)
 	} else { //sync backward
 		var err error
@@ -165,6 +175,7 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 			err = syncer.group.ChainCtx.Consensus.User().AddBlock(block)
 		}
 
+		syncer.blockReceived[resp.BlockId] = resp.ProviderPubkey
 		if err != nil {
 			syncer_log.Debugf(err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {

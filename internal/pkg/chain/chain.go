@@ -355,25 +355,53 @@ func (chain *Chain) UpdProducerList() {
 
 func (chain *Chain) CreateConsensus() {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
-	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
-		//producer, create group producer
-		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
-		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
-		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		chain.createProducerTrxMgr()
-	} else {
+
+	var user User
+	var producer Producer
+
+	if chain.Consensus == nil || chain.Consensus.User() == nil {
 		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
-		chain.Consensus = NewMolasses(nil, &MolassesUser{})
+		user = &MolassesUser{}
+		user.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+	} else {
+		chain_log.Infof("<%s> reuse molasses user", chain.groupId)
+		user = chain.Consensus.User()
 	}
 
-	chain.Consensus.User().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
+			producer = &MolassesProducer{}
+			producer.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+			chain.createProducerTrxMgr()
+		} else {
+			chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
+			producer = chain.Consensus.Producer()
+		}
+	} else {
+		chain_log.Infof("<%s> no producer created", chain.groupId)
+		producer = nil
+	}
+
+	if chain.Consensus == nil {
+		chain_log.Infof("<%s> created consensus", chain.groupId)
+		chain.Consensus = NewMolasses(producer, user)
+	} else {
+		chain_log.Infof("<%s> reuse consensus", chain.groupId)
+		chain.Consensus.SetProducer(producer)
+		chain.Consensus.SetUser(user)
+	}
 
 	chain.createUserTrxMgr()
 	chain.createSyncTrxMgr()
 
-	chain_log.Infof("<%s> Create and init group syncer", chain.groupId)
-	chain.Syncer = &Syncer{nodeName: chain.nodename}
-	chain.Syncer.Init(chain.group, chain)
+	if chain.Syncer == nil {
+		chain_log.Infof("<%s> Create and init group syncer", chain.groupId)
+		chain.Syncer = &Syncer{nodeName: chain.nodename}
+		chain.Syncer.Init(chain.group, chain)
+	} else {
+		chain_log.Infof("<%s> reuse syncer", chain.groupId)
+	}
 }
 
 func (chain *Chain) createUserTrxMgr() {
