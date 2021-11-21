@@ -45,6 +45,21 @@ func RegisterJSFunctions() {
 		return js.ValueOf(true).Bool()
 	}))
 
+	js.Global().Set("StartSync", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.StartSync(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("CreateGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		jsonStr := args[0].String()
 		handler := func() (map[string]interface{}, error) {
