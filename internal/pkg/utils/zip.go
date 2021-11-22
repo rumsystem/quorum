@@ -24,11 +24,11 @@ func ZipDir(dir string) ([]byte, error) {
 		return nil, err
 	}
 
-	if err = os.Chdir(filepath.Dir(absPath)); err != nil {
+	if err = os.Chdir(absPath); err != nil {
 		return nil, err
 	}
 
-	basePath := filepath.Base(absPath)
+	basePath := "." // current directory
 	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
 		logger.Infof("write %s to archive...", path)
 		if err != nil {
