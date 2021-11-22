@@ -41,7 +41,7 @@ func InitBrowserKeystore(password string) (Keystore, error) {
 
 	defaultKeyName := "default"
 	k, err := bks.GetUnlockedKey(Sign.NameString(defaultKeyName))
-	if k == nil && strings.HasPrefix(err.Error(), "key not exists") {
+	if k == nil && strings.HasPrefix(err.Error(), "key not exist") {
 		// init default signkey
 		_, err := ks.NewKey(defaultKeyName, Sign, password)
 		if err != nil {

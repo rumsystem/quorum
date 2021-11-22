@@ -154,7 +154,7 @@ func verifySeed(params *JoinGroupParam, ownerPubkeyBytes []byte, genesisBlockByt
 
 func initSignKey(groupId string, bks *localcrypto.BrowserKeystore) ([]byte, error) {
 	hexKey, err := bks.GetEncodedPubkey(groupId, localcrypto.Sign)
-	if err != nil && strings.HasPrefix(err.Error(), "key not exists") {
+	if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 		/* Create one */
 		newSignAddr, err := bks.NewKey(groupId, localcrypto.Sign, "")
 		if err == nil && newSignAddr != "" {
@@ -172,7 +172,7 @@ func initSignKey(groupId string, bks *localcrypto.BrowserKeystore) ([]byte, erro
 func initEncodeKey(groupId string, bks *localcrypto.BrowserKeystore) (string, error) {
 	userEncryptKey, err := bks.GetEncodedPubkey(groupId, localcrypto.Encrypt)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "key not exists") {
+		if strings.HasPrefix(err.Error(), "key not exist") {
 			userEncryptKey, err = bks.NewKey(groupId, localcrypto.Encrypt, "")
 			if err != nil {
 				return "", err
