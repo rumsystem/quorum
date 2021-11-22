@@ -9,7 +9,7 @@ import (
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func joinGroup(api string, payload JoinGroupParam) (*JoinGroupResult, error) {
+func joinGroup(api string, payload GroupSeed) (*JoinGroupResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed: %s, joinGroupParam: %+v", err, payload)
@@ -57,11 +57,11 @@ func TestJoinGroup(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := JoinGroupParam{
+	joinGroupParam := GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,
-		OwnerPubKey:    group.OwnerPubkey,
+		OwnerPubkey:    group.OwnerPubkey,
 		ConsensusType:  group.ConsensusType,
 		EncryptionType: group.EncryptionType,
 		CipherKey:      group.CipherKey,

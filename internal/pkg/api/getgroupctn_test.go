@@ -20,11 +20,11 @@ func TestGetGroupContent(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := JoinGroupParam{
+	joinGroupParam := GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,
-		OwnerPubKey:    group.OwnerPubkey,
+		OwnerPubkey:    group.OwnerPubkey,
 		ConsensusType:  group.ConsensusType,
 		EncryptionType: group.EncryptionType,
 		CipherKey:      group.CipherKey,

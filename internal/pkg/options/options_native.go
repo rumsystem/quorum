@@ -4,6 +4,9 @@
 package options
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
 	//"path/filepath"
@@ -28,6 +31,15 @@ func InitNodeOptions(configdir, peername string) (*NodeOptions, error) {
 		nodepeername = peername
 	}
 	return nodeopts, err
+}
+
+// GetConfigDir returns an absolute representation of path to the config directory
+func GetConfigDir() (string, error) {
+	if nodeconfigdir == "" {
+		return "", fmt.Errorf("Please initConfigfile")
+	}
+
+	return filepath.Abs(nodeconfigdir)
 }
 
 func (opt *NodeOptions) writeToconfig() error {

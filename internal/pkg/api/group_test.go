@@ -28,7 +28,7 @@ func getResponseError(resp []byte) error {
 	return nil
 }
 
-func createGroup(api string, payload CreateGroupParam) (*CreateGroupResult, error) {
+func createGroup(api string, payload CreateGroupParam) (*GroupSeed, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed, payload: %+v error: %s", payload, err)
@@ -46,7 +46,7 @@ func createGroup(api string, payload CreateGroupParam) (*CreateGroupResult, erro
 		return nil, err
 	}
 
-	var group CreateGroupResult
+	var group GroupSeed
 	if err := json.Unmarshal(resp, &group); err != nil {
 		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
 		return nil, e

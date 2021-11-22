@@ -21,18 +21,6 @@ import (
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
-type JoinGroupParam struct {
-	GenesisBlock   *quorumpb.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
-	GroupId        string          `from:"group_id" json:"group_id" validate:"required"`
-	GroupName      string          `from:"group_name" json:"group_name" validate:"required"`
-	OwnerPubKey    string          `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
-	ConsensusType  string          `from:"consensus_type" json:"consensus_type" validate:"required"`
-	EncryptionType string          `from:"encryption_type" json:"encryption_type" validate:"required"`
-	CipherKey      string          `from:"cipher_key" json:"cipher_key" validate:"required"`
-	AppKey         string          `from:"app_key" json:"app_key" validate:"required"`
-	Signature      string          `from:"signature" json:"signature" validate:"required"`
-}
-
 type JoinGroupResult struct {
 	GroupId           string `json:"group_id" validate:"required"`
 	GroupName         string `json:"group_name" validate:"required"`
@@ -51,7 +39,7 @@ type JoinGroupResult struct {
 // @Description Join a group
 // @Accept json
 // @Produce json
-// @Param data body JoinGroupParam true "GroupSeed"
+// @Param data body GroupSeed true "GroupSeed"
 // @Success 200 {object} JoinGroupResult
 // @Router /api/v1/group/join [post]
 func (h *Handler) JoinGroup() echo.HandlerFunc {
@@ -60,7 +48,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		var err error
 		output := make(map[string]string)
 		validate := validator.New()
-		params := new(JoinGroupParam)
+		params := new(GroupSeed)
 
 		if err = c.Bind(params); err != nil {
 			output[ERROR_INFO] = err.Error()
@@ -116,7 +104,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(params.OwnerPubKey)
+		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(params.OwnerPubkey)
 		if err != nil {
 			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -181,7 +169,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		var item *quorumpb.GroupItem
 		item = &quorumpb.GroupItem{}
 
-		item.OwnerPubKey = params.OwnerPubKey
+		item.OwnerPubKey = params.OwnerPubkey
 		item.GroupId = params.GroupId
 		item.GroupName = params.GroupName
 		item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(ownerPubkeyBytes)
@@ -255,6 +243,13 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
+
+		// save group seed to appdata
+		pbGroupSeed := ToPbGroupSeed(*params)
+		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
+			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
+			return c.JSON(http.StatusBadRequest, output)
+		}
 
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}

@@ -2,6 +2,7 @@ package appdata
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -18,6 +19,7 @@ const CNT_PREFIX string = "cnt_"
 const SDR_PREFIX string = "sdr_"
 const SEQ_PREFIX string = "seq_"
 const TRX_PREFIX string = "trx_"
+const SED_PREFIX string = "sed_"
 const STATUS_PREFIX string = "stu_"
 const term = "\x00\x01"
 
@@ -111,6 +113,39 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 	}
 
 	return trxids, err
+}
+
+func (appdb *AppDb) GetGroupSeed(groupid string) (*quorumpb.GroupSeed, error) {
+	key := fmt.Sprintf("%s%s", SED_PREFIX, groupid)
+	exist, err := appdb.Db.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, ErrNotFound
+	}
+
+	value, err := appdb.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var result quorumpb.GroupSeed
+	if err := json.Unmarshal(value, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (appdb *AppDb) SetGroupSeed(seed *quorumpb.GroupSeed) error {
+	key := fmt.Sprintf("%s%s", SED_PREFIX, seed.GroupId)
+
+	value, err := json.Marshal(seed)
+	if err != nil {
+		return err
+	}
+	return appdb.Db.Set([]byte(key), value)
 }
 
 func getKey(prefix string, seqid uint64, tailing string) ([]byte, error) {
