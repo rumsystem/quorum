@@ -209,3 +209,15 @@ message PSPing {
     int64 TimeStamp     = 3;
     bytes Payload       = 4;
 }
+
+message GroupSeed {
+	Block  GenesisBlock = 1;
+	string GroupId  = 2;
+	string GroupName = 3;
+	string OwnerPubkey = 4;
+	string ConsensusType  = 5;
+	string EncryptionType = 6;
+	string CipherKey = 7;
+	string AppKey = 8;
+	string Signature = 9;
+}

@@ -2,6 +2,7 @@ package appdata
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -18,6 +19,7 @@ const CNT_PREFIX string = "cnt_"
 const SDR_PREFIX string = "sdr_"
 const SEQ_PREFIX string = "seq_"
 const TRX_PREFIX string = "trx_"
+const SED_PREFIX string = "sed_"
 const STATUS_PREFIX string = "stu_"
 const term = "\x00\x01"
 
@@ -113,6 +115,53 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 	return trxids, err
 }
 
+func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
+	key := groupSeedKey(groupID)
+	exist, err := appdb.Db.IsExist(key)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, ErrNotFound
+	}
+
+	value, err := appdb.Db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var result quorumpb.GroupSeed
+	if err := json.Unmarshal(value, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (appdb *AppDb) SetGroupSeed(seed *quorumpb.GroupSeed) error {
+	key := groupSeedKey(seed.GroupId)
+
+	value, err := json.Marshal(seed)
+	if err != nil {
+		return err
+	}
+	return appdb.Db.Set(key, value)
+}
+
+func (appdb *AppDb) DelGroupSeed(groupID string) error {
+	key := groupSeedKey(groupID)
+
+	exist, err := appdb.Db.IsExist(key)
+	if err != nil {
+		return err
+	}
+	if !exist { // skip
+		return nil
+	}
+
+	return appdb.Db.Delete(key)
+}
+
 func getKey(prefix string, seqid uint64, tailing string) ([]byte, error) {
 	return orderedcode.Append(nil, prefix, "-", orderedcode.Infinity, uint64(seqid), "_", tailing)
 }
@@ -169,4 +218,8 @@ func (appdb *AppDb) Release() error {
 func (appdb *AppDb) Close() {
 	appdb.Release()
 	appdb.Db.Close()
+}
+
+func groupSeedKey(groupID string) []byte {
+	return []byte(fmt.Sprintf("%s%s", SED_PREFIX, groupID))
 }

@@ -27,7 +27,7 @@ var (
 	mainlog  = logging.Logger("main")
 )
 
-func newGroupItem(params *api.JoinGroupParam, hexkey string, userencryptPubkey string) *quorumpb.GroupItem {
+func newGroupItem(params *api.GroupSeed, hexkey string, userencryptPubkey string) *quorumpb.GroupItem {
 	privkey, _ := ethcrypto.HexToECDSA(hexkey)
 	pubkeybytes := ethcrypto.FromECDSAPub(&privkey.PublicKey)
 	p2ppubkey, _ := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
@@ -56,7 +56,7 @@ func newGroupItem(params *api.JoinGroupParam, hexkey string, userencryptPubkey s
 	return item
 }
 
-func joinGroupItem(params *api.JoinGroupParam, hexkey string) *quorumpb.GroupItem {
+func joinGroupItem(params *api.GroupSeed, hexkey string) *quorumpb.GroupItem {
 	privkey, _ := ethcrypto.HexToECDSA(hexkey)
 	pubkeybytes := ethcrypto.FromECDSAPub(&privkey.PublicKey)
 	p2ppubkey, _ := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
@@ -79,7 +79,7 @@ func joinGroupItem(params *api.JoinGroupParam, hexkey string) *quorumpb.GroupIte
 	return item
 }
 
-func newGroup(ps *pubsub.Pubsub, params *api.JoinGroupParam, ks *localcrypto.MockKeyStore, nodename string) *chain.Group {
+func newGroup(ps *pubsub.Pubsub, params *api.GroupSeed, ks *localcrypto.MockKeyStore, nodename string) *chain.Group {
 	keyname := fmt.Sprintf("%s_%s", nodename, params.GroupId)
 	hexkey, err := ks.GetHexKey(localcrypto.Sign.NameString(keyname))
 
@@ -110,7 +110,7 @@ func newGroup(ps *pubsub.Pubsub, params *api.JoinGroupParam, ks *localcrypto.Moc
 	return &grp
 }
 
-func joinGroup(ps *pubsub.Pubsub, params *api.JoinGroupParam, ks *localcrypto.MockKeyStore, nodename string) *chain.Group {
+func joinGroup(ps *pubsub.Pubsub, params *api.GroupSeed, ks *localcrypto.MockKeyStore, nodename string) *chain.Group {
 	keyname := fmt.Sprintf("%s_%s", nodename, params.GroupId)
 	hexkey, err := ks.GetHexKey(localcrypto.Sign.NameString(keyname))
 	if err != nil {
@@ -158,7 +158,7 @@ func main() {
 	joingroupitemstr := `{"genesis_block":{"BlockId":"910a164a-7afc-4a1a-b43f-2419bce606c6","GroupId":"7d73a361-a69e-4529-a76a-18fbc0ac34cc","BlockNum":1,"Timestamp":1630443404855835826,"ProducerPubKey":"CAISIQM/DIum4C5wjxnJJooGuLwQ6c7V+h0gxGadN4Hi2JZR+w==","Hash":"3Z8BKX26Piis7GMVSaWkYqBqh3hJ6g0Z7tCEGv7QoAQ=","Signature":"MEYCIQDLW4KwtUn00rlAKMt9Rom6L8ZfQCYAB0BrvkzgZMyroAIhAK+1vO/+CxQtWP1s1UJkmAgD7hMybCzHjlHJac7ncleN"},"group_id":"7d73a361-a69e-4529-a76a-18fbc0ac34cc","group_name":"pb_group_1_public","owner_pubkey":"CAISIQM/DIum4C5wjxnJJooGuLwQ6c7V+h0gxGadN4Hi2JZR+w==","owner_encryptpubkey":"age104y8fsk38nz465y5veq30rlrnv80wpd8wvudhspxjpl89m4cqvpsu8d9vq","consensus_type":"poa","encryption_type":"public","cipher_key":"09123fae1f1b9cec0df984f25b3aceb4c318d033ba2b4ce8ab128c48379a0a7b","signature":"3045022012df97dfd9e39e47f4c31c85c3e4e62cbc760b13960d07eb1144775a99e00a31022100d6618a44261c24d6b76cc331cc5258dd4a17ddf870ae1ae1ddbdfb9aa8381611"}`
 	hexkey := "9bf3271d1188ab114c99a500a19b1bcd7e4caa795070db6461698c389dbf3db0"
 
-	grpparams := &api.JoinGroupParam{}
+	grpparams := &api.GroupSeed{}
 	_ = json.Unmarshal([]byte(joingroupitemstr), grpparams)
 
 	ps := pubsub.NewPubsub()

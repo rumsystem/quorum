@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -19,6 +20,8 @@ import (
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 type DirKeyStore struct {
@@ -130,21 +133,24 @@ func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
 	if val, ok := ks.unlocked[keyname]; ok {
 		return val, nil
 	}
+
 	//try unlock it
 	if strings.HasPrefix(keyname, Sign.Prefix()) {
 		addr := ks.signkeymap[keyname[len(Sign.Prefix()):]]
-		if addr != "" {
-			key, err := ks.LoadSignKey(keyname, common.HexToAddress(addr), ks.password)
-			if err == nil {
-				ks.unlocked[keyname] = key
-			} else {
-				cryptolog.Warningf("key: %s can't be unlocked, err:%s", keyname, err)
-				return nil, err
-			}
-			return ks.unlocked[keyname], nil
-		} else {
-			cryptolog.Warningf("can't find sign key %s addr", keyname)
+		if addr == "" {
+			err := fmt.Errorf("can't find sign key %s addr", keyname)
+			cryptolog.Warning(err)
+			return nil, err
 		}
+
+		key, err := ks.LoadSignKey(keyname, common.HexToAddress(addr), ks.password)
+		if err != nil {
+			cryptolog.Warningf("key: %s can't be unlocked, err:%s", keyname, err)
+			return nil, err
+		}
+
+		ks.unlocked[keyname] = key
+		return ks.unlocked[keyname], nil
 
 	} else if strings.HasPrefix(keyname, Encrypt.Prefix()) {
 		key, err := ks.LoadEncryptKey(keyname, ks.password)
@@ -400,7 +406,20 @@ func (ks *DirKeyStore) SignByKeyName(keyname string, data []byte, opts ...string
 	if err != nil {
 		return nil, err
 	}
+
 	return priv.Sign(data)
+	/*
+		signature, signErr := priv.Sign(data)
+
+		privByte, err := priv.Bytes()
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("xxx signature: %s \nkeyname: %s \npriv: %s \ndata: %s\n", hex.EncodeToString(signature), keyname, hex.EncodeToString(privByte), hex.EncodeToString(data))
+
+		return signature, signErr
+	*/
 }
 
 func (ks *DirKeyStore) VerifySign(data, sig []byte, pubKey p2pcrypto.PubKey) (bool, error) {
@@ -478,4 +497,173 @@ func (ks *DirKeyStore) Decrypt(keyname string, data []byte) ([]byte, error) {
 	}
 	r, err := age.Decrypt(bytes.NewReader(data), encryptk)
 	return ioutil.ReadAll(r)
+}
+
+// Backup the group seeds, key store and config directory, and return base64Encode(ageEncrypt(zip(keystore_dir))), base64Encode(ageEncrypt(zip(config_dir))) and error
+func (ks *DirKeyStore) Backup(groupSeeds []byte) (string, string, string, error) {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+
+	// encrypt recipient
+	r, err := age.NewScryptRecipient(ks.password)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// encrypt group seed
+	output := new(bytes.Buffer)
+	if err := AgeEncrypt([]age.Recipient{r}, bytes.NewReader(groupSeeds), output); err != nil {
+		return "", "", "", err
+	}
+
+	encGroupSeeds, err := ioutil.ReadAll(output)
+	if err != nil {
+		return "", "", "", err
+	}
+	encGroupSeedsStr := base64.StdEncoding.EncodeToString(encGroupSeeds)
+
+	// backup the keystore directory
+	zipKeystore, err := utils.ZipDir(ks.KeystorePath)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// encrypt keystore content
+	output = new(bytes.Buffer)
+	if err := AgeEncrypt([]age.Recipient{r}, bytes.NewReader(zipKeystore), output); err != nil {
+		return "", "", "", err
+	}
+
+	encKeystore, err := ioutil.ReadAll(output)
+	if err != nil {
+		return "", "", "", err
+	}
+	encKeystoreStr := base64.StdEncoding.EncodeToString(encKeystore)
+
+	// backup the config directory
+	configDir, err := options.GetConfigDir()
+	if err != nil {
+		return "", "", "", err
+	}
+
+	zipConfig, err := utils.ZipDir(configDir)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// encrypt config content
+	output = new(bytes.Buffer)
+	if err := AgeEncrypt([]age.Recipient{r}, bytes.NewReader(zipConfig), output); err != nil {
+		return "", "", "", err
+	}
+
+	encConfig, err := ioutil.ReadAll(output)
+	if err != nil {
+		return "", "", "", err
+	}
+	encConfigStr := base64.StdEncoding.EncodeToString(encConfig)
+
+	return encGroupSeedsStr, encKeystoreStr, encConfigStr, nil
+}
+
+// Restore restores the keystore and config from backup data
+func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configStr string, path string, password string) error {
+	// restore path
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("filepath.Abs(%s) failed: %s", path, err)
+	}
+
+	// if path is exists, return
+	if utils.FileExist(path) {
+		return fmt.Errorf("file %s is exists", path)
+	}
+
+	// if path is dir, but not empty, return
+	if utils.DirExist(path) {
+		empty, err := utils.IsDirEmpty(path)
+		if err != nil {
+			return err
+		}
+		if !empty {
+			return fmt.Errorf("dir %s is not empty", path)
+		}
+	} else {
+		// create path
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return fmt.Errorf("os.MkdirAll(%s, 0700) failed: %s", path, err)
+		}
+	}
+
+	seedPath := filepath.Join(path, "seeds.json")
+	keystorePath := filepath.Join(path, "keystore")
+	configPath := filepath.Join(path, "config")
+
+	// age identities
+	identities := []age.Identity{
+		&LazyScryptIdentity{password},
+	}
+
+	// base64 decode group seed
+	encSeed, err := base64.StdEncoding.DecodeString(groupSeedStr)
+	if err != nil {
+		return fmt.Errorf("base64 decode group seed failed: %s", err)
+	}
+
+	r, err := age.Decrypt(bytes.NewReader(encSeed), identities...)
+	if err != nil {
+		return fmt.Errorf("decrypt group seed data failed: %v", err)
+	}
+	seedBytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadAll failed: %s", err)
+	}
+
+	if err := ioutil.WriteFile(seedPath, seedBytes, 0400); err != nil {
+		return fmt.Errorf("write group seed file failed: %s", err)
+	}
+
+	// base64 decode keystore
+	encKeystore, err := base64.StdEncoding.DecodeString(keystoreStr)
+	if err != nil {
+		return fmt.Errorf("base64 decode keystore failed: %s", err)
+	}
+
+	r, err = age.Decrypt(bytes.NewReader(encKeystore), identities...)
+	if err != nil {
+		return fmt.Errorf("decrypt keystore data failed: %v", err)
+	}
+
+	zipKeystore, err := ioutil.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadAll failed: %v", err)
+	}
+
+	// unzip the keystore zip content
+	if err := utils.Unzip(zipKeystore, keystorePath); err != nil {
+		return fmt.Errorf("unzip keystory archive failed: %v", err)
+	}
+
+	// restore config
+	encConfig, err := base64.StdEncoding.DecodeString(configStr)
+	if err != nil {
+		return fmt.Errorf("base64 decode config data failed: %s", err)
+	}
+
+	r, err = age.Decrypt(bytes.NewReader(encConfig), identities...)
+	if err != nil {
+		return fmt.Errorf("decrypt config data failed: %v", err)
+	}
+
+	zipConfig, err := ioutil.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadAll config failed: %v", err)
+	}
+
+	// unzip the config zip content
+	if err := utils.Unzip(zipConfig, configPath); err != nil {
+		return fmt.Errorf("unzip config archive failed: %v", err)
+	}
+
+	return nil
 }

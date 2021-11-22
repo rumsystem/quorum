@@ -19,6 +19,10 @@ var (
 	basepath   = filepath.Join(filepath.Dir(b), "../")
 )
 
+const (
+	KeystorePassword = "a_temp_password"
+)
+
 func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, []string, string, error) {
 	var bootstrapaddr, testtempdir string
 	peers := []string{}
@@ -42,7 +46,7 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 		return "", []string{}, "", fmt.Errorf("os.Chdir(%s) failed: %s", basepath, err)
 	}
 
-	Fork(pidch, "a_temp_password", gocmd, "run", "cmd/main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-keystoredir", testkeystoredir, "-datadir", testdatadir)
+	Fork(pidch, KeystorePassword, gocmd, "run", "cmd/main.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-keystoredir", testkeystoredir, "-datadir", testdatadir)
 
 	// wait bootstrap node
 	bootstrapBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport)
@@ -66,7 +70,7 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 
 		testpeerkeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", peername)
 
-		Fork(pidch, "a_temp_password", gocmd, "run", "cmd/main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir)
+		Fork(pidch, KeystorePassword, gocmd, "run", "cmd/main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir)
 
 		checkctx, _ = context.WithTimeout(ctx, 60*time.Second)
 		_, result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", peerapiport))

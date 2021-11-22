@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/rand"
+	"io"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -59,12 +60,27 @@ func GetRandomStr(n int) string {
 	const lettersLength = int64(len(letters))
 
 	b := make([]byte, n)
-        _, err := rand.Read(b)
-        if err != nil {
-            return ""
-        }
-        for i, v := range b {
-            b[i] = letters[v%byte(lettersLength)]
-        }
-        return string(b)
+	_, err := rand.Read(b)
+	if err != nil {
+		return ""
+	}
+	for i, v := range b {
+		b[i] = letters[v%byte(lettersLength)]
+	}
+	return string(b)
+}
+
+// IsDirEmpty check if dir is empty
+func IsDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1) // Or f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err // Either not empty or error, suits both cases
 }

@@ -293,7 +293,13 @@ func mainRet(config cli.Config) int {
 		checkLockError(err)
 
 		//run local http api service
-		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), Ctx: ctx, GitCommit: GitCommit}
+		h := &api.Handler{
+			Node:      node,
+			NodeCtx:   nodectx.GetNodeCtx(),
+			Ctx:       ctx,
+			GitCommit: GitCommit,
+			Appdb:     appdb,
+		}
 
 		apiaddress := "https://%s/api/v1"
 		if config.APIListenAddresses[:1] == ":" {
