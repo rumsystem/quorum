@@ -228,9 +228,8 @@ func mainRet(config cli.Config) int {
 	}
 
 	if config.IsBootstrap == true {
-		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), listenaddresses, config.JsonTracer)
+		node, err := p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), config.ListenAddresses, config.JsonTracer)
 
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -251,9 +250,8 @@ func mainRet(config cli.Config) int {
 		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
 	} else {
-		listenaddresses, _ := utils.StringsToAddrs([]string{config.ListenAddresses})
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, 200, 60), listenaddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, 200, 60), config.ListenAddresses, config.JsonTracer)
 		_ = node.Bootstrap(ctx, config)
 
 		for _, addr := range node.Host.Addrs() {
