@@ -10,7 +10,7 @@ import (
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 )
 
-func CreateGroup(data []byte) (*handlers.CreateGroupResult, error) {
+func CreateGroup(data []byte) (*handlers.GroupSeed, error) {
 	wasmCtx := quorumContext.GetWASMContext()
 
 	params := &handlers.CreateGroupParam{}
@@ -18,5 +18,5 @@ func CreateGroup(data []byte) (*handlers.CreateGroupResult, error) {
 		return nil, err
 	}
 
-	return handlers.CreateGroup(params, wasmCtx.NodeOpt)
+	return handlers.CreateGroup(params, wasmCtx.NodeOpt, wasmCtx.AppDb)
 }
