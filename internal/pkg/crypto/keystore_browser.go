@@ -6,6 +6,7 @@ package crypto
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -55,6 +56,15 @@ func InitBrowserKeystore(password string) (Keystore, error) {
 func (ks *BrowserKeystore) Unlock(signkeymap map[string]string, password string) error {
 	ks.password = password
 	return nil
+}
+
+func (ks *BrowserKeystore) Backup([]byte) (string, string, string, error) {
+	// TODO
+	return "", "", "", errors.New("Not Implement Yet")
+}
+func (ks *BrowserKeystore) Restore(encGroupSeed, encKeystore, encConfig, path, password string) error {
+	// TODO
+	return errors.New("Not Implement Yet")
 }
 
 func (ks *BrowserKeystore) Lock() error {

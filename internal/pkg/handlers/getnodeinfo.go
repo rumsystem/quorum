@@ -39,7 +39,7 @@ func GetNodeInfo(networkName string) (*NodeInfo, error) {
 
 	var info NodeInfo
 
-	info.NodeVersion = utils.GetQuorumVersion()
+	info.NodeVersion = nodectx.GetNodeCtx().Version + " - " + utils.GitCommit
 	info.NodeType = "peer"
 	updateNodeStatus(networkName)
 

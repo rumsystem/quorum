@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -19,6 +20,13 @@ var ks Keystore
 //singlaton
 func GetKeystore() Keystore {
 	return ks
+}
+
+func zeroSignKey(k *ecdsa.PrivateKey) {
+	b := k.D.Bits()
+	for i := range b {
+		b[i] = 0
+	}
 }
 
 func (kt KeyType) Prefix() string {

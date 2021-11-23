@@ -1,3 +1,6 @@
+//go:build !js
+// +build !js
+
 package crypto
 
 import (
@@ -93,13 +96,6 @@ func (ks *DirKeyStore) Lock() error {
 	ks.unlocked = make(map[string]interface{})
 
 	return nil
-}
-
-func zeroSignKey(k *ecdsa.PrivateKey) {
-	b := k.D.Bits()
-	for i := range b {
-		b[i] = 0
-	}
 }
 
 func (ks *DirKeyStore) GetPeerInfo(keyname string) (peerid peer.ID, ethaddr string, err error) {
