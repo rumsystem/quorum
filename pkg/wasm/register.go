@@ -96,6 +96,36 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("MgrGrpBlkList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		jsonStr := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.MgrGrpBlkList([]byte(jsonStr))
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("GetDeniedUserList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetDeniedUserList(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("Ping", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		peer := args[0].String()
 		handler := func() (map[string]interface{}, error) {
