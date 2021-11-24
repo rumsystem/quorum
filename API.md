@@ -323,9 +323,13 @@ API
 
         返回值：
     
-            {"group_id":"f4273294-2792-4141-80ba-687ce706bc5b","peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","owner_pubkey":"CAISIQMOjdI2nm
-Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268429a08f8b0ede03b4ddc8014d470d84e707a80d600022100b1616d4662f3e7f0c75
-94381e425e0c26cf25b66a2cef9437d320cccb0871e5b","trx_id":"2f434ac3-c2a8-494a-9c58-d03a8b51dab5","action":"add","memo":""}
+            {
+                "group_id":"f4273294-2792-4141-80ba-687ce706bc5b","peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m",
+                "owner_pubkey":"CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268429a08f8b0ede03b4ddc8014d470d84e707a80d600022100b1616d4662f3e7f0c7594381e425e0c26cf25b66a2cef9437d320cccb0871e5b",
+                "trx_id":"2f434ac3-c2a8-494a-9c58-d03a8b51dab5",
+                "action":"add",
+                "memo":""
+            }
 
 
             group_id：组id
@@ -339,23 +343,30 @@ Rsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","sign":"30460221008d7480261a3a33f552b268
 
         例子：
 
-            curl -k -X GET -H 'Content-Type: application/json' http://127.0.0.1:8002/api/v1/group/:group_id/deniedlist
+            curl -k -X GET -H 'Content-Type: application/json' https://127.0.0.1:8002/api/v1/group/:group_id/deniedlist
 
         参数：
             无
         
-        说明：获取一个节点的blacklist
+        说明：获取一个节点禁止访问名单列表
 
         返回值：
-[{"GroupId":"f4273294-2792-4141-80ba-687ce706bc5b","PeerId":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY111","GroupOwnerPubkey":"CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","GroupOwnerSign":"3046022100c2c07b0b03ea5a624dbe07b2cb30ad08a5282a017b873c8defbec9656ae4f8da022100a3659f8410151c811ee331de9cbdf719ec9db33170a95dddfe2c443ace36f3c3","TimeStamp":1632514808574721034,"Action":"add","Memo":""},{"GroupId":"f4273294-2792-4141-80ba-687ce706bc5b","PeerId":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222","GroupOwnerPubkey":"CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","GroupOwnerSign":"304502201f21befe212c21b77abf49f5eacb24148a2e99f5c8e969a718a6bd7d5a051e2b022100fce4099125474fc765c14c143d7271583ea9e65677960106ebc7288ea93191c9","TimeStamp":1632515625550737844,"Action":"add","Memo":""}]
+        [
+            {
+                "GroupId":"f4273294-2792-4141-80ba-687ce706bc5b","PeerId":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY111","GroupOwnerPubkey":"CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==","GroupOwnerSign":"3046022100c2c07b0b03ea5a624dbe07b2cb30ad08a5282a017b873c8defbec9656ae4f8da022100a3659f8410151c811ee331de9cbdf719ec9db33170a95dddfe2c443ace36f3c3",
+                "TimeStamp":1632514808574721034,
+                "Action":"add",
+                "Memo":""
+            }
+        ]
             
-            数组，包含该节点所有已经屏蔽的组-用户对
-                GroupId:组id
-                PeerId:用户id
-                OwnerPubkey：组拥有者pubkey
-                OwnerSign:执行该操作的签名
-                Action: add or del
-                Timestamp：操作执行的时间戳
+        数组，包含该组已经被Owner屏幕的用户id列表
+            GroupId:组id
+            PeerId:用户id
+            OwnerPubkey：组拥有者pubkey
+            OwnerSign:执行该操作的签名
+            Action: add or del
+            Timestamp：操作执行的时间戳
 
     - 删除组黑名单
     

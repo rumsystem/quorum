@@ -70,11 +70,13 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 
 	//check if trx sender is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
 		return
+	} else {
+		molaproducer_log.Debugf("<%s> user <%s> is not blocked", producer.groupId, trx.SenderPubkey)
 	}
 
 	if producer.cIface.IsSyncerReady() {
@@ -287,7 +289,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
@@ -343,7 +345,7 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
