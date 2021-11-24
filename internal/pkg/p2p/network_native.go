@@ -26,6 +26,8 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	tcp "github.com/libp2p/go-tcp-transport"
+	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -73,6 +75,10 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		libp2p.NATPortMap(),
 		libp2p.ConnectionManager(cmgr),
 		libp2p.Ping(false),
+		libp2p.ChainOptions(
+			libp2p.Transport(tcp.NewTCPTransport),
+			libp2p.Transport(ws.New),
+		),
 		identity,
 	}
 
