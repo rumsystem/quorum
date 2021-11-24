@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall/js"
 
+	"github.com/rumsystem/quorum/pkg/wasm/api"
 	quorumAPI "github.com/rumsystem/quorum/pkg/wasm/api"
 )
 
@@ -50,6 +51,26 @@ func RegisterJSFunctions() {
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
 			res, err := quorumAPI.StartSync(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("AddPeers", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		peersStr := args[0].String()
+		peers := strings.Split(peersStr, ",")
+
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := api.AddPeers(peers)
 			if err != nil {
 				return ret, err
 			}
