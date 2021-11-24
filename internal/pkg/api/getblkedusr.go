@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type DeniedUserListItem struct {

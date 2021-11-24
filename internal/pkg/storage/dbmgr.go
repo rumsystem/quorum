@@ -571,7 +571,6 @@ func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx, prefix ...string) (err 
 		return dbMgr.Db.Set([]byte(key), trx.Data)
 	} else if item.Action == "del" {
 		key := nodeprefix + ATH_PREFIX + "_" + item.GroupId + "_" + item.PeerId
-
 		//check if group exist
 		exist, err := dbMgr.Db.IsExist([]byte(key))
 		if !exist {
@@ -586,10 +585,10 @@ func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx, prefix ...string) (err 
 	}
 }
 
-func (dbMgr *DbMgr) GetBlkedUsers(prefix ...string) ([]*quorumpb.DenyUserItem, error) {
+func (dbMgr *DbMgr) GetBlkedUsers(groupId string, prefix ...string) ([]*quorumpb.DenyUserItem, error) {
 	var blkList []*quorumpb.DenyUserItem
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + ATH_PREFIX
+	key := nodeprefix + ATH_PREFIX + "_" + groupId
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -614,7 +613,6 @@ func (dbMgr *DbMgr) GetBlkedUsers(prefix ...string) ([]*quorumpb.DenyUserItem, e
 func (dbMgr *DbMgr) IsUserBlocked(groupId, userId string, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + ATH_PREFIX + "_" + groupId + "_" + userId
-
 	//check if group exist
 	return dbMgr.Db.IsExist([]byte(key))
 }

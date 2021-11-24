@@ -16,10 +16,10 @@ import (
 )
 
 type DenyListParam struct {
-	Action  string `from:"action" json:"action" validate:"required,oneof=add del"`
-	PeerId  string `from:"peer_id"      json:"peer_id"      validate:"required"`
-	GroupId string `from:"group_id"  json:"group_id"  validate:"required"`
-	Memo    string `from:"memo"  json:"memo"  `
+	Action  string `from:"action"   json:"action"   validate:"required,oneof=add del"`
+	PeerId  string `from:"peer_id"  json:"peer_id"  validate:"required"`
+	GroupId string `from:"group_id" json:"group_id" validate:"required"`
+	Memo    string `from:"memo"     json:"memo"  `
 }
 
 type DenyUserResult struct {

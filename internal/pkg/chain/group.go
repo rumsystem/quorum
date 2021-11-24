@@ -167,7 +167,7 @@ func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
 
 func (grp *Group) GetBlockedUser() ([]*quorumpb.DenyUserItem, error) {
 	group_log.Debugf("<%s> GetBlockedUser called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetBlkedUsers(grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetBlkedUsers(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
