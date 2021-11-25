@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"fmt"
+
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 )
@@ -18,13 +19,6 @@ var ks Keystore
 //singlaton
 func GetKeystore() Keystore {
 	return ks
-}
-
-func InitKeystore(KeyStoreName, KeyStoreDir string) (int, error) {
-	signkeycount := 0
-	var err error
-	ks, signkeycount, err = InitDirKeyStore(KeyStoreName, KeyStoreDir)
-	return signkeycount, err
 }
 
 func (kt KeyType) Prefix() string {
@@ -60,4 +54,6 @@ type Keystore interface {
 	Decrypt(keyname string, data []byte) ([]byte, error)
 	GetEncodedPubkey(keyname string, keytype KeyType) (string, error)
 	GetPeerInfo(keyname string) (peerid peer.ID, ethaddr string, err error)
+	Backup([]byte) (string, string, string, error)
+	Restore(encGroupSeed, encKeystore, encConfig, path, password string) error
 }

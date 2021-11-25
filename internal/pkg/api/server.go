@@ -42,6 +42,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/announce", h.Announce)
 		r.POST("/v1/group/schema", h.Schema)
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
+		r.GET("/v1/backup", h.Backup)
+		r.POST("/v1/restore", h.Restore)
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 		r.POST("/v1/psping", h.PSPingPeer(node))
@@ -59,7 +61,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		a.POST("/v1/token/apply", apph.ApplyToken)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
 	} else {
-		r.GET("/v1/node", h.GetBootStropNodeInfo)
+		r.GET("/v1/node", h.GetBootstrapNodeInfo)
 	}
 
 	certPath, keyPath, err := utils.GetTLSCerts()

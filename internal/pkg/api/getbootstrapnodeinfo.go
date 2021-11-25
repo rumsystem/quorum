@@ -1,12 +1,19 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"net/http"
 )
 
-func (h *Handler) GetBootStropNodeInfo(c echo.Context) (err error) {
+// @Tags Node
+// @Summary GetBootstrapNodeInfo
+// @Description Return the bootstrap node info
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /api/v1/node [get]
+func (h *Handler) GetBootstrapNodeInfo(c echo.Context) (err error) {
 	output := make(map[string]interface{})
 	output[NODE_STATUS] = "NODE_ONLINE"
 	output[NODETYPE] = "bootstrap"

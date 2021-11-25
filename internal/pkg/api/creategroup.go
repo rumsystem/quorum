@@ -28,17 +28,16 @@ type CreateGroupParam struct {
 	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=5"`
 }
 
-type CreateGroupResult struct {
-	GenesisBlock       *quorumpb.Block `json:"genesis_block"`
-	GroupId            string          `json:"group_id"`
-	GroupName          string          `json:"group_name"`
-	OwnerPubkey        string          `json:"owner_pubkey"`
-	OwnerEncryptPubkey string          `json:"owner_encryptpubkey"`
-	ConsensusType      string          `json:"consensus_type"`
-	EncryptionType     string          `json:"encryption_type"`
-	CipherKey          string          `json:"cipher_key"`
-	AppKey             string          `json:"app_key"`
-	Signature          string          `json:"signature"`
+type GroupSeed struct {
+	GenesisBlock   *quorumpb.Block `json:"genesis_block" validate:"required"`
+	GroupId        string          `json:"group_id" validate:"required"`
+	GroupName      string          `json:"group_name" validate:"required,max=20,min=5"`
+	OwnerPubkey    string          `json:"owner_pubkey" validate:"required"`
+	ConsensusType  string          `json:"consensus_type" validate:"required,oneof=pos poa"`
+	EncryptionType string          `json:"encryption_type" validate:"required,oneof=public private"`
+	CipherKey      string          `json:"cipher_key" validate:"required"`
+	AppKey         string          `json:"app_key" validate:"required"`
+	Signature      string          `json:"signature" validate:"required"`
 }
 
 // @Tags Groups
@@ -47,7 +46,7 @@ type CreateGroupResult struct {
 // @Accept json
 // @Produce json
 // @Param data body CreateGroupParam true "GroupInfo"
-// @Success 200 {object} CreateGroupResult
+// @Success 200 {object} GroupSeed
 // @Router /api/v1/group [post]
 func (h *Handler) CreateGroup() echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -114,12 +113,6 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		genesisBlockBytes, err := json.Marshal(genesisBlock)
-		if err != nil {
-			output[ERROR_INFO] = "Marshal genesis block failed with msg:" + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
 		cipherKey, err := localcrypto.CreateAesKey()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
@@ -176,23 +169,105 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 		groupmgr.Groups[group.Item.GroupId] = group
 
 		//create result
-		var buffer bytes.Buffer
-		buffer.Write(genesisBlockBytes)
-		buffer.Write([]byte(groupid.String()))
-		buffer.Write([]byte(params.GroupName))
-		buffer.Write(groupSignPubkey) //group owner pubkey
-		buffer.Write([]byte(params.ConsensusType))
-		buffer.Write([]byte(params.EncryptionType))
-		buffer.Write([]byte(params.AppKey))
-		buffer.Write(cipherKey)
-
-		hash := localcrypto.Hash(buffer.Bytes())
-		signature, err := ks.SignByKeyName(groupid.String(), hash)
-		encodedSign := hex.EncodeToString(signature)
 		encodedCipherKey := hex.EncodeToString(cipherKey)
 
-		createGrpResult := &CreateGroupResult{GenesisBlock: genesisBlock, GroupId: groupid.String(), GroupName: params.GroupName, OwnerPubkey: item.OwnerPubKey, OwnerEncryptPubkey: item.UserEncryptPubkey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, CipherKey: encodedCipherKey, AppKey: params.AppKey, Signature: encodedSign}
-		return c.JSON(http.StatusOK, createGrpResult)
+		createGrpResult := &GroupSeed{
+			GenesisBlock:   genesisBlock,
+			GroupId:        groupid.String(),
+			GroupName:      params.GroupName,
+			OwnerPubkey:    item.OwnerPubKey,
+			ConsensusType:  params.ConsensusType,
+			EncryptionType: params.EncryptionType,
+			CipherKey:      encodedCipherKey,
+			AppKey:         params.AppKey,
+			Signature:      "", // updated by GenerateGroupSeedSignature
+		}
 
+		// generate signature
+		if err := GenerateGroupSeedSignature(createGrpResult); err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusInternalServerError, output)
+		}
+
+		// save group seed to appdata
+		pbGroupSeed := ToPbGroupSeed(*createGrpResult)
+		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
+			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %d", err)
+			return c.JSON(http.StatusInternalServerError, output)
+		}
+
+		// appdata.SetGroupSeed(groupid.String(), createGrpResult)
+		return c.JSON(http.StatusOK, createGrpResult)
+	}
+}
+
+func GenerateGroupSeedSignature(result *GroupSeed) error {
+	genesisBlockBytes, err := json.Marshal(result.GenesisBlock)
+	if err != nil {
+		e := fmt.Errorf("Marshal genesis block failed with msg: %s", err)
+		return e
+	}
+
+	groupSignPubkey, err := p2pcrypto.ConfigDecodeKey(result.OwnerPubkey)
+	if err != nil {
+		e := fmt.Errorf("Decode group owner pubkey failed: %s", err)
+		return e
+	}
+
+	cipherKey, err := hex.DecodeString(result.CipherKey)
+	if err != nil {
+		e := fmt.Errorf("Decode cipher key failed: %s", err)
+		return e
+	}
+
+	var buffer bytes.Buffer
+	buffer.Write(genesisBlockBytes)
+	buffer.Write([]byte(result.GroupId))
+	buffer.Write([]byte(result.GroupName))
+	buffer.Write(groupSignPubkey) //group owner pubkey
+	buffer.Write([]byte(result.ConsensusType))
+	buffer.Write([]byte(result.EncryptionType))
+	buffer.Write([]byte(result.AppKey))
+	buffer.Write(cipherKey)
+
+	hash := localcrypto.Hash(buffer.Bytes())
+	ks := nodectx.GetNodeCtx().Keystore
+	signature, err := ks.SignByKeyName(result.GroupId, hash)
+	if err != nil {
+		e := fmt.Errorf("ks.SignByKeyName failed: %s", err)
+		return e
+	}
+	result.Signature = hex.EncodeToString(signature)
+
+	return nil
+}
+
+// ToPbGroupSeed convert `api.GroupSeed` to `quorumpb.GroupSeed`
+func ToPbGroupSeed(s GroupSeed) quorumpb.GroupSeed {
+	return quorumpb.GroupSeed{
+		GenesisBlock:   s.GenesisBlock,
+		GroupId:        s.GroupId,
+		GroupName:      s.GroupName,
+		OwnerPubkey:    s.OwnerPubkey,
+		ConsensusType:  s.ConsensusType,
+		EncryptionType: s.EncryptionType,
+		CipherKey:      s.CipherKey,
+		AppKey:         s.AppKey,
+		Signature:      s.Signature,
+	}
+}
+
+// FromPbGroupSeed convert `quorumpb.GroupSeed` to `api.GroupSeed`
+func FromPbGroupSeed(s *quorumpb.GroupSeed) GroupSeed {
+	return GroupSeed{
+		GenesisBlock:   s.GenesisBlock,
+		GroupId:        s.GroupId,
+		GroupName:      s.GroupName,
+		OwnerPubkey:    s.OwnerPubkey,
+		ConsensusType:  s.ConsensusType,
+		EncryptionType: s.EncryptionType,
+		CipherKey:      s.CipherKey,
+		AppKey:         s.AppKey,
+		Signature:      s.Signature,
 	}
 }

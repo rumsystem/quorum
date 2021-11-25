@@ -1,10 +1,20 @@
+//go:build !js
+// +build !js
+
 package crypto
 
 import (
 	"bytes"
 	"encoding/hex"
-	"filippo.io/age"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"filippo.io/age"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
@@ -12,12 +22,6 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-	"time"
 )
 
 type MockKeyStore struct {

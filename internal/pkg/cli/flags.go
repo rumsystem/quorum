@@ -16,7 +16,7 @@ type ipList []net.IP
 type Config struct {
 	RendezvousString   string
 	BootstrapPeers     addrList
-	ListenAddresses    string
+	ListenAddresses    addrList
 	SSLCertIPAddresses ipList
 	APIListenAddresses string
 	ProtocolID         string
@@ -82,7 +82,7 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&config.RendezvousString, "rendezvous", "e6629921-b5cd-4855-9fcd-08bcc39caef7", //e6629921-b5cd-4855-9fcd-08bcc39caef7 default quorum rendezvous
 		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
-	flag.StringVar(&config.ListenAddresses, "listen", "/ip4/127.0.0.1/tcp/4215", "Adds a multiaddress to the listen list")
+	flag.Var(&config.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: `-listen /ip4/127.0.0.1/tcp/4215 -listen /ip/127.0.0.1/tcp/5215/ws`")
 	flag.Var(&config.SSLCertIPAddresses, "ips", "IPAddresses field of x509 certificate")
 	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "Adds a multiaddress to the listen list")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
