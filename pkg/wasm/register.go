@@ -61,6 +61,21 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("Announce", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		jsonStr := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.Announce([]byte(jsonStr))
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("GetGroupProducers", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		groupId := args[0].String()
 		handler := func() (map[string]interface{}, error) {
