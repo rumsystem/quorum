@@ -89,18 +89,6 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 	return connectedCount
 }
 
-func (node *Node) EnsureConnect(ctx context.Context, rendezvousString string, f func()) {
-	for {
-		peers, _ := node.FindPeers(ctx, rendezvousString)
-		networklog.Infof("Find peers count: %d \n", len(peers))
-		if len(peers) > 1 { // //connect 2 nodes at least
-			break
-		}
-		time.Sleep(time.Second * 5)
-	}
-	f()
-}
-
 func (node *Node) PeersProtocol() *map[string][]string {
 	protocolpeers := make(map[string][]string)
 	peerstore := node.Host.Peerstore()
