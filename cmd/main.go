@@ -413,7 +413,6 @@ func main() {
 		wsAddr := "/ip4/127.0.0.1/tcp/0/ws"
 		ctx := context.Background()
 		node, err := libp2p.New(
-			ctx,
 			libp2p.ListenAddrStrings(tcpAddr, wsAddr),
 			libp2p.Ping(false),
 		)
