@@ -567,37 +567,17 @@ func (ks *DirKeyStore) Backup(groupSeeds []byte) (string, string, string, error)
 }
 
 // Restore restores the keystore and config from backup data
-func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configStr string, path string, password string) error {
-	// restore path
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("filepath.Abs(%s) failed: %s", path, err)
+func Restore(password, groupSeedStr, keystoreStr, configStr, seedPath, keystorePath, configPath string) error {
+	// check restore path
+	if err := checkPath(seedPath); err != nil {
+		return err
 	}
-
-	// if path is exists, return
-	if utils.FileExist(path) {
-		return fmt.Errorf("file %s is exists", path)
+	if err := checkPath(keystorePath); err != nil {
+		return err
 	}
-
-	// if path is dir, but not empty, return
-	if utils.DirExist(path) {
-		empty, err := utils.IsDirEmpty(path)
-		if err != nil {
-			return err
-		}
-		if !empty {
-			return fmt.Errorf("dir %s is not empty", path)
-		}
-	} else {
-		// create path
-		if err := os.MkdirAll(path, 0700); err != nil {
-			return fmt.Errorf("os.MkdirAll(%s, 0700) failed: %s", path, err)
-		}
+	if err := checkPath(configPath); err != nil {
+		return err
 	}
-
-	seedPath := path
-	keystorePath := path
-	configPath := path
 
 	// age identities
 	identities := []age.Identity{
@@ -663,6 +643,36 @@ func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configSt
 	// unzip the config zip content
 	if err := utils.Unzip(zipConfig, configPath); err != nil {
 		return fmt.Errorf("unzip config archive failed: %v", err)
+	}
+
+	return nil
+}
+
+func checkPath(path string) error {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("filepath.Abs(%s) failed: %s", path, err)
+	}
+
+	// if path is exists, return
+	if utils.FileExist(path) {
+		return fmt.Errorf("file %s is exists", path)
+	}
+
+	// if path is dir, but not empty, return
+	if utils.DirExist(path) {
+		empty, err := utils.IsDirEmpty(path)
+		if err != nil {
+			return err
+		}
+		if !empty {
+			return fmt.Errorf("dir %s is not empty", path)
+		}
+	} else {
+		// create path
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return fmt.Errorf("os.MkdirAll(%s, 0700) failed: %s", path, err)
+		}
 	}
 
 	return nil

@@ -2,48 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/testnode"
 )
-
-func restore(api string, payload RestoreParam) (*RestoreResult, error) {
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed: %s", err)
-	}
-
-	payloadStr := string(payloadBytes)
-	resp, err := testnode.RequestAPI(api, "/api/v1/restore", "POST", payloadStr)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
-	var result RestoreResult
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %s response: %+v", err, resp)
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(result); err != nil {
-		return nil, fmt.Errorf("validate.Struct failed: %s", err)
-	}
-
-	if !utils.DirExist(result.Path) {
-		return nil, fmt.Errorf("restore path %s not exist", result.Path)
-	}
-
-	return &result, nil
-}
 
 func TestRestore(t *testing.T) {
 	// create group
@@ -63,26 +28,60 @@ func TestRestore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("backup failed: %s", err)
 	}
+	backupFile := filepath.Join(t.TempDir(), "backup.json")
+	backupContent, err := json.Marshal(backupResult)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %s", err)
+	}
+	if err := ioutil.WriteFile(backupFile, backupContent, 0644); err != nil {
+		t.Fatalf("ioutil.WriteFile failed: %s", err)
+	}
 
 	// restore
 	path := t.TempDir()
 	restoreParam := RestoreParam{
-		BackupResult: *backupResult,
-		Password:     testnode.KeystorePassword,
-		Path:         path,
+		BackupFile:  backupFile,
+		Password:    testnode.KeystorePassword,
+		ConfigDir:   filepath.Join(path, "config"),
+		KeystoreDir: filepath.Join(path, "keystore"),
+		SeedDir:     filepath.Join(path, "seeds"),
 	}
 
-	result, err := restore(peerapi, restoreParam)
+	if err := Restore(restoreParam); err != nil {
+		t.Fatalf("Restore failed: %s", err)
+	}
+
+	// check config directory
+	if !utils.DirExist(restoreParam.ConfigDir) {
+		t.Errorf("config directory not exist")
+	}
+	empty, err := utils.IsDirEmpty(restoreParam.ConfigDir)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("utils.IsDirEmpty failed: %s", err)
+	}
+	if empty {
+		t.Errorf("config directory is empty")
 	}
 
-	seedPath := filepath.Join(result.Path, "seeds")
+	// check keystore directory
+	if !utils.DirExist(restoreParam.KeystoreDir) {
+		t.Errorf("keystore directory not exist")
+	}
+	empty, err = utils.IsDirEmpty(restoreParam.KeystoreDir)
+	if err != nil {
+		t.Fatalf("utils.IsDirEmpty failed: %s", err)
+	}
+	if empty {
+		t.Errorf("keystore directory is empty")
+	}
+
+	// check group seed
+	seedPath := restoreParam.SeedDir
 	if !utils.DirExist(seedPath) {
 		t.Errorf("seeds directory not exist")
 	}
 
-	empty, err := utils.IsDirEmpty(seedPath)
+	empty, err = utils.IsDirEmpty(seedPath)
 	if err != nil {
 		t.Errorf("check seeds directory empty failed: %s", err)
 	}

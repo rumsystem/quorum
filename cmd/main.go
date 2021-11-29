@@ -408,6 +408,15 @@ func main() {
 	version := flag.Bool("version", false, "Show the version")
 	update := flag.Bool("update", false, "Update to the latest version")
 	updateFrom := flag.String("from", "github", "Update from: github/qingcloud, default to github")
+
+	// restore flag
+	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
+	backupFile := flag.String("json-file", "", "the json file for restoring")
+	password := flag.String("password", "", "the password for restoring")
+	keystoreDir := flag.String("keystore-dir", "", "the directory path for restoring")
+	configDir := flag.String("config-dir", "", "the config directory for restoring")
+	seedDir := flag.String("seed-dir", "", "the group seed directory for restoring")
+
 	config, err := cli.ParseFlags()
 	lvl, err := logging.LevelFromString("info")
 	logging.SetAllLoggers(lvl)
@@ -460,48 +469,15 @@ func main() {
 	}
 
 	if config.IsPing {
-		if len(config.BootstrapPeers) == 0 {
-			fmt.Println("Usage:", os.Args[0], "-ping", "-peer <peer> [-peer <peer> ...]")
-			return
-		}
-
-		// FIXME: hardcode
-		tcpAddr := "/ip4/127.0.0.1/tcp/0"
-		wsAddr := "/ip4/127.0.0.1/tcp/0/ws"
-		ctx := context.Background()
-		node, err := libp2p.New(
-			ctx,
-			libp2p.ListenAddrStrings(tcpAddr, wsAddr),
-			libp2p.Ping(false),
-		)
-		if err != nil {
-			panic(err)
-		}
-
-		// configure our ping protocol
-		pingService := &p2p.PingService{Host: node}
-		node.SetStreamHandler(p2p.PingID, pingService.PingHandler)
-
-		for _, addr := range config.BootstrapPeers {
-			peer, err := peerstore.AddrInfoFromP2pAddr(addr)
-			if err != nil {
-				panic(err)
-			}
-
-			if err := node.Connect(ctx, *peer); err != nil {
-				panic(err)
-			}
-			ch := pingService.Ping(ctx, peer.ID)
-			fmt.Println()
-			fmt.Println("pinging remote peer at", addr)
-			for i := 0; i < 4; i++ {
-				res := <-ch
-				fmt.Println("PING", addr, "in", res.RTT)
-			}
-		}
-
+		ping(config)
 		return
 	}
+
+	if *isRestore {
+		restore(*password, *backupFile, *keystoreDir, *configDir, *seedDir)
+		return
+	}
+
 	if err := utils.EnsureDir(config.DataDir); err != nil {
 		panic(err)
 	}
@@ -512,4 +488,64 @@ func main() {
 	}
 
 	os.Exit(mainRet(config))
+}
+
+func ping(config cli.Config) {
+	if len(config.BootstrapPeers) == 0 {
+		fmt.Println("Usage:", os.Args[0], "-ping", "-peer <peer> [-peer <peer> ...]")
+		return
+	}
+
+	// FIXME: hardcode
+	tcpAddr := "/ip4/127.0.0.1/tcp/0"
+	wsAddr := "/ip4/127.0.0.1/tcp/0/ws"
+	ctx := context.Background()
+	node, err := libp2p.New(
+		ctx,
+		libp2p.ListenAddrStrings(tcpAddr, wsAddr),
+		libp2p.Ping(false),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	// configure our ping protocol
+	pingService := &p2p.PingService{Host: node}
+	node.SetStreamHandler(p2p.PingID, pingService.PingHandler)
+
+	for _, addr := range config.BootstrapPeers {
+		peer, err := peerstore.AddrInfoFromP2pAddr(addr)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := node.Connect(ctx, *peer); err != nil {
+			panic(err)
+		}
+		ch := pingService.Ping(ctx, peer.ID)
+		fmt.Println()
+		fmt.Println("pinging remote peer at", addr)
+		for i := 0; i < 4; i++ {
+			res := <-ch
+			fmt.Println("PING", addr, "in", res.RTT)
+		}
+	}
+}
+
+func restore(password, backupFile, keystoreDir, configDir, seedDir string) {
+	if backupFile == "" || password == "" || keystoreDir == "" || configDir == "" || seedDir == "" {
+		fmt.Printf("usage: %s -restore -json-file=<json-file-path> -password=<password> -keystore-dir=<keystore-dir> -config-dir=<config-dir> -seed-dir=<seed-dir>\n", os.Args[0])
+		return
+	}
+
+	params := api.RestoreParam{
+		Password:    password,
+		BackupFile:  backupFile,
+		KeystoreDir: keystoreDir,
+		ConfigDir:   configDir,
+		SeedDir:     seedDir,
+	}
+	if err := api.Restore(params); err != nil {
+		mainlog.Fatalf("restore failed: %s, params: %+v\n", err, params)
+	}
 }
