@@ -499,7 +499,7 @@ func (ks *DirKeyStore) Decrypt(keyname string, data []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-// Backup the group seeds, key store and config directory, and return base64Encode(ageEncrypt(zip(keystore_dir))), base64Encode(ageEncrypt(zip(config_dir))) and error
+// Backup the group seeds, key store and config directory, and return base64Encode(ageEncrypt(zip(seeds))), base64Encode(ageEncrypt(zip(keystore_dir))), base64Encode(ageEncrypt(zip(config_dir))) and error
 func (ks *DirKeyStore) Backup(groupSeeds []byte) (string, string, string, error) {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
@@ -595,9 +595,9 @@ func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configSt
 		}
 	}
 
-	seedPath := filepath.Join(path, "seeds.json")
-	keystorePath := filepath.Join(path, "keystore")
-	configPath := filepath.Join(path, "config")
+	seedPath := path
+	keystorePath := path
+	configPath := path
 
 	// age identities
 	identities := []age.Identity{
@@ -619,8 +619,8 @@ func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configSt
 		return fmt.Errorf("ioutil.ReadAll failed: %s", err)
 	}
 
-	if err := ioutil.WriteFile(seedPath, seedBytes, 0400); err != nil {
-		return fmt.Errorf("write group seed file failed: %s", err)
+	if err := utils.Unzip(seedBytes, seedPath); err != nil {
+		return fmt.Errorf("unzip group seed archive failed: %v", err)
 	}
 
 	// base64 decode keystore

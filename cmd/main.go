@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -88,6 +91,57 @@ func createAppDb(path string) (*appdata.AppDb, error) {
 	app.Db = &db
 	app.DataPath = path
 	return app, nil
+}
+
+func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
+	// NOTE: hardcode seed directory path
+	seedPath := filepath.Join(filepath.Dir(dataDir), "seeds")
+	if utils.DirExist(seedPath) {
+		seeds, err := ioutil.ReadDir(seedPath)
+		if err != nil {
+			mainlog.Errorf("read seeds directory failed: %s", err)
+		}
+
+		for _, seed := range seeds {
+			if seed.IsDir() {
+				continue
+			}
+
+			path := filepath.Join(seedPath, seed.Name())
+			seedByte, err := ioutil.ReadFile(path)
+			if err != nil {
+				mainlog.Errorf("read seed file failed: %s", err)
+				continue
+			}
+
+			var seed api.GroupSeed
+			if err := json.Unmarshal(seedByte, &seed); err != nil {
+				mainlog.Errorf("unmarshal seed file failed: %s", err)
+				continue
+			}
+
+			// if group seed already in app data then skip
+			groupId := seed.GroupId
+			savedSeed, err := appdb.GetGroupSeed(groupId)
+			if err != nil {
+				mainlog.Errorf("get group seed from appdb failed: %s", err)
+				continue
+			}
+			if savedSeed != nil {
+				// seed already exist, skip
+				mainlog.Debugf("group id: %s, seed already exist, skip ...", groupId)
+				continue
+			}
+
+			// save seed to app data
+			pbSeed := api.ToPbGroupSeed(seed)
+			err = appdb.SetGroupSeed(&pbSeed)
+			if err != nil {
+				mainlog.Errorf("save group seed failed: %s", err)
+				continue
+			}
+		}
+	}
 }
 
 func mainRet(config cli.Config) int {
@@ -289,6 +343,9 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 		checkLockError(err)
+
+		// compatible with earlier versions: load group seeds and save to appdata
+		saveLocalSeedsToAppdata(appdb, config.DataDir)
 
 		//run local http api service
 		h := &api.Handler{

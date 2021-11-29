@@ -77,20 +77,39 @@ func TestRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	seedPath := filepath.Join(result.Path, "seeds.json")
-	if !utils.FileExist(seedPath) {
-		t.Errorf("seeds.json not exist")
+	seedPath := filepath.Join(result.Path, "seeds")
+	if !utils.DirExist(seedPath) {
+		t.Errorf("seeds directory not exist")
 	}
 
-	// load seeds.json
-	seedBytes, err := ioutil.ReadFile(seedPath)
+	empty, err := utils.IsDirEmpty(seedPath)
 	if err != nil {
-		t.Fatalf("ioutil.ReadFile failed: %s", err)
+		t.Errorf("check seeds directory empty failed: %s", err)
+	}
+	if empty {
+		t.Errorf("seeds directory is empty")
+	}
+
+	// load seed json
+	seedfiles, err := ioutil.ReadDir(seedPath)
+	if err != nil {
+		t.Errorf("read seeds directory failed: %s", err)
 	}
 
 	var seeds []GroupSeed
-	if err := json.Unmarshal(seedBytes, &seeds); err != nil {
-		t.Fatalf("json.Unmarshal failed: %s", err)
+	for _, seedfile := range seedfiles {
+		path := filepath.Join(seedPath, seedfile.Name())
+		seedBytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ioutil.ReadFile failed: %s", err)
+		}
+
+		var seed GroupSeed
+		if err := json.Unmarshal(seedBytes, &seed); err != nil {
+			t.Fatalf("json.Unmarshal failed: %s", err)
+		}
+
+		seeds = append(seeds, seed)
 	}
 
 	found := false

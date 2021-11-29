@@ -122,7 +122,7 @@ func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
 		return nil, err
 	}
 	if !exist {
-		return nil, ErrNotFound
+		return nil, nil
 	}
 
 	value, err := appdb.Db.Get(key)
