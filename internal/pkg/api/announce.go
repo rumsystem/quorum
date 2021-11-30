@@ -15,13 +15,13 @@ import (
 )
 
 type AnnounceResult struct {
-	GroupId                string `json:"group_id"`
-	AnnouncedSignPubkey    string `json:"sign_pubkey"`
+	GroupId                string `json:"group_id" validate:"required"`
+	AnnouncedSignPubkey    string `json:"sign_pubkey" validate:"required"`
 	AnnouncedEncryptPubkey string `json:"encrypt_pubkey"`
-	Type                   string `json:"type"`
-	Action                 string `json:"action"`
-	Sign                   string `json:"sign"`
-	TrxId                  string `json:"trx_id"`
+	Type                   string `json:"type" validate:"required"`
+	Action                 string `json:"action" validate:"required"`
+	Sign                   string `json:"sign" validate:"required"`
+	TrxId                  string `json:"trx_id" validate:"required"`
 }
 
 type AnnounceParam struct {

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -21,6 +21,12 @@ type GroupContentObjectItem struct {
 	TimeStamp int64
 }
 
+// @Tags Groups
+// @Summary GetGroupCtn
+// @Description Get group content
+// @Produce json
+// @Success 200 {object} []GroupContentObjectItem
+// @Router /v1/group/:group_id/content [get]
 func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 
 	output := make(map[string]string)

@@ -175,3 +175,16 @@ Add more producers to prevent outages.
 ---
 
 Tips: rum-app will help you create/join/post/view with a nice GUI.
+
+### Run a RUM peer on server
+
+1. Build the quorum binary by running the build.sh script.
+2. Add a shell script to run the peer:
+
+```bash
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAkvYJbiKnwzFybbfzNxtuHFEFu1guV9nFcTiZNSYz8kUWf -configdir /var/data/your_peer_name_5config -datadir /var/data/your_peer_name_data -keystoredir /var/data/your_peer_name_keystore
+```
+
+3. run the shell script
+
+Tips: You can use our public bootstrap peer ```/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u``` or any other online peers as bootstrap. 

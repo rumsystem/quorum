@@ -2,10 +2,11 @@ package crypto
 
 import (
 	"errors"
-	"filippo.io/age"
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"filippo.io/age"
 )
 
 func AgeEncrypt(recipients []age.Recipient, in io.Reader, out io.Writer) error {

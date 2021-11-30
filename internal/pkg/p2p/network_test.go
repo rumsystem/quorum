@@ -1,11 +1,15 @@
+//go:build !js
+// +build !js
+
 package p2p
 
 import (
 	"context"
-	"github.com/rumsystem/quorum/testnode"
 	"log"
 	"testing"
 	"time"
+
+	"github.com/rumsystem/quorum/testnode"
 )
 
 func TestNodeConnecting(t *testing.T) {

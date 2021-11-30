@@ -15,13 +15,13 @@ import (
 )
 
 type GrpProducerResult struct {
-	GroupId        string `json:"group_id"`
-	ProducerPubkey string `json:"producer_pubkey"`
-	OwnerPubkey    string `json:"owner_pubkey"`
-	Sign           string `json:"sign"`
-	TrxId          string `json:"trx_id"`
+	GroupId        string `json:"group_id" validate:"required"`
+	ProducerPubkey string `json:"producer_pubkey" validate:"required"`
+	OwnerPubkey    string `json:"owner_pubkey" validate:"required"`
+	Sign           string `json:"sign" validate:"required"`
+	TrxId          string `json:"trx_id" validate:"required"`
 	Memo           string `json:"memo"`
-	Action         string `json:"action"`
+	Action         string `json:"action" validate:"required,oneof=ADD REMOVE"`
 }
 
 type GrpProducerParam struct {
@@ -38,7 +38,7 @@ type GrpProducerParam struct {
 // @Produce json
 // @Param data body GrpProducerParam true "GrpProducerParam"
 // @Success 200 {object} GrpProducerResult
-// @Router /v1/group/producer [post]
+// @Router /api/v1/group/producer [post]
 func (h *Handler) GroupProducer(c echo.Context) (err error) {
 	output := make(map[string]string)
 	validate := validator.New()

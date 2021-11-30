@@ -15,55 +15,52 @@ import (
 )
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {
-	url := fmt.Sprintf("%s%s", apiurl, endpoint)
-	switch method {
-	case "GET":
-		log.Printf("%s %s", method, url)
-
-		req, err := http.NewRequest("GET", url, bytes.NewBufferString(data))
-		if err != nil {
-			return []byte(""), err
-		}
-		req.Header.Add("Content-Type", "application/json")
-		client, err := utils.NewHTTPClient()
-		if err != nil {
-			return []byte(""), err
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return []byte(""), err
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return []byte(""), err
-		}
-		return body, nil
-	case "POST":
-		log.Printf("%s %s", method, url)
-		client, err := utils.NewHTTPClient()
-		if err != nil {
-			return []byte(""), err
-		}
-		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(data))
-		req.Header.Set("Content-Type", "application/json; charset=utf-8")
-		if err != nil {
-			return nil, err
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return []byte(""), err
-		}
-		return body, nil
+	upperMethod := strings.ToUpper(method)
+	methods := map[string]string{
+		"HEAD":    http.MethodHead,
+		"GET":     http.MethodGet,
+		"POST":    http.MethodPost,
+		"PUT":     http.MethodPut,
+		"DELETE":  http.MethodDelete,
+		"PATCH":   http.MethodPatch,
+		"OPTIONS": http.MethodOptions,
 	}
-	return []byte(""), nil
+
+	if _, found := methods[upperMethod]; !found {
+		panic(fmt.Sprintf("not support http method: %s", method))
+	}
+
+	method = methods[upperMethod]
+
+	url := fmt.Sprintf("%s%s", apiurl, endpoint)
+	if len(data) > 0 {
+		log.Printf("request %s %s with body: %s", method, url, data)
+	} else {
+		log.Printf("request %s %s", method, url)
+
+	}
+	client, err := utils.NewHTTPClient()
+	if err != nil {
+		return []byte(""), err
+	}
+
+	req, err := http.NewRequest(method, url, bytes.NewBufferString(data))
+	if err != nil {
+		return []byte(""), err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return []byte(""), err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []byte(""), err
+	}
+	log.Printf("response status: %d body: %s", resp.StatusCode, body)
+	return body, nil
 }
 
 func CheckNodeRunning(ctx context.Context, url string) (string, bool) {

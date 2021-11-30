@@ -4,15 +4,21 @@ import (
 	"fmt"
 	"net/http"
 
-	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/labstack/echo/v4"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
 type StartSyncResult struct {
-	GroupId string
+	GroupId string `validate:"required"`
 	Error   string
 }
 
+// @Tags Group
+// @Summary StartSync
+// @Description Start sync
+// @Produce json
+// @Success 200 {object} StartSyncResult
+// @Router /api/v1/group/{group_id}/startsync [post]
 func (h *Handler) StartSync(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
@@ -22,23 +28,21 @@ func (h *Handler) StartSync(c echo.Context) (err error) {
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[groupid]; ok {
-		if group.ChainCtx.Syncer.Status == chain.SYNCING_BACKWARD || group.ChainCtx.Syncer.Status == chain.SYNCING_FORWARD {
-			error_info := "GROUP_ALREADY_IN_SYNCING"
-			startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: error_info}
-			return c.JSON(http.StatusBadRequest, startSyncResult)
-		} else {
-			err := group.StartSync()
-			if err == nil {
-				startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: ""}
-				return c.JSON(http.StatusOK, startSyncResult)
-			} else {
-				startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: err.Error()}
-				return c.JSON(http.StatusOK, startSyncResult)
-			}
-		}
-	} else {
+	group, ok := groupmgr.Groups[groupid]
+	if !ok {
 		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
 		return c.JSON(http.StatusBadRequest, output)
 	}
+
+	if group.ChainCtx.Syncer.Status == chain.SYNCING_BACKWARD || group.ChainCtx.Syncer.Status == chain.SYNCING_FORWARD {
+		errorInfo := "GROUP_ALREADY_IN_SYNCING"
+		startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: errorInfo}
+		return c.JSON(http.StatusBadRequest, startSyncResult)
+	}
+
+	startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: ""}
+	if err := group.StartSync(); err != nil {
+		startSyncResult.Error = err.Error()
+	}
+	return c.JSON(http.StatusOK, startSyncResult)
 }

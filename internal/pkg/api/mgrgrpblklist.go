@@ -23,13 +23,13 @@ type DenyListParam struct {
 }
 
 type DenyUserResult struct {
-	GroupId          string `json:"group_id"`
-	PeerId           string `json:"peer_id"`
-	GroupOwnerPubkey string `json:"owner_pubkey"`
-	Sign             string `json:"sign"`
-	TrxId            string `json:"trx_id"`
-	Action           string `json:"action"`
-	Memo             string `json:"memo"`
+	GroupId          string `json:"group_id" validate:"required"`
+	PeerId           string `json:"peer_id" validate:"required"`
+	GroupOwnerPubkey string `json:"owner_pubkey" validate:"required"`
+	Sign             string `json:"sign" validate:"required"`
+	TrxId            string `json:"trx_id" validate:"required"`
+	Action           string `json:"action" validate:"required"`
+	Memo             string `json:"memo" validate:"required"`
 }
 
 // @Tags Management
@@ -39,7 +39,7 @@ type DenyUserResult struct {
 // @Produce json
 // @Param data body DenyListParam true "DenyListParam"
 // @Success 200 {object} DenyUserResult
-// @Router /api/v1/deniedlist [post]
+// @Router /api/v1/group/deniedlist [post]
 func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
 
 	output := make(map[string]string)
