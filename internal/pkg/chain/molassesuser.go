@@ -50,12 +50,17 @@ func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, erro
 	return user.cIface.GetProducerTrxMgr().SendRegProducerTrx(item)
 }
 
-func (user *MolassesUser) PostToGroup(content proto.Message) (string, error) {
+func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
+	molauser_log.Debugf("<%s> UpdUser called", user.groupId)
+	return user.cIface.GetProducerTrxMgr().SendRegUserTrx(item)
+}
+
+func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]string) (string, error) {
 	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
 	if user.cIface.IsSyncerReady() {
 		return "", errors.New("can not post to group, group is in syncing or sync failed")
 	}
-	return user.cIface.GetProducerTrxMgr().PostAny(content)
+	return user.cIface.GetProducerTrxMgr().PostAny(content, encryptto...)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
@@ -220,13 +225,15 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		if trx.Type == quorumpb.TrxType_POST && user.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(user.grpItem.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(user.grpItem.GroupId, trx.Data)
 			if err != nil {
-				return err
+				trx.Data = []byte("")
+				//return err
+			} else {
+				//set trx.Data to decrypted []byte
+				trx.Data = decryptData
 			}
 
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
 		} else {
 			//decode trx data
 			ciperKey, err := hex.DecodeString(user.grpItem.CipherKey)
@@ -257,6 +264,10 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			nodectx.GetDbMgr().UpdateProducer(trx, nodename)
 			user.cIface.UpdProducerList()
 			user.cIface.CreateConsensus()
+		case quorumpb.TrxType_USER:
+			molauser_log.Debugf("<%s> apply USER trx", user.groupId)
+			nodectx.GetDbMgr().UpdateUser(trx, nodename)
+			user.cIface.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			molauser_log.Debugf("<%s> apply ANNOUNCE trx", user.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, nodename)

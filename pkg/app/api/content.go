@@ -75,11 +75,15 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 		if trx.Type == quorumpb.TrxType_POST && groupitem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 			//for post, private group, encrypted by pgp for all announced group user
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(groupitem.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(groupid, trx.Data)
 			if err != nil {
-				return err
+				//can't decrypt, replace it
+				trx.Data = []byte("")
+			} else {
+				//set trx.Data to decrypted []byte
+				trx.Data = decryptData
 			}
-			trx.Data = decryptData
+
 		} else {
 			//decode trx data
 			ciperKey, err := hex.DecodeString(groupitem.CipherKey)

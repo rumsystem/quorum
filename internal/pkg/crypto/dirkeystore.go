@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -163,7 +164,7 @@ func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
 		return ks.unlocked[keyname], nil
 	}
 
-	return nil, fmt.Errorf("key %s not exist or not be unlocked", keyname)
+	return nil, fmt.Errorf("key not exist or not be unlocked %s", keyname)
 }
 
 func JoinKeyStorePath(keysDirPath string, filename string) string {
@@ -209,6 +210,10 @@ func (ks *DirKeyStore) LoadEncryptKey(filename string, password string) (*age.X2
 	storefilename := JoinKeyStorePath(ks.KeystorePath, filename)
 	f, err := os.OpenFile(storefilename, os.O_RDONLY, 0600)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("key not exist.")
+
+		}
 		return nil, err
 	}
 	return AgeDecryptIdentityWithPassword(f, nil, password)
@@ -496,7 +501,10 @@ func (ks *DirKeyStore) Decrypt(keyname string, data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("The key %s is not a encrypt key", keyname)
 	}
 	r, err := age.Decrypt(bytes.NewReader(data), encryptk)
-	return ioutil.ReadAll(r)
+	if err == nil {
+		return ioutil.ReadAll(r)
+	}
+	return nil, err
 }
 
 // Backup the group seeds, key store and config directory, and return base64Encode(ageEncrypt(zip(seeds))), base64Encode(ageEncrypt(zip(keystore_dir))), base64Encode(ageEncrypt(zip(config_dir))) and error

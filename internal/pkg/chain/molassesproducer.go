@@ -556,7 +556,7 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			//owner can actually decrypt POST
 			//for other producer, they can not decrpyt POST
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(producer.grpItem.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(producer.grpItem.GroupId, trx.Data)
 			if err == nil {
 				//set trx.Data to decrypted []byte
 				trx.Data = decryptData
@@ -591,6 +591,10 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			nodectx.GetDbMgr().UpdateProducer(trx, producer.nodename)
 			producer.cIface.UpdProducerList()
 			producer.cIface.CreateConsensus()
+		case quorumpb.TrxType_USER:
+			molaproducer_log.Debugf("<%s> apply USER trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateUser(trx, producer.nodename)
+			producer.cIface.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)

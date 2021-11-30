@@ -30,6 +30,7 @@ type Chain struct {
 	syncChannelId     string
 	trxMgrs           map[string]*TrxMgr
 	ProducerPool      map[string]*quorumpb.ProducerItem
+	userPool          map[string]*quorumpb.UserItem
 
 	Syncer    *Syncer
 	Consensus Consensus
@@ -175,9 +176,8 @@ func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 }
 
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
-	//chain_log.Debugf("<%s> HandleTrx called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s", trx.TrxId)
+		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
@@ -188,6 +188,8 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_ANNOUNCE:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_PRODUCER:
+		chain.producerAddTrx(trx)
+	case quorumpb.TrxType_USER:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
 		chain.producerAddTrx(trx)
@@ -344,11 +346,57 @@ func (chain *Chain) UpdProducerList() {
 	//update announced producer result
 	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
-		if _, ok := chain.ProducerPool[item.SignPubkey]; ok {
-			err := nodectx.GetDbMgr().UpdateProducerAnnounceResult(chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
-			if err != nil {
-				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
-			}
+		_, ok := chain.ProducerPool[item.SignPubkey]
+		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
+		}
+	}
+
+}
+
+func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
+	return chain.userPool
+}
+
+func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
+	keys := []string{}
+	ks := nodectx.GetNodeCtx().Keystore
+	mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Encrypt)
+	if err != nil {
+		return nil, err
+	}
+	keys = append(keys, mypubkey)
+	for _, usr := range chain.userPool {
+		if usr.EncryptPubkey != mypubkey {
+			keys = append(keys, usr.EncryptPubkey)
+		}
+	}
+
+	return keys, nil
+}
+
+func (chain *Chain) UpdUserList() {
+	chain_log.Debugf("<%s> UpdUserList called", chain.groupId)
+	//create and load group user pool
+	chain.userPool = make(map[string]*quorumpb.UserItem)
+	users, _ := nodectx.GetDbMgr().GetUsers(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range users {
+		chain.userPool[item.UserPubkey] = item
+		ownerPrefix := "(user)"
+		if item.UserPubkey == chain.group.Item.OwnerPubKey {
+			ownerPrefix = "(owner)"
+		}
+		chain_log.Infof("<%s> Load Users <%s%s>", chain.groupId, item.UserPubkey, ownerPrefix)
+	}
+
+	//update announced User result
+	announcedUsers, _ := nodectx.GetDbMgr().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range announcedUsers {
+		_, ok := chain.userPool[item.SignPubkey]
+		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
 	}
 }

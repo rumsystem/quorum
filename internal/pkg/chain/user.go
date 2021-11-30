@@ -11,6 +11,7 @@ type User interface {
 	UpdBlkList(item *quorumpb.DenyUserItem) (string, error)
 	UpdSchema(item *quorumpb.SchemaItem) (string, error)
 	UpdProducer(item *quorumpb.ProducerItem) (string, error)
-	PostToGroup(content proto.Message) (string, error)
+	UpdUser(item *quorumpb.UserItem) (string, error)
+	PostToGroup(content proto.Message, encryptto ...[]string) (string, error)
 	AddBlock(block *quorumpb.Block) error
 }
