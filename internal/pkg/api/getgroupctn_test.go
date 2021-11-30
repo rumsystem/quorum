@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
 func TestGetGroupContent(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-group-content",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -20,7 +22,7 @@ func TestGetGroupContent(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := GroupSeed{
+	joinGroupParam := handlers.GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,

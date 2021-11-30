@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -47,7 +48,7 @@ func getTrx(api string, groupID string, trxID string) (*GetTrxResult, error) {
 
 func TestGetTrx(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-get-trx",
 		ConsensusType:  "poa",
 		EncryptionType: "public",

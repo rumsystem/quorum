@@ -11,6 +11,7 @@ import (
 	"time"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -48,7 +49,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		var err error
 		output := make(map[string]string)
 		validate := validator.New()
-		params := new(GroupSeed)
+		params := new(handlers.GroupSeed)
 
 		if err = c.Bind(params); err != nil {
 			output[ERROR_INFO] = err.Error()
@@ -246,7 +247,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
 
 		// save group seed to appdata
-		pbGroupSeed := ToPbGroupSeed(*params)
+		pbGroupSeed := handlers.ToPbGroupSeed(*params)
 		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
 			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
 			return c.JSON(http.StatusBadRequest, output)

@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func joinGroup(api string, payload GroupSeed) (*JoinGroupResult, error) {
+func joinGroup(api string, payload handlers.GroupSeed) (*JoinGroupResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed: %s, joinGroupParam: %+v", err, payload)
@@ -45,7 +46,7 @@ func joinGroup(api string, payload GroupSeed) (*JoinGroupResult, error) {
 
 func TestJoinGroup(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-join-group",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -57,7 +58,7 @@ func TestJoinGroup(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := GroupSeed{
+	joinGroupParam := handlers.GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,

@@ -1,10 +1,14 @@
 package api
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
+)
 
 func TestPostToGroup(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-post",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -16,7 +20,7 @@ func TestPostToGroup(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := GroupSeed{
+	joinGroupParam := handlers.GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,

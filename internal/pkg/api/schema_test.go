@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -87,7 +88,7 @@ func getSchemaList(api string, groupID string) ([]SchemaListItem, error) {
 
 func TestGetAddRemoveSchema(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-schema",
 		ConsensusType:  "poa",
 		EncryptionType: "public",

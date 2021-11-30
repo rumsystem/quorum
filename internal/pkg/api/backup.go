@@ -57,8 +57,8 @@ func (h *Handler) Backup(c echo.Context) (err error) {
 }
 
 // get myself group seeds
-func getGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
-	var seeds []GroupSeed
+func getGroupSeeds(appdb *appdata.AppDb) ([]handlers.GroupSeed, error) {
+	var seeds []handlers.GroupSeed
 	groupmgr := chain.GetGroupMgr()
 
 	for _, item := range groupmgr.Groups {
@@ -71,7 +71,7 @@ func getGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
 			return nil, fmt.Errorf("group seed not found: %s", groupID)
 		}
 
-		seed := FromPbGroupSeed(pbSeed)
+		seed := handlers.FromPbGroupSeed(pbSeed)
 		seeds = append(seeds, seed)
 	}
 
@@ -79,7 +79,7 @@ func getGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
 }
 
 // zip group seeds
-func zipGroupSeeds(seeds []GroupSeed) ([]byte, error) {
+func zipGroupSeeds(seeds []handlers.GroupSeed) ([]byte, error) {
 	// cannot write to the system's temporary directory in the mobile application
 	// so use the data directory
 	dataDir := cli.GetConfig().DataDir

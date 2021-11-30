@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -18,7 +19,7 @@ func TestGetNetwork(t *testing.T) {
 		t.Errorf("request failed: %s, response: %s", err, resp)
 	}
 
-	var network NetworkInfo
+	var network handlers.NetworkInfo
 	if err := json.Unmarshal(resp, &network); err != nil {
 		t.Errorf("response data Unmarshal error: %s", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -33,7 +34,7 @@ func getBlockedUsers(api, groupID string) ([]*DeniedUserListItem, error) {
 
 func TestGroupBlockedUersIsNone(t *testing.T) {
 	// creae group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-blked-user",
 		ConsensusType:  "poa",
 		EncryptionType: "public",

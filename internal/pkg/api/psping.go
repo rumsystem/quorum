@@ -13,17 +13,13 @@ type PSPingParam struct {
 	PeerId string `from:"peer_id"      json:"peer_id"      validate:"required,max=53,min=53"`
 }
 
-type PingResult struct {
-	Result [10]int64 `json:"pingresult"`
-}
-
 // @Tags Node
 // @Summary PubsubPing
 // @Description Pubsub ping utility
 // @Accept json
 // @Produce json
 // @Param data body PSPingParam true "pingparam"
-// @Success 200 {object} PingResult
+// @Success 200 {object} handlers.PingResp
 // @Router /api/v1/psping [post]
 func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 	return func(c echo.Context) (err error) {
@@ -49,6 +45,6 @@ func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		return c.JSON(http.StatusOK, &PingResult{result})
+		return c.JSON(http.StatusOK, result)
 	}
 }
