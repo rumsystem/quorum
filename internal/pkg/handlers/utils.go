@@ -30,7 +30,7 @@ func initEncodeKey(groupId string, bks localcrypto.Keystore) (string, error) {
 	userEncryptKey, err := bks.GetEncodedPubkey(groupId, localcrypto.Encrypt)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "key not exist ") {
-			userEncryptKey, err = bks.NewKey(groupId, localcrypto.Encrypt, "")
+			userEncryptKey, err = bks.NewKeyWithDefaultPassword(groupId, localcrypto.Encrypt)
 			if err != nil {
 				return "", err
 			}
