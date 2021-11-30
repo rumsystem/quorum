@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
@@ -78,10 +80,19 @@ func getGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
 
 // zip group seeds
 func zipGroupSeeds(seeds []GroupSeed) ([]byte, error) {
-	tempDir, err := ioutil.TempDir("", "")
+	// cannot write to the system's temporary directory in the mobile application
+	// so use the data directory
+	dataDir := cli.GetConfig().DataDir
+	if len(dataDir) == 0 {
+		return nil, fmt.Errorf("can not get data directory")
+	}
+
+	tempDir, err := ioutil.TempDir(dataDir, "")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir failed: %s", err)
 	}
+
+	defer os.RemoveAll(tempDir)
 
 	seedDir := filepath.Join(tempDir, "seeds")
 	if err := utils.EnsureDir(seedDir); err != nil {
