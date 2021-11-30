@@ -55,5 +55,4 @@ type Keystore interface {
 	GetEncodedPubkey(keyname string, keytype KeyType) (string, error)
 	GetPeerInfo(keyname string) (peerid peer.ID, ethaddr string, err error)
 	Backup([]byte) (string, string, string, error)
-	Restore(encGroupSeed, encKeystore, encConfig, path, password string) error
 }

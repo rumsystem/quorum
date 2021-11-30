@@ -2,10 +2,11 @@ package crypto
 
 import (
 	"fmt"
-	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"testing"
+
+	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 func TestInitDirKeyStore(t *testing.T) {
@@ -117,5 +118,4 @@ func TestNewEncryptKey(t *testing.T) {
 	if string(decrypteddata) != data {
 		t.Errorf("decrypt data is not matched with orginal: %s / %s", string(decrypteddata), data)
 	}
-
 }

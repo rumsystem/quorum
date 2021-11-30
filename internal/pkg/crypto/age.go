@@ -23,6 +23,14 @@ func AgeEncrypt(recipients []age.Recipient, in io.Reader, out io.Writer) error {
 	return err
 }
 
+// AgeDecrypt decrypt with the given password
+func AgeDecrypt(password string, in io.Reader) (io.Reader, error) {
+	identities := []age.Identity{
+		&LazyScryptIdentity{password},
+	}
+	return age.Decrypt(in, identities...)
+}
+
 type LazyScryptIdentity struct {
 	Password string
 }

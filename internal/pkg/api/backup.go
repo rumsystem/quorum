@@ -2,14 +2,16 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 type BackupResult struct {
@@ -32,9 +34,9 @@ func (h *Handler) Backup(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("get group seeds failed: %s", err)})
 	}
 
-	seedsBytes, err := json.MarshalIndent(seeds, "", "  ")
+	seedsBytes, err := zipGroupSeeds(seeds)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("marshal group seeds failed: %s", err)})
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("zipGroupSeeds failed: %s", err)})
 	}
 
 	ks := nodectx.GetNodeCtx().Keystore
@@ -61,11 +63,10 @@ func getGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
 		groupID := item.Item.GroupId
 		pbSeed, err := appdb.GetGroupSeed(groupID)
 		if err != nil {
-			if errors.Is(err, appdata.ErrNotFound) {
-				continue
-			}
-
 			return nil, fmt.Errorf("appdb.GetGroupSeed failed: %s", err)
+		}
+		if pbSeed == nil {
+			return nil, fmt.Errorf("group seed not found: %s", groupID)
 		}
 
 		seed := FromPbGroupSeed(pbSeed)
@@ -73,4 +74,36 @@ func getGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
 	}
 
 	return seeds, nil
+}
+
+// zip group seeds
+func zipGroupSeeds(seeds []GroupSeed) ([]byte, error) {
+	tempDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		return nil, fmt.Errorf("create temp dir failed: %s", err)
+	}
+
+	seedDir := filepath.Join(tempDir, "seeds")
+	if err := utils.EnsureDir(seedDir); err != nil {
+		return nil, fmt.Errorf("utils.EnsureDir failed: %s", err)
+	}
+
+	for _, seed := range seeds {
+		seedByte, err := json.MarshalIndent(seed, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("marshal group seed failed: %s", err)
+		}
+
+		path := filepath.Join(seedDir, fmt.Sprintf("%s.json", seed.GroupId))
+		if err := ioutil.WriteFile(path, seedByte, 0644); err != nil {
+			return nil, fmt.Errorf("write group seed failed: %s", err)
+		}
+	}
+
+	data, err := utils.ZipDir(seedDir)
+	if err != nil {
+		return nil, fmt.Errorf("zip group seeds failed: %s", err)
+	}
+
+	return data, nil
 }

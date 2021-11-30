@@ -1,51 +1,40 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
-	"net/http"
+	"io/ioutil"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo/v4"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 type RestoreParam struct {
-	BackupResult
-	// restore path
-	Path     string `json:"path" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Password    string `json:"password" validate:"required"`
+	BackupFile  string `json:"backup_file" validate:"required"`
+	KeystoreDir string `json:"keystore_dir" validate:"required"`
+	ConfigDir   string `json:"config_dir" validate:"required"`
+	SeedDir     string `json:"seed_dir" validate:"required"`
 }
 
-type RestoreResult struct {
-	Path string `json:"path" validate:"required"`
-}
-
-// @Tags Chain
-// @Summary Restore
-// @Description Restore my group seed/keystore/config from backup file
-// @Produce json
-// @Success 200 {object} RestoreResult
-// @Router /api/v1/group/restore [post]
-func (h *Handler) Restore(c echo.Context) (err error) {
-
-	params := new(RestoreParam)
-	if err := c.Bind(params); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+// Restore restores a backup file to given directories.
+func Restore(params RestoreParam) error {
+	content, err := ioutil.ReadFile(params.BackupFile)
+	if err != nil {
+		return fmt.Errorf("Failed to read backup file: %s", err)
 	}
 
-	validate := validator.New()
-	if err = validate.Struct(params); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	var backup BackupResult
+	if err := json.Unmarshal(content, &backup); err != nil {
+		return fmt.Errorf("Failed to unmarshal backup file: %s", err)
 	}
 
-	// try to decrypt
-	ks := nodectx.GetNodeCtx().Keystore
-	if err := ks.Restore(params.Seeds, params.Keystore, params.Config, params.Path, params.Password); err != nil {
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("restore failed: %s", err)})
+	err = localcrypto.Restore(
+		params.Password, backup.Seeds, backup.Keystore, backup.Config,
+		params.SeedDir, params.KeystoreDir, params.ConfigDir,
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to restore: %s", err)
 	}
 
-	result := RestoreResult{
-		Path: params.Path,
-	}
-	return c.JSON(http.StatusOK, result)
+	return nil
 }

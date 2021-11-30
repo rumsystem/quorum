@@ -2,16 +2,17 @@ package crypto
 
 import (
 	//"crypto/ecdsa"
-	"filippo.io/age"
 	"fmt"
-	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	logging "github.com/ipfs/go-log/v2"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"filippo.io/age"
+	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	logging "github.com/ipfs/go-log/v2"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 )
 
 var cryptolog = logging.Logger("crypto")
