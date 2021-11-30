@@ -26,7 +26,6 @@ func GetDeniedUserList(groupid string) ([]*DeniedUserListItem, error) {
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
 		blkList, err := group.GetBlockedUser()
-		println("len: ", len(blkList))
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +40,6 @@ func GetDeniedUserList(groupid string) ([]*DeniedUserListItem, error) {
 			item.Action = blkItem.Action
 			item.Memo = blkItem.Memo
 			item.TimeStamp = blkItem.TimeStamp
-			println(item.PeerId)
 			result = append(result, item)
 		}
 		return result, nil

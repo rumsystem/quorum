@@ -249,7 +249,6 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 				return err
 			}
 			k := ArrayBufferToBytes(key)
-			println("reverse, key: ", string(k))
 			if bytes.HasPrefix(k, valid) {
 				ferr := fn(k, nil)
 				if ferr != nil {
