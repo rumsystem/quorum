@@ -21,7 +21,7 @@ func GetAnnouncedGroupUsers(groupid string) ([]*AnnouncedUserListItem, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		usrList, err := group.GetAnnouncedUser()
+		usrList, err := group.GetAnnouncedUsers()
 		if err != nil {
 			return nil, err
 		}
