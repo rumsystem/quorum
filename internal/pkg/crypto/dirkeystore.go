@@ -448,9 +448,7 @@ func (ks *DirKeyStore) VerifySignByKeyName(keyname string, data []byte, sig []by
 }
 
 func (ks *DirKeyStore) GetEncodedPubkey(keyname string, keytype KeyType) (string, error) {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-
+	ks.GetKeyFromUnlocked(keytype.NameString(keyname))
 	if key, ok := ks.unlocked[keytype.NameString(keyname)]; ok {
 		switch keytype {
 		case Sign:
