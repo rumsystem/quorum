@@ -88,6 +88,15 @@ func (s *QSBadger) IsExist(key []byte) (bool, error) {
 	return false, err
 }
 
+func (s *QSBadger) PrefixDelete(prefix []byte) error {
+	return s.PrefixForeachKey([]byte(prefix), []byte(prefix), false, func(k []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		return s.Delete(k)
+	})
+}
+
 func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions

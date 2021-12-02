@@ -1,20 +1,16 @@
 package api
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
 type PSPingParam struct {
 	PeerId string `from:"peer_id"      json:"peer_id"      validate:"required,max=53,min=53"`
-}
-
-type PingResult struct {
-	Result [10]int64 `json:"pingresult"`
 }
 
 // @Tags Node
@@ -23,7 +19,7 @@ type PingResult struct {
 // @Accept json
 // @Produce json
 // @Param data body PSPingParam true "pingparam"
-// @Success 200 {object} PingResult
+// @Success 200 {object} handlers.PingResp
 // @Router /api/v1/psping [post]
 func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 	return func(c echo.Context) (err error) {
@@ -42,16 +38,13 @@ func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		psping := p2p.NewPSPingService(ctx, node.Pubsub, node.Host.ID())
-		result, err := psping.PingReq(params.PeerId)
-		defer cancel()
+		result, err := handlers.Ping(node.Pubsub, node.Host.ID(), params.PeerId)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		return c.JSON(http.StatusOK, &PingResult{result})
+		return c.JSON(http.StatusOK, result)
 	}
 }

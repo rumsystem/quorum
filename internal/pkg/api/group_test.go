@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -28,7 +29,7 @@ func getResponseError(resp []byte) error {
 	return nil
 }
 
-func createGroup(api string, payload CreateGroupParam) (*GroupSeed, error) {
+func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.GroupSeed, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed, payload: %+v error: %s", payload, err)
@@ -46,7 +47,7 @@ func createGroup(api string, payload CreateGroupParam) (*GroupSeed, error) {
 		return nil, err
 	}
 
-	var group GroupSeed
+	var group handlers.GroupSeed
 	if err := json.Unmarshal(resp, &group); err != nil {
 		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
 		return nil, e
@@ -118,7 +119,7 @@ func getGroups(api string) (*GroupInfoList, error) {
 	return &groups, nil
 }
 
-func leaveGroup(api string, payload LeaveGroupParam) (*LeaveGroupResult, error) {
+func leaveGroup(api string, payload handlers.LeaveGroupParam) (*handlers.LeaveGroupResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -132,7 +133,7 @@ func leaveGroup(api string, payload LeaveGroupParam) (*LeaveGroupResult, error) 
 		return nil, err
 	}
 
-	var result LeaveGroupResult
+	var result handlers.LeaveGroupResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -182,7 +183,7 @@ type PostGroupParam struct {
 	Target PostTarget `json:"target" validate:"required"`
 }
 
-func postToGroup(api string, payload PostGroupParam) (*TrxResult, error) {
+func postToGroup(api string, payload PostGroupParam) (*handlers.TrxResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -196,7 +197,7 @@ func postToGroup(api string, payload PostGroupParam) (*TrxResult, error) {
 		return nil, err
 	}
 
-	var result TrxResult
+	var result handlers.TrxResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -284,7 +285,7 @@ func TestCreateAndGetGroups(t *testing.T) {
 
 	for _, encryptionType := range encryptionTypes {
 		groupName := fmt.Sprintf("%s-%d", encryptionType, time.Now().Unix())
-		payload := CreateGroupParam{
+		payload := handlers.CreateGroupParam{
 			AppKey:         appKey,
 			ConsensusType:  consensusType,
 			EncryptionType: encryptionType,

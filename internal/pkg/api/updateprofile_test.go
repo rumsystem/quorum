@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -72,7 +73,7 @@ func updateProfile(api string, payload updateProfileParam) (*UpdateProfileResult
 
 func TestUpdateAvatar(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "update-avatar",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -104,7 +105,7 @@ func TestUpdateAvatar(t *testing.T) {
 
 func TestUpdateNickname(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "update-nickname",
 		ConsensusType:  "poa",
 		EncryptionType: "public",

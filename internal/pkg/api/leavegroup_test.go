@@ -1,10 +1,14 @@
 package api
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
+)
 
 func TestLeaveGroup(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-leave-group",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -16,7 +20,7 @@ func TestLeaveGroup(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := GroupSeed{
+	joinGroupParam := handlers.GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,
@@ -41,7 +45,7 @@ func TestLeaveGroup(t *testing.T) {
 	}
 
 	// leave group
-	leaveGroupParam := LeaveGroupParam{
+	leaveGroupParam := handlers.LeaveGroupParam{
 		GroupId: group.GroupId,
 	}
 	_, err = leaveGroup(peerapi2, leaveGroupParam)
