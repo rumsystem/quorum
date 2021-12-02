@@ -22,7 +22,7 @@ import (
 )
 
 type CreateGroupParam struct {
-	GroupName      string `from:"group_name"      json:"group_name"      validate:"required,max=20,min=5"`
+	GroupName      string `from:"group_name"      json:"group_name"      validate:"required"`
 	ConsensusType  string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa"`
 	EncryptionType string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private"`
 	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=5"`
@@ -31,7 +31,7 @@ type CreateGroupParam struct {
 type GroupSeed struct {
 	GenesisBlock   *quorumpb.Block `json:"genesis_block" validate:"required"`
 	GroupId        string          `json:"group_id" validate:"required"`
-	GroupName      string          `json:"group_name" validate:"required,max=20,min=5"`
+	GroupName      string          `json:"group_name" validate:"required"`
 	OwnerPubkey    string          `json:"owner_pubkey" validate:"required"`
 	ConsensusType  string          `json:"consensus_type" validate:"required,oneof=pos poa"`
 	EncryptionType string          `json:"encryption_type" validate:"required,oneof=public private"`
@@ -80,15 +80,21 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
 			hexkey, err := dirks.GetEncodedPubkey(groupid.String(), localcrypto.Sign)
-			if err != nil && strings.HasPrefix(err.Error(), "key not exist ") {
+			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(groupid.String(), localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
-					err = nodeoptions.SetSignKeyMap(groupid.String(), newsignaddr)
-					if err != nil {
-						output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
+					_, err = dirks.NewKeyWithDefaultPassword(groupid.String(), localcrypto.Encrypt)
+					if err == nil {
+						err = nodeoptions.SetSignKeyMap(groupid.String(), newsignaddr)
+						if err != nil {
+							output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
+							return c.JSON(http.StatusBadRequest, output)
+						}
+						hexkey, err = dirks.GetEncodedPubkey(groupid.String(), localcrypto.Sign)
+					} else {
+						output[ERROR_INFO] = "create new group key err:" + err.Error()
 						return c.JSON(http.StatusBadRequest, output)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(groupid.String(), localcrypto.Sign)
 				} else {
 					output[ERROR_INFO] = "create new group key err:" + err.Error()
 					return c.JSON(http.StatusBadRequest, output)
@@ -121,7 +127,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 
 		groupEncryptPubkey, err := dirks.GetEncodedPubkey(groupid.String(), localcrypto.Encrypt)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), "key not exist ") {
+			if strings.HasPrefix(err.Error(), "key not exist") {
 				groupEncryptPubkey, err = dirks.NewKeyWithDefaultPassword(groupid.String(), localcrypto.Encrypt)
 				if err != nil {
 					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()

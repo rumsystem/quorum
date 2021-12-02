@@ -18,7 +18,7 @@ var nodepeername string
 
 const JWTKeyLength = 32
 const defaultNetworkName = "nevis"
-const defaultMaxPeers = 8
+const defaultMaxPeers = 50
 const defaultConnsHi = 100
 
 func GetNodeOptions() *NodeOptions {

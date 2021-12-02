@@ -70,11 +70,13 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 
 	//check if trx sender is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
 		return
+	} else {
+		molaproducer_log.Debugf("<%s> user <%s> is not blocked", producer.groupId, trx.SenderPubkey)
 	}
 
 	if producer.cIface.IsSyncerReady() {
@@ -287,7 +289,7 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
@@ -343,7 +345,7 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
@@ -556,7 +558,7 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			//owner can actually decrypt POST
 			//for other producer, they can not decrpyt POST
 			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(producer.grpItem.UserEncryptPubkey, trx.Data)
+			decryptData, err := ks.Decrypt(producer.grpItem.GroupId, trx.Data)
 			if err == nil {
 				//set trx.Data to decrypted []byte
 				trx.Data = decryptData
@@ -591,6 +593,10 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			nodectx.GetDbMgr().UpdateProducer(trx, producer.nodename)
 			producer.cIface.UpdProducerList()
 			producer.cIface.CreateConsensus()
+		case quorumpb.TrxType_USER:
+			molaproducer_log.Debugf("<%s> apply USER trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateUser(trx, producer.nodename)
+			producer.cIface.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)

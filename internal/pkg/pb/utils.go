@@ -19,12 +19,20 @@ func ContentToBytes(content proto.Message) ([]byte, error) {
 
 func BytesToMessage(trxid string, content []byte) (proto.Message, string, error) {
 	anyobj := &anypb.Any{}
+
+	var ctnobj proto.Message
+	var typeurl string
+
+	if len(content) == 0 {
+		ctnobj = &Object{}
+		typeurl = "quorum.pb.Object"
+		return ctnobj, typeurl, nil
+	}
+
 	err := proto.Unmarshal(content, anyobj)
 	if err != nil {
 		return nil, "", fmt.Errorf("Unmarshal trx.Data id %s Err: %s", trxid, err)
 	}
-	var ctnobj proto.Message
-	var typeurl string
 	ctnobj, err = anyobj.UnmarshalNew()
 	if err != nil { //old data pb.Object{} compatibility
 		ctnobj = &Object{}

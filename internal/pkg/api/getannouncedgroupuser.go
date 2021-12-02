@@ -17,7 +17,7 @@ type AnnouncedUserListItem struct {
 
 // @Tags User
 // @Summary GetAnnouncedGroupUsers
-// @Description Get the list of group producers
+// @Description Get the list of private group users
 // @Produce json
 // @Param group_id path string true "Group Id"
 // @Success 200 {array} AnnouncedUserListItem
@@ -33,7 +33,8 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		usrList, err := group.GetAnnouncedUser()
+
+		usrList, err := group.GetAnnouncedUsers()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

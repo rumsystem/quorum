@@ -30,6 +30,7 @@ type Chain struct {
 	syncChannelId     string
 	trxMgrs           map[string]*TrxMgr
 	ProducerPool      map[string]*quorumpb.ProducerItem
+	userPool          map[string]*quorumpb.UserItem
 
 	Syncer    *Syncer
 	Consensus Consensus
@@ -175,9 +176,8 @@ func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 }
 
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
-	//chain_log.Debugf("<%s> HandleTrx called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s", trx.TrxId)
+		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
@@ -188,6 +188,8 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_ANNOUNCE:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_PRODUCER:
+		chain.producerAddTrx(trx)
+	case quorumpb.TrxType_USER:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
 		chain.producerAddTrx(trx)
@@ -344,36 +346,110 @@ func (chain *Chain) UpdProducerList() {
 	//update announced producer result
 	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
-		if _, ok := chain.ProducerPool[item.SignPubkey]; ok {
-			err := nodectx.GetDbMgr().UpdateProducerAnnounceResult(chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
-			if err != nil {
-				chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
-			}
+		_, ok := chain.ProducerPool[item.SignPubkey]
+		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
+		}
+	}
+
+}
+
+func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
+	return chain.userPool
+}
+
+func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
+	keys := []string{}
+	ks := nodectx.GetNodeCtx().Keystore
+	mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Encrypt)
+	if err != nil {
+		return nil, err
+	}
+	keys = append(keys, mypubkey)
+	for _, usr := range chain.userPool {
+		if usr.EncryptPubkey != mypubkey {
+			keys = append(keys, usr.EncryptPubkey)
+		}
+	}
+
+	return keys, nil
+}
+
+func (chain *Chain) UpdUserList() {
+	chain_log.Debugf("<%s> UpdUserList called", chain.groupId)
+	//create and load group user pool
+	chain.userPool = make(map[string]*quorumpb.UserItem)
+	users, _ := nodectx.GetDbMgr().GetUsers(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range users {
+		chain.userPool[item.UserPubkey] = item
+		ownerPrefix := "(user)"
+		if item.UserPubkey == chain.group.Item.OwnerPubKey {
+			ownerPrefix = "(owner)"
+		}
+		chain_log.Infof("<%s> Load Users <%s%s>", chain.groupId, item.UserPubkey, ownerPrefix)
+	}
+
+	//update announced User result
+	announcedUsers, _ := nodectx.GetDbMgr().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
+	for _, item := range announcedUsers {
+		_, ok := chain.userPool[item.SignPubkey]
+		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
 	}
 }
 
 func (chain *Chain) CreateConsensus() {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
-	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
-		//producer, create group producer
-		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
-		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
-		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		chain.createProducerTrxMgr()
-	} else {
+
+	var user User
+	var producer Producer
+
+	if chain.Consensus == nil || chain.Consensus.User() == nil {
 		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
-		chain.Consensus = NewMolasses(nil, &MolassesUser{})
+		user = &MolassesUser{}
+		user.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+	} else {
+		chain_log.Infof("<%s> reuse molasses user", chain.groupId)
+		user = chain.Consensus.User()
 	}
 
-	chain.Consensus.User().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
+			producer = &MolassesProducer{}
+			producer.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+			chain.createProducerTrxMgr()
+		} else {
+			chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
+			producer = chain.Consensus.Producer()
+		}
+	} else {
+		chain_log.Infof("<%s> no producer created", chain.groupId)
+		producer = nil
+	}
+
+	if chain.Consensus == nil {
+		chain_log.Infof("<%s> created consensus", chain.groupId)
+		chain.Consensus = NewMolasses(producer, user)
+	} else {
+		chain_log.Infof("<%s> reuse consensus", chain.groupId)
+		chain.Consensus.SetProducer(producer)
+		chain.Consensus.SetUser(user)
+	}
 
 	chain.createUserTrxMgr()
 	chain.createSyncTrxMgr()
 
-	chain_log.Infof("<%s> Create and init group syncer", chain.groupId)
-	chain.Syncer = &Syncer{nodeName: chain.nodename}
-	chain.Syncer.Init(chain.group, chain)
+	if chain.Syncer == nil {
+		chain_log.Infof("<%s> Create and init group syncer", chain.groupId)
+		chain.Syncer = &Syncer{nodeName: chain.nodename}
+		chain.Syncer.Init(chain.group, chain)
+	} else {
+		chain_log.Infof("<%s> reuse syncer", chain.groupId)
+	}
 }
 
 func (chain *Chain) createUserTrxMgr() {

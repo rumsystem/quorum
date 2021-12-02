@@ -8,6 +8,7 @@ type ChainMolassesIface interface {
 	GetProducerTrxMgr() *TrxMgr
 	UpdChainInfo(height int64, blockId string) error
 	UpdProducerList()
+	UpdUserList()
 	CreateConsensus()
 	IsSyncerReady() bool
 	SyncBackward(block *quorumpb.Block) error

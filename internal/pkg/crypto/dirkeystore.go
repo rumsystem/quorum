@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -163,7 +164,7 @@ func (ks *DirKeyStore) GetKeyFromUnlocked(keyname string) (interface{}, error) {
 		return ks.unlocked[keyname], nil
 	}
 
-	return nil, fmt.Errorf("key %s not exist or not be unlocked", keyname)
+	return nil, fmt.Errorf("key not exist or not be unlocked %s", keyname)
 }
 
 func JoinKeyStorePath(keysDirPath string, filename string) string {
@@ -209,6 +210,10 @@ func (ks *DirKeyStore) LoadEncryptKey(filename string, password string) (*age.X2
 	storefilename := JoinKeyStorePath(ks.KeystorePath, filename)
 	f, err := os.OpenFile(storefilename, os.O_RDONLY, 0600)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("key not exist.")
+
+		}
 		return nil, err
 	}
 	return AgeDecryptIdentityWithPassword(f, nil, password)
@@ -496,10 +501,13 @@ func (ks *DirKeyStore) Decrypt(keyname string, data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("The key %s is not a encrypt key", keyname)
 	}
 	r, err := age.Decrypt(bytes.NewReader(data), encryptk)
-	return ioutil.ReadAll(r)
+	if err == nil {
+		return ioutil.ReadAll(r)
+	}
+	return nil, err
 }
 
-// Backup the group seeds, key store and config directory, and return base64Encode(ageEncrypt(zip(keystore_dir))), base64Encode(ageEncrypt(zip(config_dir))) and error
+// Backup the group seeds, key store and config directory, and return base64Encode(ageEncrypt(zip(seeds))), base64Encode(ageEncrypt(zip(keystore_dir))), base64Encode(ageEncrypt(zip(config_dir))) and error
 func (ks *DirKeyStore) Backup(groupSeeds []byte) (string, string, string, error) {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
@@ -567,37 +575,17 @@ func (ks *DirKeyStore) Backup(groupSeeds []byte) (string, string, string, error)
 }
 
 // Restore restores the keystore and config from backup data
-func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configStr string, path string, password string) error {
-	// restore path
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("filepath.Abs(%s) failed: %s", path, err)
+func Restore(password, groupSeedStr, keystoreStr, configStr, seedPath, keystorePath, configPath string) error {
+	// check restore path
+	if err := checkPath(seedPath); err != nil {
+		return err
 	}
-
-	// if path is exists, return
-	if utils.FileExist(path) {
-		return fmt.Errorf("file %s is exists", path)
+	if err := checkPath(keystorePath); err != nil {
+		return err
 	}
-
-	// if path is dir, but not empty, return
-	if utils.DirExist(path) {
-		empty, err := utils.IsDirEmpty(path)
-		if err != nil {
-			return err
-		}
-		if !empty {
-			return fmt.Errorf("dir %s is not empty", path)
-		}
-	} else {
-		// create path
-		if err := os.MkdirAll(path, 0700); err != nil {
-			return fmt.Errorf("os.MkdirAll(%s, 0700) failed: %s", path, err)
-		}
+	if err := checkPath(configPath); err != nil {
+		return err
 	}
-
-	seedPath := filepath.Join(path, "seeds.json")
-	keystorePath := filepath.Join(path, "keystore")
-	configPath := filepath.Join(path, "config")
 
 	// age identities
 	identities := []age.Identity{
@@ -619,8 +607,8 @@ func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configSt
 		return fmt.Errorf("ioutil.ReadAll failed: %s", err)
 	}
 
-	if err := ioutil.WriteFile(seedPath, seedBytes, 0400); err != nil {
-		return fmt.Errorf("write group seed file failed: %s", err)
+	if err := utils.Unzip(seedBytes, seedPath); err != nil {
+		return fmt.Errorf("unzip group seed archive failed: %v", err)
 	}
 
 	// base64 decode keystore
@@ -663,6 +651,36 @@ func (ks *DirKeyStore) Restore(groupSeedStr string, keystoreStr string, configSt
 	// unzip the config zip content
 	if err := utils.Unzip(zipConfig, configPath); err != nil {
 		return fmt.Errorf("unzip config archive failed: %v", err)
+	}
+
+	return nil
+}
+
+func checkPath(path string) error {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("filepath.Abs(%s) failed: %s", path, err)
+	}
+
+	// if path is exists, return
+	if utils.FileExist(path) {
+		return fmt.Errorf("file %s is exists", path)
+	}
+
+	// if path is dir, but not empty, return
+	if utils.DirExist(path) {
+		empty, err := utils.IsDirEmpty(path)
+		if err != nil {
+			return err
+		}
+		if !empty {
+			return fmt.Errorf("dir %s is not empty", path)
+		}
+	} else {
+		// create path
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return fmt.Errorf("os.MkdirAll(%s, 0700) failed: %s", path, err)
+		}
 	}
 
 	return nil

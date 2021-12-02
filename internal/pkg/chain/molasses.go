@@ -23,3 +23,11 @@ func (m *Molasses) Producer() Producer {
 func (m *Molasses) User() User {
 	return m.user
 }
+
+func (m *Molasses) SetProducer(p Producer) {
+	m.producer = p
+}
+
+func (m *Molasses) SetUser(u User) {
+	m.user = u
+}

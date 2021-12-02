@@ -19,7 +19,7 @@ replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
 
 //replace github.com/libp2p/go-libp2p-core => ../go-libp2p-core
 
-//replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
+replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
 
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5

@@ -23,11 +23,13 @@ enum TrxType {
   REQ_BLOCK_RESP     = 7; // response request next block
   BLOCK_SYNCED       = 8; // block for producer to sync (old block)
   BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
+  USER               = 10; // update group user
 }
 
 enum AnnounceType {
    AS_USER     = 0;
    AS_PRODUCER = 1;
+   AS_USER_ENCRYPT  = 2;
 }
 
 enum ApproveType {
@@ -128,6 +130,17 @@ message ProducerItem {
    int64      TimeStamp           = 5;    
    ActionType Action              = 6;
    int64      BlockProduced       = 7;
+   string     Memo                = 8;
+}
+
+message UserItem {
+   string     GroupId             = 1;
+   string     UserPubkey          = 2;
+   string     EncryptPubkey       = 3;
+   string     GroupOwnerPubkey    = 4;
+   string     GroupOwnerSign      = 5;
+   int64      TimeStamp           = 6;
+   ActionType Action              = 7;
    string     Memo                = 8;
 }
 
