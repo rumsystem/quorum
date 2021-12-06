@@ -33,6 +33,17 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Target Group must not be nil"))
 			}
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Object and Target Object must not be nil"))
+		} else if inputobj.Type == Like || inputobj.Type == Dislike {
+			if inputobj.Object != nil && inputobj.Target != nil {
+				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
+					if inputobj.Object.Id != "" {
+						return nil
+					}
+					return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unsupported object type: %s", inputobj.Object.Type))
+				}
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Target Group must not be nil"))
+			}
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Object and Target Object must not be nil"))
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unknown type of Actitity: %s", inputobj.Type))
 	default:

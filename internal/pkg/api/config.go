@@ -24,6 +24,8 @@ const ERROR_INFO string = "error"
 
 const (
 	Add      = "Add"
+	Like     = "Like"
+	Dislike  = "Dislike"
 	Update   = "Update"
 	Remove   = "Remove"
 	Group    = "Group"
