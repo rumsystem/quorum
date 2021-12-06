@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
 func TestGetGroups(t *testing.T) {
@@ -13,7 +15,7 @@ func TestGetGroups(t *testing.T) {
 
 	for _, encryptionType := range encryptionTypes {
 		groupName := fmt.Sprintf("%s-%d", encryptionType, time.Now().Unix())
-		payload := CreateGroupParam{
+		payload := handlers.CreateGroupParam{
 			AppKey:         appKey,
 			ConsensusType:  consensusType,
 			EncryptionType: encryptionType,

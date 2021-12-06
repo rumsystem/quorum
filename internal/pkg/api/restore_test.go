@@ -6,13 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/testnode"
 )
 
 func TestRestore(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-join-group",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -95,7 +96,7 @@ func TestRestore(t *testing.T) {
 		t.Errorf("read seeds directory failed: %s", err)
 	}
 
-	var seeds []GroupSeed
+	var seeds []handlers.GroupSeed
 	for _, seedfile := range seedfiles {
 		path := filepath.Join(seedPath, seedfile.Name())
 		seedBytes, err := ioutil.ReadFile(path)
@@ -103,7 +104,7 @@ func TestRestore(t *testing.T) {
 			t.Fatalf("ioutil.ReadFile failed: %s", err)
 		}
 
-		var seed GroupSeed
+		var seed handlers.GroupSeed
 		if err := json.Unmarshal(seedBytes, &seed); err != nil {
 			t.Fatalf("json.Unmarshal failed: %s", err)
 		}

@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func announceProducer(api string, payload AnnounceParam) (*AnnounceResult, error) {
+func announceProducer(api string, payload handlers.AnnounceParam) (*handlers.AnnounceResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -27,7 +28,7 @@ func announceProducer(api string, payload AnnounceParam) (*AnnounceResult, error
 		return nil, err
 	}
 
-	var result AnnounceResult
+	var result handlers.AnnounceResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -66,7 +67,7 @@ func announceProducer(api string, payload AnnounceParam) (*AnnounceResult, error
 	return &result, nil
 }
 
-func getAnnouncedProducers(api string, groupID string) ([]AnnouncedProducerListItem, error) {
+func getAnnouncedProducers(api string, groupID string) ([]handlers.AnnouncedProducerListItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/announced/producers", groupID)
 
 	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
@@ -78,7 +79,7 @@ func getAnnouncedProducers(api string, groupID string) ([]AnnouncedProducerListI
 		return nil, err
 	}
 
-	var result []AnnouncedProducerListItem
+	var result []handlers.AnnouncedProducerListItem
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func getAnnouncedProducers(api string, groupID string) ([]AnnouncedProducerListI
 	return result, nil
 }
 
-func getProducers(api string, groupID string) ([]ProducerListItem, error) {
+func getProducers(api string, groupID string) ([]handlers.ProducerListItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/producers", groupID)
 	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
@@ -105,7 +106,7 @@ func getProducers(api string, groupID string) ([]ProducerListItem, error) {
 		return nil, err
 	}
 
-	var producers []ProducerListItem
+	var producers []handlers.ProducerListItem
 	if err := json.Unmarshal(resp, &producers); err != nil {
 		e := fmt.Errorf("json.Unmarshal failed: %s, response: %s", err, resp)
 		return nil, e
@@ -123,7 +124,7 @@ func getProducers(api string, groupID string) ([]ProducerListItem, error) {
 }
 
 // add producer by group owner
-func addProducer(api string, payload GrpProducerParam) (*GrpProducerResult, error) {
+func addProducer(api string, payload handlers.GrpProducerParam) (*handlers.GrpProducerResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -140,7 +141,7 @@ func addProducer(api string, payload GrpProducerParam) (*GrpProducerResult, erro
 		return nil, err
 	}
 
-	var result GrpProducerResult
+	var result handlers.GrpProducerResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -156,7 +157,7 @@ func addProducer(api string, payload GrpProducerParam) (*GrpProducerResult, erro
 
 func TestAnnounceProducer(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-announce-prd",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -168,7 +169,7 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// peer2 join group
-	joinGroupParam := GroupSeed{
+	joinGroupParam := handlers.GroupSeed{
 		GenesisBlock:   group.GenesisBlock,
 		GroupId:        group.GroupId,
 		GroupName:      group.GroupName,
@@ -184,7 +185,7 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// peer2 announce as producer
-	announcePayload := AnnounceParam{
+	announcePayload := handlers.AnnounceParam{
 		GroupId: group.GroupId,
 		Action:  "add",
 		Type:    "producer",
@@ -217,7 +218,7 @@ func TestAnnounceProducer(t *testing.T) {
 
 	// group owner approve producer
 	peer2PublicKey := announcedProducers[0].AnnouncedPubkey
-	producerParam := GrpProducerParam{
+	producerParam := handlers.GrpProducerParam{
 		Action:         "add",
 		ProducerPubkey: peer2PublicKey,
 		GroupId:        group.GroupId,

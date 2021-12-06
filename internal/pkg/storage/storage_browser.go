@@ -138,6 +138,41 @@ func (s *QSIndexDB) Get(key []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+func (s *QSIndexDB) PrefixDelete(prefix []byte) error {
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+
+	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
+	if err != nil {
+		return err
+	}
+	cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorNext)
+	if err != nil {
+		return err
+	}
+	err = cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
+		key, err := cursor.Key()
+		if err != nil {
+			return err
+		}
+		k := ArrayBufferToBytes(key)
+		if !bytes.HasPrefix(k, prefix) {
+			return nil
+		}
+		_, err = store.Delete(key)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return txn.Await(s.ctx)
+}
+
 func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
 	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
 	store, _ := txn.ObjectStore(s.name)
@@ -214,7 +249,6 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 				return err
 			}
 			k := ArrayBufferToBytes(key)
-			println("reverse, key: ", string(k))
 			if bytes.HasPrefix(k, valid) {
 				ferr := fn(k, nil)
 				if ferr != nil {
