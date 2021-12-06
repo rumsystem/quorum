@@ -21,15 +21,15 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 	switch i.(type) {
 	case *quorumpb.Activity:
 		inputobj := i.(*quorumpb.Activity)
-		if inputobj.Type != Update {
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unknown type of Actitity: %s, expect: %s", inputobj.Type, Update))
+		if inputobj.Type != handlers.Update {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("unknown type of Actitity: %s, expect: %s", inputobj.Type, handlers.Update))
 		}
 
 		if inputobj.Person == nil || inputobj.Target == nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Person or Target is nil"))
 		}
 
-		if inputobj.Target.Type == Group {
+		if inputobj.Target.Type == handlers.Group {
 			if inputobj.Target.Id == "" {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("Target Group must not be nil"))
 			}

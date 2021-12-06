@@ -9,19 +9,6 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
-const (
-	Add      = "Add"
-	Update   = "Update"
-	Remove   = "Remove"
-	Group    = "Group"
-	User     = "User"
-	Auth     = "Auth"
-	Note     = "Note"
-	Producer = "Producer"
-	Announce = "Announce"
-	App      = "App"
-)
-
 type CustomValidatorPost struct {
 	Validator *validator.Validate
 }
@@ -34,6 +21,17 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 			if inputobj.Object != nil && inputobj.Target != nil {
 				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
 					if inputobj.Object.Type == Note && (inputobj.Object.Content != "" || len(inputobj.Object.Image) > 0) {
+						return nil
+					}
+					return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
+				}
+				return errors.New(fmt.Sprintf("Target Group must not be nil"))
+			}
+			return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
+		} else if inputobj.Type == Like || inputobj.Type == Dislike {
+			if inputobj.Object != nil && inputobj.Target != nil {
+				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
+					if inputobj.Object.Id != "" {
 						return nil
 					}
 					return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
