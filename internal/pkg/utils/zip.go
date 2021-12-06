@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 )
 
+// ZipDir zip files in a directory, do not include the directory itself
 func ZipDir(dir string) ([]byte, error) {
 	// create a new zip archive
 	var buf bytes.Buffer

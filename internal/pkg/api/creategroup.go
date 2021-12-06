@@ -22,7 +22,7 @@ import (
 )
 
 type CreateGroupParam struct {
-	GroupName      string `from:"group_name"      json:"group_name"      validate:"required,max=20,min=5"`
+	GroupName      string `from:"group_name"      json:"group_name"      validate:"required"`
 	ConsensusType  string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa"`
 	EncryptionType string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private"`
 	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=5"`
@@ -31,7 +31,7 @@ type CreateGroupParam struct {
 type GroupSeed struct {
 	GenesisBlock   *quorumpb.Block `json:"genesis_block" validate:"required"`
 	GroupId        string          `json:"group_id" validate:"required"`
-	GroupName      string          `json:"group_name" validate:"required,max=20,min=5"`
+	GroupName      string          `json:"group_name" validate:"required"`
 	OwnerPubkey    string          `json:"owner_pubkey" validate:"required"`
 	ConsensusType  string          `json:"consensus_type" validate:"required,oneof=pos poa"`
 	EncryptionType string          `json:"encryption_type" validate:"required,oneof=public private"`
