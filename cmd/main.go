@@ -28,6 +28,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
@@ -114,7 +115,7 @@ func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 				continue
 			}
 
-			var seed api.GroupSeed
+			var seed handlers.GroupSeed
 			if err := json.Unmarshal(seedByte, &seed); err != nil {
 				mainlog.Errorf("unmarshal seed file failed: %s", err)
 				continue
@@ -134,7 +135,7 @@ func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 			}
 
 			// save seed to app data
-			pbSeed := api.ToPbGroupSeed(seed)
+			pbSeed := handlers.ToPbGroupSeed(seed)
 			err = appdb.SetGroupSeed(&pbSeed)
 			if err != nil {
 				mainlog.Errorf("save group seed failed: %s", err)
@@ -404,6 +405,7 @@ func main() {
 	if GitCommit == "" {
 		GitCommit = "devel"
 	}
+	utils.SetGitCommit(GitCommit)
 	help := flag.Bool("h", false, "Display Help")
 	version := flag.Bool("version", false, "Show the version")
 	update := flag.Bool("update", false, "Update to the latest version")

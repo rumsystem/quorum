@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func clearGroup(api string, payload ClearGroupDataParam) (*ClearGroupDataResult, error) {
+func clearGroup(api string, payload handlers.ClearGroupDataParam) (*handlers.ClearGroupDataResult, error) {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -26,7 +27,7 @@ func clearGroup(api string, payload ClearGroupDataParam) (*ClearGroupDataResult,
 		return nil, err
 	}
 
-	var result ClearGroupDataResult
+	var result handlers.ClearGroupDataResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func clearGroup(api string, payload ClearGroupDataParam) (*ClearGroupDataResult,
 
 func TestClearGroup(t *testing.T) {
 	// create group
-	createGroupParam := CreateGroupParam{
+	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-get-trx",
 		ConsensusType:  "poa",
 		EncryptionType: "public",
@@ -72,7 +73,7 @@ func TestClearGroup(t *testing.T) {
 		t.Errorf("postToGroup failed: %s, payload: %+v", err, postGroupParam)
 	}
 
-	if _, err := clearGroup(peerapi, ClearGroupDataParam{GroupId: group.GroupId}); err != nil {
+	if _, err := clearGroup(peerapi, handlers.ClearGroupDataParam{GroupId: group.GroupId}); err != nil {
 		t.Fatalf("clearGroup failed: %s", err)
 	}
 }

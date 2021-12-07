@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func mgrGroupBlockedList(api string, payload DenyListParam) (*DenyUserResult, error) {
+func mgrGroupBlockedList(api string, payload handlers.DenyListParam) (*handlers.DenyUserResult, error) {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -26,7 +27,7 @@ func mgrGroupBlockedList(api string, payload DenyListParam) (*DenyUserResult, er
 		return nil, err
 	}
 
-	var result DenyUserResult
+	var result handlers.DenyUserResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -64,7 +65,7 @@ func TestMgrGroupBlockedList(t *testing.T) {
 	consensusType := "poa"
 	encryptionType := "public"
 	groupName := fmt.Sprintf("%s-%d", encryptionType, time.Now().Unix())
-	payload := CreateGroupParam{
+	payload := handlers.CreateGroupParam{
 		AppKey:         appKey,
 		ConsensusType:  consensusType,
 		EncryptionType: encryptionType,
@@ -90,7 +91,7 @@ func TestMgrGroupBlockedList(t *testing.T) {
 	}
 
 	// add blocked user
-	param := DenyListParam{
+	param := handlers.DenyListParam{
 		Action:  "add",
 		PeerId:  node2.NodeID,
 		GroupId: group.GroupId,
@@ -111,7 +112,7 @@ func TestMgrGroupBlockedList(t *testing.T) {
 	}
 
 	// delete blocked user
-	param = DenyListParam{
+	param = handlers.DenyListParam{
 		Action:  "del",
 		PeerId:  node2.NodeID,
 		GroupId: group.GroupId,

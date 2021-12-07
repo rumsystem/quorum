@@ -212,6 +212,12 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:800
             参数：
                 trx_id: post的trx_id
 
+
+     Like/Dislike a object in the group 
+
+    curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":{"id":"578e65d0-9b61-4937-8e7c-f00e2b262753"}, "target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/content
+
+
     - 节点B查询组内节点A的POST
         
         执行:

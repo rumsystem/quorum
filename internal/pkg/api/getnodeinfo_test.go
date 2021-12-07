@@ -5,16 +5,17 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func getNodeInfo(api string) (*NodeInfo, error) {
+func getNodeInfo(api string) (*handlers.NodeInfo, error) {
 	resp, err := testnode.RequestAPI(api, "/api/v1/node", "GET", "")
 	if err != nil {
 		return nil, err
 	}
 
-	var info NodeInfo
+	var info handlers.NodeInfo
 	if err := json.Unmarshal(resp, &info); err != nil {
 		return nil, err
 	}

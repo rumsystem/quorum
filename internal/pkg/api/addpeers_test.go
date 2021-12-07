@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func addPeers(api string, payload AddPeerParam) (*AddPeerResult, error) {
+func addPeers(api string, payload handlers.AddPeerParam) (*handlers.AddPeerResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -25,7 +26,7 @@ func addPeers(api string, payload AddPeerParam) (*AddPeerResult, error) {
 		return nil, err
 	}
 
-	var result AddPeerResult
+	var result handlers.AddPeerResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -39,7 +40,7 @@ func addPeers(api string, payload AddPeerParam) (*AddPeerResult, error) {
 }
 
 func TestAddPeers(t *testing.T) {
-	payload := AddPeerParam{"/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAkvYJbiKnwzFybbfzNxtuHFEFu1guV9nFcTiZNSYz8kUWf"}
+	payload := handlers.AddPeerParam{"/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAkvYJbiKnwzFybbfzNxtuHFEFu1guV9nFcTiZNSYz8kUWf"}
 
 	if _, err := addPeers(peerapi, payload); err != nil {
 		t.Errorf("addPeers failed: %s, payload: %+v", err, payload)

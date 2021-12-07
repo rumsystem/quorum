@@ -11,7 +11,7 @@ cp $(go env GOROOT)/misc/wasm/wasm_exec.js .
 
 ## buid
 
-> go build -o lib.wasm lib.go
+> go build -ldflags "-X github.com/rumsystem/quorum/internal/pkg/utils.GitCommit=$GIT_COMMIT" -o lib.wasm lib.go
 
 ## run
 

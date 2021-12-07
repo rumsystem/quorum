@@ -6,6 +6,7 @@ type QuorumStorage interface {
 	Set(key []byte, val []byte) error
 	Delete(key []byte) error
 	Get(key []byte) ([]byte, error)
+	PrefixDelete(prefix []byte) error
 	PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error
 	PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error
 	Foreach(fn func([]byte, []byte, error) error) error

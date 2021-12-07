@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -93,7 +94,7 @@ func TestBlockByID(t *testing.T) {
 	encryptionType := "public"
 
 	groupName := fmt.Sprintf("%s-%d", encryptionType, time.Now().Unix())
-	payload := CreateGroupParam{
+	payload := handlers.CreateGroupParam{
 		AppKey:         appKey,
 		ConsensusType:  consensusType,
 		EncryptionType: encryptionType,

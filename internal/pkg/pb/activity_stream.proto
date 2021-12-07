@@ -26,7 +26,6 @@ message Object {
   Object location = 14;
   Object preview = 15;
   google.protobuf.Timestamp published = 16;
-  //Collection replies  = 16
   Object replies  = 17;
   google.protobuf.Timestamp startTime = 18;
   string summary = 19;
@@ -95,7 +94,6 @@ message Activity {
   Object location = 14;
   Object preview = 15;
   google.protobuf.Timestamp published = 16;
-  //Collection replies  = 16
   Object replies  = 17;
   google.protobuf.Timestamp startTime = 18;
   string summary = 19;
