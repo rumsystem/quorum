@@ -12,6 +12,8 @@ type AnnouncedUserListItem struct {
 	AnnouncedEncryptPubkey string
 	AnnouncerSign          string
 	Result                 string
+	Memo                   string
+	TimeStamp              int64
 }
 
 func GetAnnouncedGroupUsers(groupid string) ([]*AnnouncedUserListItem, error) {
@@ -34,6 +36,8 @@ func GetAnnouncedGroupUsers(groupid string) ([]*AnnouncedUserListItem, error) {
 			item.AnnouncedEncryptPubkey = usr.EncryptPubkey
 			item.AnnouncerSign = usr.AnnouncerSignature
 			item.Result = usr.Result.String()
+			item.Memo = usr.Memo
+			item.TimeStamp = usr.TimeStamp
 			usrResultList = append(usrResultList, item)
 		}
 
