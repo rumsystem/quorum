@@ -14,6 +14,7 @@ import (
 
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	qApi "github.com/rumsystem/quorum/internal/pkg/api"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
 var ApiServer string
@@ -320,6 +321,40 @@ func GetBlockById(groupId string, id string) (*BlockStruct, error) {
 		return nil, errors.New(string(body))
 	}
 	return &ret, nil
+}
+
+func AnnouncedUsers(groupId string) ([]*handlers.AnnouncedUserListItem, error) {
+	if !IsValidApiServer() {
+		return nil, errors.New("api server is invalid: " + ApiServer)
+	}
+	url := fmt.Sprintf("%s/api/v1/group/%s/announced/users", ApiServer, groupId)
+	ret := []*handlers.AnnouncedUserListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
+func AnnouncedProducers(groupId string) ([]*handlers.AnnouncedProducerListItem, error) {
+	if !IsValidApiServer() {
+		return nil, errors.New("api server is invalid: " + ApiServer)
+	}
+	url := fmt.Sprintf("%s/api/v1/group/%s/announced/producers", ApiServer, groupId)
+	ret := []*handlers.AnnouncedProducerListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
 }
 
 func newHTTPClient() (*http.Client, error) {

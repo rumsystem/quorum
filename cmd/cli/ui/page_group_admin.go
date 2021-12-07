@@ -1,21 +1,31 @@
 package ui
 
 import (
+	"fmt"
 	"runtime"
+	"strconv"
+	"time"
 
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rumsystem/quorum/cmd/cli/api"
 )
 
 var adminPage = cview.NewFlex()
-var adminPageLeft = cview.NewList()  // users
-var adminPageRight = cview.NewList() // producers
+var adminPageLeft = cview.NewTextView()  // users
+var adminPageRight = cview.NewTextView() // producers
 
 func adminPageInit() {
-	adminPageLeft.SetTitle("User Requests")
+	adminPageLeft.SetTitle("Announced Users")
 	adminPageLeft.SetBorder(true)
-	adminPageRight.SetTitle("Producer Requests")
+	adminPageLeft.SetRegions(true)
+	adminPageLeft.SetDynamicColors(true)
+
+	adminPageRight.SetTitle("Announced Producers")
 	adminPageRight.SetBorder(true)
+	adminPageRight.SetRegions(true)
+	adminPageRight.SetDynamicColors(true)
 
 	initAdminPageInputHandler()
 
@@ -46,6 +56,7 @@ func initAdminPageInputHandler() {
 		rightViewHandler.Set("H", wrapQuorumKeyFn(focusLeftView))
 	}
 	adminPageRight.SetInputCapture(rightViewHandler.Capture)
+
 }
 
 func GroupAdminPage(groupId string) {
@@ -65,8 +76,89 @@ func GroupAdminPage(groupId string) {
 	rootPanels.ShowPanel("admin")
 	rootPanels.SendToFront("admin")
 	App.SetFocus(adminPage)
+
+	AdminRefreshAll(groupId)
 }
 
 func AdminRefreshAll(groupId string) {
-	// TODO: read announced users and announced producers
+	go goGetAnnouncedUsers(groupId)
+	go goGetAnnouncedProducers(groupId)
+}
+
+func goGetAnnouncedUsers(groupId string) {
+	aUsers, err := api.AnnouncedUsers(groupId)
+	checkFatalError(err)
+
+	adminPageLeft.Clear()
+
+	for i, each := range aUsers {
+		fmt.Fprintf(adminPageLeft, "[\"%d\"]%s %s\n", i, each.Result, time.Unix(0, each.TimeStamp))
+		fmt.Fprintf(adminPageLeft, "AnnouncedSignPubkey: %s\n", each.AnnouncedSignPubkey)
+		fmt.Fprintf(adminPageLeft, "AnnouncedEncryptPubkey: %s\n", each.AnnouncedEncryptPubkey)
+		fmt.Fprintf(adminPageLeft, "AnnouncerSign: %s\n", each.AnnouncerSign)
+		fmt.Fprintf(adminPageLeft, "Memo: %s\n", each.Memo)
+		fmt.Fprintf(adminPageLeft, "\n\n")
+	}
+
+	selectNextUser := func() {
+		minNum := 0
+		maxNum := len(aUsers) - 1
+
+		curSelection := adminPageLeft.GetHighlights()
+		tag := minNum
+		if len(curSelection) > 0 {
+			tag, _ = strconv.Atoi(curSelection[0])
+			tag += 1
+		}
+		if tag >= minNum && tag <= maxNum {
+			adminPageLeft.Highlight(strconv.Itoa(tag))
+			adminPageLeft.ScrollToHighlight()
+		}
+	}
+	selectLastUser := func() {
+		minNum := 0
+		maxNum := len(aUsers) - 1
+
+		curSelection := adminPageLeft.GetHighlights()
+		tag := minNum
+		if len(curSelection) > 0 {
+			tag, _ = strconv.Atoi(curSelection[0])
+			tag -= 1
+		}
+		if tag >= minNum && tag <= maxNum {
+			adminPageLeft.Highlight(strconv.Itoa(tag))
+			adminPageLeft.ScrollToHighlight()
+		}
+	}
+	adminPageLeft.SetDoneFunc(func(key tcell.Key) {
+		switch key {
+		case tcell.KeyEsc:
+			adminPageLeft.Highlight("")
+			cmdInput.SetLabel("")
+			cmdInput.SetText("")
+		case tcell.KeyEnter:
+			// TODO: show modal approve ?
+		case tcell.KeyTab:
+			selectNextUser()
+		case tcell.KeyBacktab:
+			selectLastUser()
+		default:
+		}
+	})
+}
+
+func goGetAnnouncedProducers(groupId string) {
+	aProducers, err := api.AnnouncedProducers(groupId)
+	checkFatalError(err)
+
+	adminPageRight.Clear()
+
+	for i, each := range aProducers {
+		fmt.Fprintf(adminPageRight, "[\"%d\"]%s %s\n", i, each.Result, time.Unix(0, each.TimeStamp))
+		fmt.Fprintf(adminPageRight, "AnnouncedPubkey: %s\n", each.AnnouncedPubkey)
+		fmt.Fprintf(adminPageRight, "AnnouncerSign: %s\n", each.AnnouncerSign)
+		fmt.Fprintf(adminPageRight, "Memo: %s\n", each.Memo)
+		fmt.Fprintf(adminPageRight, "\n\n")
+
+	}
 }
