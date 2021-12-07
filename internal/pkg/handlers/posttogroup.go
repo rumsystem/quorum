@@ -61,6 +61,10 @@ func PostToGroup(paramspb *quorumpb.Activity) (*TrxResult, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
+		if paramspb.Object.Type == "" {
+			paramspb.Object.Type = paramspb.Type
+		}
+
 		trxId, err := group.PostToGroup(paramspb.Object)
 
 		if err != nil {
