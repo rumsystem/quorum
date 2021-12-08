@@ -22,11 +22,10 @@ import (
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumConfig "github.com/rumsystem/quorum/pkg/wasm/config"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
+	"github.com/rumsystem/quorum/pkg/wasm/logger"
 )
 
 const DEFAUT_KEY_NAME string = "default"
-
-var Console = NewLogger()
 
 func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool, error) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -51,7 +50,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 	ks := k.(*quorumCrypto.BrowserKeystore)
-	Console.Log("InitBrowserKeystore OK")
+	logger.Console.Log("InitBrowserKeystore OK")
 
 	/* get default sign key */
 	key, err := ks.GetUnlockedKey(quorumCrypto.Sign.NameString(DEFAUT_KEY_NAME))
@@ -65,7 +64,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		cancel()
 		return false, errors.New("failed to cast key")
 	}
-	Console.Log("defaultKey OK")
+	logger.Console.Log("defaultKey OK")
 
 	node, err := quorumP2P.NewBrowserNode(ctx, &nodeOpt, defaultKey)
 	if err != nil {
@@ -82,7 +81,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
-	Console.Log("SignKeytoPeerKeys OK")
+	logger.Console.Log("SignKeytoPeerKeys OK")
 
 	peerId, ethAddr, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
 	if err != nil {
@@ -90,10 +89,10 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 	nodectx.GetNodeCtx().PeerId = peerId
-	Console.Log("GetPeerInfo OK")
+	logger.Console.Log("GetPeerInfo OK")
 
 	chain.InitGroupMgr(dbMgr)
-	Console.Log("InitGroupMgr OK")
+	logger.Console.Log("InitGroupMgr OK")
 
 	appIndexedDb, err := newAppDb()
 	if err != nil {
@@ -157,7 +156,7 @@ func Bootstrap() error {
 		bootstraps = append(bootstraps, *peerinfo)
 	}
 	connectedPeers := wasmCtx.QNode.AddPeers(wasmCtx.Ctx, bootstraps)
-	Console.Log(fmt.Sprintf("Connected to %d peers", connectedPeers))
+	logger.Console.Log(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
 	/* keep finding peers, and try to connect to them */
 	go StartDiscoverTask()
@@ -168,12 +167,12 @@ func Bootstrap() error {
 	if err != nil {
 		return err
 	}
-	Console.Log("Group Syncer Started")
+	logger.Console.Log("Group Syncer Started")
 
 	/* new syncer for app data */
 	appsync := appdata.NewAppSyncAgent("", "default", wasmCtx.AppDb, wasmCtx.DbMgr)
 	appsync.Start(10)
-	Console.Log("App Syncer Started")
+	logger.Console.Log("App Syncer Started")
 
 	return nil
 }
@@ -181,7 +180,7 @@ func Bootstrap() error {
 func StartDiscoverTask() {
 	wasmCtx := quorumContext.GetWASMContext()
 	var doDiscoverTask = func() {
-		Console.Log("Searching for other peers...")
+		logger.Console.Log("Searching for other peers...")
 		peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, quorumConfig.DefaultRendezvousString)
 		if err != nil {
 			panic(err)
@@ -191,17 +190,17 @@ func StartDiscoverTask() {
 
 		for peer := range peerChan {
 			curPeer := peer
-			Console.Log("Found peer:" + curPeer.String())
+			logger.Console.Log("Found peer:" + curPeer.String())
 			go func() {
 				pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
 				defer cancel()
 				err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
 				if err != nil {
-					Console.Error("Failed to connect peer: " + curPeer.String())
+					logger.Console.Error("Failed to connect peer: " + curPeer.String())
 					cancel()
 				} else {
 					curConnectedCount := atomic.AddUint32(&connectCount, 1)
-					Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
+					logger.Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
 				}
 			}()
 		}
