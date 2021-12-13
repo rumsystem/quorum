@@ -36,7 +36,7 @@ func adminPageInit() {
 	adminApproveModal.SetTextColor(tcell.ColorWhite)
 	adminApproveModal.SetTitle("Operation")
 	adminApproveModal.SetText("Approve selected user?")
-	adminApproveModal.AddButtons([]string{"Approve", "Cancel"})
+	adminApproveModal.AddButtons([]string{"Approve", "Deny", "Close"})
 	rootPanels.AddPanel("adminApproveModal", adminApproveModal, false, false)
 	rootPanels.HidePanel("adminApproveModal")
 
@@ -84,6 +84,10 @@ func GroupAdminPage(groupId string) {
 	pageInputHandler := cbind.NewConfiguration()
 	pageInputHandler.Set("Enter", wrapQuorumKeyFn(focusLeftView))
 	pageInputHandler.Set("Esc", wrapQuorumKeyFn(focusLastView))
+	pageInputHandler.Set("r", wrapQuorumKeyFn(func() {
+		AdminRefreshAll(groupId)
+	}))
+
 	adminPage.SetInputCapture(pageInputHandler.Capture)
 
 	rootPanels.ShowPanel("admin")
@@ -150,7 +154,6 @@ func goGetAnnouncedUsers(groupId string) {
 			cmdInput.SetLabel("")
 			cmdInput.SetText("")
 		case tcell.KeyEnter:
-			// TODO: show modal approve ?
 			curSelection := adminPageLeft.GetHighlights()
 			if len(curSelection) > 0 {
 				idx, _ := strconv.Atoi(curSelection[0])
@@ -160,10 +163,16 @@ func goGetAnnouncedUsers(groupId string) {
 					switch buttonIndex {
 					case 0:
 						// approve
-						go goApprove(user)
+						go goApprove(groupId, user, false)
 						rootPanels.HidePanel("adminApproveModal")
+						Info("Syncing...", "Keep waiting and press `r` to refresh")
 					case 1:
-						// cancel
+						// delete
+						go goApprove(groupId, user, true)
+						rootPanels.HidePanel("adminApproveModal")
+						Info("Syncing...", "Keep waiting and press `r` to refresh")
+					case 2:
+						// abort operation
 						rootPanels.HidePanel("adminApproveModal")
 					}
 				})
@@ -194,10 +203,13 @@ func goGetAnnouncedProducers(groupId string) {
 		fmt.Fprintf(adminPageRight, "AnnouncerSign: %s\n", each.AnnouncerSign)
 		fmt.Fprintf(adminPageRight, "Memo: %s\n", each.Memo)
 		fmt.Fprintf(adminPageRight, "\n\n")
-
 	}
 }
 
-func goApprove(user *handlers.AnnouncedUserListItem) {
-
+func goApprove(groupId string, user *handlers.AnnouncedUserListItem, removal bool) {
+	_, err := api.ApproveAnnouncedUser(groupId, user, removal)
+	checkFatalError(err)
+	if err != nil {
+		Error("Failed to call user API: ", err.Error())
+	}
 }

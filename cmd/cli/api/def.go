@@ -204,3 +204,22 @@ type PingInfoItemStruct struct {
 	RTT         string               `json:"rtt"`
 	Connections []qApi.AddrProtoPair `json:"connections"`
 }
+
+// POST approve user
+type ApproveGrpUserParam struct {
+	Action     string `from:"action"          json:"action"           validate:"required,oneof=add remove"`
+	UserPubkey string `from:"user_pubkey" json:"user_pubkey"  validate:"required"`
+	GroupId    string `from:"group_id"        json:"group_id"         validate:"required"`
+	Memo       string `from:"memo"            json:"memo"`
+}
+
+type ApproveGrpUserResult struct {
+	GroupId       string `json:"group_id"`
+	UserPubkey    string `json:"user_pubkey"`
+	EncryptPubkey string `json:"encrypt_pubkey"`
+	OwnerPubkey   string `json:"owner_pubkey"`
+	Sign          string `json:"sign"`
+	TrxId         string `json:"trx_id"`
+	Memo          string `json:"memo"`
+	Action        string `json:"action"`
+}
