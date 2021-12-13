@@ -167,6 +167,15 @@ func QuorumNewGroupHandler() {
 	CreateGroupForm()
 }
 
+// CMD /group.admin
+func QuorumGroupAdminHandler() {
+	if quorumData.GetCurrentGroup() == "" {
+		Error("No Group to Leave", "Please select a group first.")
+		return
+	}
+	GroupAdminPage(quorumData.GetCurrentGroup())
+}
+
 // CMD /group.leave handler
 func QuorumLeaveGroupHandler() {
 	if quorumData.GetCurrentGroup() == "" {

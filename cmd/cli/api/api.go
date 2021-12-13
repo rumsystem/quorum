@@ -14,6 +14,7 @@ import (
 
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	qApi "github.com/rumsystem/quorum/internal/pkg/api"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
 var ApiServer string
@@ -322,6 +323,102 @@ func GetBlockById(groupId string, id string) (*BlockStruct, error) {
 	return &ret, nil
 }
 
+func AnnouncedUsers(groupId string) ([]*handlers.AnnouncedUserListItem, error) {
+	if !IsValidApiServer() {
+		return nil, errors.New("api server is invalid: " + ApiServer)
+	}
+	url := fmt.Sprintf("%s/api/v1/group/%s/announced/users", ApiServer, groupId)
+	ret := []*handlers.AnnouncedUserListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
+func AnnouncedProducers(groupId string) ([]*handlers.AnnouncedProducerListItem, error) {
+	if !IsValidApiServer() {
+		return nil, errors.New("api server is invalid: " + ApiServer)
+	}
+	url := fmt.Sprintf("%s/api/v1/group/%s/announced/producers", ApiServer, groupId)
+	ret := []*handlers.AnnouncedProducerListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
+func ApproveAnnouncedUser(groupId string, user *handlers.AnnouncedUserListItem, removal bool) (*ApproveGrpUserResult, error) {
+	ret := &ApproveGrpUserResult{}
+	url := ApiServer + "/api/v1/group/user"
+
+	action := "add"
+	if removal {
+		action = "remove"
+	}
+
+	data := ApproveGrpUserParam{
+		Action:     action,
+		UserPubkey: user.AnnouncedSignPubkey,
+		GroupId:    groupId,
+		Memo:       "by cli",
+	}
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := httpPost(url, json_data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+
+	return ret, nil
+}
+
+func ApproveAnnouncedProducer(groupId string, user *handlers.AnnouncedProducerListItem, removal bool) (*handlers.GrpProducerResult, error) {
+	ret := &handlers.GrpProducerResult{}
+	url := ApiServer + "/api/v1/group/producer"
+
+	action := "add"
+	if removal {
+		action = "remove"
+	}
+
+	data := handlers.GrpProducerParam{
+		Action:         action,
+		ProducerPubkey: user.AnnouncedPubkey,
+		GroupId:        groupId,
+		Memo:           "by cli",
+	}
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := httpPost(url, json_data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+
+	return ret, nil
+}
+
 func newHTTPClient() (*http.Client, error) {
 	certPath := config.RumConfig.Quorum.ServerSSLCertificate
 
@@ -419,6 +516,11 @@ func httpPost(url string, data []byte) ([]byte, error) {
 	if jwtErr != nil {
 		return nil, jwtErr
 	}
+
+	if strings.Contains(string(body), "error") {
+		return nil, errors.New(string(body))
+	}
+
 	return body, err
 }
 func httpDelete(url string, data []byte) ([]byte, error) {
