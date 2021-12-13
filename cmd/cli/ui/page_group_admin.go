@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"code.rocketnine.space/tslocum/cbind"
@@ -11,6 +12,16 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
+)
+
+var adminPageHelpText = strings.TrimSpace(
+	"Shortcuts:\n" +
+		"Enter to select left pannel.\n" +
+		"Esc to go back.\n" +
+		"Shift + h/l to naviagate between pannels.\n" +
+		"Tab / Shift + Tab to scroll.\n" +
+		"Enter to open operation modal of selected items.\n" +
+		"Press `r` to refresh data.\n",
 )
 
 var adminPage = cview.NewFlex()
@@ -93,6 +104,8 @@ func GroupAdminPage(groupId string) {
 	rootPanels.ShowPanel("admin")
 	rootPanels.SendToFront("admin")
 	App.SetFocus(adminPage)
+
+	Info("Help", adminPageHelpText)
 
 	AdminRefreshAll(groupId)
 }
@@ -204,10 +217,92 @@ func goGetAnnouncedProducers(groupId string) {
 		fmt.Fprintf(adminPageRight, "Memo: %s\n", each.Memo)
 		fmt.Fprintf(adminPageRight, "\n\n")
 	}
+
+	selectNextUser := func() {
+		minNum := 0
+		maxNum := len(aProducers) - 1
+
+		curSelection := adminPageRight.GetHighlights()
+		tag := minNum
+		if len(curSelection) > 0 {
+			tag, _ = strconv.Atoi(curSelection[0])
+			tag += 1
+		}
+		if tag >= minNum && tag <= maxNum {
+			adminPageRight.Highlight(strconv.Itoa(tag))
+			adminPageRight.ScrollToHighlight()
+		}
+	}
+	selectLastUser := func() {
+		minNum := 0
+		maxNum := len(aProducers) - 1
+
+		curSelection := adminPageRight.GetHighlights()
+		tag := minNum
+		if len(curSelection) > 0 {
+			tag, _ = strconv.Atoi(curSelection[0])
+			tag -= 1
+		}
+		if tag >= minNum && tag <= maxNum {
+			adminPageRight.Highlight(strconv.Itoa(tag))
+			adminPageRight.ScrollToHighlight()
+		}
+	}
+	adminPageRight.SetDoneFunc(func(key tcell.Key) {
+		switch key {
+		case tcell.KeyEsc:
+			adminPageRight.Highlight("")
+			cmdInput.SetLabel("")
+			cmdInput.SetText("")
+		case tcell.KeyEnter:
+			curSelection := adminPageRight.GetHighlights()
+			if len(curSelection) > 0 {
+				idx, _ := strconv.Atoi(curSelection[0])
+				user := aProducers[idx]
+				adminApproveModal.SetText("Approve producer with memo: " + user.Memo + "?")
+				adminApproveModal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					switch buttonIndex {
+					case 0:
+						// approve
+						go goApproveProducer(groupId, user, false)
+						rootPanels.HidePanel("adminApproveModal")
+						Info("Syncing...", "Keep waiting and press `r` to refresh")
+					case 1:
+						// delete
+						go goApproveProducer(groupId, user, true)
+						rootPanels.HidePanel("adminApproveModal")
+						Info("Syncing...", "Keep waiting and press `r` to refresh")
+					case 2:
+						// abort operation
+						rootPanels.HidePanel("adminApproveModal")
+					}
+				})
+				rootPanels.ShowPanel("adminApproveModal")
+				rootPanels.SendToFront("adminApproveModal")
+				App.SetFocus(adminApproveModal)
+				App.Draw()
+			}
+
+		case tcell.KeyTab:
+			selectNextUser()
+		case tcell.KeyBacktab:
+			selectLastUser()
+		default:
+		}
+	})
+
 }
 
 func goApprove(groupId string, user *handlers.AnnouncedUserListItem, removal bool) {
 	_, err := api.ApproveAnnouncedUser(groupId, user, removal)
+	checkFatalError(err)
+	if err != nil {
+		Error("Failed to call user API: ", err.Error())
+	}
+}
+
+func goApproveProducer(groupId string, user *handlers.AnnouncedProducerListItem, removal bool) {
+	_, err := api.ApproveAnnouncedProducer(groupId, user, removal)
 	checkFatalError(err)
 	if err != nil {
 		Error("Failed to call user API: ", err.Error())

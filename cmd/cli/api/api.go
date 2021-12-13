@@ -388,6 +388,37 @@ func ApproveAnnouncedUser(groupId string, user *handlers.AnnouncedUserListItem, 
 	return ret, nil
 }
 
+func ApproveAnnouncedProducer(groupId string, user *handlers.AnnouncedProducerListItem, removal bool) (*handlers.GrpProducerResult, error) {
+	ret := &handlers.GrpProducerResult{}
+	url := ApiServer + "/api/v1/group/producer"
+
+	action := "add"
+	if removal {
+		action = "remove"
+	}
+
+	data := handlers.GrpProducerParam{
+		Action:         action,
+		ProducerPubkey: user.AnnouncedPubkey,
+		GroupId:        groupId,
+		Memo:           "by cli",
+	}
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := httpPost(url, json_data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+
+	return ret, nil
+}
+
 func newHTTPClient() (*http.Client, error) {
 	certPath := config.RumConfig.Quorum.ServerSSLCertificate
 
