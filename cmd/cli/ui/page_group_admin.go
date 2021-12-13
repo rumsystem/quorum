@@ -10,11 +10,14 @@ import (
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
 var adminPage = cview.NewFlex()
 var adminPageLeft = cview.NewTextView()  // users
 var adminPageRight = cview.NewTextView() // producers
+
+var adminApproveModal = cview.NewModal()
 
 func adminPageInit() {
 	adminPageLeft.SetTitle("Announced Users")
@@ -26,6 +29,16 @@ func adminPageInit() {
 	adminPageRight.SetBorder(true)
 	adminPageRight.SetRegions(true)
 	adminPageRight.SetDynamicColors(true)
+
+	adminApproveModal.SetBackgroundColor(tcell.ColorBlack)
+	adminApproveModal.SetButtonBackgroundColor(tcell.ColorWhite)
+	adminApproveModal.SetButtonTextColor(tcell.ColorBlack)
+	adminApproveModal.SetTextColor(tcell.ColorWhite)
+	adminApproveModal.SetTitle("Operation")
+	adminApproveModal.SetText("Approve selected user?")
+	adminApproveModal.AddButtons([]string{"Approve", "Cancel"})
+	rootPanels.AddPanel("adminApproveModal", adminApproveModal, false, false)
+	rootPanels.HidePanel("adminApproveModal")
 
 	initAdminPageInputHandler()
 
@@ -138,6 +151,28 @@ func goGetAnnouncedUsers(groupId string) {
 			cmdInput.SetText("")
 		case tcell.KeyEnter:
 			// TODO: show modal approve ?
+			curSelection := adminPageLeft.GetHighlights()
+			if len(curSelection) > 0 {
+				idx, _ := strconv.Atoi(curSelection[0])
+				user := aUsers[idx]
+				adminApproveModal.SetText("Approve user with memo: " + user.Memo + "?")
+				adminApproveModal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					switch buttonIndex {
+					case 0:
+						// approve
+						go goApprove(user)
+						rootPanels.HidePanel("adminApproveModal")
+					case 1:
+						// cancel
+						rootPanels.HidePanel("adminApproveModal")
+					}
+				})
+				rootPanels.ShowPanel("adminApproveModal")
+				rootPanels.SendToFront("adminApproveModal")
+				App.SetFocus(adminApproveModal)
+				App.Draw()
+			}
+
 		case tcell.KeyTab:
 			selectNextUser()
 		case tcell.KeyBacktab:
@@ -161,4 +196,8 @@ func goGetAnnouncedProducers(groupId string) {
 		fmt.Fprintf(adminPageRight, "\n\n")
 
 	}
+}
+
+func goApprove(user *handlers.AnnouncedUserListItem) {
+
 }
