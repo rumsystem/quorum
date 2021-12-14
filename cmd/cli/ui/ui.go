@@ -40,6 +40,7 @@ func Init() {
 	welcomePageInit()
 	blocksPageInit()
 	quorumPageInit()
+	adminPageInit()
 	networkPageInit()
 
 	// display groups
