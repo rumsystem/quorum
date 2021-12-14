@@ -55,6 +55,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
 	github.com/libp2p/go-libp2p-peerstore v0.4.0
 	github.com/libp2p/go-libp2p-pubsub v0.5.4
+	github.com/libp2p/go-msgio v0.1.0
 	github.com/libp2p/go-tcp-transport v0.4.0
 	github.com/libp2p/go-ws-transport v0.5.0
 	github.com/mailru/easyjson v0.7.7 // indirect

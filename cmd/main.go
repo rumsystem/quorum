@@ -443,6 +443,7 @@ func main() {
 		logging.SetLogLevel("user", "debug")
 		logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("trxmgr", "debug")
+		logging.SetLogLevel("rumexchange", "debug")
 	}
 
 	if *help {

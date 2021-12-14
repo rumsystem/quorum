@@ -17,6 +17,25 @@ func ContentToBytes(content proto.Message) ([]byte, error) {
 	return encodedcontent, err
 }
 
+func BytesToMessageDefault(content []byte) (proto.Message, string, error) {
+	anyobj := &anypb.Any{}
+	var msg proto.Message
+	if len(content) == 0 {
+		return nil, "", fmt.Errorf("content must not be nil")
+	}
+	err := proto.Unmarshal(content, anyobj)
+	if err != nil {
+		return nil, "", err
+	}
+
+	msg, err = anyobj.UnmarshalNew()
+	if err != nil {
+		return nil, "", err
+	}
+	typeurl := strings.Replace(anyobj.TypeUrl, "type.googleapis.com/", "", 1)
+	return msg, typeurl, err
+}
+
 func BytesToMessage(trxid string, content []byte) (proto.Message, string, error) {
 	anyobj := &anypb.Any{}
 
