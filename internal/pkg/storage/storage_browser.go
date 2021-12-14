@@ -121,7 +121,7 @@ func (s *QSIndexDB) Delete(key []byte) error {
 }
 
 func (s *QSIndexDB) Get(key []byte) ([]byte, error) {
-	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	txn, _ := s.db.Transaction(idb.TransactionReadOnly, s.name)
 	store, _ := txn.ObjectStore(s.name)
 	req, err := store.Get(BytesToArrayBuffer(key))
 	if err != nil {

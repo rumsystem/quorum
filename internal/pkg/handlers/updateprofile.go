@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
