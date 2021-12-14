@@ -7,7 +7,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/pkg/wasm/logger"
 )
 
 var appsynclog = logging.Logger("appsync")
@@ -92,7 +91,6 @@ func (appsync *AppSync) Start(interval int) {
 					}
 					//newBlockid := highestBlockIdToStr(groupitem.HighestBlockId)
 					if lastBlockId != groupitem.HighestBlockId {
-						logger.Console.Debug("lastBlockId: " + lastBlockId)
 						appsync.RunSync(groupitem.GroupId, lastBlockId, groupitem.HighestBlockId)
 					}
 				} else {
