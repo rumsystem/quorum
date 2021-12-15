@@ -444,6 +444,8 @@ func main() {
 		logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("trxmgr", "debug")
 		logging.SetLogLevel("rumexchange", "debug")
+		logging.SetLogLevel("ping", "debug")
+		logging.SetLogLevel("chan", "debug")
 	}
 
 	if *help {

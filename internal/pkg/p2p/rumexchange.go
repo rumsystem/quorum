@@ -21,13 +21,26 @@ var rumexchangelog = logging.Logger("rumexchange")
 const IDVer = "1.0.0"
 
 type RexService struct {
-	Host       host.Host
-	ProtocolId protocol.ID
+	Host           host.Host
+	ProtocolId     protocol.ID
+	notificationch chan RexNotification
 }
 
-func NewRexService(h host.Host, Networkname string, ProtocolPrefix string) *RexService {
+type ActionType int
+
+const (
+	JoinChannel ActionType = iota
+	JoinChannelAndPublishTest
+)
+
+type RexNotification struct {
+	Action    ActionType
+	ChannelId string
+}
+
+func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	rexs := &RexService{h, protocol.ID(customprotocol)}
+	rexs := &RexService{h, protocol.ID(customprotocol), notification}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debug("new rex service SetStreamHandler: %s", customprotocol)
@@ -44,6 +57,10 @@ func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionI
 
 	connrespmsg := &quorumpb.SessionConnResp{DestPeerID: ifconnmsg.SrcPeerID, SrcPeerID: ifconnmsg.DestPeerID, SessionToken: ifconnmsg.SessionToken, Peersroutes: ifconnmsg.Peersroutes, ChannelId: "a_test_channel"}
 
+	noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
+	r.notificationch <- noti
+	rumexchangelog.Debugf("join channel %s notification emit %s.", connrespmsg.ChannelId, r.Host.ID())
+
 	sessionmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_CONN_RESP, ConnResp: connrespmsg}
 	ctx := context.Background()
 	s, err := r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
@@ -51,9 +68,15 @@ func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionI
 	bufw := bufio.NewWriter(s)
 	wc := protoio.NewDelimitedWriter(bufw)
 	err = wc.WriteMsg(sessionmsg)
-	rumexchangelog.Debugf("Write connresp back to %s , err %s\n", s.Conn().RemotePeer(), err)
+	rumexchangelog.Debugf("Write connresp back to %s , err %s", s.Conn().RemotePeer(), err)
 	rumexchangelog.Debugf("msg.Peersroutes:%s", sessionmsg.ConnResp.Peersroutes)
 	bufw.Flush()
+}
+
+func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) {
+	noti := RexNotification{JoinChannelAndPublishTest, connrespmsg.ChannelId}
+	r.notificationch <- noti
+	rumexchangelog.Debugf("join channel %s and publishtest  notification emit %s.", connrespmsg.ChannelId, r.Host.ID())
 }
 
 func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp) {
@@ -83,6 +106,10 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 				if err != nil {
 					fmt.Println(err)
 				} else {
+					noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
+					r.notificationch <- noti
+					rumexchangelog.Debugf("join channel %s notification emit %s.", connrespmsg.ChannelId, r.Host.ID())
+
 					bufw := bufio.NewWriter(s)
 					wc := protoio.NewDelimitedWriter(bufw)
 					sessionmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_CONN_RESP, ConnResp: connrespmsg}
@@ -90,6 +117,7 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 					rumexchangelog.Debugf("pass respmsg to %s, write err %s", nextpeerid, err)
 					rumexchangelog.Debugf("msg.Peersroutes: %s", sessionmsg.ConnResp.Peersroutes)
 					bufw.Flush()
+
 				}
 				break
 			}
@@ -150,7 +178,7 @@ func (r *RexService) Handler(s network.Stream) {
 				rumexchangelog.Debugf("type is SessionIfConn")
 				if peer.ID(sessionmsg.IfConn.DestPeerID) == r.Host.ID() {
 					rumexchangelog.Debugf("msg.Peersroutes: %s", sessionmsg.IfConn.Peersroutes)
-					rumexchangelog.Debugf("the dest peer is me, response.")
+					rumexchangelog.Debugf("the dest peer is me, join the channel and response.")
 					r.DestPeerResp(s.Conn().RemotePeer(), sessionmsg.IfConn)
 				} else if peer.ID(sessionmsg.IfConn.SrcPeerID) == r.Host.ID() {
 					rumexchangelog.Debugf("the src peer is me, skip")
@@ -163,6 +191,8 @@ func (r *RexService) Handler(s network.Stream) {
 				if peer.ID(sessionmsg.ConnResp.DestPeerID) == r.Host.ID() {
 					rumexchangelog.Debugf("msg.Peersroutes:%s", sessionmsg.ConnResp.Peersroutes)
 					rumexchangelog.Debugf("the dest peer is me, the private channel should be ready.")
+					r.PrivateChannelReady(sessionmsg.ConnResp) //FOR TEST
+
 				} else if peer.ID(sessionmsg.ConnResp.SrcPeerID) == r.Host.ID() {
 					rumexchangelog.Debugf("the src peer is me, skip")
 				} else {

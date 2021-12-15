@@ -12,6 +12,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -49,6 +50,34 @@ func (node *Node) eventhandler(ctx context.Context) {
 			}
 			networklog.Infof("Reachability change: %s:", evt.Reachability.String())
 			node.Info.NATType = evt.Reachability
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
+	for {
+		select {
+		case rexnoti, ok := <-ch:
+			if ok {
+				if rexnoti.Action == JoinChannel {
+					userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
+					userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
+				} else if rexnoti.Action == JoinChannelAndPublishTest {
+					userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
+					userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
+					for {
+						networklog.Infof("public ping msg to channel %s from: %s", rexnoti.ChannelId, node.Host.ID())
+						userPsconn.Publish([]byte("ping"))
+						time.Sleep(10 * time.Second)
+					}
+				} else {
+
+					networklog.Errorf("recv unknown notification %s from: %s", rexnoti, rexnoti.ChannelId)
+				}
+			}
+
 		case <-ctx.Done():
 			return
 		}

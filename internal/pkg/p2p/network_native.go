@@ -114,7 +114,8 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 	networklog.Infof("Network Name %s", nodenetworkname)
 
 	var rexservice *RexService
-
+	var rexnotification chan RexNotification
+	rexnotification = make(chan RexNotification, 1)
 	if isBootstrap == true {
 		// turn off the mesh in bootstrapnode
 		pubsub.GossipSubD = 0
@@ -126,7 +127,7 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		pubsub.GossipSubGossipFactor = 0.5
 		rexservice = NewRexObject(nodenetworkname, ProtocolPrefix)
 	} else {
-		rexservice = NewRexService(host, nodenetworkname, ProtocolPrefix)
+		rexservice = NewRexService(host, nodenetworkname, ProtocolPrefix, rexnotification)
 	}
 
 	var ps *pubsub.PubSub
@@ -180,7 +181,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		}()
 	}
 	go newnode.eventhandler(ctx)
-
+	if rexnotification != nil {
+		go newnode.rexhandler(ctx, rexnotification)
+	}
 	return newnode, nil
 }
 

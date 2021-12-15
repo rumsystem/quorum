@@ -24,6 +24,30 @@ func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) 
 	return &P2pPubSubConn{Ctx: ctx, ps: ps, nodename: nodename}
 }
 
+func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
+	var err error
+	psconn.Cid = cId
+	psconn.Topic, err = psconn.ps.Join(cId)
+	if err != nil {
+		channel_log.Errorf("Join <%s> failed", cId)
+		return err
+	} else {
+		channel_log.Errorf("Join <%s> done", cId)
+	}
+
+	psconn.Subscription, err = psconn.Topic.Subscribe()
+	if err != nil {
+		channel_log.Errorf("Subscribe <%s> failed", cId)
+		channel_log.Errorf(err.Error())
+		return err
+	} else {
+		channel_log.Infof("Subscribe <%s> done", cId)
+	}
+
+	go psconn.handleNormalChannel()
+	return nil
+}
+
 func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 	psconn.Cid = cId
 	psconn.chain = chain
@@ -91,6 +115,23 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 				}
 			} else {
 				channel_log.Warningf(err.Error())
+			}
+		} else {
+			channel_log.Errorf(err.Error())
+			return err
+		}
+	}
+}
+
+func (psconn *P2pPubSubConn) handleNormalChannel() error {
+	for {
+		msg, err := psconn.Subscription.Next(psconn.Ctx)
+		if err == nil {
+			if string(msg.Data[:]) == "ping" {
+				channel_log.Infof("recv normal msg and send pong resp: %s", msg.Data)
+				psconn.Publish([]byte("pong"))
+			} else {
+				channel_log.Infof("recv data: %s from channel: %s", msg.Data, psconn.Cid)
 			}
 		} else {
 			channel_log.Errorf(err.Error())

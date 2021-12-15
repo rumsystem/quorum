@@ -68,14 +68,12 @@ func (p *PSPing) PingReq(dstpeerid string) ([10]int64, error) {
 	var err error
 	p.Topic, err = p.ps.Join(dsttopicid)
 	if err != nil {
-		ping_log.Fatalf("Join PSPing dest channel <%s> failed", dsttopicid)
-		ping_log.Fatalf(err.Error())
+		ping_log.Errorf("Join PSPing dest channel <%s> failed:%s", dsttopicid, err.Error())
 		return result, err
 	}
 	p.Subscription, err = p.Topic.Subscribe()
 	if err != nil {
-		ping_log.Fatalf("Subscribe PSPing dest channel <%s> failed", dsttopicid)
-		ping_log.Fatalf(err.Error())
+		ping_log.Errorf("Subscribe PSPing dest channel <%s> failed:%s", dsttopicid, err.Error())
 		return result, err
 	} else {
 		ping_log.Infof("Subscribe PSPing dest channel <%s> done", dsttopicid)
@@ -159,6 +157,7 @@ func (p *PSPing) handlePingResponse(pingresult *map[[32]byte]*PingResult) error 
 	for {
 		pingrespmsg, err := p.Subscription.Next(p.ctx)
 		if err == nil {
+			ping_log.Errorf("Ping packet recv from <%s>", p.PeerId)
 			if pingrespmsg.ReceivedFrom != p.PeerId { //not me
 				var pspingresp quorumpb.PSPing
 				if err := proto.Unmarshal(pingrespmsg.Data, &pspingresp); err != nil {
