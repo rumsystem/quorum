@@ -4,23 +4,23 @@
 
 ## 设置测试环境
 
-### Run testing
+Run testing
 
 ```go test cmd/main* -v```
 
-### API Docs
+API Docs
 
 ```go run cmd/docs.go```
 
 Open url ```http://localhost:1323/swagger/index.html``` in the browser.
 
-### 本地开发环境配置
+本地开发环境配置
 
-1. 安装go
+1.安装go
 
-2. 下载  https://github.com/rumsystem/quorum.git
+2.下载  https://github.com/rumsystem/quorum.git
 
-3. 共需要3个本地节点，进入本地目录，例如 `~/work/quorum`
+3.共需要3个本地节点，进入本地目录，例如 `~/work/quorum`
 
 3.1 启动BootStrap节点 (`mkdir -p config`):
 
@@ -55,9 +55,13 @@ RUM_KSPASSWD=<PASSWORD> go run cmd/main.go
 * 用bootstrap节点的ID替代 `<#ID>`
 * 节点A的本地HTTP端口地址为8002，以下所有curl命令中发给8002端口的API Call都是调用节点A
 
-## API
+--------------------
 
-### 节点A创建组 "my_test_group"
+## 基础 API
+
+### 组 POST: 创建新组
+
+**EndPoint Path**: ```*/api/v1/group```
 
 **Example**:
 
@@ -65,63 +69,71 @@ RUM_KSPASSWD=<PASSWORD> go run cmd/main.go
 curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group
 ```
 
-**EndPoint Path**: ```*/api/v1/group``` 创建新组
-
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_name" | string | group name  | "my_test_group" |
-| "consensus_type" | string | "poa" or "pos" or "pow", "poa" only for now | "poa" |
-| "encryption_type" | string | encryption type of group, "public" or "private" | "public" |
-| "app_key" | strnig | app key of group 长度为5到20的字符串，用来标识本组的对应的app | "test_app" |
+```json
+{
+    "group_name": "my_test_group",
+    "consensus_type": "poa",
+    "encryption_type": "public",
+    "app_key": "group_timeline"
+}
+```
 
-API
+
+| Param | Description | Example |
+| --- | --- | --- |
+| "group_name" | group name | "my_test_group" |
+| "consensus_type" | "poa" or "pos" or "pow", "poa" only for now | "poa" |
+| "encryption_type" | encryption type of group, "public" or "private" | "public" |
+| "app_key" | app key of group 长度为5到20的字符串，用来标识本组的对应的app | "test_app" |
 
 **Result**:
 
 ```json
 {
     "genesis_block": {
-        "BlockId": "80e3dbd6-24de-46cd-9290-ed2ae93ec3ac",
-        "GroupId": "c0020941-e648-40c9-92dc-682645acd17e",
-        "ProducerPubKey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-        "Hash": "LOZa0CLITIpuQqpvXb6LyXV9z+2rSoU4JwBq0BCXttc=",
-        "Signature": "MEQCICAXCicQ6f4hRNSoJR89DF3a6AKpe6ZgLXsjXqH9H3jxAiA8dpukcriwEu8amouh2ZEKA2peXr3ctKQwxI3R6+nrfg==",
-        "Timestamp": 1632503907836381400
+        "BlockId": "5b70b78c-2cbb-4992-b97b-be77d974ccf7",
+        "GroupId": "b9b58113-1366-42b1-bfde-4c158e09081a",
+        "ProducerPubKey": "CAISIQO0+PBsWK/MPJ23X/cK4BPTXz3IMtRgmTH+LO1FMO9q8w==",
+        "Hash": "zKr7tAoTpSyuT7GKrQ6QxihRzu3QGwYiDOCtYwo26Rg=",
+        "Signature": "MEYCIQDKYziZr7JXJ5S/FWoFx7Buy22hnptdqPExEgIegL+EYQIhANul4IQmjJZ7lO6Ps5WZJKR9MbOCpO7QWfkIzuTHH4I4",
+        "TimeStamp": "1639583862758830200"
     },
-    "group_id": "c0020941-e648-40c9-92dc-682645acd17e",
-    "group_name": "my_test_group",
-    "owner_pubkey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-    "owner_encryptpubkey": "age18kngxt6lkxqulldvxu8xs2ey77rrzwjhqpdey527ad4gkn3euu9sj3ah5j",
+    "group_id": "b9b58113-1366-42b1-bfde-4c158e09081a",
+    "group_name": "你好世界",
+    "owner_pubkey": "CAISIQO0+PBsWK/MPJ23X/cK4BPTXz3IMtRgmTH+LO1FMO9q8w==",
     "consensus_type": "poa",
     "encryption_type": "public",
-    "cipher_key": "8e9bd83f84cf1408484d24f486861947a1db3fbe6eb3c61e31af55a4803aedc1",
-    "app_key": "test_app",
-    "signature": "304502206897c3c67247cba2e8d5991501b3fd471fcca06f15915efdcd814b9e99c9a48a022100aa3024eb5663da6cbbde150132a4ff52c6c6aeeb49e0c039b4c28e72b071382f"
+    "cipher_key": "6994ca8a24ca65b7811ed9b4ab095bc55d9afc6b560ef0a65cbb157e04c87229",
+    "app_key": "group_timeline",
+    "signature": "3046022100f5b42bc1678ef674c0d6ea89c704a820654260b78a2826f687a87f91a9c721a0022100f76bd68a2ecf820765c48f80c9b6ac61c61868b78e1e3185534a28a7719d0697"
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "genesis_block" | | 组的genesis block |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "group_name" | string | group name  | "my_test_group" |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "owner_encryptpubkey" | string | private key of group owner (age)  | |
-| "consensus_type" | string | "poa" or "pos" or "pow", "poa" only for now | "poa" |
-| "encryption_type" | string | encryption type of group, "public" or "private" | "public" |
-| "cipher_key" | string | 组内协议对称加密密钥(aes)  | |
-| "app_key" | strnig | app key of group 长度为5到20的字符串，用来标识本组的对应的app | "test_app" |
-| "signature" | string | signature by group owner | |
+| Param | Description | Example |
+| --- | --- | --- |
+| "genesis_block" | 组的genesis block |
+| "group_id" | group id |
+| "group_name" | group name | "my_test_group" |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "owner_encryptpubkey" | private key of group owner (age) |
+| "consensus_type" | "poa" or "pos" or "pow", "poa" only for now | "poa" |
+| "encryption_type" | encryption type of group, "public" or "private" | "public" |
+| "cipher_key" | 组内协议对称加密密钥(aes) |
+| "app_key" | app key of group 长度为5到20的字符串，用来标识本组的对应的app | "test_app" |
+| "signature" | signature by group owner |
 
 * 不管组内加密类型如何设置，组内除了POST之外的其他协议都通过该key进行对称加密/解密
 
 该调用返回的json串就是新创建组的“种子”，保存到文件中
 
-### 查看节点A所拥有的组
+--------------------
+
+### 组 GET: 查看节点所加入的所有组
+
+**EndPoint Path**: ```*/api/v1/groups``` ，返回节点所加入（含自己创建）的所有组
 
 **Example**:
 
@@ -129,9 +141,7 @@ API
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/groups
 ```
 
-**EndPoint Path**: ```*/api/v1/group``` ，返回节点所加入（含自己创建）的所有组
 
-**Params**: 无
 
 **Result**:
 
@@ -158,25 +168,28 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:800
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "group_name" | string | group name  | "my_test_group" |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "user_pubkey" | string | public key of group user *  | |
-| "consensus_type" | string | "poa" or "pos" or "pow", "poa" only for now | "poa" |
-| "encryption_type" | string | encryption type of group, "public" or "private" | "public" |
-| "cipher_key" | string | 组内协议对称加密密钥(aes)  | |
-| "app_key" | strnig | app key of group 长度为5到20的字符串，用来标识本组的对应的app | "test_app" |
-| "last_updated" | timestamp | 最后收到块的时间戳 | 1631725187659332400 |
-| "highest_height" | int | 组内最"高"的块高度；genesis block 高度是0 | 0 |
-| "highest_block_id" | list | 组内最高的块的block_id；注意：有多条等长链存在时，可能存在多个块 | `["a865ae03-d8ce-40fc-abf6-ea6f6132c35a"]` |
-| "group_status" | string | 组状态，SYNCING or SYNC_FAILED or IDLE，刚刚创建的组处于IDLE状态 |
+| Param | Description | Example |
+| --- | --- | --- |
+| "group_id" | group id |
+| "group_name" | group name | "my_test_group" |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "user_pubkey" | public key of group user * |
+| "consensus_type" | "poa" or "pos" or "pow", "poa" only for now | "poa" |
+| "encryption_type" | encryption type of group, "public" or "private" | "public" |
+| "cipher_key" | 组内协议对称加密密钥(aes) |
+| "app_key" | app key of group 长度为5到20的字符串，用来标识本组的对应的app | "test_app" |
+| "last_updated" | 最后收到块的时间戳 | 1631725187659332400 |
+| "highest_height" | int, 组内最"高"的块高度；genesis block 高度是0 | 0 |
+| "highest_block_id" | list, 组内最高的块的block_id；注意：有多条等长链存在时，可能存在多个块 | `["a865ae03-d8ce-40fc-abf6-ea6f6132c35a"]` |
+| "group_status" | 组状态，SYNCING or SYNC_FAILED or IDLE，刚刚创建的组处于IDLE状态 |
 
 
-### 节点B加入组"my_test_group"
+--------------------
+
+### 组 POST: 加入某个组
+
+**EndPoint Path**: ```*/api/v1/group/join```
 
 **Example**:
 
@@ -184,11 +197,32 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:800
 curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"36ac6e22-80a1-4d54-abbb-8bd2c55ef8cf","GroupId":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","ProducerPubKey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","Hash":"fDGwAPJbHHG0GpKLQZnRolK9FUO5nSIod/iprwQQn8g=","Signature":"MEYCIQDo5uge+saujb0WR6ZreISDYWpRzY6PQ3f5ly7vtHHgkQIhAKcuwDT2fIpBDx/7lQU6mIBQKJuQeI0Zbw3W7kHfBO28","Timestamp":1631804384241781200},"group_id":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","group_name":"my_test_group","owner_pubkey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","owner_encryptpubkey":"age1lx3zh5sc5cureh484t5tm2036lhrzdnh96rfaft6echs9cqsefss4yn886","consensus_type":"poa","encryption_type":"public","cipher_key":"3994c4224da17ad50504c78458f37249149477c7bc643f3fe78e44033c17874a","signature":"30450220591361918948140c8ad1736cde3831f326470f2d3c5105a0b63867c7b216857c0221008921422c6e1974834d5610d4c6ad1a9dd0394ac464dfc12659cde41d75172d14"}' https://127.0.0.1:8003/api/v1/group/join
 ```
 
-**EndPoint Path**: ```*/v1/group/join``` ，加入一个组
-
 **Params**:
 
-    组“种子”的json串（之前步骤的结果）
+```json
+{
+    "genesis_block": {
+        "BlockId": "7c32c425-a41b-4a0b-96ba-48e2e8816375",
+        "GroupId": "3bb7a3be-d145-44af-94cf-e64b992ff8f0",
+        "ProducerPubKey": "CAISIQKm+gTifqG6ga1FUb9NzXDetFIi9AosQSx/RBFH3RbGFQ==",
+        "Hash": "+y7oVa69YPEOZcbZuUUOLt/i+vv5yychSHz4Xy7T7z8=",
+        "Signature": "MEYCIQDlshiApdymHMDK65Qv9VqGevyspb3WW9cLcbHF0r7QagIhAMCxvEREmkQi2IReMu9OBx1rjSJvEcq510CywXYYsWHx",
+        "TimeStamp": "1634699220007617449"
+    },
+    "group_id": "3bb7a3be-d145-44af-94cf-e64b992ff8f0",
+    "group_name": "去中心微博",
+    "owner_pubkey": "CAISIQKm+gTifqG6ga1FUb9NzXDetFIi9AosQSx/RBFH3RbGFQ==",
+    "owner_encryptpubkey": "age1njthmyqheex4gmnl473et8lskj45ydnvt4qz73ngm9m9m42sk4fqrzdcja",
+    "consensus_type": "poa",
+    "encryption_type": "public",
+    "cipher_key": "9d9e13ce3b77f6ae1da4e5ef15d94ff22e77e509dc4e3bdd70fa7435f3a9992b",
+    "app_key": "group_timeline",
+    "signature": "3045022100cb18857635cadb520a88d6f7a6e4f27133528bad775260f1b2a935af31cf5d4b02203530c40bcdd83bfaa015897bc38fd2cf4c237dc823966f521408066a99fda3cd"
+}
+```
+
+
+组的“种子”，可拷贝或导出已有组的种子 json 格式
 
 **Result**:
 
@@ -206,19 +240,18 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"Block
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "group_name" | string | group name  | "my_test_group" |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "user_pubkey" | string | public key of group user *  | |
-| "user_encryptpubkey" | string | 本节点在组内的加密公钥 **  | |
-| "consensus_type" | string | "poa" or "pos" or "pow", "poa" only for now | "poa" |
-| "encryption_type" | string | encryption type of group, "public" or "private" | "public" |
-| "cipher_key" | string | 组内协议对称加密密钥(aes)  | |
-| "signature" | string | signature by group owner | |
+| Param | Description | Example |
+| --- | --- | --- |
+| "group_id" | group id |
+| "group_name" | group name | "my_test_group" |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "user_pubkey" | public key of group user * |
+| "user_encryptpubkey" | 本节点在组内的加密公钥 ** |
+| "consensus_type" | "poa" or "pos" or "pow", "poa" only for now | "poa" |
+| "encryption_type" | encryption type of group, "public" or "private" | "public" |
+| "cipher_key" | 组内协议对称加密密钥(aes) |
+| "signature" | signature by group owner |
 
 
 * user_pubkey是用户在组内的唯一身份标识，也用来进行签名
@@ -226,22 +259,44 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"Block
 
 节点B加入组后，开始自动同步(SYNCING)，同步完成后状态变为（IDLE)
 
-### 节点A post to group
+--------------------
+
+### 内容 POST: 向某个组发布内容
+
+**EndPoint Path**: ```*/api/v1/group/content```
 
 **Example**:
+
 
 ```sh
 curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}'  https://127.0.0.1:8002/api/v1/group/content
 ```
 
-**EndPoint Path**: ```*/api/v1/group/content```，向组发布内容
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "content" | string | 发布的内容 |
+
+```json
+{
+    "type": "Add",
+    "object": {
+        "type": "Note",
+        "content": "Good Morning!\nHave a nice day.",
+        "name": ""
+    },
+    "target": {
+        "id": "c60ed78e-df15-4408-9b5b-f87158cf0bda",
+        "type": "Group"
+    }
+}
+```
+
+| Param | Description |
+| --- | --- |
+| "id" | group id |
+| "content" | 发布的内容 |
+
+发布包含图片的内容：TBD
 
 **Result**:
 
@@ -251,27 +306,18 @@ curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "trx_id" | string | post的trx_id |
+--------------------
 
-### 节点B查询组内节点A的POST
+### 内容 GET: 获取某个组的所有内容
+
+**EndPoint Path**: ```*/api/v1/group/{group_id}/content```
 
 **Example**:
 
 ```sh
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/content
 ```
-
-**EndPoint Path**: ```*/api/v1/group/{group_id}/content```
-
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
 
 **Result**:
 
@@ -291,18 +337,21 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/
 ]
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "TrxId" | string |   trx_id |
-| "Publisher" | string |   发布者 |
-| "Content" | string  |  内容 |
-| "TypeURL" | string  |  Type |
+| Param | Description |
+| --- | --- |
+| "TrxId" | trx_id |
+| "Publisher" | 发布者 |
+| "Content" | string, 内容 |
+| "TypeURL" | string, Type |
 | "TimeStamp" | int64 |
 
 
-### 离开一个组
+--------------------
+
+### 组 POST: 离开一个组
+
+**EndPoint Path**: ```*/api/v1/group/leave```
 
 **Example**:
 
@@ -310,30 +359,40 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/
 curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8002/api/v1/group/leave
 ```
 
-**EndPoint Path**: ```*/api/v1/group/leave```
+**Params**:
+
+```json
+{
+    "group_id": "846011a8-1c58-4a35-b70f-83195c3bc2e8"
+}
+```
+
 
 **Result**:
 
 ```json
 {
     "group_id": "846011a8-1c58-4a35-b70f-83195c3bc2e8",
-    "signature": "Owner Signature"
+    "signature": "304402201818acb8f1358b65aecd0343a48f0fe79c89c3f2852fa809dd6b9315a20740e4022026d0ca3b981ee2a3701930b62d7f5ddcf959a3ba50d926c31f6c143ef91f024a"
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "signature" | string | signature by group owner | |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "signature" | signature by group owner |
 
-### 删除组
+--------------------
+
+### 组POST: 删除组
 
 **删除组 API 已废除，所有节点只能“离开”一个组，不管是不是自己创建的**
 
 
-**EndPoint Path**: ```*/api/v1/group/clear```，删除一个组的全部内容，包括如下内容
+**EndPoint Path**: ```*/api/v1/group/clear```
+
+删除一个组的全部内容，包括如下内容
 
     - block
     - trx
@@ -349,12 +408,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c
 curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b791-4d17-a52f-f69266fc3f18"}' https://127.0.0.1:8002/api/v1/group/clear | jq
 ```
 
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-
 **Result**:
 
 ```json
@@ -364,9 +417,13 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b7
 }
 ```
 
-*** 目前前端在离开组时需一起调用该API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可 ***
+**目前前端在离开组时需一起调用该API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可**
 
-### 获取节点信息
+--------------------
+
+### 节点 GET: 获取节点信息
+
+**EndPoint Path**: ```*/api/v1/node```
 
 **Example**:
 
@@ -374,32 +431,41 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b7
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8003/api/v1/node
 ```
 
-**EndPoint Path**: ```*/api/v1/node```
 
 **Result**:
 
 ```json
 {
-    "node_publickey": "CAASpgQwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCyOIkTFxF1v8xborMo/6k45AMpfijbmT3OithJ/XTn8MDhnMw6j/jzw8YFSIfDj4KfjpwlyuVVZbSxHjeFFKMAWJgkeTNxRYLxXQWbZKd6d9PeRKLpdv/oEyDoPpdigMON84M1VWx9W0/lJ8Nps+cuI+7ugMLue40lAAUXXTPSaKy7vrgvQplKyfE4chPRY+bOAdmZDm76G00bGW6p4D2SLgApGXaG4grhGGvmJutAByIcaJRlpQu2mvgvjUAArP+YLw8scNvWzShGU/gz8tUFtus6c/cez/TmIUjeuD2hbbM+Gn1CxJxx/v0P59+hQT+f2NCM8yKC2KoXQkm5Llz2cUbJWbfOOQEkDCWRibYNEIUHYjWEL5xOcKLb4ie3vmJ5mz3kmI0iEDcx7OvTw7dtJGCo9GG5yPLITI0T3ygsjLUIpooY6PhOTIWvMqBVmiovUzb6cUb5Tms226KkP2ZOqNqqkwkN6zGI27ePdRde5N9N9zkwZd9ESaeOeea1BGDINyfpV1x2jk90BXRE7sB7f4eQrhCwtEHsoiZLUV4QevKO03XMMAGOmT6fQGACe6sVSeGfouNjKsgp0KrTRTtHIJCdGHNUNiv38ZGgRUWiwzPR83aJ24OJT2CNhLUvZk8tu5PagV19+4VKQ5OIOotHJusLvc1oibKCwv7sf6b2pQIDAQAB",
+    "node_id": "16Uiu2HAkytdk8dhP8Z1JWvsM7qYPSLpHxLCfEWkSomqn7Tj6iC2d",
+    "node_publickey": "CAISIQJCVubdxsT/FKvnBT9r68W4Nmh0/2it7KY+dA7x25NtYg==",
     "node_status": "NODE_ONLINE",
-    "node_version": "ver 0.01",
-    "user_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m"
+    "node_type": "peer",
+    "node_version": "1.0.0 - 99bbd8e65105c72b5ca57e94ae5be117eaf05f0d",
+    "peers": {
+        "/quorum/nevis/meshsub/1.1.0": [
+            "16Uiu2HAmM4jFjs5EjakvGgJkHS6Lg9jS6miNYPgJ3pMUvXGWXeTc"
+        ]
+    }
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "node_publickey" | string | 组创建者的pubkey |
-| "node_status" | string | "NODE_ONLINE" or "NODE_OFFLINE" | "NODE_ONLINE" |
-| "node_version" | string | 节点的协议版本号 | "ver 0.01" |
-| "node_id" | string | 节点的node_id* |
+| Param | Description |
+| --- | --- |
+| "node_id" | 节点的node_id* |
+| "node_publickey" | 组创建者的pubkey |
+| "node_status" | "NODE_ONLINE" or "NODE_OFFLINE" |
+| "node_version" | 节点的协议版本号 |
+| "peers" | dict | 
 
 * 之前的user_id取消了(实际上是peer_id)
 * 现在只返回真正的node_id，前端可以用pubkey来当user_id（唯一标识）
 
-### 获取一个块的完整内容
+--------------------
+
+### 区块 GET: 获取某个区块的完整内容
+
+**EndPoint Path**: ```*/api/v1/block/{GroupId}/{BlockId}```
 
 **Example**:
 
@@ -435,7 +501,11 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/
 ```
 
 
-### 获取一个trx的完整内容
+--------------------
+
+### 交易 GET: 获取一个trx的完整内容
+
+**EndPoint Path**: ```*/api/v1/trx/{group_id}/{trx_id}```
 
 **Example**:
 
@@ -446,25 +516,49 @@ curl -k -X GET -H 'Content-Type: application/json' -d https://127.0.0.1:8003/api
 * "裸"trx的内容，data部分是加密的(加密类型由组类型决定)
 * 客户端应通过获取Content的API来获取解密之后的内容
 
+**Result**:
 
-**EndPoint Path**: ```*/api/v1/trx/{group_id}/{trx_id}```
+```json
+{
+    "TrxId": "c63d7c8e-d56d-432c-aae3-7d0d9dc34c31",
+    "GroupId": "3bb7a3be-d145-44af-94cf-e64b992ff8f0",
+    "Data": "rx5hmlGgIgnQSm5tT75KY96UaIauDALPvPLjRRe2qiwJhc8VI3wwpsm2M3Y4bYCXGhpjWVDc3D5pHr+cnhuUqWZWQUZJ8FkGYG+bHnz0t4z2//6xo+3+GrCogphT+vJHPCld3womShSLEo4G3VTBbBzaPOnSg1T31OuI8wRsKoslI1owKiWC4r5VwhXHmLq8RW+HFpIy7PqZXxr+8Hsojawrs0B9CbJ3wf7TWubUlw5JhpAXGbbBBw6nLyGM7MnL0+Q3nUi1mX9dgGWOEwwxvO66SYhB",
+    "TimeStamp": "1639570707554262200",
+    "Version": "1.0.0",
+    "Expired": 1639571007554262200,
+    "SenderPubkey": "CAISIQKwLxW1uBoZHMbss9QTdVLb8lfBhvMQ3ucnm9afGnVmpQ==",
+    "SenderSign": "MEQCIGKc0MyiusNFWZEc+ZMXzk/eev7Sdouii4zAeSIGCqnMAiAz+LMXWck1NIJLB8U7mGmetzYGuTYPKxifH7sF1cMwZg=="
+}
+```
 
-### 添加组黑名单
+--------------------
+
+### POST: 添加组黑名单
+
+**EndPoint Path**: ```*/api/v1/group/deniedlist```
 
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"add"}}' https://127.0.0.1:8002/api/v1/group/deniedlist
+curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"add"}' https://127.0.0.1:8002/api/v1/group/deniedlist
 ```
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "action" | string | "add" |
-| "peer_id" | string | 想要屏蔽的peer_id |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "memo" | string | memo |
+```json
+{
+    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m",
+    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
+    "action": "add"
+}
+```
+
+| Param | Description |
+| --- | --- |
+| "action" | "add" |
+| "peer_id" | 想要屏蔽的peer_id |
+| "group_id" | group id |
+| "memo" | memo |
 
 说明：只有创建该组的节点才能执行此操作，也就是需要group_owner的权限，添加后会通过block广播至组中其他节点
 
@@ -490,16 +584,18 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-group_id：组id
-| "peer_id" | string | 被屏蔽的用户id |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "sign" | string | 组拥有者的签名（可通过pubkey验证） |
-| "trx_id" | string | 该操作的trx的id，可以通过gettrx API获取具体内容 |
-| "memo" | string | "Add" |
+| Param | Description |
+| --- | --- |
+| "group_id" | 组id |
+| "peer_id" | 被屏蔽的用户id |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "sign" | 组拥有者的签名（可通过pubkey验证） |
+| "trx_id" | 该操作的trx的id，可以通过gettrx API获取具体内容 |
+| "memo" | "Add" |
 
-### 获取组黑名单
+--------------------
+
+### GET: 获取组黑名单
 
 **Example**:
 
@@ -507,7 +603,6 @@ group_id：组id
 curl -k -X GET -H 'Content-Type: application/json' https://127.0.0.1:8002/api/v1/group/:group_id/deniedlist
 ```
 
-**Params**:无
 
 说明：获取一个节点禁止访问名单列表
 
@@ -529,32 +624,42 @@ curl -k -X GET -H 'Content-Type: application/json' https://127.0.0.1:8002/api/v1
 
 数组，包含该组已经被Owner屏幕的用户id列表
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "GroupId" | string |
-| "PeerId" | string | 被屏蔽的用户id |
-| "GroupOwnerPubkey" | string | public key of group owner (ecdsa)  | |
-| "GroupOwnerSign" | string | 组拥有者的签名（可通过pubkey验证） |
-| "Timestamp" | string | 操作执行的时间戳 |
-| "Acition" | string | "add" |
-| "memo" | string | 
+| Param | Description |
+| --- | --- |
+| "GroupId" | 
+| "PeerId" | 被屏蔽的用户id |
+| "GroupOwnerPubkey" | public key of group owner (ecdsa) |
+| "GroupOwnerSign" | 组拥有者的签名（可通过pubkey验证） |
+| "Timestamp" | 操作执行的时间戳 |
+| "Acition" | "add" |
+| "memo" | 
 
 
-### 删除组黑名单
+--------------------
+
+### POST: 删除组黑名单
 
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"del"}}' http://127.0.0.1:8002/api/v1/group/deniedlist
+curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"del"}' http://127.0.0.1:8002/api/v1/group/deniedlist
 ```
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "action" | string | "del" |
-| "peer_id" | string | 想要解除的peer_id (可以通过节点信息API获得) |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
+```json
+{
+    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222",
+    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
+    "action": "del"
+}
+```
+
+| Param | Description |
+| --- | --- |
+| "action" | "del" |
+| "peer_id" | 想要解除的peer_id (可以通过节点信息API获得) |
+| "group_id" | group id |
 
 **Result**:
 
@@ -572,17 +677,19 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "peer_id" | string | 移除黑名单的用户id |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "sign" | string | 组拥有者的签名（可通过pubkey验证） |
-| "trx_id" | string | 该操作的trx的id，可以通过gettrx API获取具体内容 |
-| "action" | string | "del" |
-| "memo" | string | "" |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "peer_id" | 移除黑名单的用户id |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "sign" | 组拥有者的签名（可通过pubkey验证） |
+| "trx_id" | 该操作的trx的id，可以通过gettrx API获取具体内容 |
+| "action" | "del" |
+| "memo" | "" |
 
-### Producer
+--------------------
+
+## Producer
 
 Producer作为组内“生产者”存在，可以代替Owner出块，组内有其他Producer之后，Owenr可以不用保持随时在线，
 在Owner下线的时间内，Producer将代替Owner执行收集Trx并出块的任务
@@ -593,13 +700,19 @@ Owner作为组内第一个Producer存在，有其他Producer存在时，如果Ow
 
 有Producer存在的流程如下
 
-#### 1. Owner 创建组
+1.Owner 创建组
 
-#### 2. Owner 作为Producer存在，负责出块
+2.Owner 作为Producer存在，负责出块
 
-#### 3. 其他Producer获得组的seed，加入组，完成同步
+3.其他Producer获得组的seed，加入组，完成同步
 
-#### 4. Producer用Announce API将自己作为Producer的意愿告知Owner
+--------------------
+
+4.Producer用Announce API将自己作为Producer的意愿告知Owner
+
+### POST: Producer意愿告知Owner
+
+**EndPoint Path**: ```*/api/v1/group/announce```
 
 **Example**:
 
@@ -607,17 +720,24 @@ Owner作为组内第一个Producer存在，有其他Producer存在时，如果Ow
 curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"producer", "memo":"producer p1, realiable and cheap, online 24hr"}' https://127.0.0.1:8005/api/v1/group/announce | jq
 ```
 
-
-**EndPoint Path**: ```*/api/v1/group/announce```
-
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "action" | string | add or remove |
-| "type" |  string | producer |
-| "memo" | string | memo |
+```json
+{
+    "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+    "action": "add",
+    "type": "producer",
+    "memo": "producer p1, realiable and cheap, online 24hr"
+}
+```
+
+
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "action" | add or remove |
+| "type" | string | producer |
+| "memo" | memo |
 
 **Result**:
 
@@ -633,34 +753,30 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "sign_pubkey" | string | producer在本组的签名pubkey |
-| "encrypt_pubkey" | string |没有使用 |
-| "type" | string | AS_PRODUCER |
-| "action" | string |ADD |
-| "sign" | string |producer的签名 |
-| "trx_id" | string |trx_id |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "sign_pubkey" | producer在本组的签名pubkey |
+| "encrypt_pubkey" | 没有使用 |
+| "type" | AS_PRODUCER |
+| "action" | ADD |
+| "sign" | producer的签名 |
+| "trx_id" | trx_id |
 
-#### 5. 其他节点（包括Owner节点）查看所有Announce过的Producer
+--------------------
+
+5.其他节点（包括Owner节点）查看所有Announce过的Producer
+
+### GET: Announced Producer
+
+**EndPoint Path**: ```*/api/v1/group/{group_id}/announced/producers```
 
 **Example**:
 
 ```sh
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/producers
 ```
-
-
-**EndPoint Path**: ```*/api/v1/group/{group_id}/announced/producers```
-
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
 
 **Result**:
 
@@ -678,34 +794,46 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "AnnouncedPubkey" | string | producer pubkey |
-| "AnnouncerSign" | string | producer的签名 |
-| "Result" | string | ANNOUNCED or APPROVED，producer刚Announce完毕的状态是ANNOUNCED |
-| "Action" | string | "ADD" or "REMOVE" |
-| "TimeStamp" | string | timestamp |
+| Param | Description |
+| --- | --- |
+| "AnnouncedPubkey" | producer pubkey |
+| "AnnouncerSign" | producer的签名 |
+| "Result" | ANNOUNCED or APPROVED，producer刚Announce完毕的状态是ANNOUNCED |
+| "Action" | "ADD" or "REMOVE" |
+| "TimeStamp" | timestamp |
 
 * ACTION 可以有2种状态，“ADD”表示Producer正常，“REMOVE”表示Producer已经announce自己离开改组
 
-#### 6. Owner批准某个Producer
+--------------------
+
+6.Owner批准某个producer
+
+### POST: 批准producer
+
+**EndPoint Path**: ```*/api/v1/group/producer```
 
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}}' https://127.0.0.1:8002/api/v1/group/producer | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}' https://127.0.0.1:8002/api/v1/group/producer | jq
 ```
-
-**EndPoint Path**: ```*/api/v1/group/producer```
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "action" | string | "add" // add or remove |
-| "producer_pubkey" | string | producer public key |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "memo" | string | optional |
+```json
+{
+    "producer_pubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
+    "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+    "action": "add"
+}
+```
+
+| Param | Description |
+| --- | --- |
+| "action" | "add" // add or remove |
+| "producer_pubkey" | producer public key |
+| "group_id" | group id |
+| "memo" | optional |
 
 **Result**:
 
@@ -721,21 +849,27 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "producer_pubkey" | string | publikc key for producer just added |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "sign" |  string | 签名| 
-| "trx_id" | string | trx id |
-| "action" | string | Add or REMOVE |
-| "memo" | string | memo |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "producer_pubkey" | publikc key for producer just added |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "sign" | string | 签名|
+| "trx_id" | trx id |
+| "action" | Add or REMOVE |
+| "memo" | memo |
 
 * 请注意，Owner只可以选择在组内Announce过自己的Producer，并且producer的状态应该为“ADD”，没有Announce过的producer是不可以添加的
 
-#### 7. 查看组内目前的实际批准的producer
+--------------------
+
+7.查看组内目前的实际批准的producers
+
+### GET: 查看某个组producers
+
+
+**EndPoint Path**: ```*/api/v1/group/{group_id}/producers```
 
 **Example**:
 
@@ -743,14 +877,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8005/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/producers | jq
 ```
 
-
-**EndPoint Path**: ```*/api/v1/group/{group_id}/producers```
-
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
 
 **Result**:
 
@@ -773,19 +899,23 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8005/
 ]
 ```
 
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "ProducerPubkey" | string | Producer Pubkey|
-| "OwnerPubkey" | string |    Owner Pubkey |
-| "OwnerSign" | string |     Owner 签名 |
-| "TimeStamp" | string |      Timestamp|
-| "BlockProduced" | string |  该Producer目前实际生产的区块数 |
+| Param | Description |
+| --- | --- |
+| "ProducerPubkey" | Producer Pubkey|
+| "OwnerPubkey" | Owner Pubkey |
+| "OwnerSign" | Owner 签名 |
+| "TimeStamp" | Timestamp|
+| "BlockProduced" | 该Producer目前实际生产的区块数 |
 
 * 注意，如果ProducerPubkey和OwnerPubkey相同，则说明这是Owner，上例可以看出，Owner目前共生产了3个区块，Producer `<CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ>` 还没有生产区块
 
-#### 8. 查看Announce Producer状态
+--------------------
+
+8. GET: 查看Announce Producer状态
+
+### GET: 查看Announce Producer状态
+
+**EndPoint Path**: ```*/api/v1/group/{group_id}/announced/producers```
 
 **Example**:
 
@@ -809,20 +939,39 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/
 
 可以看出，经过Owner批准，该Producer的状态（result)变为 APPROVED
 
-#### 9. Owenr删除组内Producer
+--------------------
+
+9. Owenr删除组内Producer
+
+### POST: Owenr删除组内Producer
+
+**EndPoint Path**: ```*/api/v1/group/producer```
 
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"remove"}}' https://127.0.0.1:8002/api/v1/group/producer | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"remove"}' https://127.0.0.1:8002/api/v1/group/producer | jq
 ```
+
+```json
+{
+    "producer_pubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
+    "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+    "action": "remove"
+}
+```
+
 
 * Owner可以随时删除一个Producer, 不管Producer是否Announce离开
 * 在实际环境中，Producer完全可以不Announce Remove而直接离开，Owner需要注意到并及时将该Producer从Producer列表中删除
 
-### Private Group
+--------------------
 
-#### 1. Announce user's encrypt pubkey to a group
+## Private Group
+
+### 1. POST: Announce user's encrypt pubkey to a group
+
+**EndPoint Path**: ```*/api/v1/group/announce```
 
 **Example**:
 
@@ -830,17 +979,24 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"user", "memo":"invitation code:a423b3"}' https://127.0.0.1:8003/api/v1/group/announce | jq
 ```
 
-
-**EndPoint Path**: ```*/api/v1/group/announce```
-
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "action" | string | add or remove |
-| "type" | string |  user |
-| "memo" | string | memo |
+```json
+{
+    "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+    "action": "add",
+    "type": "user",
+    "memo": "invitation code:a423b3"
+}
+```
+
+
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "action" | add or remove |
+| "type" | user |
+| "memo" | memo |
 
 **Result**:
 
@@ -856,19 +1012,23 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "sign_pubkey" | string |user's sign pubkey |
-| "encrypt_pubkey" | string |user's encrypt pubkey |
-| "type" | string |AS_USER |
-| "action" | string |ADD |
-| "sign" | string |user's signature |
-| "trx_id" | string |trx_id |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "sign_pubkey" | user's sign pubkey |
+| "encrypt_pubkey" | user's encrypt pubkey |
+| "type" | AS_USER |
+| "action" | ADD |
+| "sign" | user's signature |
+| "trx_id" | trx_id |
 
-#### 2. view announced users
+--------------------
+
+### 2. GET: view announced users
+
+**EndPoint Path**: ```*/api/v1/group/{group_id}/announced/users```
+
 
 **Example**:
 
@@ -876,13 +1036,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/users
 ```
 
-API: /v1/group/{group_id}/announced/users
-
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
 
 **Result**:
 
@@ -899,30 +1052,42 @@ API: /v1/group/{group_id}/announced/users
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "AnnouncedPubkey" | string | user's pubkey |
-| "AnnouncerSign" |string |  user's signture |
-| "Result" | string | ANNOUNCED or APPROVED |
+| Param | Description |
+| --- | --- |
+| "AnnouncedPubkey" | user's pubkey |
+| "AnnouncerSign" |string | user's signture |
+| "Result" | ANNOUNCED or APPROVED |
 
-#### 3. Owner approve a users
+--------------------
+
+### 3. Owner approve a users
+
+**EndPoint Path**: ```*/api/v1/group/user```
 
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"user_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}}' https://127.0.0.1:8002/api/v1/group/user | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"user_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}' https://127.0.0.1:8002/api/v1/group/user | jq
 ```
 
-API: /v1/group/user
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "action" | string |"add" // add or remove |
-| "user_pubkey" | string | public key of group user *  | |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "memo" | string |optional |
+
+```json
+{
+    "user_pubkey": "CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==",
+    "group_id": "5ed3f9fe-81e2-450d-9146-7a329aac2b62",
+    "action": "add"
+}
+```
+
+| Param | Description |
+| --- | --- |
+| "action" | "add" or "remove" |
+| "user_pubkey" | public key of group user * |
+| "group_id" | group id |
+| "memo" | optional |
 
 **Result**:
 
@@ -938,19 +1103,22 @@ API: /v1/group/user
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "user_pubkey" | string | public key of group user *  | |
-| "owner_pubkey" | string | public key of group owner (ecdsa)  | |
-| "sign" | string |signature |
-| "trx_id" | string |trx id |
-| "action" | string |Add or REMOVE |
-| "memo" | string | memo |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "user_pubkey" | public key of group user * |
+| "owner_pubkey" | public key of group owner (ecdsa) |
+| "sign" | signature |
+| "trx_id" | trx id |
+| "action" | Add or REMOVE |
+| "memo" | memo |
 
-### 添加组内配置（GroupConfig）
+## GroupConfig
+
+### 组 POST: 添加组内配置
+
+**EndPoint Path**:  ```*/api/v1/group/config```
 
 添加组内配置项
 
@@ -960,18 +1128,28 @@ API: /v1/group/user
 curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"int", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/config | jq
 ```
 
-API：/v1/group/config
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "action" | string | add or del |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "name" | string | 配置项的名称 |
-| "type" | | 配置项的类型，可选值为 "int", "bool", "string" |
-| "value" | | 配置项的值，必须与type相对应 |
-| "memo" | string |memo |
+```json
+{
+    "action": "add",
+    "group_id": "c8795b55-90bf-4b58-aaa0-86d11fe4e16a",
+    "name": "test_bool",
+    "type": "int",
+    "value": "false",
+    "memo": "add test_bool to group"
+}
+```
+
+| Param | Description |
+| --- | --- |
+| "action" | add or del |
+| "group_id" | group id |
+| "name" | 配置项的名称 |
+| "type" | 配置项的类型，可选值为 "int", "bool", "string" |
+| "value" | 配置项的值，必须与type相对应 |
+| "memo" | memo |
 
 权限：
 
@@ -989,15 +1167,18 @@ API：/v1/group/config
 }
 ```
 
-**Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
-| "sign" | string | owner对该trx的签名 |
-| "trx_id" | string |trx_id |
+| Param | Description |
+| --- | --- |
+| "group_id" | group id |
+| "sign" | owner对该trx的签名 |
+| "trx_id" | trx_id |
 
-### 查看组内配置key列表
+--------------------
+
+### GET: 查看组内配置key列表
+
+**EndPoint Path**:  ```*/api/v1/group/<GROUP_ID>/config/keylist```
 
 **Example**:
 
@@ -1019,20 +1200,22 @@ API：/v1/group/<GROUP_ID>/config/keylist
 
 **Params**:
 
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "name" | string | 配置项的名称 |
-| "type" | string | 配置项的数据类型 |
+| Param | Description |
+| --- | --- | --- |
+| "name" | 配置项的名称 |
+| "type" | 配置项的数据类型 |
 
-### 查看组内某个配置的具体值
+--------------------
+
+### GET: 查看组内某个配置的具体值
+
+**EndPoint Path**:  ```*/api/v1/group/{GROUPID}/config/{KEY_NAME}```
 
 **Example**:
 
 ```sh
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/config/test_string | jq
 ```
-
-API：`/v1/group/{GROUPID}/config/{KEY_NAME}`
 
 **Result**:
 
@@ -1048,11 +1231,14 @@ API：`/v1/group/{GROUPID}/config/{KEY_NAME}`
 }
 ```
 
-**Params**:
 
-同添加组内配置
+参数同添加组内配置
 
-### 添加组内App Schema
+--------------------
+
+### POST: 添加组内App Schema
+
+**EndPoint Path**:  ```*/api/v1/group/schema```
 
 添加组内app的schema json
 
@@ -1062,8 +1248,21 @@ API：`/v1/group/{GROUPID}/config/{KEY_NAME}`
 curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema
 ```
 
+```json
+{
+    "rule": "new_schema",
+    "type": "schema_type",
+    "group_id": "13a25432-b791-4d17-a52f-f69266fc3f18",
+    "action": "add",
+    "memo": "memo"
+}
+```
 
-### 查看组内App Schema
+--------------------
+
+### GET: 查看组内App Schema
+
+**EndPoint Path**:  ```*/api/v1/group/{group_id}/schema```
 
 **Example**:
 
@@ -1083,21 +1282,25 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:800
 ]
 ```
 
+--------------------
+
+## Trx
+
 ### Trx生命周期，加密和出块过程
 
-#### Trx种类
+**Trx种类**
 
 所有链上操作均是Trx，客户端相关的Trx有5种
 
-| Type | Description |
+ Description |
 |---|---|
-|POST     | user发送组内信息(POST Object)|
+|POST | user发送组内信息(POST Object)|
 |ANNOUNCE | user宣布自己在组内的公钥|
-| AUTH    |  Owner调整组内权限|
-| SCHEMA  |  Owner管理组内数据schema|
+| AUTH | Owner调整组内权限|
+| SCHEMA | Owner管理组内数据schema|
 | PRODUCER|  Owner管理组内producer|
 
-#### Trx加密类型
+**Trx加密类型**
 
 为了确保后加入的用户能正确使用组内功能，根据trx类型，进行如下形式的加密
 
@@ -1107,19 +1310,21 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:800
 - 其他trx
     - 所有其他链相关的协议均使用弱加密组策略（用seed中的对称加密字串进行收发）
 
-#### 出块流程/共识策略
+**出块流程/共识策略**
 
 一个Trx被push到链上后，根据group的不同共识类型，将被采取不同形式对待：
 
 - 链上共识方式，参见RUM设计文档
 
-#### Trx状态判断
+### Trx状态判断
 
 同其他链相似，Trx的发送没有重试机制，客户端应自己保存并判断一个Trx的状态，具体过程如下
 
 #### 1. 发送一个trx时，获取trx_id
 
 **Example**:
+
+内容POST: 向某个组发布内容
 
 ```sh
 curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"846011a8-1c58-4a35-b70f-83195c3bc2e8","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/content
@@ -1138,6 +1343,8 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{
 #### 3. 查询组内的内容
 
 **Example**:
+
+内容GET: 查询某个组的内容
 
 ```sh
 curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' http://127.0.0.1:8002/api/v1/group/content
@@ -1166,7 +1373,13 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c5
 
 * AUTH相关的trx处理方式相同（黑名单）
 
-### 节点网络信息
+--------------------
+
+## 网络
+
+### 网络 GET: 当前节点网络信息
+
+**EndPoint Path**:  ```*/api/v1/network```
 
 **Example**:
 
@@ -1203,7 +1416,11 @@ curl -k http://localhost:8002/api/v1/network
 
 这里需要注意， nat_type和addrs都会改变，开始的时候没有公网地址，类型是Unknown 之后会变成Private，再过一段时间反向链接成功的话，就变成Public，同时Addrs里面出现公网地址。
 
-### 手动发起同步
+--------------------
+
+### 同步 POST: 手动发起同步
+
+**EndPoint Path**:  ```*/api/v1/group/{group_id}/startsync```
 
 客户端可以手动触发某个组和组内其他节点同步块
 
@@ -1213,20 +1430,16 @@ curl -k http://localhost:8002/api/v1/network
 curl -X POST -H 'Content-Type: application/json' -d '' http://<IP_ADDR>/api/v1/group/<GROUP_ID>/startsync
 ```
 
-API: `v1/group/{group_id}/startsync`
-
-**Params**:
-
-| Param | Type | Description | Example |
-| --- | --- | --- | --- |
-| "group_id" | string | group id | "c0020941-e648-40c9-92dc-682645acd17e" |
 
 **Result**:
 
+| status_code | result | Description|
+| --- | --- | --- |
+| 200 | ```{"GroupId":<GROUP_ID>,"Error":""}```| GROUP_ID的组正常开始同步，同时组的状态会变为SYNCING|
+| 400 | ```{"error":"GROUP_ALREADY_IN_SYNCING"}```| GROUP_ID的组当前正在同步中|
 
-    200 ： {"GroupId":<GROUP_ID>,"Error":""}， GROUP_ID的组正常开始同步，同时组的状态会变为SYNCING
-    500 ： {"GroupId":<GROUP_ID>,"Error":"GROUP_ALREADY_IN_SYNCING"}, GROUP_ID的组当前正在同步中
 
+--------------------
 
 ### App API:
 
