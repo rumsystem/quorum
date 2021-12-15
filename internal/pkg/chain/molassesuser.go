@@ -55,6 +55,11 @@ func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
 	return user.cIface.GetProducerTrxMgr().SendRegUserTrx(item)
 }
 
+func (user *MolassesUser) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error) {
+	molauser_log.Debugf("<%s> UpdGroupConfig called", user.groupId)
+	return user.cIface.GetProducerTrxMgr().SendUpdGroupConfigTrx(item)
+}
+
 func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]string) (string, error) {
 	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
 	if user.cIface.IsSyncerReady() {
@@ -274,6 +279,9 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		case quorumpb.TrxType_SCHEMA:
 			molauser_log.Debugf("<%s> apply SCHEMA trx", user.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+		case quorumpb.TrxType_GROUP_CONFIG:
+			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", user.groupId)
+			nodectx.GetDbMgr().UpdateGroupConfig(trx, nodename)
 		default:
 			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}

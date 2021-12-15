@@ -193,6 +193,8 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
 		chain.producerAddTrx(trx)
+	case quorumpb.TrxType_GROUP_CONFIG:
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil

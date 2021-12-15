@@ -615,6 +615,55 @@ API
                 action : Add or REMOVE
                 memo : memo
 
+    - 添加组内配置（GroupConfig）
+        添加组内配置项
+        例子：curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"int", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/config | jq
+        API：/v1/group/config
+        参数：
+            action : add or del
+            group_id : group id
+            name : 配置项的名称
+            type : 配置项的类型，可选值为 "int", "bool", "string"
+            value ： 配置项的值，必须与type相对应
+            memo : memo
+        权限：
+            只有group owner可以调用该API
+        调用后，通过块同步，组内所有节点获得该配置            
+
+        返回值：
+            {
+                "group_id": "c8795b55-90bf-4b58-aaa0-86d11fe4e16a",
+                "sign": "3045022100e1375e48cfbd51cb78afc413fcca084deae9eb7f8454c54832feb9ae00fada7702203ee6fe2292ea3a87d687ae3369012b7518010e555b913125b8a7bf54f211502a",
+                "trx_id": "9e54c173-c1dd-429d-91fa-a6b43c14da77"
+            }
+        参数：
+            group_id : group id
+            sign ： owner对该trx的签名
+            trx_id : trx_id
+    - 查看组内配置key列表
+        例子：curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/config/keylist
+        API：/v1/group/<GROUP_ID>/config/keylist
+        返回值：
+            [{"Name":"test_string","Type":"STRING"}]
+        参数：
+            name：配置项的名称
+            type: 配置项的数据类型
+    - 查看组内某个配置的具体值
+        例子：curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/config/test_string | jq
+        API：/v1/group/<GROUPID>/config/<KEY_NAME>
+        返回值：
+            {
+                "Name": "test_string",
+                "Type": "STRING",
+                "Value": "123",
+                "OwnerPubkey": "CAISIQJOfMIyaYuVpzdeXq5p+ku/8pSB6XEmUJfHIJ3A0wCkIg==",
+                "OwnerSign": "304502210091dcc8d8e167c128ef59af1b6e2b2efece499043cc149014303b932485cde3240220427f81f2d7482df0d9a4ab2c019528b33776c73daf21ba98921ee6ff4417b1bc",
+                "Memo": "add test_string to group",
+                "TimeStamp": 1639518490895535600
+            }
+        参数：
+            同添加组内配置
+
     - 添加组内App Schema
         添加组内app的schema json
         例子：curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema

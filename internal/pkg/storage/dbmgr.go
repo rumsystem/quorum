@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	logging "github.com/ipfs/go-log/v2"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -11,16 +12,17 @@ import (
 
 var dbmgr_log = logging.Logger("dbmgr")
 
-const TRX_PREFIX string = "trx" //trx
-const BLK_PREFIX string = "blk" //block
-const GRP_PREFIX string = "grp" //group
-const CNT_PREFIX string = "cnt" //content
-const ATH_PREFIX string = "ath" //auth
-const PRD_PREFIX string = "prd" //producer
-const USR_PREFIX string = "usr" //user
-const ANN_PREFIX string = "ann" //announce
-const SMA_PREFIX string = "sma" //schema
-const CHD_PREFIX string = "chd" //cached
+const TRX_PREFIX string = "trx"               //trx
+const BLK_PREFIX string = "blk"               //block
+const GRP_PREFIX string = "grp"               //group
+const CNT_PREFIX string = "cnt"               //content
+const ATH_PREFIX string = "ath"               //auth
+const PRD_PREFIX string = "prd"               //producer
+const USR_PREFIX string = "usr"               //user
+const ANN_PREFIX string = "ann"               //announce
+const SMA_PREFIX string = "sma"               //schema
+const CHD_PREFIX string = "chd"               //cached
+const GROUP_CONFIG_PREFIX string = "grp_conf" //group configuration
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
@@ -697,6 +699,133 @@ func (dbMgr *DbMgr) UpdateUser(trx *quorumpb.Trx, prefix ...string) (err error) 
 		dbmgr_log.Infof("unknow msgType")
 		return errors.New("unknow msgType")
 	}
+}
+
+func (dbMgr *DbMgr) UpdateGroupConfig(trx *quorumpb.Trx, Prefix ...string) (err error) {
+	nodeprefix := getPrefix(Prefix...)
+
+	item := &quorumpb.GroupConfigItem{}
+	if err := proto.Unmarshal(trx.Data, item); err != nil {
+		return err
+	}
+
+	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + item.GroupId + "_" + item.Name
+
+	if item.Action == quorumpb.ActionType_ADD {
+		dbmgr_log.Infof("Add GroupConfig item")
+		return dbMgr.Db.Set([]byte(key), trx.Data)
+	} else if item.Action == quorumpb.ActionType_REMOVE {
+		dbmgr_log.Infof("Remove GroupConfig item")
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("GroupConfig key not Found")
+		}
+
+		return dbMgr.Db.Delete([]byte(key))
+	} else {
+		return errors.New("Unknown ACTION")
+	}
+}
+
+// name, type
+func (dbMgr *DbMgr) GetGroupConfigKey(groupId string, prefix ...string) ([]string, []string, error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId
+
+	var itemName []string
+	var itemType []string
+
+	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		item := quorumpb.GroupConfigItem{}
+		perr := proto.Unmarshal(v, &item)
+		if perr != nil {
+			return perr
+		}
+		itemName = append(itemName, item.Name)
+		itemType = append(itemType, item.Type.String())
+		return nil
+	})
+	return itemName, itemType, err
+}
+
+func (dbMgr *DbMgr) GetGroupConfigItem(itemKey string, groupId string, Prefix ...string) (*quorumpb.GroupConfigItem, error) {
+	nodeprefix := getPrefix(Prefix...)
+	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var config quorumpb.GroupConfigItem
+	err = proto.Unmarshal(value, &config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func (dbMgr *DbMgr) GetGroupConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
+	nodeprefix := getPrefix(Prefix...)
+	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return -1, err
+	}
+
+	var config quorumpb.GroupConfigItem
+	err = proto.Unmarshal(value, &config)
+	if err != nil {
+		return -1, err
+	}
+
+	result, err := strconv.Atoi(config.Value)
+	return result, err
+}
+
+func (dbMgr *DbMgr) GetGroupConfigItemBool(itemKey string, groupId string, Prefix ...string) (bool, error) {
+	nodeprefix := getPrefix(Prefix...)
+	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return false, err
+	}
+
+	var config quorumpb.GroupConfigItem
+	err = proto.Unmarshal(value, &config)
+	if err != nil {
+		return false, err
+	}
+
+	result, err := strconv.ParseBool(config.Value)
+	return result, err
+}
+
+func (dbMgr *DbMgr) GetGroupConfigItemString(itemKey string, groupId string, Prefix ...string) (string, error) {
+	nodeprefix := getPrefix(Prefix...)
+	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	var config quorumpb.GroupConfigItem
+	err = proto.Unmarshal(value, &config)
+	if err != nil {
+		return "", err
+	}
+
+	return config.Value, err
 }
 
 func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (pubkeylist []string, err error) {

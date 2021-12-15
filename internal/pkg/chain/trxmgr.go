@@ -180,6 +180,23 @@ func (trxMgr *TrxMgr) SendUpdAuthTrx(item *quorumpb.DenyUserItem) (string, error
 	return trx.TrxId, nil
 }
 
+func (trxMgr *TrxMgr) SendUpdGroupConfigTrx(item *quorumpb.GroupConfigItem) (string, error) {
+	trxmgr_log.Debugf("<%s> SendUpdGroupConfigTrx called", trxMgr.groupId)
+
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return "", err
+	}
+
+	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_GROUP_CONFIG, encodedcontent)
+	err = trxMgr.sendTrx(trx)
+	if err != nil {
+		return "INVALID_TRX", err
+	}
+
+	return trx.TrxId, nil
+}
+
 func (trxMgr *TrxMgr) SendRegProducerTrx(item *quorumpb.ProducerItem) (string, error) {
 	trxmgr_log.Debugf("<%s> SendRegProducerTrx called", trxMgr.groupId)
 	encodedcontent, err := proto.Marshal(item)

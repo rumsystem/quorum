@@ -24,6 +24,7 @@ enum TrxType {
   BLOCK_SYNCED       = 8; // block for producer to sync (old block)
   BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
   USER               = 10; // update group user
+  GROUP_CONFIG       = 11; // update group configuration
 }
 
 enum AnnounceType {
@@ -214,6 +215,24 @@ message GroupItemV0 {
     GroupConsenseType ConsenseType = 12;
     string CipherKey               = 13;
     string AppKey                  = 14;
+}
+
+enum GroupConfigType {
+    INT    = 0;
+    BOOL   = 1;
+    STRING = 2;
+}
+
+message GroupConfigItem{
+    string          GroupId     = 1;
+    ActionType      Action      = 2;
+    string          Name        = 3;
+    GroupConfigType Type        = 4;
+    string          Value       = 5;
+    string          OwnerPubkey = 6;
+    string          OwnerSign   = 7;
+    string          Memo        = 8;
+    int64           TimeStamp   = 9;
 }
 
 message PSPing {
