@@ -114,7 +114,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
 
-	grp.ChainCtx.StopSync()
+	grp.StopSync()
 	//leave pubsub channel
 	grp.ChainCtx.LeaveChannel()
 	group_log.Infof("Group <%s> leaved", grp.Item.GroupId)
