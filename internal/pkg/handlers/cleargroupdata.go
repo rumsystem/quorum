@@ -35,6 +35,11 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 		return nil, fmt.Errorf("Group %s not exist", params.GroupId)
 	}
 
+	// stop syncing first, to avoid starving in browser (indexeddb)
+	if err := group.StopSync(); err != nil {
+		return nil, err
+	}
+
 	if err := group.ClearGroup(); err != nil {
 		return nil, err
 	}
