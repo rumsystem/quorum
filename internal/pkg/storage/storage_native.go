@@ -89,11 +89,27 @@ func (s *QSBadger) IsExist(key []byte) (bool, error) {
 }
 
 func (s *QSBadger) PrefixDelete(prefix []byte) error {
-	return s.PrefixForeachKey([]byte(prefix), []byte(prefix), false, func(k []byte, err error) error {
+	return s.PrefixForeachKey(prefix, prefix, false, func(k []byte, err error) error {
 		if err != nil {
 			return err
 		}
 		return s.Delete(k)
+	})
+}
+
+func (s *QSBadger) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) error {
+	return s.PrefixForeach(prefix, func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		del, err := fn(k, v, err)
+		if err != nil {
+			return err
+		}
+		if del {
+			return s.Delete(k)
+		}
+		return nil
 	})
 }
 
