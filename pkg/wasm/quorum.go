@@ -183,7 +183,8 @@ func StartDiscoverTask() {
 		logger.Console.Log("Searching for other peers...")
 		peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, quorumConfig.DefaultRendezvousString)
 		if err != nil {
-			panic(err)
+			logger.Console.Error(err.Error())
+			return
 		}
 
 		var connectCount uint32 = 0
@@ -197,7 +198,6 @@ func StartDiscoverTask() {
 				err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
 				if err != nil {
 					logger.Console.Error("Failed to connect peer: " + curPeer.String())
-					cancel()
 				} else {
 					curConnectedCount := atomic.AddUint32(&connectCount, 1)
 					logger.Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
