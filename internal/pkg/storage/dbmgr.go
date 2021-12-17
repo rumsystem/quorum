@@ -423,71 +423,51 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 	keys = append(keys, key)
 
 	for _, key_prefix := range keys {
-		to_delete_keys := []string{}
-
-		err := dbMgr.Db.PrefixForeach([]byte(key_prefix), func(k []byte, v []byte, err error) error {
+		err := dbMgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			blockChunk := quorumpb.BlockDbChunk{}
 			perr := proto.Unmarshal(v, &blockChunk)
 			if perr != nil {
-				return perr
+				return false, perr
 			}
 
 			if blockChunk.BlockItem.GroupId == item.GroupId {
-				to_delete_keys = append(to_delete_keys, string(k))
-				return nil
+				return true, nil
 			}
-
-			return nil
+			return false, nil
 		})
 
 		if err != nil {
 			return err
 		}
-
-		for _, to_delete_key := range to_delete_keys {
-			err := dbMgr.Db.Delete([]byte(to_delete_key))
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	//remove all trx
-	to_delete_keys := []string{}
 	key = nodeprefix + TRX_PREFIX + "_"
-	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+	err := dbMgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		trx := quorumpb.Trx{}
 		perr := proto.Unmarshal(v, &trx)
 
 		if perr != nil {
-			return perr
+			return false, perr
 		}
 
 		if trx.GroupId == item.GroupId {
-			to_delete_keys = append(to_delete_keys, string(k))
-			return nil
+			return true, nil
 		}
 
-		return nil
+		return false, nil
 	})
 
 	if err != nil {
 		return err
-	}
-
-	for _, to_delete_key := range to_delete_keys {
-		err := dbMgr.Db.Delete([]byte(to_delete_key))
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
