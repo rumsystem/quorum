@@ -55,7 +55,6 @@ func (r *RexService) SetDelegate() {
 }
 
 func (r *RexService) ConnectRex(ctx context.Context, maxpeers int) error {
-
 	//ticker := time.NewTicker(time.Second * 30)
 	////notify := false
 	////ticker := time.NewTicker(time.Second * 15)
@@ -93,6 +92,13 @@ func (r *RexService) ConnectRex(ctx context.Context, maxpeers int) error {
 	}
 
 	return nil
+}
+
+func (r *RexService) RemoveStream(p peer.ID) {
+	_, ok := r.streams[p]
+	if ok == true {
+		delete(r.streams, p)
+	}
 }
 
 //func (r *RexService) InitSession(peerid string) {
@@ -307,12 +313,14 @@ func (nn *netNotifiee) RexService() *RexService {
 }
 
 func (nn *netNotifiee) Connected(n network.Network, v network.Conn) {
-	rumexchangelog.Debug("rex Connected")
-	//add to stream map
+	rumexchangelog.Debugf("rex Connected: %s", v.RemotePeer())
 
 }
 func (nn *netNotifiee) Disconnected(n network.Network, v network.Conn) {
-	rumexchangelog.Debug("rex Disconnected")
+	rumexchangelog.Debugf("rex Disconnected: %s", v.RemotePeer())
+	r := nn.RexService()
+	r.RemoveStream(v.RemotePeer())
+	fmt.Println(v.GetStreams())
 	//remove from stream map
 }
 func (nn *netNotifiee) OpenedStream(n network.Network, s network.Stream) {}
