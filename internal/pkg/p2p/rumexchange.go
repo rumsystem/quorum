@@ -11,9 +11,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	msgio "github.com/libp2p/go-msgio"
 	"github.com/libp2p/go-msgio/protoio"
+	ma "github.com/multiformats/go-multiaddr"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 	"io"
+	//"time"
 )
 
 var rumexchangelog = logging.Logger("rumexchange")
@@ -24,6 +26,7 @@ type RexService struct {
 	Host           host.Host
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
+	streams        map[peer.ID]*network.Stream
 }
 
 type ActionType int
@@ -40,17 +43,80 @@ type RexNotification struct {
 
 func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	rexs := &RexService{h, protocol.ID(customprotocol), notification}
+	rexs := &RexService{h, protocol.ID(customprotocol), notification, map[peer.ID]*network.Stream{}}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debug("new rex service SetStreamHandler: %s", customprotocol)
 	return rexs
 }
 
-func NewRexObject(Networkname string, ProtocolPrefix string) *RexService {
-	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	rexs := &RexService{ProtocolId: protocol.ID(customprotocol)}
-	return rexs
+func (r *RexService) SetDelegate() {
+	r.Host.Network().Notify((*netNotifiee)(r))
+}
+
+func (r *RexService) ConnectRex(ctx context.Context, maxpeers int) error {
+
+	//ticker := time.NewTicker(time.Second * 30)
+	////notify := false
+	////ticker := time.NewTicker(time.Second * 15)
+	//defer func() {
+	//	ticker.Stop()
+	//	//for _, s := range r.streams {
+	//	//	if s != nil {
+	//	//		s.Close()
+	//	//	}
+	//	//}
+	//}()
+
+	//for {
+	//	select {
+	//	case <-ctx.Done():
+	//		return nil
+	//	case <-ticker.C:
+
+	//	}
+	//}
+
+	peers := r.Host.Network().Peers()
+	for _, p := range peers {
+		_, ok := r.streams[p]
+		if ok == false {
+			networklog.Debugf("try to create rumexchange stream: %s", p)
+			s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+
+			if err != nil {
+				networklog.Errorf("create network stream err: %s", err)
+			} else {
+				r.streams[p] = &s
+			}
+		}
+	}
+
+	return nil
+}
+
+//func (r *RexService) InitSession(peerid string) {
+
+func (r *RexService) PingPong(peerid string) {
+	for _, s := range r.streams {
+		if s != nil {
+			bufw := bufio.NewWriter(*s)
+			wc := protoio.NewDelimitedWriter(bufw)
+			privateid, err1 := peer.Decode(peerid)
+			if err1 != nil {
+				networklog.Errorf("decode perrid err: %s", err1)
+			}
+
+			ifconnmsg := &quorumpb.SessionIfConn{DestPeerID: []byte(privateid), SrcPeerID: []byte(r.Host.ID())}
+
+			testmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_IF_CONN, IfConn: ifconnmsg}
+			err := wc.WriteMsg(testmsg)
+			if err != nil {
+				networklog.Errorf("writemsg to network stream err: %s", err)
+			}
+			bufw.Flush()
+		}
+	}
 }
 
 func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionIfConn) {
@@ -63,7 +129,15 @@ func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionI
 
 	sessionmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_CONN_RESP, ConnResp: connrespmsg}
 	ctx := context.Background()
-	s, err := r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
+
+	var s network.Stream
+	var err error
+	pstream, ok := r.streams[recvfrom]
+	if ok == false {
+		s, err = r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
+	} else {
+		s = *pstream
+	}
 
 	bufw := bufio.NewWriter(s)
 	wc := protoio.NewDelimitedWriter(bufw)
@@ -102,7 +176,16 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 		for _, cp := range peers { //verify if the peer connected
 			if cp == nextpeerid { //ok, connected, pass the message
 				ctx := context.Background()
-				s, err := r.Host.NewStream(ctx, nextpeerid, r.ProtocolId)
+
+				var s network.Stream
+				var err error
+				pstream, ok := r.streams[nextpeerid]
+
+				if ok == false {
+					s, err = r.Host.NewStream(ctx, nextpeerid, r.ProtocolId)
+				} else {
+					s = *pstream
+				}
 				if err != nil {
 					fmt.Println(err)
 				} else {
@@ -133,12 +216,21 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 	peers := r.Host.Network().Peers()
 	ifconnmsg.Peersroutes = append(ifconnmsg.Peersroutes, peersig)
 
+	rumexchangelog.Debugf("stream routes append peerid: %s", r.Host.ID())
+
 	sessionmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_IF_CONN, IfConn: ifconnmsg}
 
 	ctx := context.Background()
 	for _, p := range peers {
 		if p != r.Host.ID() && p != peer.ID(sessionmsg.IfConn.SrcPeerID) && p != recvfrom { //not myself, not src peer, not recvfrom this peer, so passnext
-			s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+			var s network.Stream
+			var err error
+			pstream, ok := r.streams[p]
+			if ok == false {
+				s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
+			} else {
+				s = *pstream
+			}
 			if err != nil {
 				fmt.Println(err)
 			} else {
@@ -166,6 +258,7 @@ func (r *RexService) Handler(s network.Stream) {
 				_ = s.Reset()
 				rumexchangelog.Debugf("RumExchange stream handler from %s error: %s", s.Conn().RemotePeer(), err)
 			}
+			//remove from stream map?
 			return
 		}
 
@@ -206,3 +299,23 @@ func (r *RexService) Handler(s network.Stream) {
 
 	}
 }
+
+type netNotifiee RexService
+
+func (nn *netNotifiee) RexService() *RexService {
+	return (*RexService)(nn)
+}
+
+func (nn *netNotifiee) Connected(n network.Network, v network.Conn) {
+	rumexchangelog.Debug("rex Connected")
+	//add to stream map
+
+}
+func (nn *netNotifiee) Disconnected(n network.Network, v network.Conn) {
+	rumexchangelog.Debug("rex Disconnected")
+	//remove from stream map
+}
+func (nn *netNotifiee) OpenedStream(n network.Network, s network.Stream) {}
+func (nn *netNotifiee) ClosedStream(n network.Network, v network.Stream) {}
+func (nn *netNotifiee) Listen(n network.Network, a ma.Multiaddr)         {}
+func (nn *netNotifiee) ListenClose(n network.Network, a ma.Multiaddr)    {}

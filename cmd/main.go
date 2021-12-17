@@ -321,7 +321,7 @@ func mainRet(config cli.Config) int {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
-
+		//go node.RumExchange.ConnectRex(ctx, 3)
 		datapath := config.DataDir + "/" + config.PeerName
 		dbManager, err := createDb(datapath)
 		if err != nil {

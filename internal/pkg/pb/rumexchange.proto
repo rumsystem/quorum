@@ -18,7 +18,8 @@ message SessionIfConn {
     bytes SrcPeerID = 2;
     bytes SessionToken = 3;
     bytes Signature = 4; //sign by the srcPeer
-	repeated PeerSig Peersroutes = 5; 
+    string ChannelId = 5;
+	repeated PeerSig Peersroutes = 6; 
 }
 
 message SessionConnResp {

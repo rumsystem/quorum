@@ -57,21 +57,37 @@ func (node *Node) eventhandler(ctx context.Context) {
 }
 
 func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
+	psconnmap := map[string]*pubsubconn.P2pPubSubConn{}
 	for {
 		select {
 		case rexnoti, ok := <-ch:
 			if ok {
 				if rexnoti.Action == JoinChannel {
-					userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
-					userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
+					_, ok := psconnmap[rexnoti.ChannelId]
+					if ok == false {
+						userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
+						err := userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
+						if err == nil {
+							psconnmap[rexnoti.ChannelId] = userPsconn
+						}
+					}
 				} else if rexnoti.Action == JoinChannelAndPublishTest {
-					userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
-					userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
-					for {
+
+					psconn, ok := psconnmap[rexnoti.ChannelId]
+					if ok == false {
+						userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
+						err := userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
+						if err == nil {
+							psconnmap[rexnoti.ChannelId] = userPsconn
+						}
+					}
+					psconn = psconnmap[rexnoti.ChannelId]
+					for i := 0; i < 10; i++ {
 						networklog.Infof("public ping msg to channel %s from: %s", rexnoti.ChannelId, node.Host.ID())
-						userPsconn.Publish([]byte("ping"))
+						psconn.Publish([]byte("ping"))
 						time.Sleep(10 * time.Second)
 					}
+
 				} else {
 
 					networklog.Errorf("recv unknown notification %s from: %s", rexnoti, rexnoti.ChannelId)

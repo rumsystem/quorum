@@ -4,11 +4,8 @@
 package p2p
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	//msgio "github.com/libp2p/go-msgio"
-	"github.com/libp2p/go-msgio/protoio"
 	"sync"
 	"time"
 
@@ -21,14 +18,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	//peerstore "github.com/libp2p/go-libp2p-peerstore"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	tcp "github.com/libp2p/go-tcp-transport"
@@ -125,9 +120,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		pubsub.GossipSubDout = 0
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
-		rexservice = NewRexObject(nodenetworkname, ProtocolPrefix)
 	} else {
 		rexservice = NewRexService(host, nodenetworkname, ProtocolPrefix, rexnotification)
+		rexservice.SetDelegate()
 	}
 
 	var ps *pubsub.PubSub
@@ -202,59 +197,6 @@ func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
 		}()
 	}
 	wg.Wait()
-	return nil
-}
-
-func (node *Node) ConnectRex(ctx context.Context, maxpeers int) error {
-	//notify := false
-	streams := []network.Stream{}
-	//ticker := time.NewTicker(time.Second * 15)
-	defer func() {
-		//ticker.Stop()
-		for _, s := range streams {
-			if s != nil {
-				s.Close()
-			}
-		}
-	}()
-
-	//go func() {
-	//	select {
-	//	case <-ctx.Done():
-	//		return
-	//	case <-ticker.C:
-	//		return
-	//	}
-	//}()
-
-	peers := node.Host.Network().Peers()
-	for _, p := range peers {
-		networklog.Debugf("try to create rumexchange stream: %s", p)
-		s, err := node.Host.NewStream(ctx, p, node.RumExchange.ProtocolId)
-
-		if err != nil {
-			networklog.Errorf("create network stream err: %s", err)
-		} else {
-			streams = append(streams, s)
-			bufw := bufio.NewWriter(s)
-			wc := protoio.NewDelimitedWriter(bufw)
-			privateidstr := "16Uiu2HAm4U6Ymx5nNifPVBgn7ZaofXGmN9EEFtay7KjWtq64gZcM"
-			privateid, err1 := peer.Decode(privateidstr)
-			if err1 != nil {
-				networklog.Errorf("decode perrid err: %s", err1)
-			}
-
-			ifconnmsg := &quorumpb.SessionIfConn{DestPeerID: []byte(privateid), SrcPeerID: []byte(node.Host.ID())}
-
-			testmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_IF_CONN, IfConn: ifconnmsg}
-			err := wc.WriteMsg(testmsg)
-			if err != nil {
-				networklog.Errorf("writemsg to network stream err: %s", err)
-			}
-			bufw.Flush()
-		}
-	}
-
 	return nil
 }
 
