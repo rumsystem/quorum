@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -71,27 +72,32 @@ func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
 							psconnmap[rexnoti.ChannelId] = userPsconn
 						}
 					}
-				} else if rexnoti.Action == JoinChannelAndPublishTest {
 
-					psconn, ok := psconnmap[rexnoti.ChannelId]
-					if ok == false {
-						userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
-						err := userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
-						if err == nil {
-							psconnmap[rexnoti.ChannelId] = userPsconn
-						}
-					}
-					psconn = psconnmap[rexnoti.ChannelId]
-					for i := 0; i < 10; i++ {
-						networklog.Infof("public ping msg to channel %s from: %s", rexnoti.ChannelId, node.Host.ID())
-						psconn.Publish([]byte("ping"))
-						time.Sleep(10 * time.Second)
-					}
+					// ok Publish message to the channel
+					psconn := psconnmap[rexnoti.ChannelId]
 
+					psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
 				} else {
-
 					networklog.Errorf("recv unknown notification %s from: %s", rexnoti, rexnoti.ChannelId)
 				}
+				//} //Test code
+				//else if rexnoti.Action == JoinChannelAndPublishTest {
+
+				//	psconn, ok := psconnmap[rexnoti.ChannelId]
+				//	if ok == false {
+				//		userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
+				//		err := userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
+				//		if err == nil {
+				//			psconnmap[rexnoti.ChannelId] = userPsconn
+				//		}
+				//	}
+				//	psconn = psconnmap[rexnoti.ChannelId]
+				//	for i := 0; i < 10; i++ {
+				//		networklog.Infof("public ping msg to channel %s from: %s", rexnoti.ChannelId, node.Host.ID())
+				//		psconn.Publish([]byte("ping"))
+				//		time.Sleep(10 * time.Second)
+				//	}
+
 			}
 
 		case <-ctx.Done():

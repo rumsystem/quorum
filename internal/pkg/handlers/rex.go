@@ -10,11 +10,23 @@ func RexTest(node *p2p.Node) ([]string, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if node.RumExchange != nil {
-		//err := node.RumExchange.ConnectRex(ctx, 3)
-		node.RumExchange.ConnectRex(ctx, 3)
-		//fmt.Println(err)
-		fmt.Println("call pingpoing")
-		node.RumExchange.PingPong("16Uiu2HAm4U6Ymx5nNifPVBgn7ZaofXGmN9EEFtay7KjWtq64gZcM")
+
+		fmt.Println("call rextest")
+		err := node.RumExchange.ConnectRex(ctx, 3)
+		if err != nil {
+			return []string{"err", err.Error()}, nil
+		}
+		peerid := "16Uiu2HAm4U6Ymx5nNifPVBgn7ZaofXGmN9EEFtay7KjWtq64gZcM"
+		channelid := "my_private_channel"
+		node.RumExchange.InitSession(peerid, channelid)
+		ch := make(chan int)
+		select {
+		case <-ch:
+			break
+
+		}
+
+		//node.RumExchange.PingPong()
 		return []string{"ok"}, nil
 	} else {
 		return []string{"not support rumexchange"}, nil
