@@ -3,23 +3,23 @@ module github.com/rumsystem/quorum
 go 1.15
 
 //replace github.com/libp2p/go-libp2p-autonat => github.com/huo-ju/go-libp2p-autonat v0.4.3
-replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 
 replace github.com/dgraph-io/badger/v3 => github.com/chux0519/badger/v3 v3.2103.3
 
 replace github.com/dgraph-io/ristretto => github.com/chux0519/ristretto v0.1.1
 
-replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
-
 replace github.com/libp2p/go-libp2p-noise => github.com/libp2p/go-libp2p-noise v0.3.0
 
-replace github.com/libp2p/go-libp2p => ../go-libp2p
+replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 
-replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
+replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.17.0
 
-//replace github.com/libp2p/go-libp2p-core => ../go-libp2p-core
+replace github.com/libp2p/go-libp2p-core => github.com/libp2p/go-libp2p-core v0.13.0
 
-replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
+//replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
+//replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
+//replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
+//replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
 
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5
@@ -45,15 +45,15 @@ require (
 	github.com/huo-ju/quercus v0.0.0-20210909192534-3740345b9ab8
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.2
-	github.com/ipfs/go-log/v2 v2.3.0
+	github.com/ipfs/go-log/v2 v2.4.0
 	github.com/labstack/echo/v4 v4.3.0
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/libp2p/go-libp2p v0.15.1
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
-	github.com/libp2p/go-libp2p-core v0.11.0
+	github.com/libp2p/go-libp2p-core v0.13.0
 	github.com/libp2p/go-libp2p-discovery v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
-	github.com/libp2p/go-libp2p-peerstore v0.4.0
+	github.com/libp2p/go-libp2p-peerstore v0.6.0
 	github.com/libp2p/go-libp2p-pubsub v0.5.4
 	github.com/libp2p/go-msgio v0.1.0
 	github.com/libp2p/go-tcp-transport v0.4.0
