@@ -34,6 +34,7 @@ You can try:
     - Only text content
     - Content with images
     - Like/Dislike
+  - [Update user profile of a group](#api-group-profile) 
 - [Block](#test-block)
   - [Get block info](#api-get-block)
 - [Trx](#test-trx)
@@ -618,13 +619,13 @@ API return value:
 
 **Example**:
 
-Requst all content:
+#### Requst all content
 
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/content
 ```
 
-Request content with senders filter:
+#### Request content with senders filter
 
 ```bash
 curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?start=0&num=20"
@@ -637,31 +638,82 @@ curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dK
 }
 ```
 
-API return value:
+API return value: a list of trxs. 
+
+Note, Person-profile or Like/Dislike Trx.
+
+Note Trx:
+
+- "type" of "Content": "Note"
+- "TypeUrl": "quorum.pb.Object"
 
 ```json
-[
-    {
-        "TrxId": "da2aaf30-39a8-4fe4-a0a0-44ceb71ac013",
-        "Publisher": "CAISIQOlA37+ghb05D5ZAKExjsto/H7eeCmkagcZ+BY/pjSOKw==",
-        "Content": {
-            "type": "Note",
-            "content": "simple note by aa",
-            "name": "A simple Node id1"
-        },
-        "TypeUrl": "quorum.pb.Object",
-        "TimeStamp": 1629748212762123400
-    }
-]
+{
+    "TrxId": "da2aaf30-39a8-4fe4-a0a0-44ceb71ac013",
+    "Publisher": "CAISIQOlA37+ghb05D5ZAKExjsto/H7eeCmkagcZ+BY/pjSOKw==",
+    "Content": {
+        "type": "Note",
+        "content": "simple note by aa",
+        "name": "A simple Node id1"
+    },
+    "TypeUrl": "quorum.pb.Object",
+    "TimeStamp": 1629748212762123400
+}
 ```
 
-| Param | Description |
-| --- | --- |
-| "TrxId" | [trx_id](#param-trx_id) |
-| "Publisher" | 发布者 |
-| "Content" | dict, 内容 |
-| "TypeURL" | string, Type |
-| "TimeStamp" | int64 |
+Person Profile Trx:
+
+- "type" of "Content": any of "name"(string),"image"(dict) or "wallet"(list)
+- "TypeUrl": "quorum.pb.Person"
+
+```json
+{
+    "TrxId": "7d5e4f23-42c5-4466-9ae3-ce701dfff2ec",
+    "Publisher": "CAISIQNK024r4gdSjIK3HoQlPbmIhDNqElIoL/6nQiYFv3rTtw==",
+    "Content": {
+        "name": "Lucy",
+        "image": {
+            "mediaType": "image/png",
+            "content": "there will be bytes content of images、"
+        },
+        "wallet": [
+            {
+                "id": "bae95683-eabb-212f-9588-12dadffd0323",
+                "type": "mixin",
+                "name": "mixin messenger"
+            }
+        ]
+    },
+    "TypeUrl": "quorum.pb.Person",
+    "TimeStamp": 1637574058426424900
+}
+```
+
+Like/Dislike Trx:
+
+- "type" of "Content": "Like" or "Dislike"
+- "TypeUrl": "quorum.pb.Object"
+
+```json
+
+{
+    "TrxId": "65de2397-2f35-4a07-9af2-35a920b79882",
+    "Publisher": "CAISIQMbTGdEDACml0BOcBXpWM6FOLDgH7u9VapHJ+wDMZSObw==",
+    "Content": {
+        "id": "02c23edc-be7d-4a32-bbae-fb8e179e9c5b",
+        "type": "Like"
+    },
+    "TypeUrl": "quorum.pb.Object",
+    "TimeStamp": 1639980884426949600
+}
+```
+
+Params
+- "TrxId",[trx_id](#param-trx_id) 
+- "Publisher" ,发布者 
+- "Content", dict, 内容 
+- "TypeURL", string, Type 
+- "TimeStamp" ,int64 
 
 [>>> back top](#top)
 
@@ -684,7 +736,7 @@ nodeA can be `owner node` or `user node`.
 
 **Example**:
 
-### only text content:
+### Note only content:
 
 ```bash
 curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}'  https://127.0.0.1:8002/api/v1/group/content
@@ -750,6 +802,54 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":
     "type": "Like",
     "object": {
         "id": "578e65d0-9b61-4937-8e7c-f00e2b262753"
+    },
+    "target": {
+        "id": "c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55",
+        "type": "Group"
+    }
+}
+```
+
+[>>> back top](#top)
+
+<span id="api-group-profile"></span>
+
+## Update user profile of a group
+
+any group has its own profile to set.
+
+**API**: ```*/api/v1/group/profile```
+
+- Method: POST
+- Usage : update profile of a group
+- Params :
+  - type
+  - object
+  - target
+- API return value:
+  - [trx_id](#param-trx_id)
+
+**Example**:
+
+
+**Params**:
+
+```json
+{
+    "type": "Update",
+    "person": {
+        "name": "nickname",
+        "image": {
+            "mediaType": "image/png",
+            "content": "there will be bytes content of images"
+        },
+        "wallet": [
+            {
+                "id": "bae95683-eabb-211f-9588-12dadffd0323",
+                "type": "mixin",
+                "name": "mixin messenger"
+            }
+        ]
     },
     "target": {
         "id": "c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55",
@@ -890,9 +990,6 @@ Trx 生命周期，加密和出块过程
 curl -k -X GET -H 'Content-Type: application/json' -d https://127.0.0.1:8003/api/v1/trx/<GROUP_ID>/<TRX_ID>
 ```
 
-* "裸"trx 的内容，data 部分是加密的([encryption typ](#param-encryption_type)由组类型决定)
-* 客户端应通过获取 Content 的 API 来获取解密之后的内容
-
 API return value:
 
 ```json
@@ -907,6 +1004,9 @@ API return value:
     "SenderSign": "MEQCIGKc0MyiusNFWZEc+ZMXzk/eev7Sdouii4zAeSIGCqnMAiAz+LMXWck1NIJLB8U7mGmetzYGuTYPKxifH7sF1cMwZg=="
 }
 ```
+
+* "Data" 是加密的，([encryption type](#param-encryption_type)由组类型决定)
+* 客户端应通过[获取 Content 的 API](#api-get-group-content) 来获取解密之后的内容
 
 [>>> back top](#top)
 
