@@ -6,11 +6,13 @@
 
 ## Menu
 
+Start:
+
 - [Quick Start](#quick-start)
 - [Env Prepare](#prepare)
   - [API docs](#docs-api)
 
-You can try to test:
+You can try:
 
 - [Node](#test-node)
   - [Get node info](#api-get-node)
@@ -26,9 +28,13 @@ You can try to test:
   - [Start sync](#api-post-startsync)
 - [Content](#test-content)
   - [Get group content](#api-get-group-content)
-  - [Request content](#api-post-content-filter)
+    - Get all content
+    - Request content with senders filter
   - [Post content to group](#api-post-content)
-  - [Like/Dislike](#api-post-like)
+    - Only text content
+    - Content with images
+    - Like/Dislike
+  - [Update user profile of a group](#api-group-profile) 
 - [Block](#test-block)
   - [Get block info](#api-get-block)
 - [Trx](#test-trx)
@@ -56,7 +62,7 @@ You can try to test:
   - [Get announced users](#api-get-announced-users)
   - [Owner approve a user](#api-post-group-user)
 
-Some common params:
+Common params:
 
 - [Params](#param-list)
   - [group_id](#param-group_id)
@@ -82,18 +88,20 @@ Some common params:
 
 2.、启用 RUM 服务
 
-3. 采用你擅长的语言，与RUM服务建立连接，
+3. 采用你擅长的语言，与 RUM 服务建立连接，
 
 ```python
 """
 :param PORT: int，本地已经启动的 Rum 服务的 端口号，该端口号基本上是固定的，不会变动
 :param HOST: str，本地已经启动的 Rum 服务的 host，通常是 127.0.0.1
+:param CACERT: str，本地 Rum 的 server.crt 文件的绝对路径
 """
 
 import requests
 
 url = f"https://{HOST}:{PORT}/api/v1"
 session = requests.Session()
+session.verify = CACERT
 session.headers.update({
     "USER-AGENT": "asiagirls-py-bot",
     "Content-Type": "application/json"})
@@ -191,6 +199,10 @@ go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :80
 
 **API**: ```*/api/v1/node```
 
+- Method: GET
+- Usage : get node info
+- Params : none
+
 **Example**:
 
 ```bash
@@ -216,7 +228,7 @@ API return value:
 
 | Param | Description |
 | --- | --- |
-| "node_publickey" | 组创建者的pubkey |
+| "node_publickey" | 组创建者的 pubkey |
 | "node_status" | "NODE_ONLINE" or "NODE_OFFLINE" |
 | "node_version" | 节点的协议版本号 |
 | "peers" | dict |
@@ -233,17 +245,19 @@ API return value:
 
 **API**: ```*/api/v1/group```
 
+- Method: POST
+- Usage : Owner node create a group
+- Params:
+    - group_name
+    - [consensus_type](#param-consensus_type)
+    - [encryption_type](#param-encryption_type)
+    - app_key
+
 **Example**:
 
 ```bash
 curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group
 ```
-
-- Method: POST
-- Usage : create new `group`
-- Params :
-    * consensus_type:string, group consensus type, must be "poa", requested
-    * encryption_type: string, group encryption type, must be "public", requested
 
 ```json
 {
@@ -282,8 +296,8 @@ Params:
 
 * genesis_block       //genesis block, the first block of the group
 * owner_encryptpubkey //owner encryption key(age)
-* consensus_type
-* encryption_type
+* [consensus_type](#param-consensus_type)
+* [encryption_type](#param-encryption_type)
 * cipher_key          //aes key <sup>[1]</sup>
 * signature           //owner signature
 
@@ -301,14 +315,15 @@ other nodes can use the seed to [join the group](#api-post-group-join).
 
 **API**: ```*/api/v1/group/join```
 
+- Method: GET
+- Usage : User node join a group
+- Params: the `seed` of `group` above
+
 **Example**:
 
 ```bash
 curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"36ac6e22-80a1-4d54-abbb-8bd2c55ef8cf","GroupId":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","ProducerPubKey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","Hash":"fDGwAPJbHHG0GpKLQZnRolK9FUO5nSIod/iprwQQn8g=","Signature":"MEYCIQDo5uge+saujb0WR6ZreISDYWpRzY6PQ3f5ly7vtHHgkQIhAKcuwDT2fIpBDx/7lQU6mIBQKJuQeI0Zbw3W7kHfBO28","Timestamp":1631804384241781200},"group_id":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","group_name":"my_test_group","owner_pubkey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","owner_encryptpubkey":"age1lx3zh5sc5cureh484t5tm2036lhrzdnh96rfaft6echs9cqsefss4yn886","consensus_type":"poa","encryption_type":"public","cipher_key":"3994c4224da17ad50504c78458f37249149477c7bc643f3fe78e44033c17874a","signature":"30450220591361918948140c8ad1736cde3831f326470f2d3c5105a0b63867c7b216857c0221008921422c6e1974834d5610d4c6ad1a9dd0394ac464dfc12659cde41d75172d14"}' https://127.0.0.1:8003/api/v1/group/join
 ```
-
-- Method: GET
-- Params: the `seed` of `group` above
 
 API return value:
 
@@ -328,18 +343,15 @@ API return value:
 
 API return value:
 
+- "user_encryptpubkey" 本节点在组内的加密公钥 ** 
+- [consensus_type](#param-consensus_type) 
+- [encryption_type](#param-encryption_type)
+- "cipher_key"  组内协议对称加密密钥(aes) 
+- "signature"  signature by group owner 
 
-| Param | Description | Example |
-| --- | --- | --- |
-| "user_encryptpubkey" | 本节点在组内的加密公钥 ** |
-| "consensus_type" | "poa" or "pos" or "pow", "poa" only for now | "poa" |
-| "encryption_type" | encryption type of group, "public" or "private" | "public" |
-| "cipher_key" | 组内协议对称加密密钥(aes) |
-| "signature" | signature by group owner |
+* [如果组类型为 PRIVATE，则该加密公钥需要用其他协议进行组内广播](#test-private-group)
 
-* [如果组类型为PRIVATE，则该加密公钥需要用其他协议进行组内广播](#test-private-group)
-
-节点B加入组后，开始自动同步(SYNCING)，同步完成后状态变为（IDLE)
+节点 B 加入组后，开始自动同步(SYNCING)，同步完成后状态变为（IDLE)
 
 [>>> back top](#top)
 
@@ -348,6 +360,10 @@ API return value:
 ## List all groups
 
 **API**: ```*/api/v1/groups```
+
+- Method: GET
+- Usage : List all groups
+- Params : none
 
 **Example**:
 
@@ -382,8 +398,8 @@ API return value:
 ```
 
 - Params:
-    * consensus_type
-    * encryption_type
+    * [consensus_type](#param-consensus_type) 
+    * [encryption_type](#param-encryption_type)
     * cipher_key
     * last_updated
     * highest_height      <sup>[2]</sup>
@@ -402,6 +418,11 @@ API return value:
 **删除组 API 已废除，所有节点只能“离开”一个组，不管是不是自己创建的**
 
 **API**: ```*/api/v1/group/clear```
+
+- Method: POST
+- Usage : User node clear a group
+- Params :
+  - [group_id](#param-group_id)
 
 删除一个组的全部内容，包括如下内容
 
@@ -428,7 +449,7 @@ API return value:
 }
 ```
 
-**目前前端在离开组时需一起调用该API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可**
+**目前前端在离开组时需一起调用该 API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可**
 
 [>>> back top](#top)
 
@@ -437,6 +458,11 @@ API return value:
 ## User node leave a group
 
 **API**: ```*/api/v1/group/leave```
+
+- Method: POST
+- Usage : User node leave a group
+- Params :
+  - [group_id](#param-group_id)
 
 **Example**:
 
@@ -473,6 +499,11 @@ API return value:
 
 **API**:  ```*/api/v1/group```
 
+- Method: DELETE
+- Usage : Owner node del a group
+- Params :
+  - [group_id](#param-group_id)
+
 **Example**:
 
 ```bash
@@ -501,6 +532,10 @@ API return value:
 ## Get network info
 
 **API**:  ```*/api/v1/network```
+
+- Method: GET
+- Usage : Get network info
+- Params : none
 
 **Example**:
 
@@ -535,7 +570,7 @@ API return value:
 }
 ```
 
-这里需要注意， nat_type 和 addrs 都会改变，开始的时候没有公网地址，类型是Unknown 之后会变成Private，再过一段时间反向链接成功的话，就变成Public，同时Addrs里面出现公网地址。
+这里需要注意， nat_type 和 addrs 都会改变，开始的时候没有公网地址，类型是 Unknown 之后会变成 Private，再过一段时间反向链接成功的话，就变成 Public，同时 Addrs 里面出现公网地址。
 
 [>>> back top](#top)
 
@@ -544,6 +579,11 @@ API return value:
 ## Start sync
 
 **API**: ```*/api/v1/group/{group_id}/startsync```
+
+- Method: POST
+- Usage : Start sync for a group
+- Params :
+  - [group_id](#param-group_id)
 
 客户端可以手动触发某个组和组内其他节点同步块
 
@@ -557,8 +597,8 @@ API return value:
 
 | status_code | result | Description|
 | --- | --- | --- |
-| 200 | ```{"GroupId":<GROUP_ID>,"Error":""}```| GROUP_ID的组正常开始同步，同时组的状态会变为SYNCING|
-| 400 | ```{"error":"GROUP_ALREADY_IN_SYNCING"}```| GROUP_ID的组当前正在同步中|
+| 200 | ```{"GroupId":<GROUP_ID>,"Error":""}```| GROUP_ID 的组正常开始同步，同时组的状态会变为 SYNCING|
+| 400 | ```{"error":"GROUP_ALREADY_IN_SYNCING"}```| GROUP_ID 的组当前正在同步中|
 
 [>>> back top](#top)
 
@@ -572,59 +612,108 @@ API return value:
 
 **API**: ```*/api/v1/group/{group_id}/content```
 
+- Method: GET
+- Usage : Get content of a group, all or with senders filter
+- Params :
+  - [group_id](#param-group_id)
+
 **Example**:
+
+#### Requst all content
 
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/content
 ```
 
-API return value:
-
-```json
-[
-    {
-        "TrxId": "da2aaf30-39a8-4fe4-a0a0-44ceb71ac013",
-        "Publisher": "CAISIQOlA37+ghb05D5ZAKExjsto/H7eeCmkagcZ+BY/pjSOKw==",
-        "Content": {
-            "type": "Note",
-            "content": "simple note by aa",
-            "name": "A simple Node id1"
-        },
-        "TypeUrl": "quorum.pb.Object",
-        "TimeStamp": 1629748212762123400
-    }
-]
-```
-
-| Param | Description |
-| --- | --- |
-| "TrxId" | trx_id |
-| "Publisher" | 发布者 |
-| "Content" | string, 内容 |
-| "TypeURL" | string, Type |
-| "TimeStamp" | int64 |
-
-[>>> back top](#top)
-
-<span id="api-post-content-filter"></span>
-
-## Request content
-
-Request content with senders filter:
-
-**Example**:
+#### Request content with senders filter
 
 ```bash
 curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?start=0&num=20"
 ```
 
-Requst all content:
-
-**Example**:
-
-```bash
-curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?start=0&num=20"
+```json
+{
+    "start": 0,
+    "num": 10
+}
 ```
+
+API return value: a list of trxs. 
+
+Note, Person-profile or Like/Dislike Trx.
+
+Note Trx:
+
+- "type" of "Content": "Note"
+- "TypeUrl": "quorum.pb.Object"
+
+```json
+{
+    "TrxId": "da2aaf30-39a8-4fe4-a0a0-44ceb71ac013",
+    "Publisher": "CAISIQOlA37+ghb05D5ZAKExjsto/H7eeCmkagcZ+BY/pjSOKw==",
+    "Content": {
+        "type": "Note",
+        "content": "simple note by aa",
+        "name": "A simple Node id1"
+    },
+    "TypeUrl": "quorum.pb.Object",
+    "TimeStamp": 1629748212762123400
+}
+```
+
+Person Profile Trx:
+
+- "type" of "Content": any of "name"(string),"image"(dict) or "wallet"(list)
+- "TypeUrl": "quorum.pb.Person"
+
+```json
+{
+    "TrxId": "7d5e4f23-42c5-4466-9ae3-ce701dfff2ec",
+    "Publisher": "CAISIQNK024r4gdSjIK3HoQlPbmIhDNqElIoL/6nQiYFv3rTtw==",
+    "Content": {
+        "name": "Lucy",
+        "image": {
+            "mediaType": "image/png",
+            "content": "there will be bytes content of images、"
+        },
+        "wallet": [
+            {
+                "id": "bae95683-eabb-212f-9588-12dadffd0323",
+                "type": "mixin",
+                "name": "mixin messenger"
+            }
+        ]
+    },
+    "TypeUrl": "quorum.pb.Person",
+    "TimeStamp": 1637574058426424900
+}
+```
+
+Like/Dislike Trx:
+
+- "type" of "Content": "Like" or "Dislike"
+- "TypeUrl": "quorum.pb.Object"
+
+```json
+
+{
+    "TrxId": "65de2397-2f35-4a07-9af2-35a920b79882",
+    "Publisher": "CAISIQMbTGdEDACml0BOcBXpWM6FOLDgH7u9VapHJ+wDMZSObw==",
+    "Content": {
+        "id": "02c23edc-be7d-4a32-bbae-fb8e179e9c5b",
+        "type": "Like"
+    },
+    "TypeUrl": "quorum.pb.Object",
+    "TimeStamp": 1639980884426949600
+}
+```
+
+Params
+- "TrxId",[trx_id](#param-trx_id) 
+- "Publisher" ,发布者 
+- "Content", dict, 内容 
+- "TypeURL", string, Type 
+- "TimeStamp" ,int64 
 
 [>>> back top](#top)
 
@@ -636,13 +725,22 @@ nodeA can be `owner node` or `user node`.
 
 **API**: ```*/api/v1/group/content```
 
+- Method: POST
+- Usage : Post content to group
+- Params :
+  - type
+  - object
+  - target
+- API return value:
+  - [trx_id](#param-trx_id)
+
 **Example**:
+
+### Note only content:
 
 ```bash
 curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}'  https://127.0.0.1:8002/api/v1/group/content
 ```
-
-**Params**:
 
 ```json
 {
@@ -659,26 +757,35 @@ curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":
 }
 ```
 
-| Param | Description |
-| --- | --- |
-| "id" | group id |
-| "content" | string |
+### content with images
 
-发布包含图片的内容：TBD
-
-API return value:
+1~4 images , total size less than 200 mb
 
 ```json
 {
-    "trx_id": "f73c94a0-2bb9-4d19-9efc-c9f1f7e87b1d"
+    "type": "Add",
+    "object": {
+        "type": "Note",
+        "content": "Good Morning!\nHave a nice day.",
+        "name": "",
+        "image": [
+            {
+                "mediaType": "image/png",
+                "content": "this is pic content by base64.b64encode(pic-content-bytes).decode(\"utf-8\")",
+                "name": "pic-name init by uuid like f\"{uuid.uuid4()}-{datetime.now().isoformat()}\""
+            }
+        ]
+    },
+    "target": {
+        "id": "d87b93a3-a537-473c-8445-609157f8dab0",
+        "type": "Group"
+    }
 }
 ```
 
 [>>> back top](#top)
 
-<span id="api-post-like"></span>
-
-## Like/Dislike
+### Like/Dislike
 
 **Example**:
 
@@ -688,11 +795,61 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":
 
 **Params**:
 
+- "id" in "object" is [trx_id](#param-trx_id)
+
 ```json
 {
     "type": "Like",
     "object": {
         "id": "578e65d0-9b61-4937-8e7c-f00e2b262753"
+    },
+    "target": {
+        "id": "c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55",
+        "type": "Group"
+    }
+}
+```
+
+[>>> back top](#top)
+
+<span id="api-group-profile"></span>
+
+## Update user profile of a group
+
+any group has its own profile to set.
+
+**API**: ```*/api/v1/group/profile```
+
+- Method: POST
+- Usage : update profile of a group
+- Params :
+  - type
+  - object
+  - target
+- API return value:
+  - [trx_id](#param-trx_id)
+
+**Example**:
+
+
+**Params**:
+
+```json
+{
+    "type": "Update",
+    "person": {
+        "name": "nickname",
+        "image": {
+            "mediaType": "image/png",
+            "content": "there will be bytes content of images"
+        },
+        "wallet": [
+            {
+                "id": "bae95683-eabb-211f-9588-12dadffd0323",
+                "type": "mixin",
+                "name": "mixin messenger"
+            }
+        ]
     },
     "target": {
         "id": "c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55",
@@ -711,7 +868,13 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":
 
 ## Get block info
 
-**API**: ```*/api/v1/block/{GroupId}/{BlockId}```
+**API**: ```*/api/v1/block/{group_id}/{block_id}```
+
+- Method: GET
+- Usage : Get block info
+- Params :
+  - [group_id](#param-group_id)
+  - [block_id](#param-block_id)
 
 **Example**:
 
@@ -746,6 +909,8 @@ API return value:
 }
 ```
 
+"Trxs" is a list. one block can have a number of trxs.
+
 [>>> back top](#top)
 
 <span id="test-trx"></span>
@@ -758,49 +923,52 @@ API return value:
 
 Trx 生命周期，加密和出块过程
 
-**Trx种类**
+**Trx 种类**
 
-所有链上操作均是Trx，客户端相关的Trx有5种
+所有链上操作均是 Trx，客户端相关的 Trx 有 5 种
 
-|Type|Description |Example|
+|Type|Description |More about|
 |---|---|---|
-|POST | user发送组内信息(POST Object)|[Post content](#api-post-content)|
-|ANNOUNCE | user宣布自己在组内的公钥|[Anounce user](#api-post-announce-user)|
-| AUTH | Owner调整组内权限|
-| SCHEMA | Owner管理组内数据schema|[Group config](#test-group-config)|
-| PRODUCER|  Owner管理组内producer|[Producers](#test-producers)|
+| POST | user 发送组内信息(POST Object)|[Post content](#api-post-content)|
+| ANNOUNCE | user 宣布自己在组内的公钥|[Anounce user](#api-post-announce-user)|
+| AUTH | Owner 调整组内权限|
+| SCHEMA | Owner 管理组内数据 schema|[Group config](#test-group-config)|
+| PRODUCER|  Owner 管理组内 producer|[Producers](#test-producers)|
 
-**Trx加密类型**
+<span id="about-trx"></span>
 
-为了确保后加入的用户能正确使用组内功能，根据trx类型，进行如下形式的加密
+**Trx 加密类型**
 
-- POST
-    - 强加密组： 每个发送节点都要根据自己手中的组内成员名单（公钥名单），对POST的内容进行非对称加密，然后发送，收到trx的节点使用自己的公钥对trx进行解密 [private group](#test-private-group)
-    - 弱加密组： 每个发送节点都用seed中的对称加密字串对收发的trx数据进行对称加密
-- 其他trx
-    - 所有其他链相关的协议均使用弱加密组策略（用seed中的对称加密字串进行收发）
+为了确保后加入的用户能正确使用组内功能，根据 trx 类型，进行如下形式的加密：
+
+- POST trx
+  - 强加密组： 每个发送节点都要根据自己手中的组内成员名单（公钥名单），对 POST 的内容进行非对称加密，然后发送，收到 trx 的节点使用自己的公钥对 trx 进行解密 [private group](#test-private-group)
+  - 弱加密组： 每个发送节点都用 seed 中的对称加密字串对收发的 trx 数据进行对称加密
+
+- other trx
+  - 所有其他的链相关的协议均使用弱加密组策略（用 seed 中的对称加密字串进行收发）
 
 **出块流程/共识策略**
 
-一个Trx被push到链上后，根据group的不同共识类型，将被采取不同形式对待：
+一个 Trx 被 push 到链上后，根据 group 的不同共识类型，将被采取不同形式对待。
 
-- 链上共识方式，参见RUM设计文档
+[consensus type](#param-consensus_type)
 
-**Trx状态判断**
+**Trx 状态判断**
 
-同其他链相似，Trx的发送没有重试机制，客户端应自己保存并判断一个Trx的状态，具体过程如下
+同其他链相似，Trx 的发送没有重试机制，客户端应自己保存并判断一个 Trx 的状态，具体过程如下
 
-1. [发送一个trx时，获取trx_id](#api-post-content)
+1. [发送一个 trx ](#api-post-content)时，获取 [trx_id](#param-trx_id)
 
-2. 将这个trx标记为“发送中”
+2. 将这个 trx 标记为“发送中”
 
 3. [查询组内的内容](#api-get-group-content)
 
-4. 设置一个超时，目前建议是30秒，不断查询，直到相同trx_id的内容出现在返回结果中，即可认为trx发送成功（被包含在块中），如上例所示
+4. 设置一个超时，目前建议是 30 秒，不断查询，直到相同 [trx_id](#param-trx_id) 的内容出现在返回结果中，即可认为 trx 发送成功（被包含在块中）
 
-5. 如果超时被触发，没有查到结果，即认为发送trx失败，客户端可以自行处理重发
+5. 如果超时被触发，没有查到结果，即认为发送 trx 失败，客户端可以自行处理重发
 
-* AUTH相关的trx处理方式相同（[黑名单](#test-deniedlist)）
+* AUTH 相关的 trx 处理方式相同（[黑名单](#test-deniedlist)）
 
 [>>> back top](#top)
 
@@ -810,14 +978,17 @@ Trx 生命周期，加密和出块过程
 
 **API**: ```*/api/v1/trx/{group_id}/{trx_id}```
 
+- Method: GET
+- Usage : Get trx info
+- Params :
+  - [group_id](#param-group_id)
+  - [trx_id](#param-trx_id)
+
 **Example**:
 
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d https://127.0.0.1:8003/api/v1/trx/<GROUP_ID>/<TRX_ID>
 ```
-
-* "裸"trx的内容，data部分是加密的(加密类型由组类型决定)
-* 客户端应通过获取Content的API来获取解密之后的内容
 
 API return value:
 
@@ -834,6 +1005,9 @@ API return value:
 }
 ```
 
+* "Data" 是加密的，([encryption type](#param-encryption_type)由组类型决定)
+* 客户端应通过[获取 Content 的 API](#api-get-group-content) 来获取解密之后的内容
+
 [>>> back top](#top)
 
 <span id="test-producers"></span>
@@ -844,36 +1018,35 @@ API return value:
 
 ## About producers
 
-Producer作为组内“生产者”存在，可以代替Owner出块，组内有其他Producer之后，Owenr可以不用保持随时在线，
-在Owner下线的时间内，Producer将代替Owner执行收集Trx并出块的任务
+Producer 作为组内“生产者”存在，可以代替 Owner 出块，组内有其他 Producer 之后，Owenr 可以不用保持随时在线，在 Owner 下线的时间内，Producer 将代替 Owner 执行收集 Trx 并出块的任务
 
-关于Producer的内容，如具体的共识算法，Producer的收益等内容，请参考RUM设计文档
+关于 Producer 的内容，如具体的共识算法、Producer 的收益等内容，请参考 RUM 设计文档
 
-Owner作为组内第一个Producer存在，有其他Producer存在时，如果Owner在线，也将作为一个Producer存在
+Owner 作为组内第一个 Producer 存在，有其它 Producer 存在时，如果 Owner 在线，也将作为一个 Producer 存在
 
-有Producer存在的流程如下
+有 Producer 存在的流程如下：
 
 1. [Owner 创建组](#api-post-group)
 
-2. Owner 作为Producer存在，负责出块
+2. Owner 作为 Producer 存在，负责出块
 
-3. 其他Producer获得组的seed，[加入组](#api-post-group-join)，完成同步
+3. 其他 Producer 获得组的 seed，[加入组](#api-post-group-join)，完成同步
 
-4. Producer用[Announce API](#api-post-announce)将自己作为Producer的意愿告知Owner
+4. Producer 用[Announce API](#api-post-announce)将自己作为 Producer 的意愿告知 Owner
 
-5. 其他节点（包括Owner节点）[查看所有Announce过的Producer](#api-get-announced-producers)
+5. 其他节点（包括 Owner 节点）[查看所有 Announce 过的 Producer](#api-get-announced-producers)
 
-6. [Owner批准某个producer](#api-post-producer-add)
+6. [Owner 批准某个 producer](#api-post-producer-add)
 
-* 请注意，Owner只可以选择在组内[Announce过自己的Producer](#api-post-announce-producer)，并且producer的状态应该为“ADD”，没有Announce过的producer是不可以添加的
+* 请注意，Owner 只可以选择在组内[Announce 过自己的 Producer](#api-post-announce-producer)，并且 producer 的状态应该为“ADD”，没有 Announce 过的 producer 是不可以添加的
 
-7. [查看组内目前的实际批准的producers](#api-get-announced-producers)
+7. [查看组内目前的实际批准的 producers](#api-get-announced-producers)
 
-8. [查看Announce Producer状态](#api-get-announced-producers)，可以看出，经过Owner批准，该Producer的状态（result)变为 APPROVED
+8. [查看 Announce Producer 状态](#api-get-announced-producers)，可以看出，经过 Owner 批准，该 Producer 的状态（result)变为 APPROVED
 
-9. [Owenr删除组内Producer](#api-post-producer-remove)
-    * Owner可以随时删除一个Producer, 不管Producer是否Announce离开
-    * 在实际环境中，Producer完全可以不Announce Remove而直接离开，Owner需要注意到并及时将该Producer从Producer列表中删除
+9. [Owenr 删除组内 Producer](#api-post-producer-remove)
+    * Owner 可以随时删除一个 Producer, 不管 Producer 是否 Announce 离开
+    * 在实际环境中，Producer 完全可以不 Announce Remove 而直接离开，Owner 需要注意到并及时将该 Producer 从 Producer 列表中删除
 
 [>>> back top](#top)
 
@@ -882,6 +1055,14 @@ Owner作为组内第一个Producer存在，有其他Producer存在时，如果Ow
 ## Announce producer
 
 **API**: ```*/api/v1/group/announce```
+
+- Method: POST
+- Usage : Announce producer
+- Params :
+  - [group_id](#param-group_id)
+  - action
+  - type
+  - memo
 
 **Example**:
 
@@ -922,11 +1103,11 @@ API return value:
 
 | Param | Description |
 | --- | --- |
-| "sign_pubkey" | producer在本组的签名pubkey |
+| "sign_pubkey" | producer 在本组的签名 pubkey |
 | "encrypt_pubkey" | 没有使用 |
 | "type" | AS_PRODUCER |
 | "action" | ADD |
-| "sign" | producer的签名 |
+| "sign" | producer 的签名 |
 
 [>>> back top](#top)
 
@@ -935,6 +1116,11 @@ API return value:
 ## Get announced producers
 
 **API**: ```*/api/v1/group/{group_id}/announced/producers```
+
+- Method: GET
+- Usage : Get announced producers
+- Params :
+  - [group_id](#param-group_id)
 
 **Example**:
 
@@ -956,7 +1142,7 @@ API return value:
 ]
 ```
 
-* ACTION 可以有2种状态，“ADD”表示Producer正常，“REMOVE”表示Producer已经announce自己离开改组
+* ACTION 可以有 2 种状态，“ADD”表示 Producer 正常，“REMOVE”表示 Producer 已经 announce 自己离开改组
 
 ```json
 [
@@ -975,8 +1161,8 @@ API return value:
 | Param | Description |
 | --- | --- |
 | "AnnouncedPubkey" | producer pubkey |
-| "AnnouncerSign" | producer的签名 |
-| "Result" | ANNOUNCED or APPROVED，producer刚Announce完毕的状态是ANNOUNCED |
+| "AnnouncerSign" | producer 的签名 |
+| "Result" | ANNOUNCED or APPROVED，producer 刚 Announce 完毕的状态是 ANNOUNCED |
 | "Action" | "ADD" or "REMOVE" |
 | "TimeStamp" | timestamp |
 
@@ -987,6 +1173,13 @@ API return value:
 ## Add producer
 
 **API**: ```*/api/v1/group/producer```
+
+- Method: POST
+- Usage : Add producer
+- Params :
+  - producer_pubkey
+  - [group_id](#param-group_id)
+  - action
 
 **Example**:
 
@@ -1039,6 +1232,11 @@ API return value:
 
 **API**: ```*/api/v1/group/{group_id}/producers```
 
+- Method: GET
+- Usage : Get producers
+- Params :
+  - [group_id](#param-group_id)
+
 **Example**:
 
 ```bash
@@ -1072,9 +1270,9 @@ API return value:
 | "OwnerPubkey" | Owner Pubkey |
 | "OwnerSign" | Owner 签名 |
 | "TimeStamp" | Timestamp|
-| "BlockProduced" | 该Producer目前实际生产的区块数 |
+| "BlockProduced" | 该 Producer 目前实际生产的区块数 |
 
-* 注意，如果ProducerPubkey和OwnerPubkey相同，则说明这是Owner，上例可以看出，Owner目前共生产了3个区块，Producer `<CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ>` 还没有生产区块
+* 注意，如果 ProducerPubkey 和 OwnerPubkey 相同，则说明这是 Owner，上例可以看出，Owner 目前共生产了 3 个区块，Producer `<CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ>` 还没有生产区块
 
 [>>> back top](#top)
 
@@ -1083,6 +1281,13 @@ API return value:
 ## Owner remove producer
 
 **API**: ```*/api/v1/group/producer```
+
+- Method: POST
+- Usage : Owner remove producer
+- Params :
+  - producer_pubkey
+  - [group_id](#param-group_id)
+  - action
 
 **Example**:
 
@@ -1108,6 +1313,13 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 
 ## Get deniedlist
 
+**API**: ```*/api/v1/group/{group_id}/deniedlist```
+
+- Method: GET
+- Usage : Get deniedlist
+- Params :
+  - [group_id](#param-group_id)
+
 **Example**:
 
 ```bash
@@ -1132,14 +1344,14 @@ API return value:
 ]
 ```
 
-数组，包含该组已经被Owner屏幕的用户id列表
+数组，包含该组已经被 Owner 屏幕的用户 id 列表
 
 | Param | Description |
 | --- | --- |
 | "GroupId" |
-| "PeerId" | 被屏蔽的用户id |
+| "PeerId" | 被屏蔽的用户 id |
 | "GroupOwnerPubkey" | public key of group owner (ecdsa) |
-| "GroupOwnerSign" | 组拥有者的签名（可通过pubkey验证） |
+| "GroupOwnerSign" | 组拥有者的签名（可通过 pubkey 验证） |
 | "Timestamp" | 操作执行的时间戳 |
 | "Acition" | "add" |
 | "memo" |
@@ -1151,6 +1363,13 @@ API return value:
 ## Add deniedlist
 
 **API**: ```*/api/v1/group/deniedlist```
+
+- Method: POST
+- Usage : Add deniedlist
+- Params :
+  - [peer_id](#param-peer_id)
+  - [group_id](#param-group_id)
+  - action
 
 **Example**:
 
@@ -1173,13 +1392,13 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86
 | "action" | "add" |
 | "memo" | memo |
 
-说明：只有创建该组的节点才能执行此操作，也就是需要group_owner的权限，添加后会通过block广播至组中其他节点
+说明：只有创建该组的节点才能执行此操作，也就是需要 group_owner 的权限，添加后会通过 block 广播至组中其他节点
 
-注意：黑名单操作分为2种情况
+注意：黑名单操作分为 2 种情况
 
-1. 被组屏蔽的节点发出的trx会被producer或拒绝拒绝，因此无法向节点中发布内容，但是因为新块是通过广播发送的，此时该节点仍可以获得组中得新块（也即只要节点不退出，仍然可以看到新内容)
+1. 被组屏蔽的节点发出的 trx 会被 producer 或拒绝拒绝，因此无法向节点中发布内容，但是因为新块是通过广播发送的，此时该节点仍可以获得组中得新块（也即只要节点不退出，仍然可以看到新内容)
 
-2. 被组屏蔽的节点如果退出并再次打开，此时发送的ASK_NEXT请求将被Owner或Producer拒绝，因此无法获取节点中最新的块
+2. 被组屏蔽的节点如果退出并再次打开，此时发送的 ASK_NEXT 请求将被 Owner 或 Producer 拒绝，因此无法获取节点中最新的块
 
 API return value:
 
@@ -1199,7 +1418,7 @@ API return value:
 
 | Param | Description |
 | --- | --- |
-| "sign" | 组拥有者的签名（可通过pubkey验证） |
+| "sign" | 组拥有者的签名（可通过 pubkey 验证） |
 | "memo" | "Add" |
 
 [>>> back top](#top)
@@ -1207,6 +1426,15 @@ API return value:
 <span id="api-post-deniedlist-del"></span>
 
 ## Del deniedlist
+
+**API**: ```*/api/v1/group/deniedlist```
+
+- Method: POST
+- Usage : Del deniedlist
+- Params :
+  - [peer_id](#param-peer_id)
+  - [group_id](#param-group_id)
+  - action
 
 **Example**:
 
@@ -1223,10 +1451,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86
     "action": "del"
 }
 ```
-
-| Param | Description |
-| --- | --- |
-| "action" | "del" |
 
 API return value:
 
@@ -1246,7 +1470,7 @@ API return value:
 
 | Param | Description |
 | --- | --- |
-| "sign" | 组拥有者的签名（可通过pubkey验证） |
+| "sign" | 组拥有者的签名（可通过 pubkey 验证） |
 | "action" | "del" |
 | "memo" | "" |
 
@@ -1261,6 +1485,16 @@ API return value:
 ## Add group config
 
 **API**:  ```*/api/v1/group/config```
+
+- Method: POST
+- Usage : Add group config
+- Params :
+  - [group_id](#param-group_id)
+  - action
+  - name
+  - type
+  - value
+  - memo
 
 **Example**:
 
@@ -1286,12 +1520,12 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_
 | "action" | add or del |
 | "name" | 配置项的名称 |
 | "type" | 配置项的类型，可选值为 "int", "bool", "string" |
-| "value" | 配置项的值，必须与type相对应 |
+| "value" | 配置项的值，必须与 type 相对应 |
 | "memo" | memo |
 
 权限：
 
-只有group owner可以调用该API
+只有 group owner 可以调用该 API
 
 调用后，通过块同步，组内所有节点获得该配置
 
@@ -1307,7 +1541,7 @@ API return value:
 
 | Param | Description |
 | --- | --- |
-| "sign" | owner对该trx的签名 |
+| "sign" | owner 对该 trx 的签名 |
 
 [>>> back top](#top)
 
@@ -1316,6 +1550,11 @@ API return value:
 ## Get group config keylist
 
 **API**:  ```*/api/v1/group/{group_id}/config/keylist```
+
+- Method: GET
+- Usage : Get group config keylist
+- Params :
+  - [group_id](#param-group_id)
 
 **Example**:
 
@@ -1338,7 +1577,7 @@ API return value:
 **Params**:
 
 | Param | Description |
-| --- | --- | 
+| --- | --- |
 | "name" | 配置项的名称 |
 | "type" | 配置项的数据类型 |
 
@@ -1349,6 +1588,12 @@ API return value:
 ## Get group config keyname
 
 **API**:  ```*/api/v1/group/{group_id}/config/{KEY_NAME}```
+
+- Method: GET
+- Usage : Get group config keyname
+- Params :
+  - [group_id](#param-group_id)
+  - key_name
 
 **Example**:
 
@@ -1380,7 +1625,16 @@ API return value:
 
 **API**:  ```*/api/v1/group/schema```
 
-添加组内app的schema json
+- Method: POST
+- Usage : Add group schema
+- Params :
+  - [group_id](#param-group_id)
+  - rule
+  - type
+  - aciton
+  - memo
+
+添加组内 app 的 schema json
 
 **Example**:
 
@@ -1405,6 +1659,11 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","ty
 ## Get group schema
 
 **API**:  ```*/api/v1/group/{group_id}/schema```
+
+- Method: GET
+- Usage : Get group schema
+- Params :
+  - [group_id](#param-group_id)
 
 **Example**:
 
@@ -1442,6 +1701,14 @@ API return value:
 
 **API**: ```*/api/v1/group/announce```
 
+- Method: POST
+- Usage : Announce user
+- Params :
+  - [group_id](#param-group_id)
+  - action, "add" or "remove"
+  - type, "user"
+  - memo
+
 **Example**:
 
 ```bash
@@ -1458,12 +1725,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81
     "memo": "invitation code:a423b3"
 }
 ```
-
-| Param | Description |
-| --- | --- |
-| "action" | add or remove |
-| "type" | user |
-| "memo" | memo |
 
 API return value:
 
@@ -1483,8 +1744,8 @@ API return value:
 | --- | --- |
 | "sign_pubkey" | user's sign pubkey |
 | "encrypt_pubkey" | user's encrypt pubkey |
-| "type" | AS_USER |
-| "action" | ADD |
+| "type" | "AS_USER" |
+| "action" | "ADD" |
 | "sign" | user's signature |
 
 [>>> back top](#top)
@@ -1494,6 +1755,11 @@ API return value:
 ## Get announced users
 
 **API**: ```*/api/v1/group/{group_id}/announced/users```
+
+- Method: GET
+- Usage : get announced users
+- Params :
+  - [group_id](#param-group_id)
 
 **Example**:
 
@@ -1530,6 +1796,13 @@ API return value:
 
 **API**: ```*/api/v1/group/user```
 
+- Method: POST
+- Usage : owner approve a user
+- Params :
+  - [user_pubkey](#param-user_pubkey)
+  - [group_id](#param-group_id)
+  - action, "add" or "remove"
+
 **Example**:
 
 ```bash
@@ -1545,11 +1818,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"user_pubkey":"CAISIQOx
     "action": "add"
 }
 ```
-
-| Param | Description |
-| --- | --- |
-| "action" | "add" or "remove" |
-| "memo" | optional |
 
 API return value:
 
@@ -1568,8 +1836,6 @@ API return value:
 | Param | Description |
 | --- | --- |
 | "sign" | signature |
-| "action" | Add or REMOVE |
-| "memo" | memo |
 
 [>>> back top](#top)
 
@@ -1581,36 +1847,50 @@ API return value:
 
 ## group_id
 
+string
+
+可以通过 [API: List all groups](#api-get-groups) 查询 node 所加入的所有 groups （包括自己创建的） 信息
+
 <span id="param-group_name"></span>
 
 ## group_name
 
 string, group name
 
+create a group 时的必填字段
+
+可以通过 [API: List all groups](#api-get-groups) 查询 node 所加入的所有 groups （包括自己创建的） 信息
+
 <span id="param-trx_id"></span>
 
 ## trx_id/TrxId
 
-可以通过gettrx API获取具体内容
+可以通过 gettrx API 获取具体内容
 
 <span id="param-block_id"></span>
 
 ## block_id/BlockId
 
+[API: Get Block Info](#api-get-block)
+
+one block can have a number of trxs.
+
 <span id="param-node_id"></span>
 
-## node_id/user_id
+## node_id
 
-节点的node_id
+[API: Get Node Info](#api-get-node)
 
-* 之前的user_id取消了(实际上是peer_id)
-* 现在只返回真正的node_id，前端可以用pubkey来当user_id（唯一标识）
+节点的 node_id
+
+* 之前的 user_id 取消了(实际上是 peer_id)
+* 前端可以用 pubkey 来当 user_id（唯一标识）
 
 <span id="param-peer_id"></span>
 
 ## peer_id
 
-peer_id (可以通过节点信息API获得) 
+peer_id (可以通过节点信息 API 获得)
 
 <span id="param-owner_pubkey"></span>
 
@@ -1620,28 +1900,46 @@ peer_id (可以通过节点信息API获得)
 
 owner_pubkey: public key of group owner (ecdsa)
 
-user_pubkey: public key of group user * 
+user_pubkey: public key of group user *
 
 When join a new group, a user public key will be created for this group, for group owner, user_pubkey is as same as owner_pubkey
 
-user_pubkey是用户在组内的唯一身份标识，也用来进行签名
+user_pubkey 是用户在组内的唯一身份标识，也用来进行签名
 
 <span id="param-group_status"></span>
 
 ## group_status
 
-status of group, a group can has 3 different status
+status of group, a group can have 3 different status:
 
     - SYNCING
     - SYNC_FAILED
     - IDLE
 
-for detail please check RUM design document
+for detail please check RUM design document.
 
 <span id="param-app_key"></span>
 
 ## app_key
 
 string, group app key, requested, length should between 5 to 20
+
+<span id="param-consensus_type"></span>
+
+## consensus_type
+
+string, group consensus type, must be "poa", requested
+
+"poa" or "pos" or "pow", "poa" only for now
+
+链上共识方式，参见 RUM 设计文档
+
+<span id="param-encryption_type"></span>
+
+## encryption_type
+
+string, group encryption type, must be "public", requested
+
+encryption type of group, "public" or "private" 
 
 [>>> back top](#top)
