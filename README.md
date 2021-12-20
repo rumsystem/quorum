@@ -70,7 +70,7 @@ A peer-to-peer system must provide economic incentive to minimize the Free-rider
 
 ### Build:
 
-Build the quorum binary by running the build.sh script.
+Build the quorum binary by running the [./scripts/build.sh](./scripts/build.sh) script.
 
 ### Build API Document:
 
@@ -83,8 +83,10 @@ Open browser with http://localhost:1323/swagger/index.html
 
 ### Run a RUM peer
 
+<span id="bootstrap_peer"></span>
+
 ```sh
-./quorum -peername mypeer -listen /ip4/0.0.0.0/tcp/7000  -apilisten 127.0.0.1:8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAkvYJbiKnwzFybbfzNxtuHFEFu1guV9nFcTiZNSYz8kUWf -configdir ~/rumdata/peer5config -datadir ~/rumdata/peer5data -keystoredir /rumdata/peer5keystore -debug true
+./quorum -peername mypeer -listen /ip4/0.0.0.0/tcp/7000  -apilisten 127.0.0.1:8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir ~/rumdata/peer5/config -datadir ~/rumdata/peer5/data -keystoredir /rumdata/peer5/keystore -debug true
 
 OPTIONS:
    -listen      a multiaddress for the peer service listening
@@ -266,12 +268,14 @@ Developers may need [RUM Development Tutorial](./Tutorial.md).
 
 ### Run a RUM peer on server
 
-1. Build the quorum binary by running the build.sh script.
+1. Build the quorum binary by running the [./scripts/build.sh](./scripts/build.sh) script.
 2. Add a shell script to run the peer:
 
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAkvYJbiKnwzFybbfzNxtuHFEFu1guV9nFcTiZNSYz8kUWf -configdir /var/data/your_peer_name_5config -datadir /var/data/your_peer_name_data -keystoredir /var/data/your_peer_name_keystore
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_name_5config -datadir /var/data/your_peer_name_data -keystoredir /var/data/your_peer_name_keystore
 ```
+
+[view OPTIONS](#bootstrap_peer)
 
 3. Run the shell script:
 
