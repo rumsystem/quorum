@@ -14,7 +14,7 @@ import (
 )
 
 // quit channel
-var qChan = make(chan struct{}, 0)
+var qChan chan struct{} = nil
 
 func RegisterJSFunctions() {
 	js.Global().Set("SetDebug", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -44,6 +44,11 @@ func RegisterJSFunctions() {
 			return ret, nil
 		}
 		return Promisefy(handler)
+	}))
+
+	js.Global().Set("IsQuorumRunning", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		ret := qChan != nil
+		return js.ValueOf(ret).Bool()
 	}))
 
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
