@@ -6,6 +6,7 @@ wasm demo
 export GOOS=js
 export GOARCH=wasm
 export GO111MODULE=on
+export GIT_COMMIT=$(git rev-parse --short HEAD)
 cp $(go env GOROOT)/misc/wasm/wasm_exec.js .
 ```
 
