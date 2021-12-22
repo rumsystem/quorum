@@ -93,6 +93,7 @@ func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 	}
 
 	go psconn.handleExchangeChannel()
+	//TODO: add a timer to leave the exchange channel
 	return nil
 }
 
@@ -122,12 +123,6 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 	go psconn.handleGroupChannel()
 	return nil
 }
-
-//func (psconn *P2pPubSubConn) LeaveChannel(cId string) {
-//	psconn.Subscription.Cancel()
-//	psconn.Topic.Close()
-//	channel_log.Infof("Leave channel <%s> done", cId)
-//}
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
 	return psconn.Topic.Publish(psconn.Ctx, data)

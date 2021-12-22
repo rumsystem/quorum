@@ -475,6 +475,11 @@ func (chain *Chain) createSyncTrxMgr() {
 		return
 	}
 
+	err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx, 3)
+	if err != nil {
+		peerid := "16Uiu2HAm4U6Ymx5nNifPVBgn7ZaofXGmN9EEFtay7KjWtq64gZcM" //FOR TEST
+		nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerid, chain.syncChannelId)
+	}
 	syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(chain.syncChannelId, chain)
 	chain_log.Infof("<%s> Create and init group syncTrxMgr", chain.groupId)
 	var syncTrxMgr *TrxMgr
