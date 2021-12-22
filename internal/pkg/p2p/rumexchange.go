@@ -227,6 +227,9 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.SessionIfConn) error {
 	peersig := &quorumpb.PeerSig{PeerId: []byte(r.Host.ID())}
 	peers := r.Host.Network().Peers()
+	if len(ifconnmsg.Peersroutes) >= 3 {
+		return fmt.Errorf("reatch max msg pass level: %d", len(ifconnmsg.Peersroutes))
+	}
 	ifconnmsg.Peersroutes = append(ifconnmsg.Peersroutes, peersig)
 
 	rumexchangelog.Debugf("stream routes append peerid: %s", r.Host.ID())
@@ -339,19 +342,6 @@ func (nn *netNotifiee) RexService() *RexService {
 
 func (nn *netNotifiee) Connected(n network.Network, v network.Conn) {
 	rumexchangelog.Debugf("rex Connected: %s", v.RemotePeer())
-	//TODO: add stream to r.streams map
-	// but how to get the stream? from network.Network?
-	//p := v.RemotePeer()
-	//r := nn.RexService()
-	//_, ok := r.streams[p]
-	//if ok == false {
-	//	streams := v.GetStreams()
-	//	if len(streams) > 0 {
-	//		rumexchangelog.Debugf("new rex connected add stream to cache: %s", p)
-	//		r.streams[p] = &streams[0]
-	//	}
-	//}
-
 }
 func (nn *netNotifiee) Disconnected(n network.Network, v network.Conn) {
 	rumexchangelog.Debugf("rex Disconnected: %s", v.RemotePeer())

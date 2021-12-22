@@ -33,6 +33,7 @@ type Node struct {
 	Ddht             *dual.DHT
 	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
+	PubSubConnMgr    *pubsubconn.PubSubConnMgr
 }
 
 func (node *Node) eventhandler(ctx context.Context) {
@@ -58,46 +59,21 @@ func (node *Node) eventhandler(ctx context.Context) {
 }
 
 func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
-	psconnmap := map[string]*pubsubconn.P2pPubSubConn{}
 	for {
 		select {
 		case rexnoti, ok := <-ch:
 			if ok {
 				if rexnoti.Action == JoinChannel {
-					_, ok := psconnmap[rexnoti.ChannelId]
-					if ok == false {
-						userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
-						err := userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
-						if err == nil {
-							psconnmap[rexnoti.ChannelId] = userPsconn
-						}
+					psconn := node.PubSubConnMgr.GetPubSubConnByChannelId(rexnoti.ChannelId, nil)
+					if psconn != nil {
+						//TODO: data can be sync in this channel
+						psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
+					} else {
+						networklog.Errorf("Can't get pubsubconn %s from PubSubConnMgr", rexnoti.ChannelId)
 					}
-
-					// ok Publish message to the channel
-					psconn := psconnmap[rexnoti.ChannelId]
-
-					psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
 				} else {
 					networklog.Errorf("recv unknown notification %s from: %s", rexnoti, rexnoti.ChannelId)
 				}
-				//} //Test code
-				//else if rexnoti.Action == JoinChannelAndPublishTest {
-
-				//	psconn, ok := psconnmap[rexnoti.ChannelId]
-				//	if ok == false {
-				//		userPsconn := pubsubconn.InitP2pPubSubConn(ctx, node.Pubsub, "default")
-				//		err := userPsconn.JoinChannelAsExchange(rexnoti.ChannelId)
-				//		if err == nil {
-				//			psconnmap[rexnoti.ChannelId] = userPsconn
-				//		}
-				//	}
-				//	psconn = psconnmap[rexnoti.ChannelId]
-				//	for i := 0; i < 10; i++ {
-				//		networklog.Infof("public ping msg to channel %s from: %s", rexnoti.ChannelId, node.Host.ID())
-				//		psconn.Publish([]byte("ping"))
-				//		time.Sleep(10 * time.Second)
-				//	}
-
 			}
 
 		case <-ctx.Done():

@@ -31,9 +31,10 @@ import (
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 
-func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	var pstore peerstore.Peerstore
@@ -158,7 +159,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 	psping.EnablePing()
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
+	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
+
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
 
 	//reconnect peers
 

@@ -284,7 +284,7 @@ func mainRet(config cli.Config) int {
 
 	if config.IsBootstrap == true {
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), config.ListenAddresses, config.JsonTracer)
+		node, err := p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), config.ListenAddresses, config.JsonTracer)
 
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -305,8 +305,9 @@ func mainRet(config cli.Config) int {
 		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
 	} else {
+		nodename := "default"
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), config.ListenAddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), config.ListenAddresses, config.JsonTracer)
 		_ = node.Bootstrap(ctx, config)
 
 		for _, addr := range node.Host.Addrs() {
@@ -321,14 +322,13 @@ func mainRet(config cli.Config) int {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
-		//go node.RumExchange.ConnectRex(ctx, 3)
 		datapath := config.DataDir + "/" + config.PeerName
 		dbManager, err := createDb(datapath)
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		nodectx.InitCtx(ctx, "default", node, dbManager, "pubsub", GitCommit)
+		nodectx.InitCtx(ctx, nodename, node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid

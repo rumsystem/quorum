@@ -20,6 +20,54 @@ type P2pPubSubConn struct {
 	Ctx          context.Context
 }
 
+type PubSubConnMgr struct {
+	Ctx      context.Context
+	ps       *pubsub.PubSub
+	nodename string
+	connmgr  map[string]*P2pPubSubConn
+}
+
+var pubsubconnmgr *PubSubConnMgr
+
+func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) *PubSubConnMgr {
+	if pubsubconnmgr == nil {
+		connmap := map[string]*P2pPubSubConn{}
+		pubsubconnmgr = &PubSubConnMgr{ctx, ps, nodename, connmap}
+	}
+	return pubsubconnmgr
+}
+func GetPubSubConnMgr() *PubSubConnMgr {
+	return pubsubconnmgr
+}
+
+func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
+	_, ok := pscm.connmgr[channelId]
+	if ok == false {
+		psconn := &P2pPubSubConn{Ctx: pscm.Ctx, ps: pscm.ps, nodename: pscm.nodename}
+		if chain != nil {
+			psconn.JoinChannel(channelId, chain)
+		} else {
+			psconn.JoinChannelAsExchange(channelId)
+		}
+		pscm.connmgr[channelId] = psconn
+	}
+	return pscm.connmgr[channelId]
+}
+
+func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
+	_, ok := pscm.connmgr[channelId]
+	if ok == true {
+		psconn := pscm.connmgr[channelId]
+		psconn.Subscription.Cancel()
+		psconn.Topic.Close()
+		delete(pscm.connmgr, channelId)
+		channel_log.Infof("Leave channel <%s> done", channelId)
+	} else {
+		channel_log.Infof("psconn channel <%s> not exist", channelId)
+	}
+
+}
+
 func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
 	return &P2pPubSubConn{Ctx: ctx, ps: ps, nodename: nodename}
 }
@@ -45,6 +93,7 @@ func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 	}
 
 	go psconn.handleExchangeChannel()
+	//TODO: add a timer to leave the exchange channel
 	return nil
 }
 
@@ -53,7 +102,6 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 	psconn.chain = chain
 
 	var err error
-	//channel.Topic, err = GetNodeCtx().node.Pubsub.Join(cId)
 	//TODO: share the ps
 	psconn.Topic, err = psconn.ps.Join(cId)
 	if err != nil {
@@ -74,12 +122,6 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 
 	go psconn.handleGroupChannel()
 	return nil
-}
-
-func (psconn *P2pPubSubConn) LeaveChannel(cId string) {
-	psconn.Subscription.Cancel()
-	psconn.Topic.Close()
-	channel_log.Infof("Leave channel <%s> done", cId)
 }
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
