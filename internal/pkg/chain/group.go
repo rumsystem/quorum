@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+
 	//"fmt"
 	"time"
 
@@ -113,7 +114,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
 
-	grp.ChainCtx.StopSync()
+	grp.StopSync()
 	//leave pubsub channel
 	grp.ChainCtx.LeaveChannel()
 	group_log.Infof("Group <%s> leaved", grp.Item.GroupId)
@@ -201,6 +202,31 @@ func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error
 	return nodectx.GetDbMgr().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
 }
 
+func (grp *Group) GetGroupConfigKeyList() (keyName []string, itemType []string, err error) {
+	group_log.Debugf("<%s> GetGroupConfigKeyList called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetGroupConfigKey(grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetGroupConfigItem(keyName string) (*quorumpb.GroupConfigItem, error) {
+	group_log.Debugf("<%s> GetGroupConfigKeyList called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetGroupConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetGroupConfigItemBool(keyName string) (bool, error) {
+	group_log.Debugf("<%s> GetGroupConfigItemBool called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetGroupConfigItemBool(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetGroupConfigItemInt(keyName string) (int, error) {
+	group_log.Debugf("<%s> GetGroupConfigItemInt called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetGroupConfigItemInt(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetGroupConfigItemString(keyName string) (string, error) {
+	group_log.Debugf("<%s> GetGroupConfigItemString called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetGroupConfigItemString(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+}
+
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)
 	return grp.ChainCtx.Consensus.User().UpdAnnounce(item)
@@ -238,6 +264,11 @@ func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
 func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	group_log.Debugf("<%s> UpdSchema called", grp.Item.GroupId)
 	return grp.ChainCtx.Consensus.User().UpdSchema(item)
+}
+
+func (grp *Group) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error) {
+	group_log.Debugf("<%s> UpdGroupConfig called", grp.Item.GroupId)
+	return grp.ChainCtx.Consensus.User().UpdGroupConfig(item)
 }
 
 func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {

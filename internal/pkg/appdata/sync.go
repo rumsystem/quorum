@@ -75,7 +75,7 @@ func (appsync *AppSync) RunSync(groupid string, lastBlockId string, newBlockId s
 
 		}
 	} else {
-		appsynclog.Errorf("db read err: %s", err)
+		appsynclog.Errorf("db read err: %s, lastBlockId: %s, newBlockId: %s", err, lastBlockId, newBlockId)
 	}
 }
 

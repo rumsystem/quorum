@@ -605,6 +605,9 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)
+		case quorumpb.TrxType_GROUP_CONFIG:
+			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateGroupConfig(trx, producer.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)

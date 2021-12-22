@@ -121,7 +121,7 @@ func (s *QSIndexDB) Delete(key []byte) error {
 }
 
 func (s *QSIndexDB) Get(key []byte) ([]byte, error) {
-	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	txn, _ := s.db.Transaction(idb.TransactionReadOnly, s.name)
 	store, _ := txn.ObjectStore(s.name)
 	req, err := store.Get(BytesToArrayBuffer(key))
 	if err != nil {
@@ -162,6 +162,52 @@ func (s *QSIndexDB) PrefixDelete(prefix []byte) error {
 		_, err = store.Delete(key)
 		if err != nil {
 			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return txn.Await(s.ctx)
+}
+
+func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) error {
+	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	store, _ := txn.ObjectStore(s.name)
+	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
+	if err != nil {
+		return err
+	}
+	cursorRequest, err := store.OpenCursorRange(kRange, idb.CursorNext)
+	if err != nil {
+		return err
+	}
+
+	err = cursorRequest.Iter(s.ctx, func(cursor *idb.CursorWithValue) error {
+		key, err := cursor.Key()
+		if err != nil {
+			return err
+		}
+		k := ArrayBufferToBytes(key)
+		if !bytes.HasPrefix(k, prefix) {
+			return nil
+		}
+		value, err := cursor.Value()
+		if err != nil {
+			return err
+		}
+		v := ArrayBufferToBytes(value)
+		del, err := fn(k, v, err)
+		if err != nil {
+			return err
+		}
+		if del {
+			_, err = store.Delete(key)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})

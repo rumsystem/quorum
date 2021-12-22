@@ -5,6 +5,8 @@ package wasm
 
 import (
 	"syscall/js"
+
+	"github.com/rumsystem/quorum/pkg/wasm/exception"
 )
 
 func Promisefy(fn func() (map[string]interface{}, error)) js.Value {
@@ -12,6 +14,12 @@ func Promisefy(fn func() (map[string]interface{}, error)) js.Value {
 		resolve := args[0]
 		reject := args[1]
 		go func() {
+			panicHandler := func(err error) {
+				if err == nil {
+					reject.Invoke(err.Error())
+				}
+			}
+			defer exception.CatchHandler(panicHandler)
 			ret, err := fn()
 			if err != nil {
 				reject.Invoke(err.Error())

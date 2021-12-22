@@ -43,6 +43,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/announce", h.Announce)
 		r.POST("/v1/group/schema", h.Schema)
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
+		r.POST("/v1/group/config", h.MgrGrpConfig)
 		r.GET("/v1/backup", h.Backup)
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
@@ -58,6 +59,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
 		r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
 		r.GET("/v1/group/:group_id/app/schema", h.GetGroupAppSchema)
+		r.GET("/v1/group/:group_id/config/keylist", h.GetGroupConfigKey)
+		r.GET("/v1/group/:group_id/config/:key", h.GetGroupConfigItem)
 
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/apply", apph.ApplyToken)

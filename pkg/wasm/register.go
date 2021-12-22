@@ -10,12 +10,19 @@ import (
 
 	"github.com/rumsystem/quorum/pkg/wasm/api"
 	quorumAPI "github.com/rumsystem/quorum/pkg/wasm/api"
+	"github.com/rumsystem/quorum/pkg/wasm/logger"
 )
 
 // quit channel
 var qChan = make(chan struct{}, 0)
 
 func RegisterJSFunctions() {
+	js.Global().Set("SetDebug", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		enableDebug := args[0].Bool()
+		logger.SetDebug(enableDebug)
+		return true
+	}))
+
 	js.Global().Set("StartQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if qChan == nil {
 			qChan = make(chan struct{}, 0)
@@ -38,6 +45,7 @@ func RegisterJSFunctions() {
 		}
 		return Promisefy(handler)
 	}))
+
 	js.Global().Set("StopQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if qChan != nil {
 			close(qChan)
