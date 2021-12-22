@@ -15,7 +15,7 @@ import (
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
+	//pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -402,17 +402,20 @@ func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error)
 		timer.Reset(CLOSE_CONN_TIMER * time.Second)
 	} else {
 		molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
-		syncPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
-		syncPsconn.JoinChannel(channelId, producer.cIface.GetChainCtx())
+
+		syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, producer.cIface.GetChainCtx())
+		//syncPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
+		//syncPsconn.JoinChannel(channelId, producer.cIface.GetChainCtx())
 		syncTrxMgr = &TrxMgr{}
 		syncTrxMgr.Init(producer.grpItem, syncPsconn)
 		producer.trxMgr[channelId] = syncTrxMgr
 
 		molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
 		timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-			if syncTrxMgr, ok := producer.trxMgr[channelId]; ok {
+			if _, ok := producer.trxMgr[channelId]; ok {
 				molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
-				syncTrxMgr.LeaveChannel(channelId)
+				//syncTrxMgr.LeaveChannel(channelId)
+				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
 				delete(producer.trxMgr, channelId)
 			}
 		})

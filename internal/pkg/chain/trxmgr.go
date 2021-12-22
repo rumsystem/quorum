@@ -46,9 +46,9 @@ func (trxMgr *TrxMgr) SetNodeName(nodename string) {
 	trxMgr.nodename = nodename
 }
 
-func (trxMgr *TrxMgr) LeaveChannel(cId string) {
-	trxMgr.psconn.LeaveChannel(cId)
-}
+//func (trxMgr *TrxMgr) LeaveChannel(cId string) {
+//	trxMgr.psconn.LeaveChannel(cId)
+//}
 
 func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx

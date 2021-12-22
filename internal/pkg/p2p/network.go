@@ -33,6 +33,7 @@ type Node struct {
 	Ddht             *dual.DHT
 	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
+	PubSubConnMgr    *pubsubconn.PubSubConnMgr
 }
 
 func (node *Node) eventhandler(ctx context.Context) {
