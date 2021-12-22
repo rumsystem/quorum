@@ -273,6 +273,38 @@ func (trxMgr *TrxMgr) SendReqBlockResp(req *quorumpb.ReqBlock, block *quorumpb.B
 	return trxMgr.sendTrx(trx)
 }
 
+func (trxMgr *TrxMgr) SendAskPeerId(req *quorumpb.AskPeerId) error {
+	trxmgr_log.Debugf("<%s> SendAskPeerId called", trxMgr.groupId)
+	bItemBytes, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_ASK_PEERID, bItemBytes)
+	if err != nil {
+		trxmgr_log.Warningf(err.Error())
+		return err
+	}
+
+	return trxMgr.sendTrx(trx)
+}
+
+func (trxMgr *TrxMgr) SendAskPeerIdResp(req *quorumpb.AskPeerIdResp) error {
+	trxmgr_log.Debugf("<%s> SendAskPeerIdResp called", trxMgr.groupId)
+	bItemBytes, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_ASK_PEERID_RESP, bItemBytes)
+	if err != nil {
+		trxmgr_log.Warningf(err.Error())
+		return err
+	}
+
+	return trxMgr.sendTrx(trx)
+}
+
 func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
 	trxmgr_log.Debugf("<%s> SendReqBlockForward called", trxMgr.groupId)
 
@@ -289,7 +321,7 @@ func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
 
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_REQ_BLOCK_FORWARD, bItemBytes)
 	if err != nil {
-		group_log.Warningf(err.Error())
+		trxmgr_log.Warningf(err.Error())
 		return err
 	}
 

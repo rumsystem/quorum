@@ -13,4 +13,5 @@ type Producer interface {
 	GetRecentSnapshot(trx *quorumpb.Trx) error
 	AddProducedBlock(trx *quorumpb.Trx) error
 	AddBlock(block *quorumpb.Block) error
+	HandleAskPeerID(trx *quorumpb.Trx) error
 }

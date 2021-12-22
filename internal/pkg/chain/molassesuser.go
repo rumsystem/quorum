@@ -63,6 +63,10 @@ func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]stri
 	return user.cIface.GetProducerTrxMgr().PostAny(content, encryptto...)
 }
 
+func (user *MolassesUser) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
+	return nil
+}
+
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 
@@ -274,6 +278,9 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		case quorumpb.TrxType_SCHEMA:
 			molauser_log.Debugf("<%s> apply SCHEMA trx", user.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+		case quorumpb.TrxType_ASK_PEERID_RESP:
+			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
+			user.HandleAskPeerIdResp(trx)
 		default:
 			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}

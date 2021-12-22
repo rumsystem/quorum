@@ -421,6 +421,11 @@ func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error)
 	return syncTrxMgr, nil
 }
 
+func (producer *MolassesProducer) HandleAskPeerID(trx *quorumpb.Trx) error {
+	molaproducer_log.Debugf("<%s> HandleAskPeerID called", producer.groupId)
+	return nil
+}
+
 func (producer *MolassesProducer) GetRecentSnapshot(trx *quorumpb.Trx) error {
 	return nil
 }
@@ -603,6 +608,9 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)
+		case quorumpb.TrxType_ASK_PEERID:
+			molaproducer_log.Debugf("<%s> handle ASK_PEERID trx", producer.groupId)
+			producer.HandleAskPeerID(trx)
 		default:
 			molaproducer_log.Warningf("<%s> unsupported msgType <%s>", producer.groupId, trx.Type)
 		}

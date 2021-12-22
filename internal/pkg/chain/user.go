@@ -14,4 +14,5 @@ type User interface {
 	UpdUser(item *quorumpb.UserItem) (string, error)
 	PostToGroup(content proto.Message, encryptto ...[]string) (string, error)
 	AddBlock(block *quorumpb.Block) error
+	HandleAskPeerIdResp(trx *quorumpb.Trx) error
 }
