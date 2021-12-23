@@ -306,8 +306,8 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 	}
 }
 
-func (s *QSIndexDB) Foreach(fn func([]byte, []byte, error) error) error {
-	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+func (s *QSIndexDB) doForeach(mode idb.TransactionMode, fn func([]byte, []byte, error) error) error {
+	txn, _ := s.db.Transaction(mode, s.name)
 	store, _ := txn.ObjectStore(s.name)
 	cursorRequest, err := store.OpenCursor(idb.CursorNext)
 	if err != nil {
@@ -328,6 +328,14 @@ func (s *QSIndexDB) Foreach(fn func([]byte, []byte, error) error) error {
 		}
 		return nil
 	})
+}
+
+func (s *QSIndexDB) Foreach(fn func([]byte, []byte, error) error) error {
+	return s.doForeach(idb.TransactionReadWrite, fn)
+}
+
+func (s *QSIndexDB) ForeachRO(fn func([]byte, []byte, error) error) error {
+	return s.doForeach(idb.TransactionReadOnly, fn)
 }
 
 func (s *QSIndexDB) IsExist(key []byte) (bool, error) {
