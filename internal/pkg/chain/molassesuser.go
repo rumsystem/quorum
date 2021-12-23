@@ -27,7 +27,7 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	user.nodename = nodename
 	user.cIface = iface
 	user.groupId = item.GroupId
-	molaproducer_log.Infof("<%s> User created", user.groupId)
+	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
 func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
@@ -68,10 +68,6 @@ func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]stri
 	return user.cIface.GetProducerTrxMgr().PostAny(content, encryptto...)
 }
 
-func (user *MolassesUser) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
-	return nil
-}
-
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 
@@ -92,7 +88,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if isCached {
-		molaproducer_log.Debugf("<%s> cached block, update block", user.groupId)
+		molauser_log.Debugf("<%s> cached block, update block", user.groupId)
 	}
 
 	//Save block to cache
@@ -285,7 +281,6 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
 		case quorumpb.TrxType_ASK_PEERID_RESP:
 			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
-			user.HandleAskPeerIdResp(trx)
 		case quorumpb.TrxType_GROUP_CONFIG:
 			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", user.groupId)
 			nodectx.GetDbMgr().UpdateGroupConfig(trx, nodename)

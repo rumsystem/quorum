@@ -15,6 +15,7 @@ import (
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+
 	//pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
 )
@@ -36,18 +37,18 @@ const (
 )
 
 type MolassesProducer struct {
-	grpItem           *quorumpb.GroupItem
-	blockPool         map[string]*quorumpb.Block
-	trxPool           map[string]*quorumpb.Trx
-	trxMgr            map[string]*TrxMgr
-	syncConnTimerPool map[string]*time.Timer
-	status            ProducerStatus
-	ProduceTimer      *time.Timer
-	ProduceDone       chan bool
-	statusmu          sync.RWMutex
-	nodename          string
-	cIface            ChainMolassesIface
-	groupId           string
+	grpItem   *quorumpb.GroupItem
+	blockPool map[string]*quorumpb.Block
+	trxPool   map[string]*quorumpb.Trx
+	trxMgr    map[string]*TrxMgr
+	//syncConnTimerPool map[string]*time.Timer
+	status       ProducerStatus
+	ProduceTimer *time.Timer
+	ProduceDone  chan bool
+	statusmu     sync.RWMutex
+	nodename     string
+	cIface       ChainMolassesIface
+	groupId      string
 }
 
 func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
@@ -57,7 +58,7 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	producer.blockPool = make(map[string]*quorumpb.Block)
 	producer.trxPool = make(map[string]*quorumpb.Trx)
 	producer.trxMgr = make(map[string]*TrxMgr)
-	producer.syncConnTimerPool = make(map[string]*time.Timer)
+	//producer.syncConnTimerPool = make(map[string]*time.Timer)
 	producer.status = StatusIdle
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
@@ -389,10 +390,49 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 	}
 }
 
+func (producer *MolassesProducer) HandleAskPeerId(trx *quorumpb.Trx) error {
+	molaproducer_log.Debugf("<%s> HandleAskPeerId called", producer.groupId)
+	var reqItem quorumpb.AskPeerId
+	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
+	if err != nil {
+		return err
+	}
+
+	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		return err
+	}
+
+	if err := proto.Unmarshal(decryptData, &reqItem); err != nil {
+		return err
+	}
+
+	//check if requester is in group block list
+	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+
+	if isBlocked {
+		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
+		return nil
+	}
+
+	var respItem quorumpb.AskPeerIdResp
+	respItem = quorumpb.AskPeerIdResp{}
+
+	respItem.GroupId = producer.groupId
+	respItem.RespPeerId = nodectx.GetNodeCtx().PeerId.Pretty()
+	respItem.RespPeerPubkey = producer.grpItem.UserSignPubkey
+
+	trxMgr := producer.cIface.GetProducerTrxMgr()
+
+	return trxMgr.SendAskPeerIdResp(&respItem)
+}
+
 func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error) {
+	molaproducer_log.Debugf("<%s> getSyncConn called", producer.groupId)
+
 	var syncTrxMgr *TrxMgr
 
-	if _, ok := producer.trxMgr[channelId]; ok {
+	/* if _, ok := producer.trxMgr[channelId]; ok {
 		syncTrxMgr = producer.trxMgr[channelId]
 
 		//reset timer
@@ -401,34 +441,29 @@ func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error)
 		timer.Stop()
 		timer.Reset(CLOSE_CONN_TIMER * time.Second)
 	} else {
-		molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
 
-		syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, producer.cIface.GetChainCtx())
-		syncTrxMgr = &TrxMgr{}
-		syncTrxMgr.Init(producer.grpItem, syncPsconn)
-		producer.trxMgr[channelId] = syncTrxMgr
+	*/
 
-		molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
-		timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-			if _, ok := producer.trxMgr[channelId]; ok {
-				molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
-				//syncTrxMgr.LeaveChannel(channelId)
-				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
-				delete(producer.trxMgr, channelId)
-			}
-		})
-		producer.syncConnTimerPool[channelId] = timer
-	}
+	molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
+	syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, producer.cIface.GetChainCtx())
+	syncTrxMgr = &TrxMgr{}
+	syncTrxMgr.Init(producer.grpItem, syncPsconn)
+	producer.trxMgr[channelId] = syncTrxMgr
+
+	/*
+			molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
+			timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
+				if _, ok := producer.trxMgr[channelId]; ok {
+					molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
+					//syncTrxMgr.LeaveChannel(channelId)
+					nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
+					delete(producer.trxMgr, channelId)
+				}
+			})
+			producer.syncConnTimerPool[channelId] = timer
+	}*/
+
 	return syncTrxMgr, nil
-}
-
-func (producer *MolassesProducer) HandleAskPeerID(trx *quorumpb.Trx) error {
-	molaproducer_log.Debugf("<%s> HandleAskPeerID called", producer.groupId)
-	return nil
-}
-
-func (producer *MolassesProducer) GetRecentSnapshot(trx *quorumpb.Trx) error {
-	return nil
 }
 
 //addBlock for producer
@@ -612,9 +647,6 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)
-		case quorumpb.TrxType_ASK_PEERID:
-			molaproducer_log.Debugf("<%s> handle ASK_PEERID trx", producer.groupId)
-			producer.HandleAskPeerID(trx)
 		default:
 			molaproducer_log.Warningf("<%s> unsupported msgType <%s>", producer.groupId, trx.Type)
 		}

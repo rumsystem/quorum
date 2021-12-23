@@ -15,5 +15,4 @@ type User interface {
 	UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error)
 	PostToGroup(content proto.Message, encryptto ...[]string) (string, error)
 	AddBlock(block *quorumpb.Block) error
-	HandleAskPeerIdResp(trx *quorumpb.Trx) error
 }
