@@ -33,17 +33,6 @@ func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
 	return items
 }
 
-/*
-func highestBlockIdToStr(HighestBlockId []string) string {
-	if len(HighestBlockId) > 1 {
-		sort.Strings(HighestBlockId)
-		return strings.Join(HighestBlockId, "_")
-	} else if len(HighestBlockId) == 1 {
-		return HighestBlockId[0]
-	}
-	return ""
-}
-*/
 func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) ([]*quorumpb.Block, error) {
 	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s", len(block.Trxs), groupid)
 	err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
@@ -53,22 +42,69 @@ func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) ([
 	return appsync.dbmgr.GetSubBlock(block.BlockId, appsync.nodename)
 }
 
+//return the length of the path between the from and to block. and if the path can reach to the toblock.
+func (appsync *AppSync) chainLength(fromBlockId string, toBlockId string) (uint, bool) {
+	var chainlength uint
+	if fromBlockId == toBlockId {
+		return 0, true //reach the toblock
+	}
+	nextblockid := fromBlockId
+
+	for {
+		subblocks, err := appsync.dbmgr.GetSubBlock(nextblockid, appsync.nodename)
+		if err != nil {
+			return 0, false //error
+		}
+		if len(subblocks) == 0 {
+			return chainlength, false //can not reach the toblock
+		} else if len(subblocks) == 1 {
+			chainlength += 1
+			nextblockid = subblocks[0].BlockId
+		} else if len(subblocks) > 1 { //multi path, calculate every paths
+			var subchainlen uint
+			nextsubblkid := ""
+			for _, blk := range subblocks {
+				l, s := appsync.chainLength(blk.BlockId, toBlockId)
+				if l > subchainlen && s == true { //find a longer chain and can reach the toBlock
+					subchainlen = l
+					nextsubblkid = blk.BlockId
+				}
+			}
+			nextblockid = nextsubblkid
+		}
+	}
+}
+
+func (appsync *AppSync) findNextBlock(blocks []*quorumpb.Block, toBlockId string) *quorumpb.Block {
+	var nextsubblk *quorumpb.Block
+	var subchainlen uint
+	if len(blocks) == 1 {
+		nextsubblk = blocks[0]
+	} else {
+		for _, blk := range blocks {
+			l, s := appsync.chainLength(blk.BlockId, toBlockId)
+			if l > subchainlen && s == true { //reach the toblock
+				subchainlen = l
+				nextsubblk = blk
+			}
+		}
+	}
+	return nextsubblk
+}
+
 func (appsync *AppSync) RunSync(groupid string, lastBlockId string, newBlockId string) {
-	var blocks []*quorumpb.Block
+	var nextblock *quorumpb.Block
 	subblocks, err := appsync.dbmgr.GetSubBlock(lastBlockId, appsync.nodename)
 	if err == nil {
-		blocks = append(blocks, subblocks...)
+		nextblock = appsync.findNextBlock(subblocks, newBlockId)
 		for {
-			if len(blocks) == 0 {
+			if nextblock == nil {
 				appsynclog.Infof("no new blocks, skip sync.")
 				break
 			}
-
-			var blk *quorumpb.Block
-			blk, blocks = blocks[0], blocks[1:]
-			newsubblocks, err := appsync.ParseBlockTrxs(groupid, blk)
+			newsubblocks, err := appsync.ParseBlockTrxs(groupid, nextblock)
 			if err == nil {
-				blocks = append(blocks, newsubblocks...)
+				nextblock = appsync.findNextBlock(newsubblocks, newBlockId)
 			} else {
 				appsynclog.Errorf("ParseBlockTrxs error %s", err)
 			}
@@ -89,7 +125,6 @@ func (appsync *AppSync) Start(interval int) {
 					if lastBlockId == "" {
 						lastBlockId = groupitem.GenesisBlock.BlockId
 					}
-					//newBlockid := highestBlockIdToStr(groupitem.HighestBlockId)
 					if lastBlockId != groupitem.HighestBlockId {
 						appsync.RunSync(groupitem.GroupId, lastBlockId, groupitem.HighestBlockId)
 					}
