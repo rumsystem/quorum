@@ -246,7 +246,7 @@ API return value:
 **API**: ```*/api/v1/group```
 
 - Method: POST
-- Usage : Owner node create a group
+- Usage : Owner create a group
 - Params:
     - group_name
     - [consensus_type](#param-consensus_type)

@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -12,6 +13,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -27,9 +29,11 @@ type Node struct {
 	Host             host.Host
 	NetworkName      string
 	Pubsub           *pubsub.PubSub
+	RumExchange      *RexService
 	Ddht             *dual.DHT
 	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
+	PubSubConnMgr    *pubsubconn.PubSubConnMgr
 }
 
 func (node *Node) eventhandler(ctx context.Context) {
@@ -48,6 +52,30 @@ func (node *Node) eventhandler(ctx context.Context) {
 			}
 			networklog.Infof("Reachability change: %s:", evt.Reachability.String())
 			node.Info.NATType = evt.Reachability
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
+	for {
+		select {
+		case rexnoti, ok := <-ch:
+			if ok {
+				if rexnoti.Action == JoinChannel {
+					psconn := node.PubSubConnMgr.GetPubSubConnByChannelId(rexnoti.ChannelId, nil)
+					if psconn != nil {
+						//TODO: data can be sync in this channel
+						psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
+					} else {
+						networklog.Errorf("Can't get pubsubconn %s from PubSubConnMgr", rexnoti.ChannelId)
+					}
+				} else {
+					networklog.Errorf("recv unknown notification %s from: %s", rexnoti, rexnoti.ChannelId)
+				}
+			}
+
 		case <-ctx.Done():
 			return
 		}

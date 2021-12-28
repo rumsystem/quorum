@@ -284,7 +284,7 @@ func mainRet(config cli.Config) int {
 
 	if config.IsBootstrap == true {
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), config.ListenAddresses, config.JsonTracer)
+		node, err := p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), config.ListenAddresses, config.JsonTracer)
 
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -305,8 +305,9 @@ func mainRet(config cli.Config) int {
 		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
 	} else {
+		nodename := "default"
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), config.ListenAddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), config.ListenAddresses, config.JsonTracer)
 		_ = node.Bootstrap(ctx, config)
 
 		for _, addr := range node.Host.Addrs() {
@@ -321,14 +322,13 @@ func mainRet(config cli.Config) int {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
-
 		datapath := config.DataDir + "/" + config.PeerName
 		dbManager, err := createDb(datapath)
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		nodectx.InitCtx(ctx, "default", node, dbManager, "pubsub", GitCommit)
+		nodectx.InitCtx(ctx, nodename, node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -443,6 +443,9 @@ func main() {
 		logging.SetLogLevel("user", "debug")
 		logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("trxmgr", "debug")
+		logging.SetLogLevel("rumexchange", "debug")
+		//logging.SetLogLevel("ping", "debug")
+		logging.SetLogLevel("chan", "debug")
 	}
 
 	if *help {
@@ -471,6 +474,44 @@ func main() {
 	}
 
 	if config.IsPing {
+		if len(config.BootstrapPeers) == 0 {
+			fmt.Println("Usage:", os.Args[0], "-ping", "-peer <peer> [-peer <peer> ...]")
+			return
+		}
+
+		// FIXME: hardcode
+		tcpAddr := "/ip4/127.0.0.1/tcp/0"
+		wsAddr := "/ip4/127.0.0.1/tcp/0/ws"
+		ctx := context.Background()
+		node, err := libp2p.New(
+			libp2p.ListenAddrStrings(tcpAddr, wsAddr),
+			libp2p.Ping(false),
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		// configure our ping protocol
+		pingService := &p2p.PingService{Host: node}
+		node.SetStreamHandler(p2p.PingID, pingService.PingHandler)
+
+		for _, addr := range config.BootstrapPeers {
+			peer, err := peerstore.AddrInfoFromP2pAddr(addr)
+			if err != nil {
+				panic(err)
+			}
+
+			if err := node.Connect(ctx, *peer); err != nil {
+				panic(err)
+			}
+			ch := pingService.Ping(ctx, peer.ID)
+			fmt.Println()
+			fmt.Println("pinging remote peer at", addr)
+			for i := 0; i < 4; i++ {
+				res := <-ch
+				fmt.Println("PING", addr, "in", res.RTT)
+			}
+		}
 		ping(config)
 		return
 	}
@@ -503,7 +544,7 @@ func ping(config cli.Config) {
 	wsAddr := "/ip4/127.0.0.1/tcp/0/ws"
 	ctx := context.Background()
 	node, err := libp2p.New(
-		ctx,
+		//ctx,
 		libp2p.ListenAddrStrings(tcpAddr, wsAddr),
 		libp2p.Ping(false),
 	)

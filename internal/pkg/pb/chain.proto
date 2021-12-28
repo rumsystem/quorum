@@ -24,7 +24,9 @@ enum TrxType {
   BLOCK_SYNCED       = 8; // block for producer to sync (old block)
   BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
   USER               = 10; // update group user
-  GROUP_CONFIG       = 11; // update group configuration
+  ASK_PEERID         = 11; // ask owner/producer peerid
+  ASK_PEERID_RESP    = 12; // response ask peerid
+  GROUP_CONFIG       = 13; // update group configuration
 }
 
 enum AnnounceType {
@@ -86,6 +88,22 @@ message ReqBlock {
 
 message BlockSynced {
     Block BlockItem = 1;
+}
+
+message AskPeerId {
+    string GroupId     = 1;   
+    string UserPeerId  = 2;
+    string UserPubkey  = 3;
+    string UserSign    = 4;
+    string Memo        = 5;    
+}
+
+message AskPeerIdResp {
+    string GroupId           = 1;   
+    string RespPeerId        = 2;
+    string RespPeerPubkey    = 3;
+    string RespSign          = 4;
+    bool   IsDirectConnected = 5;
 }
 
 message BlockProduced {
@@ -253,3 +271,4 @@ message GroupSeed {
 	string AppKey = 8;
 	string Signature = 9;
 }
+

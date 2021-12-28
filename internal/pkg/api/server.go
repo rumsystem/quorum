@@ -46,8 +46,11 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/config", h.MgrGrpConfig)
 		r.GET("/v1/backup", h.Backup)
 		r.GET("/v1/node", h.GetNodeInfo)
+		r.POST("/v1/rex/initsession", h.RexInitSession(node))
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 		r.POST("/v1/psping", h.PSPingPeer(node))
+		r.GET("/v1/rextest", h.RexTest(node))
+
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.GET("/v1/groups", h.GetGroups)

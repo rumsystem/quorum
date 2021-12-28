@@ -31,6 +31,7 @@ type Chain struct {
 	trxMgrs           map[string]*TrxMgr
 	ProducerPool      map[string]*quorumpb.ProducerItem
 	userPool          map[string]*quorumpb.UserItem
+	peerIdPool        map[string]string
 
 	Syncer    *Syncer
 	Consensus Consensus
@@ -38,6 +39,8 @@ type Chain struct {
 
 	producerChannTimer *time.Timer
 	groupId            string
+
+	ProviderPeerIdPool map[string]string
 }
 
 func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn pubsubconn.PubSubConn, userPubsubconn pubsubconn.PubSubConn) {
@@ -87,23 +90,35 @@ func (chain *Chain) Init(group *Group) error {
 	chain.userChannelId = USER_CHANNEL_PREFIX + chain.groupId
 	chain.syncChannelId = SYNC_CHANNEL_PREFIX + chain.groupId + "_" + chain.group.Item.UserSignPubkey
 
+	chain.ProviderPeerIdPool = make(map[string]string)
+
+	err := chain.InitSession(chain.producerChannelId)
+	if err != nil {
+		return err
+	}
+
+	err = chain.InitSession(chain.syncChannelId)
+	if err != nil {
+		return err
+	}
+
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
 
 func (chain *Chain) LeaveChannel() error {
 	chain_log.Debugf("<%s> LeaveChannel called", chain.groupId)
-	if userTrxMgr, ok := chain.trxMgrs[chain.userChannelId]; ok {
-		userTrxMgr.LeaveChannel(chain.userChannelId)
+	if _, ok := chain.trxMgrs[chain.userChannelId]; ok {
+		nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.userChannelId)
 		delete(chain.trxMgrs, chain.userChannelId)
 
 	}
-	if producerTrxMgr, ok := chain.trxMgrs[chain.producerChannelId]; ok {
-		producerTrxMgr.LeaveChannel(chain.producerChannelId)
+	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
+		nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
 		delete(chain.trxMgrs, chain.producerChannelId)
 	}
-	if syncTrxMgr, ok := chain.trxMgrs[chain.syncChannelId]; ok {
-		syncTrxMgr.LeaveChannel(chain.syncChannelId)
+	if _, ok := chain.trxMgrs[chain.syncChannelId]; ok {
+		nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.syncChannelId)
 		delete(chain.trxMgrs, chain.syncChannelId)
 	}
 
@@ -112,6 +127,7 @@ func (chain *Chain) LeaveChannel() error {
 
 func (chain *Chain) StartInitialSync(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> StartInitialSync called", chain.groupId)
+
 	if chain.Syncer != nil {
 		return chain.Syncer.SyncForward(block)
 	}
@@ -140,22 +156,27 @@ func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 	var producerTrxMgr *TrxMgr
 
 	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
-		//reset timer
 		producerTrxMgr = chain.trxMgrs[chain.producerChannelId]
-		chain_log.Debugf("<%s> reset connection timer for producertrxMgr <%s>", chain.groupId, chain.producerChannelId)
-		chain.producerChannTimer.Stop()
-		chain.producerChannTimer.Reset(CLOSE_CONN_TIMER * time.Second)
+
+		/*
+			chain_log.Debugf("<%s> reset connection timer for producertrxMgr <%s>", chain.groupId, chain.producerChannelId)
+			chain.producerChannTimer.Stop()
+			chain.producerChannTimer.Reset(CLOSE_CONN_TIMER * time.Second)
+		*/
 	} else {
 		chain.createProducerTrxMgr()
 		producerTrxMgr = chain.trxMgrs[chain.producerChannelId]
-		chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
-		chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-			if producerTrxMgr, ok := chain.trxMgrs[chain.producerChannelId]; ok {
-				chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
-				producerTrxMgr.LeaveChannel(chain.producerChannelId)
-				delete(chain.trxMgrs, chain.producerChannelId)
-			}
-		})
+
+		/*
+			chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
+			chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
+				if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
+					chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
+					nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
+					delete(chain.trxMgrs, chain.producerChannelId)
+				}
+			})
+		*/
 	}
 
 	return producerTrxMgr
@@ -212,6 +233,12 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 		chain.handleReqBlockResp(trx)
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
+		return nil
+	case quorumpb.TrxType_ASK_PEERID:
+		chain.HandleAskPeerID(trx)
+		return nil
+	case quorumpb.TrxType_ASK_PEERID_RESP:
+		chain.HandleAskPeerIdResp(trx)
 		return nil
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
@@ -354,7 +381,50 @@ func (chain *Chain) UpdProducerList() {
 			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
 	}
+}
 
+func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> HandleAskPeerID called", chain.groupId)
+	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+		return nil
+	}
+	return chain.Consensus.Producer().HandleAskPeerId(trx)
+}
+
+func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
+
+	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+	if err != nil {
+		return err
+	}
+
+	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		return err
+	}
+
+	var respItem quorumpb.AskPeerIdResp
+
+	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
+		return err
+	}
+
+	//update peerId table
+	chain.ProviderPeerIdPool[respItem.RespPeerPubkey] = respItem.RespPeerId
+	chain_log.Debugf("<%s> Pubkey<%s> PeerId<%s> ", chain.groupId, respItem.RespPeerPubkey, &respItem.RespPeerId)
+	//initial both producerChannel and syncChannel
+	err = chain.InitSession(chain.producerChannelId)
+	if err != nil {
+		return err
+	}
+
+	err = chain.InitSession(chain.syncChannelId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
@@ -461,10 +531,7 @@ func (chain *Chain) createUserTrxMgr() {
 		chain_log.Infof("<%s> reuse user channel", chain.groupId)
 		return
 	}
-
-	userPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
-	userPsconn.JoinChannel(chain.userChannelId, chain)
-
+	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(chain.userChannelId, chain)
 	chain_log.Infof("<%s> Create and init group userTrxMgr", chain.groupId)
 	var userTrxMgr *TrxMgr
 	userTrxMgr = &TrxMgr{}
@@ -480,16 +547,14 @@ func (chain *Chain) createSyncTrxMgr() {
 		return
 	}
 
-	syncPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
-	syncPsconn.JoinChannel(chain.syncChannelId, chain)
-
+	syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(chain.syncChannelId, chain)
 	chain_log.Infof("<%s> Create and init group syncTrxMgr", chain.groupId)
 	var syncTrxMgr *TrxMgr
 	syncTrxMgr = &TrxMgr{}
 	syncTrxMgr.Init(chain.group.Item, syncPsconn)
 	chain.trxMgrs[chain.syncChannelId] = syncTrxMgr
-
 }
+
 func (chain *Chain) createProducerTrxMgr() {
 	chain_log.Infof("<%s> Create and join group producer channel", chain.groupId)
 	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
@@ -497,9 +562,7 @@ func (chain *Chain) createProducerTrxMgr() {
 		return
 	}
 
-	producerPsconn := pubsubconn.InitP2pPubSubConn(nodectx.GetNodeCtx().Ctx, nodectx.GetNodeCtx().Node.Pubsub, nodectx.GetNodeCtx().Name)
-	producerPsconn.JoinChannel(chain.producerChannelId, chain)
-
+	producerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(chain.producerChannelId, chain)
 	chain_log.Infof("<%s> Create and init group producerTrxMgr", chain.groupId)
 	var producerTrxMgr *TrxMgr
 	producerTrxMgr = &TrxMgr{}
@@ -507,6 +570,29 @@ func (chain *Chain) createProducerTrxMgr() {
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 }
 
+func (chain *Chain) InitSession(channelId string) error {
+	chain_log.Debugf("<%s> InitSession called", chain.groupId)
+	err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx, 3)
+	if err != nil {
+		return err
+	}
+	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
+		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
+	} else {
+		return chain.AskPeerId()
+	}
+}
+
+func (chain *Chain) AskPeerId() error {
+	chain_log.Debugf("<%s> AskPeerId called", chain.groupId)
+	var req quorumpb.AskPeerId
+	req = quorumpb.AskPeerId{}
+
+	req.GroupId = chain.groupId
+	req.UserPeerId = nodectx.GetNodeCtx().Node.PeerID.Pretty()
+
+	return chain.GetProducerTrxMgr().SendAskPeerId(&req)
+}
 func (chain *Chain) IsSyncerReady() bool {
 	chain_log.Debugf("<%s> IsSyncerReady called", chain.groupId)
 	if chain.Syncer.Status == SYNCING_BACKWARD ||

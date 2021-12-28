@@ -1,0 +1,37 @@
+syntax = "proto3";
+package quorum.pb;
+option go_package = "github.com/rumsystem/quorum/internal/pkg/pb";
+
+message SessionMsg {
+ SessionMsgType MsgType = 1;
+ optional SessionIfConn IfConn = 2;
+ optional SessionConnResp ConnResp = 3;
+}
+
+enum SessionMsgType {
+    IF_CONN = 0;
+    CONN_RESP = 1;
+}
+
+message SessionIfConn {
+    bytes DestPeerID = 1;
+    bytes SrcPeerID = 2;
+    bytes SessionToken = 3;
+    bytes Signature = 4; //sign by the srcPeer
+    string ChannelId = 5;
+	repeated PeerSig Peersroutes = 6; 
+}
+
+message SessionConnResp {
+    bytes DestPeerID = 1;
+    bytes SrcPeerID = 2;
+    bytes SessionToken = 3;
+    bytes Signature = 4; //sign by the destPeer
+    string ChannelId = 5;
+	repeated PeerSig Peersroutes = 6; 
+}
+
+message PeerSig {
+    bytes PeerId = 1;
+    bytes SessionSig = 2;
+}

@@ -12,4 +12,6 @@ type ChainMolassesIface interface {
 	CreateConsensus()
 	IsSyncerReady() bool
 	SyncBackward(block *quorumpb.Block) error
+	InitSession(channelId string) error
+	AskPeerId() error
 }

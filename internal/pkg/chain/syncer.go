@@ -68,6 +68,9 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 		return errors.New("already in SYNCING")
 	}
 
+	//initial session
+	syncer.cIface.InitSession(syncer.cIface.GetChainCtx().syncChannelId)
+
 	syncer_log.Debugf("<%s> try sync forward from block <%s>", syncer.groupId, block.BlockId)
 	syncer.blockReceived = make(map[string]string)
 	syncer.Status = SYNCING_FORWARD
@@ -90,6 +93,10 @@ func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
 	if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
 		return errors.New("already in SYNCING")
 	}
+
+	//initial session
+	syncer.cIface.InitSession(syncer.cIface.GetChainCtx().syncChannelId)
+
 	syncer.blockReceived = make(map[string]string)
 	syncer.Status = SYNCING_BACKWARD
 	syncer.askPreviousBlock(block)
@@ -115,7 +122,7 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 		syncer.askPreviousBlock(block)
 		syncer.waitBlock(block)
 	} else if syncer.Status == SYNC_FAILED {
-		syncer_log.Debugf("<%s> TBD, Sync faileld, should manually start sync", syncer.groupId)
+		syncer_log.Debugf("<%s> Sync faileld, should manually start sync", syncer.groupId)
 	} else {
 		//idle
 		syncer_log.Debugf("<%s> syncer idle, can not continue", syncer.groupId)

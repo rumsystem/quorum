@@ -18,12 +18,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	tcp "github.com/libp2p/go-tcp-transport"
@@ -31,9 +31,10 @@ import (
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 
-func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
 	var pstore peerstore.Peerstore
@@ -95,7 +96,7 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		networklog.Infof("NAT enabled")
 	}
 
-	host, err := libp2p.New(ctx,
+	host, err := libp2p.New(
 		libp2poptions...,
 	)
 	if err != nil {
@@ -108,6 +109,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 
 	networklog.Infof("Network Name %s", nodenetworkname)
 
+	var rexservice *RexService
+	var rexnotification chan RexNotification
+	rexnotification = make(chan RexNotification, 1)
 	if isBootstrap == true {
 		// turn off the mesh in bootstrapnode
 		pubsub.GossipSubD = 0
@@ -117,6 +121,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		pubsub.GossipSubDout = 0
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
+	} else {
+		rexservice = NewRexService(host, nodenetworkname, ProtocolPrefix, rexnotification)
+		rexservice.SetDelegate()
 	}
 
 	var ps *pubsub.PubSub
@@ -152,7 +159,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 	psping.EnablePing()
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
+	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
+
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
 
 	//reconnect peers
 
@@ -170,7 +179,9 @@ func NewNode(ctx context.Context, nodeopt *options.NodeOptions, isBootstrap bool
 		}()
 	}
 	go newnode.eventhandler(ctx)
-
+	if rexnotification != nil {
+		go newnode.rexhandler(ctx, rexnotification)
+	}
 	return newnode, nil
 }
 

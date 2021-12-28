@@ -27,7 +27,7 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	user.nodename = nodename
 	user.cIface = iface
 	user.groupId = item.GroupId
-	molaproducer_log.Infof("<%s> User created", user.groupId)
+	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
 func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
@@ -88,7 +88,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	if isCached {
-		molaproducer_log.Debugf("<%s> cached block, update block", user.groupId)
+		molauser_log.Debugf("<%s> cached block, update block", user.groupId)
 	}
 
 	//Save block to cache
@@ -279,6 +279,8 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		case quorumpb.TrxType_SCHEMA:
 			molauser_log.Debugf("<%s> apply SCHEMA trx", user.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+		case quorumpb.TrxType_ASK_PEERID_RESP:
+			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
 		case quorumpb.TrxType_GROUP_CONFIG:
 			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", user.groupId)
 			nodectx.GetDbMgr().UpdateGroupConfig(trx, nodename)
