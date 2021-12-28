@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
@@ -30,6 +31,29 @@ func RexTest(node *p2p.Node) ([]string, error) {
 		return []string{"ok"}, nil
 	} else {
 		return []string{"not support rumexchange"}, nil
+	}
+
+}
+
+func RexInitSession(node *p2p.Node, groupId string, peerId string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if node.RumExchange != nil {
+		fmt.Println("call rex init session")
+		err := node.RumExchange.ConnectRex(ctx, 3)
+		if err != nil {
+			return err
+		}
+		node.RumExchange.InitSession(peerId, "prod_channel_"+groupId)
+		groupmgr := chain.GetGroupMgr()
+		group, ok := groupmgr.Groups[groupId]
+		if ok == true {
+			group.ChainCtx.AskPeerId()
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("not support rumexchange")
 	}
 
 }

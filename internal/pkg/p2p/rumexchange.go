@@ -82,14 +82,14 @@ func (r *RexService) RemoveStream(p peer.ID) {
 
 func (r *RexService) InitSession(peerid string, channelid string) error {
 	privateid, err := peer.Decode(peerid)
-	if err == nil {
+	if err != nil {
 		rumexchangelog.Errorf("decode perrid err: %s", err)
 	}
 	ifconnmsg := &quorumpb.SessionIfConn{DestPeerID: []byte(privateid), SrcPeerID: []byte(r.Host.ID()), ChannelId: channelid}
 	sessionmsg := &quorumpb.SessionMsg{MsgType: quorumpb.SessionMsgType_IF_CONN, IfConn: ifconnmsg}
 
 	succ := 0
-	for _, s := range r.streams {
+	for p, s := range r.streams {
 		if s != nil {
 			bufw := bufio.NewWriter(*s)
 			wc := protoio.NewDelimitedWriter(bufw)
@@ -98,7 +98,7 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 				rumexchangelog.Errorf("writemsg to network stream err: %s", err)
 			} else {
 				succ++
-				rumexchangelog.Debugf("writemsg to network stream succ.")
+				rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
 			}
 			bufw.Flush()
 		}
@@ -318,7 +318,7 @@ func (r *RexService) Handler(s network.Stream) {
 				if peer.ID(sessionmsg.ConnResp.DestPeerID) == r.Host.ID() {
 					rumexchangelog.Debugf("msg.Peersroutes:%s", sessionmsg.ConnResp.Peersroutes)
 					rumexchangelog.Debugf("the dest peer is me, the private channel should be ready.")
-					r.PrivateChannelReady(sessionmsg.ConnResp) //FOR TEST
+					//r.PrivateChannelReady(sessionmsg.ConnResp) //FOR TEST
 
 				} else if peer.ID(sessionmsg.ConnResp.SrcPeerID) == r.Host.ID() {
 					rumexchangelog.Debugf("the src peer is me, skip")

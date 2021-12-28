@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -91,6 +92,16 @@ func (chain *Chain) Init(group *Group) error {
 	chain.syncChannelId = SYNC_CHANNEL_PREFIX + chain.groupId + "_" + chain.group.Item.UserSignPubkey
 
 	chain.ProviderPeerIdPool = make(map[string]string)
+
+	err := chain.InitSession(chain.producerChannelId)
+	if err != nil {
+		return err
+	}
+
+	err = chain.InitSession(chain.syncChannelId)
+	if err != nil {
+		return err
+	}
 
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
@@ -375,7 +386,7 @@ func (chain *Chain) UpdProducerList() {
 
 func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> HandleAskPeerID called", chain.groupId)
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 		return nil
 	}
 	return chain.Consensus.Producer().HandleAskPeerId(trx)
@@ -566,7 +577,6 @@ func (chain *Chain) InitSession(channelId string) error {
 	if err != nil {
 		return err
 	}
-
 	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
 		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
 	} else {
