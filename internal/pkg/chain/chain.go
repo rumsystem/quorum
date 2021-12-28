@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
