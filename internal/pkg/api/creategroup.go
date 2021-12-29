@@ -33,7 +33,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		// appdata.SetGroupSeed(groupid.String(), createGrpResult)
+
 		return c.JSON(http.StatusOK, res)
 	}
 }
