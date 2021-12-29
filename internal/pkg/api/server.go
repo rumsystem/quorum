@@ -62,6 +62,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/group/:group_id/app/schema", h.GetGroupAppSchema)
 		r.GET("/v1/group/:group_id/config/keylist", h.GetGroupConfigKey)
 		r.GET("/v1/group/:group_id/config/:key", h.GetGroupConfigItem)
+		r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/apply", apph.ApplyToken)
