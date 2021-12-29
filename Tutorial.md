@@ -86,7 +86,7 @@ Common params:
 
 [自行编译最新包](https://github.com/rumsystem/quorum)
 
-2.、启用 RUM 服务
+2. 启用 RUM 服务
 
 3. 采用你擅长的语言，与 RUM 服务建立连接，
 
