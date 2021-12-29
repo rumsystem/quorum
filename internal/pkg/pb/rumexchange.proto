@@ -1,14 +1,16 @@
 syntax = "proto3";
 package quorum.pb;
 option go_package = "github.com/rumsystem/quorum/internal/pkg/pb";
+import "chain.proto";
 
-message SessionMsg {
- SessionMsgType MsgType = 1;
+message RumMsg {
+ RumMsgType MsgType = 1;
  optional SessionIfConn IfConn = 2;
  optional SessionConnResp ConnResp = 3;
+ optional Package DataPackage = 4;
 }
 
-enum SessionMsgType {
+enum RumMsgType {
     IF_CONN = 0;
     CONN_RESP = 1;
 }

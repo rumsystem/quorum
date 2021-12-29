@@ -157,6 +157,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 				}
 			} else {
 				channel_log.Warningf(err.Error())
+				channel_log.Warningf("%s", msg.Data)
 			}
 		} else {
 			channel_log.Errorf(err.Error())

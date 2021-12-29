@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -67,7 +66,7 @@ func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
 					psconn := node.PubSubConnMgr.GetPubSubConnByChannelId(rexnoti.ChannelId, nil)
 					if psconn != nil {
 						//TODO: data can be sync in this channel
-						psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
+						//psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
 					} else {
 						networklog.Errorf("Can't get pubsubconn %s from PubSubConnMgr", rexnoti.ChannelId)
 					}
