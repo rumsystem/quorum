@@ -15,7 +15,6 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 	"io"
-	//"time"
 )
 
 var rumexchangelog = logging.Logger("rumexchange")
@@ -26,7 +25,6 @@ type RexService struct {
 	Host           host.Host
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
-	streams        map[peer.ID]*network.Stream
 }
 
 type ActionType int
@@ -43,7 +41,7 @@ type RexNotification struct {
 
 func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	rexs := &RexService{h, protocol.ID(customprotocol), notification, map[peer.ID]*network.Stream{}}
+	rexs := &RexService{h, protocol.ID(customprotocol), notification}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -54,30 +52,18 @@ func (r *RexService) SetDelegate() {
 	r.Host.Network().Notify((*netNotifiee)(r))
 }
 
-func (r *RexService) ConnectRex(ctx context.Context, maxpeers int) error {
+func (r *RexService) ConnectRex(ctx context.Context) error {
 	peers := r.Host.Network().Peers()
 	for _, p := range peers {
-		_, ok := r.streams[p]
-		if ok == false {
-			rumexchangelog.Debugf("try to create rumexchange stream: %s", p)
-			s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
-			if err != nil {
-				rumexchangelog.Errorf("create network stream err: %s", err)
-			} else {
-				r.streams[p] = &s
-				rumexchangelog.Debugf("create network stream success: %s ", err)
-			}
+		_, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+		if err != nil {
+			rumexchangelog.Errorf("create network stream err: %s", err)
+		} else {
+			rumexchangelog.Debugf("create network stream success.")
 		}
 	}
 
 	return nil
-}
-
-func (r *RexService) RemoveStream(p peer.ID) {
-	_, ok := r.streams[p]
-	if ok == true {
-		delete(r.streams, p)
-	}
 }
 
 func (r *RexService) InitSession(peerid string, channelid string) error {
@@ -89,9 +75,15 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 	sessionmsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_IF_CONN, IfConn: ifconnmsg}
 
 	succ := 0
-	for p, s := range r.streams {
-		if s != nil {
-			bufw := bufio.NewWriter(*s)
+
+	peers := r.Host.Network().Peers()
+	for _, p := range peers {
+		ctx := context.Background()
+		s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+		if err != nil {
+			rumexchangelog.Errorf("create network stream err: %s", err)
+		} else {
+			bufw := bufio.NewWriter(s)
 			wc := protoio.NewDelimitedWriter(bufw)
 			err := wc.WriteMsg(sessionmsg)
 			if err != nil {
@@ -102,8 +94,8 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 			}
 			bufw.Flush()
 		}
-	}
 
+	}
 	if succ > 0 {
 		return nil
 	} else {
@@ -124,13 +116,7 @@ func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionI
 
 	var s network.Stream
 	var err error
-	pstream, ok := r.streams[recvfrom]
-	if ok == false {
-		s, err = r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
-	} else {
-		s = *pstream
-	}
-
+	s, err = r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
 	bufw := bufio.NewWriter(s)
 	wc := protoio.NewDelimitedWriter(bufw)
 	err = wc.WriteMsg(sessionmsg)
@@ -171,13 +157,7 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 
 				var s network.Stream
 				var err error
-				pstream, ok := r.streams[nextpeerid]
-
-				if ok == false {
-					s, err = r.Host.NewStream(ctx, nextpeerid, r.ProtocolId)
-				} else {
-					s = *pstream
-				}
+				s, err = r.Host.NewStream(ctx, nextpeerid, r.ProtocolId)
 				if err != nil {
 					fmt.Println(err)
 				} else {
@@ -218,12 +198,7 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 		if p != r.Host.ID() && p != peer.ID(sessionmsg.IfConn.SrcPeerID) && p != recvfrom { //not myself, not src peer, not recvfrom this peer, so passnext
 			var s network.Stream
 			var err error
-			pstream, ok := r.streams[p]
-			if ok == false {
-				s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
-			} else {
-				s = *pstream
-			}
+			s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
 
 			if err != nil {
 				rumexchangelog.Errorf("creat stream to network stream err: %s", err)
@@ -263,11 +238,8 @@ func (r *RexService) Handler(s network.Stream) {
 			if err != io.EOF {
 				_ = s.Reset()
 				s.Close()
-				r.RemoveStream(s.Conn().RemotePeer())
 				rumexchangelog.Errorf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
 			}
-			//remove from stream map?
-			return
 		}
 
 		var rummsg quorumpb.RumMsg
@@ -319,10 +291,6 @@ func (nn *netNotifiee) Connected(n network.Network, v network.Conn) {
 }
 func (nn *netNotifiee) Disconnected(n network.Network, v network.Conn) {
 	rumexchangelog.Debugf("rex Disconnected: %s", v.RemotePeer())
-	//TODO: lock/unlock the r.streams map
-	r := nn.RexService()
-	r.RemoveStream(v.RemotePeer())
-	//remove from stream map
 }
 func (nn *netNotifiee) OpenedStream(n network.Network, s network.Stream) {}
 func (nn *netNotifiee) ClosedStream(n network.Network, v network.Stream) {}
