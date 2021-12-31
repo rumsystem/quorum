@@ -201,7 +201,7 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 			s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
 
 			if err != nil {
-				rumexchangelog.Errorf("creat stream to network stream err: %s", err)
+				rumexchangelog.Errorf("create stream to network err: %s", err)
 			} else {
 				bufw := bufio.NewWriter(s)
 				wc := protoio.NewDelimitedWriter(bufw)
@@ -240,6 +240,7 @@ func (r *RexService) Handler(s network.Stream) {
 				s.Close()
 				rumexchangelog.Errorf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
 			}
+			return
 		}
 
 		var rummsg quorumpb.RumMsg
