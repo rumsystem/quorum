@@ -40,7 +40,7 @@ type JoinGroupResult struct {
 // @Description Join a group
 // @Accept json
 // @Produce json
-// @Param data body GroupSeed true "GroupSeed"
+// @Param data body handlers.GroupSeed true "GroupSeed"
 // @Success 200 {object} JoinGroupResult
 // @Router /api/v1/group/join [post]
 func (h *Handler) JoinGroup() echo.HandlerFunc {
