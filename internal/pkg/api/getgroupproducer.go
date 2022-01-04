@@ -12,7 +12,7 @@ import (
 // @Description Get the list of group producers
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Success 200 {array} ProducerListItem
+// @Success 200 {array} handlers.ProducerListItem
 // @Router /api/v1/group/{group_id}/producers [get]
 func (h *Handler) GetGroupProducers(c echo.Context) (err error) {
 	output := make(map[string]string)
