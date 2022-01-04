@@ -15,7 +15,7 @@ import (
 // @Summary GetNetwork
 // @Description Get node's network information
 // @Produce json
-// @Success 200 {object} NetworkInfo
+// @Success 200 {object} handlers.NetworkInfo
 // @Router /api/v1/network [get]
 func (h *Handler) GetNetwork(nodehost *host.Host, nodeinfo *p2p.NodeInfo, nodeopt *options.NodeOptions, ethaddr string) echo.HandlerFunc {
 	return func(c echo.Context) error {

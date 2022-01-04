@@ -11,7 +11,7 @@ import (
 // @Summary GetNodeInfo
 // @Description Return the node info
 // @Produce json
-// @Success 200 {object} NodeInfo
+// @Success 200 {object} handlers.NodeInfo
 // @Router /api/v1/node [get]
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	info, err := handlers.GetNodeInfo(h.Node.NetworkName)
