@@ -87,6 +87,9 @@ Windows users may meet utf-8 problem, run following commands in `win + r` prompt
 > 
 > ./rumcli.exe
 
+- the config file is located at `C:\Users\xxxx\AppData\Local\rumcli`
+- notice, the `ServerSSLCertificate` should be abs path of the crt key, and it has to be an escaped string like `C:\\Users\\xxxx\\repos\\quorum\\certs\\server.crt`
+
 ## Debug
 ```bash
 $> go build -gcflags=all="-N -l" rumcli.go
