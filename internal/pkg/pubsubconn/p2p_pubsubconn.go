@@ -160,7 +160,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 				channel_log.Warningf("%s", msg.Data)
 			}
 		} else {
-			channel_log.Errorf(err.Error())
+			channel_log.Debugf(err.Error())
 			return err
 		}
 	}
@@ -168,9 +168,9 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 
 func (psconn *P2pPubSubConn) handleExchangeChannel() error {
 	for {
-		msg, err := psconn.Subscription.Next(psconn.Ctx)
+		_, err := psconn.Subscription.Next(psconn.Ctx)
 		if err == nil {
-			channel_log.Infof("recv data: %s from channel: %s", msg.Data, psconn.Cid)
+			//channel_log.Infof("recv data: %s from channel: %s", msg.Data, psconn.Cid)
 			//if string(msg.Data[:]) == "ping" {
 			//	channel_log.Infof("recv normal msg and send pong resp: %s", msg.Data)
 			//	psconn.Publish([]byte("pong"))
