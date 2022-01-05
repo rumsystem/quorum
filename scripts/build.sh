@@ -1,8 +1,8 @@
 #!/bin/bash
 
 GIT_COMMIT=$(git rev-list -1 HEAD)
-#darwin windows freebsd
-for GOOS in linux ; do
+#darwin windows freebsd linux
+for GOOS in darwin windows freebsd linux ; do
     for GOARCH in amd64; do
         if [[ "$GOOS" == "windows" ]]; then
             bin="quorum.exe"
