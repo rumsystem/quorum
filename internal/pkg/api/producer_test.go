@@ -197,7 +197,7 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// group owner should be able to get announced producers
-	time.Sleep(time.Second * 15)
+	time.Sleep(time.Second * 30)
 	announcedProducers, err := getAnnouncedProducers(peerapi, group.GroupId)
 	if err != nil {
 		t.Fatalf("getAnnouncedProducers failed: %s", err)
@@ -205,7 +205,7 @@ func TestAnnounceProducer(t *testing.T) {
 
 	// check if the producer is in the announced producers list
 	if announcedProducers == nil || len(announcedProducers) != 1 {
-		t.Fatalf("announcedProducers should only have one item.")
+		t.Fatalf("announcedProducers should only have one item, not %d", len(announcedProducers))
 	}
 
 	if announceResult.AnnouncedSignPubkey != announcedProducers[0].AnnouncedPubkey {

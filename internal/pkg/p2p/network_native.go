@@ -215,7 +215,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 		case <-ticker.C:
 			//TODO: check peers status and max connect peers
 			connectedCount := 0
-			if notify == true {
+			if notify == false {
 				peers, err := node.FindPeers(ctx, config.RendezvousString)
 				if err != nil {
 					return err
@@ -234,6 +234,10 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 					} else {
 						connectedCount++
 					}
+				}
+				if node.RumExchange != nil {
+					networklog.Infof("have new peers, try to connect with rumexchange...")
+					node.RumExchange.ConnectRex(ctx)
 				}
 			}
 			if connectedCount >= maxpeers {

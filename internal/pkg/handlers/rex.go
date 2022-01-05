@@ -13,7 +13,7 @@ func RexTest(node *p2p.Node) ([]string, error) {
 	if node.RumExchange != nil {
 
 		fmt.Println("call rextest")
-		err := node.RumExchange.ConnectRex(ctx, 3)
+		err := node.RumExchange.ConnectRex(ctx)
 		if err != nil {
 			return []string{"err", err.Error()}, nil
 		}
@@ -40,7 +40,7 @@ func RexInitSession(node *p2p.Node, groupId string, peerId string) error {
 	defer cancel()
 	if node.RumExchange != nil {
 		fmt.Println("call rex init session")
-		err := node.RumExchange.ConnectRex(ctx, 3)
+		err := node.RumExchange.ConnectRex(ctx)
 		if err != nil {
 			return err
 		}
