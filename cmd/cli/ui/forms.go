@@ -66,6 +66,21 @@ func CreateGroupForm() {
 	App.SetFocus(groupForm)
 }
 
+func SaveSeedToTmpFile(seedBytes []byte) (*os.File, error) {
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "quorum-seed-")
+	if err != nil {
+		return nil, err
+	}
+	if _, err = tmpFile.Write(seedBytes); err != nil {
+		return nil, err
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return nil, err
+	}
+	return tmpFile, nil
+}
+
 func goQuorumCreateGroup() {
 	seedBytes, err := api.CreateGroup(groupReqStruct)
 	if err != nil {
@@ -73,19 +88,9 @@ func goQuorumCreateGroup() {
 	} else {
 		cmdInput.SetLabel(fmt.Sprintf("Group %s: ", groupReqStruct.Name))
 		cmdInput.SetText("Created")
-
-		tmpFile, err := ioutil.TempFile(os.TempDir(), "quorum-seed-")
+		tmpFile, err := SaveSeedToTmpFile(seedBytes)
 		if err != nil {
-			Error("Cannot create temporary file to save seed", err.Error())
-			return
-		}
-		if _, err = tmpFile.Write(seedBytes); err != nil {
-			Error("Failed to write to seed file", err.Error())
-			return
-		}
-
-		if err := tmpFile.Close(); err != nil {
-			Error("Failed to close the seed file", err.Error())
+			Error("Failed to cache group seed", err.Error())
 			return
 		}
 		Info(fmt.Sprintf("Group %s created", groupReqStruct.Name), fmt.Sprintf("Seed saved at: %s. Be sure to keep it well.", tmpFile.Name()))
