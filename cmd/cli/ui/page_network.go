@@ -134,7 +134,11 @@ func drawRight() {
 	if peer != "" && peerData != nil {
 		networkPageRight.Clear()
 		fmt.Fprintf(networkPageRight, "[::b]%s[-:-:-]\n", peer)
-		fmt.Fprintf(networkPageRight, "[::b]ping: %s[-:-:-]\n", peerData.RTT)
+		fmt.Fprintf(networkPageRight, "[::b]ping(ms): ")
+		for _, rtt := range peerData.RTT {
+			fmt.Fprintf(networkPageRight, "%d ", rtt)
+		}
+		fmt.Fprintf(networkPageRight, "[-:-:-]\n")
 		fmt.Fprintf(networkPageRight, "\n")
 		fmt.Fprintf(networkPageRight, "addrs:\n")
 		for _, addr := range peerData.Addrs {

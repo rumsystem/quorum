@@ -201,7 +201,7 @@ type BlockStruct struct {
 type PingInfoItemStruct struct {
 	Addrs       []string             `json:"addrs"`
 	Protocols   []string             `json:"protocols"`
-	RTT         string               `json:"rtt"`
+	RTT         [10]int64            `json:"rtt"`
 	Connections []qApi.AddrProtoPair `json:"connections"`
 }
 
