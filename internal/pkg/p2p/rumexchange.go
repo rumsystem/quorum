@@ -21,6 +21,11 @@ var rumexchangelog = logging.Logger("rumexchange")
 
 const IDVer = "1.0.0"
 
+type Chain interface {
+	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
+	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
+}
+
 type RexService struct {
 	Host           host.Host
 	ProtocolId     protocol.ID
@@ -101,6 +106,33 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 	} else {
 		return fmt.Errorf("no enough peer to send msg")
 	}
+}
+
+func (r *RexService) Publish(msg *quorumpb.RumMsg) error {
+	//TODO: select peers
+	succ := 0
+	peers := r.Host.Network().Peers()
+	for _, p := range peers {
+		ctx := context.Background()
+		s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+		if err != nil {
+			rumexchangelog.Errorf("create network stream err: %s", err)
+		} else {
+			bufw := bufio.NewWriter(s)
+			wc := protoio.NewDelimitedWriter(bufw)
+			err := wc.WriteMsg(msg)
+			if err != nil {
+				rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+			} else {
+				succ++
+				rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+			}
+			bufw.Flush()
+		}
+
+	}
+
+	return nil
 }
 
 func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionIfConn) {
@@ -272,6 +304,10 @@ func (r *RexService) Handler(s network.Stream) {
 				} else {
 					r.PassConnRespMsgToNext(rummsg.ConnResp)
 				}
+			case quorumpb.RumMsgType_CHAIN_DATA:
+				rumexchangelog.Debugf("chaindata %s", rummsg.DataPackage)
+				frompeerid := s.Conn().RemotePeer()
+				r.handlePackage(frompeerid, rummsg.DataPackage)
 			}
 
 		} else {
@@ -279,6 +315,42 @@ func (r *RexService) Handler(s network.Stream) {
 		}
 
 	}
+}
+
+func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
+	fmt.Println(pkg)
+	//var pkg quorumpb.Package
+	//	err = proto.Unmarshal(msg.Data, &pkg)
+	//if err == nil {
+	if pkg.Type == quorumpb.PackageType_BLOCK {
+		fmt.Println("====is a block")
+		//		//is block
+		//		var blk *quorumpb.Block
+		//		blk = &quorumpb.Block{}
+		//		err := proto.Unmarshal(pkg.Data, blk)
+		//		if err == nil {
+		//			psconn.chain.HandleBlock(blk)
+		//		} else {
+		//			channel_log.Warning(err.Error())
+		//		}
+	} else if pkg.Type == quorumpb.PackageType_TRX {
+		fmt.Printf("====is a trx, from %s\n", frompeerid)
+		var trx *quorumpb.Trx
+		trx = &quorumpb.Trx{}
+		err := proto.Unmarshal(pkg.Data, trx)
+		if err == nil {
+			fmt.Println("====show trx")
+			fmt.Println(trx)
+			//HandleTrxFromRex
+			//psconn.chain.HandleTrx(trx)
+		} else {
+			//channel_log.Warningf(err.Error())
+		}
+	}
+	//} else {
+	//	channel_log.Warningf(err.Error())
+	//	channel_log.Warningf("%s", msg.Data)
+	//}
 }
 
 type netNotifiee RexService

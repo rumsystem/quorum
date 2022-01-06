@@ -7,6 +7,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
@@ -20,6 +21,12 @@ var chain_log = logging.Logger("chain")
 type GroupProducer struct {
 	ProducerPubkey   string
 	ProducerPriority int8
+}
+
+type ChainDataEvent struct {
+	Trx   *quorumpb.Trx
+	Block *quorumpb.Block
+	From  peer.ID
 }
 
 type Chain struct {
@@ -535,7 +542,7 @@ func (chain *Chain) createUserTrxMgr() {
 	chain_log.Infof("<%s> Create and init group userTrxMgr", chain.groupId)
 	var userTrxMgr *TrxMgr
 	userTrxMgr = &TrxMgr{}
-	userTrxMgr.Init(chain.group.Item, userPsconn)
+	userTrxMgr.Init(chain.group.Item, nodectx.GetNodeCtx().Node.RumExchange, userPsconn)
 	chain.trxMgrs[chain.userChannelId] = userTrxMgr
 }
 
@@ -551,7 +558,7 @@ func (chain *Chain) createSyncTrxMgr() {
 	chain_log.Infof("<%s> Create and init group syncTrxMgr", chain.groupId)
 	var syncTrxMgr *TrxMgr
 	syncTrxMgr = &TrxMgr{}
-	syncTrxMgr.Init(chain.group.Item, syncPsconn)
+	syncTrxMgr.Init(chain.group.Item, nodectx.GetNodeCtx().Node.RumExchange, syncPsconn)
 	chain.trxMgrs[chain.syncChannelId] = syncTrxMgr
 }
 
@@ -566,7 +573,7 @@ func (chain *Chain) createProducerTrxMgr() {
 	chain_log.Infof("<%s> Create and init group producerTrxMgr", chain.groupId)
 	var producerTrxMgr *TrxMgr
 	producerTrxMgr = &TrxMgr{}
-	producerTrxMgr.Init(chain.group.Item, producerPsconn)
+	producerTrxMgr.Init(chain.group.Item, nodectx.GetNodeCtx().Node.RumExchange, producerPsconn)
 	chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
 }
 

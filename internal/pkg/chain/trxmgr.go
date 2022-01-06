@@ -9,6 +9,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
@@ -31,12 +32,16 @@ type TrxMgr struct {
 	groupItem *quorumpb.GroupItem
 	psconn    pubsubconn.PubSubConn
 	groupId   string
+	rex       *p2p.RexService
 }
 
 var trxmgr_log = logging.Logger("trxmgr")
 
-func (trxMgr *TrxMgr) Init(groupItem *quorumpb.GroupItem, psconn pubsubconn.PubSubConn) {
+func (trxMgr *TrxMgr) Init(groupItem *quorumpb.GroupItem, rex *p2p.RexService, psconn pubsubconn.PubSubConn) {
 	trxMgr.groupItem = groupItem
+	if rex != nil {
+		trxMgr.rex = rex
+	}
 	trxMgr.psconn = psconn
 	trxMgr.groupId = groupItem.GroupId
 	trxmgr_log.Debugf("<%s> trxMgr inited", trxMgr.groupId)
@@ -433,6 +438,9 @@ func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
 	pkg.Type = quorumpb.PackageType_BLOCK
 	pkg.Data = pbBytes
 
+	//TODO: rex or pubsub
+	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//return trxMgr.rex.Publish(rummsg)
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
 		return err
@@ -453,6 +461,10 @@ func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
 
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
+
+	//TODO: rex or pubsub
+	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//return trxMgr.rex.Publish(rummsg)
 
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
