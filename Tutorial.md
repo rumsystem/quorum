@@ -23,6 +23,7 @@ You can try:
   - [User node clear a group*](#api-post-group-clear)
   - [User node leave a group](#api-post-group-leave)
   - [Owner node del a group](#api-post-group-del)
+  - [Get group seed](#api-get-group-seed)
 - [Network and Sync](#test-network)
   - [Get network info](#api-get-network)
   - [Start sync](#api-post-startsync)
@@ -31,7 +32,8 @@ You can try:
     - Get all content
     - Request content with senders filter
   - [Post content to group](#api-post-content)
-    - Only text content
+    - Content with text only
+    - Content with inreplyto
     - Content with images
     - Like/Dislike
   - [Update user profile of a group](#api-group-profile) 
@@ -523,6 +525,25 @@ API return value:
 
 [>>> back top](#top)
 
+<span id="api-get-group-seed"></span>
+
+## Get group seed
+
+**API**:  ```*/api/v1/group/{group_id}/seed```
+
+- Method: Get
+- Usage : Get the seed of a group by group_id.
+- Params :
+  - [group_id](#param-group_id)
+
+**Example**:
+
+```bash
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/seed
+```
+
+[>>> back top](#top)
+
 <span id="test-network"></span>
 
 # Network and Sync
@@ -728,27 +749,48 @@ nodeA can be `owner node` or `user node`.
 - Method: POST
 - Usage : Post content to group
 - Params :
-  - type
-  - object
-  - target
+  - `type`: requested, string, should be one of these:
+    - "Note"
+    - "Like" or "Dislike"
+  - `object`:requested, should stay the same as `type`
+    - type "Note":
+        - `name`:optional
+        - for note only:
+            - `content`:requested, string, the text of content
+        - for image only:
+            - `image`:requested, list, each image should have:
+                - `mediaType`:requested, string, type of image
+                - `content`:requested, string, base64encode image bytes
+                - `name`: name of image
+        - for note + image:
+            - `content`: the same as above (for note only)
+            - `image`: the same as above(for image only)
+        - `inreplyto`: optional
+            - `trxid`: the trx_id to reply
+    - type "Like" or "Dislike"
+        - `id`: requested, string, trx_id to like/dislike
+  - `target`:requested
+    - `id`: requested, string, group_id of the group
+    - `type`: requested, sting, "Group"
 - API return value:
   - [trx_id](#param-trx_id)
 
 **Example**:
 
-### Note only content:
-
 ```bash
 curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}'  https://127.0.0.1:8002/api/v1/group/content
 ```
+
+### Content with text only
+
+when `object.content` is not null, `object.image` is optional.
 
 ```json
 {
     "type": "Add",
     "object": {
         "type": "Note",
-        "content": "Good Morning!\nHave a nice day.",
-        "name": ""
+        "content": "Good Morning!\nHave a nice day."
     },
     "target": {
         "id": "c60ed78e-df15-4408-9b5b-f87158cf0bda",
@@ -757,7 +799,46 @@ curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":
 }
 ```
 
-### content with images
+[rum app](https://github.com/rumsystem/rum-app) bbs use `object.name`  as title which should not be `""`:
+
+```json
+{
+    "type": "Add",
+    "object": {
+        "type": "Note",
+        "content": "Good Morning!\nHave a nice day.",
+        "name": "my first forum!"
+    },
+    "target": {
+        "id": "c60ed78e-df15-4408-9b5b-f87158cf0bda",
+        "type": "Group"
+    }
+}
+```
+
+### Content with inreplyto
+
+`object.content` or `object.image` is requested. one of them, or both.
+
+```json
+{
+    "type": "Add",
+    "object": {
+        "type": "Note",
+        "content": "can't agree more! thx.",
+        "inreplyto": {"trxid": "08c6ee4d-0310-47cf-988e-3879321ef274"}
+        
+    },
+    "target": {
+        "id": "d87b93a3-a537-473c-8445-609157f8dab0",
+        "type": "Group"
+    }
+}
+```
+
+### Content with images
+
+when `object.image` is not null, `object.content` is optional.
 
 1~4 images , total size less than 200 mb
 
@@ -1032,7 +1113,7 @@ Owner 作为组内第一个 Producer 存在，有其它 Producer 存在时，如
 
 3. 其他 Producer 获得组的 seed，[加入组](#api-post-group-join)，完成同步
 
-4. Producer 用[Announce API](#api-post-announce)将自己作为 Producer 的意愿告知 Owner
+4. Producer 用[Announce API](#api-post-announce-producer)将自己作为 Producer 的意愿告知 Owner
 
 5. 其他节点（包括 Owner 节点）[查看所有 Announce 过的 Producer](#api-get-announced-producers)
 

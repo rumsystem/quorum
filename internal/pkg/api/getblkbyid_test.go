@@ -20,7 +20,7 @@ type GetBlockResult struct {
 	ProducerPubKey string          `json:"ProducerPubKey" validate:"required"`
 	Hash           []byte          `json:"Hash" validate:"required"`
 	Signature      []byte          `json:"Signature" validate:"required"`
-	TimeStamp      int64           `json:"TimeStamp" validate:"required"`
+	TimeStamp      string          `json:"TimeStamp" validate:"required"`
 }
 
 func getBlockByID(api, groupID, blockID string) (*GetBlockResult, error) {

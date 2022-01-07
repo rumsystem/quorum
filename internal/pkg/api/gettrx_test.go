@@ -15,7 +15,7 @@ type GetTrxResult struct {
 	TrxId        string `json:"TrxId" validate:"required"`
 	GroupId      string `json:"GroupId" validate:"required"`
 	Data         string `json:"Data" validate:"required"`
-	TimeStamp    int64  `json:"TimeStamp" validate:"required"`
+	TimeStamp    string `json:"TimeStamp" validate:"required"`
 	Version      string `json:"Version" validate:"required"`
 	Expired      int64  `json:"Expired" validate:"required"`
 	SenderPubkey string `json:"SenderPubkey" validate:"required"`
