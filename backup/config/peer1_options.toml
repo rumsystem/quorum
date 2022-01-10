@@ -1,0 +1,12 @@
+connshi = 100
+enabledevnetwork = false
+enablenat = true
+jwtkey = "4trDdsf194NGhajCUN7zUyAFn3YkegOx"
+jwttoken = ""
+maxpeers = 50
+networkname = "nevis"
+
+[signkeymap]
+  d097f0aa-148d-4660-ae4a-a4e323687e70 = "0x623f709145834D8EBfc6Cd301c4Ec4265e344C87"
+  d313fb8b-ded2-4c78-9a07-a74ce112f222 = "0x2dbeCE9390193A4e0ebc88C9256Ba2e18E47f1f5"
+  default = "0x5292904c062B99C380240eE0E6e52d5D0fCd7eE4"
