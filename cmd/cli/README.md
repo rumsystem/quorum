@@ -12,7 +12,7 @@ Use following command to start a local api server with a remote peer.
 quorum -peername chux0519_peer -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/167.114.61.179/tcp/10666/p2p/16Uiu2HAmE7TYnrYtC6tAsWvz4EUGQke1wsdrkw2kt8GFv6brfHFw  -debug true
 ```
 
-The quorum project: https://github.com/rumsystem/quorum
+[The quorum project](https://github.com/rumsystem/quorum)
 
 ## Start
 
@@ -33,7 +33,7 @@ In rumcli, press `Space` to bring up the command prompt, then
     > /join @/home/user/seed.json
 
      It will use the `/home/user/seed.json` and try to join that group. 
-     
+
      You can use plain text without the `@` prefix as well, like 
     > /join $plain-json-text
 
@@ -46,7 +46,7 @@ In rumcli, press `Space` to bring up the command prompt, then
 - `/group.create` to new a group, for example, run
 
     > /group.create mygroup1
-    
+
     It will create a group, and save the seed to your /tmp/xxxx
 
 - `/group.leave` to leave a group
@@ -76,18 +76,24 @@ In each widget, h/j/k/l can scoll the content.
 In GroupList View, press (a-z) to quick-switch between groups.
 
 In ContentView
+
 - press Shift + F to follow someone, Shift + U to unfollow.
 - Shift + 1 to show all contents, Shift + 2 to show following contens, Shift + 3 to show your own contents
 
-## Windows
+## Configs
 
-Windows users may meet utf-8 problem, run following commands in `win + r` prompt to solve.
+rumcli will load your config on starting. Default paths are different on different operating systems.
 
-> powershell.exe -NoExit -Command chcp 65001
-> 
-> ./rumcli.exe
+Linux: `~/.config/rumcli/config.toml`
+OSX: `~/Library/Application Support/rumcli/config.toml`
+Windows: `C:\Users\xxxx\AppData\Local\rumcli\config.toml`
+
+Fill the `ServerSSLCertificate` like `ServerSSLCertificate = "/home/xxx/quorum/certs/server.crt"` before using to avoid https error.
+
+Notice: On windows you have to use the escaped string, for example `C:\\Users\\xxxx\\repos\\quorum\\certs\\server.crt`
 
 ## Debug
+
 ```bash
 $> go build -gcflags=all="-N -l" rumcli.go
 $> ./rumcli

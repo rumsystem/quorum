@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"time"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type PSPing struct {
@@ -27,7 +28,6 @@ type PingResult struct {
 }
 
 var ping_log = logging.Logger("ping")
-var errCh chan error
 
 func NewPSPingService(ctx context.Context, ps *pubsub.PubSub, peerid peer.ID) *PSPing {
 	psping := &PSPing{PeerId: peerid, ps: ps, ctx: ctx}
@@ -62,7 +62,7 @@ func (p *PSPing) EnablePing() error {
 func (p *PSPing) PingReq(dstpeerid string) ([10]int64, error) {
 	result := [10]int64{}
 	pingTimeout := time.Second * 5
-	errCh = make(chan error, 1)
+	errCh := make(chan error, 1)
 	timer := time.NewTimer(pingTimeout)
 	dsttopicid := fmt.Sprintf("PSPing:%s", dstpeerid)
 	var err error
@@ -110,7 +110,7 @@ func (p *PSPing) PingReq(dstpeerid string) ([10]int64, error) {
 		}
 	}
 
-	go p.handlePingResponse(&resultmap)
+	go p.handlePingResponse(&resultmap, errCh)
 	select {
 	case <-timer.C:
 		ping_log.Error("PSPing timeout")
@@ -152,12 +152,12 @@ func (p *PSPing) handlePingRequest() error {
 	}
 }
 
-func (p *PSPing) handlePingResponse(pingresult *map[[32]byte]*PingResult) error {
+func (p *PSPing) handlePingResponse(pingresult *map[[32]byte]*PingResult, errCh chan error) error {
 	count := 0
 	for {
 		pingrespmsg, err := p.Subscription.Next(p.ctx)
 		if err == nil {
-			ping_log.Errorf("Ping packet recv from <%s>", p.PeerId)
+			ping_log.Debugf("Ping packet recv from <%s>", p.PeerId)
 			if pingrespmsg.ReceivedFrom != p.PeerId { //not me
 				var pspingresp quorumpb.PSPing
 				if err := proto.Unmarshal(pingrespmsg.Data, &pspingresp); err != nil {

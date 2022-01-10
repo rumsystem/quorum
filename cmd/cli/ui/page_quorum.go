@@ -15,6 +15,7 @@ import (
 
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
+	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
@@ -165,6 +166,32 @@ func QuorumCmdSendHandler(cmd string) {
 // CMD /group.create handler
 func QuorumNewGroupHandler() {
 	CreateGroupForm()
+}
+
+func QuorumGetGroupSeedHandler() {
+	if quorumData.GetCurrentGroup() == "" {
+		Error("No Group", "Please select a group first.")
+		return
+	}
+	go func() {
+		seed, err := api.GetGroupSeed(quorumData.GetCurrentGroup())
+		if err != nil {
+			Error("Fetch Seed", err.Error())
+			return
+		}
+		seedBytes, err := json.Marshal(seed)
+		if err != nil {
+			Error("Fetch Seed", err.Error())
+			return
+		}
+		clipboard.WriteAll(string(seedBytes))
+		tmpFile, err := SaveSeedToTmpFile(seedBytes)
+		if err != nil {
+			Error("Failed to cache group seed", err.Error())
+			return
+		}
+		Info("Seed", "Seed is copied to your clipboard, if that is not working, check tmp file: "+tmpFile.Name())
+	}()
 }
 
 // CMD /group.admin

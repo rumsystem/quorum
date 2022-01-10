@@ -1,0 +1,18 @@
+{
+  "genesis_block": {
+    "BlockId": "9c4cc78c-7b38-4667-83fb-64ea66d8924e",
+    "GroupId": "d097f0aa-148d-4660-ae4a-a4e323687e70",
+    "ProducerPubKey": "CAISIQLUeT1pnRt8SKL6xC9HIo8xvYBIE3EXkdwUM4sNZfzSlA==",
+    "Hash": "F7O8Qwb5MzUJSp6D6ewl/Y0LKmsJTrmkVuYAkEXGg9M=",
+    "Signature": "MEUCICVENOpzY+Qnw37FXFWUT4w+ulVHQeDzl8zVdAnxqV0OAiEAtkoZx3uLP0Nkzx19XB/v+idFvMVUJ/wM/jW65nPSU8M=",
+    "TimeStamp": "1640163943079082800"
+  },
+  "group_id": "d097f0aa-148d-4660-ae4a-a4e323687e70",
+  "group_name": "group_8002_from_app",
+  "owner_pubkey": "CAISIQLUeT1pnRt8SKL6xC9HIo8xvYBIE3EXkdwUM4sNZfzSlA==",
+  "consensus_type": "poa",
+  "encryption_type": "public",
+  "cipher_key": "df1f24d8adbe510771c4494c7d941771710ea50696e70bab402de837829b1d3d",
+  "app_key": "group_timeline",
+  "signature": "3046022100f2bc90138823f0da8f3bc6cf101799a5f260ff011d7153e0d63b9566f6a0fb29022100f149b6a1c30a916f8fc9ea2ab5fd1473adb819707e3d174ffabc25d21947646a"
+}
