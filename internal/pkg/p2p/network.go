@@ -23,6 +23,13 @@ type NodeInfo struct {
 	NATType network.Reachability
 }
 
+type P2pNetworkType uint
+
+const (
+	PubSub P2pNetworkType = iota
+	RumExchange
+)
+
 type Node struct {
 	PeerID           peer.ID
 	Host             host.Host

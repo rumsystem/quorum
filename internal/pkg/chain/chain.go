@@ -9,6 +9,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
@@ -23,11 +24,18 @@ type GroupProducer struct {
 	ProducerPriority int8
 }
 
-type ChainDataEvent struct {
-	Trx   *quorumpb.Trx
-	Block *quorumpb.Block
-	From  peer.ID
-}
+type EventSource uint
+
+const (
+	PubSub = iota
+	RumExchange
+)
+
+//type ChainDataEvent struct {
+//	DataPackage quorumpb.Package
+//	Source      EventSource
+//	From        peer.ID
+//}
 
 type Chain struct {
 	nodename          string
@@ -39,6 +47,7 @@ type Chain struct {
 	ProducerPool      map[string]*quorumpb.ProducerItem
 	userPool          map[string]*quorumpb.UserItem
 	peerIdPool        map[string]string
+	chaindata         *ChainData
 
 	Syncer    *Syncer
 	Consensus Consensus
@@ -92,7 +101,7 @@ func (chain *Chain) Init(group *Group) error {
 	chain.trxMgrs = make(map[string]*TrxMgr)
 	chain.nodename = nodectx.GetNodeCtx().Name
 	chain.groupId = group.Item.GroupId
-
+	chain.chaindata = &ChainData{nodectx.GetDbMgr()}
 	chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + chain.groupId
 	chain.userChannelId = USER_CHANNEL_PREFIX + chain.groupId
 	chain.syncChannelId = SYNC_CHANNEL_PREFIX + chain.groupId + "_" + chain.group.Item.UserSignPubkey
@@ -109,6 +118,7 @@ func (chain *Chain) Init(group *Group) error {
 		return err
 	}
 
+	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(chain.groupId, chain)
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
@@ -203,6 +213,39 @@ func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 	return nodectx.GetDbMgr().UpdGroup(chain.group.Item)
 }
 
+func (chain *Chain) HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error {
+	if trx.Version != nodectx.GetNodeCtx().Version {
+		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
+		return errors.New("Trx Version mismatch")
+	}
+	switch trx.Type {
+	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
+		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+			return nil
+		}
+		chain.handleReqBlockForward(trx, p2p.RumExchange, from)
+	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
+		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+			return nil
+		}
+		chain.handleReqBlockBackward(trx)
+	case quorumpb.TrxType_REQ_BLOCK_RESP:
+		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+			return nil
+		}
+		chain.handleReqBlockResp(trx)
+
+	default:
+		chain.HandleTrx(trx)
+	}
+
+	return nil
+}
+
+func (chain *Chain) HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error {
+	return nil
+}
+
 func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	if trx.Version != nodectx.GetNodeCtx().Version {
 		chain_log.Errorf("HandleTrx called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
@@ -227,7 +270,7 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockForward(trx)
+		chain.handleReqBlockForward(trx, p2p.PubSub, "")
 	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -295,12 +338,53 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype p2p.P2pNetworkType, from peer.ID) error {
+	if networktype == p2p.PubSub {
+		if chain.Consensus.Producer() == nil {
+			return nil
+		}
+		chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
+		return chain.Consensus.Producer().GetBlockForward(trx)
+	} else if networktype == p2p.RumExchange {
+		subBlocks, err := chain.chaindata.GetBlockForwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
+		if err == nil {
+			//send subblocs by rumexchange with peerid
+
+			if len(subBlocks) != 0 {
+
+				ks := nodectx.GetNodeCtx().Keystore
+				mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
+				if err != nil {
+					return err
+				}
+				for _, block := range subBlocks {
+
+					reqblockresp, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+					chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
+					if err != nil {
+						return err
+					}
+
+					var pkg *quorumpb.Package
+					pkg = &quorumpb.Package{}
+					pbBytes, err := proto.Marshal(reqblockresp)
+					if err != nil {
+						return err
+					}
+					pkg.Type = quorumpb.PackageType_TRX
+					pkg.Data = pbBytes
+
+					rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+					chain_log.Debugf("create REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) message", reqblockresp)
+					nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, from)
+				}
+				return nil
+			}
+
+		}
 		return nil
 	}
-	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-	return chain.Consensus.Producer().GetBlockForward(trx)
+	return nil
 }
 
 func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx) error {

@@ -274,6 +274,7 @@ func (dbMgr *DbMgr) GetBlockHeight(blockId string, prefix ...string) (int64, err
 func (dbMgr *DbMgr) GetSubBlock(blockId string, prefix ...string) ([]*quorumpb.Block, error) {
 	var result []*quorumpb.Block
 	chunk, err := dbMgr.getBlockChunk(blockId, false, prefix...)
+	dbmgr_log.Debugf("GetSubBlock, chunk of blockid : %s", blockId)
 	if err != nil {
 		return nil, err
 	}

@@ -24,12 +24,14 @@ const IDVer = "1.0.0"
 type Chain interface {
 	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
 	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
+	//	GetChainConsensus() consensus.Consensus
 }
 
 type RexService struct {
 	Host           host.Host
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
+	chainmgr       map[string]Chain
 }
 
 type ActionType int
@@ -46,7 +48,8 @@ type RexNotification struct {
 
 func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	rexs := &RexService{h, protocol.ID(customprotocol), notification}
+	chainmgr := make(map[string]Chain)
+	rexs := &RexService{h, protocol.ID(customprotocol), notification, chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -69,6 +72,17 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *RexService) ChainReg(groupid string, chain Chain) {
+	rumexchangelog.Debugf("call chain reg : %s", groupid)
+	fmt.Println(chain)
+	_, ok := r.chainmgr[groupid]
+	if ok == false {
+		r.chainmgr[groupid] = chain
+		rumexchangelog.Debugf("chain reg with rumexchange: %s", groupid)
+
+	}
 }
 
 func (r *RexService) InitSession(peerid string, channelid string) error {
@@ -106,6 +120,28 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 	} else {
 		return fmt.Errorf("no enough peer to send msg")
 	}
+}
+
+func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
+	rumexchangelog.Debugf("publish msg to peer: %s", to)
+	ctx := context.Background()
+	s, err := r.Host.NewStream(ctx, to, r.ProtocolId)
+	if err != nil {
+		rumexchangelog.Errorf("create network stream to %s err: %s", to, err)
+		return err
+	} else {
+		bufw := bufio.NewWriter(s)
+		wc := protoio.NewDelimitedWriter(bufw)
+		err := wc.WriteMsg(msg)
+		if err != nil {
+			rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+			return err
+		} else {
+			rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
+		}
+		bufw.Flush()
+	}
+	return nil
 }
 
 func (r *RexService) Publish(msg *quorumpb.RumMsg) error {
@@ -277,7 +313,7 @@ func (r *RexService) Handler(s network.Stream) {
 
 		var rummsg quorumpb.RumMsg
 		err = proto.Unmarshal(msgdata, &rummsg)
-		rumexchangelog.Debugf("rummsg: %s", rummsg)
+		//rumexchangelog.Debugf("rummsg: %s", rummsg)
 		if err == nil {
 			switch rummsg.MsgType {
 			case quorumpb.RumMsgType_IF_CONN:
@@ -305,7 +341,7 @@ func (r *RexService) Handler(s network.Stream) {
 					r.PassConnRespMsgToNext(rummsg.ConnResp)
 				}
 			case quorumpb.RumMsgType_CHAIN_DATA:
-				rumexchangelog.Debugf("chaindata %s", rummsg.DataPackage)
+				//rumexchangelog.Debugf("chaindata %s", rummsg.DataPackage)
 				frompeerid := s.Conn().RemotePeer()
 				r.handlePackage(frompeerid, rummsg.DataPackage)
 			}
@@ -318,7 +354,6 @@ func (r *RexService) Handler(s network.Stream) {
 }
 
 func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
-	fmt.Println(pkg)
 	//var pkg quorumpb.Package
 	//	err = proto.Unmarshal(msg.Data, &pkg)
 	//if err == nil {
@@ -339,8 +374,16 @@ func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
 		trx = &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
-			fmt.Println("====show trx")
-			fmt.Println(trx)
+			//fmt.Printf("====show trx groupid: %s \n", trx.GroupId)
+			//fmt.Println(trx)
+
+			targetchain, ok := r.chainmgr[trx.GroupId]
+			//fmt.Println("======targetchain: ", trx.GroupId)
+			//fmt.Println(targetchain)
+			//fmt.Println(ok)
+			if ok == true {
+				targetchain.HandleTrxWithRex(trx, frompeerid)
+			}
 			//HandleTrxFromRex
 			//psconn.chain.HandleTrx(trx)
 		} else {

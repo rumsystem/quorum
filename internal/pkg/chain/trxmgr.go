@@ -439,14 +439,14 @@ func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
 	pkg.Data = pbBytes
 
 	//TODO: rex or pubsub
-	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	//return trxMgr.rex.Publish(rummsg)
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	return trxMgr.rex.Publish(rummsg)
+	//pkgBytes, err := proto.Marshal(pkg)
+	//if err != nil {
+	//	return err
+	//}
 
-	return trxMgr.psconn.Publish(pkgBytes)
+	//return trxMgr.psconn.Publish(pkgBytes)
 }
 
 func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
@@ -463,13 +463,13 @@ func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
 	pkg.Data = pbBytes
 
 	//TODO: rex or pubsub
-	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	//return trxMgr.rex.Publish(rummsg)
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	return trxMgr.rex.Publish(rummsg)
 
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
+	//pkgBytes, err := proto.Marshal(pkg)
+	//if err != nil {
+	//	return err
+	//}
 
-	return trxMgr.psconn.Publish(pkgBytes)
+	//return trxMgr.psconn.Publish(pkgBytes)
 }
