@@ -342,6 +342,7 @@ func (r *RexService) Handler(s network.Stream) {
 				}
 			case quorumpb.RumMsgType_CHAIN_DATA:
 				//rumexchangelog.Debugf("chaindata %s", rummsg.DataPackage)
+				rumexchangelog.Debugf("type is CHAIN_DATA")
 				frompeerid := s.Conn().RemotePeer()
 				r.handlePackage(frompeerid, rummsg.DataPackage)
 			}
@@ -374,20 +375,14 @@ func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
 		trx = &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
-			//fmt.Printf("====show trx groupid: %s \n", trx.GroupId)
-			//fmt.Println(trx)
-
 			targetchain, ok := r.chainmgr[trx.GroupId]
-			//fmt.Println("======targetchain: ", trx.GroupId)
-			//fmt.Println(targetchain)
-			//fmt.Println(ok)
 			if ok == true {
 				targetchain.HandleTrxWithRex(trx, frompeerid)
 			}
 			//HandleTrxFromRex
 			//psconn.chain.HandleTrx(trx)
 		} else {
-			//channel_log.Warningf(err.Error())
+			rumexchangelog.Warningf(err.Error())
 		}
 	}
 	//} else {

@@ -230,12 +230,14 @@ func (chain *Chain) HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error {
 		}
 		chain.handleReqBlockBackward(trx)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
+		chain_log.Debugf("receive REQ_BLOCK_RESP trx:%s", trx)
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockResp(trx)
 
+		chain.handleReqBlockResp(trx)
 	default:
+		chain_log.Debugf("default trx, call chain.HandleTrx")
 		chain.HandleTrx(trx)
 	}
 
@@ -348,26 +350,32 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype p2p.P2p
 	} else if networktype == p2p.RumExchange {
 		subBlocks, err := chain.chaindata.GetBlockForwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
 		if err == nil {
-			//send subblocs by rumexchange with peerid
-
-			if len(subBlocks) != 0 {
-
+			if len(subBlocks) > 0 {
 				ks := nodectx.GetNodeCtx().Keystore
 				mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
 				if err != nil {
 					return err
 				}
 				for _, block := range subBlocks {
-
-					reqblockresp, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+					reqBlockRespItem, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 					chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
+					if err != nil {
+						return err
+					}
+
+					bItemBytes, err := proto.Marshal(reqBlockRespItem)
+					if err != nil {
+						return err
+					}
+
+					trx, err := chain.GetUserTrxMgr().CreateTrx(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes)
 					if err != nil {
 						return err
 					}
 
 					var pkg *quorumpb.Package
 					pkg = &quorumpb.Package{}
-					pbBytes, err := proto.Marshal(reqblockresp)
+					pbBytes, err := proto.Marshal(trx)
 					if err != nil {
 						return err
 					}
@@ -375,14 +383,15 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype p2p.P2p
 					pkg.Data = pbBytes
 
 					rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-					chain_log.Debugf("create REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) message", reqblockresp)
 					nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, from)
 				}
-				return nil
+			} else {
+				chain_log.Debugf("no more block for <%s>, send ontop message?", chain.groupId)
 			}
 
+		} else {
+			chain_log.Debugf("GetBlockForwardByReqTrx err %s", err)
 		}
-		return nil
 	}
 	return nil
 }

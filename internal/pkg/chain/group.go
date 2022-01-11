@@ -108,6 +108,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
+	nodectx.GetNodeCtx().Node.RumExchange.ChainReg(item.GroupId, grp.ChainCtx)
 
 	return nil
 }
