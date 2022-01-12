@@ -424,7 +424,7 @@ func (trxMgr *TrxMgr) CustomSendTrx(trx *quorumpb.Trx) error {
 	return trxMgr.sendTrx(trx)
 }
 
-func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block, networktype p2p.P2pNetworkType) error {
+func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
 	trxmgr_log.Debugf("<%s> SendBlock called", trxMgr.groupId)
 
 	var pkg *quorumpb.Package
@@ -439,10 +439,10 @@ func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block, networktype p2p.P2pNetworkT
 	pkg.Data = pbBytes
 
 	//TODO: rex or pubsub
-	if networktype == p2p.PubSub {
-		rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-		return trxMgr.rex.Publish(rummsg)
-	}
+	//if networktype == p2p.PubSub {
+	//	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//	return trxMgr.rex.Publish(rummsg)
+	//}
 
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
@@ -466,13 +466,13 @@ func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
 	pkg.Data = pbBytes
 
 	//TODO: rex or pubsub
-	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return trxMgr.rex.Publish(rummsg)
+	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//return trxMgr.rex.Publish(rummsg)
 
-	//pkgBytes, err := proto.Marshal(pkg)
-	//if err != nil {
-	//	return err
-	//}
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
 
-	//return trxMgr.psconn.Publish(pkgBytes)
+	return trxMgr.psconn.Publish(pkgBytes)
 }

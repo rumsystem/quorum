@@ -14,10 +14,8 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 
-	//pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -259,7 +257,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		//check if I am the winner
 		if producer.blockPool[candidateBlkid].ProducerPubKey == producer.grpItem.UserSignPubkey {
 			molaproducer_log.Debugf("<%s> winner send new block out", producer.groupId)
-			err := producer.cIface.GetUserTrxMgr().SendBlock(producer.blockPool[candidateBlkid], p2p.PubSub)
+			err := producer.cIface.GetUserTrxMgr().SendBlock(producer.blockPool[candidateBlkid])
 			if err != nil {
 				molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
 			}
