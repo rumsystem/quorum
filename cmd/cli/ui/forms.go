@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/rumsystem/quorum/cmd/cli/api"
@@ -36,6 +37,24 @@ func createGroupFormInit() {
 	groupForm.AddInputField("App Key", "", 20, nil, func(key string) {
 		groupReqStruct.AppKey = key
 	})
+	appKeyInput := groupForm.GetFormItemByLabel("App Key").(*cview.InputField)
+	DefaultAppKeys := []string{"group_timeline", "group_post", "group_note"}
+
+	appKeyInput.SetAutocompleteFunc(func(currentText string) (entries []*cview.ListItem) {
+		if len(currentText) == 0 {
+			return
+		}
+		for _, word := range DefaultAppKeys {
+			if strings.HasPrefix(strings.ToLower(word), strings.ToLower(currentText)) {
+				entries = append(entries, cview.NewListItem(word))
+			}
+		}
+		if len(entries) == 0 {
+			entries = nil
+		}
+		return
+	})
+
 	groupForm.AddButton("Save", func() {
 		if groupReqStruct.Name == "" || groupReqStruct.AppKey == "" {
 			Error("invalid parameter", "Name and AppKey should not be empty")
