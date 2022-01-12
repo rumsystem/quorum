@@ -85,12 +85,12 @@ func CreateGroupForm() {
 	App.SetFocus(groupForm)
 }
 
-func SaveSeedToTmpFile(seedBytes []byte) (*os.File, error) {
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "quorum-seed-")
+func SaveToTmpFile(bytes []byte, prefix string) (*os.File, error) {
+	tmpFile, err := ioutil.TempFile(os.TempDir(), prefix)
 	if err != nil {
 		return nil, err
 	}
-	if _, err = tmpFile.Write(seedBytes); err != nil {
+	if _, err = tmpFile.Write(bytes); err != nil {
 		return nil, err
 	}
 
@@ -98,6 +98,10 @@ func SaveSeedToTmpFile(seedBytes []byte) (*os.File, error) {
 		return nil, err
 	}
 	return tmpFile, nil
+}
+
+func SaveSeedToTmpFile(seedBytes []byte) (*os.File, error) {
+	return SaveToTmpFile(seedBytes, "quorum-seed-")
 }
 
 func goQuorumCreateGroup() {

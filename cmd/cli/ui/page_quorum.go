@@ -194,6 +194,29 @@ func QuorumGetGroupSeedHandler() {
 	}()
 }
 
+func QuorumBackupHandler() {
+	go func() {
+		res, err := api.DoBackup()
+		if err != nil {
+			Error("Backup", err.Error())
+			return
+		}
+		backupBytes, err := json.Marshal(res)
+		if err != nil {
+			Error("Backup", err.Error())
+			return
+		}
+		tmpFile, err := SaveToTmpFile(backupBytes, "backup-")
+		if err != nil {
+			Error("Failed to copy backup file", err.Error())
+			return
+		}
+		tmpFileName := tmpFile.Name()
+		clipboard.WriteAll(tmpFileName)
+		Info("Backup", fmt.Sprintf("Backup file is dumped to the tmp file: %s, use `quorum -restore` to restore", tmpFileName))
+	}()
+}
+
 // CMD /group.admin
 func QuorumGroupAdminHandler() {
 	if quorumData.GetCurrentGroup() == "" {
