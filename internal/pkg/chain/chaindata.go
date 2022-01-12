@@ -2,6 +2,7 @@ package chain
 
 import (
 	"encoding/hex"
+	"errors"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -30,7 +31,7 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 	}
 
 	//check if requester is in group block list
-	isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey)
+	isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
 		return nil, nil
@@ -38,29 +39,53 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 
 	subBlocks, err := d.dbmgr.GetSubBlock(reqBlockItem.BlockId, prefix...)
 	return subBlocks, err
+}
 
-	//
-	//	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
-	//	trxMgr, _ := producer.getSyncConn(channelId)
-	//
-	//	if len(subBlocks) != 0 {
-	//		for _, block := range subBlocks {
-	//			molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", producer.groupId)
-	//			err := trxMgr.SendReqBlockResp(&reqBlockItem, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-	//			if err != nil {
-	//				molaproducer_log.Warnf(err.Error())
-	//			}
-	//		}
-	//		return nil
-	//	} else {
-	//		var emptyBlock *quorumpb.Block
-	//		emptyBlock = &quorumpb.Block{}
-	//		//set producer pubkey of empty block
-	//		emptyBlock.BlockId = guuid.New().String()
-	//		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
-	//		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
-	//		return trxMgr.SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
-	//	}
+func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string, prefix ...string) (*quorumpb.Block, error) {
+	chain_log.Debugf("<%s> GetBlockBackwardcalled", trx.GroupId)
+
+	var reqBlockItem quorumpb.ReqBlock
+	bytecipherKey, err := hex.DecodeString(cipherKey)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptData, err := localcrypto.AesDecode(trx.Data, bytecipherKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
+		return nil, err
+	}
+
+	isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
+	if isBlocked {
+		chain_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
+		return nil, nil
+	}
+
+	isExist, err := d.dbmgr.IsBlockExist(reqBlockItem.BlockId, false, prefix...)
+	if err != nil {
+		return nil, err
+	} else if !isExist {
+		return nil, errors.New("Block not exist")
+	}
+
+	block, err := d.dbmgr.GetBlock(reqBlockItem.BlockId, false, prefix...)
+	if err != nil {
+		return nil, err
+	}
+
+	isParentExit, err := d.dbmgr.IsParentExist(block.PrevBlockId, false, prefix...)
+	if err != nil {
+		return nil, err
+	}
+	if isParentExit {
+		parentBlock, err := d.dbmgr.GetParentBlock(reqBlockItem.BlockId, prefix...)
+		return parentBlock, err
+	}
+	return nil, errors.New("Parent Block not exist")
 }
 
 func (d *ChainData) CreateReqBlockResp(cipherKey string, trx *quorumpb.Trx, block *quorumpb.Block, userSignPubkey string, result quorumpb.ReqBlkResult) (*quorumpb.ReqBlockResp, error) {

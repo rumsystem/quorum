@@ -21,10 +21,24 @@ var rumexchangelog = logging.Logger("rumexchange")
 
 const IDVer = "1.0.0"
 
+type RexPeerStatus uint
+
+const (
+	REJECT RexPeerStatus = iota
+	NOSUPPORT
+	BAD
+	TOOMANY
+	TIMEOUT
+)
+
+type REXPeer struct {
+	Id     peer.ID
+	Status RexPeerStatus
+}
+
 type Chain interface {
 	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
 	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
-	//	GetChainConsensus() consensus.Consensus
 }
 
 type RexService struct {
@@ -355,22 +369,8 @@ func (r *RexService) Handler(s network.Stream) {
 }
 
 func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
-	//var pkg quorumpb.Package
-	//	err = proto.Unmarshal(msg.Data, &pkg)
-	//if err == nil {
-	if pkg.Type == quorumpb.PackageType_BLOCK {
-		fmt.Println("====is a block")
-		//		//is block
-		//		var blk *quorumpb.Block
-		//		blk = &quorumpb.Block{}
-		//		err := proto.Unmarshal(pkg.Data, blk)
-		//		if err == nil {
-		//			psconn.chain.HandleBlock(blk)
-		//		} else {
-		//			channel_log.Warning(err.Error())
-		//		}
-	} else if pkg.Type == quorumpb.PackageType_TRX {
-		fmt.Printf("====is a trx, from %s\n", frompeerid)
+	if pkg.Type == quorumpb.PackageType_TRX {
+		rumexchangelog.Infof("receive a trx, from %s", frompeerid)
 		var trx *quorumpb.Trx
 		trx = &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
@@ -378,17 +378,15 @@ func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
 			targetchain, ok := r.chainmgr[trx.GroupId]
 			if ok == true {
 				targetchain.HandleTrxWithRex(trx, frompeerid)
+			} else {
+				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
 			}
-			//HandleTrxFromRex
-			//psconn.chain.HandleTrx(trx)
 		} else {
 			rumexchangelog.Warningf(err.Error())
 		}
+	} else {
+		rumexchangelog.Warningf("receive a non-trx package, %s", pkg.Type)
 	}
-	//} else {
-	//	channel_log.Warningf(err.Error())
-	//	channel_log.Warningf("%s", msg.Data)
-	//}
 }
 
 type netNotifiee RexService
