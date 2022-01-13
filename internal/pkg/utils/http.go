@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -39,14 +40,49 @@ func GetTLSCerts() (string, string, error) {
 	return certPath, keyPath, nil
 }
 
+// isCertExpired check if cert is expired
+func isCertExpired(certPath, keyPath string) (bool, error) {
+	certPEMBlock, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return false, fmt.Errorf("read cert file failed: %v", err)
+	}
+	keyPEMBlock, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		return false, fmt.Errorf("read key file failed: %v", err)
+	}
+
+	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	if err != nil {
+		return false, fmt.Errorf("tls.X509KeyPair failed: %v", err)
+	}
+
+	c, err := x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		return false, fmt.Errorf("x509.ParseCertificate failed: %v", err)
+	}
+
+	now := time.Now()
+	if now.After(c.NotAfter) {
+		return false, errors.New("Certificate expired")
+	} else if now.Before(c.NotBefore) {
+		return false, errors.New("Certificate not valid yet")
+	}
+
+	return true, nil
+}
+
 // NewTLSCert check or create TLS cert, return (certPath, keyPath, error)
 func NewTLSCert() (string, string, error) {
 	certPath, keyPath, err := GetTLSCerts()
 	if err != nil {
-		return "", "", nil
+		return "", "", err
 	}
 	if FileExist(certPath) && FileExist(keyPath) {
-		return certPath, keyPath, nil
+		ok, err := isCertExpired(certPath, keyPath)
+		if ok {
+			return certPath, keyPath, nil
+		}
+		logger.Warnf("check cert failed or cert expired: %s", err)
 	}
 
 	logger.Infof("create cert: %s key: %s ...", certPath, keyPath)
