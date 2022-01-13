@@ -25,3 +25,4 @@ main
 jsontracer*.json
 .DS_Store
 keystore
+*.ps1
