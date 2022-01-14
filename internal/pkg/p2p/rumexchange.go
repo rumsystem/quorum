@@ -82,21 +82,24 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 
 	peers := r.Host.Network().Peers()
 	for _, p := range peers {
-		ctx := context.Background()
-		s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
-		if err != nil {
-			rumexchangelog.Errorf("create network stream err: %s", err)
-		} else {
-			bufw := bufio.NewWriter(s)
-			wc := protoio.NewDelimitedWriter(bufw)
-			err := wc.WriteMsg(sessionmsg)
+		if r.peerStatus.IfSkip(p, r.ProtocolId) == false {
+			ctx := context.Background()
+			s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
 			if err != nil {
-				rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+				rumexchangelog.Errorf("create network stream err: %s", err)
+				r.peerStatus.Update(p, r.ProtocolId, PROTOCOL_NOT_SUPPORT)
 			} else {
-				succ++
-				rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+				bufw := bufio.NewWriter(s)
+				wc := protoio.NewDelimitedWriter(bufw)
+				err := wc.WriteMsg(sessionmsg)
+				if err != nil {
+					rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+				} else {
+					succ++
+					rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+				}
+				bufw.Flush()
 			}
-			bufw.Flush()
 		}
 
 	}
@@ -157,13 +160,15 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 	if nextpeerid.Validate() == nil { //ok, pass message to the next peer
 		for _, cp := range peers { //verify if the peer connected
 			if cp == nextpeerid { //ok, connected, pass the message
+				if r.peerStatus.IfSkip(cp, r.ProtocolId) == true {
+					continue
+				}
 				ctx := context.Background()
-
 				var s network.Stream
 				var err error
 				s, err = r.Host.NewStream(ctx, nextpeerid, r.ProtocolId)
 				if err != nil {
-					fmt.Println(err)
+					rumexchangelog.Errorf("PassConnRespMsgToNext network stream err: %s on %s", err, cp)
 				} else {
 					noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
 					r.notificationch <- noti
@@ -203,13 +208,12 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 			rumexchangelog.Debugf("max rex publish peers (%d) reached, pause. ", succ)
 			break
 		}
-		if p != r.Host.ID() && p != peer.ID(sessionmsg.IfConn.SrcPeerID) && p != recvfrom { //not myself, not src peer, not recvfrom this peer, so passnext
+		if p != r.Host.ID() && p != peer.ID(sessionmsg.IfConn.SrcPeerID) && p != recvfrom && r.peerStatus.IfSkip(p, r.ProtocolId) == false { //not myself, not src peer, not recvfrom this peer, not be skip so passnext
 			var s network.Stream
 			var err error
 			s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
-
-			if err != nil {
-				rumexchangelog.Errorf("create stream to network err: %s", err)
+			if err == nil {
+				rumexchangelog.Errorf("PassIfConnMsgToNext network stream err: %s on %s", err, p)
 			} else {
 				bufw := bufio.NewWriter(s)
 				wc := protoio.NewDelimitedWriter(bufw)
