@@ -6,6 +6,7 @@ package options
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
@@ -111,8 +112,26 @@ func initConfigfile(dir string, keyname string) (*viper.Viper, error) {
 		}
 	}
 
-	if v.GetString("JWTKey") == "" {
-		v.Set("JWTKey", utils.GetRandomStr(JWTKeyLength))
+	jwtKey := v.GetString("JWTKey")
+	if jwtKey == "" {
+		jwtKey = utils.GetRandomStr(JWTKeyLength)
+		v.Set("JWTKey", jwtKey)
+		if err := v.WriteConfig(); err != nil {
+			return nil, err
+		}
+	}
+
+	jwtToken := v.GetString("JWTToken")
+	valid, _ := utils.IsJWTTokenValid(jwtToken, jwtKey)
+	if jwtToken == "" || !valid {
+		// HARDCOED: expire in 30 days
+		exp := time.Now().Add(time.Hour * 24 * 30)
+		jwtToken, err := utils.NewJWTToken(keyname, jwtKey, exp)
+		if err != nil {
+			return nil, err
+		}
+
+		v.Set("JWTToken", jwtToken)
 		if err := v.WriteConfig(); err != nil {
 			return nil, err
 		}
@@ -150,5 +169,6 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	options.SignKeyMap = v.GetStringMapString("SignKeyMap")
 	options.JWTKey = v.GetString("JWTKey")
 	options.JWTToken = v.GetString("JWTToken")
+
 	return options, nil
 }
