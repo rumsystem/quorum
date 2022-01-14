@@ -840,7 +840,7 @@ when `object.content` is not null, `object.image` is optional.
 
 when `object.image` is not null, `object.content` is optional.
 
-1~4 images , total size less than 200 mb
+1~4 images , total size less than 200 kb
 
 ```json
 {
