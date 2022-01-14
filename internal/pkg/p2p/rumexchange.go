@@ -73,7 +73,7 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 func (r *RexService) InitSession(peerid string, channelid string) error {
 	privateid, err := peer.Decode(peerid)
 	if err != nil {
-		rumexchangelog.Errorf("decode perrid err: %s", err)
+		rumexchangelog.Warningf("decode perrid err: %s", err)
 	}
 	ifconnmsg := &quorumpb.SessionIfConn{DestPeerID: []byte(privateid), SrcPeerID: []byte(r.Host.ID()), ChannelId: channelid}
 	sessionmsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_IF_CONN, IfConn: ifconnmsg}
@@ -93,7 +93,7 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 				wc := protoio.NewDelimitedWriter(bufw)
 				err := wc.WriteMsg(sessionmsg)
 				if err != nil {
-					rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+					rumexchangelog.Warningf("writemsg to network stream err: %s", err)
 				} else {
 					succ++
 					rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
@@ -220,7 +220,7 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 				err := wc.WriteMsg(sessionmsg)
 
 				if err != nil {
-					rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+					rumexchangelog.Warningf("writemsg to network stream err: %s", err)
 				} else {
 					succ++
 					rumexchangelog.Debugf("writemsg to network stream succ.")
@@ -246,11 +246,11 @@ func (r *RexService) Handler(s network.Stream) {
 	for {
 		msgdata, err := reader.ReadMsg()
 		if err != nil {
-			rumexchangelog.Errorf("rum exchange read err: %s", err)
+			rumexchangelog.Warningf("rum exchange read err: %s", err)
 			if err != io.EOF {
 				_ = s.Reset()
 				s.Close()
-				rumexchangelog.Errorf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
+				rumexchangelog.Warningf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
 			}
 			return
 		}
@@ -287,7 +287,7 @@ func (r *RexService) Handler(s network.Stream) {
 			}
 
 		} else {
-			rumexchangelog.Errorf("msg err: %s", err)
+			rumexchangelog.Warningf("msg err: %s", err)
 		}
 
 	}
