@@ -272,7 +272,7 @@ Developers may need [RUM Development Tutorial](./Tutorial.md).
 2. Add a shell script to run the peer:
 
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_name_5config -datadir /var/data/your_peer_name_data -keystoredir /var/data/your_peer_name_keystore
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_name_config -datadir /var/data/your_peer_name_data -keystoredir /var/data/your_peer_name_keystore
 ```
 
 [view OPTIONS](#bootstrap_peer)

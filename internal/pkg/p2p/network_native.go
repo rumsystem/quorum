@@ -108,7 +108,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	options := []pubsub.Option{pubsub.WithPeerExchange(true)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
-
+	peerStatus := NewPeerStatus()
 	var rexservice *RexService
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
@@ -122,7 +122,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
 	} else {
-		rexservice = NewRexService(host, nodenetworkname, ProtocolPrefix, rexnotification)
+		rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
 		rexservice.SetDelegate()
 	}
 
@@ -161,7 +161,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
 
 	//reconnect peers
 

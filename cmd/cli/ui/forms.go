@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/rumsystem/quorum/cmd/cli/api"
@@ -36,6 +37,24 @@ func createGroupFormInit() {
 	groupForm.AddInputField("App Key", "", 20, nil, func(key string) {
 		groupReqStruct.AppKey = key
 	})
+	appKeyInput := groupForm.GetFormItemByLabel("App Key").(*cview.InputField)
+	DefaultAppKeys := []string{"group_timeline", "group_post", "group_note"}
+
+	appKeyInput.SetAutocompleteFunc(func(currentText string) (entries []*cview.ListItem) {
+		if len(currentText) == 0 {
+			return
+		}
+		for _, word := range DefaultAppKeys {
+			if strings.HasPrefix(strings.ToLower(word), strings.ToLower(currentText)) {
+				entries = append(entries, cview.NewListItem(word))
+			}
+		}
+		if len(entries) == 0 {
+			entries = nil
+		}
+		return
+	})
+
 	groupForm.AddButton("Save", func() {
 		if groupReqStruct.Name == "" || groupReqStruct.AppKey == "" {
 			Error("invalid parameter", "Name and AppKey should not be empty")
@@ -66,6 +85,25 @@ func CreateGroupForm() {
 	App.SetFocus(groupForm)
 }
 
+func SaveToTmpFile(bytes []byte, prefix string) (*os.File, error) {
+	tmpFile, err := ioutil.TempFile(os.TempDir(), prefix)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = tmpFile.Write(bytes); err != nil {
+		return nil, err
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return nil, err
+	}
+	return tmpFile, nil
+}
+
+func SaveSeedToTmpFile(seedBytes []byte) (*os.File, error) {
+	return SaveToTmpFile(seedBytes, "quorum-seed-")
+}
+
 func goQuorumCreateGroup() {
 	seedBytes, err := api.CreateGroup(groupReqStruct)
 	if err != nil {
@@ -73,19 +111,9 @@ func goQuorumCreateGroup() {
 	} else {
 		cmdInput.SetLabel(fmt.Sprintf("Group %s: ", groupReqStruct.Name))
 		cmdInput.SetText("Created")
-
-		tmpFile, err := ioutil.TempFile(os.TempDir(), "quorum-seed-")
+		tmpFile, err := SaveSeedToTmpFile(seedBytes)
 		if err != nil {
-			Error("Cannot create temporary file to save seed", err.Error())
-			return
-		}
-		if _, err = tmpFile.Write(seedBytes); err != nil {
-			Error("Failed to write to seed file", err.Error())
-			return
-		}
-
-		if err := tmpFile.Close(); err != nil {
-			Error("Failed to close the seed file", err.Error())
+			Error("Failed to cache group seed", err.Error())
 			return
 		}
 		Info(fmt.Sprintf("Group %s created", groupReqStruct.Name), fmt.Sprintf("Seed saved at: %s. Be sure to keep it well.", tmpFile.Name()))

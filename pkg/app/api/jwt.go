@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/rumsystem/quorum/internal/pkg/options"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 var (
@@ -31,13 +31,9 @@ func getJWTKey(h *Handler) (string, error) {
 }
 
 func getToken(name string, jwtKey string) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = name
 	// FIXME: hardcode
-	claims["exp"] = time.Now().Add(time.Hour * 24 * 30).Unix()
-
-	return token.SignedString([]byte(jwtKey))
+	exp := time.Now().Add(time.Hour * 24 * 30)
+	return utils.NewJWTToken(name, jwtKey, exp)
 }
 
 //https://localhost:8002/app/api/v1/token/apply
@@ -130,20 +126,13 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 		})
 	}
 
-	claims := jwt.MapClaims{}
-	_, err = jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtKey), nil
-	})
-
-	if err != nil {
-		e := err.(*jwt.ValidationError)
-		if e.Errors == jwt.ValidationErrorExpired {
-			logger.Infof("token expires, return new token")
-		} else {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"message": err.Error(),
-			})
-		}
+	// token invalid include expired or invalid
+	if utils.IsJWTTokenExpired(tokenStr, jwtKey) {
+		logger.Infof("token expires, return new token")
+	} else if valid, err := utils.IsJWTTokenValid(tokenStr, jwtKey); !valid || err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"message": err.Error(),
+		})
 	}
 
 	newTokenStr, err := getToken(h.PeerName, jwtKey)

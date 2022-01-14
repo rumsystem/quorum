@@ -104,14 +104,16 @@ func TestGroups(t *testing.T) {
 		for genesisblockIdx := 0; genesisblockIdx < nodes; genesisblockIdx++ {
 			if genesisblockIdx != peerIdx {
 				oterhpeergenesisblocks := genesisblocks[genesisblockIdx]
-				for i := 0; i < groupspeernum; i++ {
-					g := oterhpeergenesisblocks[i]
-					// join to other groups of other nodes
-					_, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
-					if err != nil {
-						t.Errorf("peer%d join group %s error %s", peerIdx+1, g, err)
-					} else {
-						t.Logf("peer%d join group %s", peerIdx+1, g)
+				if len(oterhpeergenesisblocks) >= groupspeernum {
+					for i := 0; i < groupspeernum; i++ {
+						g := oterhpeergenesisblocks[i]
+						// join to other groups of other nodes
+						_, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
+						if err != nil {
+							t.Errorf("peer%d join group %s error %s", peerIdx+1, g, err)
+						} else {
+							t.Logf("peer%d join group %s", peerIdx+1, g)
+						}
 					}
 				}
 			}

@@ -1,17 +1,15 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"sort"
 	"sync"
-	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
 type AddrProtoPair struct {
@@ -26,10 +24,6 @@ func (h *Handler) PingPeer(node *p2p.Node) echo.HandlerFunc {
 	return func(c echo.Context) (err error) {
 		output := make(map[string]interface{})
 
-		pingService := ping.NewPingService(node.Host)
-		pctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		wg := new(sync.WaitGroup)
 		for _, pid := range node.Host.Peerstore().Peers() {
 			if node.Host.Network().Connectedness(pid) == network.Connected {
@@ -37,21 +31,15 @@ func (h *Handler) PingPeer(node *p2p.Node) echo.HandlerFunc {
 				peerId := pid.String()
 				pInfo := make(map[string]interface{})
 				output[peerId] = pInfo
-
-				ts := pingService.Ping(pctx, pid)
 				wg.Add(1)
+
 				go func() {
 					defer wg.Done()
-					select {
-					case res := <-ts:
-						if res.Error != nil {
-							pInfo["rtt"] = res.Error.Error()
-						} else {
-							networkLog.Infof("%s: %s", peerId, res.RTT.String())
-							pInfo["rtt"] = res.RTT.String()
-						}
-					case <-time.After(time.Second * 4):
-						networkLog.Infof("%s: timedout", peerId)
+					res, err := handlers.Ping(node.Pubsub, node.Host.ID(), peerId)
+					if err != nil {
+						pInfo["rtt"] = err.Error()
+					} else {
+						pInfo["rtt"] = res.TTL
 					}
 				}()
 
