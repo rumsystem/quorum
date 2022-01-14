@@ -572,7 +572,6 @@ func (chain *Chain) createProducerTrxMgr() {
 
 func (chain *Chain) InitSession(channelId string) error {
 	chain_log.Debugf("<%s> InitSession called", chain.groupId)
-	return nil
 	err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
 	if err != nil {
 		return err

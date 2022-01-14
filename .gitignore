@@ -18,6 +18,7 @@
 /docs
 /config
 /data
+/testscripts
 dist/
 certs/
 main
