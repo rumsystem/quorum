@@ -33,6 +33,7 @@ type Node struct {
 	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
 	PubSubConnMgr    *pubsubconn.PubSubConnMgr
+	peerStatus       *PeerStatus
 }
 
 func (node *Node) eventhandler(ctx context.Context) {

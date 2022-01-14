@@ -23,6 +23,7 @@ const IDVer = "1.0.0"
 
 type RexService struct {
 	Host           host.Host
+	peerStatus     *PeerStatus
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
 }
@@ -39,9 +40,9 @@ type RexNotification struct {
 	ChannelId string
 }
 
-func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
+func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	rexs := &RexService{h, protocol.ID(customprotocol), notification}
+	rexs := &RexService{h, peerStatus, protocol.ID(customprotocol), notification}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -54,15 +55,18 @@ func (r *RexService) SetDelegate() {
 
 func (r *RexService) ConnectRex(ctx context.Context) error {
 	peers := r.Host.Network().Peers()
+	rumexchangelog.Debugf("try (%d) peers.", len(peers))
 	for _, p := range peers {
-		_, err := r.Host.NewStream(ctx, p, r.ProtocolId)
-		if err != nil {
-			rumexchangelog.Errorf("create network stream err: %s", err)
-		} else {
-			rumexchangelog.Debugf("create network stream success.")
+		if r.peerStatus.IfSkip(p, r.ProtocolId) == false {
+			_, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+			if err != nil {
+				rumexchangelog.Errorf("create network stream err: %s", err)
+				r.peerStatus.Update(p, r.ProtocolId, PROTOCOL_NOT_SUPPORT)
+			} else {
+				rumexchangelog.Debugf("create network stream success.")
+			}
 		}
 	}
-
 	return nil
 }
 
@@ -195,6 +199,10 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 
 	ctx := context.Background()
 	for _, p := range peers {
+		if succ >= 5 {
+			rumexchangelog.Debugf("max rex publish peers (%d) reached, pause. ", succ)
+			break
+		}
 		if p != r.Host.ID() && p != peer.ID(sessionmsg.IfConn.SrcPeerID) && p != recvfrom { //not myself, not src peer, not recvfrom this peer, so passnext
 			var s network.Stream
 			var err error
