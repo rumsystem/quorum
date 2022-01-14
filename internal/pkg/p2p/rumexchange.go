@@ -60,7 +60,7 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 		if r.peerStatus.IfSkip(p, r.ProtocolId) == false {
 			_, err := r.Host.NewStream(ctx, p, r.ProtocolId)
 			if err != nil {
-				rumexchangelog.Errorf("create network stream err: %s", err)
+				rumexchangelog.Debugf("create network stream err: %s", err)
 				r.peerStatus.Update(p, r.ProtocolId, PROTOCOL_NOT_SUPPORT)
 			} else {
 				rumexchangelog.Debugf("create network stream success.")
@@ -86,7 +86,7 @@ func (r *RexService) InitSession(peerid string, channelid string) error {
 			ctx := context.Background()
 			s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
 			if err != nil {
-				rumexchangelog.Errorf("create network stream err: %s", err)
+				rumexchangelog.Debugf("create network stream err: %s", err)
 				r.peerStatus.Update(p, r.ProtocolId, PROTOCOL_NOT_SUPPORT)
 			} else {
 				bufw := bufio.NewWriter(s)
@@ -168,7 +168,7 @@ func (r *RexService) PassConnRespMsgToNext(connrespmsg *quorumpb.SessionConnResp
 				var err error
 				s, err = r.Host.NewStream(ctx, nextpeerid, r.ProtocolId)
 				if err != nil {
-					rumexchangelog.Errorf("PassConnRespMsgToNext network stream err: %s on %s", err, cp)
+					rumexchangelog.Debugf("PassConnRespMsgToNext network stream err: %s on %s", err, cp)
 				} else {
 					noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
 					r.notificationch <- noti
@@ -213,7 +213,7 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 			var err error
 			s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
 			if err == nil {
-				rumexchangelog.Errorf("PassIfConnMsgToNext network stream err: %s on %s", err, p)
+				rumexchangelog.Debugf("PassIfConnMsgToNext network stream err: %s on %s", err, p)
 			} else {
 				bufw := bufio.NewWriter(s)
 				wc := protoio.NewDelimitedWriter(bufw)
