@@ -58,8 +58,7 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 
 	identity := libp2p.Identity(priv)
 
-	host, err := libp2p.New(ctx,
-		libp2p.ListenAddrs(),
+	host, err := libp2p.New(libp2p.ListenAddrs(),
 		libp2p.Transport(ws.New),
 		routing,
 		libp2p.Ping(false),
