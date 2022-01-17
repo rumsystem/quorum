@@ -163,32 +163,15 @@ func (trxMgr *TrxMgr) VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 	return verify, err
 }
 
-func (trxMgr *TrxMgr) SendUpdAuthTrx(item *quorumpb.DenyUserItem) (string, error) {
-	trxmgr_log.Debugf("<%s> SendUpdAuthTrx called", trxMgr.groupId)
+func (trxMgr *TrxMgr) SendUpdAppConfigTrx(item *quorumpb.AppConfigItem) (string, error) {
+	trxmgr_log.Debugf("<%s> SendUpdAppConfigTrx called", trxMgr.groupId)
 
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return "", err
 	}
 
-	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_AUTH, encodedcontent)
-	err = trxMgr.sendTrx(trx)
-	if err != nil {
-		return "INVALID_TRX", err
-	}
-
-	return trx.TrxId, nil
-}
-
-func (trxMgr *TrxMgr) SendUpdGroupConfigTrx(item *quorumpb.GroupConfigItem) (string, error) {
-	trxmgr_log.Debugf("<%s> SendUpdGroupConfigTrx called", trxMgr.groupId)
-
-	encodedcontent, err := proto.Marshal(item)
-	if err != nil {
-		return "", err
-	}
-
-	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_GROUP_CONFIG, encodedcontent)
+	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_APP_CONFIG, encodedcontent)
 	err = trxMgr.sendTrx(trx)
 	if err != nil {
 		return "INVALID_TRX", err
@@ -235,6 +218,22 @@ func (trxMgr *TrxMgr) SendAnnounceTrx(item *quorumpb.AnnounceItem) (string, erro
 	}
 
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_ANNOUNCE, encodedcontent)
+	err = trxMgr.sendTrx(trx)
+	if err != nil {
+		return "INVALID_TRX", err
+	}
+
+	return trx.TrxId, nil
+}
+
+func (trxMgr *TrxMgr) SendChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
+	trxmgr_log.Debugf("<%s> SendAnnounceTrx called", trxMgr.groupId)
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return "", err
+	}
+
+	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent)
 	err = trxMgr.sendTrx(trx)
 	if err != nil {
 		return "INVALID_TRX", err

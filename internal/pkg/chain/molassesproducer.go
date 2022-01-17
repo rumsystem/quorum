@@ -71,13 +71,14 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 
 	//check if trx sender is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_POST, producer.nodename)
+	if err != nil {
+		return
+	}
 
-	if isBlocked {
+	if !isAllow {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
 		return
-	} else {
-		molaproducer_log.Debugf("<%s> user <%s> is not blocked", producer.groupId, trx.SenderPubkey)
 	}
 
 	if producer.cIface.IsSyncerReady() {
@@ -289,12 +290,14 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, producer.nodename)
+	if err != nil {
+		return err
+	}
 
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return nil
+	if !isAllow {
+		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
+		return errors.New("insufficient privileges")
 	}
 
 	subBlocks, err := nodectx.GetDbMgr().GetSubBlock(reqBlockItem.BlockId, producer.nodename)
@@ -345,12 +348,15 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+	//check previllage
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, producer.nodename)
+	if err != nil {
+		return err
+	}
 
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return nil
+	if !isAllow {
+		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD.String())
+		return errors.New("insufficient privileges")
 	}
 
 	isExist, err := nodectx.GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, producer.nodename)
@@ -407,12 +413,14 @@ func (producer *MolassesProducer) HandleAskPeerId(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_ASK_PEERID, producer.nodename)
+	if err != nil {
+		return err
+	}
 
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return nil
+	if !isAllow {
+		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_ASK_PEERID.String())
+		return errors.New("insufficient privileges")
 	}
 
 	var respItem quorumpb.AskPeerIdResp
@@ -626,9 +634,6 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_POST:
 			molaproducer_log.Debugf("<%s> apply POST trx", producer.groupId)
 			nodectx.GetDbMgr().AddPost(trx, producer.nodename)
-		case quorumpb.TrxType_AUTH:
-			molaproducer_log.Debugf("<%s> apply AUTH trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateBlkListItem(trx, producer.nodename)
 		case quorumpb.TrxType_PRODUCER:
 			molaproducer_log.Debugf("<%s> apply PRODUCER trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateProducer(trx, producer.nodename)
@@ -641,9 +646,12 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)
-		case quorumpb.TrxType_GROUP_CONFIG:
-			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateGroupConfig(trx, producer.nodename)
+		case quorumpb.TrxType_APP_CONFIG:
+			molaproducer_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateAppConfig(trx, producer.nodename)
+		case quorumpb.TrxType_CHAIN_CONFIG:
+			molaproducer_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateChainConfig(trx, producer.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)

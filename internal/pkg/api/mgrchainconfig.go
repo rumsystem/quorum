@@ -8,23 +8,23 @@ import (
 )
 
 // @Tags Management
-// @Summary DeniedList
-// @Description add or remove a user from the denied list
+// @Summary chainconfig
+// @Description chain config
 // @Accept json
 // @Produce json
-// @Param data body handlers.DenyListParam true "DenyListParam"
-// @Success 200 {object} handlers.DenyUserResult
-// @Router /api/v1/group/deniedlist [post]
-func (h *Handler) MgrGrpBlkList(c echo.Context) (err error) {
+// @Param data body handlers.ChainConfig true "ChainConfigParams"
+// @Success 200 {object} handlers.ChainConfigResult
+// @Router /api/v1/group/chainconfig [post]
+func (h *Handler) MgrChainConfig(c echo.Context) (err error) {
 	output := make(map[string]string)
-	params := new(handlers.DenyListParam)
+	params := new(handlers.ChainConfigParams)
 
 	if err = c.Bind(params); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	res, err := handlers.MgrGrpBlkList(params)
+	res, err := handlers.MgrChainConfig(params)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
