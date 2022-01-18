@@ -212,7 +212,7 @@ func (r *RexService) PassIfConnMsgToNext(recvfrom peer.ID, ifconnmsg *quorumpb.S
 			var s network.Stream
 			var err error
 			s, err = r.Host.NewStream(ctx, p, r.ProtocolId)
-			if err == nil {
+			if err != nil {
 				rumexchangelog.Debugf("PassIfConnMsgToNext network stream err: %s on %s", err, p)
 			} else {
 				bufw := bufio.NewWriter(s)
