@@ -71,7 +71,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 
 	//check if trx sender is in group block list
-	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_POST, producer.nodename)
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, producer.nodename)
 	if err != nil {
 		return
 	}
@@ -647,10 +647,10 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)
 		case quorumpb.TrxType_APP_CONFIG:
-			molaproducer_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
+			molaproducer_log.Debugf("<%s> apply APP_CONFIG trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAppConfig(trx, producer.nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
-			molaproducer_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
+			molaproducer_log.Debugf("<%s> apply CHAIN_CONFIG trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateChainConfig(trx, producer.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)

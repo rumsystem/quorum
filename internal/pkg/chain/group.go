@@ -238,7 +238,6 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 		return grp.ChainCtx.Consensus.User().PostToGroup(content, keys)
 	}
 	return grp.ChainCtx.Consensus.User().PostToGroup(content)
-
 }
 
 func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {

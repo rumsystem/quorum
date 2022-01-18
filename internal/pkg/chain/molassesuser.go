@@ -279,11 +279,14 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		case quorumpb.TrxType_ASK_PEERID_RESP:
 			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
 		case quorumpb.TrxType_APP_CONFIG:
-			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", user.groupId)
+			molauser_log.Debugf("<%s> apply APP_CONFIG trx", user.groupId)
 			nodectx.GetDbMgr().UpdateAppConfig(trx, nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			molauser_log.Debugf("<%s> apply CHAIN_CONFIG trx", user.groupId)
-			nodectx.GetDbMgr().UpdateChainConfig(trx, nodename)
+			err := nodectx.GetDbMgr().UpdateChainConfig(trx, nodename)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		default:
 			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}

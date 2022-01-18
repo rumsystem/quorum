@@ -559,20 +559,24 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string)
 //}
 
 func (dbMgr *DbMgr) UpdateChainConfig(trx *quorumpb.Trx, prefix ...string) (err error) {
+	dbmgr_log.Infof("UpdateChainConfig called")
 	nodeprefix := getPrefix(prefix...)
 	item := &quorumpb.ChainConfigItem{}
 
 	if err := proto.Unmarshal(trx.Data, item); err != nil {
+		dbmgr_log.Infof(err.Error())
 		return err
 	}
 
 	if item.Type == quorumpb.ChainConfigType_SET_TRX_AUTH_MODE {
 		authModeItem := &quorumpb.SetTrxAuthModeItem{}
 		if err := proto.Unmarshal(item.Data, authModeItem); err != nil {
+			dbmgr_log.Infof(err.Error())
 			return err
 		}
-		key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + TRX_AUTH_TYPE_PREFIX + "_" + authModeItem.Type.String()
-		return dbMgr.Db.Set([]byte(key), item.Data)
+
+		key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + authModeItem.Type.String()
+		return dbMgr.Db.Set([]byte(key), trx.Data)
 	} else if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST ||
 		item.Type == quorumpb.ChainConfigType_UPD_DNY_LIST {
 		ruleListItem := &quorumpb.ChainSendTrxRuleListItem{}
@@ -586,10 +590,13 @@ func (dbMgr *DbMgr) UpdateChainConfig(trx *quorumpb.Trx, prefix ...string) (err 
 		} else {
 			key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + DENY_LIST_PREFIX + "_" + ruleListItem.Pubkey
 		}
+
+		dbmgr_log.Infof("key %s", key)
+
 		if ruleListItem.Action == quorumpb.ActionType_ADD {
 			//TBD, check config conflict
 			//if pubkey in both allow list and deny list, should check no conflict for trxType
-			return dbMgr.Db.Set([]byte(key), item.Data)
+			return dbMgr.Db.Set([]byte(key), trx.Data)
 		} else {
 			exist, err := dbMgr.Db.IsExist([]byte(key))
 			if !exist {
@@ -608,7 +615,7 @@ func (dbMgr *DbMgr) UpdateChainConfig(trx *quorumpb.Trx, prefix ...string) (err 
 
 func (dbMgr *DbMgr) GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error) {
 	nodoeprefix := getPrefix(prefix...)
-	key := nodoeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + TRX_AUTH_TYPE_PREFIX + "_" + trxType.String()
+	key := nodoeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + trxType.String()
 
 	//if not specified by group owner
 	//follow deny list by default
@@ -624,13 +631,18 @@ func (dbMgr *DbMgr) GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.Trx
 		return -1, err
 	}
 
-	item := quorumpb.SetTrxAuthModeItem{}
-	perr := proto.Unmarshal(value, &item)
+	chainConfigItem := &quorumpb.ChainConfigItem{}
+	if err := proto.Unmarshal(value, chainConfigItem); err != nil {
+		return -1, err
+	}
+
+	trxAuthitem := quorumpb.SetTrxAuthModeItem{}
+	perr := proto.Unmarshal(chainConfigItem.Data, &trxAuthitem)
 	if perr != nil {
 		return -1, perr
 	}
 
-	return item.Mode, nil
+	return trxAuthitem.Mode, nil
 }
 
 func (dbMgr *DbMgr) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb.AuthListType, prefix ...string) ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
@@ -644,22 +656,27 @@ func (dbMgr *DbMgr) GetSendTrxAuthListByGroupId(groupId string, listType quorump
 	} else {
 		key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + DENY_LIST_PREFIX
 	}
+	dbmgr_log.Infof("key %s", key)
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
+
 		chainConfigItem := quorumpb.ChainConfigItem{}
-		sendTrxRuleListItem := quorumpb.ChainSendTrxRuleListItem{}
 		err = proto.Unmarshal(v, &chainConfigItem)
 		if err != nil {
 			return err
 		}
 		chainConfigList = append(chainConfigList, &chainConfigItem)
+		sendTrxRuleListItem := quorumpb.ChainSendTrxRuleListItem{}
 		err = proto.Unmarshal(chainConfigItem.Data, &sendTrxRuleListItem)
 		if err != nil {
 			return err
 		}
 		sendTrxRuleList = append(sendTrxRuleList, &sendTrxRuleListItem)
+
+		dbmgr_log.Infof("sendTrx %s", sendTrxRuleListItem.Pubkey)
+
 		return nil
 	})
 
@@ -697,7 +714,7 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 		}
 	} else {
 		//do nothing
-		dbmgr_log.Debugf("not in allow list")
+		//dbmgr_log.Debugf("not in allow list")
 	}
 
 	isInDenyList, err := dbMgr.Db.IsExist([]byte(keyDeny))
