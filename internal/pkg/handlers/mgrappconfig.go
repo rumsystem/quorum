@@ -26,7 +26,7 @@ type AppConfigParam struct {
 
 type AppConfigResult struct {
 	GroupId string `json:"group_id" validate:"required"`
-	Sign    string `json:"sign" validate:"required"`
+	Sign    string `json:"signature" validate:"required"`
 	TrxId   string `json:"trx_id" validate:"required"`
 }
 

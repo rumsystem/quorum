@@ -39,7 +39,7 @@ type ChainSendTrxRuleListItemParams struct {
 type ChainConfigResult struct {
 	GroupId          string `json:"group_id"     validate:"required"`
 	GroupOwnerPubkey string `json:"owner_pubkey" validate:"required"`
-	Sign             string `json:"sign"         validate:"required"`
+	Sign             string `json:"signature"    validate:"required"`
 	TrxId            string `json:"trx_id"       validate:"required"`
 }
 
