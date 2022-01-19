@@ -656,7 +656,6 @@ func (dbMgr *DbMgr) GetSendTrxAuthListByGroupId(groupId string, listType quorump
 	} else {
 		key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + DENY_LIST_PREFIX
 	}
-	dbmgr_log.Infof("key %s", key)
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -696,51 +695,58 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 	isInAllowList, err := dbMgr.Db.IsExist([]byte(keyAllow))
 	if err != nil {
 		return false, err
-	} else if isInAllowList {
-		allowItemBytes, err := dbMgr.Db.Get([]byte(keyAllow))
+	}
+
+	if isInAllowList {
+		v, err := dbMgr.Db.Get([]byte(keyAllow))
+		chainConfigItem := quorumpb.ChainConfigItem{}
+		err = proto.Unmarshal(v, &chainConfigItem)
 		if err != nil {
 			return false, err
 		}
-		var allowItem quorumpb.ChainSendTrxRuleListItem
-		err = proto.Unmarshal(allowItemBytes, &allowItem)
+
+		allowItem := quorumpb.ChainSendTrxRuleListItem{}
+		err = proto.Unmarshal(chainConfigItem.Data, &allowItem)
 		if err != nil {
 			return false, err
 		}
+
 		//check if trxType allowed
 		for _, allowTrxType := range allowItem.Type {
 			if trxType == allowTrxType {
 				return true, nil
 			}
 		}
-	} else {
-		//do nothing
-		//dbmgr_log.Debugf("not in allow list")
 	}
 
 	isInDenyList, err := dbMgr.Db.IsExist([]byte(keyDeny))
 	if err != nil {
 		return false, err
-	} else if isInDenyList {
-		denyItemBytes, err := dbMgr.Db.Get([]byte(keyDeny))
-		if err != nil {
-			return false, err
-		}
-		var denyItem quorumpb.ChainSendTrxRuleListItem
-		err = proto.Unmarshal(denyItemBytes, &denyItem)
-		if err != nil {
-			return false, err
-		}
-
-		//check if trxType allowed
-		for _, allowTrxType := range denyItem.Type {
-			if trxType == allowTrxType {
-				return true, nil
-			}
-		}
-	} else {
-		//do nothing
 	}
 
+	if isInDenyList {
+		v, err := dbMgr.Db.Get([]byte(keyDeny))
+		chainConfigItem := quorumpb.ChainConfigItem{}
+		err = proto.Unmarshal(v, &chainConfigItem)
+		if err != nil {
+			return false, err
+		}
+
+		denyItem := quorumpb.ChainSendTrxRuleListItem{}
+		err = proto.Unmarshal(chainConfigItem.Data, &denyItem)
+		if err != nil {
+			return false, err
+		}
+
+		dbmgr_log.Infof("5")
+		//check if trxType allowed
+		for _, denyTrxType := range denyItem.Type {
+			if trxType == denyTrxType {
+				dbmgr_log.Infof("6")
+				return false, nil
+			}
+		}
+	}
 	trxAuthMode, err := dbMgr.GetTrxAuthModeByGroupId(groupId, trxType, prefix...)
 	if err != nil {
 		return false, err
@@ -748,9 +754,11 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 
 	if trxAuthMode == quorumpb.TrxAuthMode_FOLLOW_ALW_LIST {
 		//not in allow list, so return false, access denied
+		dbmgr_log.Infof("8")
 		return false, nil
 	} else {
 		//not in deny list, so return true, access granted
+		dbmgr_log.Infof("9")
 		return true, nil
 	}
 }

@@ -77,7 +77,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	}
 
 	if !isAllow {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
+		molaproducer_log.Debugf("<%s> user <%s> don't has permission on trx type <%s>", producer.groupId, trx.SenderPubkey, trx.Type.String())
 		return
 	}
 

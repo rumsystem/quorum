@@ -31,7 +31,6 @@ type TrxAuthModeParams struct {
 }
 type ChainSendTrxRuleListItemParams struct {
 	Action  string   `from:"action"   json:"action"   validate:"required,oneof=add remove"`
-	List    string   `from:"list"     json:"list"     validate:"required,oneof=allow deny"`
 	Pubkey  string   `from:"pubkey"   json:"pubkey"   validate:"required"`
 	TrxType []string `from:"trx_type" json:"trx_type" validate:"required"`
 }
