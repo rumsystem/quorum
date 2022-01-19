@@ -6,6 +6,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 var channel_log = logging.Logger("chan")
@@ -20,11 +21,23 @@ type P2pPubSubConn struct {
 	Ctx          context.Context
 }
 
+type PubSubActionType int
+
+const (
+	LeavePubSub PubSubActionType = iota
+)
+
+type PubSubConnAction struct {
+	Cid string
+	PubSubActionType
+}
+
 type PubSubConnMgr struct {
-	Ctx      context.Context
-	ps       *pubsub.PubSub
-	nodename string
-	connmgr  map[string]*P2pPubSubConn
+	Ctx        context.Context
+	ps         *pubsub.PubSub
+	nodename   string
+	actionChan chan *PubSubConnAction
+	connmgr    map[string]*P2pPubSubConn
 }
 
 var pubsubconnmgr *PubSubConnMgr
@@ -32,10 +45,32 @@ var pubsubconnmgr *PubSubConnMgr
 func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) *PubSubConnMgr {
 	if pubsubconnmgr == nil {
 		connmap := map[string]*P2pPubSubConn{}
-		pubsubconnmgr = &PubSubConnMgr{ctx, ps, nodename, connmap}
+		ch := make(chan *PubSubConnAction)
+		pubsubconnmgr = &PubSubConnMgr{ctx, ps, nodename, ch, connmap}
+		go pubsubconnmgr.WaitAction(ctx)
 	}
 	return pubsubconnmgr
 }
+
+func (pscm *PubSubConnMgr) WaitAction(ctx context.Context) {
+	for {
+		select {
+		case a, ok := <-pscm.actionChan:
+
+			channel_log.Debugf("ok receive PubSubConnMgr:%s", a)
+
+			if ok == true {
+				if a.PubSubActionType == LeavePubSub {
+					pscm.LeaveChannel(a.Cid)
+				}
+			}
+		case <-ctx.Done():
+			return
+		}
+
+	}
+}
+
 func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
@@ -43,11 +78,14 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
 	_, ok := pscm.connmgr[channelId]
 	if ok == false {
-		psconn := &P2pPubSubConn{Ctx: pscm.Ctx, ps: pscm.ps, nodename: pscm.nodename}
+		psconn := &P2pPubSubConn{ps: pscm.ps, nodename: pscm.nodename}
 		if chain != nil {
+			psconn.Ctx = pscm.Ctx
 			psconn.JoinChannel(channelId, chain)
 		} else {
-			psconn.JoinChannelAsExchange(channelId)
+			ctxtimeout, _ := context.WithTimeout(pscm.Ctx, 20*time.Minute)
+			psconn.Ctx = ctxtimeout
+			psconn.JoinChannelAsExchange(channelId, pscm.actionChan)
 		}
 		pscm.connmgr[channelId] = psconn
 	}
@@ -72,7 +110,7 @@ func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) 
 	return &P2pPubSubConn{Ctx: ctx, ps: ps, nodename: nodename}
 }
 
-func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
+func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string, ch chan *PubSubConnAction) error {
 	var err error
 	psconn.Cid = cId
 	psconn.Topic, err = psconn.ps.Join(cId)
@@ -92,7 +130,7 @@ func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 		channel_log.Infof("Subscribe <%s> done", cId)
 	}
 
-	go psconn.handleExchangeChannel()
+	go psconn.handleExchangeChannel(ch)
 	//TODO: add a timer to leave the exchange channel
 	return nil
 }
@@ -166,7 +204,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 	}
 }
 
-func (psconn *P2pPubSubConn) handleExchangeChannel() error {
+func (psconn *P2pPubSubConn) handleExchangeChannel(ch chan *PubSubConnAction) error {
 	for {
 		_, err := psconn.Subscription.Next(psconn.Ctx)
 		if err == nil {
@@ -178,7 +216,14 @@ func (psconn *P2pPubSubConn) handleExchangeChannel() error {
 			//	channel_log.Infof("recv data: %s from channel: %s", msg.Data, psconn.Cid)
 			//}
 		} else {
-			channel_log.Errorf(err.Error())
+			if err == psconn.Ctx.Err() {
+				channel_log.Errorf("exchange channel %s ctx timeout : %s", psconn.Cid, err.Error())
+			} else {
+				channel_log.Errorf(err.Error())
+			}
+			action := &PubSubConnAction{psconn.Cid, LeavePubSub}
+			ch <- action
+			//remove me from psconnmanager
 			return err
 		}
 	}

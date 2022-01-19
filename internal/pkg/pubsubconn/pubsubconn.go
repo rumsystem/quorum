@@ -10,7 +10,6 @@ type Chain interface {
 }
 
 type PubSubConn interface {
-	JoinChannelAsExchange(cId string) error
 	JoinChannel(cId string, chain Chain) error
 	Publish(data []byte) error
 }
