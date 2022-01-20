@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -29,6 +30,17 @@ const (
 	PubSub P2pNetworkType = iota
 	RumExchange
 )
+
+func (t P2pNetworkType) String() string {
+	switch t {
+	case PubSub:
+		return "PubSub"
+	case RumExchange:
+		return "RumExchange"
+	default:
+		return fmt.Sprintf("%d", int(t))
+	}
+}
 
 type Node struct {
 	PeerID           peer.ID

@@ -51,10 +51,6 @@ func (trxMgr *TrxMgr) SetNodeName(nodename string) {
 	trxMgr.nodename = nodename
 }
 
-//func (trxMgr *TrxMgr) LeaveChannel(cId string) {
-//	trxMgr.psconn.LeaveChannel(cId)
-//}
-
 func (trxMgr *TrxMgr) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx
 
@@ -177,7 +173,7 @@ func (trxMgr *TrxMgr) SendUpdAuthTrx(item *quorumpb.DenyUserItem) (string, error
 	}
 
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_AUTH, encodedcontent)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -194,7 +190,7 @@ func (trxMgr *TrxMgr) SendUpdGroupConfigTrx(item *quorumpb.GroupConfigItem) (str
 	}
 
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_GROUP_CONFIG, encodedcontent)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -209,7 +205,7 @@ func (trxMgr *TrxMgr) SendRegProducerTrx(item *quorumpb.ProducerItem) (string, e
 		return "", err
 	}
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_PRODUCER, encodedcontent)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -224,7 +220,7 @@ func (trxMgr *TrxMgr) SendRegUserTrx(item *quorumpb.UserItem) (string, error) {
 		return "", err
 	}
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_USER, encodedcontent)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -240,7 +236,7 @@ func (trxMgr *TrxMgr) SendAnnounceTrx(item *quorumpb.AnnounceItem) (string, erro
 	}
 
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_ANNOUNCE, encodedcontent)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -256,7 +252,7 @@ func (trxMgr *TrxMgr) SendUpdSchemaTrx(item *quorumpb.SchemaItem) (string, error
 	}
 
 	trx, err := trxMgr.CreateTrx(quorumpb.TrxType_SCHEMA, encodedcontent)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -292,7 +288,7 @@ func (trxMgr *TrxMgr) SendReqBlockResp(req *quorumpb.ReqBlock, block *quorumpb.B
 		return err
 	}
 
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrxWithPubsub(trx)
 }
 
 func (trxMgr *TrxMgr) SendAskPeerId(req *quorumpb.AskPeerId) error {
@@ -308,7 +304,7 @@ func (trxMgr *TrxMgr) SendAskPeerId(req *quorumpb.AskPeerId) error {
 		return err
 	}
 
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrxWithPubsub(trx)
 }
 
 func (trxMgr *TrxMgr) SendAskPeerIdResp(req *quorumpb.AskPeerIdResp) error {
@@ -324,10 +320,10 @@ func (trxMgr *TrxMgr) SendAskPeerIdResp(req *quorumpb.AskPeerIdResp) error {
 		return err
 	}
 
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrxWithPubsub(trx)
 }
 
-func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
+func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block, networktype p2p.P2pNetworkType) error {
 	trxmgr_log.Debugf("<%s> SendReqBlockForward called", trxMgr.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
@@ -347,10 +343,10 @@ func (trxMgr *TrxMgr) SendReqBlockForward(block *quorumpb.Block) error {
 		return err
 	}
 
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrx(trx, networktype)
 }
 
-func (trxMgr *TrxMgr) SendReqBlockBackward(block *quorumpb.Block) error {
+func (trxMgr *TrxMgr) SendReqBlockBackward(block *quorumpb.Block, networktype p2p.P2pNetworkType) error {
 	trxmgr_log.Debugf("<%s> SendReqBlockBackward called", trxMgr.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
@@ -370,7 +366,7 @@ func (trxMgr *TrxMgr) SendReqBlockBackward(block *quorumpb.Block) error {
 		return err
 	}
 
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrx(trx, networktype)
 }
 
 func (trxMgr *TrxMgr) SendBlockProduced(blk *quorumpb.Block) error {
@@ -383,13 +379,13 @@ func (trxMgr *TrxMgr) SendBlockProduced(blk *quorumpb.Block) error {
 	if err != nil {
 		return err
 	}
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrxWithPubsub(trx)
 }
 
 func (trxMgr *TrxMgr) PostBytes(trxtype quorumpb.TrxType, encodedcontent []byte, encryptto ...[]string) (string, error) {
 	trxmgr_log.Debugf("<%s> PostBytes called", trxMgr.groupId)
 	trx, err := trxMgr.CreateTrx(trxtype, encodedcontent, encryptto...)
-	err = trxMgr.sendTrx(trx)
+	err = trxMgr.sendTrxWithPubsub(trx)
 	if err != nil {
 		return "INVALID_TRX", err
 	}
@@ -416,12 +412,12 @@ func (trxMgr *TrxMgr) PostAny(content proto.Message, encryptto ...[]string) (str
 
 func (trxMgr *TrxMgr) ResendTrx(trx *quorumpb.Trx) error {
 	trxmgr_log.Debugf("<%s> ResendTrx called", trxMgr.groupId)
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrxWithPubsub(trx)
 }
 
 func (trxMgr *TrxMgr) CustomSendTrx(trx *quorumpb.Trx) error {
 	trxmgr_log.Debugf("<%s> CustomSendTrx called", trxMgr.groupId)
-	return trxMgr.sendTrx(trx)
+	return trxMgr.sendTrxWithPubsub(trx)
 }
 
 func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
@@ -439,9 +435,9 @@ func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
 	pkg.Data = pbBytes
 
 	//TODO: rex or pubsub
-	//if networktype == p2p.PubSub {
-	//	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	//	return trxMgr.rex.Publish(rummsg)
+	//if networktype == p2p.RumExchange {
+	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//return trxMgr.rex.Publish(rummsg)
 	//}
 
 	pkgBytes, err := proto.Marshal(pkg)
@@ -452,7 +448,15 @@ func (trxMgr *TrxMgr) SendBlock(blk *quorumpb.Block) error {
 	return trxMgr.psconn.Publish(pkgBytes)
 }
 
-func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
+func (trxMgr *TrxMgr) sendTrxWithPubsub(trx *quorumpb.Trx) error {
+	return trxMgr.sendTrx(trx, p2p.PubSub)
+}
+
+//func (trxMgr *TrxMgr) sendTrxWithRumExchange(trx *quorumpb.Trx) error {
+//	return trxMgr.sendTrx(trx, p2p.RumExchange)
+//}
+
+func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx, networktype p2p.P2pNetworkType) error {
 	trxmgr_log.Debugf("<%s> sendTrx called", trxMgr.groupId)
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
@@ -464,10 +468,10 @@ func (trxMgr *TrxMgr) sendTrx(trx *quorumpb.Trx) error {
 
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
-
-	//TODO: rex or pubsub
-	//rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	//return trxMgr.rex.Publish(rummsg)
+	if networktype == p2p.RumExchange {
+		rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+		return trxMgr.rex.Publish(rummsg)
+	}
 
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {

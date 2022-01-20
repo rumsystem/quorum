@@ -7,6 +7,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
@@ -35,6 +36,7 @@ type Syncer struct {
 	blockReceived    map[string]string
 	cIface           ChainMolassesIface
 	groupId          string
+	syncNetworkType  p2p.P2pNetworkType
 }
 
 func (syncer *Syncer) Init(grp *Group, iface ChainMolassesIface) {
@@ -46,6 +48,7 @@ func (syncer *Syncer) Init(grp *Group, iface ChainMolassesIface) {
 	syncer.blockReceived = make(map[string]string)
 	syncer.groupId = grp.Item.GroupId
 	syncer.cIface = iface
+	syncer.syncNetworkType = p2p.PubSub
 	syncer_log.Infof("<%s> syncer initialed", syncer.groupId)
 }
 
@@ -203,7 +206,7 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block forward msg out
-	syncer.cIface.GetProducerTrxMgr().SendReqBlockForward(block)
+	syncer.cIface.GetProducerTrxMgr().SendReqBlockForward(block, syncer.syncNetworkType)
 }
 
 func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) {
@@ -212,7 +215,7 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block backward msg out
-	syncer.cIface.GetProducerTrxMgr().SendReqBlockBackward(block)
+	syncer.cIface.GetProducerTrxMgr().SendReqBlockBackward(block, syncer.syncNetworkType)
 }
 
 //wait block coming
@@ -230,7 +233,13 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 				syncer_log.Debugf("<%s> wait done", syncer.groupId)
 				if len(syncer.responses) == 0 {
 					syncer.retryCount++
-					syncer_log.Debugf("<%s> nothing received in this round, start new round (retry time: <%d>)", syncer.groupId, syncer.retryCount)
+					//switch network type and retry
+					if syncer.syncNetworkType == p2p.PubSub {
+						syncer.syncNetworkType = p2p.RumExchange
+					} else {
+						syncer.syncNetworkType = p2p.PubSub
+					}
+					syncer_log.Debugf("<%s> nothing received in this round, start new round (retry time: <%d>), set p2p network type to: [%s]", syncer.groupId, syncer.retryCount, syncer.syncNetworkType)
 					if syncer.retryCount == int8(RETRY_LIMIT) {
 						syncer_log.Debugf("<%s> reach retry limit <%d>, SYNC FAILED, check network connection", syncer.groupId, RETRY_LIMIT)
 						//save syncer status
@@ -245,7 +254,6 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 						syncer.askPreviousBlock(block)
 						syncer.waitBlock(block)
 					}
-					//syncer.ShowChainStruct()
 				} else { // all BLOCK_NOT_FOUND
 					syncer_log.Debugf("<%s> received <%d> BLOCK_NOT_FOUND resp, sync done, set to IDLE", syncer.groupId, len(syncer.responses))
 					syncer.Status = IDLE
