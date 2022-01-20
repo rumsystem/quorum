@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -14,7 +16,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"io"
 )
 
 var rumexchangelog = logging.Logger("rumexchange")
@@ -62,6 +63,7 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 			if err != nil {
 				rumexchangelog.Debugf("create network stream err: %s", err)
 				r.peerStatus.Update(p, r.ProtocolId, PROTOCOL_NOT_SUPPORT)
+				return err
 			} else {
 				rumexchangelog.Debugf("create network stream success.")
 			}
