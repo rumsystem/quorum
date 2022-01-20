@@ -2024,3 +2024,196 @@ string, group encryption type, must be "public", requested
 encryption type of group, "public" or "private" 
 
 [>>> back top](#top)
+
+
+* new chainconfig api *
+For a group, the owner can grant/deny privilege of individual trxType or trxTypes to different group user.
+The following trxType are configurable:
+      "POST",
+      "ANNOUNCE",
+      "REQ_BLOCK_FORWARD",
+      "REQ_BLOCK_BACKWARD",
+      "BLOCK_SYNCED"
+      "BLOCK_PRODUCED"
+      "ASK_PEERID"
+
+Each trx type has their own allow/deny list and "follow" rule for the user(pubkey) NOT in allow/deny list, 
+the authentication mode following the rules below:
+
+1. If a pubkey is in ALLOW list, send this type of trx is ALLOWED for this pubkey
+2. If a pubkey is in DENY list, producer/owner will REJECT all trx with this trxtype send from this pubkey
+3. If a pubkey is not in allow/deny list, the following rules apply
+    a. if trxtype is set to "FOLLOW_ALW_LIST", since the pubkey IS NOT in allow list, access will NOT be granted
+    b. if trxtype is set to "FOLLOW_DNY_LIST", since the pubkey IS NOT in deny list, access will be granted
+
+* For a pubkey is denied, it CAN STILL send a trx with certain trxtype and get the trx_id, BUT owner/producer will reject this trx, that means the trx will NOT be packaged in to a block and broadcast to the group. 
+* Therefor the CLIENT APP should check the group authentication rules to give error message back to user
+
+APIs
+
+----
+get FOLLOWING rules for certain trxType
+API: ```*/api/v1/group/<group_id>/trx/auth/<trx_type>```
+
+- Method: GET
+- Usage : get the following rules (rules applied to user not allow/deny list) for certain trxType
+- Params :
+  - group_id
+  - trx_type
+
+Example:
+
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/auth/post | jq
+
+Result:
+{
+  "TrxType": "POST",
+  "AuthType": "FOLLOW_ALW_LIST"
+}
+
+Params:
+    TrxType : trx type
+    Authtype : auth type, 
+        - FOLLOW_ALW_LIST 
+        - FOLLOW_DNY_LIST
+----        
+
+Set Following ruls for certain trxType
+API : v1/group/chainconfig 
+- Method: POST
+- Usage : set the following rules (rules applied to user not allow/deny list) for certain trxType
+- Params :
+  - group_id, group id
+  - type, chain config type, must be "set_trx_auth_mode"
+  - config, config content, includes the following items
+    - trx_type, type of trx
+    - trx_auth_mode, must be one of "follow_alw_list"/"follow_dny_list"
+    - memo, memo
+
+Example:
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_dny_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+
+Result:
+   {
+  "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
+  "owner_pubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
+  "sign": "30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73",
+  "trx_id": "90e9818a-2e23-4248-93e3-d4ba1b100f4f"
+   }
+
+Params:
+    group_id, group id
+    owner_pubkey, group owner pubkey
+    sign: owner signature
+    trx_id, trx id
+----
+
+Update allow/deny list for trxType/trxTypes
+API:  v1/group/chainconfig 
+- Method: POST
+- Usage : Update allow/deny list 
+- Params :
+  - group_id, group id
+  - type, chain config type, must be "upd_alw_list"/"upd_dny_list"
+  - config, config content, includes the following items
+    - action, type of operation, must be "add"/"remove"
+    - pubkey, pubkey to add/remove
+    - trx_type, type of trx (can be array)
+    - memo, memo
+Example:
+ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+
+Result:
+   {
+  "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
+  "owner_pubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
+  "sign": "30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73",
+  "trx_id": "90e9818a-2e23-4248-93e3-d4ba1b100f4f"
+}
+
+Params:
+    group_id, group id
+    owner_pubkey, group owner pubkey
+    sign: owner signature
+    trx_id, trx id
+----
+
+Get group allow/deny list
+API:   v1/group/<group_id>/trx/allowlist
+    v1/group/<group_id>/trx/denylist
+- Method: Get
+- Usage : Get allow/deny list
+- Params :
+  - group_id, group id
+
+Example:
+  Get group allow list
+  curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/allowlist
+
+Result:
+[
+  {
+    "Pubkey": "CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==",
+    "TrxType": [
+      "POST",
+      "ANNOUNCE",
+      "REQ_BLOCK_FORWARD",
+      "REQ_BLOCK_BACKWARD",
+      "ASK_PEERID"
+    ],
+    "GroupOwnerPubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
+    "GroupOwnerSign": "304502210084bc833278dc98be6f279540b571ad5402f5c2d1e978c4c2298cddb079ca312002205f9374b9d27c628815aecff4ffe11329b17b8be12687223a072afa58e9f15f2c",
+    "TimeStamp": 1642609852758917000,
+    "Memo": "Memo"
+  }
+]
+
+params:
+    Pubkey: pubkey 
+    TrxType: trxType allowd(denied) for this pubkey
+    GroupOwnerPubkey
+    GroupOwnerSign
+    TimeStmap
+    Memo
+----
+
+* API Update for client api
+- DenyList API is no longer available
+- All trxType is set to "FOLLOW_DNY_LIST" by default, that means if the FOLLOW ruls are not changed, all user can send certain type of trx unless been put to DENY list
+- How to implement "DENY a pubkey"
+    - no need to change FOLLOW rules for ANY trxType
+    - Add the following trxType of the pubkey to DENY list
+      "POST",
+      "ANNOUNCE"
+      "REQ_BLOCK_FORWARD"
+      "REQ_BLOCK_BACKWARD"
+      "ASK_PEERID"
+
+      example:
+        curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+- How to "ALLOW a pubkey" again
+    - Remove pubkey for all certain trxTypes from DENY list
+      "POST"
+      "ANNOUNCE"
+      "REQ_BLOCK_FORWARD"
+      "REQ_BLOCK_BACKWARD"
+      "ASK_PEERID"
+
+     example:
+        curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+
+- How to impelent "single" author mode
+    - change FOLLOW rules of POST to FOLLOW_ALW_LIST
+        example:
+           curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_alw_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq 
+
+        * NOW ONLY PUBKEY IN ALLOW LIST CAN POST
+    - Add owner pubkey to ALLOW list for POST
+        example:
+             curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+
+        * NOW owner can send POST, all other pubkeys are denied
+
+- Same trxType for a pubkey can be added to both allow list and deny list, that is with reason and by design. Allow list alway has "higher" privilege than deny list, that means, if same trxType appears on both list, ACCESS WILL BE GRANTED. To make less confuse, client should manage authenticate rules carefully. 
+
+

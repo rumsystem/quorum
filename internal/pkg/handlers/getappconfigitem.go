@@ -7,7 +7,7 @@ import (
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
-type GroupConfigKeyItem struct {
+type AppConfigKeyItem struct {
 	Name        string
 	Type        string
 	Value       string
@@ -17,19 +17,19 @@ type GroupConfigKeyItem struct {
 	TimeStamp   int64
 }
 
-func GetGroupConfigKey(itemKey, groupId string) (*GroupConfigKeyItem, error) {
+func GetAppConfigKey(itemKey, groupId string) (*AppConfigKeyItem, error) {
 	if groupId == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupId]; ok {
-		configItem, err := group.GetGroupConfigItem(itemKey)
+		configItem, err := group.GetAppConfigItem(itemKey)
 		if err != nil {
 			return nil, err
 		}
-		var item *GroupConfigKeyItem
-		item = &GroupConfigKeyItem{}
+		var item *AppConfigKeyItem
+		item = &AppConfigKeyItem{}
 
 		item.Name = configItem.Name
 		item.Type = configItem.Type.String()
