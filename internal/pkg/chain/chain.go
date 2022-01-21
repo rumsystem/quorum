@@ -217,7 +217,7 @@ func (chain *Chain) HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error {
 		}
 		chain.handleReqBlockBackward(trx, p2p.RumExchange, from)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
-		chain_log.Debugf("receive REQ_BLOCK_RESP trx:%s", trx)
+		chain_log.Debugf("receive REQ_BLOCK_RESP trx :%s", trx.TrxId)
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
