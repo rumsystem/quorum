@@ -92,16 +92,6 @@ func (chain *Chain) Init(group *Group) error {
 
 	chain.ProviderPeerIdPool = make(map[string]string)
 
-	err := chain.InitSession(chain.producerChannelId)
-	if err != nil {
-		return err
-	}
-
-	err = chain.InitSession(chain.syncChannelId)
-	if err != nil {
-		return err
-	}
-
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
@@ -522,6 +512,9 @@ func (chain *Chain) CreateConsensus() {
 	} else {
 		chain_log.Infof("<%s> reuse syncer", chain.groupId)
 	}
+
+	_ = chain.InitSession(chain.producerChannelId)
+	_ = chain.InitSession(chain.syncChannelId)
 }
 
 func (chain *Chain) createUserTrxMgr() {
