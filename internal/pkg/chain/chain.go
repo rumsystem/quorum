@@ -280,7 +280,7 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
@@ -289,7 +289,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
@@ -297,7 +297,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockBackward called", chain.groupId)
@@ -351,7 +351,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
