@@ -21,6 +21,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ws "github.com/libp2p/go-ws-transport"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 
 func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethkeystore.Key) (*Node, error) {
@@ -103,9 +104,15 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	psPing.EnablePing()
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	newNode := &Node{NetworkName: nodeNetwork, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info}
+	peerStatus := NewPeerStatus()
+	rexnotification := make(chan RexNotification, 1)
+	rexservice := NewRexService(host, peerStatus, nodeNetwork, ProtocolPrefix, rexnotification)
+	rexservice.SetDelegate()
 
-	// TODO: store peers and reconnect them
+	nodeName := "default"
+	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodeName)
+
+	newNode := &Node{NetworkName: nodeNetwork, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
 
 	go newNode.eventhandler(ctx)
 
