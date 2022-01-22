@@ -63,7 +63,6 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 			if err != nil {
 				rumexchangelog.Debugf("create network stream err: %s", err)
 				r.peerStatus.Update(p, r.ProtocolId, PROTOCOL_NOT_SUPPORT)
-				return err
 			} else {
 				rumexchangelog.Debugf("create network stream success.")
 			}
