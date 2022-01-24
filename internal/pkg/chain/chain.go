@@ -105,7 +105,6 @@ func (chain *Chain) Init(group *Group) error {
 		return err
 	}
 
-	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(chain.groupId, chain)
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
@@ -319,7 +318,7 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
@@ -480,7 +479,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
@@ -651,6 +650,9 @@ func (chain *Chain) CreateConsensus() {
 	} else {
 		chain_log.Infof("<%s> reuse syncer", chain.groupId)
 	}
+
+	_ = chain.InitSession(chain.producerChannelId)
+	_ = chain.InitSession(chain.syncChannelId)
 }
 
 func (chain *Chain) createUserTrxMgr() {

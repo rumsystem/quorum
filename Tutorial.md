@@ -28,9 +28,10 @@ You can try:
   - [Get network info](#api-get-network)
   - [Start sync](#api-post-startsync)
 - [Content](#test-content)
-  - [Get group content](#api-get-group-content)
-    - Get all content
-    - Request content with senders filter
+  - View group content:
+    - [Get Group content](#api-get-group-content)
+    - [Request content with senders filter](#api-group-content)
+    - [Note, Person-profile or Like/Dislike Trx.](#api-trxs-type)
   - [Post content to group](#api-post-content)
     - Content with text only
     - Content with inreplyto
@@ -631,6 +632,8 @@ API return value:
 
 ## Get group content
 
+这个 api 将会废弃，目前保留仅供调试用。
+
 **API**: ```*/api/v1/group/{group_id}/content```
 
 - Method: GET
@@ -640,28 +643,36 @@ API return value:
 
 **Example**:
 
-#### Requst all content
-
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/content
 ```
 
-#### Request content with senders filter
+<span id="api-group-content"></span>
+
+## Request content with senders filter
+
+**API**: ```*/app/api/v1/group/{group_id}/content?starttrx={trx_id}&num={n}```
+
+**TIPS:** 这个 API 比其它常见 API 多了一个 `/app`
+
+- Method: POST
+- Usage : Request content trxs of a group with senders filter
+- Params :
+  - [group_id](#param-group_id)
+  - trx_id: start trx_id to fetch
+  - n: int,num of trxs to fetch
+
+**Example**:
 
 ```bash
-curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?start=0&num=20"
-```
-
-```json
-{
-    "start": 0,
-    "num": 10
-}
+curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?starttrx=95f74d77-b15a-4cf5-a964-1c367c1b1909&num=20"
 ```
 
 API return value: a list of trxs. 
 
-Note, Person-profile or Like/Dislike Trx.
+<span id="api-trxs-type"></span>
+
+## Note, Person-profile or Like/Dislike Trx.
 
 Note Trx:
 
@@ -826,8 +837,9 @@ when `object.content` is not null, `object.image` is optional.
     "object": {
         "type": "Note",
         "content": "can't agree more! thx.",
-        "inreplyto": {"trxid": "08c6ee4d-0310-47cf-988e-3879321ef274"}
-        
+        "inreplyto": {
+            "trxid": "08c6ee4d-0310-47cf-988e-3879321ef274"
+        }
     },
     "target": {
         "id": "d87b93a3-a537-473c-8445-609157f8dab0",
@@ -840,7 +852,7 @@ when `object.content` is not null, `object.image` is optional.
 
 when `object.image` is not null, `object.content` is optional.
 
-1~4 images , total size less than 200 mb
+1~4 images , total size less than 200 kb
 
 ```json
 {
@@ -911,7 +923,6 @@ any group has its own profile to set.
   - [trx_id](#param-trx_id)
 
 **Example**:
-
 
 **Params**:
 
@@ -1043,7 +1054,7 @@ Trx 生命周期，加密和出块过程
 
 2. 将这个 trx 标记为“发送中”
 
-3. [查询组内的内容](#api-get-group-content)
+3. [查询组内的内容](#api-group-content)
 
 4. 设置一个超时，目前建议是 30 秒，不断查询，直到相同 [trx_id](#param-trx_id) 的内容出现在返回结果中，即可认为 trx 发送成功（被包含在块中）
 
@@ -1087,7 +1098,7 @@ API return value:
 ```
 
 * "Data" 是加密的，([encryption type](#param-encryption_type)由组类型决定)
-* 客户端应通过[获取 Content 的 API](#api-get-group-content) 来获取解密之后的内容
+* 客户端应通过[获取 Content 的 API](#api-group-content) 来获取解密之后的内容
 
 [>>> back top](#top)
 
@@ -1770,6 +1781,8 @@ API return value:
 
 # Private Group
 
+强加密类型的种子网络。这类种子网络的特点是，任何人即便可以拿到 seed 并由此加入 group，但如果没被 owner approved as user，是无法获取到 content 的，即能拿到 trxs 但 trx 的 Content 字段为空。以此保证 group 的内容隐私。
+
 **workflow**:
 
 1. Announce user's encrypt pubkey to a group
@@ -1778,7 +1791,7 @@ API return value:
 
 <span id="api-post-announce-user"></span>
 
-## Announce user
+## user: Announce user
 
 **API**: ```*/api/v1/group/announce```
 
@@ -1833,7 +1846,7 @@ API return value:
 
 <span id="api-get-announced-users"></span>
 
-## Get announced users
+## ANY: Get announced users
 
 **API**: ```*/api/v1/group/{group_id}/announced/users```
 
@@ -1873,7 +1886,7 @@ API return value:
 
 <span id="api-post-group-user"></span>
 
-## Owner approve a user
+## Owner approve a user or remove
 
 **API**: ```*/api/v1/group/user```
 

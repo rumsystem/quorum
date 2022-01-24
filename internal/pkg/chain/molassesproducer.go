@@ -15,7 +15,6 @@ import (
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-
 	"google.golang.org/protobuf/proto"
 )
 
