@@ -35,18 +35,18 @@ const (
 )
 
 type MolassesProducer struct {
-	grpItem   *quorumpb.GroupItem
-	blockPool map[string]*quorumpb.Block
-	trxPool   map[string]*quorumpb.Trx
-	trxMgr    map[string]*TrxMgr
-	//syncConnTimerPool map[string]*time.Timer
-	status       ProducerStatus
-	ProduceTimer *time.Timer
-	ProduceDone  chan bool
-	statusmu     sync.RWMutex
-	nodename     string
-	cIface       ChainMolassesIface
-	groupId      string
+	grpItem           *quorumpb.GroupItem
+	blockPool         map[string]*quorumpb.Block
+	trxPool           map[string]*quorumpb.Trx
+	trxMgr            map[string]*TrxMgr
+	syncConnTimerPool map[string]*time.Timer
+	status            ProducerStatus
+	ProduceTimer      *time.Timer
+	ProduceDone       chan bool
+	statusmu          sync.RWMutex
+	nodename          string
+	cIface            ChainMolassesIface
+	groupId           string
 }
 
 func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
@@ -56,7 +56,7 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	producer.blockPool = make(map[string]*quorumpb.Block)
 	producer.trxPool = make(map[string]*quorumpb.Trx)
 	producer.trxMgr = make(map[string]*TrxMgr)
-	//producer.syncConnTimerPool = make(map[string]*time.Timer)
+	producer.syncConnTimerPool = make(map[string]*time.Timer)
 	producer.status = StatusIdle
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
@@ -430,7 +430,7 @@ func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error)
 
 	var syncTrxMgr *TrxMgr
 
-	/* if _, ok := producer.trxMgr[channelId]; ok {
+	if _, ok := producer.trxMgr[channelId]; ok {
 		syncTrxMgr = producer.trxMgr[channelId]
 
 		//reset timer
@@ -439,27 +439,23 @@ func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error)
 		timer.Stop()
 		timer.Reset(CLOSE_CONN_TIMER * time.Second)
 	} else {
+		molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
+		syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, producer.cIface.GetChainCtx())
+		syncTrxMgr = &TrxMgr{}
+		syncTrxMgr.Init(producer.grpItem, syncPsconn)
+		producer.trxMgr[channelId] = syncTrxMgr
 
-	*/
-
-	molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
-	syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, producer.cIface.GetChainCtx())
-	syncTrxMgr = &TrxMgr{}
-	syncTrxMgr.Init(producer.grpItem, syncPsconn)
-	producer.trxMgr[channelId] = syncTrxMgr
-
-	/*
-			molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
-			timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-				if _, ok := producer.trxMgr[channelId]; ok {
-					molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
-					//syncTrxMgr.LeaveChannel(channelId)
-					nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
-					delete(producer.trxMgr, channelId)
-				}
-			})
-			producer.syncConnTimerPool[channelId] = timer
-	}*/
+		molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
+		timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
+			if _, ok := producer.trxMgr[channelId]; ok {
+				molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
+				//syncTrxMgr.LeaveChannel(channelId)
+				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
+				delete(producer.trxMgr, channelId)
+			}
+		})
+		producer.syncConnTimerPool[channelId] = timer
+	}
 
 	return syncTrxMgr, nil
 }
