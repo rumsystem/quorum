@@ -565,10 +565,10 @@ func (chain *Chain) createProducerTrxMgr() {
 
 func (chain *Chain) InitSession(channelId string) error {
 	chain_log.Debugf("<%s> InitSession called", chain.groupId)
-	err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
-	if err != nil {
-		return err
-	}
+	//err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
+	//if err != nil {
+	//	return err
+	//}
 	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
 		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
 	} else {
