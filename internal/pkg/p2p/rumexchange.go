@@ -125,12 +125,16 @@ func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionI
 	var s network.Stream
 	var err error
 	s, err = r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
-	bufw := bufio.NewWriter(s)
-	wc := protoio.NewDelimitedWriter(bufw)
-	err = wc.WriteMsg(sessionmsg)
-	rumexchangelog.Debugf("Write connresp back to %s , err %s", s.Conn().RemotePeer(), err)
-	rumexchangelog.Debugf("msg.Peersroutes:%s", sessionmsg.ConnResp.Peersroutes)
-	bufw.Flush()
+	if err == nil {
+		bufw := bufio.NewWriter(s)
+		wc := protoio.NewDelimitedWriter(bufw)
+		err = wc.WriteMsg(sessionmsg)
+		rumexchangelog.Debugf("msg.Peersroutes num:(%d) resp success.", len(sessionmsg.ConnResp.Peersroutes))
+		bufw.Flush()
+	} else {
+		rumexchangelog.Debugf("Write connresp back to %s , err %s", recvfrom, err)
+	}
+
 }
 
 func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) {
