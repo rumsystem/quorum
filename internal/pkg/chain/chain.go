@@ -9,7 +9,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
 
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -41,42 +40,6 @@ type Chain struct {
 	groupId            string
 
 	ProviderPeerIdPool map[string]string
-}
-
-func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn pubsubconn.PubSubConn, userPubsubconn pubsubconn.PubSubConn) {
-
-	/*
-		chain.group = group
-		chain.trxMgrs = make(map[string]*TrxMgr)
-		chain.nodename = nodename
-
-		chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
-		producerTrxMgr := &TrxMgr{}
-		producerTrxMgr.Init(chain.group.Item, producerPubsubconn)
-		producerTrxMgr.SetNodeName(nodename)
-		chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
-
-		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
-		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		chain.Consensus.User().Init(group.Item, group.ChainCtx.nodename, chain)
-
-		chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
-		userTrxMgr := &TrxMgr{}
-		userTrxMgr.Init(chain.group.Item, userPubsubconn)
-		userTrxMgr.SetNodeName(nodename)
-		chain.trxMgrs[chain.userChannelId] = userTrxMgr
-
-		chain.syncChannelId = SYNC_CHANNEL_PREFIX + group.Item.GroupId + "_" + group.Item.UserSignPubkey
-		syncTrxMgr := &TrxMgr{}
-		syncTrxMgr.Init(chain.group.Item, userPubsubconn)
-		syncTrxMgr.SetNodeName(nodename)
-		chain.trxMgrs[chain.userChannelId] = userTrxMgr
-
-		chain.Syncer = &Syncer{nodeName: nodename}
-		chain.Syncer.Init(chain.group, producerTrxMgr, userTrxMgr, syncTrxMgr)
-
-		chain.groupId = group.Item.GroupId
-	*/
 }
 
 func (chain *Chain) Init(group *Group) error {
@@ -147,26 +110,21 @@ func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 
 	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
 		producerTrxMgr = chain.trxMgrs[chain.producerChannelId]
+		chain_log.Debugf("<%s> reset connection timer for producertrxMgr <%s>", chain.groupId, chain.producerChannelId)
+		chain.producerChannTimer.Stop()
+		chain.producerChannTimer.Reset(CLOSE_CONN_TIMER * time.Second)
 
-		/*
-			chain_log.Debugf("<%s> reset connection timer for producertrxMgr <%s>", chain.groupId, chain.producerChannelId)
-			chain.producerChannTimer.Stop()
-			chain.producerChannTimer.Reset(CLOSE_CONN_TIMER * time.Second)
-		*/
 	} else {
 		chain.createProducerTrxMgr()
 		producerTrxMgr = chain.trxMgrs[chain.producerChannelId]
-
-		/*
-			chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
-			chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-				if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
-					chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
-					nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
-					delete(chain.trxMgrs, chain.producerChannelId)
-				}
-			})
-		*/
+		chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
+		chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
+			if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
+				chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
+				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
+				delete(chain.trxMgrs, chain.producerChannelId)
+			}
+		})
 	}
 
 	return producerTrxMgr
