@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -20,18 +22,6 @@ import (
 )
 
 /* from echo handlers, should be refactored later after wasm stabeld */
-
-type JoinGroupParam struct {
-	GenesisBlock   *quorumpb.Block `from:"genesis_block" json:"genesis_block" validate:"required"`
-	GroupId        string          `from:"group_id" json:"group_id" validate:"required"`
-	GroupName      string          `from:"group_name" json:"group_name" validate:"required"`
-	OwnerPubKey    string          `from:"owner_pubkey" json:"owner_pubkey" validate:"required"`
-	ConsensusType  string          `from:"consensus_type" json:"consensus_type" validate:"required"`
-	EncryptionType string          `from:"encryption_type" json:"encryption_type" validate:"required"`
-	CipherKey      string          `from:"cipher_key" json:"cipher_key" validate:"required"`
-	AppKey         string          `from:"app_key" json:"app_key" validate:"required"`
-	Signature      string          `from:"signature" json:"signature" validate:"required"`
-}
 
 type JoinGroupResult struct {
 	GroupId           string `json:"group_id"`
@@ -47,7 +37,7 @@ type JoinGroupResult struct {
 }
 
 func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
-	params := JoinGroupParam{}
+	params := handlers.GroupSeed{}
 	err := json.Unmarshal(paramsBytes, &params)
 	if err != nil {
 		return nil, err
@@ -60,7 +50,7 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 	}
 
 	/* Parse some useful bytes */
-	ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(params.OwnerPubKey)
+	ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(params.OwnerPubkey)
 	if err != nil {
 		return nil, err
 	}
@@ -118,12 +108,18 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 	}
 	println("sign result: OK")
 
+	// save group seed to appdata
+	pbGroupSeed := handlers.ToPbGroupSeed(params)
+	if err := quorumContext.GetWASMContext().AppDb.SetGroupSeed(&pbGroupSeed); err != nil {
+
+	}
+
 	ret := JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: userEncryptKey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
 
 	return &ret, nil
 }
 
-func verifySeed(params *JoinGroupParam, ownerPubkeyBytes []byte, genesisBlockBytes []byte) (bool, error) {
+func verifySeed(params *handlers.GroupSeed, ownerPubkeyBytes []byte, genesisBlockBytes []byte) (bool, error) {
 	verify := false
 	decodedSignature, err := hex.DecodeString(params.Signature)
 	if err != nil {
@@ -184,11 +180,11 @@ func initEncodeKey(groupId string, bks *localcrypto.BrowserKeystore) (string, er
 	return userEncryptKey, nil
 }
 
-func createGroupItem(params *JoinGroupParam, ownerPubkeyBytes []byte, groupSignPubkey []byte, userEncryptKey string) *quorumpb.GroupItem {
+func createGroupItem(params *handlers.GroupSeed, ownerPubkeyBytes []byte, groupSignPubkey []byte, userEncryptKey string) *quorumpb.GroupItem {
 	var item *quorumpb.GroupItem
 	item = &quorumpb.GroupItem{}
 
-	item.OwnerPubKey = params.OwnerPubKey
+	item.OwnerPubKey = params.OwnerPubkey
 	item.GroupId = params.GroupId
 	item.GroupName = params.GroupName
 	item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(ownerPubkeyBytes)
