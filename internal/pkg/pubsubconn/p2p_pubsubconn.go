@@ -6,6 +6,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"sync"
 )
 
 var channel_log = logging.Logger("chan")
@@ -25,6 +26,7 @@ type PubSubConnMgr struct {
 	ps       *pubsub.PubSub
 	nodename string
 	connmgr  map[string]*P2pPubSubConn
+	mu       sync.RWMutex
 }
 
 var pubsubconnmgr *PubSubConnMgr
@@ -32,7 +34,7 @@ var pubsubconnmgr *PubSubConnMgr
 func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) *PubSubConnMgr {
 	if pubsubconnmgr == nil {
 		connmap := map[string]*P2pPubSubConn{}
-		pubsubconnmgr = &PubSubConnMgr{ctx, ps, nodename, connmap}
+		pubsubconnmgr = &PubSubConnMgr{Ctx: ctx, ps: ps, nodename: nodename, connmgr: connmap}
 	}
 	return pubsubconnmgr
 }
@@ -41,7 +43,10 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 }
 
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
+
+	pscm.mu.RLock()
 	_, ok := pscm.connmgr[channelId]
+	pscm.mu.RUnlock()
 	if ok == false {
 		psconn := &P2pPubSubConn{Ctx: pscm.Ctx, ps: pscm.ps, nodename: pscm.nodename}
 		if chain != nil {
@@ -49,18 +54,26 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chai
 		} else {
 			psconn.JoinChannelAsExchange(channelId)
 		}
+		pscm.mu.Lock()
 		pscm.connmgr[channelId] = psconn
+		pscm.mu.Unlock()
 	}
-	return pscm.connmgr[channelId]
+	pscm.mu.RLock()
+	psconn := pscm.connmgr[channelId]
+	pscm.mu.RUnlock()
+	return psconn
 }
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
-	_, ok := pscm.connmgr[channelId]
+	pscm.mu.RLock()
+	psconn, ok := pscm.connmgr[channelId]
+	pscm.mu.RUnlock()
 	if ok == true {
-		psconn := pscm.connmgr[channelId]
 		psconn.Subscription.Cancel()
 		psconn.Topic.Close()
+		pscm.mu.Lock()
 		delete(pscm.connmgr, channelId)
+		pscm.mu.Unlock()
 		channel_log.Infof("Leave channel <%s> done", channelId)
 	} else {
 		channel_log.Infof("psconn channel <%s> not exist", channelId)
