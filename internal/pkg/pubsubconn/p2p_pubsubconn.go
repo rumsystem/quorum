@@ -6,6 +6,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,7 @@ type PubSubConnMgr struct {
 	nodename   string
 	actionChan chan *PubSubConnAction
 	connmgr    map[string]*P2pPubSubConn
+	mu         sync.RWMutex
 }
 
 var pubsubconnmgr *PubSubConnMgr
@@ -46,7 +48,7 @@ func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) 
 	if pubsubconnmgr == nil {
 		connmap := map[string]*P2pPubSubConn{}
 		ch := make(chan *PubSubConnAction)
-		pubsubconnmgr = &PubSubConnMgr{ctx, ps, nodename, ch, connmap}
+		pubsubconnmgr = &PubSubConnMgr{Ctx: ctx, ps: ps, nodename: nodename, actionChan: ch, connmgr: connmap}
 		go pubsubconnmgr.WaitAction(ctx)
 	}
 	return pubsubconnmgr
@@ -76,7 +78,10 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 }
 
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
+
+	pscm.mu.RLock()
 	_, ok := pscm.connmgr[channelId]
+	pscm.mu.RUnlock()
 	if ok == false {
 		psconn := &P2pPubSubConn{ps: pscm.ps, nodename: pscm.nodename}
 		if chain != nil {
@@ -87,18 +92,26 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chai
 			psconn.Ctx = ctxtimeout
 			psconn.JoinChannelAsExchange(channelId, pscm.actionChan)
 		}
+		pscm.mu.Lock()
 		pscm.connmgr[channelId] = psconn
+		pscm.mu.Unlock()
 	}
-	return pscm.connmgr[channelId]
+	pscm.mu.RLock()
+	psconn := pscm.connmgr[channelId]
+	pscm.mu.RUnlock()
+	return psconn
 }
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
-	_, ok := pscm.connmgr[channelId]
+	pscm.mu.RLock()
+	psconn, ok := pscm.connmgr[channelId]
+	pscm.mu.RUnlock()
 	if ok == true {
-		psconn := pscm.connmgr[channelId]
 		psconn.Subscription.Cancel()
 		psconn.Topic.Close()
+		pscm.mu.Lock()
 		delete(pscm.connmgr, channelId)
+		pscm.mu.Unlock()
 		channel_log.Infof("Leave channel <%s> done", channelId)
 	} else {
 		channel_log.Infof("psconn channel <%s> not exist", channelId)

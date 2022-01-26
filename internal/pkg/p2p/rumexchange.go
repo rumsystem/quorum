@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -14,7 +16,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"io"
 )
 
 var rumexchangelog = logging.Logger("rumexchange")
@@ -149,7 +150,7 @@ func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
 	ctx := context.Background()
 	s, err := r.Host.NewStream(ctx, to, r.ProtocolId)
 	if err != nil {
-		rumexchangelog.Errorf("create network stream to %s err: %s", to, err)
+		rumexchangelog.Debugf("create network stream to %s err: %s", to, err)
 		return err
 	}
 	defer func() { _ = s.Close() }()
@@ -157,7 +158,7 @@ func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
 	wc := protoio.NewDelimitedWriter(bufw)
 	err = wc.WriteMsg(msg)
 	if err != nil {
-		rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		return err
 	} else {
 		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
@@ -174,7 +175,7 @@ func (r *RexService) Publish(msg *quorumpb.RumMsg) error {
 		ctx := context.Background()
 		s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
 		if err != nil {
-			rumexchangelog.Errorf("create network stream err: %s", err)
+			rumexchangelog.Debugf("create network stream err: %s", err)
 			continue
 		}
 		defer func() { _ = s.Close() }()
@@ -182,7 +183,7 @@ func (r *RexService) Publish(msg *quorumpb.RumMsg) error {
 		wc := protoio.NewDelimitedWriter(bufw)
 		err = wc.WriteMsg(msg)
 		if err != nil {
-			rumexchangelog.Errorf("writemsg to network stream err: %s", err)
+			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		} else {
 			succ++
 			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
@@ -208,12 +209,16 @@ func (r *RexService) DestPeerResp(recvfrom peer.ID, ifconnmsg *quorumpb.SessionI
 	var s network.Stream
 	var err error
 	s, err = r.Host.NewStream(ctx, recvfrom, r.ProtocolId)
-	bufw := bufio.NewWriter(s)
-	wc := protoio.NewDelimitedWriter(bufw)
-	err = wc.WriteMsg(sessionmsg)
-	rumexchangelog.Debugf("Write connresp back to %s , err %s", s.Conn().RemotePeer(), err)
-	rumexchangelog.Debugf("msg.Peersroutes:%s", sessionmsg.ConnResp.Peersroutes)
-	bufw.Flush()
+	if err == nil {
+		bufw := bufio.NewWriter(s)
+		wc := protoio.NewDelimitedWriter(bufw)
+		err = wc.WriteMsg(sessionmsg)
+		rumexchangelog.Debugf("msg.Peersroutes num:(%d) resp success.", len(sessionmsg.ConnResp.Peersroutes))
+		bufw.Flush()
+	} else {
+		rumexchangelog.Debugf("Write connresp back to %s , err %s", recvfrom, err)
+	}
+
 }
 
 func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) {
