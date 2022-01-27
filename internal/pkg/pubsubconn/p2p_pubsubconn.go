@@ -59,7 +59,7 @@ func (pscm *PubSubConnMgr) WaitAction(ctx context.Context) {
 		select {
 		case a, ok := <-pscm.actionChan:
 
-			channel_log.Debugf("ok receive PubSubConnMgr:%s", a)
+			//channel_log.Debugf("ok receive PubSubConnMgr:%s", a)
 
 			if ok == true {
 				if a.PubSubActionType == LeavePubSub {
@@ -103,15 +103,13 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chai
 }
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
-	pscm.mu.RLock()
+	pscm.mu.Lock()
+	defer pscm.mu.Unlock()
 	psconn, ok := pscm.connmgr[channelId]
-	pscm.mu.RUnlock()
 	if ok == true {
 		psconn.Subscription.Cancel()
 		psconn.Topic.Close()
-		pscm.mu.Lock()
 		delete(pscm.connmgr, channelId)
-		pscm.mu.Unlock()
 		channel_log.Infof("Leave channel <%s> done", channelId)
 	} else {
 		channel_log.Infof("psconn channel <%s> not exist", channelId)

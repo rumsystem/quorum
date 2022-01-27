@@ -59,7 +59,7 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 	if err != nil {
 		return []byte(""), err
 	}
-	log.Printf("response status: %d body: %s", resp.StatusCode, body)
+	//log.Printf("response status: %d body: %s", resp.StatusCode, body)
 	return body, nil
 }
 

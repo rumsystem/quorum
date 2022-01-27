@@ -129,7 +129,7 @@ func TestGroups(t *testing.T) {
 		for _, groupId := range groupIds {
 			groupStatus[groupId] = false
 		}
-		waitingcounter := 5
+		waitingcounter := 10
 		for {
 			if waitingcounter <= 0 {
 				break

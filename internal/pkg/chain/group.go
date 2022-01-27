@@ -39,7 +39,7 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
-
+	grp.ChainCtx.InitChainSession()
 	nodectx.GetNodeCtx().Node.RumExchange.ChainReg(item.GroupId, grp.ChainCtx)
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }

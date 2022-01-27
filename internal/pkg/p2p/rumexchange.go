@@ -386,7 +386,7 @@ func (r *RexService) Handler(s network.Stream) {
 			rumexchangelog.Warningf("msg err: %s", err)
 		}
 
-		rumexchangelog.Warningf("RumExchange stream handler loop next...")
+		//rumexchangelog.Warningf("RumExchange stream handler loop next...")
 	}
 }
 

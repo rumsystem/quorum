@@ -58,6 +58,11 @@ func (chain *Chain) Init(group *Group) error {
 
 	chain.ProviderPeerIdPool = make(map[string]string)
 
+	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
+	return nil
+}
+
+func (chain *Chain) InitChainSession() error {
 	err := chain.InitSession(chain.producerChannelId)
 	if err != nil {
 		return err
@@ -67,8 +72,6 @@ func (chain *Chain) Init(group *Group) error {
 	if err != nil {
 		return err
 	}
-
-	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
 
@@ -114,6 +117,11 @@ func (chain *Chain) GetChainCtx() *Chain {
 
 func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 	chain_log.Debugf("<%s> GetProducerTrxMgr called", chain.groupId)
+
+	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+		return chain.trxMgrs[chain.producerChannelId]
+	}
+
 	var producerTrxMgr *TrxMgr
 
 	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
@@ -128,7 +136,7 @@ func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 		chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
 		chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
 			if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
-				chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
+				chain_log.Debugf("<%s> time up, close producer channel <%s>", chain.groupId, chain.producerChannelId)
 				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
 				delete(chain.trxMgrs, chain.producerChannelId)
 			}
@@ -281,7 +289,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype p2p.P2pNetworkType, from peer.ID) error {
 	if networktype == p2p.PubSub {
-		if chain.Consensus.Producer() == nil {
+		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 			return nil
 		}
 		chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
@@ -656,10 +664,6 @@ func (chain *Chain) createProducerTrxMgr() {
 
 func (chain *Chain) InitSession(channelId string) error {
 	chain_log.Debugf("<%s> InitSession called", chain.groupId)
-	//err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
-	//if err != nil {
-	//	return err
-	//}
 	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
 		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
 	} else {
