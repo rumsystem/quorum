@@ -20,7 +20,7 @@ func RexTest(node *p2p.Node) ([]string, error) {
 		}
 		peerid := "16Uiu2HAm4U6Ymx5nNifPVBgn7ZaofXGmN9EEFtay7KjWtq64gZcM"
 		channelid := "my_private_channel"
-		node.RumExchange.InitSession(peerid, channelid)
+		node.RumSession.InitSession(peerid, channelid)
 		ch := make(chan int)
 		select {
 		case <-ch:
@@ -45,7 +45,7 @@ func RexInitSession(node *p2p.Node, groupId string, peerId string) error {
 		if err != nil {
 			return err
 		}
-		node.RumExchange.InitSession(peerId, "prod_channel_"+groupId)
+		node.RumSession.InitSession(peerId, "prod_channel_"+groupId)
 		groupmgr := chain.GetGroupMgr()
 		group, ok := groupmgr.Groups[groupId]
 		if ok == true {

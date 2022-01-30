@@ -673,10 +673,20 @@ func (chain *Chain) SyncBackward(blockId string, nodename string) error {
 }
 
 func (chain *Chain) StopSync() error {
-	chain_log.Debug("StopSync called, groupId <%s>", chain.groupId)
-	if chain.syncer != nil {
-		return chain.syncer.StopSync()
+	chain_log.Debugf("<%s> StopSync called", chain.groupId)
+	if chain.Syncer != nil {
+		return chain.Syncer.StopSync()
 	}
+	return nil
+}
+
+func (chain *Chain) InitSession(channelId string) error {
+	//chain_log.Debugf("<%s> InitSession called", chain.groupId)
+	//if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
+	//	return nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, channelId)
+	//} else {
+	//	return chain.AskPeerId()
+	//}
 	return nil
 }
 
