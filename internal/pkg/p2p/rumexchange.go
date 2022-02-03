@@ -128,6 +128,7 @@ func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIfa
 	}
 }
 
+//Publish to one connected peer with peer.Id
 func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
 	rumexchangelog.Debugf("publish msg to peer: %s", to)
 	ctx := context.Background()
@@ -150,6 +151,7 @@ func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
 	return nil
 }
 
+//Publish to All connected peers
 func (r *RexService) Publish(msg *quorumpb.RumMsg) error {
 	//TODO: select peers
 	succ := 0
@@ -196,7 +198,7 @@ func (r *RexService) Handler(s network.Stream) {
 			} else {
 				rumexchangelog.Warningf("RumExchange stream handler EOF")
 			}
-			_ = s.Reset()
+			//_ = s.Reset()
 			_ = s.Close()
 			return
 		}
@@ -209,15 +211,18 @@ func (r *RexService) Handler(s network.Stream) {
 				for _, v := range r.msgtypehandlers {
 					if v.Name == "rumsession" {
 						v.Handler(&rummsg, s)
+						break
 					}
 				}
 			case quorumpb.RumMsgType_CHAIN_DATA:
-				//rumexchangelog.Debugf("chaindata %s", rummsg.DataPackage)
 				rumexchangelog.Debugf("type is CHAIN_DATA")
-				frompeerid := s.Conn().RemotePeer()
-				r.handlePackage(frompeerid, rummsg.DataPackage)
+				for _, v := range r.msgtypehandlers {
+					if v.Name == "rumchaindata" {
+						v.Handler(&rummsg, s)
+						break
+					}
+				}
 			}
-
 		} else {
 			rumexchangelog.Warningf("msg err: %s", err)
 		}
