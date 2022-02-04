@@ -2,6 +2,7 @@ package pubsubconn
 
 import (
 	"context"
+	"fmt"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -19,6 +20,7 @@ type P2pPubSubConn struct {
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
+	mu           sync.RWMutex
 	cancel       context.CancelFunc
 }
 
@@ -66,6 +68,9 @@ func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 	if ok == true {
 		pscm.mu.Lock()
 		defer pscm.mu.Unlock()
+
+		psconn.mu.Lock()
+		defer psconn.mu.Unlock()
 		if psconn.cancel != nil {
 			psconn.cancel()
 		}
@@ -140,6 +145,12 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 }
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
+
+	psconn.mu.Lock()
+	defer psconn.mu.Unlock()
+	if psconn.Topic == nil {
+		return fmt.Errorf("Topic has been closed.")
+	}
 	return psconn.Topic.Publish(psconn.Ctx, data)
 }
 
