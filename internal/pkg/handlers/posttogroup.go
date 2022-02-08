@@ -22,6 +22,8 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
 					if inputobj.Object.Type == Note && (inputobj.Object.Content != "" || len(inputobj.Object.Image) > 0) {
 						return nil
+					} else if inputobj.Object.Type == File && inputobj.Object.File != nil {
+						return nil
 					}
 					return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
 				}

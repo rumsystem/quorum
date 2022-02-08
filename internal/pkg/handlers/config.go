@@ -10,6 +10,8 @@ const (
 	User     = "User"
 	Auth     = "Auth"
 	Note     = "Note"
+	Page     = "Page"
+	File     = "File"
 	Producer = "Producer"
 	Announce = "Announce"
 	App      = "App"
