@@ -187,6 +187,34 @@ func modifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.
 	return &ret, nil
 }
 
+func GetGroupConfigList(groupId string) ([]*handlers.GroupConfigKeyListItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/config/keylist", ApiServer, groupId)
+	ret := []*handlers.GroupConfigKeyListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
+func GetGroupConfig(groupId, key string) (*handlers.GroupConfigKeyItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/config/%s", ApiServer, groupId, key)
+	ret := handlers.GroupConfigKeyItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
 func Nick(groupId string, nick string) (*NickRespStruct, error) {
 	data := NickReqStruct{
 		Person: QuorumPersonStruct{
