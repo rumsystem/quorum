@@ -152,6 +152,41 @@ func IsQuorumContentUserInfo(content ContentStruct) bool {
 	return false
 }
 
+func AddGroupConfig(groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
+	return modifyGroupConfig("add", groupId, key, tp, value, memo)
+}
+
+func DelGroupConfig(groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
+	return modifyGroupConfig("del", groupId, key, tp, value, memo)
+}
+
+func modifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
+	data := handlers.GroupConfigParam{
+		Action:  action,
+		GroupId: groupId,
+		Name:    key,
+		Type:    tp,
+		Value:   value,
+		Memo:    memo,
+	}
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	url := ApiServer + "/api/v1/group/config"
+	ret := handlers.GroupConfigResult{}
+	body, err := httpPost(url, json_data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
 func Nick(groupId string, nick string) (*NickRespStruct, error) {
 	data := NickReqStruct{
 		Person: QuorumPersonStruct{
