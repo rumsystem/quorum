@@ -43,20 +43,6 @@ func adminPageInit() {
 
 	adminGroupConfigView.SetBorders(true)
 
-	cols, rows := 10, 40
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
-			color := tcell.ColorWhite.TrueColor()
-			if c < 1 || r < 1 {
-				color = tcell.ColorYellow.TrueColor()
-			}
-			cell := cview.NewTableCell("hello")
-			cell.SetTextColor(color)
-			cell.SetAlign(cview.AlignCenter)
-			adminGroupConfigView.SetCell(r, c, cell)
-		}
-	}
-
 	adminAnnouncedApproveModal.SetBackgroundColor(tcell.ColorBlack)
 	adminAnnouncedApproveModal.SetButtonBackgroundColor(tcell.ColorWhite)
 	adminAnnouncedApproveModal.SetButtonTextColor(tcell.ColorBlack)
@@ -150,6 +136,67 @@ func GroupAdminPage(groupId string) {
 func AdminRefreshAll(groupId string) {
 	go goGetAnnouncedUsers(groupId)
 	go goGetAnnouncedProducers(groupId)
+	go goGetGroupKeyList(groupId)
+}
+
+func goGetGroupKeyList(groupId string) {
+	keys, err := api.GetGroupConfigList(groupId)
+	checkFatalError(err)
+
+	adminGroupConfigView.Clear()
+
+	// init table header
+	color := tcell.ColorYellow.TrueColor()
+	cell := cview.NewTableCell("key")
+	cell.SetTextColor(color)
+	cell.SetAlign(cview.AlignCenter)
+	adminGroupConfigView.SetCell(0, 0, cell)
+	cell = cview.NewTableCell("type")
+	cell.SetTextColor(color)
+	cell.SetAlign(cview.AlignCenter)
+	adminGroupConfigView.SetCell(0, 1, cell)
+	cell = cview.NewTableCell("value")
+	cell.SetTextColor(color)
+	cell.SetAlign(cview.AlignCenter)
+	adminGroupConfigView.SetCell(0, 2, cell)
+	cell = cview.NewTableCell("memo")
+	cell.SetTextColor(color)
+	cell.SetAlign(cview.AlignCenter)
+	adminGroupConfigView.SetCell(0, 3, cell)
+
+	adminGroupConfigView.SetFixed(0, 0)
+	adminGroupConfigView.SetFixed(0, 1)
+	adminGroupConfigView.SetFixed(0, 2)
+	adminGroupConfigView.SetFixed(0, 3)
+
+	for i, each := range keys {
+		row := i + 1
+		k := each.Name
+		color := tcell.ColorWhite.TrueColor()
+		cell := cview.NewTableCell(k)
+		cell.SetTextColor(color)
+		cell.SetAlign(cview.AlignCenter)
+		adminGroupConfigView.SetCell(row, 0, cell)
+		cell = cview.NewTableCell(each.Type)
+		cell.SetTextColor(color)
+		cell.SetAlign(cview.AlignCenter)
+		adminGroupConfigView.SetCell(row, 1, cell)
+		go func() {
+			detail, err := api.GetGroupConfig(groupId, k)
+			if err != nil {
+				return
+			}
+			cell := cview.NewTableCell(detail.Value)
+			cell.SetTextColor(color)
+			cell.SetAlign(cview.AlignCenter)
+			adminGroupConfigView.SetCell(row, 2, cell)
+			cell = cview.NewTableCell(detail.Memo)
+			cell.SetTextColor(color)
+			cell.SetAlign(cview.AlignCenter)
+			adminGroupConfigView.SetCell(row, 3, cell)
+		}()
+	}
+
 }
 
 func goGetAnnouncedUsers(groupId string) {
