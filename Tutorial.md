@@ -17,8 +17,8 @@ You can try:
 - [Node](#test-node)
   - [Get node info](#api-get-node)
 - [Group](#test-group)
-  - [Owner node create a group](#api-post-group)
-  - [User node join a group](#api-post-group-join)
+  - [Owner node create a group](#api-create-group)
+  - [User node join a group](#api-join-group)
   - [List all groups](#api-get-groups)
   - [User node clear a group*](#api-post-group-clear)
   - [User node leave a group](#api-post-group-leave)
@@ -242,7 +242,7 @@ API return value:
 
 # Group
 
-<span id="api-post-group"></span>
+<span id="api-create-group"></span>
 
 ## Owner node create a group
 
@@ -308,11 +308,11 @@ Params:
 
 returned json string from API call is the "`seed`" of the newly created `group`.
 
-other nodes can use the seed to [join the group](#api-post-group-join).
+other nodes can use the seed to [join the group](#api-join-group).
 
 [>>> back top](#top)
 
-<span id="api-post-group-join"></span>
+<span id="api-join-group"></span>
 
 ## User node join a group
 
@@ -1118,11 +1118,11 @@ Owner 作为组内第一个 Producer 存在，有其它 Producer 存在时，如
 
 有 Producer 存在的流程如下：
 
-1. [Owner 创建组](#api-post-group)
+1. [Owner 创建组](#api-create-group)
 
 2. Owner 作为 Producer 存在，负责出块
 
-3. 其他 Producer 获得组的 seed，[加入组](#api-post-group-join)，完成同步
+3. 其他 Producer 获得组的 seed，[加入组](#api-join-group)，完成同步
 
 4. Producer 用[Announce API](#api-post-announce-producer)将自己作为 Producer 的意愿告知 Owner
 
