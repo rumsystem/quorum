@@ -84,6 +84,7 @@ func adminPageInit() {
 var focusAnnouncedUsersViewView = func() { App.SetFocus(adminPageAnnouncedUsersView) }
 var focusAnnouncedProducersView = func() { App.SetFocus(adminPageAnnouncedProducersView) }
 var focusGroupConfigView = func() { App.SetFocus(adminGroupConfigView) }
+var focusAdminRootView = func() { App.SetFocus(rootPanels) }
 
 func initAdminPageInputHandler() {
 	announcedUsersHandler := cbind.NewConfiguration()
@@ -95,6 +96,7 @@ func initAdminPageInputHandler() {
 		announcedUsersHandler.Set("J", wrapQuorumKeyFn(focusAnnouncedProducersView))
 		announcedUsersHandler.Set("L", wrapQuorumKeyFn(focusGroupConfigView))
 	}
+	announcedUsersHandler.Set("Esc", wrapQuorumKeyFn(focusAdminRootView))
 	adminPageAnnouncedUsersView.SetInputCapture(announcedUsersHandler.Capture)
 
 	announcedProducersHandler := cbind.NewConfiguration()
@@ -105,6 +107,7 @@ func initAdminPageInputHandler() {
 		announcedProducersHandler.Set("K", wrapQuorumKeyFn(focusAnnouncedUsersViewView))
 		announcedProducersHandler.Set("L", wrapQuorumKeyFn(focusGroupConfigView))
 	}
+	announcedProducersHandler.Set("Esc", wrapQuorumKeyFn(focusAdminRootView))
 	adminPageAnnouncedProducersView.SetInputCapture(announcedProducersHandler.Capture)
 
 	groupConfigHandler := cbind.NewConfiguration()
@@ -113,6 +116,7 @@ func initAdminPageInputHandler() {
 	} else {
 		groupConfigHandler.Set("H", wrapQuorumKeyFn(focusAnnouncedUsersViewView))
 	}
+	groupConfigHandler.Set("Esc", wrapQuorumKeyFn(focusAdminRootView))
 	adminGroupConfigView.SetInputCapture(groupConfigHandler.Capture)
 }
 
