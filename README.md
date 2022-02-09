@@ -101,6 +101,7 @@ Run the [quorum binary](#build_quorum):
 
 OPTIONS:
 
+```sh
    -peername    default:`peer`, used in and same with configdir  and datadir
    -listen      a multiaddress for the peer service listening
    -apilisten   http api  listening address
@@ -109,6 +110,7 @@ OPTIONS:
    -datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
    -keystoredir a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
    -debug       enable logging level to debug or not
+```
 
 *or*
 
@@ -154,7 +156,7 @@ The response is the group seed:
 }
 ```
 
-Tips:  [API: create group](./Tutorial.md#api-create-group)
+> [API: create group](./Tutorial.md#api-create-group)
 
 3. Share the group seed with your friends, so they can join your group with the seed.
 
@@ -164,7 +166,7 @@ Tips:  [API: create group](./Tutorial.md#api-create-group)
 curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"989ffea1-083e-46b0-be02-3bad3de7d2e1","GroupId":"01014e95-303e-4955-b06e-bf185556a729","ProducerPubKey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","Hash":"gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=","Signature":"MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d","Timestamp":1633022374646518065},"group_id":"01014e95-303e-4955-b06e-bf185556a729","group_name":"ourforum","owner_pubkey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","owner_encryptpubkey":"age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu","consensus_type":"poa","encryption_type":"public","cipher_key":"accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda","app_key":"group_bbs","signature":"3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"}' https://127.0.0.1:8001/api/v1/group/join
 ```
 
-[>> API: join group](./Tutorial.md#api-join-group)
+> [API: join group](./Tutorial.md#api-join-group)
 
 5. Check the group status
 
@@ -197,11 +199,11 @@ Response:
 }
 ```
 
-[>> API: groups](./Tutorial.md#api-get-groups)
+> [API: groups](./Tutorial.md#api-get-groups)
 
 6. "group_status": "IDLE"  means the group is ready to use. Check the group_status on PeerB, C... make sure group_status is IDLE on every peer.
 
-[>> API: start sync](./Tutorial.md#api-post-startsync)
+> [API: start sync](./Tutorial.md#api-post-startsync)
 
 7. It's time to create your first forum post.
 
@@ -217,13 +219,15 @@ Response:
 }
 ```
 
-[>> API: post content](./Tutorial.md#api-post-content)
+> [API: post content](./Tutorial.md#api-post-content)
 
 8. Waiting about 10s to sync the blockchain, then check the groups status again.
 
 ```bash
 curl -k https://127.0.0.1:8000/api/v1/groups
 ```
+
+Response:
 
 ```json
 {
@@ -258,6 +262,8 @@ Check the group_status on PeerB, C ... , All peers should have the same highest_
 curl -k -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "https://localhost:8000/app/api/v1/group/01014e95-303e-4955-b06e-bf185556a729/content?num=20&reverse=false"
 ```
 
+Response:
+
 ```json
 [
     {
@@ -280,7 +286,7 @@ Congratulations, You have a fully decentralized forum now. Every peer can view t
 
 Add more producers to prevent outages.
 
-[>> API: producers](./Tutorial.md#test-producers)
+> [API: producers](./Tutorial.md#test-producers)
 
 ---
 
