@@ -199,17 +199,20 @@ func goGetGroupKeyList(groupId string) {
 	})
 	adminGroupConfigView.SetSelectedFunc(func(row int, column int) {
 		if row == 0 {
-			// ignore header
-			return
-		}
-		for i := 0; i < adminGroupConfigView.GetColumnCount(); i++ {
-			adminGroupConfigView.GetCell(row, i).SetTextColor(tcell.ColorRed.TrueColor())
-		}
-		idx := row - 1
-		if idx >= 0 && idx < len(keys) {
-			key := keys[idx].Name
-			item, _ := api.GetGroupConfig(groupId, key)
+			// create new config
+			item := &handlers.GroupConfigKeyItem{}
+			item.Type = "string"
 			GroupConfigFormShow(groupId, item)
+		} else {
+			for i := 0; i < adminGroupConfigView.GetColumnCount(); i++ {
+				adminGroupConfigView.GetCell(row, i).SetTextColor(tcell.ColorRed.TrueColor())
+			}
+			idx := row - 1
+			if idx >= 0 && idx < len(keys) {
+				key := keys[idx].Name
+				item, _ := api.GetGroupConfig(groupId, key)
+				GroupConfigFormShow(groupId, item)
+			}
 		}
 		adminGroupConfigView.SetSelectable(false, false)
 	})
