@@ -153,14 +153,14 @@ func IsQuorumContentUserInfo(content ContentStruct) bool {
 }
 
 func AddGroupConfig(groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
-	return modifyGroupConfig("add", groupId, key, tp, value, memo)
+	return ModifyGroupConfig("add", groupId, key, tp, value, memo)
 }
 
 func DelGroupConfig(groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
-	return modifyGroupConfig("del", groupId, key, tp, value, memo)
+	return ModifyGroupConfig("del", groupId, key, tp, value, memo)
 }
 
-func modifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
+func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
 	data := handlers.GroupConfigParam{
 		Action:  action,
 		GroupId: groupId,

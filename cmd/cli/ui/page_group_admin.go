@@ -18,7 +18,7 @@ var adminPageHelpText = strings.TrimSpace(
 	"Shortcuts:\n" +
 		"Enter to select left pannel.\n" +
 		"Esc to go back.\n" +
-		"Shift + h/l to naviagate between pannels.\n" +
+		"Shift + h/j/k/l to naviagate between pannels.\n" +
 		"Tab / Shift + Tab to scroll.\n" +
 		"Enter to open operation modal of selected items.\n" +
 		"Press `r` to refresh data.\n",
@@ -61,8 +61,17 @@ func adminPageInit() {
 	leftFlex.AddItem(adminPageAnnouncedUsersView, 0, 1, false)
 	leftFlex.AddItem(adminPageAnnouncedProducersView, 0, 1, false)
 
+	rightFlex := cview.NewFlex()
+	rightFlex.SetDirection(cview.FlexRow)
+	rightFlex.SetBorder(true)
+	rightFlex.SetTitle("Group Config List")
+	rightHelpView := cview.NewTextView()
+	rightHelpView.SetText(adminPageHelpText)
+	rightFlex.AddItem(rightHelpView, 0, 1, false)
+	rightFlex.AddItem(adminGroupConfigView, 0, 2, false)
+
 	adminPage.AddItem(leftFlex, 0, 1, false)
-	adminPage.AddItem(adminGroupConfigView, 0, 1, false)
+	adminPage.AddItem(rightFlex, 0, 1, false)
 
 	rootPanels.AddPanel("admin", adminPage, true, false)
 }
@@ -128,8 +137,6 @@ func GroupAdminPage(groupId string) {
 	rootPanels.SendToFront("admin")
 	App.SetFocus(adminPage)
 
-	Info("Help", adminPageHelpText)
-
 	AdminRefreshAll(groupId)
 }
 
@@ -168,6 +175,44 @@ func goGetGroupKeyList(groupId string) {
 	adminGroupConfigView.SetFixed(0, 1)
 	adminGroupConfigView.SetFixed(0, 2)
 	adminGroupConfigView.SetFixed(0, 3)
+
+	adminGroupConfigView.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter {
+			adminGroupConfigView.SetSelectable(true, false)
+		}
+		if key == tcell.KeyTab {
+			// select next row
+			row, col := adminGroupConfigView.GetSelection()
+			row += 1
+			if row >= 0 && row <= len(keys) {
+				adminGroupConfigView.Select(row, col)
+			}
+		}
+		if key == tcell.KeyBacktab {
+			// select last row
+			row, col := adminGroupConfigView.GetSelection()
+			row -= 1
+			if row >= 0 && row <= len(keys) {
+				adminGroupConfigView.Select(row, col)
+			}
+		}
+	})
+	adminGroupConfigView.SetSelectedFunc(func(row int, column int) {
+		if row == 0 {
+			// ignore header
+			return
+		}
+		for i := 0; i < adminGroupConfigView.GetColumnCount(); i++ {
+			adminGroupConfigView.GetCell(row, i).SetTextColor(tcell.ColorRed.TrueColor())
+		}
+		idx := row - 1
+		if idx >= 0 && idx < len(keys) {
+			key := keys[idx].Name
+			item, _ := api.GetGroupConfig(groupId, key)
+			GroupConfigFormShow(groupId, item)
+		}
+		adminGroupConfigView.SetSelectable(false, false)
+	})
 
 	for i, each := range keys {
 		row := i + 1
