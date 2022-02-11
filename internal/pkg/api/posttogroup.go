@@ -16,7 +16,7 @@ import (
 // @Produce json
 // @Param data body quorumpb.Activity true "Activity object"
 // @Success 200 {object} handlers.TrxResult
-// @Router /v1/group/content [post]
+// @Router /api/v1/group/content [post]
 func (h *Handler) PostToGroup(c echo.Context) (err error) {
 
 	output := make(map[string]string)
