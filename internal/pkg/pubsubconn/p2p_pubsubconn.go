@@ -28,16 +28,14 @@ type PubSubConnMgr struct {
 	Ctx      context.Context
 	ps       *pubsub.PubSub
 	nodename string
-	connmgr  map[string]*P2pPubSubConn
-	mu       sync.RWMutex
+	connmgr  sync.Map
 }
 
 var pubsubconnmgr *PubSubConnMgr
 
 func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) *PubSubConnMgr {
 	if pubsubconnmgr == nil {
-		connmap := map[string]*P2pPubSubConn{}
-		pubsubconnmgr = &PubSubConnMgr{Ctx: ctx, ps: ps, nodename: nodename, connmgr: connmap}
+		pubsubconnmgr = &PubSubConnMgr{Ctx: ctx, ps: ps, nodename: nodename}
 	}
 	return pubsubconnmgr
 }
@@ -46,7 +44,7 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 }
 
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
-	_, ok := pscm.connmgr[channelId]
+	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
 		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
 		psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: pscm.ps, nodename: pscm.nodename}
@@ -55,20 +53,16 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chai
 		} else {
 			psconn.JoinChannelAsExchange(channelId)
 		}
-		pscm.mu.Lock()
-		defer pscm.mu.Unlock()
-		pscm.connmgr[channelId] = psconn
+		pscm.connmgr.Store(channelId, psconn)
 	}
-	psconn := pscm.connmgr[channelId]
-	return psconn
+	psconn, _ := pscm.connmgr.Load(channelId)
+	return psconn.(*P2pPubSubConn)
 }
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
-	psconn, ok := pscm.connmgr[channelId]
+	psconni, ok := pscm.connmgr.Load(channelId)
+	psconn := psconni.(*P2pPubSubConn)
 	if ok == true {
-		pscm.mu.Lock()
-		defer pscm.mu.Unlock()
-
 		psconn.mu.Lock()
 		defer psconn.mu.Unlock()
 		if psconn.cancel != nil {
@@ -80,7 +74,7 @@ func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 		if psconn.Topic != nil {
 			psconn.Topic.Close()
 		}
-		delete(pscm.connmgr, channelId)
+		pscm.connmgr.Delete(channelId)
 		channel_log.Infof("Leave channel <%s> done", channelId)
 	} else {
 		channel_log.Infof("psconn channel <%s> not exist", channelId)
