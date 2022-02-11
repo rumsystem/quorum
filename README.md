@@ -80,7 +80,14 @@ Running:
 
 ```sh
 ./scripts/swag_init.sh
+go run cmd/docs.go
 ```
+
+and then open browser with <http://localhost:1323/swagger/index.html>.
+
+*or*
+
+Read the [RUM Development Tutorial](./Tutorial.md).
 
 ### Run a RUM peer
 
@@ -108,14 +115,6 @@ OPTIONS:
 *or*
 
 Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application.
-
-#### API Document
-
-run a rum peer and then open browser with <http://localhost:8000/swagger/index.html>.
-
-*or*
-
-Read the [RUM Development Tutorial](./Tutorial.md).
 
 ### Example: a private decentralized forum
 
