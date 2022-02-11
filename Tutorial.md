@@ -124,16 +124,6 @@ session.get(f"{url}/node")
 
 ```go test cmd/main* -v```
 
-## Generate API Docs
-
-```go run cmd/docs.go```
-
-Open url ```http://localhost:1323/swagger/index.html``` in the browser.
-
-<span id="docs-api"></span>
-
-[>>> back top](#top)
-
 ## Setup local test network
 
 1. Download and install go (ver 1.15.2)
@@ -189,6 +179,22 @@ RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
 ```bash
 go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug true
 ```
+
+7. access API docs
+
+generate swagger docs
+
+```
+scripts/swag_init.sh
+```
+
+run a rum peer and check API docs
+
+```
+go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug true
+```
+
+Open url ```http://localhost:8003/swagger/index.html``` in the browser.
 
 [>>> back top](#top)
 
