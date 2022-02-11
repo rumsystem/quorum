@@ -16,6 +16,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	swagger "github.com/swaggo/echo-swagger"
 )
 
 var quitch chan os.Signal
@@ -26,6 +28,9 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 	e := echo.New()
 	e.Binder = new(CustomBinder)
 	e.Use(middleware.JWTWithConfig(appapi.CustomJWTConfig(nodeopt.JWTKey)))
+
+	e.GET("/swagger/*", swagger.WrapHandler)
+
 	r := e.Group("/api")
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
