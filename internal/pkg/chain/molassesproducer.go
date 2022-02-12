@@ -85,6 +85,14 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
 	producer.trxPool.Store(trx.TrxId, trx)
 
+	molaproducer_log.Debugf("*************************************")
+	producer.trxPool.Range(func(key, value interface{}) bool {
+		trxId, _ := key.(string)
+		molaproducer_log.Debugf("key <%s>", trxId)
+		return true
+	})
+	molaproducer_log.Debugf("*************************************")
+
 	if producer.status == StatusIdle {
 		go producer.startProduceBlock()
 	}
@@ -118,7 +126,6 @@ func (producer *MolassesProducer) produceBlock() {
 
 	//Don't lock trx pool, just package what ever you have at this moment
 	//package all trx
-
 	var trxs []*quorumpb.Trx
 	totalSizeBytes := 0
 	totalTrx := 0
@@ -135,9 +142,20 @@ func (producer *MolassesProducer) produceBlock() {
 			//remove trx from pool
 			producer.trxPool.Delete(trxId)
 			totalTrx++
+
+			return true
 		}
+
+		return false
+	})
+
+	molaproducer_log.Debugf("*************after package***************")
+	producer.trxPool.Range(func(key, value interface{}) bool {
+		trxId, _ := key.(string)
+		molaproducer_log.Debugf("key <%s>", trxId)
 		return true
 	})
+	molaproducer_log.Debugf("*************************************")
 
 	molaproducer_log.Debugf("<%s> package <%d> trxs, size <%d>", producer.groupId, totalTrx, totalSizeBytes)
 
