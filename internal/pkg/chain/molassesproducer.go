@@ -20,9 +20,9 @@ import (
 
 var molaproducer_log = logging.Logger("producer")
 
-const PRODUCE_TIMER time.Duration = 5    //5s
-const MERGE_TIMER time.Duration = 5      //5s
-const CLOSE_CONN_TIMER time.Duration = 5 //5s
+const PRODUCE_TIMER time.Duration = 5     //5s
+const MERGE_TIMER time.Duration = 5       //5s
+const CLOSE_CONN_TIMER time.Duration = 20 //20s
 
 const TRXS_TOTAL_SIZE int = 900 * 1024
 
