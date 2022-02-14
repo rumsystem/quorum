@@ -13,6 +13,7 @@ import (
 	"time"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
@@ -179,6 +180,8 @@ func Bootstrap() error {
 	return nil
 }
 
+var connectCount uint32 = 0
+
 func StartDiscoverTask() {
 	wasmCtx := quorumContext.GetWASMContext()
 	var doDiscoverTask = func() {
@@ -188,13 +191,14 @@ func StartDiscoverTask() {
 			logger.Console.Error(err.Error())
 			return
 		}
-
-		var connectCount uint32 = 0
-
 		for peer := range peerChan {
 			curPeer := peer
-			logger.Console.Log("Found peer:" + curPeer.String())
+			if wasmCtx.QNode.Host.Network().Connectedness(curPeer.ID) == network.Connected {
+				// skip connected peers
+				continue
+			}
 			if IsPublicWebSocketAddr(curPeer) {
+				logger.Console.Log("Found peer:" + curPeer.String())
 				go func() {
 					pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
 					defer cancel()
