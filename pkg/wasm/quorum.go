@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -192,17 +194,19 @@ func StartDiscoverTask() {
 		for peer := range peerChan {
 			curPeer := peer
 			logger.Console.Log("Found peer:" + curPeer.String())
-			go func() {
-				pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
-				defer cancel()
-				err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
-				if err != nil {
-					logger.Console.Error("Failed to connect peer: " + curPeer.String())
-				} else {
-					curConnectedCount := atomic.AddUint32(&connectCount, 1)
-					logger.Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
-				}
-			}()
+			if IsPublicWebSocketAddr(curPeer) {
+				go func() {
+					pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
+					defer cancel()
+					err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
+					if err != nil {
+						logger.Console.Error("Failed to connect peer: " + curPeer.String())
+					} else {
+						curConnectedCount := atomic.AddUint32(&connectCount, 1)
+						logger.Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
+					}
+				}()
+			}
 		}
 	}
 	/* first job will start after 1 second */
@@ -221,4 +225,44 @@ func StartDiscoverTask() {
 			wasmCtx.Cancel()
 		}
 	}
+}
+
+func IsPublicWebSocketAddr(addrInfo peer.AddrInfo) bool {
+	for _, addr := range addrInfo.Addrs {
+		supportWs := false
+		// check ws
+		for _, proto := range addr.Protocols() {
+			if proto.Name == "ws" {
+				supportWs = true
+			}
+		}
+		if !supportWs {
+			continue
+		}
+		if strings.HasPrefix(addr.String(), "/ip4/127.0.0.1/") {
+			continue
+		}
+		if strings.HasPrefix(addr.String(), "/ip4/10.") { // 10.0.0.0/8
+			continue
+		}
+		if strings.HasPrefix(addr.String(), "/ip4/172.") {
+			// 172.16.0.0/12
+			tail := strings.ReplaceAll(addr.String(), "/ip4/172.", "")
+			tailArr := strings.Split(tail, ".")
+			n, _ := strconv.Atoi(tailArr[0])
+			if n >= 16 || n <= 31 {
+				continue
+			}
+			return true
+		}
+		if strings.HasPrefix(addr.String(), "/ip4/169.254.") { // 169.254.0.0/16
+			continue
+		}
+		if strings.HasPrefix(addr.String(), "/ip4/192.168.") { // 192.168.0.0/16
+			continue
+		}
+		return true
+	}
+
+	return false
 }
