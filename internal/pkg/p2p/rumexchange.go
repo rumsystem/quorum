@@ -14,7 +14,7 @@ import (
 	msgio "github.com/libp2p/go-msgio"
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	//"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -43,7 +43,7 @@ type RexService struct {
 	peerStatus     *PeerStatus
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
-	chainmgr       map[string]nodectx.ChainDataHandlerIface
+	//chainmgr       map[string]nodectx.ChainDataHandlerIface
 }
 
 type ActionType int
@@ -60,8 +60,8 @@ type RexNotification struct {
 
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	chainmgr := make(map[string]nodectx.ChainDataHandlerIface)
-	rexs := &RexService{h, peerStatus, protocol.ID(customprotocol), notification, chainmgr}
+	//chainmgr := make(map[string]nodectx.ChainDataHandlerIface)
+	rexs := &RexService{h, peerStatus, protocol.ID(customprotocol), notification}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -91,14 +91,14 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 }
 
 func (r *RexService) ChainReg(groupid string, cIface nodectx.ChainDataHandlerIface) {
-	rumexchangelog.Debugf("call chain reg : %s", groupid)
-	fmt.Println(cIface)
-	_, ok := r.chainmgr[groupid]
-	if ok == false {
-		r.chainmgr[groupid] = cIface
-		rumexchangelog.Debugf("chain reg with rumexchange: %s", groupid)
+	rumexchangelog.Debugf("disabled call chain reg : %s", groupid)
+	//fmt.Println(cIface)
+	//_, ok := r.chainmgr[groupid]
+	//if ok == false {
+	//	r.chainmgr[groupid] = cIface
+	//	rumexchangelog.Debugf("chain reg with rumexchange: %s", groupid)
 
-	}
+	//}
 }
 
 func (r *RexService) InitSession(peerid string, channelid string) error {
