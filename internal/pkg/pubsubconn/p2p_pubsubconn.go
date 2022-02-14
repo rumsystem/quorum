@@ -2,12 +2,13 @@ package pubsubconn
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"time"
 )
 
 var channel_log = logging.Logger("chan")
@@ -16,7 +17,7 @@ type P2pPubSubConn struct {
 	Cid          string
 	Topic        *pubsub.Topic
 	Subscription *pubsub.Subscription
-	chain        Chain
+	chain        p2p.Chain
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context

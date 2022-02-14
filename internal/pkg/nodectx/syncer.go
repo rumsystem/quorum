@@ -1,12 +1,12 @@
-package chain
+package nodectx
 
+/*
 import (
 	"errors"
 	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
@@ -299,3 +299,5 @@ func (syncer *Syncer) ShowChainStruct() {
 		syncer_log.Debugf("<%s> ChainStruct genesis <%s> struct: <%s>", syncer.groupId, genesisblkid, chainstruct)
 	}
 }
+
+*/

@@ -14,6 +14,7 @@ import (
 	msgio "github.com/libp2p/go-msgio"
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -37,17 +38,12 @@ type REXPeer struct {
 	Status RexPeerStatus
 }
 
-type Chain interface {
-	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
-	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
-}
-
 type RexService struct {
 	Host           host.Host
 	peerStatus     *PeerStatus
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
-	chainmgr       map[string]Chain
+	chainmgr       map[string]nodectx.ChainDataHandlerIface
 }
 
 type ActionType int
@@ -64,7 +60,7 @@ type RexNotification struct {
 
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	chainmgr := make(map[string]Chain)
+	chainmgr := make(map[string]nodectx.ChainDataHandlerIface)
 	rexs := &RexService{h, peerStatus, protocol.ID(customprotocol), notification, chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
@@ -94,12 +90,12 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 	return nil
 }
 
-func (r *RexService) ChainReg(groupid string, chain Chain) {
+func (r *RexService) ChainReg(groupid string, cIface nodectx.ChainDataHandlerIface) {
 	rumexchangelog.Debugf("call chain reg : %s", groupid)
-	fmt.Println(chain)
+	fmt.Println(cIface)
 	_, ok := r.chainmgr[groupid]
 	if ok == false {
-		r.chainmgr[groupid] = chain
+		r.chainmgr[groupid] = cIface
 		rumexchangelog.Debugf("chain reg with rumexchange: %s", groupid)
 
 	}

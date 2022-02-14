@@ -1,15 +1,6 @@
 package pubsubconn
 
-import (
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-)
-
-type Chain interface {
-	HandleTrx(trx *quorumpb.Trx) error
-	HandleBlock(block *quorumpb.Block) error
-}
-
 type PubSubConn interface {
-	JoinChannel(cId string, chain Chain) error
+	JoinChannel(cId string, psConnCIface ChainDataHandlerPsconnIface) error
 	Publish(data []byte) error
 }

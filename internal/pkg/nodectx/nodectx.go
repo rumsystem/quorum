@@ -3,7 +3,6 @@ package nodectx
 import (
 	"context"
 
-	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -11,14 +10,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
-var chainctx_log = logging.Logger("chainctx")
-
 type NodeStatus int8
-
-const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-)
 
 const (
 	NODE_ONLINE  = 0 //node connected with bootstramp and pubchannel
@@ -40,6 +32,8 @@ var nodeCtx *NodeCtx
 
 var dbMgr *storage.DbMgr
 
+var conn *Conn
+
 //singlaton
 func GetNodeCtx() *NodeCtx {
 	return nodeCtx
@@ -50,12 +44,18 @@ func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }
 
+func GetConn() *Conn {
+	return conn
+}
+
 func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, channeltype string, gitcommit string) {
 	nodeCtx = &NodeCtx{}
 	nodeCtx.Name = name
 	nodeCtx.Node = node
 
 	dbMgr = db
+
+	InitConn()
 
 	nodeCtx.Status = NODE_OFFLINE
 	nodeCtx.Ctx = ctx

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -76,10 +77,6 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 		return
 	} else {
 		molaproducer_log.Debugf("<%s> user <%s> is not blocked", producer.groupId, trx.SenderPubkey)
-	}
-
-	if producer.cIface.IsSyncerReady() {
-		return
 	}
 
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
@@ -155,24 +152,31 @@ func (producer *MolassesProducer) produceBlock() {
 
 	//CREATE AND BROADCAST NEW BLOCK BY USING BLOCK_PRODUCED MSG ON PRODUCER CHANNEL
 	molaproducer_log.Debugf("<%s> broadcast produced block", producer.groupId)
-	producer.cIface.GetProducerTrxMgr().SendBlockProduced(newBlock)
+	connMgr, err := nodectx.GetConn().GetConnMgr(producer.groupId)
+	if err != nil {
+		return
+	}
+	trx, err := producer.cIface.GetTrxFactory().GetBlockProducedTrx(newBlock)
+
+	connMgr.SendTrxPubsub(trx, nodectx.ProducerChannel)
 	molaproducer_log.Debugf("<%s> produce done, wait for merge", producer.groupId)
+
+	return
+
 }
 
 func (producer *MolassesProducer) AddBlockToPool(block *quorumpb.Block) {
 	molaproducer_log.Debugf("<%s> AddBlockToPool called", producer.groupId)
-	if producer.cIface.IsSyncerReady() {
-		return
-	}
+	/*
+		if producer.cIface.IsSyncerReady() {
+			return
+		}
+	*/
 	producer.blockPool[block.BlockId] = block
 }
 
 func (producer *MolassesProducer) AddProducedBlock(trx *quorumpb.Trx) error {
 	molaproducer_log.Debugf("<%s> AddProducedBlock called", producer.groupId)
-	if producer.cIface.IsSyncerReady() {
-		return nil
-	}
-
 	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
 	if err != nil {
 		return err
@@ -249,14 +253,24 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 		if err.Error() == "PARENT_NOT_EXIST" {
 			molaproducer_log.Debugf("<%s> parent not found, sync backward for missing blocks from <%s>", producer.groupId, candidateBlkid, err)
-			producer.cIface.SyncBackward(producer.blockPool[candidateBlkid])
+			if cmgr, err := nodectx.GetConn().GetConnMgr(producer.groupId); err != nil {
+				return err
+			} else {
+				return cmgr.SyncBackward(candidateBlkid, producer.nodename)
+			}
+
 		}
 	} else {
 		molaproducer_log.Debugf("<%s> block saved", producer.groupId)
 		//check if I am the winner
 		if producer.blockPool[candidateBlkid].ProducerPubKey == producer.grpItem.UserSignPubkey {
 			molaproducer_log.Debugf("<%s> winner send new block out", producer.groupId)
-			err := producer.cIface.GetUserTrxMgr().SendBlock(producer.blockPool[candidateBlkid])
+
+			connMgr, err := nodectx.GetConn().GetConnMgr(producer.groupId)
+			if err != nil {
+				return err
+			}
+			err = connMgr.SendBlock(producer.blockPool[candidateBlkid], nodectx.PubSub, nodectx.ProducerChannel)
 			if err != nil {
 				molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
 			}
@@ -269,22 +283,22 @@ func (producer *MolassesProducer) startMergeBlock() error {
 	return nil
 }
 
-func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
+func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks []*quorumpb.Block, isEmptyBlock bool, erer error) {
 	molaproducer_log.Debugf("<%s> GetBlockForward called", producer.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
 
 	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return err
+		return "", nil, false, err
 	}
 
 	//check if requester is in group block list
@@ -292,55 +306,44 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) error {
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return nil
+		return reqBlockItem.UserId, nil, false, fmt.Errorf("User blocked")
 	}
 
-	subBlocks, err := nodectx.GetDbMgr().GetSubBlock(reqBlockItem.BlockId, producer.nodename)
-
+	var subBlocks []*quorumpb.Block
+	subBlocks, err = nodectx.GetDbMgr().GetSubBlock(reqBlockItem.BlockId, producer.nodename)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
-
-	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
-	trxMgr, _ := producer.getSyncConn(channelId)
 
 	if len(subBlocks) != 0 {
-		for _, block := range subBlocks {
-			molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", producer.groupId)
-			err := trxMgr.SendReqBlockResp(&reqBlockItem, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-			if err != nil {
-				molaproducer_log.Warnf(err.Error())
-			}
-		}
-		return nil
+		return reqBlockItem.UserId, subBlocks, false, nil
 	} else {
 		var emptyBlock *quorumpb.Block
 		emptyBlock = &quorumpb.Block{}
-		//set producer pubkey of empty block
 		emptyBlock.BlockId = guuid.New().String()
 		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
-		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
-		return trxMgr.SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
+		subBlocks = append(subBlocks, emptyBlock)
+		return reqBlockItem.UserId, subBlocks, true, nil
 	}
 }
 
-func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
+func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) (requester string, block *quorumpb.Block, isEmptyBlock bool, err error) {
 	molaproducer_log.Debugf("<%s> GetBlockBackward called", producer.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 
 	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
 
 	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return err
+		return "", nil, false, err
 	}
 
 	//check if requester is in group block list
@@ -348,117 +351,42 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) error {
 
 	if isBlocked {
 		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return nil
+		return reqBlockItem.UserId, nil, false, fmt.Errorf("User blocked")
 	}
 
 	isExist, err := nodectx.GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, producer.nodename)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	} else if !isExist {
-		return errors.New("Block not exist")
+		return "", nil, false, fmt.Errorf("Block not exist")
 	}
 
-	block, err := nodectx.GetDbMgr().GetBlock(reqBlockItem.BlockId, false, producer.nodename)
+	blk, err := nodectx.GetDbMgr().GetBlock(reqBlockItem.BlockId, false, producer.nodename)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
 
-	isParentExit, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, producer.nodename)
+	isParentExit, err := nodectx.GetDbMgr().IsParentExist(blk.PrevBlockId, false, producer.nodename)
 	if err != nil {
-		return err
+		return "", nil, false, err
 	}
-
-	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
-	trxMgr, _ := producer.getSyncConn(channelId)
 
 	if isParentExit {
 		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", producer.groupId)
 		parentBlock, err := nodectx.GetDbMgr().GetParentBlock(reqBlockItem.BlockId, producer.nodename)
 		if err != nil {
-			return err
+			return "", nil, false, err
 		}
-		return trxMgr.SendReqBlockResp(&reqBlockItem, parentBlock, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+
+		return reqBlockItem.UserId, parentBlock, false, nil
 	} else {
+		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
 		var emptyBlock *quorumpb.Block
 		emptyBlock = &quorumpb.Block{}
 		emptyBlock.BlockId = guuid.New().String()
 		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
-		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
-		return trxMgr.SendReqBlockResp(&reqBlockItem, emptyBlock, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
+		return reqBlockItem.UserId, emptyBlock, true, nil
 	}
-}
-
-func (producer *MolassesProducer) HandleAskPeerId(trx *quorumpb.Trx) error {
-	molaproducer_log.Debugf("<%s> HandleAskPeerId called", producer.groupId)
-	var reqItem quorumpb.AskPeerId
-	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
-	if err != nil {
-		return err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return err
-	}
-
-	if err := proto.Unmarshal(decryptData, &reqItem); err != nil {
-		return err
-	}
-
-	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
-
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return nil
-	}
-
-	var respItem quorumpb.AskPeerIdResp
-	respItem = quorumpb.AskPeerIdResp{}
-
-	respItem.GroupId = producer.groupId
-	respItem.RespPeerId = nodectx.GetNodeCtx().PeerId.Pretty()
-	respItem.RespPeerPubkey = producer.grpItem.UserSignPubkey
-
-	trxMgr := producer.cIface.GetProducerTrxMgr()
-
-	return trxMgr.SendAskPeerIdResp(&respItem)
-}
-
-func (producer *MolassesProducer) getSyncConn(channelId string) (*TrxMgr, error) {
-	molaproducer_log.Debugf("<%s> getSyncConn called", producer.groupId)
-
-	var syncTrxMgr *TrxMgr
-
-	if _, ok := producer.trxMgr[channelId]; ok {
-		syncTrxMgr = producer.trxMgr[channelId]
-
-		//reset timer
-		molaproducer_log.Debugf("<%s> reset timer for sync channel <%s>", producer.groupId, channelId)
-		timer := producer.syncConnTimerPool[channelId]
-		timer.Stop()
-		timer.Reset(CLOSE_CONN_TIMER * time.Second)
-	} else {
-
-		molaproducer_log.Debugf("<%s> create sync channel <%s>", producer.groupId, channelId)
-		syncPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, producer.cIface.GetChainCtx())
-		syncTrxMgr = &TrxMgr{}
-		syncTrxMgr.Init(producer.grpItem, nodectx.GetNodeCtx().Node.RumExchange, syncPsconn)
-		producer.trxMgr[channelId] = syncTrxMgr
-
-		molaproducer_log.Debugf("<%s> create close_conn timer for sync channel <%s>", producer.groupId, channelId)
-		timer := time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-			if _, ok := producer.trxMgr[channelId]; ok {
-				molaproducer_log.Debugf("<%s> time up, close sync channel <%s>", producer.groupId, channelId)
-				//syncTrxMgr.LeaveChannel(channelId)
-				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
-				delete(producer.trxMgr, channelId)
-			}
-		})
-		producer.syncConnTimerPool[channelId] = timer
-	}
-
-	return syncTrxMgr, nil
 }
 
 //addBlock for producer

@@ -30,42 +30,80 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
+func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel nodectx.PsConnChanel) (string, error) {
+	connMgr, err := nodectx.GetConn().GetConnMgr(user.groupId)
+	if err != nil {
+		return "", err
+	}
+
+	err = connMgr.SendTrxPubsub(trx, nodectx.ProducerChannel)
+	if err != nil {
+		return "", err
+	}
+	return trx.TrxId, nil
+}
+
 func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	molauser_log.Debugf("<%s> UpdAnnounce called", user.groupId)
-	return user.cIface.GetProducerTrxMgr().SendAnnounceTrx(item)
+	trx, err := user.cIface.GetTrxFactory().GetAnnounceTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
 	molauser_log.Debugf("<%s> UpdBlkList called", user.groupId)
-	return user.cIface.GetProducerTrxMgr().SendUpdAuthTrx(item)
+	trx, err := user.cIface.GetTrxFactory().GetUpdAuthTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	molauser_log.Debugf("<%s> UpdSchema called", user.groupId)
-	return user.cIface.GetProducerTrxMgr().SendUpdSchemaTrx(item)
+	trx, err := user.cIface.GetTrxFactory().GetUpdSchemaTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
 	molauser_log.Debugf("<%s> UpdProducer called", user.groupId)
-	return user.cIface.GetProducerTrxMgr().SendRegProducerTrx(item)
+	trx, err := user.cIface.GetTrxFactory().GetRegProducerTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
 	molauser_log.Debugf("<%s> UpdUser called", user.groupId)
-	return user.cIface.GetProducerTrxMgr().SendRegUserTrx(item)
+	trx, err := user.cIface.GetTrxFactory().GetRegUserTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error) {
 	molauser_log.Debugf("<%s> UpdGroupConfig called", user.groupId)
-	return user.cIface.GetProducerTrxMgr().SendUpdGroupConfigTrx(item)
+	trx, err := user.cIface.GetTrxFactory().GetUpdGroupConfigTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]string) (string, error) {
 	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
-	if user.cIface.IsSyncerReady() {
-		return "", errors.New("can not post to group, group is in syncing or sync failed")
+	trx, err := user.cIface.GetTrxFactory().GetPostAnyTrx(content, encryptto...)
+	if err != nil {
+		return "", nil
 	}
-	return user.cIface.GetProducerTrxMgr().PostAny(content, encryptto...)
+	return user.sendTrx(trx, nodectx.ProducerChannel)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
@@ -128,14 +166,14 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		return err
 	}
 
-	//get all trxs from those blocks
+	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
 	trxs, err = GetAllTrxs(blocks)
 	if err != nil {
 		return err
 	}
 
-	//apply those trxs
+	//apply trxs
 	err = user.applyTrxs(trxs, user.nodename)
 	if err != nil {
 		return err
@@ -203,7 +241,7 @@ func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	molauser_log.Debugf("<%s> resendTrx called", user.groupId)
 	for _, trx := range trxs {
 		molauser_log.Debugf("<%s> resend Trx <%s>", user.groupId, trx.TrxId)
-		user.cIface.GetProducerTrxMgr().ResendTrx(trx)
+		user.sendTrx(trx, nodectx.ProducerChannel)
 	}
 	return nil
 }
@@ -294,6 +332,5 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		//save trx to db
 		nodectx.GetDbMgr().AddTrx(trx, nodename)
 	}
-
 	return nil
 }
