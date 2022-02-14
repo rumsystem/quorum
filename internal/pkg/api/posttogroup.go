@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -28,7 +27,7 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 
 	res, err := handlers.PostToGroup(paramspb)
 	if err != nil {
-		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", paramspb.Target.Id)
+		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 	return c.JSON(http.StatusOK, res)
