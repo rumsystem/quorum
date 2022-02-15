@@ -14,7 +14,7 @@ import (
 	msgio "github.com/libp2p/go-msgio"
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
-	//"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -43,7 +43,7 @@ type RexService struct {
 	peerStatus     *PeerStatus
 	ProtocolId     protocol.ID
 	notificationch chan RexNotification
-	//chainmgr       map[string]nodectx.ChainDataHandlerIface
+	chainmgr       map[string]iface.ChainDataHandlerIface
 }
 
 type ActionType int
@@ -60,8 +60,8 @@ type RexNotification struct {
 
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	//chainmgr := make(map[string]nodectx.ChainDataHandlerIface)
-	rexs := &RexService{h, peerStatus, protocol.ID(customprotocol), notification}
+	chainmgr := make(map[string]iface.ChainDataHandlerIface)
+	rexs := &RexService{h, peerStatus, protocol.ID(customprotocol), notification, chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -90,15 +90,14 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 	return nil
 }
 
-func (r *RexService) ChainReg(groupid string, cIface nodectx.ChainDataHandlerIface) {
+func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIface) {
 	rumexchangelog.Debugf("disabled call chain reg : %s", groupid)
-	//fmt.Println(cIface)
-	//_, ok := r.chainmgr[groupid]
-	//if ok == false {
-	//	r.chainmgr[groupid] = cIface
-	//	rumexchangelog.Debugf("chain reg with rumexchange: %s", groupid)
-
-	//}
+	//fmt.Println(cdhIface)
+	_, ok := r.chainmgr[groupid]
+	if ok == false {
+		r.chainmgr[groupid] = cdhIface
+		rumexchangelog.Debugf("chain reg with rumexchange: %s", groupid)
+	}
 }
 
 func (r *RexService) InitSession(peerid string, channelid string) error {
@@ -393,9 +392,9 @@ func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
 		trx = &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
-			targetchain, ok := r.chainmgr[trx.GroupId]
+			chainDataHandler, ok := r.chainmgr[trx.GroupId]
 			if ok == true {
-				targetchain.HandleTrxWithRex(trx, frompeerid)
+				chainDataHandler.HandleTrxRex(trx, frompeerid)
 			} else {
 				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
 			}

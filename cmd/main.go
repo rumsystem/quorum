@@ -332,9 +332,18 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
-		groupmgr := chain.InitGroupMgr(nodectx.GetDbMgr())
 
-		err = groupmgr.SyncAllGroup()
+		//initial group manager
+		chain.InitGroupMgr()
+
+		//load all groups
+		err = chain.GetGroupMgr().LoadAllGroups()
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+
+		//start sync all groups
+		err = chain.GetGroupMgr().StartSyncAllGroups()
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
@@ -383,8 +392,12 @@ func mainRet(config cli.Config) int {
 	signal.Stop(signalch)
 
 	if config.IsBootstrap != true {
-		groupmgr := chain.GetGroupMgr()
-		groupmgr.Release()
+		//Stop sync all groups
+		chain.GetGroupMgr().StopSyncAllGroups()
+		//teardown all groups
+		chain.GetGroupMgr().TeardownAllGroups()
+		//close ctx db
+		nodectx.GetDbMgr().CloseDb()
 	}
 
 	//cleanup before exit

@@ -7,6 +7,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -81,12 +82,12 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, from peer.ID) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockForward(trx, nodectx.RumExchange, from)
+		chain.handleReqBlockForward(trx, conn.RumExchange, from)
 	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockBackward(trx, nodectx.RumExchange, from)
+		chain.handleReqBlockBackward(trx, conn.RumExchange, from)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -124,12 +125,12 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockForward(trx, nodectx.PubSub, "")
+		chain.handleReqBlockForward(trx, conn.PubSub, "")
 	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockBackward(trx, nodectx.PubSub, "")
+		chain.handleReqBlockBackward(trx, conn.PubSub, "")
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -179,7 +180,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
 				chain_log.Infof("<%s>, parent not exist, sync backward from block <%s>", chain.groupId, block.BlockId)
-				connMgr, err := nodectx.GetConn().GetConnMgr(chain.groupId)
+				connMgr, err := conn.GetConn().GetConnMgr(chain.groupId)
 				if err != nil {
 					return err
 				}
@@ -203,9 +204,9 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
 */
 
-func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype nodectx.P2pNetworkType, from peer.ID) error {
+func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, from peer.ID) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
-	if networktype == nodectx.PubSub {
+	if networktype == conn.PubSub {
 		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 			return nil
 		}
@@ -224,10 +225,10 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype nodectx
 				return err
 			}
 
-			if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 				return err
 			} else {
-				return cmgr.SendTrxPubsub(trx, nodectx.SyncerChannel)
+				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel)
 			}
 		}
 
@@ -239,13 +240,13 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype nodectx
 				return err
 			}
 
-			if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 				return err
 			} else {
-				return cmgr.SendTrxPubsub(trx, nodectx.SyncerChannel)
+				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel)
 			}
 		}
-	} else if networktype == nodectx.RumExchange {
+	} else if networktype == conn.RumExchange {
 		subBlocks, err := chain.chaindata.GetBlockForwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
 		if err == nil {
 			if len(subBlocks) > 0 {
@@ -271,7 +272,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype nodectx
 						return err
 					}
 
-					if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+					if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 						return err
 					} else {
 						return cmgr.SendTrxRex(trx, from)
@@ -289,7 +290,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype nodectx
 }
 
 func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, from peer.ID) error {
-	if networktype == nodectx.PubSub {
+	if networktype == conn.PubSub {
 		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 			return nil
 		}
@@ -308,10 +309,10 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 				return err
 			}
 
-			if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 				return err
 			} else {
-				return cmgr.SendTrxPubsub(trx, nodectx.SyncerChannel)
+				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel)
 			}
 		}
 
@@ -323,13 +324,13 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 			return err
 		}
 
-		if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+		if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 			return err
 		} else {
-			return cmgr.SendTrxPubsub(trx, nodectx.SyncerChannel)
+			return cmgr.SendTrxPubsub(trx, conn.SyncerChannel)
 		}
 
-	} else if networktype == nodectx.RumExchange {
+	} else if networktype == conn.RumExchange {
 		block, err := chain.chaindata.GetBlockBackwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
 		if err == nil && block != nil {
 			ks := nodectx.GetNodeCtx().Keystore
@@ -415,7 +416,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 		return nil
 	}
 
-	if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 		return err
 	} else {
 		return cmgr.AddBlockSynced(reqBlockResp, newBlock)
@@ -493,10 +494,10 @@ func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 
 	trx, err = chain.trxFactory.GetAskPeerIdRespTrx(respItem)
 
-	if cmgr, err := nodectx.GetConn().GetConnMgr(chain.groupId); err != nil {
+	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 		return err
 	} else {
-		return cmgr.SendTrxPubsub(trx, nodectx.ProducerChannel)
+		return cmgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	}
 }
 
@@ -519,7 +520,7 @@ func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	connMgr, err := nodectx.GetConn().GetConnMgr(chain.groupId)
+	connMgr, err := conn.GetConn().GetConnMgr(chain.groupId)
 	if err != nil {
 		return err
 	}
@@ -611,5 +612,5 @@ func (chain *Chain) CreateConsensus() error {
 		chain.Consensus.SetUser(user)
 	}
 
-	return nodectx.GetConn().RegisterChainCtx(chain.groupId, chain.group.Item.OwnerPubKey, chain.group.Item.UserSignPubkey, chain)
+	return conn.GetConn().RegisterChainCtx(chain.groupId, chain.group.Item.OwnerPubKey, chain.group.Item.UserSignPubkey, chain)
 }

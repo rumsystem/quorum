@@ -17,6 +17,12 @@ const (
 	NODE_OFFLINE = 1 //node disconnected with bootstram and pubchannel
 )
 
+const (
+	USER_CHANNEL_PREFIX     = "user_channel_"
+	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
+	SYNC_CHANNEL_PREFIX     = "sync_channel_"
+)
+
 type NodeCtx struct {
 	Node      *p2p.Node
 	PeerId    peer.ID
@@ -32,8 +38,6 @@ var nodeCtx *NodeCtx
 
 var dbMgr *storage.DbMgr
 
-var conn *Conn
-
 //singlaton
 func GetNodeCtx() *NodeCtx {
 	return nodeCtx
@@ -44,18 +48,12 @@ func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }
 
-func GetConn() *Conn {
-	return conn
-}
-
 func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, channeltype string, gitcommit string) {
 	nodeCtx = &NodeCtx{}
 	nodeCtx.Name = name
 	nodeCtx.Node = node
 
 	dbMgr = db
-
-	InitConn()
 
 	nodeCtx.Status = NODE_OFFLINE
 	nodeCtx.Ctx = ctx

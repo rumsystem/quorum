@@ -23,11 +23,6 @@ func StartSync(groupid string) (*StartSyncResult, error) {
 		return nil, fmt.Errorf("Group %s not exist", groupid)
 	}
 
-	if group.ChainCtx.Syncer.Status == chain.SYNCING_BACKWARD || group.ChainCtx.Syncer.Status == chain.SYNCING_FORWARD {
-		errorInfo := "GROUP_ALREADY_IN_SYNCING"
-		return nil, fmt.Errorf(errorInfo)
-	}
-
 	startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: ""}
 	if err := group.StartSync(); err != nil {
 		startSyncResult.Error = err.Error()

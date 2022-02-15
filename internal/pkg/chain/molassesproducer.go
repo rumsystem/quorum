@@ -13,6 +13,7 @@ import (
 	guuid "github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -39,7 +40,6 @@ type MolassesProducer struct {
 	grpItem           *quorumpb.GroupItem
 	blockPool         map[string]*quorumpb.Block
 	trxPool           map[string]*quorumpb.Trx
-	trxMgr            map[string]*TrxMgr
 	syncConnTimerPool map[string]*time.Timer
 	status            ProducerStatus
 	ProduceTimer      *time.Timer
@@ -56,7 +56,6 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	producer.cIface = iface
 	producer.blockPool = make(map[string]*quorumpb.Block)
 	producer.trxPool = make(map[string]*quorumpb.Trx)
-	producer.trxMgr = make(map[string]*TrxMgr)
 	producer.syncConnTimerPool = make(map[string]*time.Timer)
 	producer.status = StatusIdle
 	producer.nodename = nodename
@@ -152,13 +151,13 @@ func (producer *MolassesProducer) produceBlock() {
 
 	//CREATE AND BROADCAST NEW BLOCK BY USING BLOCK_PRODUCED MSG ON PRODUCER CHANNEL
 	molaproducer_log.Debugf("<%s> broadcast produced block", producer.groupId)
-	connMgr, err := nodectx.GetConn().GetConnMgr(producer.groupId)
+	connMgr, err := conn.GetConn().GetConnMgr(producer.groupId)
 	if err != nil {
 		return
 	}
 	trx, err := producer.cIface.GetTrxFactory().GetBlockProducedTrx(newBlock)
 
-	connMgr.SendTrxPubsub(trx, nodectx.ProducerChannel)
+	connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	molaproducer_log.Debugf("<%s> produce done, wait for merge", producer.groupId)
 
 	return
@@ -253,7 +252,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 		if err.Error() == "PARENT_NOT_EXIST" {
 			molaproducer_log.Debugf("<%s> parent not found, sync backward for missing blocks from <%s>", producer.groupId, candidateBlkid, err)
-			if cmgr, err := nodectx.GetConn().GetConnMgr(producer.groupId); err != nil {
+			if cmgr, err := conn.GetConn().GetConnMgr(producer.groupId); err != nil {
 				return err
 			} else {
 				return cmgr.SyncBackward(candidateBlkid, producer.nodename)
@@ -266,11 +265,11 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		if producer.blockPool[candidateBlkid].ProducerPubKey == producer.grpItem.UserSignPubkey {
 			molaproducer_log.Debugf("<%s> winner send new block out", producer.groupId)
 
-			connMgr, err := nodectx.GetConn().GetConnMgr(producer.groupId)
+			connMgr, err := conn.GetConn().GetConnMgr(producer.groupId)
 			if err != nil {
 				return err
 			}
-			err = connMgr.SendBlock(producer.blockPool[candidateBlkid], nodectx.PubSub, nodectx.ProducerChannel)
+			err = connMgr.SendBlock(producer.blockPool[candidateBlkid], conn.PubSub, conn.ProducerChannel)
 			if err != nil {
 				molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
 			}

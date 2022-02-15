@@ -8,6 +8,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -107,7 +108,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
-	nodectx.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
 	return nodectx.GetDbMgr().RmGroup(grp.Item)
 }
 
@@ -127,6 +128,14 @@ func (grp *Group) StartSync() error {
 
 func (grp *Group) StopSync() error {
 	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
+
+	/*
+		if group.ChainCtx.Syncer.Status == chain.SYNCING_BACKWARD || group.ChainCtx.Syncer.Status == chain.SYNCING_FORWARD {
+			errorInfo := "GROUP_ALREADY_IN_SYNCING"
+			return nil, fmt.Errorf(errorInfo)
+		}
+	*/
+
 	/*
 		if grp.ChainCtx.Syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.Syncer.Status == SYNCING_FORWARD {
 			grp.ChainCtx.StopSync()
@@ -262,4 +271,17 @@ func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
 func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {
 	group_log.Debugf("<%s> IsUserAnnounced called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().IsUserAnnounced(grp.Item.GroupId, userSignPubkey, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) AskPeerId() {
+	/*
+		chain_log.Debugf("<%s> AskPeerId called", chain.groupId)
+		var req quorumpb.AskPeerId
+		req = quorumpb.AskPeerId{}
+
+		req.GroupId = chain.groupId
+		req.UserPeerId = nodectx.GetNodeCtx().Node.PeerID.Pretty()
+
+		return chain.GetProducerTrxMgr().SendAskPeerId(&req)
+	*/
 }

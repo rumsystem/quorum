@@ -62,16 +62,19 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.HighestHeight = value.Item.HighestHeight
 		group.HighestBlockId = value.Item.HighestBlockId
 
-		switch value.ChainCtx.Syncer.Status {
-		case chain.SYNCING_BACKWARD:
-			group.GroupStatus = "SYNCING"
-		case chain.SYNCING_FORWARD:
-			group.GroupStatus = "SYNCING"
-		case chain.SYNC_FAILED:
-			group.GroupStatus = "SYNC_FAILED"
-		case chain.IDLE:
-			group.GroupStatus = "IDLE"
-		}
+		/*
+			commented by cuicat
+			switch value.ChainCtx.Syncer.Status {
+			case chain.SYNCING_BACKWARD:
+				group.GroupStatus = "SYNCING"
+			case chain.SYNCING_FORWARD:
+				group.GroupStatus = "SYNCING"
+			case chain.SYNC_FAILED:
+				group.GroupStatus = "SYNC_FAILED"
+			case chain.IDLE:
+				group.GroupStatus = "IDLE"
+			}
+		*/
 		groups = append(groups, group)
 	}
 

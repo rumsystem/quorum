@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -30,13 +31,13 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
-func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel nodectx.PsConnChanel) (string, error) {
-	connMgr, err := nodectx.GetConn().GetConnMgr(user.groupId)
+func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
+	connMgr, err := conn.GetConn().GetConnMgr(user.groupId)
 	if err != nil {
 		return "", err
 	}
 
-	err = connMgr.SendTrxPubsub(trx, nodectx.ProducerChannel)
+	err = connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	if err != nil {
 		return "", err
 	}
@@ -49,7 +50,7 @@ func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, erro
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
@@ -58,7 +59,7 @@ func (user *MolassesUser) UpdBlkList(item *quorumpb.DenyUserItem) (string, error
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
@@ -67,7 +68,7 @@ func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
@@ -76,7 +77,7 @@ func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, erro
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
@@ -85,7 +86,7 @@ func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error) {
@@ -94,7 +95,7 @@ func (user *MolassesUser) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]string) (string, error) {
@@ -103,7 +104,7 @@ func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]stri
 	if err != nil {
 		return "", nil
 	}
-	return user.sendTrx(trx, nodectx.ProducerChannel)
+	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
@@ -241,7 +242,7 @@ func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	molauser_log.Debugf("<%s> resendTrx called", user.groupId)
 	for _, trx := range trxs {
 		molauser_log.Debugf("<%s> resend Trx <%s>", user.groupId, trx.TrxId)
-		user.sendTrx(trx, nodectx.ProducerChannel)
+		user.sendTrx(trx, conn.ProducerChannel)
 	}
 	return nil
 }

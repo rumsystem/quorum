@@ -1,4 +1,4 @@
-package nodectx
+package conn
 
 /*
 import (

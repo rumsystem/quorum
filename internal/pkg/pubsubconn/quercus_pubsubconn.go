@@ -3,12 +3,14 @@ package pubsubconn
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
 	"github.com/huo-ju/quercus/pkg/quality"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	logging "github.com/ipfs/go-log/v2"
+	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 type QuercusConn struct {
 	Cid          string
 	Subscription *pubsub.Subscription
-	chain        Chain
+	chain        iface.ChainDataHandlerIface
 	ps           *pubsub.Pubsub
 	nodename     string
 	Ctx          context.Context
@@ -37,7 +39,7 @@ func InitQuercusConn(ctx context.Context, ps *pubsub.Pubsub, nodename string) *Q
 	return &QuercusConn{Ctx: ctx, ps: ps, nodename: nodename}
 }
 
-func (qconn *QuercusConn) JoinChannel(cId string, chain Chain) error {
+func (qconn *QuercusConn) JoinChannel(cId string, chain iface.ChainDataHandlerIface) error {
 	qconn.Cid = cId
 	qconn.chain = chain
 	qconn.Subscription = qconn.ps.Subscribe(qconn.nodename, cId)
@@ -84,7 +86,7 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 					blk = &quorumpb.Block{}
 					err := proto.Unmarshal(pkg.Data, blk)
 					if err == nil {
-						qconn.chain.HandleBlock(blk)
+						qconn.chain.HandleBlockPsConn(blk)
 					} else {
 						channel_log.Warning(err.Error())
 					}
@@ -93,7 +95,7 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 					trx = &quorumpb.Trx{}
 					err := proto.Unmarshal(pkg.Data, trx)
 					if err == nil {
-						qconn.chain.HandleTrx(trx)
+						qconn.chain.HandleTrxPsConn(trx)
 					} else {
 						quercus_log.Warningf(err.Error())
 					}

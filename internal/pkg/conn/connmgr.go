@@ -1,4 +1,4 @@
-package nodectx
+package conn
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
+	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
@@ -24,11 +26,10 @@ const (
 	ERR_CAN_NOT_FIND_OWENR_PEER_ID = "ERR_CAN_NOT_FIND_OWENR_PEER_ID"
 )
 
-type ChainDataHandlerIface interface {
-	HandleTrxPsConn(trx *quorumpb.Trx) error
-	HandleBlockPsConn(block *quorumpb.Block) error
-	HandleTrxRex(trx *quorumpb.Trx, from peer.ID) error
-	HandleBlockRex(block *quorumpb.Block, from peer.ID) error
+var conn *Conn
+
+func GetConn() *Conn {
+	return conn
 }
 
 type Conn struct {
@@ -47,7 +48,7 @@ type ConnMgr struct {
 	StableProdPsConn      bool
 	producerChannTimer    *time.Timer
 	syncChannelTimersPool map[string]*time.Timer
-	DataHandlerIface      ChainDataHandlerIface
+	DataHandlerIface      iface.ChainDataHandlerIface
 	PsConns               map[string]*pubsubconn.P2pPubSubConn
 	Rex                   *p2p.RexService
 }
@@ -101,7 +102,7 @@ func InitConn() error {
 	return nil
 }
 
-func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface ChainDataHandlerIface) error {
+func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface iface.ChainDataHandlerIface) error {
 	conn_log.Debugf("RegisterChainCtx called, groupId <%S>", groupId)
 	connMgr := &ConnMgr{}
 	connMgr.InitGroupConnMgr(groupId, ownerPubkey, userSignPubkey, cIface)
@@ -134,7 +135,7 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 	return nil, fmt.Errorf("connMgr for group <%s> not exist", groupId)
 }
 
-func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface ChainDataHandlerIface) error {
+func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface iface.ChainDataHandlerIface) error {
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%S>", groupId)
 	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
 	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
@@ -148,7 +149,7 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	connMgr.DataHandlerIface = cIface
 
 	//Rex
-	GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
+	nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 
 	//initial rex session
 	connMgr.InitRexSession()
@@ -193,11 +194,11 @@ func (connMgr *ConnMgr) RmProducer(peerPubkey string) error {
 func (connMgr *ConnMgr) InitRexSession() error {
 	conn_log.Debug("InitSession called, groupId <%S>", connMgr.GroupId)
 	if peerId, ok := connMgr.ProviderPeerIdPool[connMgr.OwnerPubkey]; ok {
-		err := GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.ProducerChannelId)
+		err := nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.ProducerChannelId)
 		if err != nil {
 			return err
 		}
-		err = GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.SyncChannelId)
+		err = nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.SyncChannelId)
 		if err != nil {
 			return err
 		}
@@ -210,7 +211,7 @@ func (connMgr *ConnMgr) InitRexSession() error {
 func (connMgr *ConnMgr) LeaveAllChannels() error {
 	conn_log.Debug("LeaveChannel called, groupId <%S>", connMgr.GroupId)
 	for channelId, _ := range connMgr.PsConns {
-		GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
+		nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
 		delete(connMgr.PsConns, channelId)
 	}
 	return nil
@@ -227,13 +228,13 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 		}
 		return psconn
 	} else {
-		producerPsconn := GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.ProducerChannelId, connMgr.DataHandlerIface)
+		producerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.ProducerChannelId, connMgr.DataHandlerIface)
 		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsconn
 		if !connMgr.StableProdPsConn {
 			conn_log.Debugf("<%s> create close_conn timer for producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER*time.Second, func() {
 				conn_log.Debugf("<%s> time up, close producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-				GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
+				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
 				delete(connMgr.PsConns, connMgr.ProducerChannelId)
 			})
 		}
@@ -254,12 +255,12 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 		}
 		return psconn, nil
 	} else {
-		syncerPsconn := GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, connMgr.DataHandlerIface)
+		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, connMgr.DataHandlerIface)
 		connMgr.PsConns[channelId] = syncerPsconn
 		conn_log.Debugf("<%s> create close_conn timer for syncer channel <%s>", connMgr.GroupId, channelId)
 		syncTimer := time.AfterFunc(CLOSE_PRD_CHANN_TIMER*time.Second, func() {
 			conn_log.Debugf("<%s> time up, close syncer channel <%s>", connMgr.GroupId, channelId)
-			GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
+			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
 			delete(connMgr.PsConns, channelId)
 			delete(connMgr.syncChannelTimersPool, channelId)
 		})
@@ -345,13 +346,13 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
+	return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {
-	userPsconn := GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
+	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
-	syncerPsconn := GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
+	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
 }
 
