@@ -105,11 +105,16 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
-	options := []pubsub.Option{pubsub.WithPeerExchange(true)}
+	pubsubblocklist := pubsub.NewMapBlacklist()
+	pubsubblocklist.Add(peer.ID("16Uiu2HAm6TMUExfx6CjEqaJos6bXgmMR9VeqrMHYMBxWSLMz3Yn7"))
+	pubsubblocklist.Add(peer.ID("16Uiu2HAm7UFTUvafageyKsfWzkm3sRjf14vUeu6vgvG5wajqKn2j"))
+	pubsubblocklist.Add(peer.ID("16Uiu2HAmDrtUYNU2BmSrdBKPfaA7XvJtW7vMJxyRbT9Yv71j2jYr"))
+	pubsubblocklist.Add(peer.ID("16Uiu2HAmMubDCAT2cTuHkkTb4rvgJp7um6j2v1XHwJWGyE1gKx5R"))
+	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
 	peerStatus := NewPeerStatus()
-	var rexservice *RexService
+	//var rexservice *RexService
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	if isBootstrap == true {
@@ -122,8 +127,8 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
 	} else {
-		rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
-		rexservice.SetDelegate()
+		//rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
+		//rexservice.SetDelegate()
 	}
 
 	var ps *pubsub.PubSub
@@ -161,7 +166,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
 
 	//reconnect peers
 
