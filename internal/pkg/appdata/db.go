@@ -67,7 +67,7 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error 
 	return nil
 }
 
-func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool) ([]string, error) {
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool, starttrxinclude bool) ([]string, error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
 	sendermap := make(map[string]bool)
 	for _, s := range senders {
@@ -100,6 +100,9 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		}
 		if trxid == starttrx { //start collecting after this item
 			runcollector = true
+			if starttrxinclude == true {
+				trxids = append(trxids, trxid)
+			}
 		}
 		if len(trxids) == num {
 			// use this to break loop
