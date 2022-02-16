@@ -426,6 +426,8 @@ func RegisterJSFunctions() {
 		num := args[1].Int()
 		startTrx := args[2].String()
 		reverse := args[3].Bool()
+		includestarttrx := args[4].Bool()
+
 		senders := []string{}
 		for i := 4; i < len(args); i += 1 {
 			sender := args[i].String()
@@ -434,7 +436,7 @@ func RegisterJSFunctions() {
 
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetContent(groupId, num, startTrx, reverse, senders)
+			res, err := quorumAPI.GetContent(groupId, num, startTrx, reverse, includestarttrx, senders)
 			if err != nil {
 				return ret, err
 			}
