@@ -20,9 +20,9 @@ import (
 
 var molaproducer_log = logging.Logger("producer")
 
-const PRODUCE_TIMER time.Duration = 5    //5s
-const MERGE_TIMER time.Duration = 5      //5s
-const CLOSE_CONN_TIMER time.Duration = 5 //5s
+const PRODUCE_TIMER time.Duration = 5     //5s
+const MERGE_TIMER time.Duration = 5       //5s
+const CLOSE_CONN_TIMER time.Duration = 20 //20s
 
 const TRXS_TOTAL_SIZE int = 900 * 1024
 
@@ -37,7 +37,7 @@ const (
 type MolassesProducer struct {
 	grpItem           *quorumpb.GroupItem
 	blockPool         map[string]*quorumpb.Block
-	trxPool           map[string]*quorumpb.Trx
+	trxPool           sync.Map
 	trxMgr            map[string]*TrxMgr
 	syncConnTimerPool map[string]*time.Timer
 	status            ProducerStatus
@@ -54,7 +54,7 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	producer.grpItem = item
 	producer.cIface = iface
 	producer.blockPool = make(map[string]*quorumpb.Block)
-	producer.trxPool = make(map[string]*quorumpb.Trx)
+	//producer.trxPool = make(map[string]*quorumpb.Trx)
 	producer.trxMgr = make(map[string]*TrxMgr)
 	producer.syncConnTimerPool = make(map[string]*time.Timer)
 	producer.status = StatusIdle
@@ -83,7 +83,15 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	}
 
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
-	producer.trxPool[trx.TrxId] = trx
+	producer.trxPool.Store(trx.TrxId, trx)
+
+	molaproducer_log.Debugf("*************************************")
+	producer.trxPool.Range(func(key, value interface{}) bool {
+		trxId, _ := key.(string)
+		molaproducer_log.Debugf("key <%s>", trxId)
+		return true
+	})
+	molaproducer_log.Debugf("*************************************")
 
 	if producer.status == StatusIdle {
 		go producer.startProduceBlock()
@@ -118,24 +126,36 @@ func (producer *MolassesProducer) produceBlock() {
 
 	//Don't lock trx pool, just package what ever you have at this moment
 	//package all trx
-	//producer.trxpoolmu.Lock()
-	//defer producer.trxpoolmu.Unlock()
-	trxs := make([]*quorumpb.Trx, 0, len(producer.trxPool))
-
+	var trxs []*quorumpb.Trx
 	totalSizeBytes := 0
 	totalTrx := 0
 
-	for key, value := range producer.trxPool {
-		encodedcontent, _ := quorumpb.ContentToBytes(value)
+	producer.trxPool.Range(func(k, v interface{}) bool {
+		trxId, _ := k.(string)
+		trx, _ := v.(*quorumpb.Trx)
+
+		encodedcontent, _ := quorumpb.ContentToBytes(trx)
 		totalSizeBytes += binary.Size(encodedcontent)
 
 		if totalSizeBytes < TRXS_TOTAL_SIZE {
-			trxs = append(trxs, value)
+			trxs = append(trxs, trx)
 			//remove trx from pool
-			delete(producer.trxPool, key)
+			producer.trxPool.Delete(trxId)
 			totalTrx++
+
+			return true
 		}
-	}
+
+		return false
+	})
+
+	molaproducer_log.Debugf("*************after package***************")
+	producer.trxPool.Range(func(key, value interface{}) bool {
+		trxId, _ := key.(string)
+		molaproducer_log.Debugf("key <%s>", trxId)
+		return true
+	})
+	molaproducer_log.Debugf("*************************************")
 
 	molaproducer_log.Debugf("<%s> package <%d> trxs, size <%d>", producer.groupId, totalTrx, totalSizeBytes)
 
@@ -212,7 +232,14 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		producer.status = StatusIdle
 		producer.statusmu.Unlock()
 
-		if len(producer.trxPool) != 0 {
+		//since sync.map don't have len(), count manually
+		var count uint
+		producer.trxPool.Range(func(key interface{}, value interface{}) bool {
+			count++
+			return true
+		})
+
+		if count != 0 {
 			molaproducer_log.Debugf("<%s> start produce block", producer.groupId)
 			producer.startProduceBlock()
 		}

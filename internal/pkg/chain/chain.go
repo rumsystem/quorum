@@ -182,12 +182,12 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
 		return nil
-	case quorumpb.TrxType_ASK_PEERID:
-		chain.HandleAskPeerID(trx)
-		return nil
-	case quorumpb.TrxType_ASK_PEERID_RESP:
-		chain.HandleAskPeerIdResp(trx)
-		return nil
+	//case quorumpb.TrxType_ASK_PEERID:
+	//	chain.HandleAskPeerID(trx)
+	//	return nil
+	//case quorumpb.TrxType_ASK_PEERID_RESP:
+	//	chain.HandleAskPeerIdResp(trx)
+	//	return nil
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -339,41 +339,41 @@ func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 	return chain.Consensus.Producer().HandleAskPeerId(trx)
 }
 
-func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
-
-	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-	if err != nil {
-		return err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return err
-	}
-
-	var respItem quorumpb.AskPeerIdResp
-
-	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
-		return err
-	}
-
-	//update peerId table
-	chain.ProviderPeerIdPool[respItem.RespPeerPubkey] = respItem.RespPeerId
-	chain_log.Debugf("<%s> Pubkey<%s> PeerId<%s> ", chain.groupId, respItem.RespPeerPubkey, &respItem.RespPeerId)
-	//initial both producerChannel and syncChannel
-	err = chain.InitSession(chain.producerChannelId)
-	if err != nil {
-		return err
-	}
-
-	err = chain.InitSession(chain.syncChannelId)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
+//	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
+//
+//	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+//	if err != nil {
+//		return err
+//	}
+//
+//	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+//	if err != nil {
+//		return err
+//	}
+//
+//	var respItem quorumpb.AskPeerIdResp
+//
+//	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
+//		return err
+//	}
+//
+//	//update peerId table
+//	chain.ProviderPeerIdPool[respItem.RespPeerPubkey] = respItem.RespPeerId
+//	chain_log.Debugf("<%s> Pubkey<%s> PeerId<%s> ", chain.groupId, respItem.RespPeerPubkey, &respItem.RespPeerId)
+//	//initial both producerChannel and syncChannel
+//	//err = chain.InitSession(chain.producerChannelId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//
+//	//err = chain.InitSession(chain.syncChannelId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//
+//	return nil
+//}
 
 func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
 	return chain.userPool
@@ -471,8 +471,8 @@ func (chain *Chain) CreateConsensus() {
 		chain_log.Infof("<%s> reuse syncer", chain.groupId)
 	}
 
-	_ = chain.InitSession(chain.producerChannelId)
-	_ = chain.InitSession(chain.syncChannelId)
+	//_ = chain.InitSession(chain.producerChannelId)
+	//_ = chain.InitSession(chain.syncChannelId)
 }
 
 func (chain *Chain) createUserTrxMgr() {
@@ -522,16 +522,17 @@ func (chain *Chain) createProducerTrxMgr() {
 }
 
 func (chain *Chain) InitSession(channelId string) error {
-	chain_log.Debugf("<%s> InitSession called", chain.groupId)
-	//err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
-	//if err != nil {
-	//	return err
-	//}
-	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
-		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
-	} else {
-		return chain.AskPeerId()
-	}
+	return nil
+	//	chain_log.Debugf("<%s> InitSession called", chain.groupId)
+	//	//err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
+	//	//if err != nil {
+	//	//	return err
+	//	//}
+	//	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
+	//		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
+	//	} else {
+	//		return chain.AskPeerId()
+	//	}
 }
 
 func (chain *Chain) AskPeerId() error {

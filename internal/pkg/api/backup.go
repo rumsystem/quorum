@@ -29,7 +29,7 @@ type BackupResult struct {
 // @Description Backup my group seed/keystore/config
 // @Produce json
 // @Success 200 {object} BackupResult
-// @Router /api/v1/group/backup [get]
+// @Router /api/v1/backup [get]
 func (h *Handler) Backup(c echo.Context) (err error) {
 	// get all the seed of joined groups
 	seeds, err := getGroupSeeds(h.Appdb)

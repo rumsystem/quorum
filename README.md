@@ -66,48 +66,70 @@ A peer-to-peer system must provide economic incentive to minimize the Free-rider
 
 ## Getting Started
 
-**TL;DR**:  Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application. Developers may need [RUM Development Tutorial](./Tutorial.md).
+**TL;DR**:  Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application.
 
 ### Build:
+
+<span id="build_quorum"></span>
 
 Build the quorum binary by running the [./scripts/build.sh](./scripts/build.sh) script.
 
 ### Build API Document:
+
+Running:
 
 ```sh
 ./scripts/swag_init.sh
 go run cmd/docs.go
 ```
 
-Open browser with http://localhost:1323/swagger/index.html
+and then open browser with <http://localhost:1323/swagger/index.html>.
+
+*or*
+
+Read the [RUM Development Tutorial](./Tutorial.md).
 
 ### Run a RUM peer
 
-<span id="bootstrap_peer"></span>
+<span id="run_a_peer"></span>
+
+Run the [quorum binary](#build_quorum):
 
 ```sh
-./quorum -peername mypeer -listen /ip4/0.0.0.0/tcp/7000  -apilisten 127.0.0.1:8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir ~/rumdata/peer5/config -datadir ~/rumdata/peer5/data -keystoredir /rumdata/peer5/keystore -debug true
+./quorum -peername peer -listen /ip4/0.0.0.0/tcp/7000  -listen /ip4/0.0.0.0/tcp/9000/ws -apilisten 127.0.0.1:8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir rum/peerConfig -datadir rum/peerData -keystoredir rum/keystore -debug true
+```
 
 OPTIONS:
+
+```sh
+   -peername    default:`peer`, used in and same with configdir  and datadir
    -listen      a multiaddress for the peer service listening
    -apilisten   http api  listening address
    -peer        a bootstrap peer multiaddress. Any online peer could be used for bootstrap, you can use the RUM testing bootstrap server for testing.
-   -configdir   a directory for config files
-   -datadir     all data storage location
-   -keystoredir a directory to store private keys. All key files are password protected, and it's very important to keep backups of all your keys.
+   -configdir   a directory for config files. The `peer` of `peerConfig` must same as peername `peer`, eg: if `mypeer2Config`, peername must be `mypeer2`.
+   -datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
+   -keystoredir a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
    -debug       enable logging level to debug or not
 ```
 
-### Example
+*or*
+
+Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application.
+
+### Example: a private decentralized forum
 
 The main purpose of RUM is to connect groups of people without any centralized server. We start from a simple scenario of a private decentralized forum for a group of friends.
 
-1. Run RUM peer on each friend’s computer, so we have peerA, peerB, peerC...
+The [rum-app](https://github.com/rumsystem/rum-app) will help you create/join/post/view with a nice GUI.
+
+The following shows how to create/join group and post/view content with [quorum binary](build_quorum) and command line.
+
+1. [Run RUM peer](#run_a_peer) on each friend’s computer, so we have peerA, peerB, peerC...
 
 2. PeerA will create the group, and A will become the owner of the group.
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"ourforum","consensus_type":"poa","encryption_type":"public","app_key":"group_forum"}' https://127.0.0.1:8000/api/v1/group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"ourforum","consensus_type":"poa","encryption_type":"public","app_key":"group_bbs"}' https://127.0.0.1:8000/api/v1/group
 ```
 
 The response is the group seed:
@@ -129,39 +151,31 @@ The response is the group seed:
     "consensus_type": "poa",
     "encryption_type": "public",
     "cipher_key": "accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda",
-    "app_key": "group_forum",
+    "app_key": "group_bbs",
     "signature": "3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"
 }
 ```
+
+> [API: create group](./Tutorial.md#api-create-group)
 
 3. Share the group seed with your friends, so they can join your group with the seed.
 
 4. Join the group with Peer B, C...
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"989ffea1-083e-46b0-be02-3bad3de7d2e1","GroupId":"01014e95-303e-4955-b06e-bf185556a729","ProducerPubKey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","Hash":"gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=","Signature":"MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d","Timestamp":1633022374646518065},"group_id":"01014e95-303e-4955-b06e-bf185556a729","group_name":"ourforum","owner_pubkey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","owner_encryptpubkey":"age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu","consensus_type":"poa","encryption_type":"public","cipher_key":"accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda","app_key":"group_forum","signature":"3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"}' https://127.0.0.1:8001/api/v1/group/join
+curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"989ffea1-083e-46b0-be02-3bad3de7d2e1","GroupId":"01014e95-303e-4955-b06e-bf185556a729","ProducerPubKey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","Hash":"gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=","Signature":"MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d","Timestamp":1633022374646518065},"group_id":"01014e95-303e-4955-b06e-bf185556a729","group_name":"ourforum","owner_pubkey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","owner_encryptpubkey":"age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu","consensus_type":"poa","encryption_type":"public","cipher_key":"accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda","app_key":"group_bbs","signature":"3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"}' https://127.0.0.1:8001/api/v1/group/join
 ```
 
-```json
-{
-    "group_id": "01014e95-303e-4955-b06e-bf185556a729",
-    "group_name": "ourforum",
-    "owner_pubkey": "CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==",
-    "user_pubkey": "CAISIQNc7wg3VLZCbKHetaqbZdUro/IUSy33ypWPoI4J24L6gw==",
-    "user_encryptpubkey": "age1xk8znrr3ewpz3hcnu34x6wap750vvuyhl63t0rwqhn0a33pke45q2yjkez",
-    "consensus_type": "poa",
-    "encryption_type": "public",
-    "cipher_key": "accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda",
-    "app_key": "group_forum",
-    "signature": "3045022100e7ff167741db35d482aa1a233693f95807a5df1e44ce338121a103bd8e9444450220595e23cb5c129a6a257cb34f4d914799c1f606cb3e13d25b6cda2c8b84e58cb2"
-}
-```
+> [API: join group](./Tutorial.md#api-join-group)
 
 5. Check the group status
 
 ```bash
 curl -k https://127.0.0.1:8000/api/v1/groups
 ```
+
+Response:
+
 ```json
 {
     "groups": [
@@ -173,7 +187,7 @@ curl -k https://127.0.0.1:8000/api/v1/groups
             "consensus_type": "POA",
             "encryption_type": "PUBLIC",
             "cipher_key": "accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda",
-            "app_key": "group_forum",
+            "app_key": "group_bbs",
             "last_updated": 1633022375303983600,
             "highest_height": 0,
             "highest_block_id": [
@@ -185,13 +199,19 @@ curl -k https://127.0.0.1:8000/api/v1/groups
 }
 ```
 
+> [API: groups](./Tutorial.md#api-get-groups)
+
 6. "group_status": "IDLE"  means the group is ready to use. Check the group_status on PeerB, C... make sure group_status is IDLE on every peer.
 
-7. It’s time to create your first forum post.
+> [API: start sync](./Tutorial.md#api-post-startsync)
+
+7. It's time to create your first forum post.
 
 ```bash
 curl --insecure -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"The Future Will Be Decentralized","name":"My First Post!"},"target":{"id":"01014e95-303e-4955-b06e-bf185556a729","type":"Group"}}' https://127.0.0.1:8000/api/v1/group/content
 ```
+
+Response:
 
 ```json
 {
@@ -199,11 +219,15 @@ curl --insecure -X POST -H 'Content-Type: application/json' -d '{"type":"Add","o
 }
 ```
 
+> [API: post content](./Tutorial.md#api-post-content)
+
 8. Waiting about 10s to sync the blockchain, then check the groups status again.
 
 ```bash
 curl -k https://127.0.0.1:8000/api/v1/groups
 ```
+
+Response:
 
 ```json
 {
@@ -216,7 +240,7 @@ curl -k https://127.0.0.1:8000/api/v1/groups
             "consensus_type": "POA",
             "encryption_type": "PUBLIC",
             "cipher_key": "accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda",
-            "app_key": "group_forum",
+            "app_key": "group_bbs",
             "last_updated": 1633024842663874300,
             "highest_height": 1,
             "highest_block_id": [
@@ -232,11 +256,13 @@ You will find the group’s highest_height becomes 1, and the highest_block_id a
 
 Check the group_status on PeerB, C ... , All peers should have the same highest_height and highest_block_id which means that all peers have been synchronized successfully.
 
-9. View the posts
+9. View the posts.
 
 ```bash
 curl -k -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "https://localhost:8000/app/api/v1/group/01014e95-303e-4955-b06e-bf185556a729/content?num=20&reverse=false"
 ```
+
+Response:
 
 ```json
 [
@@ -256,15 +282,13 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "https:/
 
 Congratulations, You have a fully decentralized forum now. Every peer can view the forum posts from their peers.All the data belongs to you and your friends, there is no other service provider or centralized storage.
 
-10. Next
+10. Next:
 
 Add more producers to prevent outages.
 
+> [API: producers](./Tutorial.md#test-producers)
+
 ---
-
-Tips: [rum-app](https://github.com/rumsystem/rum-app) will help you create/join/post/view with a nice GUI.
-
-Developers may need [RUM Development Tutorial](./Tutorial.md).
 
 ### Run a RUM peer on server
 
@@ -272,11 +296,11 @@ Developers may need [RUM Development Tutorial](./Tutorial.md).
 2. Add a shell script to run the peer:
 
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_name_config -datadir /var/data/your_peer_name_data -keystoredir /var/data/your_peer_name_keystore
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002 -listen /ip4/0.0.0.0/tcp/7100/ws -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_nameConfig -datadir /var/data/your_peer_nameData -keystoredir /var/data/keystore -debug true
 ```
 
-[view OPTIONS](#bootstrap_peer)
+[view OPTIONS](#run_a_peer)
 
-3. Run the shell script:
+3. Run the shell script.
 
 Tips: You can use our public bootstrap peer ```/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u``` or any other online peers as bootstrap.
