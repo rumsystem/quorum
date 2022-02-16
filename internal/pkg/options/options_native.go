@@ -51,6 +51,7 @@ func (opt *NodeOptions) writeToconfig() error {
 		return err
 	}
 	v.Set("EnableNat", opt.EnableNat)
+	v.Set("EnableRumExchange", opt.EnableRumExchange)
 	v.Set("EnableDevNetwork", opt.EnableDevNetwork)
 	v.Set("SignKeyMap", opt.SignKeyMap)
 	v.Set("JWTKey", opt.JWTKey)
@@ -81,6 +82,7 @@ func (opt *NodeOptions) SetSignKeyMap(keyname, addr string) error {
 
 func writeDefaultToconfig(v *viper.Viper) error {
 	v.Set("EnableNat", true)
+	v.Set("EnableRumExchange", false)
 	v.Set("EnableDevNetwork", false)
 	v.Set("NetworkName", defaultNetworkName)
 	v.Set("MaxPeers", defaultMaxPeers)
@@ -152,6 +154,7 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 
 	options := &NodeOptions{}
 	options.EnableNat = v.GetBool("EnableNat")
+	options.EnableRumExchange = v.GetBool("EnableRumExchange")
 	options.EnableDevNetwork = v.GetBool("EnableDevNetwork")
 	options.NetworkName = v.GetString("NetworkName")
 	if options.NetworkName == "" {
