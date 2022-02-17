@@ -7,13 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"sync/atomic"
-	"time"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
@@ -161,9 +156,6 @@ func Bootstrap() error {
 	connectedPeers := wasmCtx.QNode.AddPeers(wasmCtx.Ctx, bootstraps)
 	logger.Console.Log(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
-	/* keep finding peers, and try to connect to them */
-	go StartDiscoverTask()
-
 	/* start syncing all local groups */
 	groupMgr := chain.GetGroupMgr()
 	err := groupMgr.SyncAllGroup()
@@ -178,95 +170,4 @@ func Bootstrap() error {
 	logger.Console.Log("App Syncer Started")
 
 	return nil
-}
-
-var connectCount uint32 = 0
-
-func StartDiscoverTask() {
-	wasmCtx := quorumContext.GetWASMContext()
-	var doDiscoverTask = func() {
-		logger.Console.Log("Searching for other peers...")
-		peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, quorumConfig.DefaultRendezvousString)
-		if err != nil {
-			logger.Console.Error(err.Error())
-			return
-		}
-		for peer := range peerChan {
-			curPeer := peer
-			if wasmCtx.QNode.Host.Network().Connectedness(curPeer.ID) == network.Connected {
-				// skip connected peers
-				continue
-			}
-			if IsPublicWebSocketAddr(curPeer) {
-				logger.Console.Log("Found peer:" + curPeer.String())
-				go func() {
-					pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
-					defer cancel()
-					err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
-					if err != nil {
-						logger.Console.Error("Failed to connect peer: " + curPeer.String())
-					} else {
-						curConnectedCount := atomic.AddUint32(&connectCount, 1)
-						logger.Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
-					}
-				}()
-			}
-		}
-	}
-	/* first job will start after 1 second */
-	go func() {
-		time.Sleep(1 * time.Second)
-		doDiscoverTask()
-	}()
-
-	ticker := time.NewTicker(30 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			go doDiscoverTask()
-		case <-wasmCtx.Qchan:
-			ticker.Stop()
-			wasmCtx.Cancel()
-		}
-	}
-}
-
-func IsPublicWebSocketAddr(addrInfo peer.AddrInfo) bool {
-	for _, addr := range addrInfo.Addrs {
-		supportWs := false
-		// check ws
-		for _, proto := range addr.Protocols() {
-			if proto.Name == "ws" {
-				supportWs = true
-			}
-		}
-		if !supportWs {
-			continue
-		}
-		if strings.HasPrefix(addr.String(), "/ip4/127.0.0.1/") {
-			continue
-		}
-		if strings.HasPrefix(addr.String(), "/ip4/10.") { // 10.0.0.0/8
-			continue
-		}
-		if strings.HasPrefix(addr.String(), "/ip4/172.") {
-			// 172.16.0.0/12
-			tail := strings.ReplaceAll(addr.String(), "/ip4/172.", "")
-			tailArr := strings.Split(tail, ".")
-			n, _ := strconv.Atoi(tailArr[0])
-			if n >= 16 || n <= 31 {
-				continue
-			}
-			return true
-		}
-		if strings.HasPrefix(addr.String(), "/ip4/169.254.") { // 169.254.0.0/16
-			continue
-		}
-		if strings.HasPrefix(addr.String(), "/ip4/192.168.") { // 192.168.0.0/16
-			continue
-		}
-		return true
-	}
-
-	return false
 }
