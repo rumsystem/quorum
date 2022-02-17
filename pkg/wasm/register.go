@@ -426,7 +426,7 @@ func RegisterJSFunctions() {
 		num := args[1].Int()
 		startTrx := args[2].String()
 		reverse := args[3].Bool()
-		includestarttrx := true
+		includestarttrx := false
 		if len(args) > 4 {
 			includestarttrx = args[4].Bool()
 		}
