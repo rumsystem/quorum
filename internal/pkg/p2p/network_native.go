@@ -106,10 +106,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
 	pubsubblocklist := pubsub.NewMapBlacklist()
-	pubsubblocklist.Add(peer.ID("16Uiu2HAm6TMUExfx6CjEqaJos6bXgmMR9VeqrMHYMBxWSLMz3Yn7"))
-	pubsubblocklist.Add(peer.ID("16Uiu2HAm7UFTUvafageyKsfWzkm3sRjf14vUeu6vgvG5wajqKn2j"))
-	pubsubblocklist.Add(peer.ID("16Uiu2HAmDrtUYNU2BmSrdBKPfaA7XvJtW7vMJxyRbT9Yv71j2jYr"))
-	pubsubblocklist.Add(peer.ID("16Uiu2HAmMubDCAT2cTuHkkTb4rvgJp7um6j2v1XHwJWGyE1gKx5R"))
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
