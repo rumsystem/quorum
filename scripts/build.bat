@@ -16,17 +16,18 @@
 :: If you got an error when running this .bat:
 ::     # command-line-arguments
 ::     usage: link [options] main.o 
+::     ...
 :: Try to run the command lines directly in your shell. Just like:
 ::     D:\your-work-dir\quorum> set CGO_ENABLED=0
 ::     D:\your-work-dir\quorum> set GOOS=windows
 ::     D:\your-work-dir\quorum> set GOARCH=amd64
-::     D:\your-work-dir\quorum> go build -ldflags "-X main.GitCommit=$(git rev-list -1 HEAD)" -o dist\windows_amd64\quorum.exe cmd\main.go
+::     D:\your-work-dir\quorum> go build -ldflags "-X main.GitCommit=$(git rev-list -1 HEAD)" -o dist\windows_amd64\quorum_win.exe cmd\main.go
 
 :: windows
 set CGO_ENABLED=0
 set GOOS=windows
 set GOARCH=amd64
-go build -ldflags "-X main.GitCommit=$(git rev-list -1 HEAD)" -o dist\windows_amd64\quorum.exe cmd\main.go
+go build -ldflags "-X main.GitCommit=$(git rev-list -1 HEAD)" -o dist\windows_amd64\quorum_win.exe cmd\main.go
 
 
 :: darwin
