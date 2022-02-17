@@ -145,6 +145,7 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	connMgr.UserSignPubkey = userSignPubkey
 	connMgr.ProviderPeerIdPool = make(map[string]string)
 	connMgr.ProducerPool = make(map[string]string)
+	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
 
 	connMgr.DataHandlerIface = cIface
 
@@ -166,28 +167,23 @@ func (connMgr *ConnMgr) UpdateProviderPeerIdPool(peerPubkey, peerId string) erro
 	return connMgr.InitRexSession()
 }
 
-func (connMgr *ConnMgr) AddProducer(peerPubkey string) error {
+func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	conn_log.Debug("AddProducer, groupId <%S>", connMgr.GroupId)
-	connMgr.ProducerPool[peerPubkey] = peerPubkey
-	if peerPubkey == connMgr.UserSignPubkey {
+	connMgr.ProducerPool = make(map[string]string)
+
+	for _, pubkey := range pubkeys {
+		connMgr.ProducerPool[pubkey] = pubkey
+	}
+
+	if _, ok := connMgr.ProducerPool[connMgr.UserSignPubkey]; ok {
+		conn_log.Debug("I am producer, create producer psconn, groupId <%S>", connMgr.GroupId)
 		connMgr.StableProdPsConn = true
+		connMgr.getProducerPsConn()
 	} else {
+		conn_log.Debug("I am NOT producer, create producer psconn only when needed, groupId <%S>", connMgr.GroupId)
 		connMgr.StableProdPsConn = false
 	}
 
-	return nil
-}
-
-func (connMgr *ConnMgr) RmProducer(peerPubkey string) error {
-	conn_log.Debug("RmProducer, groupId <%S>", connMgr.GroupId)
-	if _, ok := connMgr.ProducerPool[peerPubkey]; ok {
-		delete(connMgr.ProducerPool, peerPubkey)
-		if peerPubkey == connMgr.UserSignPubkey {
-			connMgr.StableProdPsConn = false
-		}
-	} else {
-		return fmt.Errorf("key not exist")
-	}
 	return nil
 }
 
@@ -269,8 +265,11 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 	}
 }
 
-func (connMgr *ConnMgr) SendBlock(blk *quorumpb.Block, networktype P2pNetworkType, psChannel ...PsConnChanel) error {
+func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
+	return connMgr.PsConns[connMgr.UserChannelId]
+}
 
+func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnChanel, chanelId ...string) error {
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -282,27 +281,44 @@ func (connMgr *ConnMgr) SendBlock(blk *quorumpb.Block, networktype P2pNetworkTyp
 	pkg.Type = quorumpb.PackageType_BLOCK
 	pkg.Data = pbBytes
 
-	//TODO: rex or pubsub
-	if networktype == RumExchange {
-		rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-		return connMgr.Rex.Publish(rummsg)
-	}
-
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
 		return err
 	}
 
-	if psChannel[0] == ProducerChannel {
+	if psChannel == ProducerChannel {
 		psconn := connMgr.getProducerPsConn()
 		return psconn.Publish(pkgBytes)
-	}
+	} else if psChannel == UserChannel {
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		psconn, err := connMgr.getSyncConn(chanelId[0])
+		if err != nil {
+			return err
+		}
 
-	if psconn, ok := connMgr.PsConns[PsConnChanel.String(psChannel[0])]; ok {
 		return psconn.Publish(pkgBytes)
 	}
 
 	return fmt.Errorf("Can not find psChannel")
+}
+
+func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
+	var pkg *quorumpb.Package
+	pkg = &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(blk)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_BLOCK
+	pkg.Data = pbBytes
+
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	return connMgr.Rex.Publish(rummsg)
+
 }
 
 func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel) error {
@@ -326,6 +342,13 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel)
 		psconn := connMgr.getProducerPsConn()
 		return psconn.Publish(pkgBytes)
 	}
+
+	/*
+		if psChannel == SyncerChannel {
+			psconn := connMgr.getSyncConn()
+			return psconn.Publish(pkgBytes)
+		}
+	*/
 
 	if psconn, ok := connMgr.PsConns[PsConnChanel.String(psChannel)]; ok {
 		return psconn.Publish(pkgBytes)
@@ -352,102 +375,6 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 func (connMgr *ConnMgr) InitialPsConn() {
 	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
-	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
+	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
 }
-
-func (connMgr *ConnMgr) SyncForward(blockId string, nodename string) error {
-	conn_log.Debug("SyncForward called, groupId <%S>", connMgr.GroupId)
-	/*
-		topBlock, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
-		if err != nil {
-			conn_log.Warningf("Get top block error, blockId <%s> at <%s>, <%s>", higestBId, grp.ChainCtx.nodename, err.Error())
-			return err
-		}
-
-		if chain.Syncer != nil {
-			return chain.Syncer.SyncForward(block)
-		}
-		return nil
-	*/
-	return nil
-}
-
-func (connMgr *ConnMgr) SyncBackward(blockId string, nodename string) error {
-	conn_log.Debug("SyncBackward called, groupId <%S>", connMgr.GroupId)
-	/*
-		topBlock, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
-		if err != nil {
-			conn_log.Warningf("Get top block error, blockId <%s> at <%s>, <%s>", higestBId, grp.ChainCtx.nodename, err.Error())
-			return err
-		}
-
-		if chain.Syncer != nil {
-			return chain.Syncer.SyncBackward(block)
-		}
-
-		return nil
-	*/
-
-	return nil
-}
-
-func (connMgr *ConnMgr) StartInitialSync(block *quorumpb.Block) error {
-	conn_log.Debugf("<%s> StartInitialSync called", connMgr.GroupId)
-
-	/*
-		if chain.Syncer != nil {
-			return chain.Syncer.SyncForward(block)
-		}
-		return nil
-	*/
-
-	return nil
-}
-
-func (connMgr *ConnMgr) StopSync() error {
-	conn_log.Debugf("<%s> StopSync called", connMgr.GroupId)
-	/*
-		if connMgr.Syncer != nil {
-			return connMgr.Syncer.StopSync()
-		}
-		return nil
-	*/
-
-	return nil
-}
-
-func (connMgr *ConnMgr) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.Block) error {
-	/*
-		if connMgr.Syncer != nil {
-			return connMgr.Syncer.AddBlockSynced(resp, block)
-		}
-		return nil
-	*/
-
-	return nil
-}
-
-func (connMgr *ConnMgr) IsSyncerReady() bool {
-	conn_log.Debugf("<%s> IsSyncerReady called", connMgr.GroupId)
-	/*
-		if chain.Syncer.Status == SYNCING_BACKWARD ||
-			chain.Syncer.Status == SYNCING_FORWARD ||
-			chain.Syncer.Status == SYNC_FAILED {
-			chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.Syncer.Status)
-			return true
-		}
-		chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
-		return false
-	*/
-
-	return false
-}
-
-//channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
-
-/*
-if producer.cIface.IsSyncerReady() {
-	return
-}
-*/

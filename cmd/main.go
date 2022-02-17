@@ -27,6 +27,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -332,6 +333,9 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
+
+		//initial conn
+		conn.InitConn()
 
 		//initial group manager
 		chain.InitGroupMgr()

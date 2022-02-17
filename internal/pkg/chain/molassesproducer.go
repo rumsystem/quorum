@@ -252,12 +252,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 		if err.Error() == "PARENT_NOT_EXIST" {
 			molaproducer_log.Debugf("<%s> parent not found, sync backward for missing blocks from <%s>", producer.groupId, candidateBlkid, err)
-			if cmgr, err := conn.GetConn().GetConnMgr(producer.groupId); err != nil {
-				return err
-			} else {
-				return cmgr.SyncBackward(candidateBlkid, producer.nodename)
-			}
-
+			return producer.cIface.GetChainCtx().SyncBackward(candidateBlkid, producer.nodename)
 		}
 	} else {
 		molaproducer_log.Debugf("<%s> block saved", producer.groupId)
@@ -269,7 +264,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 			if err != nil {
 				return err
 			}
-			err = connMgr.SendBlock(producer.blockPool[candidateBlkid], conn.PubSub, conn.ProducerChannel)
+			err = connMgr.SendBlockPsconn(producer.blockPool[candidateBlkid], conn.ProducerChannel)
 			if err != nil {
 				molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
 			}

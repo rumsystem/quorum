@@ -104,7 +104,6 @@ func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encr
 		keyname = fmt.Sprintf("%s_%s", factory.nodename, factory.groupItem.GroupId)
 	}
 	signature, err := ks.SignByKeyName(keyname, hashed)
-
 	if err != nil {
 		return trx, err
 	}

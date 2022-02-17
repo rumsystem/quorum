@@ -36,6 +36,9 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.Init(grp)
 
+	//register chainctx with conn
+	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
+
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
@@ -46,6 +49,10 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 //teardown group
 func (grp *Group) Teardown() {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
+
+	//unregisted chainctx with conn
+	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+
 	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
 }
 
@@ -99,6 +106,8 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 		return err
 	}
 
+	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
+
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
@@ -118,31 +127,17 @@ func (grp *Group) ClearGroup() error {
 
 func (grp *Group) StartSync() error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-
-	/*
-		return conn.GetConn().GetConnMgr(grp.Item.GroupId).SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
-	*/
-
-	return nil
+	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StopSync() error {
 	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
 
-	/*
-		if group.ChainCtx.Syncer.Status == chain.SYNCING_BACKWARD || group.ChainCtx.Syncer.Status == chain.SYNCING_FORWARD {
-			errorInfo := "GROUP_ALREADY_IN_SYNCING"
-			return nil, fmt.Errorf(errorInfo)
-		}
-	*/
+	if grp.ChainCtx.syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.syncer.Status == SYNCING_FORWARD {
+		grp.ChainCtx.StopSync()
+	}
 
-	/*
-		if grp.ChainCtx.Syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.Syncer.Status == SYNCING_FORWARD {
-			grp.ChainCtx.StopSync()
-		}
-
-		group_log.Infof("Group <%s> stop sync", grp.Item.GroupId)
-	*/
+	group_log.Infof("Group <%s> stop sync", grp.Item.GroupId)
 	return nil
 }
 

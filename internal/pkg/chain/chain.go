@@ -37,6 +37,8 @@ type Chain struct {
 	producerChannTimer *time.Timer
 	ProviderPeerIdPool map[string]string
 	trxFactory         *TrxFactory
+
+	syncer *Syncer
 }
 
 func (chain *Chain) Init(group *Group) error {
@@ -50,6 +52,9 @@ func (chain *Chain) Init(group *Group) error {
 	chain.trxFactory = &TrxFactory{}
 	chain.trxFactory.Init(group.Item, chain.nodename)
 
+	chain.syncer = &Syncer{}
+	chain.syncer.Init(group, chain)
+
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
 }
@@ -60,6 +65,10 @@ func (chain *Chain) GetChainCtx() *Chain {
 
 func (chain *Chain) GetTrxFactory() *TrxFactory {
 	return chain.trxFactory
+}
+
+func (chain *Chain) GetSyncer() *Syncer {
+	return chain.syncer
 }
 
 func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
@@ -77,6 +86,8 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, from peer.ID) error {
 		chain_log.Errorf("HandleTrxRex called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return errors.New("Trx Version mismatch")
 	}
+
+	//Rex Channel only support the following trx type
 	switch trx.Type {
 	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
@@ -180,11 +191,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
 				chain_log.Infof("<%s>, parent not exist, sync backward from block <%s>", chain.groupId, block.BlockId)
-				connMgr, err := conn.GetConn().GetConnMgr(chain.groupId)
-				if err != nil {
-					return err
-				}
-				return connMgr.SyncBackward(block.BlockId, chain.nodename)
+				return chain.syncer.SyncBackward(block)
 			}
 		}
 	}
@@ -199,10 +206,6 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	chain.Consensus.Producer().AddTrx(trx)
 	return nil
 }
-
-/*
-	channelId := SYNC_CHANNEL_PREFIX + producer.grpItem.GroupId + "_" + reqBlockItem.UserId
-*/
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, from peer.ID) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
@@ -416,11 +419,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 		return nil
 	}
 
-	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-		return err
-	} else {
-		return cmgr.AddBlockSynced(reqBlockResp, newBlock)
-	}
+	return chain.syncer.AddBlockSynced(reqBlockResp, newBlock)
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
@@ -444,6 +443,15 @@ func (chain *Chain) UpdProducerList() {
 		}
 		chain_log.Infof("<%s> Load producer <%s%s>", chain.groupId, item.ProducerPubkey, ownerPrefix)
 	}
+
+	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupId)
+
+	var producerspubkey []string
+	for key, _ := range chain.ProducerPool {
+		producerspubkey = append(producerspubkey, key)
+	}
+
+	connMgr.UpdProducers(producerspubkey)
 
 	//update announced producer result
 	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
@@ -612,5 +620,59 @@ func (chain *Chain) CreateConsensus() error {
 		chain.Consensus.SetUser(user)
 	}
 
-	return conn.GetConn().RegisterChainCtx(chain.groupId, chain.group.Item.OwnerPubKey, chain.group.Item.UserSignPubkey, chain)
+	return nil
+}
+
+func (chain *Chain) SyncForward(blockId string, nodename string) error {
+	chain_log.Debug("SyncForward called, groupId <%S>", chain.groupId)
+
+	topBlock, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
+	if err != nil {
+		chain_log.Warningf("Get top block error, blockId <%s>, <%s>", blockId, err.Error())
+		return err
+	}
+
+	if chain.syncer != nil {
+		return chain.syncer.SyncForward(topBlock)
+	}
+	return nil
+
+}
+
+func (chain *Chain) SyncBackward(blockId string, nodename string) error {
+	chain_log.Debug("SyncBackward called, groupId <%S>", chain.groupId)
+
+	block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
+	if err != nil {
+		chain_log.Warningf("Get block error, blockId <%s>, <%s>", blockId, err.Error())
+		return err
+	}
+
+	if chain.syncer != nil {
+		return chain.syncer.SyncBackward(block)
+	}
+
+	return nil
+
+}
+
+func (chain *Chain) StopSync() error {
+	chain_log.Debug("StopSync called, groupId <%S>", chain.groupId)
+	if chain.syncer != nil {
+		return chain.syncer.StopSync()
+	}
+	return nil
+}
+
+func (chain *Chain) IsSyncerIdle() bool {
+	chain_log.Debug("IsSyncerIdle called, groupId <%S>", chain.groupId)
+
+	if chain.syncer.Status == SYNCING_BACKWARD ||
+		chain.syncer.Status == SYNCING_FORWARD ||
+		chain.syncer.Status == SYNC_FAILED {
+		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncer.Status)
+		return true
+	}
+	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
+	return false
 }
