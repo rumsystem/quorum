@@ -73,7 +73,7 @@ func Upload() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("upload to ..", ApiPrefix)
+	fmt.Println("uploading to ..", ApiPrefix)
 	f, err := os.Open(filepath.Join(segmentsdir, "fileinfo"))
 	if err != nil {
 		return err
@@ -90,14 +90,13 @@ func Upload() error {
 	obj := &quorumpb.Object{Type: "File", Name: "fileinfo", File: file}
 	target := &quorumpb.Object{Id: groupid, Type: "Group"}
 	post := &quorumpb.Activity{Type: "Add", Object: obj, Target: target}
-	r := PostFileToGroupApi(ApiPrefix, groupid, post)
+	trxid, r := PostFileToGroupApi(ApiPrefix, groupid, post)
 	if r != nil {
 		return fmt.Errorf("post %s failed, err %s", obj.Name, r)
 	} else {
-		log.Printf("post %s succeed", obj.Name)
+		log.Printf("post %s succeed at %s/%s", obj.Name, groupid, trxid)
 	}
 	for _, seg := range *fileinfo.Segments {
-		fmt.Println(seg)
 		f, err := os.Open(filepath.Join(segmentsdir, seg.Id))
 		if err != nil {
 			return err
@@ -112,21 +111,21 @@ func Upload() error {
 		obj := &quorumpb.Object{Type: "File", Name: seg.Id, File: file}
 		target := &quorumpb.Object{Id: groupid, Type: "Group"}
 		post := &quorumpb.Activity{Type: "Add", Object: obj, Target: target}
-		r = PostFileToGroupApi(ApiPrefix, groupid, post)
+		trxid, r = PostFileToGroupApi(ApiPrefix, groupid, post)
 		if r != nil {
 			return fmt.Errorf("post %s failed, err: %s", obj.Name, r)
 		} else {
-			log.Printf("post %s succeed", obj.Name)
+			log.Printf("post %s succeed at %s/%s", obj.Name, groupid, trxid)
 		}
 	}
 	return nil
 }
 
-func PostFileToGroupApi(apiPrefix, groupid string, post *quorumpb.Activity) error {
+func PostFileToGroupApi(apiPrefix, groupid string, post *quorumpb.Activity) (string, error) {
 	data, err := json.Marshal(post)
 	trxresult, err := HttpPostToGroup(apiPrefix, data)
 	if err != nil {
-		return err
+		return "", err
 	}
 	for {
 		result, _ := HttpCheckTrxId(ApiPrefix, groupid, trxresult.TrxId)
@@ -135,7 +134,7 @@ func PostFileToGroupApi(apiPrefix, groupid string, post *quorumpb.Activity) erro
 		}
 		time.Sleep(5 * time.Second)
 	}
-	return nil
+	return trxresult.TrxId, nil
 }
 
 func Split() error {
