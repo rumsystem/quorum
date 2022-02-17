@@ -50,7 +50,7 @@ func (chain *Chain) Init(group *Group) error {
 	chain.chaindata = &ChainData{nodectx.GetDbMgr()}
 
 	chain.trxFactory = &TrxFactory{}
-	chain.trxFactory.Init(group.Item, chain.nodename)
+	chain.trxFactory.Init(group.Item)
 
 	chain.syncer = &Syncer{}
 	chain.syncer.Init(group, chain)

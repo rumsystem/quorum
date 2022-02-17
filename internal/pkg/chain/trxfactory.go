@@ -30,10 +30,9 @@ type TrxFactory struct {
 	groupItem *quorumpb.GroupItem
 }
 
-func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem, nodename string) {
+func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem) {
 	factory.groupItem = groupItem
 	factory.groupId = groupItem.GroupId
-	factory.nodename = nodename
 }
 
 func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
