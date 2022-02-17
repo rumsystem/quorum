@@ -13,6 +13,7 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
@@ -72,7 +73,12 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
-	options := []pubsub.Option{pubsub.WithPeerExchange(true)}
+	pubsubblocklist := pubsub.NewMapBlacklist()
+	pubsubblocklist.Add(peer.ID("16Uiu2HAm6TMUExfx6CjEqaJos6bXgmMR9VeqrMHYMBxWSLMz3Yn7"))
+	pubsubblocklist.Add(peer.ID("16Uiu2HAm7UFTUvafageyKsfWzkm3sRjf14vUeu6vgvG5wajqKn2j"))
+	pubsubblocklist.Add(peer.ID("16Uiu2HAmDrtUYNU2BmSrdBKPfaA7XvJtW7vMJxyRbT9Yv71j2jYr"))
+	pubsubblocklist.Add(peer.ID("16Uiu2HAmMubDCAT2cTuHkkTb4rvgJp7um6j2v1XHwJWGyE1gKx5R"))
+	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodeNetwork)
 
@@ -112,7 +118,7 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	nodeName := "default"
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodeName)
 
-	newNode := &Node{NetworkName: nodeNetwork, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
+	newNode := &Node{NetworkName: nodeNetwork, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
 
 	go newNode.eventhandler(ctx)
 
