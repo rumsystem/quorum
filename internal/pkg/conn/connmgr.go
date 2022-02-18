@@ -47,7 +47,7 @@ type ConnMgr struct {
 	ProducerPool          map[string]string
 	StableProdPsConn      bool
 	producerChannTimer    *time.Timer
-	syncChannelTimersPool map[string]*time.Timer
+	SyncChannelTimersPool map[string]*time.Timer
 	DataHandlerIface      iface.ChainDataHandlerIface
 	PsConns               map[string]*pubsubconn.P2pPubSubConn
 	Rex                   *p2p.RexService
@@ -92,8 +92,8 @@ func (t PsConnChanel) String() string {
 	}
 }
 
-const CLOSE_PRD_CHANN_TIMER time.Duration = 5  //5s
-const CLOSE_SYNC_CHANN_TIMER time.Duration = 5 //5s
+const CLOSE_PRD_CHANN_TIMER time.Duration = 20  //5s
+const CLOSE_SYNC_CHANN_TIMER time.Duration = 20 //5s
 
 func InitConn() error {
 	conn_log.Debug("Initconn called")
@@ -103,7 +103,7 @@ func InitConn() error {
 }
 
 func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface iface.ChainDataHandlerIface) error {
-	conn_log.Debugf("RegisterChainCtx called, groupId <%S>", groupId)
+	conn_log.Debugf("RegisterChainCtx called, groupId <%s>", groupId)
 	connMgr := &ConnMgr{}
 	connMgr.InitGroupConnMgr(groupId, ownerPubkey, userSignPubkey, cIface)
 	conn.ConnMgrs[groupId] = connMgr
@@ -111,7 +111,7 @@ func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, 
 }
 
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
-	conn_log.Debugf("UnregisterChainCtx called, groupId <%S>", groupId)
+	conn_log.Debugf("UnregisterChainCtx called, groupId <%s>", groupId)
 
 	connMgr, err := conn.GetConnMgr(groupId)
 
@@ -136,7 +136,7 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 }
 
 func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface iface.ChainDataHandlerIface) error {
-	conn_log.Debugf("InitGroupConnMgr called, groupId <%S>", groupId)
+	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
 	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
 	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
 	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
@@ -146,6 +146,7 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	connMgr.ProviderPeerIdPool = make(map[string]string)
 	connMgr.ProducerPool = make(map[string]string)
 	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
+	connMgr.SyncChannelTimersPool = make(map[string]*time.Timer)
 
 	connMgr.DataHandlerIface = cIface
 
@@ -162,13 +163,13 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 }
 
 func (connMgr *ConnMgr) UpdateProviderPeerIdPool(peerPubkey, peerId string) error {
-	conn_log.Debug("UpdateProviderPeerIdPool called, groupId <%S>", connMgr.GroupId)
+	conn_log.Debugf("UpdateProviderPeerIdPool called, groupId <%s>", connMgr.GroupId)
 	connMgr.ProviderPeerIdPool[peerPubkey] = peerId
 	return connMgr.InitRexSession()
 }
 
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
-	conn_log.Debug("AddProducer, groupId <%S>", connMgr.GroupId)
+	conn_log.Debugf("AddProducer, groupId <%s>", connMgr.GroupId)
 	connMgr.ProducerPool = make(map[string]string)
 
 	for _, pubkey := range pubkeys {
@@ -176,11 +177,11 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	}
 
 	if _, ok := connMgr.ProducerPool[connMgr.UserSignPubkey]; ok {
-		conn_log.Debug("I am producer, create producer psconn, groupId <%S>", connMgr.GroupId)
+		conn_log.Debugf("I am producer, create producer psconn, groupId <%s>", connMgr.GroupId)
 		connMgr.StableProdPsConn = true
 		connMgr.getProducerPsConn()
 	} else {
-		conn_log.Debug("I am NOT producer, create producer psconn only when needed, groupId <%S>", connMgr.GroupId)
+		conn_log.Debugf("I am NOT producer, create producer psconn only when needed, groupId <%s>", connMgr.GroupId)
 		connMgr.StableProdPsConn = false
 	}
 
@@ -188,7 +189,7 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 }
 
 func (connMgr *ConnMgr) InitRexSession() error {
-	conn_log.Debug("InitSession called, groupId <%S>", connMgr.GroupId)
+	conn_log.Debugf("InitSession called, groupId <%s>", connMgr.GroupId)
 	if peerId, ok := connMgr.ProviderPeerIdPool[connMgr.OwnerPubkey]; ok {
 		err := nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.ProducerChannelId)
 		if err != nil {
@@ -205,7 +206,7 @@ func (connMgr *ConnMgr) InitRexSession() error {
 }
 
 func (connMgr *ConnMgr) LeaveAllChannels() error {
-	conn_log.Debug("LeaveChannel called, groupId <%S>", connMgr.GroupId)
+	conn_log.Debugf("LeaveChannel called, groupId <%s>", connMgr.GroupId)
 	for channelId, _ := range connMgr.PsConns {
 		nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
 		delete(connMgr.PsConns, channelId)
@@ -243,7 +244,7 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 
 	if psconn, ok := connMgr.PsConns[channelId]; ok {
 		conn_log.Debugf("<%s> reset connection timer for syncer psconn <%s>", connMgr.GroupId, channelId)
-		if timer, ok := connMgr.syncChannelTimersPool[channelId]; ok {
+		if timer, ok := connMgr.SyncChannelTimersPool[channelId]; ok {
 			timer.Stop()
 			timer.Reset(CLOSE_SYNC_CHANN_TIMER * time.Second)
 		} else {
@@ -256,11 +257,11 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 		conn_log.Debugf("<%s> create close_conn timer for syncer channel <%s>", connMgr.GroupId, channelId)
 		syncTimer := time.AfterFunc(CLOSE_PRD_CHANN_TIMER*time.Second, func() {
 			conn_log.Debugf("<%s> time up, close syncer channel <%s>", connMgr.GroupId, channelId)
-			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
+			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
 			delete(connMgr.PsConns, channelId)
-			delete(connMgr.syncChannelTimersPool, channelId)
+			delete(connMgr.SyncChannelTimersPool, channelId)
 		})
-		connMgr.syncChannelTimersPool[channelId] = syncTimer
+		connMgr.SyncChannelTimersPool[channelId] = syncTimer
 		return syncerPsconn, nil
 	}
 }
@@ -270,6 +271,8 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 }
 
 func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnChanel, chanelId ...string) error {
+	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
+
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -287,17 +290,19 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 	}
 
 	if psChannel == ProducerChannel {
+		conn_log.Debugf("<%s> Send block via Producer_Channel", connMgr.GroupId)
 		psconn := connMgr.getProducerPsConn()
 		return psconn.Publish(pkgBytes)
 	} else if psChannel == UserChannel {
+		conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
 		return psconn.Publish(pkgBytes)
 	} else if psChannel == SyncerChannel {
+		conn_log.Debugf("<%s> Send block via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
 		psconn, err := connMgr.getSyncConn(chanelId[0])
 		if err != nil {
 			return err
 		}
-
 		return psconn.Publish(pkgBytes)
 	}
 
@@ -321,7 +326,8 @@ func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
 
 }
 
-func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel) error {
+func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
+	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -339,18 +345,19 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel)
 	}
 
 	if psChannel == ProducerChannel {
+		conn_log.Debugf("<%s> Send trx via Producer_Channel", connMgr.GroupId)
 		psconn := connMgr.getProducerPsConn()
 		return psconn.Publish(pkgBytes)
-	}
-
-	/*
-		if psChannel == SyncerChannel {
-			psconn := connMgr.getSyncConn()
-			return psconn.Publish(pkgBytes)
+	} else if psChannel == UserChannel {
+		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
+		psconn, err := connMgr.getSyncConn(channelId[0])
+		if err != nil {
+			return err
 		}
-	*/
-
-	if psconn, ok := connMgr.PsConns[PsConnChanel.String(psChannel)]; ok {
 		return psconn.Publish(pkgBytes)
 	}
 

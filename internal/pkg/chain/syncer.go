@@ -58,8 +58,8 @@ func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
 
 // sync block "forward"
 func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> SyncForward called", syncer.GroupId)
 
@@ -88,8 +88,8 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 
 //Sync block "backward"
 func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> SyncBackward called", syncer.GroupId)
 
@@ -112,8 +112,8 @@ func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
 }
 
 func (syncer *Syncer) StopSync() error {
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> StopSync called", syncer.GroupId)
 	syncer.stopWaitBlock()
@@ -123,8 +123,8 @@ func (syncer *Syncer) StopSync() error {
 }
 
 func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> ContinueSync called", syncer.GroupId)
 	syncer.stopWaitBlock()
@@ -146,8 +146,8 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 
 func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.Block) error {
 
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> AddBlockSynced called", syncer.GroupId)
 	if !(syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD) {
@@ -215,8 +215,8 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 }
 
 func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> askNextBlock called", syncer.GroupId)
 
@@ -244,8 +244,8 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 }
 
 func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
-	syncer.locker.Lock()
-	defer syncer.locker.Unlock()
+	//syncer.locker.Lock()
+	//defer syncer.locker.Unlock()
 
 	syncer_log.Debugf("<%s> askPreviousBlock called", syncer.GroupId)
 

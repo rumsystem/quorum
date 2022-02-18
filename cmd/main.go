@@ -449,7 +449,6 @@ func main() {
 		logging.SetLogLevel("main", "debug")
 		logging.SetLogLevel("crypto", "debug")
 		logging.SetLogLevel("network", "debug")
-		//logging.SetLogLevel("pubsub", "debug")
 		logging.SetLogLevel("autonat", "debug")
 		logging.SetLogLevel("chain", "debug")
 		logging.SetLogLevel("dbmgr", "debug")
@@ -460,9 +459,11 @@ func main() {
 		logging.SetLogLevel("user", "debug")
 		logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("trxmgr", "debug")
+		logging.SetLogLevel("conn", "debug")
 		//logging.SetLogLevel("rumexchange", "debug")
 		//logging.SetLogLevel("ping", "debug")
 		//logging.SetLogLevel("chan", "debug")
+		//logging.SetLogLevel("pubsub", "debug")
 	}
 
 	if *help {
