@@ -429,7 +429,7 @@ func RegisterJSFunctions() {
 		includestarttrx := args[4].Bool()
 
 		senders := []string{}
-		for i := 4; i < len(args); i += 1 {
+		for i := 5; i < len(args); i += 1 {
 			sender := args[i].String()
 			senders = append(senders, sender)
 		}
