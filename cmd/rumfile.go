@@ -35,9 +35,13 @@ const ChunkSize int = 150 * 1024
 
 func Download() error {
 	var groupid, trxid string
+	var destdir string
 	fs := flag.NewFlagSet("download", flag.ContinueOnError)
 	fs.StringVar(&groupid, "groupid", "", "group_id of the SeedNetwork")
 	fs.StringVar(&trxid, "trxid", "", "trx_id of the fileinfo")
+	fs.StringVar(&ApiPrefix, "api", "https://localhost:8000", "api prefix of the rumservice")
+	fs.StringVar(&destdir, "dir", ".", "the file segments dir.(the result of split cmd)")
+
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		return err
 	}
@@ -49,6 +53,50 @@ func Download() error {
 		fs.PrintDefaults()
 	}
 	fmt.Printf("download...%s from group %s with  %s\n", trxid, groupid, ApiPrefix)
+	//first, get the fileinfo file
+	fileobj, _, err := HttpGetFileFromGroup(ApiPrefix, groupid, trxid)
+	if err != nil {
+		return err
+	}
+	if strings.ToLower(fileobj.Type) != "file" || strings.ToLower(fileobj.Name) != "fileinfo" {
+		return fmt.Errorf("can't find the fileinfo")
+	}
+
+	fileinfo, err := ParseFileinfo(fileobj.File)
+	if err != nil {
+		return err
+	}
+	if len(*fileinfo.Segments) == 0 {
+		return fmt.Errorf("no file segments in the fileinfo")
+	}
+	log.Printf("file %s has %d segments, downloading...", fileinfo.Name, len(*fileinfo.Segments))
+
+	f, err := os.Create(filepath.Join(destdir, fileinfo.Name))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	readnexttrxid := trxid
+	for _, seg := range *fileinfo.Segments {
+		fileobj, trxid, err := HttpGetNextFileFromGroupByTrx(ApiPrefix, groupid, readnexttrxid)
+		if err != nil {
+			return err
+		}
+		if fileobj.Name == seg.Id {
+			segcontent, err := ParseFileSegment(fileobj)
+			if err != nil {
+				return err
+			}
+
+			//verify sha256 and write
+			f.Write(segcontent)
+			fmt.Println("read file seg content length:", len(segcontent))
+		}
+		readnexttrxid = trxid
+	}
+	f.Close()
+	//reopen file and verify file sha256
 	return nil
 }
 
@@ -84,8 +132,6 @@ func Upload() error {
 		return err
 	}
 	//prepare files , build the fileinfo ,  post to api
-	//{"type":"Add","object":{"type":"File","name":"xab","file":{"id":"xab", "compression":"none", "mediaType":"application/octet-stream", "content":""}},"target":{"id":"f1858fba-093b-4ba6-88ed-4dd30576a011","type":"Group"}}' | curl --insecure -X POST -H 'Content-Type: application/json' -d @- https://127.0.0.1:8004/api/v1/group/content
-	//#curl --insecure -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"File","name":"fileinfo","file":{"compression":"gz", "mediaType":"application/json", "content":"H4sICMLJAmIAA2ZpbGVpbmZvLmpzb24AZc3BTsMwDAbg+56iypUCSZy4zW57ByQOiIMTOyPS2lVrh4BpEq/B6/EktKAhIXy0f//faVXNozrhQnevg6i1omHYlURT2fe3Mhzj1VsZVP2T66lbIsPWmOvS0VbGmyVyOU9l2i33zVwgn+8fY7XhZ+mn40HGqvTV/b5nOeyo58vH+ETW4/xiGUNjUQfLMSIZMRmxyTlpQEs+RY1gIYYYQELOgik7SsYAUHA8V1wKZdvN4qjWD9+LZU6q8Ey8EKn6l6xVMM5aQt1Ajr4hnXLLWlNgq6XNAgvqbWpMaNk1rFlbG8GD8QgxclDn+j8R/xKI7I2OiDGziE0JvUicWRfIGxEg5KZtAHwrLukozoOD6A1SSNqo87fwuDqvvgB8yM9+qgEAAA=="}},"target":{"id":"f1858fba-093b-4ba6-88ed-4dd30576a011","type":"Group"}}' https://127.0.0.1:8004/api/v1/group/content
 	file := &quorumpb.File{Compression: quorumpb.File_none, MediaType: "application/json", Content: content}
 	obj := &quorumpb.Object{Type: "File", Name: "fileinfo", File: file}
 	target := &quorumpb.Object{Id: groupid, Type: "Group"}
@@ -96,6 +142,7 @@ func Upload() error {
 	} else {
 		log.Printf("post %s succeed at %s/%s", obj.Name, groupid, trxid)
 	}
+
 	for _, seg := range *fileinfo.Segments {
 		f, err := os.Open(filepath.Join(segmentsdir, seg.Id))
 		if err != nil {
@@ -192,6 +239,14 @@ type TrxResult struct {
 type Trx struct {
 	TrxId   string `json:"TrxId"`
 	GroupId string `json:"GroupId"`
+}
+
+type GroupContentObjectItem struct {
+	TrxId     string
+	Publisher string
+	Content   quorumpb.Object
+	TypeUrl   string
+	TimeStamp int64
 }
 
 func WriteFileinfo(segmentpath string, fileinfo *Fileinfo) {
@@ -516,4 +571,89 @@ func HttpPostToGroup(ApiPrefix string, jsondata []byte) (*TrxResult, error) {
 		err = json.Unmarshal(body, &trxresult)
 		return trxresult, err
 	}
+}
+
+func HttpGetFromContentApi(ApiPrefix string, groupid string, trxid string, num int, includetrx bool) ([]byte, error) {
+	Url := fmt.Sprintf("%s/app/api/v1/group/%s/content?num=1&starttrx=%s&reverse=false&includestarttrx=%t", ApiPrefix, groupid, trxid, includetrx)
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err := http.NewRequest("POST", Url, bytes.NewBuffer([]byte(`{"senders":[]}`)))
+	if err != nil {
+		log.Printf("new http request  err: %s", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("post add tasks err: %s", err)
+		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("http err code %d", resp.StatusCode)
+	} else {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		return body, err
+	}
+}
+
+func HttpGetNextFileFromGroupByTrx(ApiPrefix string, groupid string, trxid string) (*quorumpb.Object, string, error) {
+	body, err := HttpGetFromContentApi(ApiPrefix, groupid, trxid, 1, false)
+	if err != nil {
+		return nil, "", err
+	}
+	groupcontentlist := []GroupContentObjectItem{}
+	err = json.Unmarshal(body, &groupcontentlist)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(groupcontentlist) == 1 {
+		contentobj := groupcontentlist[0]
+		return &contentobj.Content, contentobj.TrxId, nil
+	} else {
+		return nil, "", fmt.Errorf("content item more than 1, error")
+	}
+}
+
+func HttpGetFileFromGroup(ApiPrefix string, groupid string, trxid string) (*quorumpb.Object, string, error) {
+
+	body, err := HttpGetFromContentApi(ApiPrefix, groupid, trxid, 1, true)
+	if err != nil {
+		return nil, trxid, err
+	}
+	groupcontentlist := []GroupContentObjectItem{}
+	err = json.Unmarshal(body, &groupcontentlist)
+	if err != nil {
+		return nil, trxid, err
+	}
+	if len(groupcontentlist) == 1 {
+		contentobj := groupcontentlist[0]
+		return &contentobj.Content, trxid, nil
+	} else {
+		return nil, trxid, fmt.Errorf("content item more than 1, error")
+	}
+
+	//curl --insecure -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "https://localhost:8004/app/api/v1/group/a6ceb724-02c3-4c7c-a50e-846389a6e887/content?num=1&starttrx=cac0fca3-6927-43f5-9e5d-3f8c1906ee2e&reverse=false&includestarttrx=true"
+
+}
+
+func ParseFileinfo(fileinfocontent *quorumpb.File) (*Fileinfo, error) {
+	var fileinfo *Fileinfo
+	err := json.Unmarshal(fileinfocontent.Content, &fileinfo)
+	return fileinfo, err
+}
+
+func ParseFileSegment(fileobj *quorumpb.Object) ([]byte, error) {
+	if fileobj.Type != "File" {
+		return nil, fmt.Errorf("not a valid file segment, type:%s", fileobj.Type)
+	}
+	if fileobj.File.MediaType != "application/octet-stream" {
+		return nil, fmt.Errorf("segment not include a valid file Type, type:%s", fileobj.File.MediaType)
+	}
+
+	if fileobj.File.Compression == quorumpb.File_none {
+
+	} else {
+		return nil, fmt.Errorf("unsupported file compression type:%s", fileobj.File.Compression)
+	}
+
+	return fileobj.File.Content, nil
 }
