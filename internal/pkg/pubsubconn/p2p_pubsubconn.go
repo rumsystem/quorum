@@ -2,10 +2,12 @@ package pubsubconn
 
 import (
 	"context"
+	"fmt"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"sync"
 )
 
 var channel_log = logging.Logger("chan")
@@ -18,21 +20,22 @@ type P2pPubSubConn struct {
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
+	mu           sync.RWMutex
+	cancel       context.CancelFunc
 }
 
 type PubSubConnMgr struct {
 	Ctx      context.Context
 	ps       *pubsub.PubSub
 	nodename string
-	connmgr  map[string]*P2pPubSubConn
+	connmgr  sync.Map
 }
 
 var pubsubconnmgr *PubSubConnMgr
 
 func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) *PubSubConnMgr {
 	if pubsubconnmgr == nil {
-		connmap := map[string]*P2pPubSubConn{}
-		pubsubconnmgr = &PubSubConnMgr{ctx, ps, nodename, connmap}
+		pubsubconnmgr = &PubSubConnMgr{Ctx: ctx, ps: ps, nodename: nodename}
 	}
 	return pubsubconnmgr
 }
@@ -41,26 +44,37 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 }
 
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
-	_, ok := pscm.connmgr[channelId]
+	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
-		psconn := &P2pPubSubConn{Ctx: pscm.Ctx, ps: pscm.ps, nodename: pscm.nodename}
+		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
+		psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: pscm.ps, nodename: pscm.nodename}
 		if chain != nil {
 			psconn.JoinChannel(channelId, chain)
 		} else {
 			psconn.JoinChannelAsExchange(channelId)
 		}
-		pscm.connmgr[channelId] = psconn
+		pscm.connmgr.Store(channelId, psconn)
 	}
-	return pscm.connmgr[channelId]
+	psconn, _ := pscm.connmgr.Load(channelId)
+	return psconn.(*P2pPubSubConn)
 }
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
-	_, ok := pscm.connmgr[channelId]
+	psconni, ok := pscm.connmgr.Load(channelId)
+	psconn := psconni.(*P2pPubSubConn)
 	if ok == true {
-		psconn := pscm.connmgr[channelId]
-		psconn.Subscription.Cancel()
-		psconn.Topic.Close()
-		delete(pscm.connmgr, channelId)
+		psconn.mu.Lock()
+		defer psconn.mu.Unlock()
+		if psconn.cancel != nil {
+			psconn.cancel()
+		}
+		if psconn.Subscription != nil {
+			psconn.Subscription.Cancel()
+		}
+		if psconn.Topic != nil {
+			psconn.Topic.Close()
+		}
+		pscm.connmgr.Delete(channelId)
 		channel_log.Infof("Leave channel <%s> done", channelId)
 	} else {
 		channel_log.Infof("psconn channel <%s> not exist", channelId)
@@ -68,9 +82,10 @@ func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 
 }
 
-func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
-	return &P2pPubSubConn{Ctx: ctx, ps: ps, nodename: nodename}
-}
+//func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
+//	ctxwithcancel, cancel := context.WithCancel(ctx)
+//	return &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: ps, nodename: nodename}
+//}
 
 func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 	var err error
@@ -92,7 +107,6 @@ func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 		channel_log.Infof("Subscribe <%s> done", cId)
 	}
 
-	go psconn.handleExchangeChannel()
 	//TODO: add a timer to leave the exchange channel
 	return nil
 }
@@ -120,17 +134,23 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
 		channel_log.Infof("Subscribe <%s> done", cId)
 	}
 
-	go psconn.handleGroupChannel()
+	go psconn.handleGroupChannel(psconn.Ctx)
 	return nil
 }
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
+
+	psconn.mu.Lock()
+	defer psconn.mu.Unlock()
+	if psconn.Topic == nil {
+		return fmt.Errorf("Topic has been closed.")
+	}
 	return psconn.Topic.Publish(psconn.Ctx, data)
 }
 
-func (psconn *P2pPubSubConn) handleGroupChannel() error {
+func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 	for {
-		msg, err := psconn.Subscription.Next(psconn.Ctx)
+		msg, err := psconn.Subscription.Next(ctx)
 		if err == nil {
 			var pkg quorumpb.Package
 			err = proto.Unmarshal(msg.Data, &pkg)
@@ -161,24 +181,6 @@ func (psconn *P2pPubSubConn) handleGroupChannel() error {
 			}
 		} else {
 			channel_log.Debugf(err.Error())
-			return err
-		}
-	}
-}
-
-func (psconn *P2pPubSubConn) handleExchangeChannel() error {
-	for {
-		_, err := psconn.Subscription.Next(psconn.Ctx)
-		if err == nil {
-			//channel_log.Infof("recv data: %s from channel: %s", msg.Data, psconn.Cid)
-			//if string(msg.Data[:]) == "ping" {
-			//	channel_log.Infof("recv normal msg and send pong resp: %s", msg.Data)
-			//	psconn.Publish([]byte("pong"))
-			//} else {
-			//	channel_log.Infof("recv data: %s from channel: %s", msg.Data, psconn.Cid)
-			//}
-		} else {
-			channel_log.Errorf(err.Error())
 			return err
 		}
 	}

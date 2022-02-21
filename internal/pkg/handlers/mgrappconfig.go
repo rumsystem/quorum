@@ -77,7 +77,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		return nil, errors.New("Can not find group")
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		return nil, errors.New("Only group owner can add or remove user to blocklist")
+		return nil, errors.New("Only group owner can add or remove config of it")
 	} else {
 		var buffer bytes.Buffer
 		buffer.Write([]byte(item.GroupId))

@@ -105,11 +105,12 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
-	options := []pubsub.Option{pubsub.WithPeerExchange(true)}
+	pubsubblocklist := pubsub.NewMapBlacklist()
+	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
-
-	var rexservice *RexService
+	peerStatus := NewPeerStatus()
+	//var rexservice *RexService
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	if isBootstrap == true {
@@ -122,8 +123,8 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
 	} else {
-		rexservice = NewRexService(host, nodenetworkname, ProtocolPrefix, rexnotification)
-		rexservice.SetDelegate()
+		//rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
+		//rexservice.SetDelegate()
 	}
 
 	var ps *pubsub.PubSub
@@ -161,7 +162,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
 
 	//reconnect peers
 

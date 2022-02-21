@@ -234,6 +234,34 @@ func CreateGroup(data CreateGroupReqStruct) ([]byte, error) {
 	return httpPost(url, json_data)
 }
 
+func GetGroupSeed(gid string) (*handlers.GroupSeed, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/seed", ApiServer, gid)
+	ret := handlers.GroupSeed{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
+func DoBackup() (*qApi.BackupResult, error) {
+	url := fmt.Sprintf("%s/api/v1/backup", ApiServer)
+	ret := qApi.BackupResult{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
 func LeaveGroup(gid string) (*GroupLeaveRetStruct, error) {
 	data := LeaveGroupReqStruct{gid}
 	url := ApiServer + "/api/v1/group/leave"

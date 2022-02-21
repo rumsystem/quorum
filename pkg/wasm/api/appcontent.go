@@ -26,11 +26,11 @@ type GroupContentResp struct {
 	Data *[]GroupContent `json:"data"`
 }
 
-func GetContent(groupId string, num int, startTrx string, reverse bool, senders []string) (*GroupContentResp, error) {
+func GetContent(groupId string, num int, startTrx string, reverse bool, starttrxinclude bool, senders []string) (*GroupContentResp, error) {
 	data := []GroupContent{}
 
 	wasmCtx := quorumContext.GetWASMContext()
-	trxids, err := wasmCtx.AppDb.GetGroupContentBySenders(groupId, senders, startTrx, num, reverse)
+	trxids, err := wasmCtx.AppDb.GetGroupContentBySenders(groupId, senders, startTrx, num, reverse, starttrxinclude)
 	if err != nil {
 		return nil, err
 	}

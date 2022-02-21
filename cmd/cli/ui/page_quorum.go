@@ -15,6 +15,7 @@ import (
 
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
+	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
@@ -165,6 +166,55 @@ func QuorumCmdSendHandler(cmd string) {
 // CMD /group.create handler
 func QuorumNewGroupHandler() {
 	CreateGroupForm()
+}
+
+func QuorumGetGroupSeedHandler() {
+	if quorumData.GetCurrentGroup() == "" {
+		Error("No Group", "Please select a group first.")
+		return
+	}
+	go func() {
+		seed, err := api.GetGroupSeed(quorumData.GetCurrentGroup())
+		if err != nil {
+			Error("Fetch Seed", err.Error())
+			return
+		}
+		seedBytes, err := json.Marshal(seed)
+		if err != nil {
+			Error("Fetch Seed", err.Error())
+			return
+		}
+		clipboard.WriteAll(string(seedBytes))
+		tmpFile, err := SaveSeedToTmpFile(seedBytes)
+		if err != nil {
+			Error("Failed to cache group seed", err.Error())
+			return
+		}
+		Info("Seed", "Seed is copied to your clipboard, if that is not working, check tmp file: "+tmpFile.Name())
+	}()
+}
+
+func QuorumBackupHandler() {
+	go func() {
+		res, err := api.DoBackup()
+		if err != nil {
+			Error("Backup", err.Error())
+			return
+		}
+		backupBytes, err := json.Marshal(res)
+		if err != nil {
+			Error("Backup", err.Error())
+			return
+		}
+		tmpFile, err := SaveToTmpFile(backupBytes, "backup-")
+		if err != nil {
+			Error("Failed to copy backup file", err.Error())
+			return
+		}
+		tmpFileName := tmpFile.Name()
+		clipboard.WriteAll(tmpFileName)
+		Info("Backup", fmt.Sprintf("Backup file is dumped to the tmp file: %s, use `quorum -restore` to restore", tmpFileName))
+	}()
 }
 
 // CMD /group.admin

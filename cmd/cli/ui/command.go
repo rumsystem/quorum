@@ -14,19 +14,21 @@ var cmdInput = cview.NewInputField()
 var cmdMode = false
 
 const (
-	CMD_QUORUM_CONNECT     string = "/connect"
-	CMD_QUORUM_JOIN        string = "/join"
-	CMD_QUORUM_APPLY_TOKEN string = "/token.apply"
-	CMD_QUORUM_SYNC_GROUP  string = "/group.sync"
-	CMD_QUORUM_NEW_GROUP   string = "/group.create"
-	CMD_QUORUM_LEAVE_GROUP string = "/group.leave"
-	CMD_QUORUM_DEL_GROUP   string = "/group.delete"
-	CMD_QUORUM_GROUP_ADMIN string = "/group.admin"
-	CMD_CONFIG_RELOAD      string = "/config.reload"
-	CMD_CONFIG_SAVE        string = "/config.save"
-	CMD_MODE_BLOCKS        string = "/mode.blocks"
-	CMD_MODE_QUORUM        string = "/mode.quorum"
-	CMD_MODE_NETWORK       string = "/mode.network"
+	CMD_QUORUM_CONNECT        string = "/connect"
+	CMD_QUORUM_BACKUP         string = "/backup"
+	CMD_QUORUM_JOIN           string = "/join"
+	CMD_QUORUM_APPLY_TOKEN    string = "/token.apply"
+	CMD_QUORUM_SYNC_GROUP     string = "/group.sync"
+	CMD_QUORUM_GET_GROUP_SEED string = "/group.seed"
+	CMD_QUORUM_NEW_GROUP      string = "/group.create"
+	CMD_QUORUM_LEAVE_GROUP    string = "/group.leave"
+	CMD_QUORUM_DEL_GROUP      string = "/group.delete"
+	CMD_QUORUM_GROUP_ADMIN    string = "/group.admin"
+	CMD_CONFIG_RELOAD         string = "/config.reload"
+	CMD_CONFIG_SAVE           string = "/config.save"
+	CMD_MODE_BLOCKS           string = "/mode.blocks"
+	CMD_MODE_QUORUM           string = "/mode.quorum"
+	CMD_MODE_NETWORK          string = "/mode.network"
 
 	// mode quorum only
 	CMD_QUORUM_SEND string = "/send"
@@ -41,7 +43,7 @@ const (
 )
 
 func cmdInputInit() {
-	baseCommands := []string{CMD_QUORUM_CONNECT, CMD_QUORUM_JOIN, CMD_QUORUM_APPLY_TOKEN, CMD_QUORUM_SYNC_GROUP, CMD_QUORUM_NEW_GROUP, CMD_QUORUM_LEAVE_GROUP, CMD_QUORUM_DEL_GROUP, CMD_QUORUM_GROUP_ADMIN, CMD_CONFIG_RELOAD, CMD_CONFIG_SAVE, CMD_MODE_BLOCKS, CMD_MODE_QUORUM, CMD_MODE_NETWORK}
+	baseCommands := []string{CMD_QUORUM_CONNECT, CMD_QUORUM_BACKUP, CMD_QUORUM_JOIN, CMD_QUORUM_APPLY_TOKEN, CMD_QUORUM_SYNC_GROUP, CMD_QUORUM_NEW_GROUP, CMD_QUORUM_GET_GROUP_SEED, CMD_QUORUM_LEAVE_GROUP, CMD_QUORUM_DEL_GROUP, CMD_QUORUM_GROUP_ADMIN, CMD_CONFIG_RELOAD, CMD_CONFIG_SAVE, CMD_MODE_BLOCKS, CMD_MODE_QUORUM, CMD_MODE_NETWORK}
 	quorumCommands := []string{CMD_QUORUM_SEND, CMD_QUORUM_NICK}
 	blocksCommands := []string{CMD_BLOCKS_JMP, CMD_BLOCKS_GENDOT}
 	networkCommands := []string{CMD_NETWORK_PING}
@@ -123,6 +125,14 @@ func cmdInputInit() {
 				// send data
 				reset("Creating: ")
 				QuorumNewGroupHandler()
+				return
+			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_GET_GROUP_SEED) {
+				reset("")
+				QuorumGetGroupSeedHandler()
+				return
+			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_BACKUP) {
+				reset("")
+				QuorumBackupHandler()
 				return
 			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_LEAVE_GROUP) {
 				reset("")

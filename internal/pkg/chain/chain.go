@@ -9,7 +9,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 	"google.golang.org/protobuf/proto"
 
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -43,42 +42,6 @@ type Chain struct {
 	ProviderPeerIdPool map[string]string
 }
 
-func (chain *Chain) CustomInit(nodename string, group *Group, producerPubsubconn pubsubconn.PubSubConn, userPubsubconn pubsubconn.PubSubConn) {
-
-	/*
-		chain.group = group
-		chain.trxMgrs = make(map[string]*TrxMgr)
-		chain.nodename = nodename
-
-		chain.producerChannelId = PRODUCER_CHANNEL_PREFIX + group.Item.GroupId
-		producerTrxMgr := &TrxMgr{}
-		producerTrxMgr.Init(chain.group.Item, producerPubsubconn)
-		producerTrxMgr.SetNodeName(nodename)
-		chain.trxMgrs[chain.producerChannelId] = producerTrxMgr
-
-		chain.Consensus = NewMolasses(&MolassesProducer{}, &MolassesUser{})
-		chain.Consensus.Producer().Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		chain.Consensus.User().Init(group.Item, group.ChainCtx.nodename, chain)
-
-		chain.userChannelId = USER_CHANNEL_PREFIX + group.Item.GroupId
-		userTrxMgr := &TrxMgr{}
-		userTrxMgr.Init(chain.group.Item, userPubsubconn)
-		userTrxMgr.SetNodeName(nodename)
-		chain.trxMgrs[chain.userChannelId] = userTrxMgr
-
-		chain.syncChannelId = SYNC_CHANNEL_PREFIX + group.Item.GroupId + "_" + group.Item.UserSignPubkey
-		syncTrxMgr := &TrxMgr{}
-		syncTrxMgr.Init(chain.group.Item, userPubsubconn)
-		syncTrxMgr.SetNodeName(nodename)
-		chain.trxMgrs[chain.userChannelId] = userTrxMgr
-
-		chain.Syncer = &Syncer{nodeName: nodename}
-		chain.Syncer.Init(chain.group, producerTrxMgr, userTrxMgr, syncTrxMgr)
-
-		chain.groupId = group.Item.GroupId
-	*/
-}
-
 func (chain *Chain) Init(group *Group) error {
 	chain_log.Debugf("<%s> Init called", group.Item.GroupId)
 	chain.group = group
@@ -91,16 +54,6 @@ func (chain *Chain) Init(group *Group) error {
 	chain.syncChannelId = SYNC_CHANNEL_PREFIX + chain.groupId + "_" + chain.group.Item.UserSignPubkey
 
 	chain.ProviderPeerIdPool = make(map[string]string)
-
-	err := chain.InitSession(chain.producerChannelId)
-	if err != nil {
-		return err
-	}
-
-	err = chain.InitSession(chain.syncChannelId)
-	if err != nil {
-		return err
-	}
 
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
 	return nil
@@ -157,26 +110,21 @@ func (chain *Chain) GetProducerTrxMgr() *TrxMgr {
 
 	if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
 		producerTrxMgr = chain.trxMgrs[chain.producerChannelId]
+		chain_log.Debugf("<%s> reset connection timer for producertrxMgr <%s>", chain.groupId, chain.producerChannelId)
+		chain.producerChannTimer.Stop()
+		chain.producerChannTimer.Reset(CLOSE_CONN_TIMER * time.Second)
 
-		/*
-			chain_log.Debugf("<%s> reset connection timer for producertrxMgr <%s>", chain.groupId, chain.producerChannelId)
-			chain.producerChannTimer.Stop()
-			chain.producerChannTimer.Reset(CLOSE_CONN_TIMER * time.Second)
-		*/
 	} else {
 		chain.createProducerTrxMgr()
 		producerTrxMgr = chain.trxMgrs[chain.producerChannelId]
-
-		/*
-			chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
-			chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
-				if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
-					chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
-					nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
-					delete(chain.trxMgrs, chain.producerChannelId)
-				}
-			})
-		*/
+		chain_log.Debugf("<%s> create close_conn timer for producer channel <%s>", chain.groupId, chain.producerChannelId)
+		chain.producerChannTimer = time.AfterFunc(CLOSE_CONN_TIMER*time.Second, func() {
+			if _, ok := chain.trxMgrs[chain.producerChannelId]; ok {
+				chain_log.Debugf("<%s> time up, close sync channel <%s>", chain.groupId, chain.producerChannelId)
+				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(chain.producerChannelId)
+				delete(chain.trxMgrs, chain.producerChannelId)
+			}
+		})
 	}
 
 	return producerTrxMgr
@@ -234,12 +182,12 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
 		return nil
-	case quorumpb.TrxType_ASK_PEERID:
-		chain.HandleAskPeerID(trx)
-		return nil
-	case quorumpb.TrxType_ASK_PEERID_RESP:
-		chain.HandleAskPeerIdResp(trx)
-		return nil
+	//case quorumpb.TrxType_ASK_PEERID:
+	//	chain.HandleAskPeerID(trx)
+	//	return nil
+	//case quorumpb.TrxType_ASK_PEERID_RESP:
+	//	chain.HandleAskPeerIdResp(trx)
+	//	return nil
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -280,7 +228,7 @@ func (chain *Chain) HandleBlock(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
@@ -289,7 +237,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
@@ -297,7 +245,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockBackward called", chain.groupId)
@@ -351,7 +299,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
-	if chain.Consensus.Producer() == nil {
+	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
 	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
@@ -391,41 +339,41 @@ func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 	return chain.Consensus.Producer().HandleAskPeerId(trx)
 }
 
-func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
-
-	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-	if err != nil {
-		return err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return err
-	}
-
-	var respItem quorumpb.AskPeerIdResp
-
-	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
-		return err
-	}
-
-	//update peerId table
-	chain.ProviderPeerIdPool[respItem.RespPeerPubkey] = respItem.RespPeerId
-	chain_log.Debugf("<%s> Pubkey<%s> PeerId<%s> ", chain.groupId, respItem.RespPeerPubkey, &respItem.RespPeerId)
-	//initial both producerChannel and syncChannel
-	err = chain.InitSession(chain.producerChannelId)
-	if err != nil {
-		return err
-	}
-
-	err = chain.InitSession(chain.syncChannelId)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
+//	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
+//
+//	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+//	if err != nil {
+//		return err
+//	}
+//
+//	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+//	if err != nil {
+//		return err
+//	}
+//
+//	var respItem quorumpb.AskPeerIdResp
+//
+//	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
+//		return err
+//	}
+//
+//	//update peerId table
+//	chain.ProviderPeerIdPool[respItem.RespPeerPubkey] = respItem.RespPeerId
+//	chain_log.Debugf("<%s> Pubkey<%s> PeerId<%s> ", chain.groupId, respItem.RespPeerPubkey, &respItem.RespPeerId)
+//	//initial both producerChannel and syncChannel
+//	//err = chain.InitSession(chain.producerChannelId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//
+//	//err = chain.InitSession(chain.syncChannelId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//
+//	return nil
+//}
 
 func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
 	return chain.userPool
@@ -522,6 +470,9 @@ func (chain *Chain) CreateConsensus() {
 	} else {
 		chain_log.Infof("<%s> reuse syncer", chain.groupId)
 	}
+
+	//_ = chain.InitSession(chain.producerChannelId)
+	//_ = chain.InitSession(chain.syncChannelId)
 }
 
 func (chain *Chain) createUserTrxMgr() {
@@ -571,17 +522,17 @@ func (chain *Chain) createProducerTrxMgr() {
 }
 
 func (chain *Chain) InitSession(channelId string) error {
-	chain_log.Debugf("<%s> InitSession called", chain.groupId)
 	return nil
-	err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
-	if err != nil {
-		return err
-	}
-	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
-		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
-	} else {
-		return chain.AskPeerId()
-	}
+	//	chain_log.Debugf("<%s> InitSession called", chain.groupId)
+	//	//err := nodectx.GetNodeCtx().Node.RumExchange.ConnectRex(nodectx.GetNodeCtx().Ctx)
+	//	//if err != nil {
+	//	//	return err
+	//	//}
+	//	if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
+	//		return nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, channelId)
+	//	} else {
+	//		return chain.AskPeerId()
+	//	}
 }
 
 func (chain *Chain) AskPeerId() error {
