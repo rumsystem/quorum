@@ -50,7 +50,7 @@ You can try:
   - [Add producer](#api-post-producer-add)
   - [Get producers](#api-get-producers)
   - [Owner remove producer](#api-post-producer-remove)
-- [DeniedList](#test-deniedlist)
+- [DeniedList](#test-deniedlist)  <font color="red"><sup>abandoned</sup></font>
   - [Get deniedlist](#api-get-deniedlist)
   - [Add deniedlist](#api-post-deniedlist-add)
   - [Del deniedlist](#api-post-deniedlist-del)
@@ -64,6 +64,13 @@ You can try:
   - [Announce user](#api-post-announce-user)
   - [Get announced users](#api-get-announced-users)
   - [Owner approve a user](#api-post-group-user)
+- [Chain Config: allow/deny list](#test-chainconfig) <font color="red"><sup>new</sup></font>
+  - [What's new?](#about-chainconfig) <font color="red"><sup>new</sup></font>
+  - [get FOLLOWING rules for certain trxType](#api-get-authtype) <font color="red"><sup>new</sup></font>
+  - [Set Following rules for certain trxType](#api-set-authtype) <font color="red"><sup>new</sup></font>
+  - [Update allow/deny list for trxType/trxTypes](#api-update-list) <font color="red"><sup>new</sup></font>
+  - [Get group allow/deny list](#api-get-list) <font color="red"><sup>new</sup></font>
+  - [API Update for client api](#about-chainconfig-for-client) <font color="red"><sup>new</sup></font>
 
 Common params:
 
@@ -78,6 +85,11 @@ Common params:
   - [user_pubkey](#param-user_pubkey)
   - [group_status](#param-group_status)
   - [app_key](#param-app_key)
+  - [app_key](#param-app_key)
+  - [consensus_type](#param-consensus_type)
+  - [encryption_type](#param-encryption_type)
+  - [TrxType/trx_type](#param-trxtype) <font color="red"><sup>new</sup></font>
+  - [Authtype/trx_auth_mode](#param-authtype) <font color="red"><sup>new</sup></font>
 
 <span id="quick-start"></span>
 
@@ -114,7 +126,7 @@ session.get(f"{url}/node")
 
 请在您自行创建的种子网络中测试，不要往公开的种子网络中发布测试信息。
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="prepare"></span>
 
@@ -132,7 +144,7 @@ Open url ```http://localhost:1323/swagger/index.html``` in the browser.
 
 <span id="docs-api"></span>
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 ## Setup local test network
 
@@ -190,7 +202,7 @@ RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
 go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug true
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-node"></span>
 
@@ -236,7 +248,7 @@ API return value:
 | "node_version" | 节点的协议版本号 |
 | "peers" | dict |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-group"></span>
 
@@ -310,7 +322,7 @@ returned json string from API call is the "`seed`" of the newly created `group`.
 
 other nodes can use the seed to [join the group](#api-join-group).
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-join-group"></span>
 
@@ -356,7 +368,7 @@ API return value:
 
 节点 B 加入组后，开始自动同步(SYNCING)，同步完成后状态变为（IDLE)
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-groups"></span>
 
@@ -412,7 +424,7 @@ API return value:
 
 <sup>[3]</sup> block_id of the "highest" block in this group
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-group-clear"></span>
 
@@ -454,7 +466,7 @@ API return value:
 
 **目前前端在离开组时需一起调用该 API，清除所有组相关的数据，警告用户“如果离开组，所有数据将被删除，再加入需要重新同步”即可**
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-group-leave"></span>
 
@@ -494,7 +506,7 @@ API return value:
 | --- | --- |
 | "signature" | signature by group owner |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-group-del"></span>
 
@@ -510,7 +522,7 @@ API return value:
 **Example**:
 
 ```bash
- curl -k -X DELETE -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8003/api/v1/group
+curl -k -X DELETE -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8003/api/v1/group
 
 ```
 
@@ -524,7 +536,7 @@ API return value:
 }
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-group-seed"></span>
 
@@ -543,7 +555,7 @@ API return value:
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/seed
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-network"></span>
 
@@ -594,7 +606,7 @@ API return value:
 
 这里需要注意， nat_type 和 addrs 都会改变，开始的时候没有公网地址，类型是 Unknown 之后会变成 Private，再过一段时间反向链接成功的话，就变成 Public，同时 Addrs 里面出现公网地址。
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-startsync"></span>
 
@@ -622,7 +634,7 @@ API return value:
 | 200 | ```{"GroupId":<GROUP_ID>,"Error":""}```| GROUP_ID 的组正常开始同步，同时组的状态会变为 SYNCING|
 | 400 | ```{"error":"GROUP_ALREADY_IN_SYNCING"}```| GROUP_ID 的组当前正在同步中|
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-content"></span>
 
@@ -727,7 +739,6 @@ Like/Dislike Trx:
 - "TypeUrl": "quorum.pb.Object"
 
 ```json
-
 {
     "TrxId": "65de2397-2f35-4a07-9af2-35a920b79882",
     "Publisher": "CAISIQMbTGdEDACml0BOcBXpWM6FOLDgH7u9VapHJ+wDMZSObw==",
@@ -747,7 +758,7 @@ Params
 - "TypeURL", string, Type 
 - "TimeStamp" ,int64 
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-content"></span>
 
@@ -836,7 +847,7 @@ when `object.content` is not null, `object.image` is optional.
     "type": "Add",
     "object": {
         "type": "Note",
-        "content": "can't agree more! thx.",
+        "content": "can’t agree more! thx.",
         "inreplyto": {
             "trxid": "08c6ee4d-0310-47cf-988e-3879321ef274"
         }
@@ -876,7 +887,7 @@ when `object.image` is not null, `object.content` is optional.
 }
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 ### Like/Dislike
 
@@ -903,7 +914,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":
 }
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-group-profile"></span>
 
@@ -950,7 +961,7 @@ any group has its own profile to set.
 }
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-block"></span>
 
@@ -1003,7 +1014,7 @@ API return value:
 
 "Trxs" is a list. one block can have a number of trxs.
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-trx"></span>
 
@@ -1062,7 +1073,7 @@ Trx 生命周期，加密和出块过程
 
 * AUTH 相关的 trx 处理方式相同（[黑名单](#test-deniedlist)）
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-trx"></span>
 
@@ -1100,7 +1111,7 @@ API return value:
 * "Data" 是加密的，([encryption type](#param-encryption_type)由组类型决定)
 * 客户端应通过[获取 Content 的 API](#api-group-content) 来获取解密之后的内容
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-producers"></span>
 
@@ -1140,7 +1151,7 @@ Owner 作为组内第一个 Producer 存在，有其它 Producer 存在时，如
     * Owner 可以随时删除一个 Producer, 不管 Producer 是否 Announce 离开
     * 在实际环境中，Producer 完全可以不 Announce Remove 而直接离开，Owner 需要注意到并及时将该 Producer 从 Producer 列表中删除
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-announce-producer"></span>
 
@@ -1201,7 +1212,7 @@ API return value:
 | "action" | ADD |
 | "sign" | producer 的签名 |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-announced-producers"></span>
 
@@ -1258,7 +1269,7 @@ API return value:
 | "Action" | "ADD" or "REMOVE" |
 | "TimeStamp" | timestamp |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-producer-add"></span>
 
@@ -1318,7 +1329,7 @@ API return value:
 
 <span id="api-get-producers"></span>
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 ## Get producers
 
@@ -1366,7 +1377,7 @@ API return value:
 
 * 注意，如果 ProducerPubkey 和 OwnerPubkey 相同，则说明这是 Owner，上例可以看出，Owner 目前共生产了 3 个区块，Producer `<CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ>` 还没有生产区块
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-producer-remove"></span>
 
@@ -1395,11 +1406,13 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 }
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-deniedlist"></span>
 
-# DeniedList
+# DeniedList 
+
+<font color="red">Apis about DeniedList are no longer available , and updated to [chain config](#test-chainconfig).</font>
 
 <span id="api-get-deniedlist"></span>
 
@@ -1448,7 +1461,7 @@ API return value:
 | "Acition" | "add" |
 | "memo" |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-deniedlist-add"></span>
 
@@ -1513,7 +1526,7 @@ API return value:
 | "sign" | 组拥有者的签名（可通过 pubkey 验证） |
 | "memo" | "Add" |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-deniedlist-del"></span>
 
@@ -1566,7 +1579,7 @@ API return value:
 | "action" | "del" |
 | "memo" | "" |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-group-config"></span>
 
@@ -1635,7 +1648,7 @@ API return value:
 | --- | --- |
 | "sign" | owner 对该 trx 的签名 |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-group-config-keylist"></span>
 
@@ -1673,7 +1686,7 @@ API return value:
 | "name" | 配置项的名称 |
 | "type" | 配置项的数据类型 |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-group-config-keyname"></span>
 
@@ -1709,7 +1722,7 @@ API return value:
 
 参数同[添加组内配置](#api-post-group-config-add)
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-group-schema"></span>
 
@@ -1744,7 +1757,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","ty
 }
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-group-schema"></span>
 
@@ -1775,7 +1788,7 @@ API return value:
 ]
 ```
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="test-private-group"></span>
 
@@ -1842,7 +1855,7 @@ API return value:
 | "action" | "ADD" |
 | "sign" | user's signature |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-get-announced-users"></span>
 
@@ -1882,7 +1895,7 @@ API return value:
 | "AnnouncerSign" |string | user's signture |
 | "Result" | ANNOUNCED or APPROVED |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
 
 <span id="api-post-group-user"></span>
 
@@ -1931,7 +1944,304 @@ API return value:
 | --- | --- |
 | "sign" | signature |
 
-[>>> back top](#top)
+[>>> Back to Top](#top)
+
+---
+
+<span id="test-chainconfig"></span>
+
+# Chain Config: allow/deny list
+
+<span id="about-chainconfig"></span>
+
+## What's new?
+
+For a group, the owner can grant/deny privilege of individual trxType or trxTypes to different group user.
+
+The following trxType are configurable:
+
+```sh
+"POST",
+"ANNOUNCE",
+"REQ_BLOCK_FORWARD",
+"REQ_BLOCK_BACKWARD",
+"BLOCK_SYNCED"
+"BLOCK_PRODUCED"
+"ASK_PEERID"
+```
+
+Each trx type has their own allow/deny list and "follow" rule for the user(pubkey) NOT in allow/deny list, the authentication mode following the rules below:
+
+1. If a pubkey is in ALLOW list, send this type of trx is ALLOWED for this pubkey.
+2. If a pubkey is in DENY list, producer/owner will REJECT all trx with this trxtype sent from this pubkey.
+3. If a pubkey is not in allow/deny list, the following rules apply:
+
+- a. if trxtype is set to "FOLLOW_ALW_LIST", since the pubkey IS NOT in allow list, access will NOT be granted.
+- b. if trxtype is set to "FOLLOW_DNY_LIST", since the pubkey IS NOT in deny list, access will be granted.
+
+For a pubkey is denied, it CAN STILL send a trx with certain trxtype and get the trx_id, BUT owner/producer will reject this trx, that means the trx will NOT be packaged in to a block and broadcast to the group.
+
+Therefor the CLIENT APP should check the group authentication rules to give error message back to user.
+
+[>>> Back to Top](#top)
+
+## APIs
+
+<span id="api-get-authtype"></span>
+
+### get FOLLOWING rules for certain trxType
+
+**API**: ```*/api/v1/group/<group_id>/trx/auth/<trx_type>```
+
+- Method: GET
+- Usage : get the following rules (rules applied to user not allow/deny list) for certain trxType
+- Params :
+  - group_id
+  - trx_type
+
+**Example**:
+
+```sh
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/auth/post | jq
+```
+
+Result:
+
+```json
+{
+    "TrxType": "POST",
+    "AuthType": "FOLLOW_ALW_LIST"
+}
+```
+
+Params:
+
+- `TrxType` : trx type
+- `Authtype` : auth type,
+  - `FOLLOW_ALW_LIST` 
+  - `FOLLOW_DNY_LIST`
+
+[>>> Back to Top](#top)
+
+<span id="api-set-authtype"></span>
+
+### Set Following rules for certain trxType
+
+**API**: v1/group/chainconfig
+
+- Method: POST
+- Usage : set the following rules (rules applied to user not allow/deny list) for certain trxType
+- Params :
+  - `group_id`, group id
+  - `type`, chain config type, must be "set_trx_auth_mode"
+  - `config`, config content, includes the following items
+    - `trx_type`, type of trx
+    - `trx_auth_mode`, must be one of "follow_alw_list"/"follow_dny_list"
+    - `memo`, memo
+
+**Example**:
+
+```sh
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_dny_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+```
+
+```json
+{
+    "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
+    "type": "set_trx_auth_mode",
+    "config": "{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_dny_list\"}",
+    "Memo": "Memo"
+}
+```
+
+Result:
+
+```json
+{
+    "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
+    "owner_pubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
+    "sign": "30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73",
+    "trx_id": "90e9818a-2e23-4248-93e3-d4ba1b100f4f"
+}
+```
+
+Params:
+
+- `group_id`, group id
+- `owner_pubkey`, group owner pubkey
+- `sign`: owner signature
+- `trx_id`, trx id
+
+[>>> Back to Top](#top)
+
+<span id="api-update-list"></span>
+
+### Update allow/deny list for trxType/trxTypes
+
+**API**: v1/group/chainconfig 
+
+- Method: POST
+- Usage : Update allow/deny list 
+- Params :
+  - `group_id`, group id
+  - `type`, chain config type, must be "upd_alw_list"/"upd_dny_list"
+  - `config`, config content, includes the following items
+    - `action`, type of operation, must be "add"/"remove"
+    - `pubkey`, pubkey to add/remove
+    - `trx_type`, type of trx (can be array)
+    - `memo`, memo
+
+**Example**:
+
+```sh
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+```
+
+```json
+{
+    "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
+    "type": "upd_alw_list",
+    "config": "{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}",
+    "Memo": "Memo"
+}
+```
+
+Result:
+
+```json
+{
+    "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
+    "owner_pubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
+    "sign": "30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73",
+    "trx_id": "90e9818a-2e23-4248-93e3-d4ba1b100f4f"
+}
+```
+
+Params:
+
+- `group_id`, group id
+- `owner_pubkey`, group owner pubkey
+- `sign`: owner signature
+- `trx_id`, trx id
+
+[>>> Back to Top](#top)
+
+<span id="api-get-list"></span>
+
+### Get group allow/deny list
+
+**API**: v1/group/<group_id>/trx/allowlist
+
+**API**: v1/group/<group_id>/trx/denylist
+
+- Method: Get
+- Usage : Get allow/deny list
+- Params :
+  - group_id, group id
+
+**Example**:
+
+Get group allow list
+
+```sh
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/allowlist
+```
+
+Result:
+
+```json
+[
+    {
+        "Pubkey": "CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==",
+        "TrxType": [
+            "POST",
+            "ANNOUNCE",
+            "REQ_BLOCK_FORWARD",
+            "REQ_BLOCK_BACKWARD",
+            "ASK_PEERID"
+        ],
+        "GroupOwnerPubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
+        "GroupOwnerSign": "304502210084bc833278dc98be6f279540b571ad5402f5c2d1e978c4c2298cddb079ca312002205f9374b9d27c628815aecff4ffe11329b17b8be12687223a072afa58e9f15f2c",
+        "TimeStamp": 1642609852758917000,
+        "Memo": "Memo"
+    }
+]
+```
+
+params:
+
+- Pubkey: pubkey 
+- TrxType: trxType allowd(denied) for this pubkey
+- GroupOwnerPubkey
+- GroupOwnerSign
+- TimeStmap
+- Memo
+
+[>>> Back to Top](#top)
+
+<span id="about-chainconfig-for-client"></span>
+
+## API Update for client api
+
+- DenyList API is no longer available
+- All trxType is set to "FOLLOW_DNY_LIST" by default, that means if the FOLLOW rules are not changed, all user can send certain type of trx unless been put to DENY list
+
+### How to implement "DENY a pubkey"
+
+- no need to change FOLLOW rules for ANY trxType
+- Add the following trxType of the pubkey to DENY list
+  - "POST"
+  - "ANNOUNCE"
+  - "REQ_BLOCK_FORWARD"
+  - "REQ_BLOCK_BACKWARD"
+  - "ASK_PEERID"
+
+**Example**:
+
+```sh
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+```
+
+### How to "ALLOW a pubkey" again
+
+- Remove pubkey for all certain trxTypes from DENY list
+  - "POST"
+  - "ANNOUNCE"
+  - "REQ_BLOCK_FORWARD"
+  - "REQ_BLOCK_BACKWARD"
+  - "ASK_PEERID"
+
+**Example**:
+
+```sh
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+```
+
+### How to impelent "single" author mode
+
+#### change FOLLOW rules of POST to FOLLOW_ALW_LIST
+
+**Example**:
+
+```sh
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_alw_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq 
+```
+
+NOW ONLY PUBKEY IN ALLOW LIST CAN POST.
+
+#### Add owner pubkey to ALLOW list for POST
+
+**Example**:
+
+```sh
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+```
+
+NOW owner can send POST, all other pubkeys are denied.
+
+Same trxType for a pubkey can be added to both allow list and deny list, that is with reason and by design. <strong>Allow list alway has "higher" privilege than deny list</strong>, that means, if same trxType appears on both list, ACCESS WILL BE GRANTED. To make less confuse, client should manage authenticate rules carefully.
+
+[>>> Back to Top](#top)
 
 <span id="param-list"></span>
 
@@ -1939,7 +2249,7 @@ API return value:
 
 <span id="param-group_id"></span>
 
-## group_id
+### group_id
 
 string
 
@@ -1947,7 +2257,7 @@ string
 
 <span id="param-group_name"></span>
 
-## group_name
+### group_name
 
 string, group name
 
@@ -1957,13 +2267,13 @@ create a group 时的必填字段
 
 <span id="param-trx_id"></span>
 
-## trx_id/TrxId
+### trx_id/TrxId
 
 可以通过 gettrx API 获取具体内容
 
 <span id="param-block_id"></span>
 
-## block_id/BlockId
+### block_id/BlockId
 
 [API: Get Block Info](#api-get-block)
 
@@ -1971,7 +2281,7 @@ one block can have a number of trxs.
 
 <span id="param-node_id"></span>
 
-## node_id
+### node_id
 
 [API: Get Node Info](#api-get-node)
 
@@ -1982,7 +2292,7 @@ one block can have a number of trxs.
 
 <span id="param-peer_id"></span>
 
-## peer_id
+### peer_id
 
 peer_id (可以通过节点信息 API 获得)
 
@@ -1990,7 +2300,7 @@ peer_id (可以通过节点信息 API 获得)
 
 <span id="param-user_pubkey"></span>
 
-## owner_pubkey/user_pubkey
+### owner_pubkey/user_pubkey
 
 owner_pubkey: public key of group owner (ecdsa)
 
@@ -2002,7 +2312,7 @@ user_pubkey 是用户在组内的唯一身份标识，也用来进行签名
 
 <span id="param-group_status"></span>
 
-## group_status
+### group_status
 
 status of group, a group can have 3 different status:
 
@@ -2014,13 +2324,13 @@ for detail please check RUM design document.
 
 <span id="param-app_key"></span>
 
-## app_key
+### app_key
 
 string, group app key, requested, length should between 5 to 20
 
 <span id="param-consensus_type"></span>
 
-## consensus_type
+### consensus_type
 
 string, group consensus type, must be "poa", requested
 
@@ -2030,203 +2340,33 @@ string, group consensus type, must be "poa", requested
 
 <span id="param-encryption_type"></span>
 
-## encryption_type
+### encryption_type
 
-string, group encryption type, must be "public", requested
+string, requested, encryption type of group, must be "public" or "private" 
 
-encryption type of group, "public" or "private" 
+[>>> Back to Top](#top)
 
-[>>> back top](#top)
+<span id="param-trxtype"></span>
 
-* new chainconfig api *
-For a group, the owner can grant/deny privilege of individual trxType or trxTypes to different group user.
-The following trxType are configurable:
-      "POST",
-      "ANNOUNCE",
-      "REQ_BLOCK_FORWARD",
-      "REQ_BLOCK_BACKWARD",
-      "BLOCK_SYNCED"
-      "BLOCK_PRODUCED"
-      "ASK_PEERID"
+### TrxType/trx_type
 
-Each trx type has their own allow/deny list and "follow" rule for the user(pubkey) NOT in allow/deny list, 
-the authentication mode following the rules below:
+string, can be one of these:
 
-1. If a pubkey is in ALLOW list, send this type of trx is ALLOWED for this pubkey
-2. If a pubkey is in DENY list, producer/owner will REJECT all trx with this trxtype send from this pubkey
-3. If a pubkey is not in allow/deny list, the following rules apply
-    a. if trxtype is set to "FOLLOW_ALW_LIST", since the pubkey IS NOT in allow list, access will NOT be granted
-    b. if trxtype is set to "FOLLOW_DNY_LIST", since the pubkey IS NOT in deny list, access will be granted
+- "POST"
+- "ANNOUNCE"
+- "REQ_BLOCK_FORWARD"
+- "REQ_BLOCK_BACKWARD"
+- "BLOCK_SYNCED"
+- "BLOCK_PRODUCED"
+- "ASK_PEERID"
 
-* For a pubkey is denied, it CAN STILL send a trx with certain trxtype and get the trx_id, BUT owner/producer will reject this trx, that means the trx will NOT be packaged in to a block and broadcast to the group. 
-* Therefor the CLIENT APP should check the group authentication rules to give error message back to user
+<span id="param-authtype"></span>
 
-APIs
+### Authtype/trx_auth_mode
 
-----
-get FOLLOWING rules for certain trxType
-API: ```*/api/v1/group/<group_id>/trx/auth/<trx_type>```
+auth type, string, can be one of these:
 
-- Method: GET
-- Usage : get the following rules (rules applied to user not allow/deny list) for certain trxType
-- Params :
-  - group_id
-  - trx_type
+- "FOLLOW_ALW_LIST"
+- "FOLLOW_DNY_LIST"
 
-Example:
-
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/auth/post | jq
-
-Result:
-{
-  "TrxType": "POST",
-  "AuthType": "FOLLOW_ALW_LIST"
-}
-
-Params:
-    TrxType : trx type
-    Authtype : auth type, 
-        - FOLLOW_ALW_LIST 
-        - FOLLOW_DNY_LIST
-----        
-
-Set Following ruls for certain trxType
-API : v1/group/chainconfig 
-- Method: POST
-- Usage : set the following rules (rules applied to user not allow/deny list) for certain trxType
-- Params :
-  - group_id, group id
-  - type, chain config type, must be "set_trx_auth_mode"
-  - config, config content, includes the following items
-    - trx_type, type of trx
-    - trx_auth_mode, must be one of "follow_alw_list"/"follow_dny_list"
-    - memo, memo
-
-Example:
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_dny_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
-
-Result:
-   {
-  "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
-  "owner_pubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
-  "sign": "30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73",
-  "trx_id": "90e9818a-2e23-4248-93e3-d4ba1b100f4f"
-   }
-
-Params:
-    group_id, group id
-    owner_pubkey, group owner pubkey
-    sign: owner signature
-    trx_id, trx id
-----
-
-Update allow/deny list for trxType/trxTypes
-API:  v1/group/chainconfig 
-- Method: POST
-- Usage : Update allow/deny list 
-- Params :
-  - group_id, group id
-  - type, chain config type, must be "upd_alw_list"/"upd_dny_list"
-  - config, config content, includes the following items
-    - action, type of operation, must be "add"/"remove"
-    - pubkey, pubkey to add/remove
-    - trx_type, type of trx (can be array)
-    - memo, memo
-Example:
- curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
-
-Result:
-   {
-  "group_id": "b3e1800a-af6e-4c67-af89-4ddcf831b6f7",
-  "owner_pubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
-  "sign": "30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73",
-  "trx_id": "90e9818a-2e23-4248-93e3-d4ba1b100f4f"
-}
-
-Params:
-    group_id, group id
-    owner_pubkey, group owner pubkey
-    sign: owner signature
-    trx_id, trx id
-----
-
-Get group allow/deny list
-API:   v1/group/<group_id>/trx/allowlist
-    v1/group/<group_id>/trx/denylist
-- Method: Get
-- Usage : Get allow/deny list
-- Params :
-  - group_id, group id
-
-Example:
-  Get group allow list
-  curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/allowlist
-
-Result:
-[
-  {
-    "Pubkey": "CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==",
-    "TrxType": [
-      "POST",
-      "ANNOUNCE",
-      "REQ_BLOCK_FORWARD",
-      "REQ_BLOCK_BACKWARD",
-      "ASK_PEERID"
-    ],
-    "GroupOwnerPubkey": "CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA==",
-    "GroupOwnerSign": "304502210084bc833278dc98be6f279540b571ad5402f5c2d1e978c4c2298cddb079ca312002205f9374b9d27c628815aecff4ffe11329b17b8be12687223a072afa58e9f15f2c",
-    "TimeStamp": 1642609852758917000,
-    "Memo": "Memo"
-  }
-]
-
-params:
-    Pubkey: pubkey 
-    TrxType: trxType allowd(denied) for this pubkey
-    GroupOwnerPubkey
-    GroupOwnerSign
-    TimeStmap
-    Memo
-----
-
-* API Update for client api
-- DenyList API is no longer available
-- All trxType is set to "FOLLOW_DNY_LIST" by default, that means if the FOLLOW ruls are not changed, all user can send certain type of trx unless been put to DENY list
-- How to implement "DENY a pubkey"
-    - no need to change FOLLOW rules for ANY trxType
-    - Add the following trxType of the pubkey to DENY list
-      "POST",
-      "ANNOUNCE"
-      "REQ_BLOCK_FORWARD"
-      "REQ_BLOCK_BACKWARD"
-      "ASK_PEERID"
-
-      example:
-        curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
-- How to "ALLOW a pubkey" again
-    - Remove pubkey for all certain trxTypes from DENY list
-      "POST"
-      "ANNOUNCE"
-      "REQ_BLOCK_FORWARD"
-      "REQ_BLOCK_BACKWARD"
-      "ASK_PEERID"
-
-     example:
-        curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
-
-- How to impelent "single" author mode
-    - change FOLLOW rules of POST to FOLLOW_ALW_LIST
-        example:
-           curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_alw_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq 
-
-        * NOW ONLY PUBKEY IN ALLOW LIST CAN POST
-    - Add owner pubkey to ALLOW list for POST
-        example:
-             curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
-
-        * NOW owner can send POST, all other pubkeys are denied
-
-- Same trxType for a pubkey can be added to both allow list and deny list, that is with reason and by design. Allow list alway has "higher" privilege than deny list, that means, if same trxType appears on both list, ACCESS WILL BE GRANTED. To make less confuse, client should manage authenticate rules carefully. 
-
-
-[>>> back top](#top)
+[>>> Back to Top](#top)
