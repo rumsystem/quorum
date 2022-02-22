@@ -8,12 +8,13 @@ import (
 )
 
 // @Tags Management
-// @Summary GetDeniedUserList
-// @Description Get the list of denied users
+// @Summary GetChainTrxAllowList
+// @Description Get group allow list
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Success 200 {array} DeniedUserListItem
-// @Router /api/v1/group/{group_id}/deniedlist [get]
+// @Success 200 {array} ChainSendTrxRuleListItem
+// @Router /api/v1/group/{group_id}/trx/allowlist [get]
+
 func (h *Handler) GetChainTrxAllowList(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")

@@ -9,11 +9,11 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-func MgrGroupConfig(data []byte) (*handlers.GroupConfigResult, error) {
-	params := &handlers.GroupConfigParam{}
+func MgrAppConfig(data []byte) (*handlers.AppConfigResult, error) {
+	params := &handlers.AppConfigParam{}
 	if err := json.Unmarshal(data, &params); err != nil {
 		return nil, err
 	}
 
-	return handlers.MgrGroupConfig(params)
+	return handlers.MgrAppConfig(params)
 }
