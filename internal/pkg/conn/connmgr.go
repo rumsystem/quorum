@@ -151,10 +151,10 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	connMgr.DataHandlerIface = cIface
 
 	//Rex
-	nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
+	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 
 	//initial rex session
-	connMgr.InitRexSession()
+	//connMgr.InitRexSession()
 
 	//initial ps conn for user channel and sync channel
 	connMgr.InitialPsConn()
