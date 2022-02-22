@@ -386,16 +386,12 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 		return err
 	}
 
-	chain_log.Debugf("trx %s", trx.SenderPubkey)
-
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
 		return err
 	}
 
-	chain_log.Debugf("trx data %s", string(decryptData))
-
-	var reqBlockResp *quorumpb.ReqBlockResp
+	reqBlockResp := &quorumpb.ReqBlockResp{}
 	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
 		return err
 	}
@@ -407,7 +403,8 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
 
-	var newBlock *quorumpb.Block
+	newBlock := &quorumpb.Block{}
+
 	if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
 		return err
 	}

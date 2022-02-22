@@ -44,7 +44,7 @@ type Syncer struct {
 }
 
 func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
-	syncer_log.Debugf("<%s> Init called", syncer.GroupId)
+	syncer_log.Debugf("<%s> Init called", group.Item.GroupId)
 	syncer.Status = IDLE
 	syncer.Group = group
 	syncer.GroupId = group.Item.GroupId

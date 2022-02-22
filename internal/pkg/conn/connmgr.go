@@ -215,7 +215,7 @@ func (connMgr *ConnMgr) LeaveAllChannels() error {
 }
 
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
-	conn_log.Debugf("<%s> GetProducerTrxMgr called", connMgr.GroupId)
+	conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
 
 	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
 		if !connMgr.StableProdPsConn { //is user, no need to keep producer psconn
@@ -267,6 +267,7 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 }
 
 func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
+	conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)
 	return connMgr.PsConns[connMgr.UserChannelId]
 }
 
@@ -310,6 +311,7 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 }
 
 func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
+	conn_log.Debugf("<%s> SendBlockRex called", connMgr.GroupId)
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -365,6 +367,7 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 }
 
 func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
+	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -380,6 +383,7 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {
+	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
 	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)

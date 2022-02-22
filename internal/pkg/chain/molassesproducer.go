@@ -264,7 +264,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 			if err != nil {
 				return err
 			}
-			err = connMgr.SendBlockPsconn(producer.blockPool[candidateBlkid], conn.ProducerChannel)
+			err = connMgr.SendBlockPsconn(producer.blockPool[candidateBlkid], conn.UserChannel)
 			if err != nil {
 				molaproducer_log.Warnf("<%s> <%s>", producer.groupId, err.Error())
 			}
