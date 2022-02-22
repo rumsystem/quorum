@@ -7,27 +7,26 @@ import (
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 )
 
-type GroupConfigKeyListItem struct {
+type AppConfigKeyListItem struct {
 	Name string
 	Type string
 }
 
-func GetGroupConfigKeyList(groupId string) ([]*GroupConfigKeyListItem, error) {
+func GetAppConfigKeyList(groupId string) ([]*AppConfigKeyListItem, error) {
 	if groupId == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
 
-	var result []*GroupConfigKeyListItem
-
+	var result []*AppConfigKeyListItem
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupId]; ok {
-		nameList, typeList, err := group.GetGroupConfigKeyList()
+		nameList, typeList, err := group.GetAppConfigKeyList()
 		if err != nil {
 			return nil, err
 		}
 		for i := range nameList {
-			var item *GroupConfigKeyListItem
-			item = &GroupConfigKeyListItem{}
+			var item *AppConfigKeyListItem
+			item = &AppConfigKeyListItem{}
 
 			item.Name = nameList[i]
 			item.Type = typeList[i]

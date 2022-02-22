@@ -16,7 +16,7 @@ type GrpProducerResult struct {
 	GroupId        string `json:"group_id" validate:"required"`
 	ProducerPubkey string `json:"producer_pubkey" validate:"required"`
 	OwnerPubkey    string `json:"owner_pubkey" validate:"required"`
-	Sign           string `json:"sign" validate:"required"`
+	Sign           string `json:"signature" validate:"required"`
 	TrxId          string `json:"trx_id" validate:"required"`
 	Memo           string `json:"memo"`
 	Action         string `json:"action" validate:"required,oneof=ADD REMOVE"`

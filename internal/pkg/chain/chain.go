@@ -150,8 +150,6 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
-	case quorumpb.TrxType_AUTH:
-		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_POST:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_ANNOUNCE:
@@ -162,7 +160,9 @@ func (chain *Chain) HandleTrx(trx *quorumpb.Trx) error {
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
 		chain.producerAddTrx(trx)
-	case quorumpb.TrxType_GROUP_CONFIG:
+	case quorumpb.TrxType_APP_CONFIG:
+		chain.producerAddTrx(trx)
+	case quorumpb.TrxType_CHAIN_CONFIG:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {

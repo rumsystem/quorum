@@ -12,17 +12,21 @@ import (
 
 var dbmgr_log = logging.Logger("dbmgr")
 
-const TRX_PREFIX string = "trx"               //trx
-const BLK_PREFIX string = "blk"               //block
-const GRP_PREFIX string = "grp"               //group
-const CNT_PREFIX string = "cnt"               //content
-const ATH_PREFIX string = "ath"               //auth
-const PRD_PREFIX string = "prd"               //producer
-const USR_PREFIX string = "usr"               //user
-const ANN_PREFIX string = "ann"               //announce
-const SMA_PREFIX string = "sma"               //schema
-const CHD_PREFIX string = "chd"               //cached
-const GROUP_CONFIG_PREFIX string = "grp_conf" //group configuration
+const TRX_PREFIX string = "trx"                //trx
+const BLK_PREFIX string = "blk"                //block
+const GRP_PREFIX string = "grp"                //group
+const CNT_PREFIX string = "cnt"                //content
+const ATH_PREFIX string = "ath"                //auth
+const PRD_PREFIX string = "prd"                //producer
+const USR_PREFIX string = "usr"                //user
+const ANN_PREFIX string = "ann"                //announce
+const SMA_PREFIX string = "sma"                //schema
+const CHD_PREFIX string = "chd"                //cached
+const APP_CONFIG_PREFIX string = "app_conf"    //group configuration
+const CHAIN_CONFIG_PREFIX string = "chn_conf"  //chain configuration
+const TRX_AUTH_TYPE_PREFIX string = "trx_auth" //trx auth type
+const ALLW_LIST_PREFIX string = "alw_list"     //allow list
+const DENY_LIST_PREFIX string = "dny_list"     //deny list
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
@@ -554,63 +558,209 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string)
 //	return &trx, err
 //}
 
-func (dbMgr *DbMgr) UpdateBlkListItem(trx *quorumpb.Trx, prefix ...string) (err error) {
+func (dbMgr *DbMgr) UpdateChainConfig(trx *quorumpb.Trx, prefix ...string) (err error) {
+	dbmgr_log.Infof("UpdateChainConfig called")
 	nodeprefix := getPrefix(prefix...)
-	item := &quorumpb.DenyUserItem{}
+	item := &quorumpb.ChainConfigItem{}
 
 	if err := proto.Unmarshal(trx.Data, item); err != nil {
+		dbmgr_log.Infof(err.Error())
 		return err
 	}
 
-	if item.Action == "add" {
-		key := nodeprefix + ATH_PREFIX + "_" + item.GroupId + "_" + item.PeerId
-		return dbMgr.Db.Set([]byte(key), trx.Data)
-	} else if item.Action == "del" {
-		key := nodeprefix + ATH_PREFIX + "_" + item.GroupId + "_" + item.PeerId
-		//check if group exist
-		exist, err := dbMgr.Db.IsExist([]byte(key))
-		if !exist {
-			if err != nil {
-				return err
-			}
-			return errors.New("Group Not Found")
+	if item.Type == quorumpb.ChainConfigType_SET_TRX_AUTH_MODE {
+		authModeItem := &quorumpb.SetTrxAuthModeItem{}
+		if err := proto.Unmarshal(item.Data, authModeItem); err != nil {
+			dbmgr_log.Infof(err.Error())
+			return err
 		}
+
+		key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + authModeItem.Type.String()
+		return dbMgr.Db.Set([]byte(key), trx.Data)
+	} else if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST ||
+		item.Type == quorumpb.ChainConfigType_UPD_DNY_LIST {
+		ruleListItem := &quorumpb.ChainSendTrxRuleListItem{}
+		if err := proto.Unmarshal(item.Data, ruleListItem); err != nil {
+			return err
+		}
+
+		var key string
+		if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST {
+			key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + ALLW_LIST_PREFIX + "_" + ruleListItem.Pubkey
+		} else {
+			key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + DENY_LIST_PREFIX + "_" + ruleListItem.Pubkey
+		}
+
+		dbmgr_log.Infof("key %s", key)
+
+		if ruleListItem.Action == quorumpb.ActionType_ADD {
+			//TBD, check config conflict
+			//if pubkey in both allow list and deny list, should check no conflict for trxType
+			return dbMgr.Db.Set([]byte(key), trx.Data)
+		} else {
+			exist, err := dbMgr.Db.IsExist([]byte(key))
+			if !exist {
+				if err != nil {
+					return err
+				}
+				return errors.New("key Not Found")
+			}
+		}
+
 		return dbMgr.Db.Delete([]byte(key))
 	} else {
-		return errors.New("unknow msgType")
+		return errors.New("Unsupported ChainConfig type")
 	}
 }
 
-func (dbMgr *DbMgr) GetBlkedUsers(groupId string, prefix ...string) ([]*quorumpb.DenyUserItem, error) {
-	var blkList []*quorumpb.DenyUserItem
+func (dbMgr *DbMgr) GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error) {
+	nodoeprefix := getPrefix(prefix...)
+	key := nodoeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + trxType.String()
+
+	//if not specified by group owner
+	//follow deny list by default
+	//if in deny list, access prohibit
+	//if not in deny list, access granted
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if !isExist {
+		return quorumpb.TrxAuthMode_FOLLOW_DNY_LIST, nil
+	}
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return -1, err
+	}
+
+	chainConfigItem := &quorumpb.ChainConfigItem{}
+	if err := proto.Unmarshal(value, chainConfigItem); err != nil {
+		return -1, err
+	}
+
+	trxAuthitem := quorumpb.SetTrxAuthModeItem{}
+	perr := proto.Unmarshal(chainConfigItem.Data, &trxAuthitem)
+	if perr != nil {
+		return -1, perr
+	}
+
+	return trxAuthitem.Mode, nil
+}
+
+func (dbMgr *DbMgr) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb.AuthListType, prefix ...string) ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
+	var chainConfigList []*quorumpb.ChainConfigItem
+	var sendTrxRuleList []*quorumpb.ChainSendTrxRuleListItem
+
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + ATH_PREFIX + "_" + groupId
+	var key string
+	if listType == quorumpb.AuthListType_ALLOW_LIST {
+		key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + ALLW_LIST_PREFIX
+	} else {
+		key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + DENY_LIST_PREFIX
+	}
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
 
-		item := quorumpb.DenyUserItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
+		chainConfigItem := quorumpb.ChainConfigItem{}
+		err = proto.Unmarshal(v, &chainConfigItem)
+		if err != nil {
+			return err
 		}
-		blkList = append(blkList, &item)
+		chainConfigList = append(chainConfigList, &chainConfigItem)
+		sendTrxRuleListItem := quorumpb.ChainSendTrxRuleListItem{}
+		err = proto.Unmarshal(chainConfigItem.Data, &sendTrxRuleListItem)
+		if err != nil {
+			return err
+		}
+		sendTrxRuleList = append(sendTrxRuleList, &sendTrxRuleListItem)
+
+		dbmgr_log.Infof("sendTrx %s", sendTrxRuleListItem.Pubkey)
+
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return blkList, nil
+	return chainConfigList, sendTrxRuleList, nil
 }
 
-func (dbMgr *DbMgr) IsUserBlocked(groupId, userId string, prefix ...string) (bool, error) {
+func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.TrxType, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + ATH_PREFIX + "_" + groupId + "_" + userId
-	//check if group exist
-	return dbMgr.Db.IsExist([]byte(key))
+
+	keyAllow := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + ALLW_LIST_PREFIX + "_" + pubkey
+	keyDeny := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + DENY_LIST_PREFIX + "_" + pubkey
+
+	isInAllowList, err := dbMgr.Db.IsExist([]byte(keyAllow))
+	if err != nil {
+		return false, err
+	}
+
+	if isInAllowList {
+		v, err := dbMgr.Db.Get([]byte(keyAllow))
+		chainConfigItem := quorumpb.ChainConfigItem{}
+		err = proto.Unmarshal(v, &chainConfigItem)
+		if err != nil {
+			return false, err
+		}
+
+		allowItem := quorumpb.ChainSendTrxRuleListItem{}
+		err = proto.Unmarshal(chainConfigItem.Data, &allowItem)
+		if err != nil {
+			return false, err
+		}
+
+		//check if trxType allowed
+		for _, allowTrxType := range allowItem.Type {
+			if trxType == allowTrxType {
+				return true, nil
+			}
+		}
+	}
+
+	isInDenyList, err := dbMgr.Db.IsExist([]byte(keyDeny))
+	if err != nil {
+		return false, err
+	}
+
+	if isInDenyList {
+		v, err := dbMgr.Db.Get([]byte(keyDeny))
+		chainConfigItem := quorumpb.ChainConfigItem{}
+		err = proto.Unmarshal(v, &chainConfigItem)
+		if err != nil {
+			return false, err
+		}
+
+		denyItem := quorumpb.ChainSendTrxRuleListItem{}
+		err = proto.Unmarshal(chainConfigItem.Data, &denyItem)
+		if err != nil {
+			return false, err
+		}
+
+		dbmgr_log.Infof("5")
+		//check if trxType allowed
+		for _, denyTrxType := range denyItem.Type {
+			if trxType == denyTrxType {
+				dbmgr_log.Infof("6")
+				return false, nil
+			}
+		}
+	}
+	trxAuthMode, err := dbMgr.GetTrxAuthModeByGroupId(groupId, trxType, prefix...)
+	if err != nil {
+		return false, err
+	}
+
+	if trxAuthMode == quorumpb.TrxAuthMode_FOLLOW_ALW_LIST {
+		//not in allow list, so return false, access denied
+		dbmgr_log.Infof("8")
+		return false, nil
+	} else {
+		//not in deny list, so return true, access granted
+		dbmgr_log.Infof("9")
+		return true, nil
+	}
 }
 
 func (dbMgr *DbMgr) UpdateProducer(trx *quorumpb.Trx, prefix ...string) (err error) {
@@ -681,27 +831,27 @@ func (dbMgr *DbMgr) UpdateUser(trx *quorumpb.Trx, prefix ...string) (err error) 
 	}
 }
 
-func (dbMgr *DbMgr) UpdateGroupConfig(trx *quorumpb.Trx, Prefix ...string) (err error) {
+func (dbMgr *DbMgr) UpdateAppConfig(trx *quorumpb.Trx, Prefix ...string) (err error) {
 	nodeprefix := getPrefix(Prefix...)
 
-	item := &quorumpb.GroupConfigItem{}
+	item := &quorumpb.AppConfigItem{}
 	if err := proto.Unmarshal(trx.Data, item); err != nil {
 		return err
 	}
 
-	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + item.GroupId + "_" + item.Name
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + item.GroupId + "_" + item.Name
 
 	if item.Action == quorumpb.ActionType_ADD {
-		dbmgr_log.Infof("Add GroupConfig item")
+		dbmgr_log.Infof("Add AppConfig item")
 		return dbMgr.Db.Set([]byte(key), trx.Data)
 	} else if item.Action == quorumpb.ActionType_REMOVE {
-		dbmgr_log.Infof("Remove GroupConfig item")
+		dbmgr_log.Infof("Remove AppConfig item")
 		exist, err := dbMgr.Db.IsExist([]byte(key))
 		if !exist {
 			if err != nil {
 				return err
 			}
-			return errors.New("GroupConfig key not Found")
+			return errors.New("AppConfig key not Found")
 		}
 
 		return dbMgr.Db.Delete([]byte(key))
@@ -711,9 +861,9 @@ func (dbMgr *DbMgr) UpdateGroupConfig(trx *quorumpb.Trx, Prefix ...string) (err 
 }
 
 // name, type
-func (dbMgr *DbMgr) GetGroupConfigKey(groupId string, prefix ...string) ([]string, []string, error) {
+func (dbMgr *DbMgr) GetAppConfigKey(groupId string, prefix ...string) ([]string, []string, error) {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId
 
 	var itemName []string
 	var itemType []string
@@ -722,7 +872,7 @@ func (dbMgr *DbMgr) GetGroupConfigKey(groupId string, prefix ...string) ([]strin
 		if err != nil {
 			return err
 		}
-		item := quorumpb.GroupConfigItem{}
+		item := quorumpb.AppConfigItem{}
 		perr := proto.Unmarshal(v, &item)
 		if perr != nil {
 			return perr
@@ -734,16 +884,16 @@ func (dbMgr *DbMgr) GetGroupConfigKey(groupId string, prefix ...string) ([]strin
 	return itemName, itemType, err
 }
 
-func (dbMgr *DbMgr) GetGroupConfigItem(itemKey string, groupId string, Prefix ...string) (*quorumpb.GroupConfigItem, error) {
+func (dbMgr *DbMgr) GetAppConfigItem(itemKey string, groupId string, Prefix ...string) (*quorumpb.AppConfigItem, error) {
 	nodeprefix := getPrefix(Prefix...)
-	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
 	}
 
-	var config quorumpb.GroupConfigItem
+	var config quorumpb.AppConfigItem
 	err = proto.Unmarshal(value, &config)
 	if err != nil {
 		return nil, err
@@ -752,16 +902,16 @@ func (dbMgr *DbMgr) GetGroupConfigItem(itemKey string, groupId string, Prefix ..
 	return &config, nil
 }
 
-func (dbMgr *DbMgr) GetGroupConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
+func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
 	nodeprefix := getPrefix(Prefix...)
-	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return -1, err
 	}
 
-	var config quorumpb.GroupConfigItem
+	var config quorumpb.AppConfigItem
 	err = proto.Unmarshal(value, &config)
 	if err != nil {
 		return -1, err
@@ -771,16 +921,16 @@ func (dbMgr *DbMgr) GetGroupConfigItemInt(itemKey string, groupId string, Prefix
 	return result, err
 }
 
-func (dbMgr *DbMgr) GetGroupConfigItemBool(itemKey string, groupId string, Prefix ...string) (bool, error) {
+func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, Prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(Prefix...)
-	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return false, err
 	}
 
-	var config quorumpb.GroupConfigItem
+	var config quorumpb.AppConfigItem
 	err = proto.Unmarshal(value, &config)
 	if err != nil {
 		return false, err
@@ -790,16 +940,16 @@ func (dbMgr *DbMgr) GetGroupConfigItemBool(itemKey string, groupId string, Prefi
 	return result, err
 }
 
-func (dbMgr *DbMgr) GetGroupConfigItemString(itemKey string, groupId string, Prefix ...string) (string, error) {
+func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, Prefix ...string) (string, error) {
 	nodeprefix := getPrefix(Prefix...)
-	key := nodeprefix + GROUP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return "", err
 	}
 
-	var config quorumpb.GroupConfigItem
+	var config quorumpb.AppConfigItem
 	err = proto.Unmarshal(value, &config)
 	if err != nil {
 		return "", err

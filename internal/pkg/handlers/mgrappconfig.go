@@ -15,7 +15,7 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
-type GroupConfigParam struct {
+type AppConfigParam struct {
 	Action  string `from:"action"   json:"action"   validate:"required,oneof=add del"`
 	GroupId string `from:"group_id" json:"group_id" validate:"required"`
 	Name    string `from:"name"     json:"name"     validate:"required"`
@@ -24,13 +24,13 @@ type GroupConfigParam struct {
 	Memo    string `from:"memo"     json:"memo"`
 }
 
-type GroupConfigResult struct {
+type AppConfigResult struct {
 	GroupId string `json:"group_id" validate:"required"`
-	Sign    string `json:"sign" validate:"required"`
+	Sign    string `json:"signature" validate:"required"`
 	TrxId   string `json:"trx_id" validate:"required"`
 }
 
-func MgrGroupConfig(params *GroupConfigParam) (*GroupConfigResult, error) {
+func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func MgrGroupConfig(params *GroupConfigParam) (*GroupConfigResult, error) {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
 
-	item := &quorumpb.GroupConfigItem{}
+	item := &quorumpb.AppConfigItem{}
 	item.GroupId = params.GroupId
 	if params.Action == "add" {
 		item.Action = quorumpb.ActionType_ADD
@@ -55,19 +55,19 @@ func MgrGroupConfig(params *GroupConfigParam) (*GroupConfigResult, error) {
 	}
 	item.Name = params.Name
 	if params.Type == "bool" {
-		item.Type = quorumpb.GroupConfigType_BOOL
+		item.Type = quorumpb.AppConfigType_BOOL
 		_, err := strconv.ParseBool(params.Value)
 		if err != nil {
 			return nil, errors.New("type/value mismatch")
 		}
 	} else if params.Type == "int" {
-		item.Type = quorumpb.GroupConfigType_INT
+		item.Type = quorumpb.AppConfigType_INT
 		_, err := strconv.Atoi(params.Value)
 		if err != nil {
 			return nil, errors.New("type/value mismatch")
 		}
 	} else {
-		item.Type = quorumpb.GroupConfigType_STRING
+		item.Type = quorumpb.AppConfigType_STRING
 	}
 
 	item.Value = params.Value
@@ -98,13 +98,13 @@ func MgrGroupConfig(params *GroupConfigParam) (*GroupConfigResult, error) {
 		item.OwnerPubkey = group.Item.OwnerPubKey
 		item.OwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdGroupConfig(item)
+		trxId, err := group.UpdAppConfig(item)
 
 		if err != nil {
 			return nil, err
 		}
 
-		result := &GroupConfigResult{GroupId: item.GroupId, Sign: hex.EncodeToString(signature), TrxId: trxId}
+		result := &AppConfigResult{GroupId: item.GroupId, Sign: hex.EncodeToString(signature), TrxId: trxId}
 
 		return result, nil
 	}
