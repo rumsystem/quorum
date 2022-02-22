@@ -3,12 +3,12 @@ package chain
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 
 	//"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -36,11 +36,13 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.Init(grp)
 
+	//register chainctx with conn
+	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
+
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
-	grp.ChainCtx.InitChainSession()
-	nodectx.GetNodeCtx().Node.RumExchange.ChainReg(item.GroupId, grp.ChainCtx)
+
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
 
@@ -48,9 +50,8 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 func (grp *Group) Teardown() {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
 
-	if grp.ChainCtx.Syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.Syncer.Status == SYNCING_FORWARD {
-		grp.ChainCtx.Syncer.stopWaitBlock()
-	}
+	//unregisted chainctx with conn
+	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
 
 	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
 }
@@ -105,21 +106,18 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 		return err
 	}
 
+	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
+
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
-	nodectx.GetNodeCtx().Node.RumExchange.ChainReg(item.GroupId, grp.ChainCtx)
 
 	return nil
 }
 
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
-
-	grp.StopSync()
-	//leave pubsub channel
-	grp.ChainCtx.LeaveChannel()
-	group_log.Infof("Group <%s> leaved", grp.Item.GroupId)
+	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
 	return nodectx.GetDbMgr().RmGroup(grp.Item)
 }
 
@@ -129,29 +127,22 @@ func (grp *Group) ClearGroup() error {
 
 func (grp *Group) StartSync() error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	if grp.ChainCtx.Syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.Syncer.Status == SYNCING_FORWARD {
-		return errors.New("Group is syncing, don't start again")
-	}
-
-	higestBId := grp.ChainCtx.group.Item.HighestBlockId
-	topBlock, err := nodectx.GetDbMgr().GetBlock(higestBId, false, grp.ChainCtx.nodename)
-	if err != nil {
-		group_log.Warningf("Get top block error, blockId <%s> at <%s>, <%s>", higestBId, grp.ChainCtx.nodename, err.Error())
-		return err
-	}
-
-	group_log.Infof("Group <%s> start sync", grp.Item.GroupId)
-	return grp.ChainCtx.StartInitialSync(topBlock)
+	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StopSync() error {
 	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-	if grp.ChainCtx.Syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.Syncer.Status == SYNCING_FORWARD {
+
+	if grp.ChainCtx.syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.syncer.Status == SYNCING_FORWARD {
 		grp.ChainCtx.StopSync()
 	}
 
 	group_log.Infof("Group <%s> stop sync", grp.Item.GroupId)
 	return nil
+}
+
+func (grp *Group) GetSyncerStatus() int8 {
+	return grp.ChainCtx.syncer.Status
 }
 
 func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
@@ -241,7 +232,6 @@ func (grp *Group) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
 
 func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
-	//if private group?
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
 		if err != nil {
@@ -250,7 +240,6 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 		return grp.ChainCtx.Consensus.User().PostToGroup(content, keys)
 	}
 	return grp.ChainCtx.Consensus.User().PostToGroup(content)
-
 }
 
 func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
@@ -281,4 +270,17 @@ func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
 func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {
 	group_log.Debugf("<%s> IsUserAnnounced called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().IsUserAnnounced(grp.Item.GroupId, userSignPubkey, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) AskPeerId() {
+	/*
+		chain_log.Debugf("<%s> AskPeerId called", chain.groupId)
+		var req quorumpb.AskPeerId
+		req = quorumpb.AskPeerId{}
+
+		req.GroupId = chain.groupId
+		req.UserPeerId = nodectx.GetNodeCtx().Node.PeerID.Pretty()
+
+		return chain.GetProducerTrxMgr().SendAskPeerId(&req)
+	*/
 }

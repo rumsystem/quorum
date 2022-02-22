@@ -2,40 +2,37 @@ package chain
 
 import (
 	"fmt"
+
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"google.golang.org/protobuf/proto"
 )
 
+var groupMgr_log = logging.Logger("groupmgr")
+
 type GroupMgr struct {
-	dbMgr  *storage.DbMgr
 	Groups map[string]*Group
 }
 
 var groupMgr *GroupMgr
-
-var groupMgr_log = logging.Logger("groupmgr")
 
 func GetGroupMgr() *GroupMgr {
 	return groupMgr
 }
 
 //TODO: singlaton
-func InitGroupMgr(dbMgr *storage.DbMgr) *GroupMgr {
+func InitGroupMgr() error {
 	groupMgr_log.Debug("InitGroupMgr called")
-	groupMgr = &GroupMgr{dbMgr: dbMgr}
+	groupMgr = &GroupMgr{}
 	groupMgr.Groups = make(map[string]*Group)
-	return groupMgr
+	return nil
 }
 
-//load and group and start syncing
-func (groupmgr *GroupMgr) SyncAllGroup() error {
-	groupMgr_log.Debug("SyncAllGroup called")
-
+func (groupMgr *GroupMgr) LoadAllGroups() error {
+	groupMgr_log.Debug("LoadAllGroup called")
 	//open all groups
-	groupItemsBytes, err := groupmgr.dbMgr.GetGroupsBytes()
-
+	groupItemsBytes, err := nodectx.GetDbMgr().GetGroupsBytes()
 	if err != nil {
 		return err
 	}
@@ -46,35 +43,46 @@ func (groupmgr *GroupMgr) SyncAllGroup() error {
 
 		var item *quorumpb.GroupItem
 		item = &quorumpb.GroupItem{}
+		err := proto.Unmarshal(b, item)
 
-		proto.Unmarshal(b, item)
-		group.Init(item)
-		if err == nil {
-			groupMgr_log.Debugf("Start sync group: %s", item.GroupId)
-			go group.StartSync()
-			groupmgr.Groups[item.GroupId] = group
-		} else {
-			groupMgr_log.Fatalf("can't sync group: %s", item.GroupId)
+		if err != nil {
+			groupMgr_log.Fatalf("can't load group: %s", item.GroupId)
 			groupMgr_log.Fatalf(err.Error())
+		} else {
+			groupMgr_log.Debugf("load group: %s", item.GroupId)
+			groupMgr.Groups[item.GroupId] = group
+			group.Init(item)
 		}
 	}
-
 	return nil
 }
 
-func (groupmgr *GroupMgr) StopSyncAllGroup() error {
+//load and group and start syncing
+func (groupMgr *GroupMgr) StartSyncAllGroups() error {
+	groupMgr_log.Debug("SyncAllGroup called")
+
+	for _, grp := range groupMgr.Groups {
+		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
+		go grp.StartSync()
+	}
+	return nil
+}
+
+func (groupmgr *GroupMgr) StopSyncAllGroups() error {
 	groupMgr_log.Debug("StopSyncAllGroup called")
+	for _, grp := range groupMgr.Groups {
+		groupMgr_log.Debugf("Stop sync group: <%s>", grp.Item.GroupId)
+		go grp.StopSync()
+	}
 	return nil
 }
 
-func (groupmgr *GroupMgr) Release() {
+func (groupmgr *GroupMgr) TeardownAllGroups() {
 	groupMgr_log.Debug("Release called")
 	for groupId, group := range groupmgr.Groups {
 		groupMgr_log.Debugf("group: <%s> teardown", groupId)
 		group.Teardown()
 	}
-	//close ctx db
-	groupmgr.dbMgr.CloseDb()
 }
 
 func (groupmgr *GroupMgr) GetGroupItem(groupId string) (*quorumpb.GroupItem, error) {
@@ -82,5 +90,4 @@ func (groupmgr *GroupMgr) GetGroupItem(groupId string) (*quorumpb.GroupItem, err
 		return grp.Item, nil
 	}
 	return nil, fmt.Errorf("group not exist: %s", groupId)
-
 }

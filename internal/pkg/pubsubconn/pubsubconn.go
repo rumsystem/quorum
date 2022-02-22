@@ -1,15 +1,8 @@
 package pubsubconn
 
-import (
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-)
-
-type Chain interface {
-	HandleTrx(trx *quorumpb.Trx) error
-	HandleBlock(block *quorumpb.Block) error
-}
+import iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 
 type PubSubConn interface {
-	JoinChannel(cId string, chain Chain) error
+	JoinChannel(cId string, cdhIface iface.ChainDataHandlerIface) error
 	Publish(data []byte) error
 }

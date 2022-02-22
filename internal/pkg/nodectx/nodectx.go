@@ -3,7 +3,6 @@ package nodectx
 import (
 	"context"
 
-	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -11,18 +10,17 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
-var chainctx_log = logging.Logger("chainctx")
-
 type NodeStatus int8
-
-const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-)
 
 const (
 	NODE_ONLINE  = 0 //node connected with bootstramp and pubchannel
 	NODE_OFFLINE = 1 //node disconnected with bootstram and pubchannel
+)
+
+const (
+	USER_CHANNEL_PREFIX     = "user_channel_"
+	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
+	SYNC_CHANNEL_PREFIX     = "sync_channel_"
 )
 
 type NodeCtx struct {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
@@ -48,7 +49,7 @@ func RexInitSession(node *p2p.Node, groupId string, peerId string) error {
 		groupmgr := chain.GetGroupMgr()
 		group, ok := groupmgr.Groups[groupId]
 		if ok == true {
-			group.ChainCtx.AskPeerId()
+			group.AskPeerId()
 		}
 
 		return nil
