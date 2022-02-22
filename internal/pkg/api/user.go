@@ -39,7 +39,7 @@ type GrpUserParam struct {
 // @Produce json
 // @Param data body GrpUserParam true "GrpUserParam"
 // @Success 200 {object} GrpUserResult
-// @Router /v1/group/user [post]
+// @Router /api/v1/group/user [post]
 func (h *Handler) GroupUser(c echo.Context) (err error) {
 	output := make(map[string]string)
 	validate := validator.New()

@@ -53,9 +53,10 @@ func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, erro
 	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (user *MolassesUser) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdBlkList called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetUpdAuthTrx(item)
+func (user *MolassesUser) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
+	molauser_log.Debugf("<%s> UpdChainConfig called", user.groupId)
+
+	trx, err := user.cIface.GetTrxFactory().GetChainConfigTrx(item)
 	if err != nil {
 		return "", nil
 	}
@@ -89,9 +90,9 @@ func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
 	return user.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (user *MolassesUser) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdGroupConfig called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetUpdGroupConfigTrx(item)
+func (user *MolassesUser) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
+	molauser_log.Debugf("<%s> UpdAppConfig called", user.groupId)
+	trx, err := user.cIface.GetTrxFactory().GetUpdAppConfigTrx(item)
 	if err != nil {
 		return "", nil
 	}
@@ -300,9 +301,6 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 		case quorumpb.TrxType_POST:
 			molauser_log.Debugf("<%s> apply POST trx", user.groupId)
 			nodectx.GetDbMgr().AddPost(trx, nodename)
-		case quorumpb.TrxType_AUTH:
-			molauser_log.Debugf("<%s> apply AUTH trx", user.groupId)
-			nodectx.GetDbMgr().UpdateBlkListItem(trx, nodename)
 		case quorumpb.TrxType_PRODUCER:
 			molauser_log.Debugf("<%s> apply PRODUCER trx", user.groupId)
 			nodectx.GetDbMgr().UpdateProducer(trx, nodename)
@@ -320,9 +318,15 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
 		case quorumpb.TrxType_ASK_PEERID_RESP:
 			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
-		case quorumpb.TrxType_GROUP_CONFIG:
-			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", user.groupId)
-			nodectx.GetDbMgr().UpdateGroupConfig(trx, nodename)
+		case quorumpb.TrxType_APP_CONFIG:
+			molauser_log.Debugf("<%s> apply APP_CONFIG trx", user.groupId)
+			nodectx.GetDbMgr().UpdateAppConfig(trx, nodename)
+		case quorumpb.TrxType_CHAIN_CONFIG:
+			molauser_log.Debugf("<%s> apply CHAIN_CONFIG trx", user.groupId)
+			err := nodectx.GetDbMgr().UpdateChainConfig(trx, nodename)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		default:
 			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
 		}

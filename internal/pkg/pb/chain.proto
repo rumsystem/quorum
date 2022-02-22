@@ -14,7 +14,6 @@ message Package {
 
 enum TrxType {
   POST               = 0; // post to group
-  AUTH               = 1; // group auth update
   SCHEMA             = 2; // group schema
   PRODUCER           = 3; // update group producer
   ANNOUNCE           = 4; // self announce, producer or user)  
@@ -26,7 +25,8 @@ enum TrxType {
   USER               = 10; // update group user
   ASK_PEERID         = 11; // ask owner/producer peerid
   ASK_PEERID_RESP    = 12; // response ask peerid
-  GROUP_CONFIG       = 13; // update group configuration
+  CHAIN_CONFIG       = 13; // predefined chain configuration
+  APP_CONFIG         = 14; // group app customized configuration
 }
 
 enum AnnounceType {
@@ -131,16 +131,6 @@ message PostItem {
 	int64  TimeStamp       = 4;
 }
 
-message DenyUserItem {
-    string GroupId          = 1;    
-    string PeerId           = 2;
-    string GroupOwnerPubkey = 3;
-    string GroupOwnerSign   = 4;
-    int64  TimeStamp        = 5;    
-    string Action           = 6;
-    string Memo             = 7;
-}
-
 message ProducerItem {
    string     GroupId             = 1;
    string     ProducerPubkey      = 2;
@@ -218,6 +208,43 @@ enum RoleV0 {
     GROUP_USER     = 1;
 }
 
+enum ChainConfigType {
+    SET_TRX_AUTH_MODE = 0;
+    UPD_DNY_LIST      = 1;
+    UPD_ALW_LIST      = 2;
+}
+
+enum TrxAuthMode {
+    FOLLOW_ALW_LIST = 0;
+    FOLLOW_DNY_LIST = 1;
+}
+
+enum AuthListType {
+    ALLOW_LIST = 0;
+    DENY_LIST  = 1;
+} 
+
+message ChainConfigItem {
+    string          GroupId        = 1;
+    ChainConfigType Type           = 2;
+    bytes           Data           = 3;
+    string          OwnerPubkey    = 4;
+    string          OwnerSignature = 5;
+    int64           TimeStamp      = 6;       
+    string          Memo           = 7; 
+}
+
+message ChainSendTrxRuleListItem {
+    ActionType Action       = 1; 
+    string     Pubkey       = 3;
+    repeated   TrxType Type = 4;
+}
+
+message SetTrxAuthModeItem {
+    TrxType     Type = 1;
+    TrxAuthMode Mode = 2;
+}
+
 message GroupItemV0 {
 	string GroupId                 = 1;
 	string GroupName               = 2;
@@ -235,22 +262,22 @@ message GroupItemV0 {
     string AppKey                  = 14;
 }
 
-enum GroupConfigType {
+enum AppConfigType {
     INT    = 0;
     BOOL   = 1;
     STRING = 2;
 }
 
-message GroupConfigItem{
-    string          GroupId     = 1;
-    ActionType      Action      = 2;
-    string          Name        = 3;
-    GroupConfigType Type        = 4;
-    string          Value       = 5;
-    string          OwnerPubkey = 6;
-    string          OwnerSign   = 7;
-    string          Memo        = 8;
-    int64           TimeStamp   = 9;
+message AppConfigItem{
+    string        GroupId     = 1;
+    ActionType    Action      = 2;
+    string        Name        = 3;
+    AppConfigType Type        = 4;
+    string        Value       = 5;
+    string        OwnerPubkey = 6;
+    string        OwnerSign   = 7;
+    string        Memo        = 8;
+    int64         TimeStamp   = 9;
 }
 
 message PSPing {

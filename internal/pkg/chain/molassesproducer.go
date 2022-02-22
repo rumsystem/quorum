@@ -22,9 +22,9 @@ import (
 
 var molaproducer_log = logging.Logger("producer")
 
-const PRODUCE_TIMER time.Duration = 5    //5s
-const MERGE_TIMER time.Duration = 5      //5s
-const CLOSE_CONN_TIMER time.Duration = 5 //5s
+const PRODUCE_TIMER time.Duration = 5     //5s
+const MERGE_TIMER time.Duration = 5       //5s
+const CLOSE_CONN_TIMER time.Duration = 20 //20s
 
 const TRXS_TOTAL_SIZE int = 900 * 1024
 
@@ -39,7 +39,7 @@ const (
 type MolassesProducer struct {
 	grpItem           *quorumpb.GroupItem
 	blockPool         map[string]*quorumpb.Block
-	trxPool           map[string]*quorumpb.Trx
+	trxPool           sync.Map
 	syncConnTimerPool map[string]*time.Timer
 	status            ProducerStatus
 	ProduceTimer      *time.Timer
@@ -55,7 +55,7 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	producer.grpItem = item
 	producer.cIface = iface
 	producer.blockPool = make(map[string]*quorumpb.Block)
-	producer.trxPool = make(map[string]*quorumpb.Trx)
+	//producer.trxPool = make(map[string]*quorumpb.Trx)
 	producer.syncConnTimerPool = make(map[string]*time.Timer)
 	producer.status = StatusIdle
 	producer.nodename = nodename
@@ -69,17 +69,26 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 
 	//check if trx sender is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
-
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, producer.nodename)
+	if err != nil {
 		return
-	} else {
-		molaproducer_log.Debugf("<%s> user <%s> is not blocked", producer.groupId, trx.SenderPubkey)
+	}
+
+	if !isAllow {
+		molaproducer_log.Debugf("<%s> user <%s> don't has permission on trx type <%s>", producer.groupId, trx.SenderPubkey, trx.Type.String())
+		return
 	}
 
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
-	producer.trxPool[trx.TrxId] = trx
+	producer.trxPool.Store(trx.TrxId, trx)
+
+	molaproducer_log.Debugf("*************************************")
+	producer.trxPool.Range(func(key, value interface{}) bool {
+		trxId, _ := key.(string)
+		molaproducer_log.Debugf("key <%s>", trxId)
+		return true
+	})
+	molaproducer_log.Debugf("*************************************")
 
 	if producer.status == StatusIdle {
 		go producer.startProduceBlock()
@@ -114,24 +123,36 @@ func (producer *MolassesProducer) produceBlock() {
 
 	//Don't lock trx pool, just package what ever you have at this moment
 	//package all trx
-	//producer.trxpoolmu.Lock()
-	//defer producer.trxpoolmu.Unlock()
-	trxs := make([]*quorumpb.Trx, 0, len(producer.trxPool))
-
+	var trxs []*quorumpb.Trx
 	totalSizeBytes := 0
 	totalTrx := 0
 
-	for key, value := range producer.trxPool {
-		encodedcontent, _ := quorumpb.ContentToBytes(value)
+	producer.trxPool.Range(func(k, v interface{}) bool {
+		trxId, _ := k.(string)
+		trx, _ := v.(*quorumpb.Trx)
+
+		encodedcontent, _ := quorumpb.ContentToBytes(trx)
 		totalSizeBytes += binary.Size(encodedcontent)
 
 		if totalSizeBytes < TRXS_TOTAL_SIZE {
-			trxs = append(trxs, value)
+			trxs = append(trxs, trx)
 			//remove trx from pool
-			delete(producer.trxPool, key)
+			producer.trxPool.Delete(trxId)
 			totalTrx++
+
+			return true
 		}
-	}
+
+		return false
+	})
+
+	molaproducer_log.Debugf("*************after package***************")
+	producer.trxPool.Range(func(key, value interface{}) bool {
+		trxId, _ := key.(string)
+		molaproducer_log.Debugf("key <%s>", trxId)
+		return true
+	})
+	molaproducer_log.Debugf("*************************************")
 
 	molaproducer_log.Debugf("<%s> package <%d> trxs, size <%d>", producer.groupId, totalTrx, totalSizeBytes)
 
@@ -215,7 +236,14 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		producer.status = StatusIdle
 		producer.statusmu.Unlock()
 
-		if len(producer.trxPool) != 0 {
+		//since sync.map don't have len(), count manually
+		var count uint
+		producer.trxPool.Range(func(key interface{}, value interface{}) bool {
+			count++
+			return true
+		})
+
+		if count != 0 {
 			molaproducer_log.Debugf("<%s> start produce block", producer.groupId)
 			producer.startProduceBlock()
 		}
@@ -295,12 +323,14 @@ func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) (requester 
 		return "", nil, false, err
 	}
 
-	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, producer.nodename)
+	if err != nil {
+		return "", nil, false, err
+	}
 
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return reqBlockItem.UserId, nil, false, fmt.Errorf("User blocked")
+	if !isAllow {
+		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
+		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
 	}
 
 	var subBlocks []*quorumpb.Block
@@ -340,12 +370,15 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) (requester
 		return "", nil, false, err
 	}
 
-	//check if requester is in group block list
-	isBlocked, _ := nodectx.GetDbMgr().IsUserBlocked(trx.GroupId, trx.SenderPubkey, producer.nodename)
+	//check previllage
+	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, producer.nodename)
+	if err != nil {
+		return "", nil, false, err
+	}
 
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", producer.groupId, trx.SenderPubkey)
-		return reqBlockItem.UserId, nil, false, fmt.Errorf("User blocked")
+	if !isAllow {
+		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD.String())
+		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
 	}
 
 	isExist, err := nodectx.GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, producer.nodename)
@@ -543,9 +576,6 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_POST:
 			molaproducer_log.Debugf("<%s> apply POST trx", producer.groupId)
 			nodectx.GetDbMgr().AddPost(trx, producer.nodename)
-		case quorumpb.TrxType_AUTH:
-			molaproducer_log.Debugf("<%s> apply AUTH trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateBlkListItem(trx, producer.nodename)
 		case quorumpb.TrxType_PRODUCER:
 			molaproducer_log.Debugf("<%s> apply PRODUCER trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateProducer(trx, producer.nodename)
@@ -558,9 +588,12 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)
-		case quorumpb.TrxType_GROUP_CONFIG:
-			molauser_log.Debugf("<%s> apply GROUP_CONFIG trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateGroupConfig(trx, producer.nodename)
+		case quorumpb.TrxType_APP_CONFIG:
+			molaproducer_log.Debugf("<%s> apply APP_CONFIG trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateAppConfig(trx, producer.nodename)
+		case quorumpb.TrxType_CHAIN_CONFIG:
+			molaproducer_log.Debugf("<%s> apply CHAIN_CONFIG trx", producer.groupId)
+			nodectx.GetDbMgr().UpdateChainConfig(trx, producer.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)

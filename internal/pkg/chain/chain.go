@@ -118,8 +118,6 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		return errors.New("Trx Version mismatch")
 	}
 	switch trx.Type {
-	case quorumpb.TrxType_AUTH:
-		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_POST:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_ANNOUNCE:
@@ -130,7 +128,9 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SCHEMA:
 		chain.producerAddTrx(trx)
-	case quorumpb.TrxType_GROUP_CONFIG:
+	case quorumpb.TrxType_APP_CONFIG:
+		chain.producerAddTrx(trx)
+	case quorumpb.TrxType_CHAIN_CONFIG:
 		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
@@ -150,12 +150,12 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
 		return nil
-	case quorumpb.TrxType_ASK_PEERID:
-		chain.HandleAskPeerID(trx)
-		return nil
-	case quorumpb.TrxType_ASK_PEERID_RESP:
-		chain.HandleAskPeerIdResp(trx)
-		return nil
+	//case quorumpb.TrxType_ASK_PEERID:
+	//	chain.HandleAskPeerID(trx)
+	//	return nil
+	//case quorumpb.TrxType_ASK_PEERID_RESP:
+	//	chain.HandleAskPeerIdResp(trx)
+	//	return nil
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -469,6 +469,7 @@ func (chain *Chain) UpdProducerList() {
 	}
 }
 
+/*
 func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> HandleAskPeerID called", chain.groupId)
 	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
@@ -513,33 +514,43 @@ func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 		return cmgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	}
 }
+*/
 
-func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
-
-	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-	if err != nil {
-		return err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return err
-	}
-
-	var respItem quorumpb.AskPeerIdResp
-
-	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
-		return err
-	}
-
-	connMgr, err := conn.GetConn().GetConnMgr(chain.groupId)
-	if err != nil {
-		return err
-	}
-
-	return connMgr.UpdateProviderPeerIdPool(respItem.RespPeerPubkey, respItem.RespPeerId)
-}
+//func (chain *Chain) HandleAskPeerIdResp(trx *quorumpb.Trx) error {
+//	chain_log.Debugf("<%s> HandleAskPeerIdResp called", chain.groupId)
+//
+//	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+//	if err != nil {
+//		return err
+//	}
+//
+//	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+//	if err != nil {
+//		return err
+//	}
+//
+//	var respItem quorumpb.AskPeerIdResp
+//
+//	if err := proto.Unmarshal(decryptData, &respItem); err != nil {
+//		return err
+//	}
+//
+//	//update peerId table
+//	chain.ProviderPeerIdPool[respItem.RespPeerPubkey] = respItem.RespPeerId
+//	chain_log.Debugf("<%s> Pubkey<%s> PeerId<%s> ", chain.groupId, respItem.RespPeerPubkey, &respItem.RespPeerId)
+//	//initial both producerChannel and syncChannel
+//	//err = chain.InitSession(chain.producerChannelId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//
+//	//err = chain.InitSession(chain.syncChannelId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//
+//	return nil
+//}
 
 func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
 	return chain.userPool

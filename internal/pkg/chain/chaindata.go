@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -30,10 +31,25 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 		return nil, err
 	}
 
-	//check if requester is in group block list
-	isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
-	if isBlocked {
-		molaproducer_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
+	//commented by cuicat
+	/*
+		//check if requester is in group block list
+		isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
+		if isBlocked {
+			molaproducer_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
+			return nil, nil
+		}
+	*/
+
+	//added by cuicat
+	//check if trx sender is in group block list
+	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
+	if err != nil {
+		return nil, nil
+	}
+
+	if !isAllow {
+		chain_log.Debugf("<%s> user <%s> don't has permission on trx type <%s>", trx.GroupId, trx.SenderPubkey, trx.Type.String())
 		return nil, nil
 	}
 
@@ -59,9 +75,25 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 		return nil, err
 	}
 
-	isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
-	if isBlocked {
-		chain_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
+	//commented by cuicat
+	/*
+		//check if requester is in group block list
+		isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
+		if isBlocked {
+			molaproducer_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
+			return nil, nil
+		}
+	*/
+
+	//added by cuicat
+	//check if trx sender is in group block list
+	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
+	if err != nil {
+		return nil, nil
+	}
+
+	if !isAllow {
+		chain_log.Debugf("<%s> user <%s> don't has permission on trx type <%s>", trx.GroupId, trx.SenderPubkey, trx.Type.String())
 		return nil, nil
 	}
 

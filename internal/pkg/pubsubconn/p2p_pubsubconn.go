@@ -2,6 +2,7 @@ package pubsubconn
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -22,6 +23,8 @@ type P2pPubSubConn struct {
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
+	mu           sync.RWMutex
+	cancel       context.CancelFunc
 }
 
 type PubSubActionType int
@@ -94,14 +97,15 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface i
 			psconn.Ctx = ctxtimeout
 			psconn.JoinChannelAsExchange(channelId, pscm.actionChan)
 		}
-		pscm.mu.Lock()
+		//commented by cuicat
+		//pscm.connmgr.Store(channelId, psconn)
 		pscm.connmgr[channelId] = psconn
-		pscm.mu.Unlock()
 	}
-	pscm.mu.RLock()
-	psconn := pscm.connmgr[channelId]
-	pscm.mu.RUnlock()
-	return psconn
+
+	return pscm.connmgr[channelId]
+	//commented by cuicat
+	//psconn, _ := pscm.connmgr.Load(channelId)
+	//return psconn.(*P2pPubSubConn)
 }
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
@@ -119,9 +123,10 @@ func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 
 }
 
-func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
-	return &P2pPubSubConn{Ctx: ctx, ps: ps, nodename: nodename}
-}
+//func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
+//	ctxwithcancel, cancel := context.WithCancel(ctx)
+//	return &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: ps, nodename: nodename}
+//}
 
 func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string, ch chan *PubSubConnAction) error {
 	var err error
@@ -171,17 +176,23 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHan
 		channel_log.Infof("Subscribe <%s> done", cId)
 	}
 
-	go psconn.handleGroupChannel()
+	go psconn.handleGroupChannel(psconn.Ctx)
 	return nil
 }
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
+
+	psconn.mu.Lock()
+	defer psconn.mu.Unlock()
+	if psconn.Topic == nil {
+		return fmt.Errorf("Topic has been closed.")
+	}
 	return psconn.Topic.Publish(psconn.Ctx, data)
 }
 
-func (psconn *P2pPubSubConn) handleGroupChannel() error {
+func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 	for {
-		msg, err := psconn.Subscription.Next(psconn.Ctx)
+		msg, err := psconn.Subscription.Next(ctx)
 		if err == nil {
 			var pkg quorumpb.Package
 			err = proto.Unmarshal(msg.Data, &pkg)

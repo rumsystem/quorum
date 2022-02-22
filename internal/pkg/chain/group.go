@@ -160,11 +160,6 @@ func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
 	return nodectx.GetDbMgr().GetTrx(trxId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetBlockedUser() ([]*quorumpb.DenyUserItem, error) {
-	group_log.Debugf("<%s> GetBlockedUser called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetBlkedUsers(grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
@@ -195,39 +190,34 @@ func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error
 	return nodectx.GetDbMgr().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetGroupConfigKeyList() (keyName []string, itemType []string, err error) {
-	group_log.Debugf("<%s> GetGroupConfigKeyList called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetGroupConfigKey(grp.Item.GroupId, grp.ChainCtx.nodename)
+func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, err error) {
+	group_log.Debugf("<%s> GetAppConfigKeyList called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAppConfigKey(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetGroupConfigItem(keyName string) (*quorumpb.GroupConfigItem, error) {
-	group_log.Debugf("<%s> GetGroupConfigKeyList called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetGroupConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, error) {
+	group_log.Debugf("<%s> GetAppConfigItem called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAppConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetGroupConfigItemBool(keyName string) (bool, error) {
-	group_log.Debugf("<%s> GetGroupConfigItemBool called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetGroupConfigItemBool(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+func (grp *Group) GetAppConfigItemBool(keyName string) (bool, error) {
+	group_log.Debugf("<%s> GetAppConfigItemBool called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAppConfigItemBool(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetGroupConfigItemInt(keyName string) (int, error) {
-	group_log.Debugf("<%s> GetGroupConfigItemInt called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetGroupConfigItemInt(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+func (grp *Group) GetAppConfigItemInt(keyName string) (int, error) {
+	group_log.Debugf("<%s> GetAppConfigItemInt called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAppConfigItemInt(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetGroupConfigItemString(keyName string) (string, error) {
-	group_log.Debugf("<%s> GetGroupConfigItemString called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetGroupConfigItemString(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+func (grp *Group) GetAppConfigItemString(keyName string) (string, error) {
+	group_log.Debugf("<%s> GetAppConfigItemString called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetAppConfigItemString(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)
 	return grp.ChainCtx.Consensus.User().UpdAnnounce(item)
-}
-
-func (grp *Group) UpdBlkList(item *quorumpb.DenyUserItem) (string, error) {
-	group_log.Debugf("<%s> UpdBlkList called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdBlkList(item)
 }
 
 func (grp *Group) PostToGroup(content proto.Message) (string, error) {
@@ -257,9 +247,9 @@ func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	return grp.ChainCtx.Consensus.User().UpdSchema(item)
 }
 
-func (grp *Group) UpdGroupConfig(item *quorumpb.GroupConfigItem) (string, error) {
-	group_log.Debugf("<%s> UpdGroupConfig called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdGroupConfig(item)
+func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
+	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
+	return grp.ChainCtx.Consensus.User().UpdAppConfig(item)
 }
 
 func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
@@ -270,6 +260,27 @@ func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
 func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {
 	group_log.Debugf("<%s> IsUserAnnounced called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().IsUserAnnounced(grp.Item.GroupId, userSignPubkey, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
+	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
+	//return grp.ChainCtx.Consensus.User().UpdChainSendTrxRule(item)
+	return grp.ChainCtx.Consensus.User().UpdChainConfig(item)
+}
+
+func (grp *Group) GetChainSendTrxDenyList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
+	group_log.Debugf("<%s> GetChainSendTrxDenyList called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_DENY_LIST, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetChainSendTrxAllowList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
+	group_log.Debugf("<%s> GetChainSendTrxAllowList called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetSendTrxAuthMode(trxType quorumpb.TrxType) (quorumpb.TrxAuthMode, error) {
+	group_log.Debugf("<%s> GetSendTrxAuthMode called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetTrxAuthModeByGroupId(grp.Item.GroupId, trxType, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) AskPeerId() {

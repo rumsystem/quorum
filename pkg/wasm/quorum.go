@@ -7,8 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
-	"time"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -158,9 +156,6 @@ func Bootstrap() error {
 	connectedPeers := wasmCtx.QNode.AddPeers(wasmCtx.Ctx, bootstraps)
 	logger.Console.Log(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
-	/* keep finding peers, and try to connect to them */
-	go StartDiscoverTask()
-
 	/* start syncing all local groups */
 	groupMgr := chain.GetGroupMgr()
 	err := groupMgr.SyncAllGroup()
@@ -175,50 +170,4 @@ func Bootstrap() error {
 	logger.Console.Log("App Syncer Started")
 
 	return nil
-}
-
-func StartDiscoverTask() {
-	wasmCtx := quorumContext.GetWASMContext()
-	var doDiscoverTask = func() {
-		logger.Console.Log("Searching for other peers...")
-		peerChan, err := wasmCtx.QNode.RoutingDiscovery.FindPeers(wasmCtx.Ctx, quorumConfig.DefaultRendezvousString)
-		if err != nil {
-			logger.Console.Error(err.Error())
-			return
-		}
-
-		var connectCount uint32 = 0
-
-		for peer := range peerChan {
-			curPeer := peer
-			logger.Console.Log("Found peer:" + curPeer.String())
-			go func() {
-				pctx, cancel := context.WithTimeout(wasmCtx.Ctx, time.Second*10)
-				defer cancel()
-				err := wasmCtx.QNode.Host.Connect(pctx, curPeer)
-				if err != nil {
-					logger.Console.Error("Failed to connect peer: " + curPeer.String())
-				} else {
-					curConnectedCount := atomic.AddUint32(&connectCount, 1)
-					logger.Console.Log(fmt.Sprintf("Connected to peer(%d): %s", curConnectedCount, curPeer.String()))
-				}
-			}()
-		}
-	}
-	/* first job will start after 1 second */
-	go func() {
-		time.Sleep(1 * time.Second)
-		doDiscoverTask()
-	}()
-
-	ticker := time.NewTicker(30 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			go doDiscoverTask()
-		case <-wasmCtx.Qchan:
-			ticker.Stop()
-			wasmCtx.Cancel()
-		}
-	}
 }

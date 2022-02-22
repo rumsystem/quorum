@@ -13,7 +13,7 @@ import (
 // @Description Clear group data
 // @Produce json
 // @Success 200 {object} handlers.ClearGroupDataResult
-// @Router /v1/group/clear [post]
+// @Router /api/v1/group/clear [post]
 func (h *Handler) ClearGroupData(c echo.Context) (err error) {
 	output := make(map[string]string)
 	validate := validator.New()

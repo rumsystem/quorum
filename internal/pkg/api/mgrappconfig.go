@@ -7,10 +7,16 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-func (h *Handler) GetGroupConfigKey(c echo.Context) (err error) {
+func (h *Handler) MgrAppConfig(c echo.Context) (err error) {
 	output := make(map[string]string)
-	groupid := c.Param("group_id")
-	res, err := handlers.GetGroupConfigKeyList(groupid)
+	params := new(handlers.AppConfigParam)
+
+	if err = c.Bind(params); err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	res, err := handlers.MgrAppConfig(params)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

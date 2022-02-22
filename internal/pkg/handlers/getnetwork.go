@@ -21,8 +21,8 @@ type groupNetworkInfo struct {
 }
 
 type NetworkInfo struct {
-	Peerid     string                 `json:"peerid" validate:"required"`
-	Ethaddr    string                 `json:"ethaddr" validate:"required"`
+	Peerid     string                 `json:"peer_id" validate:"required"`
+	Ethaddr    string                 `json:"eth_addr" validate:"required"`
 	NatType    string                 `json:"nat_type" validate:"required"`
 	NatEnabled bool                   `json:"nat_enabled" validate:"required"`
 	Addrs      []maddr.Multiaddr      `json:"addrs" validate:"required"`

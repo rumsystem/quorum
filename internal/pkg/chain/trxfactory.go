@@ -146,22 +146,22 @@ func (factory *TrxFactory) VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 	return verify, err
 }
 
-func (factory *TrxFactory) GetUpdAuthTrx(item *quorumpb.DenyUserItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetUpdAppConfigTrx(item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrx(quorumpb.TrxType_AUTH, encodedcontent)
+	return factory.CreateTrx(quorumpb.TrxType_APP_CONFIG, encodedcontent)
 }
 
-func (factory *TrxFactory) GetUpdGroupConfigTrx(item *quorumpb.GroupConfigItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetChainConfigTrx(item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrx(quorumpb.TrxType_GROUP_CONFIG, encodedcontent)
+	return factory.CreateTrx(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent)
 }
 
 func (factory *TrxFactory) GetRegProducerTrx(item *quorumpb.ProducerItem) (*quorumpb.Trx, error) {

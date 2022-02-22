@@ -154,6 +154,21 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("GetGroupSeed", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetGroupSeed(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("GetAnnouncedGroupProducers", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		groupId := args[0].String()
 		handler := func() (map[string]interface{}, error) {
@@ -234,11 +249,11 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
-	js.Global().Set("MgrGrpBlkList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	js.Global().Set("MgrAppConfig", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		jsonStr := args[0].String()
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.MgrGrpBlkList([]byte(jsonStr))
+			res, err := quorumAPI.MgrAppConfig([]byte(jsonStr))
 			if err != nil {
 				return ret, err
 			}
@@ -249,11 +264,57 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
-	js.Global().Set("GetDeniedUserList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	js.Global().Set("MgrChainConfig", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		jsonStr := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.MgrChainConfig([]byte(jsonStr))
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("GetChainTrxAllowList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		groupId := args[0].String()
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetDeniedUserList(groupId)
+			res, err := quorumAPI.GetChainTrxAllowList(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("GetAppConfigKeyList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetAppConfigKeyList(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("GetAppConfigItem", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		itemKey := args[1].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetAppConfigItem(itemKey, groupId)
 			if err != nil {
 				return ret, err
 			}
@@ -365,15 +426,17 @@ func RegisterJSFunctions() {
 		num := args[1].Int()
 		startTrx := args[2].String()
 		reverse := args[3].Bool()
+		includestarttrx := args[4].Bool()
+
 		senders := []string{}
-		for i := 4; i < len(args); i += 1 {
+		for i := 5; i < len(args); i += 1 {
 			sender := args[i].String()
 			senders = append(senders, sender)
 		}
 
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetContent(groupId, num, startTrx, reverse, senders)
+			res, err := quorumAPI.GetContent(groupId, num, startTrx, reverse, includestarttrx, senders)
 			if err != nil {
 				return ret, err
 			}
