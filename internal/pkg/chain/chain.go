@@ -674,8 +674,8 @@ func (chain *Chain) SyncBackward(blockId string, nodename string) error {
 
 func (chain *Chain) StopSync() error {
 	chain_log.Debugf("<%s> StopSync called", chain.groupId)
-	if chain.Syncer != nil {
-		return chain.Syncer.StopSync()
+	if chain.syncer != nil {
+		return chain.syncer.StopSync()
 	}
 	return nil
 }

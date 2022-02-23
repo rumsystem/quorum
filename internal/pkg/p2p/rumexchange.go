@@ -56,7 +56,7 @@ type RexService struct {
 	peerStatus         *PeerStatus
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
-	chainmgr           map[string]Chain
+	chainmgr           map[string]iface.ChainDataHandlerIface
 	msgtypehandlers    []RumHandler
 	msgtypehandlerlock sync.RWMutex
 }

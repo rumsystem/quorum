@@ -153,6 +153,10 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	//Rex
 	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 
+	if nodectx.GetNodeCtx().Node.RumExchange != nil {
+		nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
+	}
+
 	//initial rex session
 	//connMgr.InitRexSession()
 
@@ -191,11 +195,14 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 func (connMgr *ConnMgr) InitRexSession() error {
 	conn_log.Debugf("InitSession called, groupId <%s>", connMgr.GroupId)
 	if peerId, ok := connMgr.ProviderPeerIdPool[connMgr.OwnerPubkey]; ok {
-		err := nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.ProducerChannelId)
+		if nodectx.GetNodeCtx().Node.RumSession == nil {
+			return nil
+		}
+		err := nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, connMgr.ProducerChannelId)
 		if err != nil {
 			return err
 		}
-		err = nodectx.GetNodeCtx().Node.RumExchange.InitSession(peerId, connMgr.SyncChannelId)
+		err = nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, connMgr.SyncChannelId)
 		if err != nil {
 			return err
 		}

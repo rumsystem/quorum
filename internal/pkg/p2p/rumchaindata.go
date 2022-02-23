@@ -25,7 +25,7 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) {
 		if err == nil {
 			targetchain, ok := r.rex.chainmgr[trx.GroupId]
 			if ok == true {
-				targetchain.HandleTrxWithRex(trx, frompeerid)
+				targetchain.HandleTrxRex(trx, frompeerid)
 			} else {
 				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
 			}
