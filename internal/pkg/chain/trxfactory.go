@@ -43,16 +43,20 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 	trx.Type = msgType
 	trx.GroupId = factory.groupItem.GroupId
 	trx.SenderPubkey = factory.groupItem.UserSignPubkey
+	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, factory.nodename)
+	if err != nil {
+		return &trx, []byte(""), err
+	}
+	trx.Nonce = nonce
 
 	var encryptdData []byte
-
 	if msgType == quorumpb.TrxType_POST && factory.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		//for post, private group, encrypted by age for all announced group users
 		if len(encryptto) == 1 {
 			var err error
 			ks := localcrypto.GetKeystore()
 			if len(encryptto[0]) == 0 {
-				return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %g", factory.groupItem.GroupId)
+				return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", factory.groupItem.GroupId)
 			}
 			encryptdData, err = ks.EncryptTo(encryptto[0], data)
 			if err != nil {
@@ -60,7 +64,7 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 			}
 
 		} else {
-			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %g", factory.groupItem.GroupId)
+			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", factory.groupItem.GroupId)
 		}
 
 	} else {

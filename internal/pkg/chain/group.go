@@ -61,14 +61,15 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	grp.Item = item
 
-	//create and initial chain
-	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.Init(grp)
-
-	err := nodectx.GetDbMgr().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
+	//update nonce, set nonce to 0
+	err := nodectx.GetDbMgr().UpdateNonce(item.GroupId, 0, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
+
+	//create and initial chain
+	grp.ChainCtx = &Chain{}
+	grp.ChainCtx.Init(grp)
 
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer
@@ -155,7 +156,7 @@ func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 	return nodectx.GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
+func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
 	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetTrx(trxId, grp.ChainCtx.nodename)
 }

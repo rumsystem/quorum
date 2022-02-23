@@ -252,7 +252,7 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 	molauser_log.Debugf("<%s> applyTrxs called", user.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, nodename)
+		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
 		if err != nil {
 			molauser_log.Debugf("<%s> %s", user.groupId, err.Error())
 			continue
