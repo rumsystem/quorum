@@ -13,6 +13,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	quorumCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
@@ -20,8 +21,9 @@ import (
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumConfig "github.com/rumsystem/quorum/pkg/wasm/config"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
-	"github.com/rumsystem/quorum/pkg/wasm/logger"
 )
+
+var mainLogger = logging.Logger("main")
 
 const DEFAUT_KEY_NAME string = "default"
 
@@ -48,7 +50,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 	ks := k.(*quorumCrypto.BrowserKeystore)
-	logger.Console.Log("InitBrowserKeystore OK")
+	mainLogger.Info("InitBrowserKeystore OK")
 
 	/* get default sign key */
 	key, err := ks.GetUnlockedKey(quorumCrypto.Sign.NameString(DEFAUT_KEY_NAME))
@@ -62,7 +64,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		cancel()
 		return false, errors.New("failed to cast key")
 	}
-	logger.Console.Log("defaultKey OK")
+	mainLogger.Info("defaultKey OK")
 
 	node, err := quorumP2P.NewBrowserNode(ctx, &nodeOpt, defaultKey)
 	if err != nil {
@@ -79,7 +81,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
-	logger.Console.Log("SignKeytoPeerKeys OK")
+	mainLogger.Info("SignKeytoPeerKeys OK")
 
 	peerId, ethAddr, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
 	if err != nil {
@@ -87,10 +89,10 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 	nodectx.GetNodeCtx().PeerId = peerId
-	logger.Console.Log("GetPeerInfo OK")
+	mainLogger.Info("GetPeerInfo OK")
 
 	chain.InitGroupMgr(dbMgr)
-	logger.Console.Log("InitGroupMgr OK")
+	mainLogger.Info("InitGroupMgr OK")
 
 	appIndexedDb, err := newAppDb()
 	if err != nil {
@@ -154,7 +156,7 @@ func Bootstrap() error {
 		bootstraps = append(bootstraps, *peerinfo)
 	}
 	connectedPeers := wasmCtx.QNode.AddPeers(wasmCtx.Ctx, bootstraps)
-	logger.Console.Log(fmt.Sprintf("Connected to %d peers", connectedPeers))
+	mainLogger.Info(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
 	/* start syncing all local groups */
 	groupMgr := chain.GetGroupMgr()
@@ -162,12 +164,12 @@ func Bootstrap() error {
 	if err != nil {
 		return err
 	}
-	logger.Console.Log("Group Syncer Started")
+	mainLogger.Info("Group Syncer Started")
 
 	/* new syncer for app data */
 	appsync := appdata.NewAppSyncAgent("", "default", wasmCtx.AppDb, wasmCtx.DbMgr)
 	appsync.Start(10)
-	logger.Console.Log("App Syncer Started")
+	mainLogger.Info("App Syncer Started")
 
 	return nil
 }

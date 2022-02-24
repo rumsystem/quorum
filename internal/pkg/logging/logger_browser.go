@@ -119,7 +119,7 @@ func getMessage(template string, fmtArgs []interface{}) string {
 
 func Logger(system string) QuorumLogger {
 	console := js.Global().Get("console")
-	blogger := BrowserLogger{WarnLevel, system, console}
+	blogger := BrowserLogger{logLevel, system, console}
 	return &blogger
 }
 
