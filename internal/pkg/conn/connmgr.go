@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -375,6 +376,10 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 
 func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
+	if nodectx.GetNodeCtx().Node.RumExchange == nil {
+		return errors.New("RumExchange is nil, please set enablerumexchange as true")
+	}
+
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -386,7 +391,11 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
+	if to == "" {
+		return nodectx.GetNodeCtx().Node.RumExchange.Publish(rummsg)
+	} else {
+		return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
+	}
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {

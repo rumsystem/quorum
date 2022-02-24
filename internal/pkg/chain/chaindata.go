@@ -53,6 +53,8 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 		return nil, nil
 	}
 
+	chain_log.Debugf("<%s> GetBlockForward block id: %s", trx.GroupId, reqBlockItem.BlockId)
+
 	subBlocks, err := d.dbmgr.GetSubBlock(reqBlockItem.BlockId, prefix...)
 	return subBlocks, err
 }

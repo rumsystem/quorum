@@ -81,7 +81,10 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 	syncer_log.Debugf("<%s> try sync forward from block <%s>", syncer.GroupId, block.BlockId)
 	syncer.blockReceived = make(map[string]string)
 	syncer.Status = SYNCING_FORWARD
-	syncer.askNextBlock(block)
+	err := syncer.askNextBlock(block)
+	if err != nil {
+		syncer_log.Debugf("<%s> askNextBlock <%s> return err: %s", syncer.GroupId, block.BlockId, err)
+	}
 	syncer.waitBlock(block)
 	return nil
 }
@@ -129,10 +132,17 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 	syncer_log.Debugf("<%s> ContinueSync called", syncer.GroupId)
 	syncer.stopWaitBlock()
 	if syncer.Status == SYNCING_FORWARD {
-		syncer.askNextBlock(block)
+		err := syncer.askNextBlock(block)
+		if err != nil {
+			syncer_log.Debugf("<%s> askNextBlock <%s> return err: %s", syncer.GroupId, block.BlockId, err)
+		}
 		syncer.waitBlock(block)
+
 	} else if syncer.Status == SYNCING_BACKWARD {
-		syncer.askPreviousBlock(block)
+		err := syncer.askPreviousBlock(block)
+		if err != nil {
+			syncer_log.Debugf("<%s> askPreviousBlock <%s> return err: %s", syncer.GroupId, block.BlockId, err)
+		}
 		syncer.waitBlock(block)
 	} else if syncer.Status == SYNC_FAILED {
 		syncer_log.Debugf("<%s> Sync faileld, should manually start sync", syncer.GroupId)
@@ -217,9 +227,7 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 	//syncer.locker.Lock()
 	//defer syncer.locker.Unlock()
-
-	syncer_log.Debugf("<%s> askNextBlock called", syncer.GroupId)
-
+	syncer_log.Debugf("<%s> askNextBlock called, block id: %s", syncer.GroupId, block.BlockId)
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block forward msg out
@@ -236,8 +244,7 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 	if syncer.syncNetworkType == conn.PubSub {
 		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	} else {
-		//Commented by cuicat
-		//return connMgr.SendTrxRex(, )
+		return connMgr.SendTrxRex(trx, "")
 	}
 
 	return nil
@@ -265,8 +272,7 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
 	if syncer.syncNetworkType == conn.PubSub {
 		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	} else {
-		//Commented by cuicat
-		//return connMgr.SendTrxRex(, )
+		return connMgr.SendTrxRex(trx, "")
 	}
 
 	return nil
@@ -303,7 +309,10 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 						return
 					}
 					if syncer.Status == SYNCING_FORWARD {
-						syncer.askNextBlock(block)
+						err := syncer.askNextBlock(block)
+						if err != nil {
+							syncer_log.Debugf("<%s> askNextBlock <%s> return err: %s", syncer.GroupId, block.BlockId, err)
+						}
 						syncer.waitBlock(block)
 					} else if syncer.Status == SYNCING_BACKWARD {
 						syncer.askPreviousBlock(block)
