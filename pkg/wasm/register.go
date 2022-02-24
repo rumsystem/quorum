@@ -364,7 +364,7 @@ func RegisterJSFunctions() {
 		trxId := args[1].String()
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetTrx(groupId, trxId)
+			res, _, err := quorumAPI.GetTrx(groupId, trxId)
 			if err != nil {
 				return ret, err
 			}

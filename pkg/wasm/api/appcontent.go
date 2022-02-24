@@ -41,7 +41,7 @@ func GetContent(groupId string, num int, startTrx string, reverse bool, starttrx
 		return nil, err
 	}
 	for _, trxid := range trxids {
-		trx, err := wasmCtx.DbMgr.GetTrx(trxid, nodectx.GetNodeCtx().Name)
+		trx, _, err := wasmCtx.DbMgr.GetTrx(trxid, nodectx.GetNodeCtx().Name)
 		if err != nil {
 			println(err)
 			continue

@@ -8,6 +8,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
-func GetTrx(groupId string, trxId string) (*pb.Trx, error) {
+func GetTrx(groupId string, trxId string) (*pb.Trx, []int64, error) {
 	return handlers.GetTrx(groupId, trxId)
 }
