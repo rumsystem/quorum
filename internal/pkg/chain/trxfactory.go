@@ -30,9 +30,10 @@ type TrxFactory struct {
 	groupItem *quorumpb.GroupItem
 }
 
-func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem) {
+func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem, nodename string) {
 	factory.groupItem = groupItem
 	factory.groupId = groupItem.GroupId
+	factory.nodename = nodename
 }
 
 func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
@@ -43,10 +44,7 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 	trx.Type = msgType
 	trx.GroupId = factory.groupItem.GroupId
 	trx.SenderPubkey = factory.groupItem.UserSignPubkey
-	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, nodectx.GetNodeCtx().Name)
-
-	fmt.Println("############################")
-	fmt.Println(nonce)
+	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, factory.nodename)
 
 	if err != nil {
 		fmt.Printf(err.Error())
@@ -108,9 +106,6 @@ func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encr
 	}
 	ks := nodectx.GetNodeCtx().Keystore
 	keyname := factory.groupItem.GroupId
-	if factory.nodename != "" {
-		keyname = fmt.Sprintf("%s_%s", factory.nodename, factory.groupItem.GroupId)
-	}
 	signature, err := ks.SignByKeyName(keyname, hashed)
 	if err != nil {
 		return trx, err
