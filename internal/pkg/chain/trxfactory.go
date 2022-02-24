@@ -43,8 +43,13 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 	trx.Type = msgType
 	trx.GroupId = factory.groupItem.GroupId
 	trx.SenderPubkey = factory.groupItem.UserSignPubkey
-	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, factory.nodename)
+	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, nodectx.GetNodeCtx().Name)
+
+	fmt.Println("############################")
+	fmt.Println(nonce)
+
 	if err != nil {
+		fmt.Printf(err.Error())
 		return &trx, []byte(""), err
 	}
 	trx.Nonce = nonce

@@ -1210,6 +1210,7 @@ func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (nonce int64,
 
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
+		fmt.Println(err.Error())
 		return -1, err
 	}
 	cn := int64(binary.LittleEndian.Uint64(value))

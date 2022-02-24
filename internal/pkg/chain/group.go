@@ -61,15 +61,21 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	grp.Item = item
 
-	//update nonce, set nonce to 0
-	err := nodectx.GetDbMgr().UpdateNonce(item.GroupId, 0, grp.ChainCtx.nodename)
+	//create and initial chain
+	grp.ChainCtx = &Chain{}
+	grp.ChainCtx.Init(grp)
+
+	err := nodectx.GetDbMgr().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
 
-	//create and initial chain
-	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.Init(grp)
+	group_log.Debugf("<%s> Update nonce called, with nodename <%s>", item.GroupId, grp.ChainCtx.nodename)
+	//update nonce, set nonce to 0
+	err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, 0, grp.ChainCtx.nodename)
+	if err != nil {
+		return err
+	}
 
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer
