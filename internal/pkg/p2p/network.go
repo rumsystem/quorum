@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -12,6 +11,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 

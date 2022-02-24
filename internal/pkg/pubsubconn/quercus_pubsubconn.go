@@ -3,12 +3,13 @@ package pubsubconn
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
 	"github.com/huo-ju/quercus/pkg/quality"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	logging "github.com/ipfs/go-log/v2"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 var (

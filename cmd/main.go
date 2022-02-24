@@ -17,7 +17,6 @@ import (
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	peerstore "github.com/libp2p/go-libp2p-core/peer"
@@ -29,6 +28,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
+
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"

@@ -16,6 +16,8 @@ const WarnLevel = 2
 const ErrorLevel = 3
 const FatalLevel = 4
 
+var logLevel = InfoLevel
+
 type BrowserLogger struct {
 	level   int
 	system  string
@@ -43,6 +45,14 @@ func (logger *BrowserLogger) Warn(args ...interface{}) {
 }
 
 func (logger *BrowserLogger) Warnf(format string, args ...interface{}) {
+	logger.log(WarnLevel, format, args)
+}
+
+func (logger *BrowserLogger) Warning(args ...interface{}) {
+	logger.log(WarnLevel, "", args)
+}
+
+func (logger *BrowserLogger) Warningf(format string, args ...interface{}) {
 	logger.log(WarnLevel, format, args)
 }
 
@@ -107,8 +117,25 @@ func getMessage(template string, fmtArgs []interface{}) string {
 	return fmt.Sprint(fmtArgs...)
 }
 
-func Logger(system string) log.StandardLogger {
+func Logger(system string) QuorumLogger {
 	console := js.Global().Get("console")
 	blogger := BrowserLogger{WarnLevel, system, console}
 	return &blogger
+}
+
+func SetLogLevel(name, level string) error {
+	// by system is not supported now
+	return nil
+}
+
+func SetAllLoggers(lvl int) {
+	if lvl < DebugLevel {
+		return
+	}
+	logLevel = lvl
+}
+
+func LevelFromString(level string) (int, error) {
+	l, e := log.LevelFromString(level)
+	return int(l), e
 }

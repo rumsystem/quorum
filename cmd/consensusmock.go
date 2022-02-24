@@ -5,17 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"time"
+
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	api "github.com/rumsystem/quorum/internal/pkg/api"
 	chain "github.com/rumsystem/quorum/internal/pkg/chain"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/pubsubconn"
-	logging "github.com/ipfs/go-log/v2"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"google.golang.org/protobuf/encoding/protojson"
-	"time"
+
 	//"google.golang.org/protobuf/proto"
 	"os"
 	"os/signal"

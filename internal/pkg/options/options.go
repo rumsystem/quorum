@@ -1,8 +1,9 @@
 package options
 
 import (
-	logging "github.com/ipfs/go-log/v2"
 	"sync"
+
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
 var optionslog = logging.Logger("options")
