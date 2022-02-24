@@ -70,6 +70,13 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 		return err
 	}
 
+	group_log.Debugf("<%s> Update nonce called, with nodename <%s>", item.GroupId, grp.ChainCtx.nodename)
+	//update nonce, set nonce to 0
+	_, err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, grp.ChainCtx.nodename)
+	if err != nil {
+		return err
+	}
+
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer
 	var pItem *quorumpb.ProducerItem
@@ -155,7 +162,7 @@ func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 	return nodectx.GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
+func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
 	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetTrx(trxId, grp.ChainCtx.nodename)
 }
