@@ -8,8 +8,8 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/cache"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/ui"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var (
