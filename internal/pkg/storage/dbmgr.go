@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
@@ -1192,35 +1191,19 @@ func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, 
 }
 
 //update group nonce
-func (dbMgr *DbMgr) UpdateNonce(groupId string, nonce int64, prefix ...string) (err error) {
+func (dbMgr *DbMgr) UpdateNonce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + NONCE_PREFIX + "_" + groupId
-
-	//check if group user (announced) exist
-
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(nonce))
-	return dbMgr.Db.Set([]byte(key), b)
+	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
+	return seq.Next()
 }
 
 //get next nonce (and update db)
-func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (nonce int64, err error) {
+func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + NONCE_PREFIX + "_" + groupId
-
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		fmt.Println(err.Error())
-		return -1, err
-	}
-	cn := int64(binary.LittleEndian.Uint64(value))
-	nn := cn + 1
-
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(nn))
-	dbMgr.Db.Set([]byte(key), b)
-
-	return nn, nil
+	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
+	return seq.Next()
 }
 
 func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error) {

@@ -72,7 +72,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	group_log.Debugf("<%s> Update nonce called, with nodename <%s>", item.GroupId, grp.ChainCtx.nodename)
 	//update nonce, set nonce to 0
-	err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, 0, grp.ChainCtx.nodename)
+	_, err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}

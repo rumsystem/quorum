@@ -45,12 +45,11 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 	trx.GroupId = factory.groupItem.GroupId
 	trx.SenderPubkey = factory.groupItem.UserSignPubkey
 	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, factory.nodename)
-
 	if err != nil {
-		fmt.Printf(err.Error())
 		return &trx, []byte(""), err
 	}
-	trx.Nonce = nonce
+
+	trx.Nonce = int64(nonce)
 
 	var encryptdData []byte
 	if msgType == quorumpb.TrxType_POST && factory.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
