@@ -3,8 +3,8 @@ package chain
 import (
 	"bytes"
 
-	logging "github.com/ipfs/go-log/v2"
 	localCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )

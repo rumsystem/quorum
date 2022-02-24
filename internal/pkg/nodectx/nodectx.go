@@ -3,10 +3,10 @@ package nodectx
 import (
 	"context"
 
-	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 )

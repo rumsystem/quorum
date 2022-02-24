@@ -5,10 +5,10 @@ import (
 	"sort"
 	"sync"
 
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 

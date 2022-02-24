@@ -3,11 +3,12 @@ package pubsubconn
 import (
 	"context"
 	"fmt"
-	logging "github.com/ipfs/go-log/v2"
+	"sync"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 var channel_log = logging.Logger("chan")

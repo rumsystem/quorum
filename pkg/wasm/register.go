@@ -8,9 +8,9 @@ import (
 	"strings"
 	"syscall/js"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/pkg/wasm/api"
 	quorumAPI "github.com/rumsystem/quorum/pkg/wasm/api"
-	"github.com/rumsystem/quorum/pkg/wasm/logger"
 	"github.com/rumsystem/quorum/pkg/wasm/utils"
 )
 
@@ -20,10 +20,16 @@ var qChan chan struct{} = nil
 func RegisterJSFunctions() {
 	js.Global().Set("SetDebug", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		enableDebug := args[0].Bool()
-		logger.SetDebug(enableDebug)
+		if enableDebug {
+			logging.SetAllLoggers(0)
+		}
 		return true
 	}))
-
+	js.Global().Set("SetLoggingLevel", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		lvl := args[0].Int()
+		logging.SetAllLoggers(lvl)
+		return true
+	}))
 	js.Global().Set("GetKeystoreBackupReadableStream", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		password := args[0].String()
 		return utils.GetKeystoreBackupReadableStream(password)

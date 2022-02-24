@@ -3,23 +3,24 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	logging "github.com/ipfs/go-log/v2"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 var mainlog = logging.Logger("main")
