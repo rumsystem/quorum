@@ -428,9 +428,7 @@ API return value:
 
 <span id="api-post-group-clear"></span>
 
-## User node clear a group *
-
-**删除组 API 已废除，所有节点只能“离开”一个组，不管是不是自己创建的**
+## User node clear a group 
 
 **API**: ```*/api/v1/group/clear```
 
@@ -439,7 +437,7 @@ API return value:
 - Params :
   - [group_id](#param-group_id)
 
-删除一个组的全部内容，包括如下内容
+删除一个组的全部本地内容，包括如下
 
     - block
     - trx

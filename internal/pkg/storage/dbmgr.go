@@ -133,6 +133,15 @@ func (dbMgr *DbMgr) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + BLK_PREFIX + "_" + gensisBlock.BlockId
 
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
+	}
+	if isExist {
+		dbmgr_log.Debugf("Genesis block <%s> exist, do nothing", gensisBlock.BlockId)
+		return nil
+	}
+
 	chunk := quorumpb.BlockDbChunk{}
 	chunk.BlockId = gensisBlock.BlockId
 	chunk.BlockItem = gensisBlock
@@ -175,6 +184,17 @@ func (dbMgr *DbMgr) IsParentExist(parentBlockId string, cached bool, prefix ...s
 
 //add block
 func (dbMgr *DbMgr) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...string) error {
+
+	isSaved, err := dbMgr.IsBlockExist(newBlock.BlockId, cached, prefix...)
+	if err != nil {
+		return err
+	}
+
+	if isSaved {
+		dbmgr_log.Debugf("Block <%s> already saved, ignore", newBlock.BlockId)
+		return nil
+	}
+
 	//create new chunk
 	var chunk *quorumpb.BlockDbChunk
 	chunk = &quorumpb.BlockDbChunk{}
@@ -280,7 +300,6 @@ func (dbMgr *DbMgr) GetBlockHeight(blockId string, prefix ...string) (int64, err
 func (dbMgr *DbMgr) GetSubBlock(blockId string, prefix ...string) ([]*quorumpb.Block, error) {
 	var result []*quorumpb.Block
 	chunk, err := dbMgr.getBlockChunk(blockId, false, prefix...)
-	dbmgr_log.Debugf("GetSubBlock, chunk of blockid : %s", blockId)
 	if err != nil {
 		return nil, err
 	}

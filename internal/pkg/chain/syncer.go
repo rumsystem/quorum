@@ -3,7 +3,6 @@ package chain
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -24,11 +23,11 @@ const (
 	SYNCING_BACKWARD = 1
 	SYNC_FAILED      = 2
 	IDLE             = 3
+	LOCAL_SYNCING    = 4
 )
 
 type Syncer struct {
-	nodeName string
-	//group            *Group
+	nodeName         string
 	GroupId          string
 	Group            *Group
 	AskNextTimer     *time.Timer
@@ -40,7 +39,7 @@ type Syncer struct {
 	blockReceived    map[string]string
 	cdnIface         iface.ChainDataHandlerIface
 	syncNetworkType  conn.P2pNetworkType
-	locker           sync.RWMutex
+	stopLocalSync    chan struct{}
 }
 
 func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
@@ -53,14 +52,52 @@ func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
 	syncer.blockReceived = make(map[string]string)
 	syncer.cdnIface = cdnIface
 	syncer.syncNetworkType = conn.PubSub
+	syncer.stopLocalSync = make(chan struct{})
 	syncer_log.Infof("<%s> syncer initialed", syncer.GroupId)
+}
+
+func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
+	syncer_log.Debugf("<%s> SyncLocalBlock called", syncer.GroupId)
+	startFrom := blockId
+	syncer.Status = LOCAL_SYNCING
+loop:
+	for {
+		select {
+		case <-syncer.stopLocalSync:
+			syncer_log.Debugf("<%s> stopLocalSync", syncer.GroupId)
+			syncer.Status = IDLE
+			break loop // exit
+		default:
+			subblocks, err := nodectx.GetDbMgr().GetSubBlock(startFrom, nodename)
+			if err != nil {
+				syncer_log.Debugf("<%s> GetSubBlock failed <%s>", syncer.GroupId, err.Error())
+				close(syncer.stopLocalSync)
+			}
+			if len(subblocks) > 0 {
+				for _, block := range subblocks {
+					err := syncer.AddLocalBlock(block)
+					if err != nil {
+						syncer_log.Debugf("<%s> AddLocalBlock failed <%s>", syncer.GroupId, err.Error())
+						close(syncer.stopLocalSync)
+					}
+				}
+			} else {
+				syncer_log.Debugf("<%s> No more local blocks", syncer.GroupId)
+				close(syncer.stopLocalSync)
+			}
+			topBlock, err := nodectx.GetDbMgr().GetBlock(syncer.Group.Item.HighestBlockId, false, nodename)
+			startFrom = topBlock.BlockId
+			//syncer_log.Debugf("New Height %d", syncer.Group.Item.HighestHeight)
+			//syncer_log.Debugf("New top %s", topBlock.BlockId)
+		}
+	}
+
+	syncer_log.Debugf("<%s> SyncLocalBlock done", syncer.GroupId)
+	return nil
 }
 
 // sync block "forward"
 func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
-
 	syncer_log.Debugf("<%s> SyncForward called", syncer.GroupId)
 
 	//no need to sync for producers(owner)
@@ -91,9 +128,6 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 
 //Sync block "backward"
 func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
-
 	syncer_log.Debugf("<%s> SyncBackward called", syncer.GroupId)
 
 	//if I am the owner
@@ -115,20 +149,19 @@ func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
 }
 
 func (syncer *Syncer) StopSync() error {
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
-
 	syncer_log.Debugf("<%s> StopSync called", syncer.GroupId)
-	syncer.stopWaitBlock()
+	if syncer.Status == SYNCING_BACKWARD ||
+		syncer.Status == SYNCING_FORWARD {
+		syncer.stopWaitBlock()
+	} else if syncer.Status == LOCAL_SYNCING {
+		close(syncer.stopLocalSync)
+	}
 	syncer.Status = IDLE
 	syncer_log.Debugf("<%s> sync stopped", syncer.GroupId)
 	return nil
 }
 
 func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
-
 	syncer_log.Debugf("<%s> ContinueSync called", syncer.GroupId)
 	syncer.stopWaitBlock()
 	if syncer.Status == SYNCING_FORWARD {
@@ -154,11 +187,28 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 	return nil
 }
 
+func (syncer *Syncer) AddLocalBlock(block *quorumpb.Block) error {
+	syncer_log.Debugf("<%s> AddBlockSynced called", syncer.GroupId)
+	_, producer := syncer.Group.ChainCtx.ProducerPool[syncer.Group.Item.UserSignPubkey]
+
+	if producer {
+		syncer_log.Debugf("<%s> PRODUCER ADD LOCAL BLOCK <%s>", syncer.GroupId, block.BlockId)
+		err := syncer.Group.ChainCtx.Consensus.Producer().AddBlock(block)
+		if err != nil {
+			syncer_log.Infof(err.Error())
+		}
+	} else {
+		syncer_log.Debugf("<%s> USER ADD LOCAL BLOCK <%s>", syncer.GroupId, block.BlockId)
+		err := syncer.Group.ChainCtx.Consensus.User().AddBlock(block)
+		if err != nil {
+			syncer_log.Infof(err.Error())
+		}
+	}
+
+	return nil
+}
+
 func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.Block) error {
-
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
-
 	syncer_log.Debugf("<%s> AddBlockSynced called", syncer.GroupId)
 	if !(syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD) {
 		syncer_log.Warningf("<%s> Not in syncing, ignore block", syncer.GroupId)
@@ -225,8 +275,6 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 }
 
 func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
 	syncer_log.Debugf("<%s> askNextBlock called, block id: %s", syncer.GroupId, block.BlockId)
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
@@ -246,14 +294,9 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 	} else {
 		return connMgr.SendTrxRex(trx, "")
 	}
-
-	return nil
 }
 
 func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
-	//syncer.locker.Lock()
-	//defer syncer.locker.Unlock()
-
 	syncer_log.Debugf("<%s> askPreviousBlock called", syncer.GroupId)
 
 	//reset received response
@@ -274,13 +317,10 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
 	} else {
 		return connMgr.SendTrxRex(trx, "")
 	}
-
-	return nil
 }
 
 //wait block coming
 func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
-
 	syncer_log.Debugf("<%s> waitBlock called", syncer.GroupId)
 	syncer.AskNextTimer = (time.NewTimer)(time.Duration(WAIT_BLOCK_TIME_S) * time.Second)
 	syncer.AskNextTimerDone = make(chan bool)

@@ -67,6 +67,7 @@ func GetGroups() (*GroupInfoList, error) {
 			group.GroupStatus = "SYNC_FAILED"
 		case chain.IDLE:
 			group.GroupStatus = "IDLE"
+			//add support for LOCAL_SYNC
 		}
 		groups = append(groups, group)
 	}

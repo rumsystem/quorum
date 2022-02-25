@@ -427,14 +427,16 @@ func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) (requester
 func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	molaproducer_log.Debugf("<%s> AddBlock called", producer.groupId)
 
-	//check if block is already in chain
-	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, producer.nodename)
-	if err != nil {
-		return err
-	}
-	if isSaved {
-		return errors.New("Block already saved, ignore")
-	}
+	/*
+		//check if block is already in chain
+		isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, producer.nodename)
+		if err != nil {
+			return err
+		}
+		if isSaved {
+			return errors.New("Block already saved, ignore")
+		}
+	*/
 
 	//check if block is in cache
 	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, producer.nodename)

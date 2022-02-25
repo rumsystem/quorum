@@ -111,15 +111,18 @@ func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]stri
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 
-	//check if block is already in chain
-	isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, user.nodename)
-	if err != nil {
-		return err
-	}
+	//commented by cuicat
+	/*
+		//check if block is already in chain
+		isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, user.nodename)
+		if err != nil {
+			return err
+		}
 
-	if isSaved {
-		return fmt.Errorf("Block %s already saved, ignore", block.BlockId)
-	}
+		if isSaved {
+			return fmt.Errorf("Block %s already saved, ignore", block.BlockId)
+		}
+	*/
 
 	//check if block is in cache
 	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, user.nodename)
