@@ -33,6 +33,7 @@ type SenderList struct {
 // @Param reverse query boolean false "reverse = true will return results by most recently"
 // @Param starttrx query string false "returns results from this trxid, but exclude it"
 // @Param includestarttrx query string false "include the start trx"
+// @Param nonce query int false "the nonce of trx, the default value is the latest"
 // @Param data body SenderList true "SenderList"
 // @Success 200 {array} GroupContentObjectItem
 // @Router /app/api/v1/group/{group_id}/content [post]
@@ -40,6 +41,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
 	num, _ := strconv.Atoi(c.QueryParam("num"))
+	nonce, _ := strconv.ParseInt(c.QueryParam("nonce"), 10, 64)
 	starttrx := c.QueryParam("starttrx")
 	if num == 0 {
 		num = 20
@@ -57,7 +59,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
-	trxids, err := h.Appdb.GetGroupContentBySenders(groupid, senderlist.Senders, starttrx, num, reverse, includestarttrx)
+	trxids, err := h.Appdb.GetGroupContentBySenders(groupid, senderlist.Senders, starttrx, nonce, num, reverse, includestarttrx)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -71,7 +73,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	}
 	ctnobjList := []*GroupContentObjectItem{}
 	for _, trxid := range trxids {
-		trx, _, err := h.Chaindb.GetTrx(trxid, h.NodeName)
+		trx, _, err := h.Chaindb.GetTrx(trxid.TrxId, h.NodeName)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue
