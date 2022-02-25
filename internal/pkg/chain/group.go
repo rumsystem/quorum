@@ -139,13 +139,7 @@ func (grp *Group) StartSync() error {
 
 func (grp *Group) StopSync() error {
 	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-
-	if grp.ChainCtx.syncer.Status == SYNCING_BACKWARD || grp.ChainCtx.syncer.Status == SYNCING_FORWARD {
-		grp.ChainCtx.StopSync()
-	}
-
-	group_log.Infof("Group <%s> stop sync", grp.Item.GroupId)
-	return nil
+	return grp.ChainCtx.StopSync()
 }
 
 func (grp *Group) GetSyncerStatus() int8 {

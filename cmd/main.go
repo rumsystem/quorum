@@ -451,7 +451,7 @@ func main() {
 		logging.SetLogLevel("network", "debug")
 		logging.SetLogLevel("autonat", "debug")
 		logging.SetLogLevel("chain", "debug")
-		//logging.SetLogLevel("dbmgr", "debug")
+		logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
 		//logging.SetLogLevel("group", "debug")
 		logging.SetLogLevel("syncer", "debug")

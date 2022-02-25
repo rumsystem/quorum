@@ -552,6 +552,16 @@ func (chain *Chain) HandleAskPeerID(trx *quorumpb.Trx) error {
 //	return nil
 //}
 
+//func (chain *Chain) InitSession(channelId string) error {
+//chain_log.Debugf("<%s> InitSession called", chain.groupId)
+//if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
+//	return nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, channelId)
+//} else {
+//	return chain.AskPeerId()
+//}
+// return nil
+//}
+
 func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
 	return chain.userPool
 }
@@ -584,7 +594,7 @@ func (chain *Chain) UpdUserList() {
 		if item.UserPubkey == chain.group.Item.OwnerPubKey {
 			ownerPrefix = "(owner)"
 		}
-		chain_log.Infof("<%s> Load Users <%s%s>", chain.groupId, item.UserPubkey, ownerPrefix)
+		chain_log.Infof("<%s> Load Users <%s_%s>", chain.groupId, item.UserPubkey, ownerPrefix)
 	}
 
 	//update announced User result
@@ -640,36 +650,42 @@ func (chain *Chain) CreateConsensus() error {
 }
 
 func (chain *Chain) SyncForward(blockId string, nodename string) error {
-	chain_log.Debug("SyncForward called, groupId <%s>", chain.groupId)
+	chain_log.Debugf("<%s> SyncForward called", chain.groupId)
+	go func() {
+		//before start sync from other node, gather all local block and re-apply all trxs
+		chain_log.Debugf("<%s> Try find and chain all local blocks", chain.groupId)
+		chain_log.Debugf("<%s> height <%d>", chain.groupId, chain.group.Item.HighestHeight)
+		chain_log.Debugf("<%s> block_id <%s>", chain.groupId, chain.group.Item.HighestBlockId)
 
-	topBlock, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
-	if err != nil {
-		chain_log.Warningf("Get top block error, blockId <%s>, <%s>", blockId, err.Error())
-		return err
-	}
+		chain.syncer.SyncLocalBlock(blockId, nodename)
+		topBlock, err := nodectx.GetDbMgr().GetBlock(chain.group.Item.HighestBlockId, false, nodename)
+		if err != nil {
+			chain_log.Warningf("Get top block error, blockId <%s>, <%s>", blockId, err.Error())
+			return
+		}
+		if chain.syncer != nil {
+			chain.syncer.SyncForward(topBlock)
+		}
+	}()
 
-	if chain.syncer != nil {
-		return chain.syncer.SyncForward(topBlock)
-	}
 	return nil
-
 }
 
 func (chain *Chain) SyncBackward(blockId string, nodename string) error {
-	chain_log.Debug("SyncBackward called, groupId <%s>", chain.groupId)
+	chain_log.Debugf("<%s> SyncBackward called", chain.groupId)
+	go func() {
+		block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
+		if err != nil {
+			chain_log.Warningf("Get block error, blockId <%s>, <%s>", blockId, err.Error())
+			return
+		}
 
-	block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
-	if err != nil {
-		chain_log.Warningf("Get block error, blockId <%s>, <%s>", blockId, err.Error())
-		return err
-	}
-
-	if chain.syncer != nil {
-		return chain.syncer.SyncBackward(block)
-	}
+		if chain.syncer != nil {
+			chain.syncer.SyncBackward(block)
+		}
+	}()
 
 	return nil
-
 }
 
 func (chain *Chain) StopSync() error {
@@ -680,21 +696,12 @@ func (chain *Chain) StopSync() error {
 	return nil
 }
 
-func (chain *Chain) InitSession(channelId string) error {
-	//chain_log.Debugf("<%s> InitSession called", chain.groupId)
-	//if peerId, ok := chain.ProviderPeerIdPool[chain.group.Item.OwnerPubKey]; ok {
-	//	return nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, channelId)
-	//} else {
-	//	return chain.AskPeerId()
-	//}
-	return nil
-}
-
 func (chain *Chain) IsSyncerIdle() bool {
 	chain_log.Debug("IsSyncerIdle called, groupId <%s>", chain.groupId)
 
 	if chain.syncer.Status == SYNCING_BACKWARD ||
 		chain.syncer.Status == SYNCING_FORWARD ||
+		chain.syncer.Status == LOCAL_SYNCING ||
 		chain.syncer.Status == SYNC_FAILED {
 		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncer.Status)
 		return true
