@@ -98,9 +98,9 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 				trxids = append(trxids, trxid)
 			}
 		}
-		if trxid == starttrx { //start collecting after this item
+		if trxid == starttrx && runcollector == false { //start collecting after this item
 			runcollector = true
-			if starttrxinclude == true && runcollector == false {
+			if starttrxinclude == true {
 				trxids = append(trxids, trxid)
 			}
 		}
