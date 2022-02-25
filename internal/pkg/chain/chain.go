@@ -651,8 +651,8 @@ func (chain *Chain) CreateConsensus() error {
 
 func (chain *Chain) SyncForward(blockId string, nodename string) error {
 	chain_log.Debugf("<%s> SyncForward called", chain.groupId)
-	//before start sync from other node, gather all local block and re-apply all trxs
 	go func() {
+		//before start sync from other node, gather all local block and re-apply all trxs
 		chain_log.Debugf("<%s> Try find and chain all local blocks", chain.groupId)
 		chain_log.Debugf("<%s> height <%d>", chain.groupId, chain.group.Item.HighestHeight)
 		chain_log.Debugf("<%s> block_id <%s>", chain.groupId, chain.group.Item.HighestBlockId)
@@ -664,7 +664,7 @@ func (chain *Chain) SyncForward(blockId string, nodename string) error {
 			return
 		}
 		if chain.syncer != nil {
-			go chain.syncer.SyncForward(topBlock)
+			chain.syncer.SyncForward(topBlock)
 		}
 	}()
 
@@ -673,16 +673,17 @@ func (chain *Chain) SyncForward(blockId string, nodename string) error {
 
 func (chain *Chain) SyncBackward(blockId string, nodename string) error {
 	chain_log.Debugf("<%s> SyncBackward called", chain.groupId)
+	go func() {
+		block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
+		if err != nil {
+			chain_log.Warningf("Get block error, blockId <%s>, <%s>", blockId, err.Error())
+			return
+		}
 
-	block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
-	if err != nil {
-		chain_log.Warningf("Get block error, blockId <%s>, <%s>", blockId, err.Error())
-		return err
-	}
-
-	if chain.syncer != nil {
-		return chain.syncer.SyncBackward(block)
-	}
+		if chain.syncer != nil {
+			chain.syncer.SyncBackward(block)
+		}
+	}()
 
 	return nil
 }

@@ -111,7 +111,7 @@ func (syncer *Syncer) SyncForward(block *quorumpb.Block) error {
 	} else if _, ok := syncer.Group.ChainCtx.ProducerPool[syncer.Group.Item.UserSignPubkey]; ok {
 		syncer_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", syncer.GroupId)
 		return nil
-	} else if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
+	} else if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD || syncer.Status == LOCAL_SYNCING {
 		return errors.New("already in SYNCING")
 	}
 
@@ -137,7 +137,7 @@ func (syncer *Syncer) SyncBackward(block *quorumpb.Block) error {
 		return nil
 	}
 
-	if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD {
+	if syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD || syncer.Status == LOCAL_SYNCING {
 		return errors.New("already in SYNCING")
 	}
 
