@@ -62,8 +62,8 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface i
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 	psconni, ok := pscm.connmgr.Load(channelId)
-	psconn := psconni.(*P2pPubSubConn)
 	if ok == true {
+		psconn := psconni.(*P2pPubSubConn)
 		psconn.mu.Lock()
 		defer psconn.mu.Unlock()
 		if psconn.cancel != nil {
