@@ -5,7 +5,6 @@ package api
 
 import (
 	"encoding/hex"
-
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -26,11 +25,11 @@ type GroupContentResp struct {
 	Data *[]GroupContent `json:"data"`
 }
 
-func GetContent(groupId string, num int, startTrx string, reverse bool, starttrxinclude bool, senders []string) (*GroupContentResp, error) {
+func GetContent(groupId string, num int, startTrx string, nonce int64, reverse bool, starttrxinclude bool, senders []string) (*GroupContentResp, error) {
 	data := []GroupContent{}
 
 	wasmCtx := quorumContext.GetWASMContext()
-	trxids, err := wasmCtx.AppDb.GetGroupContentBySenders(groupId, senders, startTrx, num, reverse, starttrxinclude)
+	trxids, err := wasmCtx.AppDb.GetGroupContentBySenders(groupId, senders, startTrx, nonce, num, reverse, starttrxinclude)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +40,7 @@ func GetContent(groupId string, num int, startTrx string, reverse bool, starttrx
 		return nil, err
 	}
 	for _, trxid := range trxids {
-		trx, _, err := wasmCtx.DbMgr.GetTrx(trxid, nodectx.GetNodeCtx().Name)
+		trx, _, err := wasmCtx.DbMgr.GetTrx(trxid.TrxId, nodectx.GetNodeCtx().Name)
 		if err != nil {
 			println(err)
 			continue
