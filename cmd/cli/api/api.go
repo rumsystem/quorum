@@ -152,6 +152,69 @@ func IsQuorumContentUserInfo(content ContentStruct) bool {
 	return false
 }
 
+func AddGroupConfig(groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
+	return ModifyGroupConfig("add", groupId, key, tp, value, memo)
+}
+
+func DelGroupConfig(groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
+	return ModifyGroupConfig("del", groupId, key, tp, value, memo)
+}
+
+func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
+	data := handlers.AppConfigParam{
+		Action:  action,
+		GroupId: groupId,
+		Name:    key,
+		Type:    tp,
+		Value:   value,
+		Memo:    memo,
+	}
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	url := ApiServer + "/api/v1/group/appconfig"
+	ret := handlers.AppConfigResult{}
+	body, err := httpPost(url, json_data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
+func GetGroupConfigList(groupId string) ([]*handlers.AppConfigKeyListItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/config/keylist", ApiServer, groupId)
+	ret := []*handlers.AppConfigKeyListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
+func GetGroupConfig(groupId, key string) (*handlers.AppConfigKeyItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/config/%s", ApiServer, groupId, key)
+	ret := handlers.AppConfigKeyItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
 func Nick(groupId string, nick string) (*NickRespStruct, error) {
 	data := NickReqStruct{
 		Person: QuorumPersonStruct{
