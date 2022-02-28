@@ -200,7 +200,7 @@ func goGetGroupKeyList(groupId string) {
 	adminGroupConfigView.SetSelectedFunc(func(row int, column int) {
 		if row == 0 {
 			// create new config
-			item := &handlers.GroupConfigKeyItem{}
+			item := &handlers.AppConfigKeyItem{}
 			item.Type = "string"
 			GroupConfigFormShow(groupId, item)
 		} else {

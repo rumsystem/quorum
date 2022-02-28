@@ -152,16 +152,16 @@ func IsQuorumContentUserInfo(content ContentStruct) bool {
 	return false
 }
 
-func AddGroupConfig(groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
+func AddGroupConfig(groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
 	return ModifyGroupConfig("add", groupId, key, tp, value, memo)
 }
 
-func DelGroupConfig(groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
+func DelGroupConfig(groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
 	return ModifyGroupConfig("del", groupId, key, tp, value, memo)
 }
 
-func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.GroupConfigResult, error) {
-	data := handlers.GroupConfigParam{
+func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
+	data := handlers.AppConfigParam{
 		Action:  action,
 		GroupId: groupId,
 		Name:    key,
@@ -174,8 +174,8 @@ func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.
 		return nil, err
 	}
 
-	url := ApiServer + "/api/v1/group/config"
-	ret := handlers.GroupConfigResult{}
+	url := ApiServer + "/api/v1/group/appconfig"
+	ret := handlers.AppConfigResult{}
 	body, err := httpPost(url, json_data)
 	if err != nil {
 		return nil, err
@@ -187,9 +187,9 @@ func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.
 	return &ret, nil
 }
 
-func GetGroupConfigList(groupId string) ([]*handlers.GroupConfigKeyListItem, error) {
+func GetGroupConfigList(groupId string) ([]*handlers.AppConfigKeyListItem, error) {
 	url := fmt.Sprintf("%s/api/v1/group/%s/config/keylist", ApiServer, groupId)
-	ret := []*handlers.GroupConfigKeyListItem{}
+	ret := []*handlers.AppConfigKeyListItem{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err
@@ -201,9 +201,9 @@ func GetGroupConfigList(groupId string) ([]*handlers.GroupConfigKeyListItem, err
 	return ret, nil
 }
 
-func GetGroupConfig(groupId, key string) (*handlers.GroupConfigKeyItem, error) {
+func GetGroupConfig(groupId, key string) (*handlers.AppConfigKeyItem, error) {
 	url := fmt.Sprintf("%s/api/v1/group/%s/config/%s", ApiServer, groupId, key)
-	ret := handlers.GroupConfigKeyItem{}
+	ret := handlers.AppConfigKeyItem{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err

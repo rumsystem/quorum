@@ -27,7 +27,7 @@ var PANNEL_GROUP_FORM = "form.group"
 var PANNEL_GROUP_CONFIG_FORM = "form.group.config"
 
 var groupConfigForm = cview.NewForm()
-var groupConfigParam = handlers.GroupConfigParam{
+var groupConfigParam = handlers.AppConfigParam{
 	Action:  "add",
 	GroupId: "",
 	Name:    "",
@@ -85,7 +85,7 @@ func groupConfigFormInit() {
 	rootPanels.AddPanel(PANNEL_GROUP_CONFIG_FORM, groupConfigForm, true, false)
 }
 
-func GroupConfigFormShow(groupId string, item *handlers.GroupConfigKeyItem) {
+func GroupConfigFormShow(groupId string, item *handlers.AppConfigKeyItem) {
 	groupConfigParam.GroupId = groupId
 	groupConfigParam.Name = item.Name
 	groupConfigParam.Type = item.Type
