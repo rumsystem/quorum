@@ -38,6 +38,7 @@ message Object {
   repeated Object bcc = 26;
   string mediaType= 27;
   string duration = 28;
+  File file = 29;
 }
 
 message Link {
@@ -62,6 +63,21 @@ message Image {
   string mediaType= 3;
   bytes content = 4;
   string url = 5;
+}
+
+message File {
+  string id = 1;
+  string name = 2;
+  string mediaType= 3;
+  enum Compression {
+    none = 0;
+    gz = 1;
+    zip = 2;
+    zstd = 3;
+  }
+  Compression compression = 4;
+  bytes content = 5;
+  string url = 6;
 }
 
 message Person {
