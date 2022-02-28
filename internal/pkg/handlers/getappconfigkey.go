@@ -17,7 +17,7 @@ func GetAppConfigKeyList(groupId string) ([]*AppConfigKeyListItem, error) {
 		return nil, errors.New("group_id can't be nil.")
 	}
 
-	var result []*AppConfigKeyListItem
+	result := []*AppConfigKeyListItem{}
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupId]; ok {
 		nameList, typeList, err := group.GetAppConfigKeyList()
