@@ -7,7 +7,28 @@ import (
 
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
+	"github.com/rumsystem/quorum/cmd/cli/model"
 )
+
+func getCommandHelpMessages() string {
+	help := ""
+	for _, item := range model.BaseCommands {
+		help += strings.Replace(item.Help, "$cmd", item.Cmd, -1)
+	}
+
+	for _, item := range model.QuorumCommands {
+		help += strings.Replace(item.Help, "$cmd", item.Cmd, -1)
+	}
+
+	for _, item := range model.BlocksCommands {
+		help += strings.Replace(item.Help, "$cmd", item.Cmd, -1)
+	}
+
+	for _, item := range model.NetworkCommands {
+		help += strings.Replace(item.Help, "$cmd", item.Cmd, -1)
+	}
+	return help
+}
 
 var helpCells = strings.TrimSpace(
 	"Shortcuts:\n" +
@@ -33,23 +54,7 @@ var helpCells = strings.TrimSpace(
 		"a-z\tIn GroupList View, to quick-switch between groups.\n" +
 		"Space\tOpen the command prompt.\n" +
 		"Commands:\n" +
-		fmt.Sprintf("%s ip:port\t Connect to your API server.\n", CMD_QUORUM_CONNECT) +
-		fmt.Sprintf("%s @seed.json\t Join into a group from seed file.\n", CMD_QUORUM_JOIN) +
-		fmt.Sprintf("%s xxxxxxxxxx\t Join into a group from raw seed string.\n", CMD_QUORUM_JOIN) +
-		fmt.Sprintf("%s msg\t Send message to cuerrent group.\n", CMD_QUORUM_SEND) +
-		fmt.Sprintf("%s <nickname>\t Change your nickname in cuerrent group.\n", CMD_QUORUM_NICK) +
-		fmt.Sprintf("%s\t Apply JWT if you don't applied before.\n", CMD_QUORUM_APPLY_TOKEN) +
-		fmt.Sprintf("%s\t Trigger a sync on current group manually.\n", CMD_QUORUM_SYNC_GROUP) +
-		fmt.Sprintf("%s <group_name>\t Create a new group.\n", CMD_QUORUM_NEW_GROUP) +
-		fmt.Sprintf("%s\t Delete cuerrent group(you are owner).\n", CMD_QUORUM_DEL_GROUP) +
-		fmt.Sprintf("%s\t Leave cuerrent group.\n", CMD_QUORUM_LEAVE_GROUP) +
-		fmt.Sprintf("%s \t Reload the config.\n", CMD_CONFIG_RELOAD) +
-		fmt.Sprintf("%s \t Save the config.\n", CMD_CONFIG_SAVE) +
-		fmt.Sprintf("%s \t Switch to blocks mode.\n", CMD_MODE_BLOCKS) +
-		fmt.Sprintf("%s <block_num>\t Jump to block (available in blocks mode).\n", CMD_BLOCKS_JMP) +
-		fmt.Sprintf("%s \t Switch to network mode.\n", CMD_MODE_NETWORK) +
-		fmt.Sprintf("%s \t Ping connected peers(available in network mode).\n", CMD_NETWORK_PING) +
-		fmt.Sprintf("%s \t Switch to quorum mode(default).\n", CMD_MODE_QUORUM) +
+		getCommandHelpMessages() +
 		"",
 )
 

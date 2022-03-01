@@ -7,60 +7,29 @@ import (
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/config"
+	"github.com/rumsystem/quorum/cmd/cli/model"
 )
 
 // cmd input at the bottom
 var cmdInput = cview.NewInputField()
 var cmdMode = false
 
-const (
-	CMD_QUORUM_CONNECT        string = "/connect"
-	CMD_QUORUM_BACKUP         string = "/backup"
-	CMD_QUORUM_JOIN           string = "/join"
-	CMD_QUORUM_APPLY_TOKEN    string = "/token.apply"
-	CMD_QUORUM_SYNC_GROUP     string = "/group.sync"
-	CMD_QUORUM_GET_GROUP_SEED string = "/group.seed"
-	CMD_QUORUM_NEW_GROUP      string = "/group.create"
-	CMD_QUORUM_LEAVE_GROUP    string = "/group.leave"
-	CMD_QUORUM_DEL_GROUP      string = "/group.delete"
-	CMD_QUORUM_GROUP_ADMIN    string = "/group.admin"
-	CMD_CONFIG_RELOAD         string = "/config.reload"
-	CMD_CONFIG_SAVE           string = "/config.save"
-	CMD_MODE_BLOCKS           string = "/mode.blocks"
-	CMD_MODE_QUORUM           string = "/mode.quorum"
-	CMD_MODE_NETWORK          string = "/mode.network"
-
-	// mode quorum only
-	CMD_QUORUM_SEND string = "/send"
-	CMD_QUORUM_NICK string = "/nick"
-
-	// mode blocks only
-	CMD_BLOCKS_JMP    string = "/blocks.jmp"
-	CMD_BLOCKS_GENDOT string = "/blocks.gendot"
-
-	// mode network
-	CMD_NETWORK_PING string = "/network.ping"
-)
-
 func cmdInputInit() {
-	baseCommands := []string{CMD_QUORUM_CONNECT, CMD_QUORUM_BACKUP, CMD_QUORUM_JOIN, CMD_QUORUM_APPLY_TOKEN, CMD_QUORUM_SYNC_GROUP, CMD_QUORUM_NEW_GROUP, CMD_QUORUM_GET_GROUP_SEED, CMD_QUORUM_LEAVE_GROUP, CMD_QUORUM_DEL_GROUP, CMD_QUORUM_GROUP_ADMIN, CMD_CONFIG_RELOAD, CMD_CONFIG_SAVE, CMD_MODE_BLOCKS, CMD_MODE_QUORUM, CMD_MODE_NETWORK}
-	quorumCommands := []string{CMD_QUORUM_SEND, CMD_QUORUM_NICK}
-	blocksCommands := []string{CMD_BLOCKS_JMP, CMD_BLOCKS_GENDOT}
-	networkCommands := []string{CMD_NETWORK_PING}
 
-	getCommands := func() []string {
+	getCommands := func() model.CommandList {
 		name, _ := rootPanels.GetFrontPanel()
-		commands := baseCommands
+		commands := model.CommandList{}
+		commands = append(commands, model.BaseCommands[:]...)
 		switch name {
 		case "blocks":
-			commands = append(commands, blocksCommands[:]...)
+			commands = append(commands, model.BlocksCommands[:]...)
 		case "quorum":
-			commands = append(commands, quorumCommands[:]...)
+			commands = append(commands, model.QuorumCommands[:]...)
 		case "network":
-			commands = append(commands, networkCommands[:]...)
+			commands = append(commands, model.NetworkCommands[:]...)
 		default:
 		}
-		sort.Strings(commands)
+		sort.Sort(commands)
 		return commands
 	}
 
@@ -68,7 +37,8 @@ func cmdInputInit() {
 		if len(currentText) == 0 {
 			return
 		}
-		for _, word := range getCommands() {
+		for _, item := range getCommands() {
+			word := item.Cmd
 			if strings.HasPrefix(strings.ToLower(word), strings.ToLower(currentText)) {
 				entries = append(entries, cview.NewListItem(word))
 			}
@@ -94,60 +64,60 @@ func cmdInputInit() {
 				reset("")
 				return
 			}
-			if strings.HasPrefix(cmdStr, CMD_QUORUM_CONNECT) {
-				apiServer := strings.Replace(cmdStr, CMD_QUORUM_CONNECT, "", -1)
+			if strings.HasPrefix(cmdStr, model.CommandConnect.Cmd) {
+				apiServer := strings.Replace(cmdStr, model.CommandConnect.Cmd, "", -1)
 				apiServer = strings.TrimSpace(apiServer)
 				reset("")
 				Quorum(apiServer)
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_NICK) {
+			} else if strings.HasPrefix(cmdStr, model.CommandQuorumNick.Cmd) {
 				reset("")
 				QuorumGroupNickHandler(cmdStr)
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_APPLY_TOKEN) {
+			} else if strings.HasPrefix(cmdStr, model.CommandTokenApply.Cmd) {
 				reset("")
 				QuorumApplyTokenHandler(cmdStr)
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_JOIN) {
+			} else if strings.HasPrefix(cmdStr, model.CommandJoin.Cmd) {
 				// join group
 				reset("Joining: ")
 				QuorumCmdJoinHandler(cmdStr)
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_SEND) {
+			} else if strings.HasPrefix(cmdStr, model.CommandQuorumSend.Cmd) {
 				// send data
 				reset("Loading: ")
 				QuorumCmdSendHandler(cmdStr)
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_SYNC_GROUP) {
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupSync.Cmd) {
 				reset("")
 				QuorumForceSyncGroupHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_NEW_GROUP) {
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupCreate.Cmd) {
 				// send data
 				reset("Creating: ")
 				QuorumNewGroupHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_GET_GROUP_SEED) {
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupSeed.Cmd) {
 				reset("")
 				QuorumGetGroupSeedHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_BACKUP) {
+			} else if strings.HasPrefix(cmdStr, model.CommandBackup.Cmd) {
 				reset("")
 				QuorumBackupHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_LEAVE_GROUP) {
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupLeave.Cmd) {
 				reset("")
 				QuorumLeaveGroupHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_DEL_GROUP) {
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupDelete.Cmd) {
 				// send data
 				reset("")
 				QuorumDelGroupHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_QUORUM_GROUP_ADMIN) {
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupAdmin.Cmd) {
 				reset("")
 				QuorumGroupAdminHandler()
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_CONFIG_RELOAD) {
+			} else if strings.HasPrefix(cmdStr, model.CommandConfigReload.Cmd) {
 				reset("")
 				config.Init()
 				if config.RumConfig.Quorum.Server != "" {
@@ -156,19 +126,19 @@ func cmdInputInit() {
 					Welcome()
 				}
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_CONFIG_SAVE) {
+			} else if strings.HasPrefix(cmdStr, model.CommandConfigSave.Cmd) {
 				configFilePath := config.Save()
 				reset("")
 				cmdInput.SetLabel("Config saved at:")
 				cmdInput.SetText(configFilePath)
 				return
-			} else if strings.HasPrefix(cmdStr, CMD_MODE_BLOCKS) {
+			} else if strings.HasPrefix(cmdStr, model.CommandModeBlocks.Cmd) {
 				reset("")
 				QuorumExit()
 				NetworkPageExit()
 
 				Blocks()
-			} else if strings.HasPrefix(cmdStr, CMD_MODE_QUORUM) {
+			} else if strings.HasPrefix(cmdStr, model.CommandModeQuorum.Cmd) {
 				reset("")
 
 				BlocksExit()
@@ -179,16 +149,16 @@ func cmdInputInit() {
 				} else {
 					Welcome()
 				}
-			} else if strings.HasPrefix(cmdStr, CMD_MODE_NETWORK) {
+			} else if strings.HasPrefix(cmdStr, model.CommandModeNetwork.Cmd) {
 				reset("")
 
 				BlocksExit()
 				QuorumExit()
 				NetworkPage()
-			} else if strings.HasPrefix(cmdStr, CMD_NETWORK_PING) {
+			} else if strings.HasPrefix(cmdStr, model.CommandNetworkPing.Cmd) {
 				reset("")
 				go NetworkRefreshAll()
-			} else if strings.HasPrefix(cmdStr, CMD_BLOCKS_JMP) {
+			} else if strings.HasPrefix(cmdStr, model.CommandBlocksJmp.Cmd) {
 				reset("")
 				BlockCMDJump(cmdStr)
 			} else {
