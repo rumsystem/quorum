@@ -28,6 +28,7 @@ func TestMain(m *testing.M) {
 	groupsPtr := flag.Int("groups", 5, "groups on each node")
 	postsPtr := flag.Int("posts", 5, "posts on each group")
 	synctimePtr := flag.Int("synctime", 30, "time to wait before verify")
+	rextestmode := flag.Bool("rextest", false, "RumExchange Test Mode")
 
 	flag.Parse()
 
@@ -53,8 +54,9 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
+	cliargs := testnode.Nodecliargs{Rextest: *rextestmode}
 	var tempdatadir string
-	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), pidch, nodes)
+	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, nodes)
 	log.Println("peers: ", peerapilist)
 
 	exitVal := m.Run()

@@ -27,19 +27,20 @@ const (
 )
 
 type Syncer struct {
-	nodeName         string
-	GroupId          string
-	Group            *Group
-	AskNextTimer     *time.Timer
-	AskNextTimerDone chan bool
-	Status           int8
-	retryCount       int8
-	statusBeforeFail int8
-	responses        map[string]*quorumpb.ReqBlockResp
-	blockReceived    map[string]string
-	cdnIface         iface.ChainDataHandlerIface
-	syncNetworkType  conn.P2pNetworkType
-	stopLocalSync    chan struct{}
+	nodeName            string
+	GroupId             string
+	Group               *Group
+	AskNextTimer        *time.Timer
+	AskNextTimerDone    chan bool
+	Status              int8
+	retryCount          int8
+	statusBeforeFail    int8
+	responses           map[string]*quorumpb.ReqBlockResp
+	blockReceived       map[string]string
+	cdnIface            iface.ChainDataHandlerIface
+	syncNetworkType     conn.P2pNetworkType
+	stopLocalSync       chan struct{}
+	rumExchangeTestMode bool
 }
 
 func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
@@ -54,6 +55,10 @@ func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
 	syncer.syncNetworkType = conn.PubSub
 	syncer.stopLocalSync = make(chan struct{})
 	syncer_log.Infof("<%s> syncer initialed", syncer.GroupId)
+}
+
+func (syncer *Syncer) SetRumExchangeTestMode() {
+	syncer.rumExchangeTestMode = true
 }
 
 func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
@@ -288,6 +293,9 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 	if err != nil {
 		return err
 	}
+	if syncer.rumExchangeTestMode == true {
+		return connMgr.SendTrxRex(trx, "")
+	}
 
 	if syncer.syncNetworkType == conn.PubSub {
 		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
@@ -312,6 +320,10 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
 		return err
 	}
 
+	if syncer.rumExchangeTestMode == true {
+		return connMgr.SendTrxRex(trx, "")
+	}
+
 	if syncer.syncNetworkType == conn.PubSub {
 		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	} else {
@@ -334,11 +346,16 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 				syncer_log.Debugf("<%s> wait done", syncer.GroupId)
 				if len(syncer.responses) == 0 {
 					syncer.retryCount++
+
 					//switch network type and retry
 					if syncer.syncNetworkType == conn.PubSub {
 						syncer.syncNetworkType = conn.RumExchange
 					} else {
 						syncer.syncNetworkType = conn.PubSub
+					}
+
+					if syncer.rumExchangeTestMode == true {
+						syncer.syncNetworkType = conn.RumExchange
 					}
 					syncer_log.Debugf("<%s> nothing received in this round, start new round (retry time: <%d>), set p2p network type to: [%s]", syncer.GroupId, syncer.retryCount, syncer.syncNetworkType)
 					if syncer.retryCount == int8(RETRY_LIMIT) {

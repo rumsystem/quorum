@@ -59,6 +59,10 @@ func (chain *Chain) Init(group *Group) error {
 	return nil
 }
 
+func (chain *Chain) SetRumExchangeTestMode() {
+	chain.syncer.SetRumExchangeTestMode()
+}
+
 func (chain *Chain) GetChainCtx() *Chain {
 	return chain
 }

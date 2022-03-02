@@ -46,6 +46,10 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
 
+func (grp *Group) SetRumExchangeTestMode() {
+	grp.ChainCtx.SetRumExchangeTestMode()
+}
+
 //teardown group
 func (grp *Group) Teardown() {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)

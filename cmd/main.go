@@ -164,6 +164,7 @@ func mainRet(config cli.Config) int {
 		cancel()
 		mainlog.Fatalf(err.Error())
 	}
+	nodeoptions.IsRexTestMode = config.IsRexTestMode
 
 	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
 	ksi := localcrypto.GetKeystore()
@@ -339,6 +340,9 @@ func mainRet(config cli.Config) int {
 
 		//initial group manager
 		chain.InitGroupMgr()
+		if nodeoptions.IsRexTestMode == true {
+			chain.GetGroupMgr().SetRumExchangeTestMode()
+		}
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()

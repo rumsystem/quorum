@@ -38,7 +38,8 @@ func TestMain(m *testing.M) {
 
 	var tempdatadir string
 	ctx := context.Background()
-	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(ctx, pidch, nodes)
+	cliargs := testnode.Nodecliargs{Rextest: false}
+	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(ctx, cliargs, pidch, nodes)
 	log.Println("peers: ", peerapilist)
 	peerapi = peerapilist[0]
 	peerapi2 = peerapilist[1]

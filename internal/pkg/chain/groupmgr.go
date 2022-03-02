@@ -12,7 +12,8 @@ import (
 var groupMgr_log = logging.Logger("groupmgr")
 
 type GroupMgr struct {
-	Groups map[string]*Group
+	Groups              map[string]*Group
+	rumExchangeTestMode bool
 }
 
 var groupMgr *GroupMgr
@@ -27,6 +28,10 @@ func InitGroupMgr() error {
 	groupMgr = &GroupMgr{}
 	groupMgr.Groups = make(map[string]*Group)
 	return nil
+}
+
+func (groupMgr *GroupMgr) SetRumExchangeTestMode() {
+	groupMgr.rumExchangeTestMode = true
 }
 
 func (groupMgr *GroupMgr) LoadAllGroups() error {
@@ -63,6 +68,9 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
+		if groupMgr.rumExchangeTestMode == true {
+			grp.SetRumExchangeTestMode()
+		}
 		grp.StartSync()
 	}
 	return nil

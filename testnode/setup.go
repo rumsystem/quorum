@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -23,7 +24,11 @@ const (
 	KeystorePassword = "a_temp_password"
 )
 
-func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, []string, string, error) {
+type Nodecliargs struct {
+	Rextest bool
+}
+
+func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int, n int) (string, []string, string, error) {
 	var bootstrapaddr, testtempdir string
 	peers := []string{}
 	testtempdir, err := ioutil.TempDir("", "quorumtestdata")
@@ -70,7 +75,7 @@ func RunNodesWithBootstrap(ctx context.Context, pidch chan int, n int) (string, 
 
 		testpeerkeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", peername)
 
-		Fork(pidch, KeystorePassword, gocmd, "run", "cmd/main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir)
+		Fork(pidch, KeystorePassword, gocmd, "run", "cmd/main.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir, "-rextest", strconv.FormatBool(cli.Rextest))
 
 		checkctx, _ = context.WithTimeout(ctx, 60*time.Second)
 		_, result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", peerapiport))

@@ -21,6 +21,7 @@ type Config struct {
 	APIListenAddresses string
 	ProtocolID         string
 	IsBootstrap        bool
+	IsRexTestMode      bool
 	PeerName           string
 	JsonTracer         string
 	IsDebug            bool
@@ -92,7 +93,7 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&config.KeyStoreName, "keystorename", "defaultkeystore", "keystore name")
 	flag.StringVar(&config.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
-	flag.BoolVar(&config.IsPing, "ping", false, "ping peer")
+	flag.BoolVar(&config.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flag.BoolVar(&config.IsDebug, "debug", false, "show debug log")
 	flag.Parse()
 
