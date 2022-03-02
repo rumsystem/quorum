@@ -14,7 +14,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
-func RequestAPI(apiurl string, endpoint string, method string, data string) ([]byte, error) {
+func RequestAPI(apiurl string, endpoint string, method string, data string) (int, []byte, error) {
 	upperMethod := strings.ToUpper(method)
 	methods := map[string]string{
 		"HEAD":    http.MethodHead,
@@ -41,26 +41,26 @@ func RequestAPI(apiurl string, endpoint string, method string, data string) ([]b
 	}
 	client, err := utils.NewHTTPClient()
 	if err != nil {
-		return []byte(""), err
+		return 0, []byte(""), err
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewBufferString(data))
 	if err != nil {
-		return []byte(""), err
+		return 0, []byte(""), err
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return []byte(""), err
+		return 0, []byte(""), err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return []byte(""), err
+		return 0, []byte(""), err
 	}
 	log.Printf("response status: %d body: %s", resp.StatusCode, body)
-	return body, nil
+	return resp.StatusCode, body, nil
 }
 
 func CheckNodeRunning(ctx context.Context, url string) (string, bool) {
@@ -73,7 +73,7 @@ func CheckNodeRunning(ctx context.Context, url string) (string, bool) {
 			ticker.Stop()
 			return "", false
 		case <-ticker.C:
-			resp, err := RequestAPI(apiurl, "/node", "GET", "")
+			_, resp, err := RequestAPI(apiurl, "/node", "GET", "")
 			if err == nil {
 				var objmap map[string]interface{}
 				if err := json.Unmarshal(resp, &objmap); err != nil {

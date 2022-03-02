@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/api"
+	api "github.com/rumsystem/quorum/internal/pkg/api"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -56,11 +56,96 @@ func TestMain(m *testing.M) {
 	var tempdatadir string
 	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), pidch, nodes)
 	log.Println("peers: ", peerapilist)
-
 	exitVal := m.Run()
 	log.Println("after tests clean:", tempdatadir)
 	testnode.Cleanup(tempdatadir, peerapilist)
 	os.Exit(exitVal)
+}
+
+/*
+	To Verify :
+		Node create a group and leave it, should be able to rejoin and group
+*/
+
+type RespError struct {
+	error string `json:"error"`
+}
+
+func TestJoinGroup(t *testing.T) {
+	//create 1 group on each peer, join the group then leave, repeat 3 times and verify the group exist and in "IDLE" status
+	for idx, peerapi := range peerapilist {
+		for i := 0; i < groups; i++ {
+			log.Printf("_____________CREATE_GROUP_____________")
+			var groupseed string
+			var groupId string
+			status, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
+			if err == nil || status != 200 {
+				var objmap map[string]interface{}
+				if err := json.Unmarshal(resp, &objmap); err != nil {
+					t.Errorf("Data Unmarshal error %s", err)
+				} else {
+					groupseed = string(resp)
+					groupName := objmap["group_name"]
+					groupId = objmap["group_id"].(string)
+					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
+				}
+			} else {
+				t.Errorf("create group on peer%d error %s", 1, err)
+			}
+			time.Sleep(1 * time.Second)
+			// try join the same group just created
+			log.Printf("_____________TEST_JOIN_EXIST_GROUP_____________")
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", groupseed)
+
+			//check if failed
+			if status != 400 {
+				t.Errorf("Join existed group test failed with err %s", err.Error())
+			}
+			time.Sleep(1 * time.Second)
+
+			log.Printf("_____________TEST_LEAVE_GROUP_____________")
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			if status != 200 {
+				t.Errorf("Leave group test failed with response code %d", status)
+			}
+			time.Sleep(1 * time.Second)
+
+			log.Printf("_____________TEST_JOIN_LEAVED_GROUP_____________")
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", groupseed)
+			if status != 200 {
+				t.Errorf("join leaved group test failed with response code %d", status)
+			}
+			// verify group status
+			ready := "IDLE"
+			_, resp, err = testnode.RequestAPI(peerapi, "/api/v1/groups", "GET", "")
+
+			if err != nil {
+				t.Errorf("get peer group error %s", err)
+			}
+
+			groupslist := &api.GroupInfoList{}
+			if err := json.Unmarshal(resp, &groupslist); err != nil {
+				t.Errorf("parse peer group error %s", err)
+			}
+
+			//check group number,
+			if len(groupslist.GroupInfos) != 1 {
+				t.Errorf("Group number check failed, have %d groups, except 1", len(groupslist.GroupInfos))
+			}
+
+			for _, groupinfo := range groupslist.GroupInfos {
+				log.Printf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
+				if groupinfo.GroupId != groupId {
+					t.Errorf("Check group status failed %s, groupId mismatch", err)
+				}
+				if groupinfo.GroupStatus != ready {
+					t.Errorf("Check group status failed %s, group not IDLE", err)
+				}
+			}
+		}
+
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func TestGroups(t *testing.T) {
@@ -73,7 +158,7 @@ func TestGroups(t *testing.T) {
 	for idx, peerapi := range peerapilist {
 		var peergenesisblock []string
 		for i := 0; i < groupspeernum; i++ {
-			resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
+			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
 			if err == nil {
 				var objmap map[string]interface{}
 				if err := json.Unmarshal(resp, &objmap); err != nil {
@@ -108,7 +193,7 @@ func TestGroups(t *testing.T) {
 					for i := 0; i < groupspeernum; i++ {
 						g := oterhpeergenesisblocks[i]
 						// join to other groups of other nodes
-						_, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
+						_, _, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
 						if err != nil {
 							t.Errorf("peer%d join group %s error %s", peerIdx+1, g, err)
 						} else {
@@ -136,7 +221,7 @@ func TestGroups(t *testing.T) {
 			}
 			peerapi := peerapilist[i]
 			groupslist := &api.GroupInfoList{}
-			resp, err := testnode.RequestAPI(peerapi, "/api/v1/groups", "GET", "")
+			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/groups", "GET", "")
 			if err != nil {
 				t.Errorf("get peer group error %s", err)
 			}
@@ -183,7 +268,7 @@ func TestGroupsContent(t *testing.T) {
 		groupIdToTrxIds[groupId] = []string{}
 		for i := 1; i <= posts; i++ {
 			content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupId, i, groupId, i, groupId)
-			resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "POST", content)
+			_, resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "POST", content)
 			if err != nil {
 				t.Errorf("post content to api error %s", err)
 			}
@@ -219,7 +304,7 @@ func TestGroupsContent(t *testing.T) {
 			trxStatus := map[string]bool{}
 			for _, trxId := range trxIds {
 				trxStatus[trxId] = false
-				resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId), "GET", "")
+				_, resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId), "GET", "")
 				if err == nil {
 					var data map[string]interface{}
 					if err := json.Unmarshal(resp, &data); err != nil {

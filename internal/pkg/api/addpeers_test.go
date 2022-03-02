@@ -17,7 +17,7 @@ func addPeers(api string, payload handlers.AddPeerParam) (*handlers.AddPeerResul
 	payloadStr := string(payloadByte)
 
 	urlSuffix := "/api/v1/network/peers"
-	resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
