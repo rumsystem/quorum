@@ -129,7 +129,7 @@ func debounce(interval time.Duration, input chan bool, ctl chan struct{}, cb fun
 
 // CMD /join handler
 func QuorumCmdJoinHandler(cmd string) {
-	seedStrOrFile := strings.Replace(cmd, CMD_QUORUM_JOIN, "", -1)
+	seedStrOrFile := strings.Replace(cmd, model.CommandJoin.Cmd, "", -1)
 	seedStrOrFile = strings.TrimSpace(seedStrOrFile)
 	if strings.HasPrefix(seedStrOrFile, "@") {
 		// read seed from file
@@ -146,7 +146,7 @@ func QuorumCmdJoinHandler(cmd string) {
 
 // CMD /nick handler
 func QuorumGroupNickHandler(cmd string) {
-	nick := strings.Replace(cmd, CMD_QUORUM_NICK, "", -1)
+	nick := strings.Replace(cmd, model.CommandQuorumNick.Cmd, "", -1)
 	nick = strings.TrimSpace(nick)
 	go goQuorumNick(nick)
 }
@@ -158,7 +158,7 @@ func QuorumApplyTokenHandler(cmd string) {
 
 // CMD /send handler
 func QuorumCmdSendHandler(cmd string) {
-	msg := strings.Replace(cmd, CMD_QUORUM_SEND, "", -1)
+	msg := strings.Replace(cmd, model.CommandQuorumSend.Cmd, "", -1)
 	msg = strings.TrimSpace(msg)
 	go goQuorumCreateContent(msg)
 }

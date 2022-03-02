@@ -166,8 +166,8 @@ func createGroupFormInit() {
 
 func CreateGroupForm() {
 	formMode = true
-	rootPanels.ShowPanel(PANNEL_GROUP_CONFIG_FORM)
-	rootPanels.SendToFront(PANNEL_GROUP_CONFIG_FORM)
+	rootPanels.ShowPanel(PANNEL_GROUP_FORM)
+	rootPanels.SendToFront(PANNEL_GROUP_FORM)
 	App.SetFocus(groupForm)
 }
 

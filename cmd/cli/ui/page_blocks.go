@@ -410,6 +410,6 @@ func jumpToBlock(id string) {
 }
 
 func BlockCMDJump(cmd string) {
-	blockId := strings.Replace(cmd, CMD_BLOCKS_JMP, "", -1)
+	blockId := strings.Replace(cmd, model.CommandBlocksJmp.Cmd, "", -1)
 	jumpToBlock(blockId)
 }
