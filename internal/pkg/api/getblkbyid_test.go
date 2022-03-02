@@ -25,7 +25,7 @@ type GetBlockResult struct {
 
 func getBlockByID(api, groupID, blockID string) (*GetBlockResult, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/block/%s/%s", groupID, blockID)
-	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}

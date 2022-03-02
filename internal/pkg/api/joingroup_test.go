@@ -19,7 +19,7 @@ func joinGroup(api string, payload handlers.GroupSeed) (*JoinGroupResult, error)
 
 	payloadStr := string(payloadByte[:])
 	urlPath := "/api/v1/group/join"
-	resp, err := testnode.RequestAPI(api, urlPath, "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, urlPath, "POST", payloadStr)
 	if err != nil {
 		e := fmt.Errorf("request %s failed: %s, payload: %s", urlPath, err, payloadStr)
 		return nil, e

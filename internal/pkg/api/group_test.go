@@ -37,7 +37,7 @@ func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.Group
 	}
 	payloadStr := string(payloadByte[:])
 
-	resp, err := testnode.RequestAPI(api, "/api/v1/group", "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/group", "POST", payloadStr)
 	if err != nil {
 		e := fmt.Errorf("create group %s failed: %s", payload.GroupName, err)
 		return nil, e
@@ -94,7 +94,7 @@ func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.Group
 }
 
 func getGroups(api string) (*GroupInfoList, error) {
-	resp, err := testnode.RequestAPI(api, "/api/v1/groups", "GET", "")
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/groups", "GET", "")
 	if err != nil {
 		e := fmt.Errorf("get groups failed: %s", err)
 		return nil, e
@@ -125,7 +125,7 @@ func leaveGroup(api string, payload handlers.LeaveGroupParam) (*handlers.LeaveGr
 		return nil, err
 	}
 	payloadStr := string(payloadByte[:])
-	resp, err := testnode.RequestAPI(api, "/api/v1/group/leave", "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/leave", "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func postToGroup(api string, payload PostGroupParam) (*handlers.TrxResult, error
 		return nil, err
 	}
 	payloadStr := string(payloadByte[:])
-	resp, err := testnode.RequestAPI(api, "/api/v1/group/content", "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/content", "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ type GroupContentItem struct {
 
 func getGroupContent(api string, groupID string) ([]GroupContentItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/content", groupID)
-	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}

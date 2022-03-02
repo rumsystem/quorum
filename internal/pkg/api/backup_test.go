@@ -10,7 +10,7 @@ import (
 )
 
 func backup(api string) (*BackupResult, error) {
-	resp, err := testnode.RequestAPI(api, "/api/v1/backup", "GET", "")
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/backup", "GET", "")
 	if err != nil {
 		return nil, err
 	}

@@ -49,7 +49,7 @@ func updateProfile(api string, payload updateProfileParam) (*UpdateProfileResult
 	payloadStr := string(payloadBytes)
 
 	urlSuffix := "/api/v1/group/profile"
-	resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
