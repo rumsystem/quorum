@@ -72,9 +72,14 @@ type RespError struct {
 }
 
 func TestJoinGroup(t *testing.T) {
+	log.Printf("_____________TestJoinGroup_RUNNING_____________")
+
+	//initial
+	groupToCreate := 1
+
 	//create 1 group on each peer, join the group then leave, repeat 3 times and verify the group exist and in "IDLE" status
 	for idx, peerapi := range peerapilist {
-		for i := 0; i < groups; i++ {
+		for i := 0; i < groupToCreate; i++ {
 			log.Printf("_____________CREATE_GROUP_____________")
 			var groupseed string
 			var groupId string
@@ -142,21 +147,46 @@ func TestJoinGroup(t *testing.T) {
 					t.Errorf("Check group status failed %s, group not IDLE", err)
 				}
 			}
+
+			log.Printf("_____________TEST_LEAVE_GROUP_____________")
+			//leave group
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			if status != 200 {
+				if err != nil {
+					t.Errorf("Leave group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
+				} else {
+					t.Errorf("leave group test failed with response code %d, resp <%s>", status, string(resp))
+				}
+			}
+
+			log.Printf("_____________TEST_CLEAR_GROUP_____________")
+			//clear group data
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			if status != 200 {
+				if err != nil {
+					t.Errorf("clean group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
+				} else {
+					t.Errorf("clean group test failed with response code %d, resp <%s>", status, string(resp))
+				}
+			}
+
 		}
 
 		time.Sleep(1 * time.Second)
 	}
 }
 
-func TestGroups(t *testing.T) {
-	// create n groups on each peer, and join all groups, then verify peerN groups == peerM groups
+// create n groups on each peer, and join all groups, then verify peerN groups == peerM groups
+func TestGroupsPostContents(t *testing.T) {
 
-	var genesisblocks [][]string
+	log.Printf("_____________TestGroupContents_RUNNING_____________")
+
+	var seedsByNode [][]string
 
 	groupspeernum := groups
 
 	for idx, peerapi := range peerapilist {
-		var peergenesisblock []string
+		var seeds []string
 		for i := 0; i < groupspeernum; i++ {
 			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
 			if err == nil {
@@ -164,7 +194,7 @@ func TestGroups(t *testing.T) {
 				if err := json.Unmarshal(resp, &objmap); err != nil {
 					t.Errorf("Data Unmarshal error %s", err)
 				} else {
-					peergenesisblock = append(peergenesisblock, string(resp))
+					seeds = append(seeds, string(resp))
 					groupName := objmap["group_name"]
 					groupId := objmap["group_id"].(string)
 					groupIds = append(groupIds, groupId)
@@ -174,11 +204,11 @@ func TestGroups(t *testing.T) {
 				t.Errorf("create group on peer%d error %s", 1, err)
 			}
 		}
-		genesisblocks = append(genesisblocks, peergenesisblock)
+		seedsByNode = append(seedsByNode, seeds)
 		time.Sleep(1 * time.Second)
 	}
 
-	for idx, peergenesisblocks := range genesisblocks {
+	for idx, peergenesisblocks := range seedsByNode {
 		if len(peergenesisblocks) != groupspeernum {
 			t.Fail()
 		}
@@ -186,12 +216,12 @@ func TestGroups(t *testing.T) {
 	}
 
 	for peerIdx, peerapi := range peerapilist {
-		for genesisblockIdx := 0; genesisblockIdx < nodes; genesisblockIdx++ {
-			if genesisblockIdx != peerIdx {
-				oterhpeergenesisblocks := genesisblocks[genesisblockIdx]
-				if len(oterhpeergenesisblocks) >= groupspeernum {
+		for seedIdx := 0; seedIdx < nodes; seedIdx++ {
+			if seedIdx != peerIdx {
+				seedsFromOtherNode := seedsByNode[seedIdx]
+				if len(seedsFromOtherNode) >= groupspeernum {
 					for i := 0; i < groupspeernum; i++ {
-						g := oterhpeergenesisblocks[i]
+						g := seedsFromOtherNode[i]
 						// join to other groups of other nodes
 						_, _, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
 						if err != nil {
@@ -254,9 +284,7 @@ func TestGroups(t *testing.T) {
 			waitingcounter -= 1
 		}
 	}
-}
 
-func TestGroupsContent(t *testing.T) {
 	if len(peerapilist) == 0 {
 		return
 	}
@@ -349,6 +377,28 @@ func TestGroupsContent(t *testing.T) {
 					t.Fail()
 				}
 			}
+
+			//Added by cuicat
+			//leave group
+			status, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			if status != 200 {
+				if err != nil {
+					t.Errorf("Leave group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
+				} else {
+					t.Errorf("leave group test failed with response code %d, resp <%s>", status, string(resp))
+				}
+			}
+
+			//clean group data
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			if status != 200 {
+				if err != nil {
+					t.Errorf("clean group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
+				} else {
+					t.Errorf("clean group test failed with response code %d, resp <%s>", status, string(resp))
+				}
+			}
 		}
 	}
+
 }
