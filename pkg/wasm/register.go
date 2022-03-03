@@ -316,6 +316,22 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("GetChainTrxAuthMode", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		trxType := args[1].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetChainTrxAuthMode(groupId, trxType)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("GetAppConfigKeyList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		groupId := args[0].String()
 		handler := func() (map[string]interface{}, error) {
