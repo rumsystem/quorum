@@ -737,12 +737,9 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 		if err != nil {
 			return false, err
 		}
-
-		dbmgr_log.Infof("5")
 		//check if trxType allowed
 		for _, denyTrxType := range denyItem.Type {
 			if trxType == denyTrxType {
-				dbmgr_log.Infof("6")
 				return false, nil
 			}
 		}
@@ -754,11 +751,9 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 
 	if trxAuthMode == quorumpb.TrxAuthMode_FOLLOW_ALW_LIST {
 		//not in allow list, so return false, access denied
-		dbmgr_log.Infof("8")
 		return false, nil
 	} else {
 		//not in deny list, so return true, access granted
-		dbmgr_log.Infof("9")
 		return true, nil
 	}
 }
