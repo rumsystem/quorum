@@ -106,3 +106,28 @@ func TestRumGroupPeerStoreRandom(t *testing.T) {
 	}
 
 }
+
+func TestRumGroupPeerStoreRandomWithoutPreSaved(t *testing.T) {
+	rgp := &RumGroupPeerStore{}
+
+	groupid1 := "4455c41b-4098-4be1-ba53-a2c4293ca1b5"
+	connectpeernum := 20
+	samplenum := 3
+
+	var r io.Reader
+	r = rand.Reader
+
+	connectpeers := []peer.ID{}
+	for i := 0; i < connectpeernum; i++ {
+		priv, _, _ := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
+		newId, _ := peer.IDFromPrivateKey(priv)
+		connectpeers = append(connectpeers, newId)
+	}
+
+	randomlist1 := rgp.GetRandomPeer(groupid1, samplenum, connectpeers)
+
+	if len(randomlist1) != samplenum {
+		t.Errorf("RumGroupPeerStore length %d error expect: %d", len(randomlist1), samplenum)
+	}
+
+}

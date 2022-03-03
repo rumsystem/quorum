@@ -51,11 +51,11 @@ func (rps *RumGroupPeerStore) AddIgnorePeer(Id peer.ID) {
 
 func (rps *RumGroupPeerStore) Get(groupid string) []peer.ID {
 	list, succ := rps.store.Load(groupid)
-	peerlist := *list.(*[]RumPeer)
-	if succ == false {
-		return nil
-	}
 	result := []peer.ID{}
+	if succ == false {
+		return result
+	}
+	peerlist := *list.(*[]RumPeer)
 	for _, p := range peerlist {
 		if time.Now().Sub(p.Updated) <= p.TTL {
 			result = append(result, p.Id)
