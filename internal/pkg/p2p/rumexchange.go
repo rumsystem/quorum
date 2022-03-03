@@ -24,21 +24,6 @@ var rumexchangelog = logging.Logger("rumexchange")
 
 const IDVer = "1.0.0"
 
-type RexPeerStatus uint
-
-const (
-	REJECT RexPeerStatus = iota
-	NOSUPPORT
-	BAD
-	TOOMANY
-	TIMEOUT
-)
-
-type REXPeer struct {
-	Id     peer.ID
-	Status RexPeerStatus
-}
-
 type Chain interface {
 	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
 	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
