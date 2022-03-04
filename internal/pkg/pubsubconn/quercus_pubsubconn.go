@@ -7,8 +7,8 @@ import (
 
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
 	"github.com/huo-ju/quercus/pkg/quality"
-	logging "github.com/ipfs/go-log/v2"
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )

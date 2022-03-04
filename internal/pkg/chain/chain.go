@@ -3,14 +3,13 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"time"
-
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"time"
 
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )

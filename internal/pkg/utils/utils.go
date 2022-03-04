@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	logging "github.com/ipfs/go-log/v2"
 	maddr "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
 var logger = logging.Logger("utils")

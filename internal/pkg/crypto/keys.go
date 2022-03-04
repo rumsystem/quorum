@@ -11,8 +11,8 @@ import (
 	"filippo.io/age"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	logging "github.com/ipfs/go-log/v2"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
 var cryptolog = logging.Logger("crypto")

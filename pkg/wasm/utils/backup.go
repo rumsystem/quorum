@@ -14,9 +14,11 @@ import (
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/pkg/wasm/logger"
 )
+
+var backupLogger = logging.Logger("backup")
 
 func KeystoreBackupRaw(password string, onWrite func(string), onFinish func()) error {
 	idb := quorumStorage.QSIndexDB{}
@@ -39,7 +41,7 @@ func KeystoreBackupRaw(password string, onWrite func(string), onFinish func()) e
 		key := string(k)
 		pair["key"] = key
 		pair["value"] = string(v)
-		logger.Console.Log("exporting " + key)
+		backupLogger.Info("exporting " + key)
 
 		kvBytes, err := json.Marshal(pair)
 		if err != nil {
@@ -117,13 +119,13 @@ func KeystoreRestoreRaw(password string, keystoreStr string) error {
 		}
 		k := pair["key"].(string)
 		v := pair["value"].(string)
-		logger.Console.Log("Loading " + k)
+		backupLogger.Info("Loading " + k)
 
 		err = idb.Set([]byte(k), []byte(v))
 		if err != nil {
 			return err
 		}
-		logger.Console.Log("OK")
+		backupLogger.Info("OK")
 	}
 
 	return nil

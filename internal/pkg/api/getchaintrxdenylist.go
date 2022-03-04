@@ -12,7 +12,7 @@ import (
 // @Description Get the list of denied users
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Success 200 {array} DeniedUserListItem
+// @Success 200 {array} handlers.ChainSendTrxRuleListItem
 // @Router /api/v1/group/{group_id}/deniedlist [get]
 func (h *Handler) GetChainTrxDenyList(c echo.Context) (err error) {
 	output := make(map[string]string)
