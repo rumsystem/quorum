@@ -18,7 +18,7 @@ func clearGroup(api string, payload handlers.ClearGroupDataParam) (*handlers.Cle
 
 	payloadStr := string(payloadBytes[:])
 	urlSuffix := fmt.Sprintf("/api/v1/group/clear")
-	resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}

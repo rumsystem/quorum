@@ -148,7 +148,7 @@ func Cleanup(dir string, peerapilist []string) {
 	//add bootstrap node
 	peerapilist = append(peerapilist, fmt.Sprintf("https://127.0.0.1:%d", 18010))
 	for _, peerapi := range peerapilist {
-		_, err := RequestAPI(peerapi, "/api/quit", "GET", "")
+		_, _, err := RequestAPI(peerapi, "/api/quit", "GET", "")
 		if err == nil {
 			log.Printf("kill node at %s ", peerapi)
 		}

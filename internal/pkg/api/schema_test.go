@@ -20,7 +20,7 @@ func addOrRemoveSchema(api string, payload SchemaParam) (*SchemaResult, error) {
 	payloadStr := string(payloadBytes)
 
 	urlSuffix := "/api/v1/group/schema"
-	resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func addOrRemoveSchema(api string, payload SchemaParam) (*SchemaResult, error) {
 
 func getSchemaList(api string, groupID string) ([]SchemaListItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/app/schema", groupID)
-	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}

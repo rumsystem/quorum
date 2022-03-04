@@ -9,7 +9,7 @@ import (
 
 func TestGetBootstrapNodeInfo(t *testing.T) {
 	urlSuffix := "/api/v1/node"
-	resp, err := testnode.RequestAPI(bootstrapapi, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(bootstrapapi, urlSuffix, "GET", "")
 	if err != nil {
 		t.Errorf("GET %s failed: %s", urlSuffix, err)
 	}

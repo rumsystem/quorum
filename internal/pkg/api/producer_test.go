@@ -19,7 +19,7 @@ func announceProducer(api string, payload handlers.AnnounceParam) (*handlers.Ann
 	}
 
 	payloadStr := string(payloadByte)
-	resp, err := testnode.RequestAPI(api, "/api/v1/group/announce", "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/announce", "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func announceProducer(api string, payload handlers.AnnounceParam) (*handlers.Ann
 func getAnnouncedProducers(api string, groupID string) ([]handlers.AnnouncedProducerListItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/announced/producers", groupID)
 
-	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func getAnnouncedProducers(api string, groupID string) ([]handlers.AnnouncedProd
 
 func getProducers(api string, groupID string) ([]handlers.ProducerListItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/producers", groupID)
-	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func addProducer(api string, payload handlers.GrpProducerParam) (*handlers.GrpPr
 
 	payloadStr := string(payloadByte)
 
-	resp, err := testnode.RequestAPI(api, "/api/v1/group/producer", "POST", payloadStr)
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/producer", "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}

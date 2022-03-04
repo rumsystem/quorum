@@ -758,7 +758,6 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 		if err != nil {
 			return false, err
 		}
-
 		//check if trxType allowed
 		for _, denyTrxType := range denyItem.Type {
 			if trxType == denyTrxType {

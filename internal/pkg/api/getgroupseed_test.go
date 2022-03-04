@@ -13,7 +13,7 @@ import (
 
 func getGroupSeed(api string, groupID string) (*handlers.GroupSeed, error) {
 	path := fmt.Sprintf("/api/v1/group/%s/seed", groupID)
-	resp, err := testnode.RequestAPI(api, path, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, path, "GET", "")
 	if err != nil {
 		return nil, fmt.Errorf("get group seed failed: %s", err)
 	}

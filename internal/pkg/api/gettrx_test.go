@@ -24,7 +24,7 @@ type GetTrxResult struct {
 
 func getTrx(api string, groupID string, trxID string) (*GetTrxResult, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/trx/%s/%s", groupID, trxID)
-	resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}

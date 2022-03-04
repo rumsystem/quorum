@@ -12,7 +12,7 @@ import (
 
 func startSync(api, groupID string) (*StartSyncResult, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/startsync", groupID)
-	resp, err := testnode.RequestAPI(api, urlSuffix, "POST", "")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", "")
 	if err != nil {
 		return nil, err
 	}

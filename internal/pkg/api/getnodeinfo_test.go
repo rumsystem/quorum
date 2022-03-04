@@ -10,7 +10,7 @@ import (
 )
 
 func getNodeInfo(api string) (*handlers.NodeInfo, error) {
-	resp, err := testnode.RequestAPI(api, "/api/v1/node", "GET", "")
+	_, resp, err := testnode.RequestAPI(api, "/api/v1/node", "GET", "")
 	if err != nil {
 		return nil, err
 	}
