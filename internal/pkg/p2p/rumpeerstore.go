@@ -74,8 +74,6 @@ func (rps *RumGroupPeerStore) GetRandomPeer(groupid string, count int, connectPe
 		return savedpeers[0:count]
 	} else {
 		ignoredpeers := rps.Get(groupid)
-		_ = ignoredpeers
-
 		rand.Seed(time.Now().UnixNano())
 		rand.Shuffle(len(connectPeers), func(i, j int) { connectPeers[i], connectPeers[j] = connectPeers[j], connectPeers[i] })
 
@@ -95,7 +93,7 @@ func (rps *RumGroupPeerStore) GetRandomPeer(groupid string, count int, connectPe
 				return savedpeers
 			}
 		}
-		return savedpeers[0:count]
+		return savedpeers
 
 	}
 	return nil

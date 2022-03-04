@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -21,6 +22,7 @@ import (
 )
 
 var rumexchangelog = logging.Logger("rumexchange")
+var peerstoreTTL time.Duration = time.Duration(20 * time.Minute)
 
 const IDVer = "1.0.0"
 
@@ -42,6 +44,7 @@ type RexService struct {
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
 	chainmgr           map[string]iface.ChainDataHandlerIface
+	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
 	msgtypehandlerlock sync.RWMutex
 }
@@ -61,7 +64,8 @@ type RexNotification struct {
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]iface.ChainDataHandlerIface)
-	rexs := &RexService{Host: h, peerStatus: peerStatus, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
+	rumpeerstore := &RumGroupPeerStore{}
+	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -137,15 +141,20 @@ func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
 }
 
 //Publish to All connected peers
-func (r *RexService) Publish(msg *quorumpb.RumMsg) error {
+func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	//TODO: select peers
 	succ := 0
 	peers := r.Host.Network().Peers()
-	for _, p := range peers {
+	maxnum := 5
+
+	randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
+
+	for _, p := range randompeerlist {
 		ctx := context.Background()
 		s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
 		if err != nil {
 			rumexchangelog.Debugf("create network stream err: %s", err)
+			r.peerstore.AddIgnorePeer(p)
 			continue
 		}
 		defer func() { _ = s.Close() }()
@@ -223,6 +232,7 @@ func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
 		if err == nil {
 			chainDataHandler, ok := r.chainmgr[trx.GroupId]
 			if ok == true {
+				r.peerstore.Save(trx.GroupId, frompeerid, peerstoreTTL)
 				chainDataHandler.HandleTrxRex(trx, frompeerid)
 			} else {
 				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)

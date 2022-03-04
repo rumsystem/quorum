@@ -332,7 +332,7 @@ func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
 	pkg.Data = pbBytes
 
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return connMgr.Rex.Publish(rummsg)
+	return connMgr.Rex.Publish(blk.GroupId, rummsg)
 
 }
 
@@ -392,7 +392,7 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
 	if to == "" {
-		return nodectx.GetNodeCtx().Node.RumExchange.Publish(rummsg)
+		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
 	} else {
 		return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
 	}
