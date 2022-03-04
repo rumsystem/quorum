@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	quorumCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -74,7 +75,6 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 
 	nodectx.InitCtx(ctx, "default", node, dbMgr, "pubsub", "wasm-version")
 	nodectx.GetNodeCtx().Keystore = k
-
 	keys, err := quorumCrypto.SignKeytoPeerKeys(defaultKey)
 	if err != nil {
 		cancel()
@@ -91,7 +91,8 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	nodectx.GetNodeCtx().PeerId = peerId
 	mainLogger.Info("GetPeerInfo OK")
 
-	chain.InitGroupMgr(dbMgr)
+	conn.InitConn()
+	chain.InitGroupMgr()
 	mainLogger.Info("InitGroupMgr OK")
 
 	appIndexedDb, err := newAppDb()
@@ -159,8 +160,8 @@ func Bootstrap() error {
 	mainLogger.Info(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
 	/* start syncing all local groups */
-	groupMgr := chain.GetGroupMgr()
-	err := groupMgr.SyncAllGroup()
+	err := chain.GetGroupMgr().StartSyncAllGroups()
+
 	if err != nil {
 		return err
 	}

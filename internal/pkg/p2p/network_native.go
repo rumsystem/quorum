@@ -110,7 +110,8 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	networklog.Infof("Network Name %s", nodenetworkname)
 	peerStatus := NewPeerStatus()
-	//var rexservice *RexService
+	var rexservice *RexService
+	var rexsession *RexSession
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	if isBootstrap == true {
@@ -162,7 +163,17 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
+	if isBootstrap == false && nodeopt.EnableRumExchange == true {
+		rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
+		rexservice.SetDelegate()
+		//rexsession = NewRexSession(rexservice)
+		rexchaindata := NewRexChainData(rexservice)
+		//rexservice.SetHandlerMatchMsgType("rumsession", rexsession.Handler)
+		rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
+		networklog.Infof("Enable protocol RumExchange")
+	}
+
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, RumSession: rexsession, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
 
 	//reconnect peers
 

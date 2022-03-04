@@ -27,6 +27,7 @@ const CHAIN_CONFIG_PREFIX string = "chn_conf"  //chain configuration
 const TRX_AUTH_TYPE_PREFIX string = "trx_auth" //trx auth type
 const ALLW_LIST_PREFIX string = "alw_list"     //allow list
 const DENY_LIST_PREFIX string = "dny_list"     //deny list
+const NONCE_PREFIX string = "nonce"            //group trx nonce
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
@@ -43,7 +44,6 @@ func (dbMgr *DbMgr) CloseDb() {
 
 func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 	if nodeDataVer == 0 { //try migration 0 (Upgrade the GroupItem)
-
 		dbmgr_log.Infof("db migration v0")
 		groupItemsBytes, err := dbMgr.GetGroupsBytes()
 		if err == nil {
@@ -72,17 +72,14 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 					}
 				}
 			}
-
 		}
-
 	}
-
 }
 
 //save trx
 func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_" + trx.TrxId
+	key := nodeprefix + TRX_PREFIX + "_" + trx.TrxId + "_" + fmt.Sprint(trx.Nonce)
 	value, err := proto.Marshal(trx)
 	if err != nil {
 		return err
@@ -92,37 +89,42 @@ func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
 
 //UNUSED
 //rm Trx
-func (dbMgr *DbMgr) RmTrx(trxId string, prefix ...string) error {
+func (dbMgr *DbMgr) RmTrx(trxId string, nonce int64, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_" + trxId
+	key := nodeprefix + TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
 	return dbMgr.Db.Delete([]byte(key))
 }
 
 //get trx
-func (dbMgr *DbMgr) GetTrx(trxId string, prefix ...string) (*quorumpb.Trx, error) {
+func (dbMgr *DbMgr) GetTrx(trxId string, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + trxId
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return nil, err
-	}
 
 	var trx quorumpb.Trx
-	err = proto.Unmarshal(value, &trx)
-	if err != nil {
-		return nil, err
-	}
+	var nonces []int64
 
-	return &trx, err
+	err = dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		perr := proto.Unmarshal(v, &trx)
+		if perr != nil {
+			return perr
+		}
+		nonces = append(nonces, trx.Nonce)
+		return nil
+	})
+
+	return &trx, nonces, err
 }
 
 func (dbMgr *DbMgr) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
 	return dbMgr.AddTrx(trx, prefix...)
 }
 
-func (dbMgr *DbMgr) IsTrxExist(trxId string, prefix ...string) (bool, error) {
+func (dbMgr *DbMgr) IsTrxExist(trxId string, nonce int64, prefix ...string) (bool, error) {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_" + trxId
+	key := nodeprefix + TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
 
 	return dbMgr.Db.IsExist([]byte(key))
 }
@@ -130,6 +132,15 @@ func (dbMgr *DbMgr) IsTrxExist(trxId string, prefix ...string) (bool, error) {
 func (dbMgr *DbMgr) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)
 	key := nodeprefix + BLK_PREFIX + "_" + gensisBlock.BlockId
+
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
+	}
+	if isExist {
+		dbmgr_log.Debugf("Genesis block <%s> exist, do nothing", gensisBlock.BlockId)
+		return nil
+	}
 
 	chunk := quorumpb.BlockDbChunk{}
 	chunk.BlockId = gensisBlock.BlockId
@@ -173,6 +184,17 @@ func (dbMgr *DbMgr) IsParentExist(parentBlockId string, cached bool, prefix ...s
 
 //add block
 func (dbMgr *DbMgr) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...string) error {
+
+	isSaved, err := dbMgr.IsBlockExist(newBlock.BlockId, cached, prefix...)
+	if err != nil {
+		return err
+	}
+
+	if isSaved {
+		dbmgr_log.Debugf("Block <%s> already saved, ignore", newBlock.BlockId)
+		return nil
+	}
+
 	//create new chunk
 	var chunk *quorumpb.BlockDbChunk
 	chunk = &quorumpb.BlockDbChunk{}
@@ -480,7 +502,6 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 //Get group list
 func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	var groupItemList [][]byte
-	//test only, show db contents
 	err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -1181,6 +1202,22 @@ func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, 
 
 	//check if group user (announced) exist
 	return dbMgr.Db.IsExist([]byte(key))
+}
+
+//update group nonce
+func (dbMgr *DbMgr) UpdateNonce(groupId string, prefix ...string) (nonce uint64, err error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + NONCE_PREFIX + "_" + groupId
+	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
+	return seq.Next()
+}
+
+//get next nonce (and update db)
+func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + NONCE_PREFIX + "_" + groupId
+	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
+	return seq.Next()
 }
 
 func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error) {

@@ -26,6 +26,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 
@@ -164,6 +165,7 @@ func mainRet(config cli.Config) int {
 		cancel()
 		mainlog.Fatalf(err.Error())
 	}
+	nodeoptions.IsRexTestMode = config.IsRexTestMode
 
 	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
 	ksi := localcrypto.GetKeystore()
@@ -333,9 +335,24 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
-		groupmgr := chain.InitGroupMgr(nodectx.GetDbMgr())
 
-		err = groupmgr.SyncAllGroup()
+		//initial conn
+		conn.InitConn()
+
+		//initial group manager
+		chain.InitGroupMgr()
+		if nodeoptions.IsRexTestMode == true {
+			chain.GetGroupMgr().SetRumExchangeTestMode()
+		}
+
+		//load all groups
+		err = chain.GetGroupMgr().LoadAllGroups()
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+
+		//start sync all groups
+		err = chain.GetGroupMgr().StartSyncAllGroups()
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
@@ -384,8 +401,12 @@ func mainRet(config cli.Config) int {
 	signal.Stop(signalch)
 
 	if config.IsBootstrap != true {
-		groupmgr := chain.GetGroupMgr()
-		groupmgr.Release()
+		//Stop sync all groups
+		chain.GetGroupMgr().StopSyncAllGroups()
+		//teardown all groups
+		chain.GetGroupMgr().TeardownAllGroups()
+		//close ctx db
+		nodectx.GetDbMgr().CloseDb()
 	}
 
 	//cleanup before exit
@@ -433,20 +454,21 @@ func main() {
 		logging.SetLogLevel("main", "debug")
 		logging.SetLogLevel("crypto", "debug")
 		logging.SetLogLevel("network", "debug")
-		//logging.SetLogLevel("pubsub", "debug")
 		logging.SetLogLevel("autonat", "debug")
 		logging.SetLogLevel("chain", "debug")
 		logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
-		logging.SetLogLevel("group", "debug")
+		//logging.SetLogLevel("group", "debug")
 		logging.SetLogLevel("syncer", "debug")
 		logging.SetLogLevel("producer", "debug")
-		logging.SetLogLevel("user", "debug")
-		logging.SetLogLevel("groupmgr", "debug")
+		//logging.SetLogLevel("user", "debug")
+		//logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("trxmgr", "debug")
-		//logging.SetLogLevel("rumexchange", "debug")
+		logging.SetLogLevel("conn", "debug")
+		logging.SetLogLevel("rumexchange", "debug")
 		//logging.SetLogLevel("ping", "debug")
 		//logging.SetLogLevel("chan", "debug")
+		//logging.SetLogLevel("pubsub", "debug")
 	}
 
 	if *help {

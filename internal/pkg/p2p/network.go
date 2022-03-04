@@ -29,6 +29,7 @@ type Node struct {
 	NetworkName      string
 	Pubsub           *pubsub.PubSub
 	RumExchange      *RexService
+	RumSession       *RexSession
 	Ddht             *dual.DHT
 	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery

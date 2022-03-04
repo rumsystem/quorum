@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/go-playground/validator/v10"
 	"net/http"
 
@@ -13,17 +12,6 @@ import (
 type RexSessionParam struct {
 	PeerId  string `from:"peer_id"      json:"peer_id"      validate:"required,max=53,min=53"`
 	GroupId string `from:"group_id"  json:"group_id"      validate:"required,max=36,min=36"`
-}
-
-func (h *Handler) RexTest(node *p2p.Node) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		result, err := handlers.RexTest(node)
-		if err != nil {
-			fmt.Printf("json.Marshal failed: %s", err)
-		}
-
-		return c.JSON(http.StatusOK, result)
-	}
 }
 
 func (h *Handler) RexInitSession(node *p2p.Node) echo.HandlerFunc {

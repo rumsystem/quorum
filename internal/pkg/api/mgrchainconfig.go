@@ -12,7 +12,7 @@ import (
 // @Description chain config
 // @Accept json
 // @Produce json
-// @Param data body handlers.ChainConfig true "ChainConfigParams"
+// @Param data body handlers.ChainConfigParams true "ChainConfigParams"
 // @Success 200 {object} handlers.ChainConfigResult
 // @Router /api/v1/group/chainconfig [post]
 func (h *Handler) MgrChainConfig(c echo.Context) (err error) {

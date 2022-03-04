@@ -117,6 +117,9 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 		return nil, err
 	}
 
+	if nodeoptions.IsRexTestMode == true {
+		group.SetRumExchangeTestMode()
+	}
 	groupmgr := chain.GetGroupMgr()
 	groupmgr.Groups[group.Item.GroupId] = group
 

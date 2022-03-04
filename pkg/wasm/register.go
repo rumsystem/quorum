@@ -5,6 +5,7 @@ package wasm
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"syscall/js"
 
@@ -370,7 +371,7 @@ func RegisterJSFunctions() {
 		trxId := args[1].String()
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetTrx(groupId, trxId)
+			res, _, err := quorumAPI.GetTrx(groupId, trxId)
 			if err != nil {
 				return ret, err
 			}
@@ -425,14 +426,15 @@ func RegisterJSFunctions() {
 	}))
 
 	js.Global().Set("GetContent", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		if len(args) < 4 {
+		if len(args) < 5 {
 			return nil
 		}
 		groupId := args[0].String()
 		num := args[1].Int()
 		startTrx := args[2].String()
-		reverse := args[3].Bool()
-		includestarttrx := args[4].Bool()
+		nonce, _ := strconv.ParseInt(args[3].String(), 10, 64)
+		reverse := args[4].Bool()
+		includestarttrx := args[5].Bool()
 
 		senders := []string{}
 		for i := 5; i < len(args); i += 1 {
@@ -442,7 +444,7 @@ func RegisterJSFunctions() {
 
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetContent(groupId, num, startTrx, reverse, includestarttrx, senders)
+			res, err := quorumAPI.GetContent(groupId, num, startTrx, nonce, reverse, includestarttrx, senders)
 			if err != nil {
 				return ret, err
 			}

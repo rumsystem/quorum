@@ -58,7 +58,7 @@ func GetGroups() (*GroupInfoList, error) {
 		group.HighestHeight = value.Item.HighestHeight
 		group.HighestBlockId = value.Item.HighestBlockId
 
-		switch value.ChainCtx.Syncer.Status {
+		switch value.GetSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
 			group.GroupStatus = "SYNCING"
 		case chain.SYNCING_FORWARD:
@@ -67,6 +67,7 @@ func GetGroups() (*GroupInfoList, error) {
 			group.GroupStatus = "SYNC_FAILED"
 		case chain.IDLE:
 			group.GroupStatus = "IDLE"
+			//add support for LOCAL_SYNC
 		}
 		groups = append(groups, group)
 	}

@@ -32,7 +32,8 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	trx, err := handlers.GetTrx(groupid, trxid)
+	//should return nonce count to client?
+	trx, _, err := handlers.GetTrx(groupid, trxid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

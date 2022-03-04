@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/google/orderedcode"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -27,6 +28,10 @@ type AppDb struct {
 	Db       storage.QuorumStorage
 	seq      map[string]storage.Sequence
 	DataPath string
+}
+type TrxIdNonce struct {
+	TrxId string
+	Nonce int64
 }
 
 func NewAppDb() *AppDb {
@@ -67,13 +72,13 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error 
 	return nil
 }
 
-func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool, starttrxinclude bool) ([]string, error) {
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, targetnonce int64, num int, reverse bool, starttrxinclude bool) ([]TrxIdNonce, error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
 	sendermap := make(map[string]bool)
 	for _, s := range senders {
 		sendermap[s] = true
 	}
-	trxids := []string{}
+	trxidsnonce := []TrxIdNonce{}
 
 	p := []byte(prefix)
 	if reverse == true {
@@ -89,22 +94,45 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		if err != nil {
 			return err
 		}
+		var trxid, sender string
+		var trxnonce int64
 
 		dataidx := bytes.LastIndexByte(k, byte('_'))
-		trxid := string(k[len(k)-37-1 : len(k)-1-1])
+		start := dataidx
+		seg := 0
+		for i, c := range k[dataidx:] {
+			if c == ':' {
+				if seg == 0 {
+					sender = string(k[start+1 : start+i])
+					trxid = string(k[start+1+i : start+i+37])
+					start = i
+					seg = 1
+				} else if seg == 1 {
+					if len(k)-2 > start+i {
+						n := string(k[start+i : len(k)-2])
+						trxnonce, err = strconv.ParseInt(n, 10, 64)
+					}
+				}
+			}
+		}
 		if runcollector == true {
-			sender := string(k[dataidx+1+2 : len(k)-37-2]) //+2/-2 for remove the term, len(term)=2
 			if len(senders) == 0 || sendermap[sender] == true {
-				trxids = append(trxids, trxid)
+				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
 			}
 		}
 		if trxid == starttrx && runcollector == false { //start collecting after this item
-			runcollector = true
-			if starttrxinclude == true {
-				trxids = append(trxids, trxid)
+			if targetnonce > 0 {
+				if targetnonce == trxnonce {
+					runcollector = true
+				}
+			} else {
+				runcollector = true
+			}
+			if starttrxinclude == true && runcollector == true {
+				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
 			}
 		}
-		if len(trxids) == num {
+		if len(trxidsnonce) == num {
 			// use this to break loop
 			return errors.New("OK")
 		}
@@ -115,7 +143,7 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		err = nil
 	}
 
-	return trxids, err
+	return trxidsnonce, err
 }
 
 func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
@@ -182,7 +210,16 @@ func (appdb *AppDb) AddMetaByTrx(blockId string, groupid string, trxs []*quorump
 				return err
 			}
 
-			key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid), seqid, fmt.Sprintf("%s:%s", trx.SenderPubkey, trx.TrxId))
+			//format:
+			//cnt_grp_-6d028f63-d2d0-49aa-9a56-4480ef5a7f2a-_CAISIQKDY1R5hZ09yG1+i/Kdk8E/KDT8Wm/PrKmgtsdtXFHXEg==:b2a3b9aa-bd16-4e80-8497-6d95eddfec52:1
+			//cnt_grp_-6d028f63-d2d0-49aa-9a56-4480ef5a7f2a-_CAISIQKDY1R5hZ09yG1+i/Kdk8E/KDT8Wm/PrKmgtsdtXFHXEg==:b2a3b9aa-bd16-4e80-8497-6d95eddfec52
+			var tail string
+			if trx.Nonce == 0 {
+				tail = fmt.Sprintf("%s:%s", trx.SenderPubkey, trx.TrxId)
+			} else {
+				tail = fmt.Sprintf("%s:%s:%d", trx.SenderPubkey, trx.TrxId, trx.Nonce)
+			}
+			key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid), seqid, tail)
 			if err != nil {
 				return err
 			}

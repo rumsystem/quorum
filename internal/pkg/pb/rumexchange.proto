@@ -13,6 +13,7 @@ message RumMsg {
 enum RumMsgType {
     IF_CONN = 0;
     CONN_RESP = 1;
+    CHAIN_DATA  = 2;
 }
 
 message SessionIfConn {

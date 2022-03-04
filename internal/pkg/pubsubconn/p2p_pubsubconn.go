@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -17,7 +18,7 @@ type P2pPubSubConn struct {
 	Cid          string
 	Topic        *pubsub.Topic
 	Subscription *pubsub.Subscription
-	chain        Chain
+	chain        iface.ChainDataHandlerIface
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
@@ -44,13 +45,13 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
 
-func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chain) *P2pPubSubConn {
+func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface iface.ChainDataHandlerIface) *P2pPubSubConn {
 	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
 		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
 		psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: pscm.ps, nodename: pscm.nodename}
-		if chain != nil {
-			psconn.JoinChannel(channelId, chain)
+		if cdhIface != nil {
+			psconn.JoinChannel(channelId, cdhIface)
 		} else {
 			psconn.JoinChannelAsExchange(channelId)
 		}
@@ -62,8 +63,8 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, chain Chai
 
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 	psconni, ok := pscm.connmgr.Load(channelId)
-	psconn := psconni.(*P2pPubSubConn)
 	if ok == true {
+		psconn := psconni.(*P2pPubSubConn)
 		psconn.mu.Lock()
 		defer psconn.mu.Unlock()
 		if psconn.cancel != nil {
@@ -112,9 +113,9 @@ func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 	return nil
 }
 
-func (psconn *P2pPubSubConn) JoinChannel(cId string, chain Chain) error {
+func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHandlerIface) error {
 	psconn.Cid = cId
-	psconn.chain = chain
+	psconn.chain = cdhIface
 
 	var err error
 	//TODO: share the ps
@@ -162,7 +163,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					blk = &quorumpb.Block{}
 					err := proto.Unmarshal(pkg.Data, blk)
 					if err == nil {
-						psconn.chain.HandleBlock(blk)
+						psconn.chain.HandleBlockPsConn(blk)
 					} else {
 						channel_log.Warning(err.Error())
 					}
@@ -171,7 +172,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					trx = &quorumpb.Trx{}
 					err := proto.Unmarshal(pkg.Data, trx)
 					if err == nil {
-						psconn.chain.HandleTrx(trx)
+						psconn.chain.HandleTrxPsConn(trx)
 					} else {
 						channel_log.Warningf(err.Error())
 					}

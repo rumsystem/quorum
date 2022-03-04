@@ -213,6 +213,9 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		var group *chain.Group
 		group = &chain.Group{}
 		err = group.CreateGrp(item)
+		if nodeoptions.IsRexTestMode == true {
+			group.SetRumExchangeTestMode()
+		}
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
