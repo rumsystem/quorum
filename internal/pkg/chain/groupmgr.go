@@ -80,8 +80,9 @@ func (groupmgr *GroupMgr) StopSyncAllGroups() error {
 	groupMgr_log.Debug("StopSyncAllGroup called")
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Stop sync group: <%s>", grp.Item.GroupId)
-		go grp.StopSync()
+		grp.StopSync()
 	}
+
 	return nil
 }
 
