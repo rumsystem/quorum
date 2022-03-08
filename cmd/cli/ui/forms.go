@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,6 +26,7 @@ var groupReqStruct = api.CreateGroupReqStruct{
 
 var PANNEL_GROUP_FORM = "form.group"
 var PANNEL_GROUP_CONFIG_FORM = "form.group.config"
+var PANNEL_CHAIN_AUTH_MODE_FORM = "form.chain.auth.mode"
 
 var groupConfigForm = cview.NewForm()
 var groupConfigParam = handlers.AppConfigParam{
@@ -36,9 +38,99 @@ var groupConfigParam = handlers.AppConfigParam{
 	Memo:    "",
 }
 
+var chainAuthModeForm = cview.NewForm()
+
+type ChainAuthModeFormParam struct {
+	GroupId string
+	TrxType string
+	Mode    string
+}
+
+var chainAuthModeParam = ChainAuthModeFormParam{
+	GroupId: "",
+	TrxType: "",
+	Mode:    "",
+}
+
 func formInit() {
 	createGroupFormInit()
 	groupConfigFormInit()
+	chainConfigFormInit()
+}
+
+func chainConfigFormInit() {
+	chainAuthModeForm.AddInputField("GroupId", "", 40, nil, func(string) {
+	})
+	chainAuthModeForm.AddInputField("TrxType", "", 40, nil, func(string) {
+	})
+	chainAuthModeForm.AddDropDownSimple("Mode", 0, func(index int, option *cview.DropDownOption) {
+		chainAuthModeParam.Mode = option.GetText()
+	}, "FOLLOW_DNY_LIST", "FOLLOW_ALW_LIST")
+
+	chainAuthModeForm.AddButton("OK", func() {
+		if chainAuthModeParam.GroupId == "" || chainAuthModeParam.TrxType == "" {
+			Error("invalid parameter", "GroupId and TrxType should not be empty")
+			return
+		}
+		go goQuorumUpdateChainAuthMode()
+		rootPanels.HidePanel(PANNEL_CHAIN_AUTH_MODE_FORM)
+		rootPanels.SendToBack(PANNEL_CHAIN_AUTH_MODE_FORM)
+		formMode = false
+	})
+	chainAuthModeForm.AddButton("Cancel", func() {
+		// backto last
+		rootPanels.HidePanel(PANNEL_CHAIN_AUTH_MODE_FORM)
+		rootPanels.SendToBack(PANNEL_CHAIN_AUTH_MODE_FORM)
+		formMode = false
+	})
+	chainAuthModeForm.SetBorder(true)
+	chainAuthModeForm.SetTitle("Group Config")
+	chainAuthModeForm.SetTitleAlign(cview.AlignCenter)
+
+	rootPanels.AddPanel(PANNEL_CHAIN_AUTH_MODE_FORM, chainAuthModeForm, true, false)
+}
+
+func goQuorumUpdateChainAuthMode() {
+	config := handlers.TrxAuthModeParams{
+		strings.ToLower(chainAuthModeParam.TrxType),
+		strings.ToLower(chainAuthModeParam.Mode),
+	}
+	configBytes, _ := json.Marshal(&config)
+	res, err := api.UpdateChainConfig(
+		chainAuthModeParam.GroupId,
+		"set_trx_auth_mode",
+		string(configBytes),
+		"updated by cli",
+	)
+	if err != nil {
+		Error("Failed to update chain config", err.Error())
+		return
+	}
+	Info(fmt.Sprintf("Chain config updated"), fmt.Sprintf("TrxId: %s\nSign: %s\n", res.TrxId, res.Sign))
+
+}
+
+func ChainAuthModeForm(groupId, trxType, mode string) {
+	var indexOf = func(word string, data []string) int {
+		for k, v := range data {
+			if strings.ToUpper(word) == v {
+				return k
+			}
+		}
+		return -1
+	}
+	chainAuthModeParam.GroupId = groupId
+	chainAuthModeParam.TrxType = trxType
+	chainAuthModeParam.Mode = mode
+
+	chainAuthModeForm.GetFormItemByLabel("GroupId").(*cview.InputField).SetText(groupId)
+	chainAuthModeForm.GetFormItemByLabel("TrxType").(*cview.InputField).SetText(trxType)
+	options := []string{"FOLLOW_DNY_LIST", "FOLLOW_ALW_LIST"}
+	chainAuthModeForm.GetFormItemByLabel("Mode").(*cview.DropDown).SetCurrentOption(indexOf(mode, options))
+	formMode = true
+	rootPanels.ShowPanel(PANNEL_CHAIN_AUTH_MODE_FORM)
+	rootPanels.SendToFront(PANNEL_CHAIN_AUTH_MODE_FORM)
+	App.SetFocus(chainAuthModeForm)
 }
 
 func groupConfigFormInit() {
