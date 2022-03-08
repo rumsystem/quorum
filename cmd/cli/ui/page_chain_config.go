@@ -30,6 +30,9 @@ var chainConfigPageHelpText = strings.TrimSpace(
 		"Enter to open operation modal of selected items.\n" +
 		"Press `r` to refresh data.\n",
 )
+var chainAuthModes map[string]string
+
+var chainConfigTrxTypes []string = []string{"POST", "ANNOUNCE", "REQ_BLOCK_FORWARD", "REQ_BLOCK_BACKWARD", "ASK_PEERID", "BLOCK_SYNCED", "BLOCK_PRODUCED"}
 
 var focusAllowListView = func() { App.SetFocus(chainAllowListView) }
 var focusDenyListView = func() { App.SetFocus(chainDenyListView) }
@@ -46,6 +49,8 @@ func chainConfigPageInit() {
 	chainDenyListView.SetBorder(true)
 	chainDenyListView.SetRegions(true)
 	chainDenyListView.SetDynamicColors(true)
+
+	chainAuthModeView.SetBorder(true)
 
 	rightFlex := cview.NewFlex()
 	rightFlex.SetDirection(cview.FlexRow)
@@ -132,7 +137,50 @@ func ChainConfigPage(groupId string) {
 func ChainConfigRefreshAll(groupId string) {
 	go goGetChainAllowList(groupId)
 	go goGetChainDenyList(groupId)
-	go goGetChainAuthMode(groupId)
+
+	chainAuthModes = make(map[string]string)
+	chainAuthModeView.Clear()
+
+	for i, trxType := range chainConfigTrxTypes {
+		go goGetChainAuthMode(groupId, trxType)
+		color := tcell.ColorYellow.TrueColor()
+		cell := cview.NewTableCell(trxType)
+		cell.SetTextColor(color)
+		cell.SetAlign(cview.AlignLeft)
+		chainAuthModeView.SetCell(i, 0, cell)
+	}
+
+	chainAuthModeView.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter {
+			chainAuthModeView.SetSelectable(true, false)
+		}
+		if key == tcell.KeyTab {
+			// select next row
+			row, col := chainAuthModeView.GetSelection()
+			row += 1
+			if row >= 0 && row < len(chainConfigTrxTypes) {
+				chainAuthModeView.Select(row, col)
+			}
+		}
+		if key == tcell.KeyBacktab {
+			// select last row
+			row, col := chainAuthModeView.GetSelection()
+			row -= 1
+			if row >= 0 && row <= len(chainConfigTrxTypes) {
+				chainAuthModeView.Select(row, col)
+			}
+		}
+	})
+	chainAuthModeView.SetSelectedFunc(func(row int, column int) {
+		for i := 0; i < chainAuthModeView.GetColumnCount(); i++ {
+			chainAuthModeView.GetCell(row, i).SetTextColor(tcell.ColorRed.TrueColor())
+		}
+		idx := row - 1
+		if idx >= 0 && idx < len(chainConfigTrxTypes) {
+			// key := chainConfigTrxTypes[idx]
+		}
+		chainAuthModeView.SetSelectable(false, false)
+	})
 }
 
 func goGetChainAllowList(groupId string) {
@@ -214,13 +262,21 @@ func renderListView(data []*handlers.ChainSendTrxRuleListItem, view *cview.TextV
 	})
 }
 
-func goGetChainAuthMode(groupId string) {
-	// TODO:
-	// POST
-	// ANNOUNCE
-	// REQ_BLOCK_FORWARD
-	// REQ_BLOCK_BACKWARD
-	// ASK_PEERID
-	// BLOCK_SYNCED
-	// BLOCK_PRODUCED
+func goGetChainAuthMode(groupId string, trxType string) {
+	data, err := api.GetChainAuthMode(groupId, trxType)
+	checkFatalError(err)
+
+	idx := -1
+	for i, trxType := range chainConfigTrxTypes {
+		if trxType == data.TrxType {
+			idx = i
+			break
+		}
+	}
+	if idx >= 0 {
+		color := tcell.ColorWhite.TrueColor()
+		cell := cview.NewTableCell(data.AuthType)
+		cell.SetTextColor(color)
+		chainAuthModeView.SetCell(idx, 1, cell)
+	}
 }
