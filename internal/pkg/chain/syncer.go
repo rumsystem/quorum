@@ -3,6 +3,8 @@ package chain
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
@@ -39,7 +41,8 @@ type Syncer struct {
 	blockReceived       map[string]string
 	cdnIface            iface.ChainDataHandlerIface
 	syncNetworkType     conn.P2pNetworkType
-	stopLocalSync       chan struct{}
+	rwMutex             sync.RWMutex
+	localSyncFinished   bool
 	rumExchangeTestMode bool
 }
 
@@ -53,7 +56,6 @@ func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
 	syncer.blockReceived = make(map[string]string)
 	syncer.cdnIface = cdnIface
 	syncer.syncNetworkType = conn.PubSub
-	syncer.stopLocalSync = make(chan struct{})
 	syncer_log.Infof("<%s> syncer initialed", syncer.GroupId)
 }
 
@@ -61,40 +63,63 @@ func (syncer *Syncer) SetRumExchangeTestMode() {
 	syncer.rumExchangeTestMode = true
 }
 
+type TAtomBool struct{ flag int32 }
+
+func (b *TAtomBool) Set(value bool) {
+	var i int32 = 0
+	if value {
+		i = 1
+	}
+	atomic.StoreInt32(&(b.flag), int32(i))
+}
+
+func (b *TAtomBool) Get() bool {
+	if atomic.LoadInt32(&(b.flag)) != 0 {
+		return true
+	}
+	return false
+}
+
 func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
 	syncer_log.Debugf("<%s> SyncLocalBlock called", syncer.GroupId)
+	syncer.rwMutex.Lock()
 	startFrom := blockId
 	syncer.Status = LOCAL_SYNCING
-loop:
+	syncer.localSyncFinished = false
+	syncer.rwMutex.Unlock()
+
 	for {
-		select {
-		case <-syncer.stopLocalSync:
-			syncer_log.Debugf("<%s> stopLocalSync", syncer.GroupId)
+		if syncer.localSyncFinished {
 			syncer.Status = IDLE
-			break loop // exit
-		default:
-			subblocks, err := nodectx.GetDbMgr().GetSubBlock(startFrom, nodename)
-			if err != nil {
-				syncer_log.Debugf("<%s> GetSubBlock failed <%s>", syncer.GroupId, err.Error())
-				close(syncer.stopLocalSync)
-			}
-			if len(subblocks) > 0 {
-				for _, block := range subblocks {
-					err := syncer.AddLocalBlock(block)
-					if err != nil {
-						syncer_log.Debugf("<%s> AddLocalBlock failed <%s>", syncer.GroupId, err.Error())
-						close(syncer.stopLocalSync)
-					}
-				}
-			} else {
-				syncer_log.Debugf("<%s> No more local blocks", syncer.GroupId)
-				close(syncer.stopLocalSync)
-			}
-			topBlock, err := nodectx.GetDbMgr().GetBlock(syncer.Group.Item.HighestBlockId, false, nodename)
-			startFrom = topBlock.BlockId
-			//syncer_log.Debugf("New Height %d", syncer.Group.Item.HighestHeight)
-			//syncer_log.Debugf("New top %s", topBlock.BlockId)
+			break
 		}
+
+		subblocks, err := nodectx.GetDbMgr().GetSubBlock(startFrom, nodename)
+		if err != nil {
+			syncer_log.Debugf("<%s> GetSubBlock failed <%s>", syncer.GroupId, err.Error())
+			syncer.rwMutex.Lock()
+			syncer.localSyncFinished = true
+			syncer.rwMutex.Unlock()
+		}
+		if len(subblocks) > 0 {
+			for _, block := range subblocks {
+				err := syncer.AddLocalBlock(block)
+				if err != nil {
+					syncer_log.Debugf("<%s> AddLocalBlock failed <%s>", syncer.GroupId, err.Error())
+					syncer.rwMutex.Lock()
+					syncer.localSyncFinished = true
+					syncer.rwMutex.Unlock()
+					break // for range subblocks
+				}
+			}
+		} else {
+			syncer_log.Debugf("<%s> No more local blocks", syncer.GroupId)
+			syncer.rwMutex.Lock()
+			syncer.localSyncFinished = true
+			syncer.rwMutex.Unlock()
+		}
+		topBlock, err := nodectx.GetDbMgr().GetBlock(syncer.Group.Item.HighestBlockId, false, nodename)
+		startFrom = topBlock.BlockId
 	}
 
 	syncer_log.Debugf("<%s> SyncLocalBlock done", syncer.GroupId)
@@ -159,7 +184,9 @@ func (syncer *Syncer) StopSync() error {
 		syncer.Status == SYNCING_FORWARD {
 		syncer.stopWaitBlock()
 	} else if syncer.Status == LOCAL_SYNCING {
-		close(syncer.stopLocalSync)
+		syncer.rwMutex.Lock()
+		syncer.localSyncFinished = true
+		syncer.rwMutex.Unlock()
 	}
 	syncer.Status = IDLE
 	syncer_log.Debugf("<%s> sync stopped", syncer.GroupId)
