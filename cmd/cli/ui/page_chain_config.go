@@ -142,6 +142,7 @@ func ChainConfigRefreshAll(groupId string) {
 	chainAuthModeView.Clear()
 
 	for i, trxType := range chainConfigTrxTypes {
+		// refresh
 		go goGetChainAuthMode(groupId, trxType)
 		color := tcell.ColorYellow.TrueColor()
 		cell := cview.NewTableCell(trxType)
@@ -175,9 +176,12 @@ func ChainConfigRefreshAll(groupId string) {
 		for i := 0; i < chainAuthModeView.GetColumnCount(); i++ {
 			chainAuthModeView.GetCell(row, i).SetTextColor(tcell.ColorRed.TrueColor())
 		}
-		idx := row - 1
-		if idx >= 0 && idx < len(chainConfigTrxTypes) {
-			// key := chainConfigTrxTypes[idx]
+		if row >= 0 && row < len(chainConfigTrxTypes) {
+			trxType := chainConfigTrxTypes[row]
+			authType := chainAuthModes[trxType]
+			if len(trxType) > 0 && len(authType) > 0 {
+				ChainAuthModeForm(groupId, trxType, authType)
+			}
 		}
 		chainAuthModeView.SetSelectable(false, false)
 	})
@@ -274,6 +278,7 @@ func goGetChainAuthMode(groupId string, trxType string) {
 		}
 	}
 	if idx >= 0 {
+		chainAuthModes[data.TrxType] = data.AuthType
 		color := tcell.ColorWhite.TrueColor()
 		cell := cview.NewTableCell(data.AuthType)
 		cell.SetTextColor(color)
