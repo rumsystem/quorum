@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"code.rocketnine.space/tslocum/cbind"
@@ -14,13 +15,25 @@ import (
 )
 
 var chainConfigPage = cview.NewFlex()
+var chainAuthModeView = cview.NewTable()
 var chainAllowListView = cview.NewTextView()
 var chainDenyListView = cview.NewTextView()
 
 var PANNEL_CHAIN_CONFIG_PAGE = "chain.config"
 
+var chainConfigPageHelpText = strings.TrimSpace(
+	"Shortcuts:\n" +
+		"Enter to select left pannel.\n" +
+		"Esc to go back.\n" +
+		"Shift + h/j/k/l to naviagate between pannels.\n" +
+		"Tab / Shift + Tab to scroll.\n" +
+		"Enter to open operation modal of selected items.\n" +
+		"Press `r` to refresh data.\n",
+)
+
 var focusAllowListView = func() { App.SetFocus(chainAllowListView) }
 var focusDenyListView = func() { App.SetFocus(chainDenyListView) }
+var focusAuthModeView = func() { App.SetFocus(chainAuthModeView) }
 var focusChainConfigRootView = func() { App.SetFocus(chainConfigPage) }
 
 func chainConfigPageInit() {
@@ -34,8 +47,22 @@ func chainConfigPageInit() {
 	chainDenyListView.SetRegions(true)
 	chainDenyListView.SetDynamicColors(true)
 
-	chainConfigPage.AddItem(chainAllowListView, 0, 1, false)
-	chainConfigPage.AddItem(chainDenyListView, 0, 1, false)
+	rightFlex := cview.NewFlex()
+	rightFlex.SetDirection(cview.FlexRow)
+	rightFlex.AddItem(chainAllowListView, 0, 1, false)
+	rightFlex.AddItem(chainDenyListView, 0, 1, false)
+
+	leftFlex := cview.NewFlex()
+	leftFlex.SetDirection(cview.FlexRow)
+	leftFlex.SetBorder(true)
+	leftFlex.SetTitle("Chain Auth Mode")
+	helpView := cview.NewTextView()
+	helpView.SetText(chainConfigPageHelpText)
+	leftFlex.AddItem(helpView, 0, 1, false)
+	leftFlex.AddItem(chainAuthModeView, 0, 2, false)
+
+	chainConfigPage.AddItem(leftFlex, 0, 1, false)
+	chainConfigPage.AddItem(rightFlex, 0, 2, false)
 
 	initChainConfigPageHandlers()
 	rootPanels.AddPanel(PANNEL_CHAIN_CONFIG_PAGE, chainConfigPage, true, false)
@@ -45,9 +72,11 @@ func initChainConfigPageHandlers() {
 	denyListHandler := cbind.NewConfiguration()
 	if runtime.GOOS == "windows" {
 		// windows will set extra shift mod somehow
-		denyListHandler.Set("Shift+H", wrapQuorumKeyFn(focusAllowListView))
+		denyListHandler.Set("Shift+K", wrapQuorumKeyFn(focusAllowListView))
+		denyListHandler.Set("Shift+H", wrapQuorumKeyFn(focusAuthModeView))
 	} else {
-		denyListHandler.Set("H", wrapQuorumKeyFn(focusAllowListView))
+		denyListHandler.Set("K", wrapQuorumKeyFn(focusAllowListView))
+		denyListHandler.Set("H", wrapQuorumKeyFn(focusAuthModeView))
 	}
 	denyListHandler.Set("Esc", wrapQuorumKeyFn(focusChainConfigRootView))
 	chainDenyListView.SetInputCapture(denyListHandler.Capture)
@@ -55,12 +84,24 @@ func initChainConfigPageHandlers() {
 	allowListHandler := cbind.NewConfiguration()
 	if runtime.GOOS == "windows" {
 		// windows will set extra shift mod somehow
-		allowListHandler.Set("Shift+L", wrapQuorumKeyFn(focusDenyListView))
+		allowListHandler.Set("Shift+J", wrapQuorumKeyFn(focusDenyListView))
+		allowListHandler.Set("Shift+H", wrapQuorumKeyFn(focusAuthModeView))
 	} else {
-		allowListHandler.Set("L", wrapQuorumKeyFn(focusDenyListView))
+		allowListHandler.Set("J", wrapQuorumKeyFn(focusDenyListView))
+		allowListHandler.Set("H", wrapQuorumKeyFn(focusAuthModeView))
 	}
 	allowListHandler.Set("Esc", wrapQuorumKeyFn(focusChainConfigRootView))
 	chainAllowListView.SetInputCapture(allowListHandler.Capture)
+
+	authModeViewHandler := cbind.NewConfiguration()
+	if runtime.GOOS == "windows" {
+		// windows will set extra shift mod somehow
+		authModeViewHandler.Set("Shift+L", wrapQuorumKeyFn(focusAllowListView))
+	} else {
+		authModeViewHandler.Set("L", wrapQuorumKeyFn(focusAllowListView))
+	}
+	authModeViewHandler.Set("Esc", wrapQuorumKeyFn(focusChainConfigRootView))
+	chainAuthModeView.SetInputCapture(authModeViewHandler.Capture)
 }
 
 func ChainConfigPage(groupId string) {
@@ -73,7 +114,7 @@ func ChainConfigPage(groupId string) {
 	}
 
 	pageInputHandler := cbind.NewConfiguration()
-	pageInputHandler.Set("Enter", wrapQuorumKeyFn(focusAllowListView))
+	pageInputHandler.Set("Enter", wrapQuorumKeyFn(focusAuthModeView))
 	pageInputHandler.Set("Esc", wrapQuorumKeyFn(focusLastView))
 	pageInputHandler.Set("r", wrapQuorumKeyFn(func() {
 		ChainConfigRefreshAll(groupId)
