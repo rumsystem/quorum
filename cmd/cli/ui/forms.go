@@ -62,6 +62,16 @@ type ChainAuthListFormParam struct {
 
 var chainAuthListParam = ChainAuthListFormParam{}
 
+var ChainAuthSupportedTrxTypes = []string{
+	"POST",
+	"ANNOUNCE",
+	"REQ_BLOCK_FORWARD",
+	"REQ_BLOCK_BACKWARD",
+	"ASK_PEERID",
+	"BLOCK_SYNCED",
+	"BLOCK_PRODUCED",
+}
+
 func formInit() {
 	createGroupFormInit()
 	groupConfigFormInit()
@@ -79,8 +89,25 @@ func chainAuthListFormInit() {
 	chainAuthListForm.AddDropDownSimple("Action", 0, func(index int, option *cview.DropDownOption) {
 		chainAuthListParam.Action = option.GetText()
 	}, "add", "remove")
-	chainAuthListForm.AddCheckBox("POST", "", false, nil)
-	// TODO: add more check list
+
+	chainAuthListParam.TrxTypes = []string{}
+	for _, trxType := range ChainAuthSupportedTrxTypes {
+		chainAuthListForm.AddCheckBox(fmt.Sprintf("TrxType-%s", trxType), "", false, func(checked bool) {
+			idx := indexOf(trxType, chainAuthListParam.TrxTypes)
+			if checked {
+				// add to list
+				if idx < 0 {
+					chainAuthListParam.TrxTypes = append(chainAuthListParam.TrxTypes, trxType)
+				}
+			} else {
+				// remove from list
+				if idx >= 0 {
+					chainAuthListParam.TrxTypes = append(chainAuthListParam.TrxTypes[:idx], chainAuthListParam.TrxTypes[idx+1:]...)
+				}
+			}
+		})
+	}
+
 	chainAuthListForm.AddInputField("Pubkey", "", 40, nil, func(string) {
 	})
 
@@ -127,7 +154,14 @@ func ChainAuthListForm(groupId, listType, action, pubkey string, trxTypes []stri
 
 	options = []string{"add", "remove"}
 	chainAuthListForm.GetFormItemByLabel("Action").(*cview.DropDown).SetCurrentOption(indexOf(action, options))
-	// TODO: show trx Types
+	for _, trxType := range ChainAuthSupportedTrxTypes {
+		chainAuthListForm.GetFormItemByLabel(fmt.Sprintf("TrxType-%s", strings.ToUpper(trxType))).(*cview.CheckBox).SetChecked(false)
+	}
+	for _, trxType := range trxTypes {
+		if indexOf(trxType, chainConfigTrxTypes) >= 0 {
+			chainAuthListForm.GetFormItemByLabel(fmt.Sprintf("TrxType-%s", strings.ToUpper(trxType))).(*cview.CheckBox).SetChecked(true)
+		}
+	}
 
 	formMode = true
 	rootPanels.ShowPanel(PANNEL_CHAIN_AUTH_LIST_FORM)
