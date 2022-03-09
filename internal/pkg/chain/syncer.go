@@ -101,7 +101,14 @@ func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
 			syncer.rwMutex.Unlock()
 		}
 		topBlock, err := nodectx.GetDbMgr().GetBlock(syncer.Group.Item.HighestBlockId, false, nodename)
-		startFrom = topBlock.BlockId
+		if err != nil {
+			syncer_log.Debugf("<%s> Get Top Block failed <%s>", syncer.GroupId, err.Error())
+			syncer.rwMutex.Lock()
+			syncer.localSyncFinished = true
+			syncer.rwMutex.Unlock()
+		} else {
+			startFrom = topBlock.BlockId
+		}
 	}
 
 	syncer_log.Debugf("<%s> SyncLocalBlock done", syncer.GroupId)
