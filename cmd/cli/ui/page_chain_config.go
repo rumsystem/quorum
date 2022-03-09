@@ -214,7 +214,7 @@ func renderListView(groupId, listType string, data []*handlers.ChainSendTrxRuleL
 		fmt.Fprintf(view, "\n\n")
 	}
 
-	focusLast := func() {
+	focusNext := func() {
 		minNum := 0
 		maxNum := len(data) - 1
 
@@ -229,7 +229,7 @@ func renderListView(groupId, listType string, data []*handlers.ChainSendTrxRuleL
 			view.ScrollToHighlight()
 		}
 	}
-	focusNext := func() {
+	focusLast := func() {
 		minNum := 0
 		maxNum := len(data) - 1
 

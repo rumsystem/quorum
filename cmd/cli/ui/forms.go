@@ -135,7 +135,24 @@ func chainAuthListFormInit() {
 }
 
 func goQuorumUpdateChainList() {
-	// TODO: update chain config list
+	config := handlers.ChainSendTrxRuleListItemParams{
+		strings.ToLower(chainAuthListParam.Action),
+		strings.ToLower(chainAuthListParam.Pubkey),
+		chainAuthListParam.TrxTypes,
+	}
+	configBytes, _ := json.Marshal(&config)
+	res, err := api.UpdateChainConfig(
+		chainAuthListParam.GroupId,
+		chainAuthListParam.ListType,
+		string(configBytes),
+		"updated by cli",
+	)
+	if err != nil {
+		Error("Failed to update chain config", err.Error())
+		return
+	}
+	Info(fmt.Sprintf("Chain config updated"), fmt.Sprintf("TrxId: %s\nSign: %s\n", res.TrxId, res.Sign))
+
 }
 
 func ChainAuthListForm(groupId, listType, action, pubkey string, trxTypes []string) {
