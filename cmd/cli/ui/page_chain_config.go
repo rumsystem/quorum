@@ -191,17 +191,17 @@ func goGetChainAllowList(groupId string) {
 	data, err := api.GetChainAllowList(groupId)
 	checkFatalError(err)
 
-	renderListView(data, chainAllowListView)
+	renderListView(groupId, "upd_alw_list", data, chainAllowListView)
 }
 
 func goGetChainDenyList(groupId string) {
 	data, err := api.GetChainDenyList(groupId)
 	checkFatalError(err)
 
-	renderListView(data, chainDenyListView)
+	renderListView(groupId, "upd_dny_list", data, chainDenyListView)
 }
 
-func renderListView(data []*handlers.ChainSendTrxRuleListItem, view *cview.TextView) {
+func renderListView(groupId, listType string, data []*handlers.ChainSendTrxRuleListItem, view *cview.TextView) {
 	view.Clear()
 
 	for i, each := range data {
@@ -254,7 +254,10 @@ func renderListView(data []*handlers.ChainSendTrxRuleListItem, view *cview.TextV
 		case tcell.KeyEnter:
 			curSelection := view.GetHighlights()
 			if len(curSelection) > 0 {
-
+				idx, _ := strconv.Atoi(curSelection[0])
+				curData := data[idx]
+				defaultAction := "add"
+				ChainAuthListForm(groupId, listType, defaultAction, curData.Pubkey, curData.TrxType)
 			}
 
 		case tcell.KeyTab:
