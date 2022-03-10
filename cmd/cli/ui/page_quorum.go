@@ -226,6 +226,14 @@ func QuorumGroupAdminHandler() {
 	GroupAdminPage(quorumData.GetCurrentGroup())
 }
 
+func QuorumGroupChainConfigHandler() {
+	if quorumData.GetCurrentGroup() == "" {
+		Error("No Group to Leave", "Please select a group first.")
+		return
+	}
+	ChainConfigPage(quorumData.GetCurrentGroup())
+}
+
 // CMD /group.leave handler
 func QuorumLeaveGroupHandler() {
 	if quorumData.GetCurrentGroup() == "" {
