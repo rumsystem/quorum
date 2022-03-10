@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"code.rocketnine.space/tslocum/cbind"
@@ -30,7 +31,7 @@ var chainConfigPageHelpText = strings.TrimSpace(
 		"Enter to open operation modal of selected items.\n" +
 		"Press `r` to refresh data.\n",
 )
-var chainAuthModes map[string]string
+var chainAuthModes sync.Map
 
 var chainConfigTrxTypes []string = []string{"POST", "ANNOUNCE", "REQ_BLOCK_FORWARD", "REQ_BLOCK_BACKWARD", "ASK_PEERID", "BLOCK_SYNCED", "BLOCK_PRODUCED"}
 
@@ -138,7 +139,6 @@ func ChainConfigRefreshAll(groupId string) {
 	go goGetChainAllowList(groupId)
 	go goGetChainDenyList(groupId)
 
-	chainAuthModes = make(map[string]string)
 	chainAuthModeView.Clear()
 
 	for i, trxType := range chainConfigTrxTypes {
@@ -178,7 +178,8 @@ func ChainConfigRefreshAll(groupId string) {
 		}
 		if row >= 0 && row < len(chainConfigTrxTypes) {
 			trxType := chainConfigTrxTypes[row]
-			authType := chainAuthModes[trxType]
+			authTypeI, _ := chainAuthModes.Load(trxType)
+			authType := authTypeI.(string)
 			if len(trxType) > 0 && len(authType) > 0 {
 				ChainAuthModeForm(groupId, trxType, authType)
 			}
@@ -209,7 +210,7 @@ func renderListView(groupId, listType string, data []*handlers.ChainSendTrxRuleL
 		fmt.Fprintf(view, "Pubkey: %s\n", each.Pubkey)
 		fmt.Fprintf(view, "GroupOwnerPubkey: %s\n", each.GroupOwnerPubkey)
 		fmt.Fprintf(view, "GroupOwnerSign: %s\n", each.GroupOwnerSign)
-		fmt.Fprintf(view, "Trx Type: %s\n", each.TrxType)
+		fmt.Fprintf(view, "Trx Types: %v\n", each.TrxType)
 		fmt.Fprintf(view, "Memo: %s\n", each.Memo)
 		fmt.Fprintf(view, "\n\n")
 	}
@@ -281,7 +282,7 @@ func goGetChainAuthMode(groupId string, trxType string) {
 		}
 	}
 	if idx >= 0 {
-		chainAuthModes[data.TrxType] = data.AuthType
+		chainAuthModes.Store(data.TrxType, data.AuthType)
 		color := tcell.ColorWhite.TrueColor()
 		cell := cview.NewTableCell(data.AuthType)
 		cell.SetTextColor(color)
