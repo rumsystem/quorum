@@ -92,12 +92,13 @@ func chainAuthListFormInit() {
 
 	chainAuthListParam.TrxTypes = []string{}
 	for _, trxType := range ChainAuthSupportedTrxTypes {
+		curType := string(trxType)
 		chainAuthListForm.AddCheckBox(fmt.Sprintf("TrxType-%s", trxType), "", false, func(checked bool) {
-			idx := indexOf(trxType, chainAuthListParam.TrxTypes)
+			idx := indexOf(curType, chainAuthListParam.TrxTypes)
 			if checked {
 				// add to list
 				if idx < 0 {
-					chainAuthListParam.TrxTypes = append(chainAuthListParam.TrxTypes, trxType)
+					chainAuthListParam.TrxTypes = append(chainAuthListParam.TrxTypes, curType)
 				}
 			} else {
 				// remove from list
