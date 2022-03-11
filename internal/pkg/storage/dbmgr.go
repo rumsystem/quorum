@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -28,6 +29,10 @@ const TRX_AUTH_TYPE_PREFIX string = "trx_auth" //trx auth type
 const ALLW_LIST_PREFIX string = "alw_list"     //allow list
 const DENY_LIST_PREFIX string = "dny_list"     //deny list
 const NONCE_PREFIX string = "nonce"            //group trx nonce
+
+//groupinfo db
+const GROUPITEM_PREFIX string = "grpitem" //relay
+const RELAY_PREFIX string = "rly"         //relay
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
@@ -72,6 +77,27 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 					}
 				}
 			}
+		}
+	}
+
+	if nodeDataVer == 1 { //try migration 1 (Upgrade the GroupInfodb key with GROUPITEM_PREFIX prefix)
+		err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
+			key := string(k)
+			if len(key) == 36 && strings.Contains(key, "_") == false {
+				newkey := GROUPITEM_PREFIX + "_" + key
+				err = dbMgr.GroupInfoDb.Set([]byte(newkey), v)
+				if err == nil {
+					dbmgr_log.Infof("db migration v1 for group %s", key)
+					return dbMgr.GroupInfoDb.Delete([]byte(key))
+				} else {
+					return err
+				}
+			}
+			return nil
+		})
+
+		if err != nil {
+			dbmgr_log.Errorf("db migration v1 for groupinfodb err %s", err)
 		}
 	}
 }
@@ -368,7 +394,8 @@ func (dbMgr *DbMgr) saveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, pr
 
 func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	//check if group exist
-	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(groupItem.GroupId))
+	key := GROUPITEM_PREFIX + "_" + groupItem.GroupId
+	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(key))
 	if exist {
 		return errors.New("Group with same GroupId existed")
 	}
@@ -378,7 +405,7 @@ func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
 	if err != nil {
 		return err
 	}
-	return dbMgr.GroupInfoDb.Set([]byte(groupItem.GroupId), value)
+	return dbMgr.GroupInfoDb.Set([]byte(key), value)
 }
 
 func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
@@ -387,13 +414,15 @@ func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
 		return err
 	}
 
+	key := GROUPITEM_PREFIX + "_" + groupItem.GroupId
 	//upd group to db
-	return dbMgr.GroupInfoDb.Set([]byte(groupItem.GroupId), value)
+	return dbMgr.GroupInfoDb.Set([]byte(key), value)
 }
 
 func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 	//check if group exist
-	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(item.GroupId))
+	key := GROUPITEM_PREFIX + "_" + item.GroupId
+	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		if err != nil {
 			return err
@@ -402,8 +431,41 @@ func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 	}
 
 	//delete group
-	return dbMgr.GroupInfoDb.Delete([]byte(item.GroupId))
+	return dbMgr.GroupInfoDb.Delete([]byte(key))
 }
+
+func (dbMgr *DbMgr) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) error {
+	key := RELAY_PREFIX + "_req_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type
+
+	if groupRelayItem.Type == "user" {
+		key = RELAY_PREFIX + "_req_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type + "_" + groupRelayItem.UserPubkey
+	}
+	//check if group relay req exist
+	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(key))
+	if exist { //check if not expire
+		return errors.New("the same relay req exist ")
+	}
+
+	//add group relay req to db
+	value, err := proto.Marshal(groupRelayItem)
+	if err != nil {
+		return err
+	}
+	fmt.Println("save..", key, value)
+	return dbMgr.GroupInfoDb.Set([]byte(key), value)
+}
+
+//func (dbMgr *DbMgr) GetRelayReq(groupRelayItem *quorumpb.GroupRelayItem) error {
+//	var groupItemList [][]byte
+//	err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
+//		if err != nil {
+//			return err
+//		}
+//		groupItemList = append(groupItemList, v)
+//		return nil
+//	})
+//	return groupItemList, err
+//}
 
 func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)
@@ -502,7 +564,9 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 //Get group list
 func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	var groupItemList [][]byte
-	err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
+	key := GROUPITEM_PREFIX + "_"
+
+	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
