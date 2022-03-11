@@ -13,7 +13,7 @@ import (
 // @Description get group seed from appdb
 // @Produce json
 // @Success 200 {object} handlers.GroupSeed
-// @Router /api/v1/group/:group_id/seed [get]
+// @Router /api/v1/group/{group_id}/seed [get]
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
 	if groupId == "" {
