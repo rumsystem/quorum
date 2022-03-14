@@ -96,20 +96,15 @@ func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 
 }
 
-//func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
-//	ctxwithcancel, cancel := context.WithCancel(ctx)
-//	return &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: ps, nodename: nodename}
-//}
-
 func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
 	var err error
 	psconn.Cid = cId
 	psconn.Topic, err = psconn.ps.Join(cId)
 	if err != nil {
-		channel_log.Errorf("Join <%s> failed", cId)
+		channel_log.Infof("Join <%s> failed", cId)
 		return err
 	} else {
-		channel_log.Errorf("Join <%s> done", cId)
+		channel_log.Infof("Join <%s> done", cId)
 	}
 	relayCancel, err := psconn.Topic.Relay()
 	_ = relayCancel //timeout and cancel

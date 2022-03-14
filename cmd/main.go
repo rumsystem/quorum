@@ -299,6 +299,7 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
+		dbManager.TryMigration(1)
 		nodectx.InitCtx(ctx, "", node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
@@ -331,6 +332,7 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
+		dbManager.TryMigration(1)
 		nodectx.InitCtx(ctx, nodename, node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
@@ -467,7 +469,7 @@ func main() {
 		logging.SetLogLevel("conn", "debug")
 		logging.SetLogLevel("rumexchange", "debug")
 		//logging.SetLogLevel("ping", "debug")
-		//logging.SetLogLevel("chan", "debug")
+		logging.SetLogLevel("chan", "debug")
 		//logging.SetLogLevel("pubsub", "debug")
 	}
 

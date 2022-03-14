@@ -3,12 +3,13 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-
+	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var dbmgr_log = logging.Logger("dbmgr")
@@ -434,8 +435,11 @@ func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
 	return dbMgr.GroupInfoDb.Delete([]byte(key))
 }
 
-func (dbMgr *DbMgr) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) error {
+func (dbMgr *DbMgr) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) (string, error) {
+	groupRelayItem.RelayId = guuid.New().String()
 	key := RELAY_PREFIX + "_req_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type
+
+	//dbMgr.GroupInfoDb.PrefixDelete([]byte(RELAY_PREFIX))
 
 	if groupRelayItem.Type == "user" {
 		key = RELAY_PREFIX + "_req_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type + "_" + groupRelayItem.UserPubkey
@@ -443,29 +447,97 @@ func (dbMgr *DbMgr) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) error {
 	//check if group relay req exist
 	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(key))
 	if exist { //check if not expire
-		return errors.New("the same relay req exist ")
+		return "", errors.New("the same relay req exist ")
 	}
 
 	//add group relay req to db
 	value, err := proto.Marshal(groupRelayItem)
 	if err != nil {
-		return err
+		return "", err
 	}
-	fmt.Println("save..", key, value)
-	return dbMgr.GroupInfoDb.Set([]byte(key), value)
+	return groupRelayItem.RelayId, dbMgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-//func (dbMgr *DbMgr) GetRelayReq(groupRelayItem *quorumpb.GroupRelayItem) error {
-//	var groupItemList [][]byte
-//	err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
-//		if err != nil {
-//			return err
-//		}
-//		groupItemList = append(groupItemList, v)
-//		return nil
-//	})
-//	return groupItemList, err
-//}
+func (dbMgr *DbMgr) DeleteRelay(relayid string) (bool, error) {
+	key := RELAY_PREFIX
+	succ := false
+	relayitem := quorumpb.GroupRelayItem{}
+	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		err = proto.Unmarshal(v, &relayitem)
+		if err == nil {
+			if relayitem.RelayId == relayid {
+				err = dbMgr.GroupInfoDb.Delete(k)
+				if err == nil {
+					succ = true
+				}
+			}
+		}
+		return nil
+	})
+	return succ, err
+}
+
+func (dbMgr *DbMgr) GetRelayReq(groupid string) ([]*quorumpb.GroupRelayItem, error) {
+	key := RELAY_PREFIX + "_req_" + groupid
+	groupRelayItemList := []*quorumpb.GroupRelayItem{}
+	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		relayreq := quorumpb.GroupRelayItem{}
+		err = proto.Unmarshal(v, &relayreq)
+		groupRelayItemList = append(groupRelayItemList, &relayreq)
+		return nil
+	})
+	return groupRelayItemList, err
+}
+
+func (dbMgr *DbMgr) GetRelayApproved(groupid string) ([]*quorumpb.GroupRelayItem, error) {
+	key := RELAY_PREFIX + "_approved_" + groupid
+	groupRelayItemList := []*quorumpb.GroupRelayItem{}
+	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		relayreq := quorumpb.GroupRelayItem{}
+		err = proto.Unmarshal(v, &relayreq)
+		groupRelayItemList = append(groupRelayItemList, &relayreq)
+		return nil
+	})
+	return groupRelayItemList, err
+}
+
+func (dbMgr *DbMgr) ApproveRelayReq(reqid string) (bool, *quorumpb.GroupRelayItem, error) {
+	key := RELAY_PREFIX + "_req_"
+	succ := false
+
+	relayreq := quorumpb.GroupRelayItem{}
+	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		err = proto.Unmarshal(v, &relayreq)
+		if relayreq.RelayId == reqid {
+			relayreq.ApproveTime = time.Now().UnixNano()
+			approvedkey := RELAY_PREFIX + "_approved_" + relayreq.GroupId + "_" + relayreq.Type
+			approvedvalue, err := proto.Marshal(&relayreq)
+			if err != nil {
+				return err
+			}
+			err = dbMgr.GroupInfoDb.Set([]byte(approvedkey), approvedvalue)
+			if err != nil {
+				return err
+			}
+			succ = true
+			return dbMgr.GroupInfoDb.Delete(k)
+		}
+		return nil
+	})
+	return succ, &relayreq, err
+}
 
 func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
 	nodeprefix := getPrefix(prefix...)

@@ -70,13 +70,30 @@ func (h *Handler) ListRelay(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, ret)
 }
 
-func (h *Handler) ApproveRelay(c echo.Context) (err error) {
+func (h *Handler) RemoveRelay(c echo.Context) (err error) {
 	output := make(map[string]string)
-	reqid := c.Param("req_id")
-	succ, err := nodectx.GetDbMgr().ApproveRelayReq(reqid)
+	relayid := c.Param("relay_id")
+	succ, err := nodectx.GetDbMgr().DeleteRelay(relayid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
+	}
+	ret := &RelayApproveResult{ReqId: relayid, Result: succ}
+	return c.JSON(http.StatusOK, ret)
+}
+
+func (h *Handler) ApproveRelay(c echo.Context) (err error) {
+	output := make(map[string]string)
+	reqid := c.Param("req_id")
+	succ, reqitem, err := nodectx.GetDbMgr().ApproveRelayReq(reqid)
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+	if succ == true {
+		conn := conn.GetConn()
+		conn.RegisterChainRelay(reqitem.GroupId, reqitem.UserPubkey, reqitem.Type)
+		//add relay
 	}
 	ret := &RelayApproveResult{ReqId: reqid, Result: succ}
 	return c.JSON(http.StatusOK, ret)
@@ -91,36 +108,3 @@ func SaveRelayRequest(input *ReqRelayParam) (string, error) {
 	item.SenderSign = input.SenderSign
 	return nodectx.GetDbMgr().AddRelayReq(item)
 }
-
-//*AddPeerResult,
-//func AddRelay(input AddRelayParam) error {
-//	conn := conn.GetConn()
-//	conn.RegisterChainRelay(input.GroupId, input.UserPubkey, input.Type)
-//	fmt.Println(conn)
-//	fmt.Println("join group as relay", input.GroupId)
-//	return nil
-//	//peerserr := make(map[string]string)
-//
-//	//peersaddrinfo := []peer.AddrInfo{}
-//	//for _, addr := range input {
-//	//	ma, err := maddr.NewMultiaddr(addr)
-//	//	if err != nil {
-//	//		peerserr[addr] = fmt.Sprintf("%s", err)
-//	//		continue
-//	//	}
-//	//	addrinfo, err := peer.AddrInfoFromP2pAddr(ma)
-//	//	if err != nil {
-//	//		peerserr[addr] = fmt.Sprintf("%s", err)
-//	//		continue
-//	//	}
-//	//	peersaddrinfo = append(peersaddrinfo, *addrinfo)
-//	//}
-//
-//	//result := &AddPeerResult{SuccCount: 0, ErrCount: len(peerserr)}
-//
-//	//if len(peersaddrinfo) > 0 {
-//	//	count := nodectx.GetNodeCtx().AddPeers(peersaddrinfo)
-//	//	result.SuccCount = count
-//	//}
-//	//return result, nil
-//}

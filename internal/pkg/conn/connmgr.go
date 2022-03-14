@@ -21,6 +21,9 @@ const (
 	USER_CHANNEL_PREFIX     = "user_channel_"
 	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
 	SYNC_CHANNEL_PREFIX     = "sync_channel_"
+
+	RelayUserType  string = "user"
+	RelayGroupType string = "group"
 )
 
 const (
@@ -111,6 +114,19 @@ func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, 
 	return nil
 }
 
+func (conn *Conn) RegisterChainRelay(groupId, userSignPubkey, relaytype string) error {
+	conn_log.Debugf("RegisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
+	key := fmt.Sprintf("%s%s", groupId, relaytype)
+	if _, ok := conn.ConnMgrs[key]; ok {
+		return nil
+	} else {
+		connMgr := &ConnMgr{}
+		connMgr.InitGroupRelayConnMgr(groupId, userSignPubkey, relaytype)
+		conn.ConnMgrs[key] = connMgr
+	}
+	return nil
+}
+
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
 	conn_log.Debugf("UnregisterChainCtx called, groupId <%s>", groupId)
 
@@ -163,6 +179,19 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 
 	//initial ps conn for user channel and sync channel
 	connMgr.InitialPsConn()
+
+	return nil
+}
+
+func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
+	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
+	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
+	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+	connMgr.GroupId = groupId
+	connMgr.UserSignPubkey = userSignPubkey
+	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
+	connMgr.InitialPsConnRelay(relaytype)
 
 	return nil
 }
@@ -404,4 +433,26 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
+}
+
+func (connMgr *ConnMgr) InitialPsConnRelay(relaytype string) {
+	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
+	if relaytype == RelayGroupType {
+		conn_log.Debugf("<%s> init with RelayGroupType ", connMgr.GroupId)
+		//relay newblock/snapshot boardcasting
+		userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.UserChannelId)
+		connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+		//relay producer channel for user's ask
+		producerChannelId := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
+		connMgr.PsConns[connMgr.ProducerChannelId] = producerChannelId
+	} else if relaytype == RelayUserType {
+		conn_log.Debugf("<%s> init with RelayUserType ", connMgr.GroupId)
+		//relay producer channel for user's ask
+		producerChannelId := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
+		connMgr.PsConns[connMgr.ProducerChannelId] = producerChannelId
+		//relay sync channel for producer's response
+		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.SyncChannelId)
+		connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
+	}
+
 }
