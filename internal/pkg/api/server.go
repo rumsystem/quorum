@@ -44,7 +44,6 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/schema", h.Schema)
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
 		r.POST("/v1/group/appconfig", h.MgrAppConfig)
-		r.GET("/v1/backup", h.Backup)
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.POST("/v1/rex/initsession", h.RexInitSession(node))
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))

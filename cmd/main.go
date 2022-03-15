@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
@@ -29,6 +30,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/testnode"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -41,6 +43,8 @@ import (
 
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
 	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
+
+	"github.com/phayes/freeport"
 )
 
 const DEFAUT_KEY_NAME string = "default"
@@ -62,38 +66,6 @@ func checkLockError(err error) {
 			os.Exit(16)
 		}
 	}
-}
-
-func createDb(path string) (*storage.DbMgr, error) {
-	var err error
-	groupDb := storage.QSBadger{}
-	dataDb := storage.QSBadger{}
-	err = groupDb.Init(path + "_groups")
-	if err != nil {
-		return nil, err
-	}
-
-	err = dataDb.Init(path + "_db")
-	if err != nil {
-		return nil, err
-	}
-
-	manager := storage.DbMgr{&groupDb, &dataDb, nil, path}
-	return &manager, nil
-}
-
-func createAppDb(path string) (*appdata.AppDb, error) {
-	var err error
-	db := storage.QSBadger{}
-	err = db.Init(path + "_appdb")
-	if err != nil {
-		return nil, err
-	}
-
-	app := appdata.NewAppDb()
-	app.Db = &db
-	app.DataPath = path
-	return app, nil
 }
 
 func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
@@ -294,7 +266,7 @@ func mainRet(config cli.Config) int {
 		}
 
 		datapath := config.DataDir + "/" + config.PeerName
-		dbManager, err := createDb(datapath)
+		dbManager, err := storage.CreateDb(datapath)
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
@@ -326,7 +298,7 @@ func mainRet(config cli.Config) int {
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
 		datapath := config.DataDir + "/" + config.PeerName
-		dbManager, err := createDb(datapath)
+		dbManager, err := storage.CreateDb(datapath)
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
@@ -357,7 +329,7 @@ func mainRet(config cli.Config) int {
 			mainlog.Fatalf(err.Error())
 		}
 
-		appdb, err := createAppDb(datapath)
+		appdb, err := appdata.CreateAppDb(datapath)
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
@@ -435,11 +407,14 @@ func main() {
 
 	// restore flag
 	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
-	backupFile := flag.String("json-file", "", "the json file for restoring")
+	backupFile := flag.String("backup-file", "", "the backup file for restoring")
 	password := flag.String("password", "", "the password for restoring")
-	keystoreDir := flag.String("keystore-dir", "", "the directory path for restoring")
-	configDir := flag.String("config-dir", "", "the config directory for restoring")
-	seedDir := flag.String("seed-dir", "", "the group seed directory for restoring")
+	/*
+		keystoreDir := flag.String("keystore-dir", "", "the directory path for restoring")
+		configDir := flag.String("config-dir", "", "the config directory for restoring")
+	*/
+	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
+	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
 
 	config, err := cli.ParseFlags()
 	lvl, err := logging.LevelFromString("info")
@@ -540,10 +515,27 @@ func main() {
 	}
 
 	if *isRestore {
-		restore(*password, *backupFile, *keystoreDir, *configDir, *seedDir)
+		passwd := *password
+		if passwd == "" {
+			passwd = os.Getenv("RUM_KSPASSWD")
+		}
+		params := handlers.RestoreParam{
+			Peername:    config.PeerName,
+			BackupFile:  *backupFile,
+			Password:    passwd,
+			ConfigDir:   config.ConfigDir,
+			KeystoreDir: config.KeyStoreDir,
+			DataDir:     config.DataDir,
+			SeedDir:     *seedDir,
+		}
+		restore(params)
 		return
 	}
 
+	if *isBackup {
+		handlers.Backup(config, *backupFile)
+		return
+	}
 	if err := utils.EnsureDir(config.DataDir); err != nil {
 		panic(err)
 	}
@@ -598,20 +590,75 @@ func ping(config cli.Config) {
 	}
 }
 
-func restore(password, backupFile, keystoreDir, configDir, seedDir string) {
-	if backupFile == "" || password == "" || keystoreDir == "" || configDir == "" || seedDir == "" {
-		fmt.Printf("usage: %s -restore -json-file=<json-file-path> -password=<password> -keystore-dir=<keystore-dir> -config-dir=<config-dir> -seed-dir=<seed-dir>\n", os.Args[0])
+func restore(params handlers.RestoreParam) {
+	if params.Peername == "" || params.BackupFile == "" || params.Password == "" || params.KeystoreDir == "" || params.ConfigDir == "" || params.SeedDir == "" || params.DataDir == "" {
+		fmt.Printf("usage: %s -restore -peername=<peername> -backup-file=<backup-file-path> -password=<password> -keystoredir=<keystore-dir> -configdir=<config-dir> -seeddir=<seed-dir> -datadir=<data-dir>\n", os.Args[0])
 		return
 	}
 
-	params := api.RestoreParam{
-		Password:    password,
-		BackupFile:  backupFile,
-		KeystoreDir: keystoreDir,
-		ConfigDir:   configDir,
-		SeedDir:     seedDir,
+	handlers.Restore(params)
+
+	var pidch chan int
+	process := os.Args[0]
+
+	tcpPort, err := freeport.GetFreePort()
+	if err != nil {
+		mainlog.Fatalf("freeport.GetFreePort failed: %s", err)
 	}
-	if err := api.Restore(params); err != nil {
-		mainlog.Fatalf("restore failed: %s, params: %+v\n", err, params)
+	apiPort, err := freeport.GetFreePort()
+	if err != nil {
+		mainlog.Fatalf("freeport.GetFreePort failed: %s", err)
+	}
+	testnode.Fork(
+		pidch, params.Password, process,
+		"-peername", params.Peername,
+		"-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", tcpPort),
+		"-apilisten", fmt.Sprintf(":%d", apiPort),
+		"-configdir", params.ConfigDir,
+		"-keystoredir", params.KeystoreDir,
+		"-datadir", params.DataDir,
+		"-peer", "/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u",
+		"-peer", "/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM",
+	)
+	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
+	ctx := context.Background()
+	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
+	_, result := testnode.CheckNodeRunning(checkctx, peerBaseUrl)
+	if !result {
+		mainlog.Fatal("bootstrap node start failed")
+	}
+
+	if utils.DirExist(params.SeedDir) {
+		seeds, err := ioutil.ReadDir(params.SeedDir)
+		if err != nil {
+			mainlog.Errorf("read seeds directory failed: %s", err)
+		}
+
+		for _, seed := range seeds {
+			if seed.IsDir() {
+				continue
+			}
+
+			path := filepath.Join(params.SeedDir, seed.Name())
+			seedByte, err := ioutil.ReadFile(path)
+			if err != nil {
+				mainlog.Errorf("read seed file failed: %s", err)
+				continue
+			}
+
+			var seed handlers.GroupSeed
+			if err := json.Unmarshal(seedByte, &seed); err != nil {
+				mainlog.Errorf("unmarshal seed file failed: %s", err)
+				continue
+			}
+
+			if _, err := api.JoinGroupByHTTPRequest(peerBaseUrl, seed); err != nil {
+				mainlog.Errorf("join group %s failed: %s", seed.GroupId, err)
+			}
+		}
+	}
+
+	if _, _, err := testnode.RequestAPI(peerBaseUrl, "/api/quit", "GET", ""); err != nil {
+		mainlog.Fatalf("quit app failed: %s", err)
 	}
 }
