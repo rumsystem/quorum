@@ -918,6 +918,38 @@ func (dbMgr *DbMgr) GetAppConfigItem(itemKey string, groupId string, Prefix ...s
 	return &config, nil
 }
 
+func (dbMgr *DbMgr) GetAllAppConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
+	nodeprefix := getPrefix(Prefix...)
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_"
+	var appConfigByteList [][]byte
+
+	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		appConfigByteList = append(appConfigByteList, v)
+		return nil
+	})
+
+	return appConfigByteList, err
+}
+
+func (dbMgr *DbMgr) GetAllChainConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
+	nodeprefix := getPrefix(Prefix...)
+	key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_"
+	var appConfigByteList [][]byte
+
+	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		appConfigByteList = append(appConfigByteList, v)
+		return nil
+	})
+
+	return appConfigByteList, err
+}
+
 func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
 	nodeprefix := getPrefix(Prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey

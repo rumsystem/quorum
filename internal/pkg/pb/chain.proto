@@ -5,6 +5,7 @@ option go_package = "github.com/rumsystem/quorum/internal/pkg/pb";
 enum PackageType {
     TRX   = 0;
     BLOCK = 1;
+    SNAPSHOT =2;
 }
 
 message Package {
@@ -70,6 +71,19 @@ message Block {
 	bytes    Hash           = 7;      
     bytes    Signature      = 8;
 	int64    TimeStamp      = 9; 
+}
+
+message ChainSnapshot {
+    string   MsgId        = 1;
+    string   SnapshotId   = 2;
+    int64    TotalCount   = 3;
+    int64    Count        = 4;
+    int64    Seq          = 5;
+    repeated Trx Trxs     = 6;
+    string   SenderPubkey = 7;
+    bytes    Hash         = 8;
+    bytes    Singature    = 9;
+    int64    TimeStamp    = 10;
 }
 
 message BlockDbChunk {
