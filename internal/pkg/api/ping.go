@@ -20,6 +20,13 @@ type AddrProtoPair struct {
 
 var networkLog = logging.Logger("network")
 
+// @Tags Node
+// @Summary PingPeer
+// @Description PingPeer
+// @Accept json
+// @Produce json
+// @Success 200 {object} AddrProtoPair
+// @Router /api/v1/network/peers/ping [get]
 func (h *Handler) PingPeer(node *p2p.Node) echo.HandlerFunc {
 	return func(c echo.Context) (err error) {
 		output := make(map[string]interface{})

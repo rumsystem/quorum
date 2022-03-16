@@ -7,6 +7,13 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
+// @Tags Management
+// @Summary MgrAppConfig
+// @Description set app config
+// @Produce json
+// @Param data body handlers.AppConfigParam true "AppConfigParam"
+// @Success 200 {object} handlers.AppConfigResult
+// @Router /api/v1/group/appconfig [post]
 func (h *Handler) MgrAppConfig(c echo.Context) (err error) {
 	output := make(map[string]string)
 	params := new(handlers.AppConfigParam)
