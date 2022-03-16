@@ -45,6 +45,7 @@ type MolassesProducer struct {
 	ProduceTimer      *time.Timer
 	ProduceDone       chan bool
 	statusmu          sync.RWMutex
+	addTrxmu          sync.RWMutex
 	nodename          string
 	cIface            ChainMolassesIface
 	groupId           string
@@ -68,6 +69,9 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 
+	producer.addTrxmu.Lock()
+	defer producer.addTrxmu.Unlock()
+
 	//check if trx sender is in group block list
 	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, producer.nodename)
 	if err != nil {
@@ -89,7 +93,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
 	producer.trxPool.Store(trx.TrxId, trx)
 
-	molaproducer_log.Debugf("*************************************")
+	molaproducer_log.Debugf("***********_trx_pool_****************")
 	producer.trxPool.Range(func(key, value interface{}) bool {
 		trxId, _ := key.(string)
 		molaproducer_log.Debugf("key <%s>", trxId)
