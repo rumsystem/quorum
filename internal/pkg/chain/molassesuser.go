@@ -41,6 +41,12 @@ func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) 
 	if err != nil {
 		return "", err
 	}
+
+	err = TrxEnqueue(user.groupId, trx)
+	if err != nil {
+		return "", err
+	}
+
 	return trx.TrxId, nil
 }
 
