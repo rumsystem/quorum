@@ -9,6 +9,7 @@ import (
 	cp "github.com/otiai10/copy"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
@@ -39,8 +40,16 @@ func getKeystoreBackupPath(dstPath string) string {
 	return filepath.Join(dstPath, "keystore")
 }
 
+func getBlockPrefixKey() string {
+	return nodename + "_" + storage.BLK_PREFIX + "_"
+}
+
 // Backup backup block from data db and {config,keystore,seeds} directory
 func Backup(config cli.Config, dstPath string) {
+	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
+		logger.Fatalf("backup directory %s is exists")
+	}
+
 	password, err := GetKeystorePassword()
 	if err != nil {
 		logger.Fatalf("GetKeystorePassword failed: %s", err)
@@ -78,6 +87,15 @@ func Backup(config cli.Config, dstPath string) {
 		logger.Fatalf("utils.ZipDir(%s, %s) failed: %s", dstPath, zipFilePath, err)
 	}
 	defer os.RemoveAll(zipFilePath)
+
+	// check keystore signature and encrypt
+	if err := checkSignAndEncryptWithKeystore(config.KeyStoreName, keystoreDstPath, configDstPath, config.PeerName, password); err != nil {
+		logger.Fatalf("check keystore failed: %s", err)
+	}
+
+	if err := loadAndDecryptTrx(blockDstPath, seedDstPath); err != nil {
+		logger.Fatalf("check backuped block data failed: %s", err)
+	}
 
 	// encrypt the backup zip file
 	r, err := age.NewScryptRecipient(password)

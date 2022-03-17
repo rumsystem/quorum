@@ -123,7 +123,7 @@ func restoreBlockDB(srcBlockDBDir string, dstDir string) error {
 	}
 	defer dstDB.Close()
 
-	key := "default" + "_" + storage.BLK_PREFIX + "_"
+	key := getBlockPrefixKey()
 	err = srcDB.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err

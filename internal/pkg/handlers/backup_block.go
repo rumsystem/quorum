@@ -2,14 +2,14 @@ package handlers
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 var (
-	logger = logging.Logger("handlers")
+	logger   = logging.Logger("handlers")
+	nodename = "default" // NOTE: hardcode
 )
 
 // BackupBlock get block from data db and backup to `backupPath`
@@ -19,18 +19,19 @@ func BackupBlock(dataDir, peerName, backupPath string) {
 	if err != nil {
 		logger.Fatalf("storage.CreateDb failed: %s", err)
 	}
+	defer dbManager.Db.Close()
+	defer dbManager.GroupInfoDb.Close()
+
 	dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 
 	// backup block
 	backupDB := storage.QSBadger{}
-	os.RemoveAll(backupPath)
-	err = backupDB.Init(backupPath)
-	if err != nil {
+	if err := backupDB.Init(backupPath); err != nil {
 		logger.Fatalf("backupDB.Init failed: %s", err)
 	}
+	defer backupDB.Close()
 
-	// NOTE: hardcode
-	key := "default" + "_" + storage.BLK_PREFIX + "_"
+	key := getBlockPrefixKey()
 	err = dbManager.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
