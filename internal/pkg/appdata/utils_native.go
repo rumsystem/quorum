@@ -1,3 +1,6 @@
+//go:build !js
+// +build !js
+
 package appdata
 
 import "github.com/rumsystem/quorum/internal/pkg/storage"

@@ -1,3 +1,6 @@
+//go:build !js
+// +build !js
+
 package handlers
 
 import (
@@ -9,7 +12,6 @@ import (
 	"strings"
 
 	"filippo.io/age"
-	cp "github.com/otiai10/copy"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -73,7 +75,7 @@ func Restore(params RestoreParam) {
 		logger.Fatalf("create directory %s failed: %s", params.ConfigDir, err)
 	}
 	srcConfigDir := getConfigBackupPath(absUnZipDir)
-	if err := cp.Copy(srcConfigDir, params.ConfigDir); err != nil {
+	if err := utils.Copy(srcConfigDir, params.ConfigDir); err != nil {
 		logger.Fatalf("copy %s => %s failed: %s", srcConfigDir, params.ConfigDir, err)
 	}
 
@@ -82,7 +84,7 @@ func Restore(params RestoreParam) {
 		logger.Fatalf("create directory %s failed: %s", params.KeystoreDir, err)
 	}
 	srcKeystoreDir := getKeystoreBackupPath(absUnZipDir)
-	if err := cp.Copy(srcKeystoreDir, params.KeystoreDir); err != nil {
+	if err := utils.Copy(srcKeystoreDir, params.KeystoreDir); err != nil {
 		logger.Fatalf("copy %s => %s failed: %s", srcKeystoreDir, params.KeystoreDir, err)
 	}
 
@@ -91,7 +93,7 @@ func Restore(params RestoreParam) {
 		logger.Fatalf("create directory %s failed: %s", params.SeedDir, err)
 	}
 	srcSeedDir := getSeedBackupPath(absUnZipDir)
-	if err := cp.Copy(srcSeedDir, params.SeedDir); err != nil {
+	if err := utils.Copy(srcSeedDir, params.SeedDir); err != nil {
 		logger.Fatalf("copy %s => %s failed: %s", srcSeedDir, params.SeedDir, err)
 	}
 

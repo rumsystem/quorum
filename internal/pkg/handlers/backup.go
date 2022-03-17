@@ -1,3 +1,6 @@
+//go:build !js
+// +build !js
+
 package handlers
 
 import (
@@ -6,7 +9,6 @@ import (
 	"path/filepath"
 
 	"filippo.io/age"
-	cp "github.com/otiai10/copy"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -57,13 +59,13 @@ func Backup(config cli.Config, dstPath string) {
 
 	// backup config directory
 	configDstPath := getConfigBackupPath(dstPath)
-	if err := cp.Copy(config.ConfigDir, configDstPath); err != nil {
+	if err := utils.Copy(config.ConfigDir, configDstPath); err != nil {
 		logger.Fatalf("copy %s => %s failed: %s", config.ConfigDir, dstPath, err)
 	}
 
 	// backup keystore
 	keystoreDstPath := getKeystoreBackupPath(dstPath)
-	if err := cp.Copy(config.KeyStoreDir, keystoreDstPath); err != nil {
+	if err := utils.Copy(config.KeyStoreDir, keystoreDstPath); err != nil {
 		logger.Fatalf("copy %s => %s failed: %s", config.KeyStoreDir, dstPath, err)
 	}
 
