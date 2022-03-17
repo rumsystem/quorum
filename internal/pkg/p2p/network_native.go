@@ -32,6 +32,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
@@ -109,11 +110,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
-	peerStatus := NewPeerStatus()
-	var rexservice *RexService
-	var rexsession *RexSession
-	var rexnotification chan RexNotification
-	rexnotification = make(chan RexNotification, 1)
 	if isBootstrap == true {
 		// turn off the mesh in bootstrapnode
 		pubsub.GossipSubD = 0
@@ -123,9 +119,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		pubsub.GossipSubDout = 0
 		pubsub.GossipSubDlazy = 1024
 		pubsub.GossipSubGossipFactor = 0.5
-	} else {
-		//rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
-		//rexservice.SetDelegate()
 	}
 
 	var ps *pubsub.PubSub
@@ -164,16 +157,10 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
 	if isBootstrap == false && nodeopt.EnableRumExchange == true {
-		rexservice = NewRexService(host, peerStatus, nodenetworkname, ProtocolPrefix, rexnotification)
-		rexservice.SetDelegate()
-		//rexsession = NewRexSession(rexservice)
-		rexchaindata := NewRexChainData(rexservice)
-		//rexservice.SetHandlerMatchMsgType("rumsession", rexsession.Handler)
-		rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
-		networklog.Infof("Enable protocol RumExchange")
 	}
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, RumExchange: rexservice, RumSession: rexsession, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, peerStatus: peerStatus}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
+	//RumExchange: rexservice, RumSession: rexsession,
 
 	//reconnect peers
 
@@ -191,10 +178,32 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		}()
 	}
 	go newnode.eventhandler(ctx)
-	if rexnotification != nil {
-		go newnode.rexhandler(ctx, rexnotification)
-	}
 	return newnode, nil
+}
+
+func (node *Node) SetRumExchange(ctx context.Context, dbmgr *storage.DbMgr) {
+	peerStatus := NewPeerStatus()
+	var rexnotification chan RexNotification
+	rexnotification = make(chan RexNotification, 1)
+	var rexservice *RexService
+	var rexsession *RexSession
+	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice.SetDelegate()
+	//rexsession = NewRexSession(rexservice)
+	rexchaindata := NewRexChainData(rexservice)
+	rexrelay := NewRexRelay(rexservice, dbmgr)
+	//rexservice.SetHandlerMatchMsgType("rumsession", rexsession.Handler)
+	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
+	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
+	networklog.Infof("Enable protocol RumExchange")
+
+	node.peerStatus = peerStatus
+	node.RumExchange = rexservice
+	node.RumSession = rexsession
+
+	if rexnotification != nil {
+		go node.rexhandler(ctx, rexnotification)
+	}
 }
 
 func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {

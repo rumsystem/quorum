@@ -310,8 +310,19 @@ func mainRet(config cli.Config) int {
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
 	} else {
 		nodename := "default"
+		datapath := config.DataDir + "/" + config.PeerName
+		dbManager, err := createDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
+		dbManager.TryMigration(1)
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
 		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), config.ListenAddresses, config.JsonTracer)
+		if err == nil {
+			node.SetRumExchange(ctx, dbManager)
+		}
+
 		_ = node.Bootstrap(ctx, config)
 
 		for _, addr := range node.Host.Addrs() {
@@ -326,13 +337,6 @@ func mainRet(config cli.Config) int {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
-		datapath := config.DataDir + "/" + config.PeerName
-		dbManager, err := createDb(datapath)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-		}
-		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		dbManager.TryMigration(1)
 		nodectx.InitCtx(ctx, nodename, node, dbManager, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey

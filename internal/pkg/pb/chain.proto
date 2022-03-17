@@ -305,8 +305,7 @@ message GroupRelayItem {
     string        UserPubkey  = 3;
     int64         Duration    = 4;
     string        Type        = 5;
-    int64         RelayDuration    = 6;  
-    string        SenderSign  = 7;
-    string        Memo        = 8;
-    int64         ApproveTime    = 9;
+    string        SenderSign  = 6;
+    string        Memo        = 7;
+    int64         ApproveTime    = 8;
 }

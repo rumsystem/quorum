@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -18,7 +19,8 @@ type ReqRelayParam struct {
 }
 
 type RelayResult struct {
-	ReqId string `from:"req_id"      json:"req_id"      validate:"required"`
+	Result bool `from:"result"      json:"result"      validate:"required"`
+	//ReqId string `from:"req_id"      json:"req_id"      validate:"required"`
 }
 
 type RelayApproveResult struct {
@@ -31,7 +33,7 @@ type RelayList struct {
 	ApprovedList []*quorumpb.GroupRelayItem `json:"approved"`
 }
 
-func (h *Handler) RequestRelayTest(c echo.Context) (err error) {
+func (h *Handler) RequestRelay(c echo.Context) (err error) {
 	var input ReqRelayParam
 	output := make(map[string]string)
 
@@ -40,12 +42,18 @@ func (h *Handler) RequestRelayTest(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 	if input.RelayType == conn.RelayUserType || input.RelayType == conn.RelayGroupType {
-		reqid, err := SaveRelayRequest(&input)
+		relayreq := quorumpb.RelayReq{}
+		relayreq.GroupId = input.GroupId
+		relayreq.UserPubkey = input.UserPubkey
+		relayreq.Type = input.RelayType
+		relayreq.Duration = input.Duration
+		relayreq.SenderSign = input.SenderSign
+		err := SendRelayRequestByRex(&relayreq)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		ret := RelayResult{reqid}
+		ret := RelayResult{true}
 		return c.JSON(http.StatusOK, ret)
 	} else {
 		output[ERROR_INFO] = fmt.Sprintf("unsupported relay type %s", input.RelayType)
@@ -97,6 +105,27 @@ func (h *Handler) ApproveRelay(c echo.Context) (err error) {
 	}
 	ret := &RelayApproveResult{ReqId: reqid, Result: succ}
 	return c.JSON(http.StatusOK, ret)
+}
+
+func SendRelayRequestByRex(relayreq *quorumpb.RelayReq) error {
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_RELAY_REQ, RelayReq: relayreq}
+	succ := false
+	rex := nodectx.GetNodeCtx().Node.RumExchange
+	if rex != nil {
+		for i := 0; i < 5; i++ { //try 5 peers
+			err := rex.PublishToOneRandom(rummsg)
+			if err == nil {
+				succ = true
+				break
+			}
+		}
+	} else {
+		return errors.New("RumExchange is nil, please set enablerumexchange as true")
+	}
+	if succ == false {
+		return errors.New("failed publish to random peer ")
+	}
+	return nil
 }
 
 func SaveRelayRequest(input *ReqRelayParam) (string, error) {

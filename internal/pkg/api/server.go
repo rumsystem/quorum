@@ -67,7 +67,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		a.POST("/v1/token/apply", apph.ApplyToken)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
 
-		r.POST("/v1/preview/relay/req", h.RequestRelayTest)
+		r.POST("/v1/preview/relay/req", h.RequestRelay)
 		r.GET("/v1/preview/relay", h.ListRelay)
 		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
 		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)

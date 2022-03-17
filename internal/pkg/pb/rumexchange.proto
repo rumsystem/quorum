@@ -8,12 +8,14 @@ message RumMsg {
  optional SessionIfConn IfConn = 2;
  optional SessionConnResp ConnResp = 3;
  optional Package DataPackage = 4;
+ optional RelayReq RelayReq = 5;
 }
 
 enum RumMsgType {
     IF_CONN = 0;
     CONN_RESP = 1;
     CHAIN_DATA  = 2;
+    RELAY_REQ  = 3;
 }
 
 message SessionIfConn {
@@ -37,4 +39,13 @@ message SessionConnResp {
 message PeerSig {
     bytes PeerId = 1;
     bytes SessionSig = 2;
+}
+
+message RelayReq {
+    string        GroupId     = 1;
+    string        UserPubkey  = 2;
+    int64         Duration    = 3;
+    string        Type        = 4;
+    string        SenderSign  = 5;
+    string        Memo        = 6;
 }

@@ -174,6 +174,34 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	return nil
 }
 
+//Publish to one random peer
+func (r *RexService) PublishToOneRandom(msg *quorumpb.RumMsg) error {
+	rumexchangelog.Debugf("PublishToOneRandom called")
+	peers := r.Host.Network().Peers()
+	p, err := r.peerstore.GetOneRandomPeer(peers)
+	rumexchangelog.Debugf("PublishToOneRandom to peer: %s err:", p, err)
+	if err == nil {
+		ctx := context.Background()
+		s, err := r.Host.NewStream(ctx, p, r.ProtocolId)
+		if err != nil {
+			rumexchangelog.Debugf("create network stream err: %s", err)
+			r.peerstore.AddIgnorePeer(p)
+			return err
+		}
+		defer func() { _ = s.Close() }()
+		bufw := bufio.NewWriter(s)
+		wc := protoio.NewDelimitedWriter(bufw)
+		err = wc.WriteMsg(msg)
+		if err != nil {
+			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+		} else {
+			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+		}
+		bufw.Flush()
+	}
+	return err
+}
+
 func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) {
 	noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
 	r.notificationch <- noti
@@ -192,7 +220,6 @@ func (r *RexService) Handler(s network.Stream) {
 			} else {
 				rumexchangelog.Warningf("RumExchange stream handler EOF")
 			}
-			//_ = s.Reset()
 			_ = s.Close()
 			return
 		}
@@ -201,6 +228,13 @@ func (r *RexService) Handler(s network.Stream) {
 		err = proto.Unmarshal(msgdata, &rummsg)
 		if err == nil {
 			switch rummsg.MsgType {
+			case quorumpb.RumMsgType_RELAY_REQ:
+				for _, v := range r.msgtypehandlers {
+					if v.Name == "rumrelay" {
+						v.Handler(&rummsg, s)
+						break
+					}
+				}
 			case quorumpb.RumMsgType_IF_CONN, quorumpb.RumMsgType_CONN_RESP:
 				for _, v := range r.msgtypehandlers {
 					if v.Name == "rumsession" {
