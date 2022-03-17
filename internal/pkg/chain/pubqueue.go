@@ -18,7 +18,7 @@ type PublishQueueItem struct {
 	// in value only
 	State      string
 	RetryCount int
-	UpdateAt   int64
+	UpdateAt   int64 `json:"UpdateAt,string"`
 	Trx        *quorumpb.Trx
 }
 
@@ -91,7 +91,30 @@ func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 	return publishQueueWatcher.db.Set(newK, newV)
 }
 
+func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQueueItem, error) {
+	items := []*PublishQueueItem{}
+	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err.Error())
+			// continue
+			return false, nil
+		}
+		item, err := ParsePublishQueueItem(k, v)
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err.Error())
+			return false, nil
+		}
+		items = append(items, item)
+		return false, nil
+	})
+	return items, nil
+}
+
 var publishQueueWatcher PublishQueueWatcher = PublishQueueWatcher{}
+
+func GetPubQueueWatcher() *PublishQueueWatcher {
+	return &publishQueueWatcher
+}
 
 func InitPublishQueueWatcher(done chan bool, db storage.QuorumStorage) {
 
