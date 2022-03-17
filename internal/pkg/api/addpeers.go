@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Node
+// @Tags Network
 // @Summary AddPeers
 // @Description Connect to peers
 // @Accept json

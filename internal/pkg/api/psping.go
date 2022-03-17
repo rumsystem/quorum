@@ -13,7 +13,7 @@ type PSPingParam struct {
 	PeerId string `from:"peer_id"      json:"peer_id"      validate:"required,max=53,min=53"`
 }
 
-// @Tags Node
+// @Tags Network
 // @Summary PubsubPing
 // @Description Pubsub ping utility
 // @Accept json

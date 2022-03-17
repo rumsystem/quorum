@@ -9,7 +9,7 @@ import (
 	_ "github.com/rumsystem/quorum/internal/pkg/pb" //import for swaggo
 )
 
-// @Tags Chain
+// @Tags Network
 // @Summary GetBlock
 // @Description Get a block from a group
 // @Produce json

@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Management
+// @Tags AppConfig
 // @Summary MgrAppConfig
 // @Description set app config
 // @Produce json

@@ -11,7 +11,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 )
 
-// @Tags Node
+// @Tags Network
 // @Summary GetNetwork
 // @Description Get node's network information
 // @Produce json

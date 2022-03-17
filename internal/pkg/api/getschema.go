@@ -14,7 +14,7 @@ type SchemaListItem struct {
 	TimeStamp int64  `validate:"required"`
 }
 
-// @Tags Group
+// @Tags AppConfig
 // @Summary GetGroupAppSchema
 // @Description Get group schema
 // @Produce json

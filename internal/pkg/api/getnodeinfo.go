@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Node
+// @Tags Network
 // @Summary GetNodeInfo
 // @Description Return the node info
 // @Produce json

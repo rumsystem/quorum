@@ -8,7 +8,7 @@ import (
 	_ "github.com/rumsystem/quorum/internal/pkg/pb" //import for swaggo
 )
 
-// @Tags Chain
+// @Tags Content
 // @Summary GetTrx
 // @Description Get a transaction a group
 // @Produce json

@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Management
+// @Tags ChainConfig
 // @Summary GetDeniedUserList
 // @Description Get the list of denied users
 // @Produce json

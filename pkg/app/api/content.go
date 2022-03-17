@@ -24,7 +24,7 @@ type SenderList struct {
 	Senders []string
 }
 
-// @Tags Apps
+// @Tags Content
 // @Summary GetGroupContents
 // @Description Get contents in a group
 // @Produce json

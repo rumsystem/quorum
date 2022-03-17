@@ -41,7 +41,7 @@ func getToken(name string, jwtKey string) (string, error) {
 
 //{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MzU1NDk2NDksIm5hbWUiOiJwZWVyMiJ9.ZXJBY0s_SqRcCM7_eM2LCQcjsZwY1epTby19O8lf_dk"}
 
-// @Tags Apps
+// @Tags Token
 // @Summary GetAuthToken
 // @Description Get a auth token for authorizing requests from remote
 // @Produce json
@@ -95,7 +95,7 @@ func jwtFromHeader(c echo.Context, header string, authScheme string) (string, er
 	return "", errors.New("missing jwt token")
 }
 
-// @Tags Apps
+// @Tags Token
 // @Summary RefreshToken
 // @Description Get a new auth token
 // @Produce json

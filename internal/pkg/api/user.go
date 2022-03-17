@@ -32,7 +32,7 @@ type GrpUserParam struct {
 	Memo       string `from:"memo"            json:"memo"`
 }
 
-// @Tags Management
+// @Tags User
 // @Summary AddUsers
 // @Description add a user to a private group users list
 // @Accept json

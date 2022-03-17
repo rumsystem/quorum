@@ -12,7 +12,7 @@ type StartSyncResult struct {
 	Error   string
 }
 
-// @Tags Group
+// @Tags Network
 // @Summary StartSync
 // @Description Start sync
 // @Produce json

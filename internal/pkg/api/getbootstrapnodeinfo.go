@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
-// @Tags Node
+// @Tags Network
 // @Summary GetBootstrapNodeInfo
 // @Description Return the bootstrap node info
 // @Produce json

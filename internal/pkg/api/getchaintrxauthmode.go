@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Management
+// @Tags ChainConfig
 // @Summary GetChainTrxAuthMode
 // @Description GetChainTrxAuthMode
 // @Produce json

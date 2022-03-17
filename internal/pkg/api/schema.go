@@ -35,7 +35,7 @@ type SchemaResult struct {
 	TrxId       string `json:"trx_id" validate:"required"`
 }
 
-// @Tags Group
+// @Tags AppConfig
 // @Summary Schema
 // @Description Add schema to group
 // @Accept json

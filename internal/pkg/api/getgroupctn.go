@@ -21,7 +21,7 @@ type GroupContentObjectItem struct {
 	TimeStamp int64
 }
 
-// @Tags Groups
+// @Tags Content
 // @Summary GetGroupCtn
 // @Description Get group content
 // @Produce json

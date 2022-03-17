@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Management
+// @Tags User
 // @Summary AddProducer
 // @Description add a peer to the group producer list
 // @Accept json

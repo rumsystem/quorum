@@ -20,7 +20,7 @@ type AddrProtoPair struct {
 
 var networkLog = logging.Logger("network")
 
-// @Tags Node
+// @Tags Network
 // @Summary PingPeer
 // @Description PingPeer
 // @Accept json

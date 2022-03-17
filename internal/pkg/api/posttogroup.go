@@ -8,7 +8,7 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
-// @Tags Groups
+// @Tags Content
 // @Summary PostToGroup
 // @Description Post object to a group
 // @Accept json

@@ -24,7 +24,7 @@ type BackupResult struct {
 	Config   string `json:"config" validate:"required"`
 }
 
-// @Tags Chain
+// @Tags Token
 // @Summary Backup
 // @Description Backup my group seed/keystore/config
 // @Produce json

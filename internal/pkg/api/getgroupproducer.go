@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-// @Tags Management
+// @Tags User
 // @Summary GetGroupProducers
 // @Description Get the list of group producers
 // @Produce json
