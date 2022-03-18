@@ -57,11 +57,6 @@ func checkSignAndEncryptWithKeystore(keystoreName, keystoreDir, configDir, peerN
 	return nil
 }
 
-func checkLoadKeystore(keyname, password string) error {
-
-	return nil
-}
-
 func getRandLength(a, b int) int {
 	var res int
 	for {

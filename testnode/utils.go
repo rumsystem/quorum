@@ -101,3 +101,29 @@ func CheckNodeRunning(ctx context.Context, url string) (string, bool) {
 		}
 	}
 }
+
+func CheckApiServerRunning(ctx context.Context, baseUrl string) bool {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return false
+		case <-ticker.C:
+			statusCode, resp, err := RequestAPI(baseUrl, "/api/v1/node", "GET", "")
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			if statusCode == 200 {
+				var objmap map[string]interface{}
+				if err := json.Unmarshal(resp, &objmap); err != nil {
+					fmt.Println(err)
+				}
+
+				ticker.Stop()
+				return true
+			}
+		}
+	}
+}

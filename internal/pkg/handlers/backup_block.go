@@ -25,8 +25,6 @@ func BackupBlock(dataDir, peerName, backupPath string) {
 	defer dbManager.Db.Close()
 	defer dbManager.GroupInfoDb.Close()
 
-	dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-
 	// backup block
 	backupDB := storage.QSBadger{}
 	if err := backupDB.Init(backupPath); err != nil {

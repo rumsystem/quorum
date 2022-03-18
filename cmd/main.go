@@ -601,10 +601,6 @@ func restore(params handlers.RestoreParam) {
 	var pidch chan int
 	process := os.Args[0]
 
-	tcpPort, err := freeport.GetFreePort()
-	if err != nil {
-		mainlog.Fatalf("freeport.GetFreePort failed: %s", err)
-	}
 	apiPort, err := freeport.GetFreePort()
 	if err != nil {
 		mainlog.Fatalf("freeport.GetFreePort failed: %s", err)
@@ -612,20 +608,16 @@ func restore(params handlers.RestoreParam) {
 	testnode.Fork(
 		pidch, params.Password, process,
 		"-peername", params.Peername,
-		"-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", tcpPort),
 		"-apilisten", fmt.Sprintf(":%d", apiPort),
 		"-configdir", params.ConfigDir,
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,
-		"-peer", "/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u",
-		"-peer", "/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM",
 	)
 	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
 	ctx := context.Background()
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
-	_, result := testnode.CheckNodeRunning(checkctx, peerBaseUrl)
-	if !result {
-		mainlog.Fatal("bootstrap node start failed")
+	if ok := testnode.CheckApiServerRunning(checkctx, peerBaseUrl); !ok {
+		mainlog.Fatal("api server start failed")
 	}
 
 	if utils.DirExist(params.SeedDir) {
