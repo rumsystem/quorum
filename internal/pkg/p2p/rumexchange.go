@@ -214,11 +214,8 @@ func (r *RexService) Handler(s network.Stream) {
 	for {
 		msgdata, err := reader.ReadMsg()
 		if err != nil {
-			rumexchangelog.Warningf("rum exchange read err: %s", err)
 			if err != io.EOF {
 				rumexchangelog.Warningf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
-			} else {
-				rumexchangelog.Warningf("RumExchange stream handler EOF")
 			}
 			_ = s.Close()
 			return
@@ -228,7 +225,7 @@ func (r *RexService) Handler(s network.Stream) {
 		err = proto.Unmarshal(msgdata, &rummsg)
 		if err == nil {
 			switch rummsg.MsgType {
-			case quorumpb.RumMsgType_RELAY_REQ:
+			case quorumpb.RumMsgType_RELAY_REQ, quorumpb.RumMsgType_RELAY_RESP:
 				for _, v := range r.msgtypehandlers {
 					if v.Name == "rumrelay" {
 						v.Handler(&rummsg, s)

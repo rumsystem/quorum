@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"net/http"
+	"time"
 )
 
 type ReqRelayParam struct {
@@ -31,6 +33,7 @@ type RelayApproveResult struct {
 type RelayList struct {
 	ReqList      []*quorumpb.GroupRelayItem `json:"req"`
 	ApprovedList []*quorumpb.GroupRelayItem `json:"approved"`
+	ActivityList []*quorumpb.GroupRelayItem `json:"activity"`
 }
 
 func (h *Handler) RequestRelay(c echo.Context) (err error) {
@@ -73,8 +76,13 @@ func (h *Handler) ListRelay(c echo.Context) (err error) {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
+	activityresults, err := nodectx.GetDbMgr().GetRelayActivity("")
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
 
-	ret := RelayList{ReqList: reqresults, ApprovedList: approvedresults}
+	ret := RelayList{ReqList: reqresults, ApprovedList: approvedresults, ActivityList: activityresults}
 	return c.JSON(http.StatusOK, ret)
 }
 
@@ -100,11 +108,30 @@ func (h *Handler) ApproveRelay(c echo.Context) (err error) {
 	}
 	if succ == true {
 		conn := conn.GetConn()
-		conn.RegisterChainRelay(reqitem.GroupId, reqitem.UserPubkey, reqitem.Type)
 		//add relay
+		conn.RegisterChainRelay(reqitem.GroupId, reqitem.UserPubkey, reqitem.Type)
+		relayresp := quorumpb.RelayResp{}
+		relayresp.GroupId = reqitem.GroupId
+		relayresp.UserPubkey = reqitem.UserPubkey
+		relayresp.Type = reqitem.Type
+		relayresp.Duration = reqitem.Duration
+		relayresp.ApproveTime = time.Now().UnixNano()
+		//send response
+		SendRelayResponseByRex(&relayresp, reqitem.ReqPeerId)
 	}
 	ret := &RelayApproveResult{ReqId: reqid, Result: succ}
 	return c.JSON(http.StatusOK, ret)
+}
+
+func SendRelayResponseByRex(relayresp *quorumpb.RelayResp, to string) error {
+	rex := nodectx.GetNodeCtx().Node.RumExchange
+	relayresp.RelayPeerId = []byte(rex.Host.ID())
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_RELAY_RESP, RelayResp: relayresp}
+	topeerid, err := peer.Decode(to)
+	if err == nil {
+		err = rex.PublishTo(rummsg, topeerid)
+	}
+	return err
 }
 
 func SendRelayRequestByRex(relayreq *quorumpb.RelayReq) error {

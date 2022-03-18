@@ -9,6 +9,7 @@ message RumMsg {
  optional SessionConnResp ConnResp = 3;
  optional Package DataPackage = 4;
  optional RelayReq RelayReq = 5;
+ optional RelayResp RelayResp = 6;
 }
 
 enum RumMsgType {
@@ -16,6 +17,7 @@ enum RumMsgType {
     CONN_RESP = 1;
     CHAIN_DATA  = 2;
     RELAY_REQ  = 3;
+    RELAY_RESP  = 4;
 }
 
 message SessionIfConn {
@@ -41,6 +43,19 @@ message PeerSig {
     bytes SessionSig = 2;
 }
 
+message GroupRelayItem {
+    string        RelayId     = 1;
+    string        GroupId     = 2;
+    string        UserPubkey  = 3;
+    int64         Duration    = 4;
+    string        Type        = 5;
+    string        SenderSign  = 6;
+    string        Memo        = 7;
+    int64         ApproveTime    = 8;
+    string        ReqPeerId = 9;
+    string        RelayPeerId = 10;
+}
+
 message RelayReq {
     string        GroupId     = 1;
     string        UserPubkey  = 2;
@@ -48,4 +63,16 @@ message RelayReq {
     string        Type        = 4;
     string        SenderSign  = 5;
     string        Memo        = 6;
+}
+
+message RelayResp {
+    string        RelayId     = 1;
+    string        GroupId     = 2;
+    string        UserPubkey  = 3;
+    int64         Duration    = 4;
+    string        Type        = 5;
+    string        SenderSign  = 6;
+    string        Memo        = 7;
+    int64         ApproveTime = 8;
+    bytes         RelayPeerId = 9;
 }

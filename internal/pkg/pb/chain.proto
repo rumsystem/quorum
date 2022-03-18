@@ -299,13 +299,3 @@ message GroupSeed {
 	string Signature = 9;
 }
 
-message GroupRelayItem {
-    string        RelayId     = 1;
-    string        GroupId     = 2;
-    string        UserPubkey  = 3;
-    int64         Duration    = 4;
-    string        Type        = 5;
-    string        SenderSign  = 6;
-    string        Memo        = 7;
-    int64         ApproveTime    = 8;
-}
