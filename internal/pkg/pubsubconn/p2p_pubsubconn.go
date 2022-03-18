@@ -24,6 +24,7 @@ type P2pPubSubConn struct {
 	Ctx          context.Context
 	mu           sync.RWMutex
 	cancel       context.CancelFunc
+	pubsubcancel pubsub.RelayCancelFunc
 }
 
 type PubSubConnMgr struct {
@@ -73,6 +74,20 @@ func (pscm *PubSubConnMgr) CreatePubSubRelayByChannelId(channelId string) *P2pPu
 	return psconn.(*P2pPubSubConn)
 }
 
+func (pscm *PubSubConnMgr) LeaveRelayChannel(channelId string) {
+	psconni, ok := pscm.connmgr.Load(channelId)
+	if ok == true {
+		psconn := psconni.(*P2pPubSubConn)
+		psconn.mu.Lock()
+		defer psconn.mu.Unlock()
+		if psconn.pubsubcancel != nil {
+			psconn.pubsubcancel()
+		}
+	} else {
+		channel_log.Infof("psconn relay channel <%s> not exist", channelId)
+	}
+}
+
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 	psconni, ok := pscm.connmgr.Load(channelId)
 	if ok == true {
@@ -107,8 +122,12 @@ func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
 		channel_log.Infof("Join <%s> done", cId)
 	}
 	relayCancel, err := psconn.Topic.Relay()
-	_ = relayCancel //timeout and cancel
-	return nil
+	psconn.pubsubcancel = func() {
+		relayCancel()
+		channel_log.Infof("Cancel relay <%s> done", cId)
+
+	}
+	return err
 }
 
 func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {

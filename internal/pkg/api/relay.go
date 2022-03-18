@@ -89,11 +89,13 @@ func (h *Handler) ListRelay(c echo.Context) (err error) {
 func (h *Handler) RemoveRelay(c echo.Context) (err error) {
 	output := make(map[string]string)
 	relayid := c.Param("relay_id")
-	succ, err := nodectx.GetDbMgr().DeleteRelay(relayid)
+	succ, relayitem, err := nodectx.GetDbMgr().DeleteRelay(relayid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
+	conn := conn.GetConn()
+	conn.UnregisterChainRelay(relayid, relayitem.GroupId, relayitem.Type)
 	ret := &RelayApproveResult{ReqId: relayid, Result: succ}
 	return c.JSON(http.StatusOK, ret)
 }

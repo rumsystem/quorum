@@ -474,7 +474,7 @@ func (dbMgr *DbMgr) AddRelayActivity(groupRelayItem *quorumpb.GroupRelayItem) (s
 	return groupRelayItem.RelayId, dbMgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-func (dbMgr *DbMgr) DeleteRelay(relayid string) (bool, error) {
+func (dbMgr *DbMgr) DeleteRelay(relayid string) (bool, *quorumpb.GroupRelayItem, error) {
 	key := RELAY_PREFIX
 	succ := false
 	relayitem := quorumpb.GroupRelayItem{}
@@ -493,7 +493,7 @@ func (dbMgr *DbMgr) DeleteRelay(relayid string) (bool, error) {
 		}
 		return nil
 	})
-	return succ, err
+	return succ, &relayitem, err
 }
 
 //relaystatus: req, approved and activity
@@ -508,6 +508,7 @@ func (dbMgr *DbMgr) GetRelay(relaystatus string, groupid string) ([]*quorumpb.Gr
 			}
 			relayreq := quorumpb.GroupRelayItem{}
 			err = proto.Unmarshal(v, &relayreq)
+			fmt.Println(relayreq)
 			groupRelayItemList = append(groupRelayItemList, &relayreq)
 			return nil
 		})
@@ -518,34 +519,10 @@ func (dbMgr *DbMgr) GetRelay(relaystatus string, groupid string) ([]*quorumpb.Gr
 
 func (dbMgr *DbMgr) GetRelayReq(groupid string) ([]*quorumpb.GroupRelayItem, error) {
 	return dbMgr.GetRelay("req", groupid)
-	//key := RELAY_PREFIX + "_req_" + groupid
-	//groupRelayItemList := []*quorumpb.GroupRelayItem{}
-	//err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-	//	if err != nil {
-	//		return err
-	//	}
-	//	relayreq := quorumpb.GroupRelayItem{}
-	//	err = proto.Unmarshal(v, &relayreq)
-	//	groupRelayItemList = append(groupRelayItemList, &relayreq)
-	//	return nil
-	//})
-	//return groupRelayItemList, err
 }
 
 func (dbMgr *DbMgr) GetRelayApproved(groupid string) ([]*quorumpb.GroupRelayItem, error) {
 	return dbMgr.GetRelay("approved", groupid)
-	//key := RELAY_PREFIX + "_approved_" + groupid
-	//groupRelayItemList := []*quorumpb.GroupRelayItem{}
-	//err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-	//	if err != nil {
-	//		return err
-	//	}
-	//	relayreq := quorumpb.GroupRelayItem{}
-	//	err = proto.Unmarshal(v, &relayreq)
-	//	groupRelayItemList = append(groupRelayItemList, &relayreq)
-	//	return nil
-	//})
-	//return groupRelayItemList, err
 }
 
 func (dbMgr *DbMgr) GetRelayActivity(groupid string) ([]*quorumpb.GroupRelayItem, error) {

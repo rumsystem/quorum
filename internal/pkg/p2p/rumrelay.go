@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	guuid "github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/network"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -28,6 +29,7 @@ func (r *RexRelay) Handler(rummsg *quorumpb.RumMsg, s network.Stream) {
 		r.dbmgr.AddRelayReq(item)
 	} else if rummsg.MsgType == quorumpb.RumMsgType_RELAY_RESP && rummsg.RelayResp != nil {
 		item := &quorumpb.GroupRelayItem{}
+		item.RelayId = guuid.New().String()
 		item.GroupId = rummsg.RelayResp.GroupId
 		item.UserPubkey = rummsg.RelayResp.UserPubkey
 		item.Type = rummsg.RelayResp.Type

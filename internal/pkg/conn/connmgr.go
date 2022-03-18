@@ -127,6 +127,20 @@ func (conn *Conn) RegisterChainRelay(groupId, userSignPubkey, relaytype string) 
 	return nil
 }
 
+func (conn *Conn) UnregisterChainRelay(relayid, groupId, relaytype string) error {
+	conn_log.Debugf("UnregisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
+	key := fmt.Sprintf("%s%s", groupId, relaytype)
+	if connMgr, ok := conn.ConnMgrs[key]; ok {
+		for channelId, _ := range connMgr.PsConns {
+			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveRelayChannel(channelId)
+			delete(connMgr.PsConns, channelId)
+		}
+		delete(conn.ConnMgrs, key)
+		return nil
+	}
+	return errors.New(fmt.Sprintf("unknown relay: %s", relayid))
+}
+
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
 	conn_log.Debugf("UnregisterChainCtx called, groupId <%s>", groupId)
 
