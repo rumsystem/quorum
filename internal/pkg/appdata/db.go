@@ -169,6 +169,27 @@ func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
 	return &result, nil
 }
 
+func (appdb *AppDb) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
+	var seeds map[string]*quorumpb.GroupSeed
+	seeds = make(map[string]*quorumpb.GroupSeed)
+
+	key := []byte(SED_PREFIX)
+	err := appdb.Db.PrefixForeach(key, func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		var pbSeed quorumpb.GroupSeed
+		if err := json.Unmarshal(v, &pbSeed); err != nil {
+			return err
+		}
+		seeds[string(k)] = &pbSeed
+
+		return nil
+	})
+
+	return seeds, err
+}
+
 func (appdb *AppDb) SetGroupSeed(seed *quorumpb.GroupSeed) error {
 	key := groupSeedKey(seed.GroupId)
 

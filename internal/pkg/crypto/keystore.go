@@ -63,5 +63,4 @@ type Keystore interface {
 	Decrypt(keyname string, data []byte) ([]byte, error)
 	GetEncodedPubkey(keyname string, keytype KeyType) (string, error)
 	GetPeerInfo(keyname string) (peerid peer.ID, ethaddr string, err error)
-	Backup([]byte) (string, string, string, error)
 }
