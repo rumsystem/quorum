@@ -215,6 +215,77 @@ func GetGroupConfig(groupId, key string) (*handlers.AppConfigKeyItem, error) {
 	return &ret, nil
 }
 
+// /v1/group/chainconfig
+func UpdateChainConfig(groupId, tp, config, memo string) (*handlers.ChainConfigResult, error) {
+	data := handlers.ChainConfigParams{
+		GroupId: groupId,
+		Type:    tp,
+		Config:  config,
+		Memo:    memo,
+	}
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	url := ApiServer + "/api/v1/group/chainconfig"
+	ret := handlers.ChainConfigResult{}
+	body, err := httpPost(url, json_data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
+// /v1/group/:group_id/trx/auth/:trx_type
+func GetChainAuthMode(groupId, trxType string) (*handlers.TrxAuthItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/trx/auth/%s", ApiServer, groupId, trxType)
+	ret := handlers.TrxAuthItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
+// /v1/group/:group_id/trx/allowlist
+func GetChainAllowList(groupId string) ([]*handlers.ChainSendTrxRuleListItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/trx/allowlist", ApiServer, groupId)
+	ret := []*handlers.ChainSendTrxRuleListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
+// /v1/group/:group_id/trx/denylist
+func GetChainDenyList(groupId string) ([]*handlers.ChainSendTrxRuleListItem, error) {
+	url := fmt.Sprintf("%s/api/v1/group/%s/trx/denylist", ApiServer, groupId)
+	ret := []*handlers.ChainSendTrxRuleListItem{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
 func Nick(groupId string, nick string) (*NickRespStruct, error) {
 	data := NickReqStruct{
 		Person: QuorumPersonStruct{
@@ -311,9 +382,16 @@ func GetGroupSeed(gid string) (*handlers.GroupSeed, error) {
 	return &ret, nil
 }
 
-func DoBackup() (*qApi.BackupResult, error) {
+type BackupResult struct {
+	// encrypt json.Marshal([]GroupSeed)
+	Seeds    string `json:"seeds"`
+	Keystore string `json:"keystore"`
+	Config   string `json:"config" validate:"required"`
+}
+
+func DoBackup() (*BackupResult, error) {
 	url := fmt.Sprintf("%s/api/v1/backup", ApiServer)
-	ret := qApi.BackupResult{}
+	ret := BackupResult{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err

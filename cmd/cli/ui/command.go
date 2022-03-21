@@ -117,6 +117,10 @@ func cmdInputInit() {
 				reset("")
 				QuorumGroupAdminHandler()
 				return
+			} else if strings.HasPrefix(cmdStr, model.CommandGroupChainConfig.Cmd) {
+				reset("")
+				QuorumGroupChainConfigHandler()
+				return
 			} else if strings.HasPrefix(cmdStr, model.CommandConfigReload.Cmd) {
 				reset("")
 				config.Init()

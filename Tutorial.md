@@ -202,6 +202,22 @@ RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
 go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug true
 ```
 
+6. Backup/Restore
+
+> backup
+
+```bash
+RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup -backup-file /tmp/quorum-backup
+
+# note: backup file name ends with `.zip.enc`
+```
+
+> restore
+
+```bash
+restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -restore -backup-file /tmp/quorum-backup.zip.enc -configdir $restoreDir/config -datadir $restoreDir/data -keystoredir $restoreDir/keystore -seeddir $restoreDir/seeds
+```
+
 [>>> Back to Top](#top)
 
 <span id="test-node"></span>

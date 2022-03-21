@@ -41,6 +41,7 @@ func Init() {
 	blocksPageInit()
 	quorumPageInit()
 	adminPageInit()
+	chainConfigPageInit()
 	networkPageInit()
 
 	// display groups

@@ -13,7 +13,7 @@ import (
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Success 200 {array} handlers.ChainSendTrxRuleListItem
-// @Router /api/v1/group/{group_id}/deniedlist [get]
+// @Router /api/v1/group/{group_id}/trx/denylist [get]
 func (h *Handler) GetChainTrxDenyList(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")

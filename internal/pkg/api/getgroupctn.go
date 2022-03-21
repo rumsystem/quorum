@@ -26,7 +26,7 @@ type GroupContentObjectItem struct {
 // @Description Get group content
 // @Produce json
 // @Success 200 {object} []GroupContentObjectItem
-// @Router /api/v1/group/:group_id/content [get]
+// @Router /api/v1/group/{group_id}/content [get]
 func (h *Handler) GetGroupCtn(c echo.Context) (err error) {
 
 	output := make(map[string]string)
