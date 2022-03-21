@@ -83,11 +83,11 @@ func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 	if err != nil {
 		return err
 	}
+	item.UpdateAt = time.Now().UnixNano()
 	newV, err := item.GetValue()
 	if err != nil {
 		return err
 	}
-	item.UpdateAt = time.Now().UnixNano()
 	return publishQueueWatcher.db.Set(newK, newV)
 }
 
@@ -181,7 +181,6 @@ func doRefresh() {
 				if err != nil {
 					chain_log.Errorf("<pubqueue>: %s", err.Error())
 				} else {
-
 					if trx.TrxId == item.Trx.TrxId {
 						// synced
 						chain_log.Infof("<pubqueue>: trx %s success", trx.TrxId)
@@ -196,7 +195,7 @@ func doRefresh() {
 						now := time.Now().UnixNano()
 						if now >= item.Trx.Expired {
 							// Failed
-							chain_log.Infof("<pubqueue>: trx %s failed", trx.TrxId)
+							chain_log.Infof("<pubqueue>: trx %s failed", item.Trx.TrxId)
 							item.State = PublishQueueItemStateFail
 						}
 					}
@@ -207,17 +206,26 @@ func doRefresh() {
 			groupmgr := GetGroupMgr()
 			if group, ok := groupmgr.Groups[item.GroupId]; ok {
 				if item.RetryCount > MAX_RETRY_COUNT {
-					// ignore
-					return nil
+					// TODO: this might consume some storage, not gonna clean it by now
+					break
 				}
 				muser, ok := group.ChainCtx.Consensus.User().(*MolassesUser)
 				if !ok {
 					// ignore
-					return nil
+					chain_log.Errorf("<pubqueue>: trx %s resend failed, cannot cast user node to MolassesUser", item.Trx.TrxId)
+					break
 				}
-				muser.sendTrx(item.Trx, conn.ProducerChannel)
-				item.State = PublishQueueItemStatePending
-				item.RetryCount += 1
+				trxId, err := muser.sendTrxWithoutRetry(item.Trx, conn.ProducerChannel)
+				if err != nil {
+					chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
+				} else {
+					updateTrxTimeLimit(item.Trx)
+					item.State = PublishQueueItemStatePending
+					item.RetryCount += 1
+
+					chain_log.Debugf("<pubqueue>: trx %s resent(%d)", trxId, item.RetryCount)
+				}
+
 			}
 
 		default:
