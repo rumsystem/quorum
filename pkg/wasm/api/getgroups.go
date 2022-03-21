@@ -4,9 +4,9 @@
 package api
 
 import (
-	"sort"
-
 	"github.com/rumsystem/quorum/internal/pkg/chain"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	"sort"
 )
 
 /* from echo handlers, should be refactored later after wasm stabeld */
@@ -15,6 +15,7 @@ type groupInfo struct {
 	GroupName      string `json:"group_name"`
 	OwnerPubKey    string `json:"owner_pubkey"`
 	UserPubkey     string `json:"user_pubkey"`
+	UserEthaddr    string `json:"user_eth_addr"`
 	ConsensusType  string `json:"consensus_type"`
 	EncryptionType string `json:"encryption_type"`
 	CipherKey      string `json:"cipher_key"`
@@ -57,6 +58,10 @@ func GetGroups() (*GroupInfoList, error) {
 		group.LastUpdated = value.Item.LastUpdate
 		group.HighestHeight = value.Item.HighestHeight
 		group.HighestBlockId = value.Item.HighestBlockId
+		ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(group.UserPubkey)
+		if err == nil {
+			group.UserEthaddr = ethaddr
+		}
 
 		switch value.GetSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
