@@ -183,11 +183,11 @@ func doRefresh() {
 				} else {
 					if trx.TrxId == item.Trx.TrxId {
 						// synced
-						chain_log.Infof("<pubqueue>: trx %s success", trx.TrxId)
+						chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
 					} else {
 						// failed or still pending, check the expire time
-						chain_log.Infof("<pubqueue>: trx %s not found, last updated at: %s, expire at: %s",
+						chain_log.Debugf("<pubqueue>: trx %s not found, last updated at: %s, expire at: %s",
 							item.Trx.TrxId,
 							time.Unix(0, item.UpdateAt),
 							time.Unix(0, item.Trx.Expired),
