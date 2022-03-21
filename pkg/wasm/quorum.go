@@ -160,7 +160,11 @@ func Bootstrap() error {
 	mainLogger.Info(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
 	/* start syncing all local groups */
-	err := chain.GetGroupMgr().StartSyncAllGroups()
+	err := chain.GetGroupMgr().LoadAllGroups()
+	if err != nil {
+		return err
+	}
+	err = chain.GetGroupMgr().StartSyncAllGroups()
 
 	if err != nil {
 		return err
