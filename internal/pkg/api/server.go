@@ -58,6 +58,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 		r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
 		r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
+		r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
 		r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
 		r.GET("/v1/group/:group_id/app/schema", h.GetGroupAppSchema)
 		r.GET("/v1/group/:group_id/config/keylist", h.GetAppConfigKey)
