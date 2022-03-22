@@ -113,6 +113,32 @@ func (s *QSBadger) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, e
 	})
 }
 
+func (s *QSBadger) PrefixForeachUpdate(prefix []byte, fn func([]byte, []byte, error) ([]byte, error)) error {
+	err := s.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = DefaultPrefetchSize
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			key := item.KeyCopy(nil)
+			val, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			newV, ferr := fn(key, val, nil)
+			if ferr != nil {
+				return ferr
+			}
+			if newV != nil {
+				return s.Set(key, newV)
+			}
+		}
+		return nil
+	})
+	return err
+}
+
 func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions

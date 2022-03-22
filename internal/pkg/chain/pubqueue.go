@@ -158,18 +158,18 @@ func doRefresh() {
 		return false, nil
 	})
 
-	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
+	publishQueueWatcher.db.PrefixForeachUpdate([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) ([]byte, error) {
 		if err != nil {
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
 			// continue
-			return nil
+			return nil, nil
 		}
 		item, err := ParsePublishQueueItem(k, v)
 		chain_log.Debugf("<pubqueue>: got item %v", item)
 
 		if err != nil {
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			return nil
+			return nil, nil
 		}
 
 		switch item.State {
@@ -231,12 +231,15 @@ func doRefresh() {
 		default:
 		}
 
-		err = publishQueueWatcher.UpsertItem(item)
+		item.UpdateAt = time.Now().UnixNano()
+
+		newV, err := item.GetValue()
 		if err != nil {
 			chain_log.Errorf("<pubqueue>: %s", err.Error())
+			return nil, err
 		}
 
-		return nil
+		return newV, nil
 	})
 
 }
