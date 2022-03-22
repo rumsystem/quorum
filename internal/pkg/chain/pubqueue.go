@@ -76,6 +76,8 @@ func ParsePublishQueueItem(k, v []byte) (*PublishQueueItem, error) {
 
 type PublishQueueWatcher struct {
 	db storage.QuorumStorage
+
+	running bool
 }
 
 func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
@@ -93,19 +95,19 @@ func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 
 func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQueueItem, error) {
 	items := []*PublishQueueItem{}
-	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
+	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
 			// continue
-			return false, nil
+			return nil
 		}
 		item, err := ParsePublishQueueItem(k, v)
 		if err != nil {
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			return false, nil
+			return nil
 		}
 		items = append(items, item)
-		return false, nil
+		return nil
 	})
 	return items, nil
 }
@@ -119,6 +121,7 @@ func GetPubQueueWatcher() *PublishQueueWatcher {
 func InitPublishQueueWatcher(done chan bool, db storage.QuorumStorage) {
 
 	publishQueueWatcher.db = db
+	publishQueueWatcher.running = false
 
 	// hard coded to 10s
 	ticker := time.NewTicker(10 * time.Second)
@@ -135,9 +138,10 @@ func InitPublishQueueWatcher(done chan bool, db storage.QuorumStorage) {
 }
 
 func doRefresh() {
-	if publishQueueWatcher.db == nil {
+	if publishQueueWatcher.db == nil || publishQueueWatcher.running == true {
 		return
 	}
+	publishQueueWatcher.running = true
 
 	// remove succeed trx (wasm compatable)
 	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
@@ -164,81 +168,82 @@ func doRefresh() {
 			// continue
 			return nil
 		}
-		item, err := ParsePublishQueueItem(k, v)
-		chain_log.Debugf("<pubqueue>: got item %v", item)
 
-		if err != nil {
-			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			return nil
-		}
+		go func() {
+			item, err := ParsePublishQueueItem(k, v)
+			chain_log.Debugf("<pubqueue>: got item %v", item.Trx.TrxId)
 
-		switch item.State {
-		case PublishQueueItemStatePending:
-			// check trx state, update, so it will be removed or retied in next poll
-			groupmgr := GetGroupMgr()
-			if group, ok := groupmgr.Groups[item.GroupId]; ok {
-				trx, _, err := group.GetTrx(item.Trx.TrxId)
-				if err != nil {
-					chain_log.Errorf("<pubqueue>: %s", err.Error())
-				} else {
-					if trx.TrxId == item.Trx.TrxId {
-						// synced
-						chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
-						item.State = PublishQueueItemStateSuccess
+			if err != nil {
+				chain_log.Warnf("<pubqueue>: %s", err.Error())
+				return
+			}
+			switch item.State {
+			case PublishQueueItemStatePending:
+				// check trx state, update, so it will be removed or retied in next poll
+				groupmgr := GetGroupMgr()
+				if group, ok := groupmgr.Groups[item.GroupId]; ok {
+					trx, _, err := group.GetTrx(item.Trx.TrxId)
+					if err != nil {
+						chain_log.Errorf("<pubqueue>: %s", err.Error())
 					} else {
-						// failed or still pending, check the expire time
-						chain_log.Debugf("<pubqueue>: trx %s not found, last updated at: %s, expire at: %s",
-							item.Trx.TrxId,
-							time.Unix(0, item.UpdateAt),
-							time.Unix(0, item.Trx.Expired),
-						)
-						now := time.Now().UnixNano()
-						if now >= item.Trx.Expired {
-							// Failed
-							chain_log.Infof("<pubqueue>: trx %s failed", item.Trx.TrxId)
-							item.State = PublishQueueItemStateFail
+						if trx.TrxId == item.Trx.TrxId {
+							// synced
+							chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
+							item.State = PublishQueueItemStateSuccess
+						} else {
+							// failed or still pending, check the expire time
+							chain_log.Debugf("<pubqueue>: trx %s not found, last updated at: %s, expire at: %s",
+								item.Trx.TrxId,
+								time.Unix(0, item.UpdateAt),
+								time.Unix(0, item.Trx.Expired),
+							)
+							now := time.Now().UnixNano()
+							if now >= item.Trx.Expired {
+								// Failed
+								chain_log.Infof("<pubqueue>: trx %s failed", item.Trx.TrxId)
+								item.State = PublishQueueItemStateFail
+							}
 						}
 					}
 				}
+			case PublishQueueItemStateFail:
+				// retry then mark as pending
+				groupmgr := GetGroupMgr()
+				if group, ok := groupmgr.Groups[item.GroupId]; ok {
+					if item.RetryCount > MAX_RETRY_COUNT {
+						// TODO: this might consume some storage, not gonna clean it by now
+						break
+					}
+					muser, ok := group.ChainCtx.Consensus.User().(*MolassesUser)
+					if !ok {
+						// ignore
+						chain_log.Errorf("<pubqueue>: trx %s resend failed, cannot cast user node to MolassesUser", item.Trx.TrxId)
+						break
+					}
+					trxId, err := muser.sendTrxWithoutRetry(item.Trx, conn.ProducerChannel)
+					if err != nil {
+						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
+					} else {
+						updateTrxTimeLimit(item.Trx)
+						item.State = PublishQueueItemStatePending
+						item.RetryCount += 1
+
+						chain_log.Debugf("<pubqueue>: trx %s resent(%d)", trxId, item.RetryCount)
+					}
+
+				}
+
+			default:
 			}
-		case PublishQueueItemStateFail:
-			// retry then mark as pending
-			groupmgr := GetGroupMgr()
-			if group, ok := groupmgr.Groups[item.GroupId]; ok {
-				if item.RetryCount > MAX_RETRY_COUNT {
-					// TODO: this might consume some storage, not gonna clean it by now
-					break
-				}
-				muser, ok := group.ChainCtx.Consensus.User().(*MolassesUser)
-				if !ok {
-					// ignore
-					chain_log.Errorf("<pubqueue>: trx %s resend failed, cannot cast user node to MolassesUser", item.Trx.TrxId)
-					break
-				}
-				trxId, err := muser.sendTrxWithoutRetry(item.Trx, conn.ProducerChannel)
-				if err != nil {
-					chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
-				} else {
-					updateTrxTimeLimit(item.Trx)
-					item.State = PublishQueueItemStatePending
-					item.RetryCount += 1
 
-					chain_log.Debugf("<pubqueue>: trx %s resent(%d)", trxId, item.RetryCount)
-				}
-
+			err = publishQueueWatcher.UpsertItem(item)
+			if err != nil {
+				chain_log.Errorf("<pubqueue>: %s", err.Error())
 			}
-
-		default:
-		}
-
-		err = publishQueueWatcher.UpsertItem(item)
-		if err != nil {
-			chain_log.Errorf("<pubqueue>: %s", err.Error())
-		}
-
+		}()
 		return nil
 	})
-
+	publishQueueWatcher.running = false
 }
 
 func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
