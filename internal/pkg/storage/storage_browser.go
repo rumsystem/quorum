@@ -220,7 +220,7 @@ func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, 
 }
 
 func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
-	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	txn, _ := s.db.Transaction(idb.TransactionReadOnly, s.name)
 	store, _ := txn.ObjectStore(s.name)
 	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
 	if err != nil {
@@ -254,7 +254,7 @@ func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) 
 
 // for reverse, prefix is the upper bound, and valid is the actual prefix
 func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error {
-	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	txn, _ := s.db.Transaction(idb.TransactionReadOnly, s.name)
 	store, _ := txn.ObjectStore(s.name)
 	if !reverse {
 		kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
@@ -331,10 +331,6 @@ func (s *QSIndexDB) doForeach(mode idb.TransactionMode, fn func([]byte, []byte, 
 }
 
 func (s *QSIndexDB) Foreach(fn func([]byte, []byte, error) error) error {
-	return s.doForeach(idb.TransactionReadWrite, fn)
-}
-
-func (s *QSIndexDB) ForeachRO(fn func([]byte, []byte, error) error) error {
 	return s.doForeach(idb.TransactionReadOnly, fn)
 }
 
