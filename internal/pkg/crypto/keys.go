@@ -2,7 +2,9 @@ package crypto
 
 import (
 	//"crypto/ecdsa"
+	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -60,4 +62,22 @@ func SignKeytoPeerKeys(key *ethkeystore.Key) (*Keys, error) {
 
 	address := ethcrypto.PubkeyToAddress(ethprivkey.PublicKey).Hex()
 	return &Keys{PrivKey: priv, PubKey: pub, EthAddr: address}, nil
+}
+
+func Libp2pPubkeyToEthaddr(pubkey string) (string, error) {
+	p2ppubkeybytes, err := p2pcrypto.ConfigDecodeKey(pubkey)
+	if err != nil {
+		return "", err
+	}
+	p2ppubkey, err := p2pcrypto.UnmarshalPublicKey(p2ppubkeybytes)
+	if err != nil {
+		return "", err
+	}
+
+	secp256k1pubkey, ok := p2ppubkey.(*p2pcrypto.Secp256k1PublicKey)
+	if ok == true {
+		btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
+		return ethcrypto.PubkeyToAddress(*btcecpubkey.ToECDSA()).Hex(), nil
+	}
+	return "", errors.New("input pubkey is not a Secp256k1PublicKey")
 }

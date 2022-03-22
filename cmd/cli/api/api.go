@@ -382,9 +382,16 @@ func GetGroupSeed(gid string) (*handlers.GroupSeed, error) {
 	return &ret, nil
 }
 
-func DoBackup() (*qApi.BackupResult, error) {
+type BackupResult struct {
+	// encrypt json.Marshal([]GroupSeed)
+	Seeds    string `json:"seeds"`
+	Keystore string `json:"keystore"`
+	Config   string `json:"config" validate:"required"`
+}
+
+func DoBackup() (*BackupResult, error) {
 	url := fmt.Sprintf("%s/api/v1/backup", ApiServer)
-	ret := qApi.BackupResult{}
+	ret := BackupResult{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err

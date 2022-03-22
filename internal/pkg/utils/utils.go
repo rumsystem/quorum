@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -45,7 +47,6 @@ func DirExist(path string) bool {
 // EnsureDir make sure `dir` exist, or create it
 func EnsureDir(dir string) error {
 	if !DirExist(dir) {
-		logger.Infof("try to create directory: %s", dir)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			logger.Errorf("make directory %s failed: %s", dir, err)
 			return err
@@ -83,4 +84,9 @@ func IsDirEmpty(name string) (bool, error) {
 		return true, nil
 	}
 	return false, err // Either not empty or error, suits both cases
+}
+
+// PathTrimExt return file path which remove `ext`
+func PathTrimExt(path string) string {
+	return strings.TrimSuffix(path, filepath.Ext(path))
 }

@@ -2,8 +2,6 @@ package utils
 
 import (
 	"archive/zip"
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -11,22 +9,25 @@ import (
 )
 
 // ZipDir zip files in a directory, do not include the directory itself
-func ZipDir(dir string) ([]byte, error) {
+func ZipDir(dir string, zipPath string) error {
 	// create a new zip archive
-	var buf bytes.Buffer
-	writer := bufio.NewWriter(&buf)
+	outZipFile, err := os.Create(zipPath)
+	if err != nil {
+		return err
+	}
+	defer outZipFile.Close()
 
 	logger.Debugf("creating zip archive...")
-	zipWriter := zip.NewWriter(writer)
+	zipWriter := zip.NewWriter(outZipFile)
 
 	// change to the directory
 	absPath, err := filepath.Abs(dir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err = os.Chdir(absPath); err != nil {
-		return nil, err
+		return err
 	}
 
 	basePath := "." // current directory
@@ -76,23 +77,18 @@ func ZipDir(dir string) ([]byte, error) {
 		return err
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := zipWriter.Close(); err != nil {
-		return nil, fmt.Errorf("zipWriter.Close failed: %s", err)
+		return fmt.Errorf("zipWriter.Close failed: %s", err)
 	}
 
-	if err := writer.Flush(); err != nil {
-		return nil, fmt.Errorf("writer.Flush failed: %s", err)
-	}
-
-	return buf.Bytes(), nil
+	return nil
 }
 
-func Unzip(zipContent []byte, dstPath string) error {
-	reader := bytes.NewReader(zipContent)
-	zipReader, err := zip.NewReader(reader, int64(len(zipContent)))
+func Unzip(zipPath string, dstPath string) error {
+	zipReader, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return err
 	}

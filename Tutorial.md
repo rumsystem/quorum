@@ -50,21 +50,17 @@ You can try:
   - [Add producer](#api-post-producer-add)
   - [Get producers](#api-get-producers)
   - [Owner remove producer](#api-post-producer-remove)
-- [DeniedList](#test-deniedlist)  <font color="red"><sup>abandoned</sup></font>
-  - [Get deniedlist](#api-get-deniedlist)
-  - [Add deniedlist](#api-post-deniedlist-add)
-  - [Del deniedlist](#api-post-deniedlist-del)
-- [Group Config](#test-group-config)
-  - [Add group config](#api-post-group-config-add)
-  - [Get group config keylist](#api-get-group-config-keylist)
-  - [Get group config keyname](#api-get-group-config-keyname)
-  - [Add group schema](#api-post-group-schema)
-  - [Get group schema](#api-get-group-schema)
+- [App Config](#test-app-config)
+  - [Add app config](#api-add-app-config)
+  - [Get app config keylist](#api-get-app-config-keylist)
+  - [Get app config key](#api-get-app-config-key)
+  - [Add app schema](#api-post-app-schema)
+  - [Get app schema](#api-get-app-schema)
 - [Private Group](#test-private-group)
   - [Announce user](#api-post-announce-user)
   - [Get announced users](#api-get-announced-users)
   - [Owner approve a user](#api-post-group-user)
-- [Chain Config: allow/deny list](#test-chainconfig) <font color="red"><sup>new</sup></font>
+- [Chain Config: allow/deny auth mode and list](#test-chainconfig) <font color="red"><sup>new</sup></font>
   - [What's new?](#about-chainconfig) <font color="red"><sup>new</sup></font>
   - [get FOLLOWING rules for certain trxType](#api-get-authtype) <font color="red"><sup>new</sup></font>
   - [Set Following rules for certain trxType](#api-set-authtype) <font color="red"><sup>new</sup></font>
@@ -200,6 +196,22 @@ RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
 
 ```bash
 go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug true
+```
+
+6. Backup/Restore
+
+> backup
+
+```bash
+RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup -backup-file /tmp/quorum-backup
+
+# note: backup file name ends with `.zip.enc`
+```
+
+> restore
+
+```bash
+restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -restore -backup-file /tmp/quorum-backup.zip.enc -configdir $restoreDir/config -datadir $restoreDir/data -keystoredir $restoreDir/keystore -seeddir $restoreDir/seeds
 ```
 
 [>>> Back to Top](#top)
@@ -1032,7 +1044,7 @@ Trx 生命周期，加密和出块过程
 |---|---|---|
 | POST | user 发送组内信息(POST Object)|[Post content](#api-post-content)|
 | ANNOUNCE | user 宣布自己在组内的公钥|[Anounce user](#api-post-announce-user)|
-| AUTH | Owner 调整组内权限|
+| AUTH | Owner 调整 chain 权限|[chainconfig](#test-chainconfig)
 | SCHEMA | Owner 管理组内数据 schema|[Group config](#test-group-config)|
 | PRODUCER|  Owner 管理组内 producer|[Producers](#test-producers)|
 
@@ -1069,7 +1081,7 @@ Trx 生命周期，加密和出块过程
 
 5. 如果超时被触发，没有查到结果，即认为发送 trx 失败，客户端可以自行处理重发
 
-* AUTH 相关的 trx 处理方式相同（[黑名单](#test-deniedlist)）
+* AUTH 相关的 trx 处理方式相同（[白名单/黑名单](#test-chainconfig)）
 
 [>>> Back to Top](#top)
 
@@ -1406,191 +1418,18 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 
 [>>> Back to Top](#top)
 
-<span id="test-deniedlist"></span>
+<span id="test-app-config"></span>
 
-# DeniedList 
+# App Config
 
-<font color="red">Apis about DeniedList are no longer available , and updated to [chain config](#test-chainconfig).</font>
+<span id="api-add-app-config"></span>
 
-<span id="api-get-deniedlist"></span>
+## Add app config 
 
-## Get deniedlist
-
-**API**: ```*/api/v1/group/{group_id}/deniedlist```
-
-- Method: GET
-- Usage : Get deniedlist
-- Params :
-  - [group_id](#param-group_id)
-
-**Example**:
-
-```bash
-curl -k -X GET -H 'Content-Type: application/json' https://127.0.0.1:8002/api/v1/group/:group_id/deniedlist
-```
-
-说明：获取一个节点禁止访问名单列表
-
-API return value:
-
-```json
-[
-    {
-        "GroupId": "f4273294-2792-4141-80ba-687ce706bc5b",
-        "PeerId": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY111",
-        "GroupOwnerPubkey": "CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==",
-        "GroupOwnerSign": "3046022100c2c07b0b03ea5a624dbe07b2cb30ad08a5282a017b873c8defbec9656ae4f8da022100a3659f8410151c811ee331de9cbdf719ec9db33170a95dddfe2c443ace36f3c3",
-        "TimeStamp": 1632514808574721034,
-        "Action": "add",
-        "Memo": ""
-    }
-]
-```
-
-数组，包含该组已经被 Owner 屏幕的用户 id 列表
-
-| Param | Description |
-| --- | --- |
-| "GroupId" |
-| "PeerId" | 被屏蔽的用户 id |
-| "GroupOwnerPubkey" | public key of group owner (ecdsa) |
-| "GroupOwnerSign" | 组拥有者的签名（可通过 pubkey 验证） |
-| "Timestamp" | 操作执行的时间戳 |
-| "Acition" | "add" |
-| "memo" |
-
-[>>> Back to Top](#top)
-
-<span id="api-post-deniedlist-add"></span>
-
-## Add deniedlist
-
-**API**: ```*/api/v1/group/deniedlist```
+**API**:  ```*/api/v1/group/appconfig```
 
 - Method: POST
-- Usage : Add deniedlist
-- Params :
-  - [peer_id](#param-peer_id)
-  - [group_id](#param-group_id)
-  - action
-
-**Example**:
-
-```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"add"}' https://127.0.0.1:8002/api/v1/group/deniedlist
-```
-
-**Params**:
-
-```json
-{
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m",
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "action": "add"
-}
-```
-
-| Param | Description |
-| --- | --- |
-| "action" | "add" |
-| "memo" | memo |
-
-说明：只有创建该组的节点才能执行此操作，也就是需要 group_owner 的权限，添加后会通过 block 广播至组中其他节点
-
-注意：黑名单操作分为 2 种情况
-
-1. 被组屏蔽的节点发出的 trx 会被 producer 或拒绝拒绝，因此无法向节点中发布内容，但是因为新块是通过广播发送的，此时该节点仍可以获得组中得新块（也即只要节点不退出，仍然可以看到新内容)
-
-2. 被组屏蔽的节点如果退出并再次打开，此时发送的 ASK_NEXT 请求将被 Owner 或 Producer 拒绝，因此无法获取节点中最新的块
-
-API return value:
-
-```json
-{
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m",
-    "owner_pubkey": "CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==",
-    "sign": "30460221008d7480261a3a33f552b268429a08f8b0ede03b4ddc8014d470d84e707a80d600022100b1616d4662f3e7f0c7594381e425e0c26cf25b66a2cef9437d320cccb0871e5b",
-    "trx_id": "2f434ac3-c2a8-494a-9c58-d03a8b51dab5",
-    "action": "add",
-    "memo": ""
-}
-```
-
-**Params**:
-
-| Param | Description |
-| --- | --- |
-| "sign" | 组拥有者的签名（可通过 pubkey 验证） |
-| "memo" | "Add" |
-
-[>>> Back to Top](#top)
-
-<span id="api-post-deniedlist-del"></span>
-
-## Del deniedlist
-
-**API**: ```*/api/v1/group/deniedlist```
-
-- Method: POST
-- Usage : Del deniedlist
-- Params :
-  - [peer_id](#param-peer_id)
-  - [group_id](#param-group_id)
-  - action
-
-**Example**:
-
-```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"del"}' http://127.0.0.1:8002/api/v1/group/deniedlist
-```
-
-**Params**:
-
-```json
-{
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222",
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "action": "del"
-}
-```
-
-API return value:
-
-```json
-{
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222",
-    "owner_pubkey": "CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==",
-    "sign": "304402202854e4ed1efa7f4bc468fe73b566d3159e001fddd2d1625008463d2812bdc85a02207f40c91a8a12a139ddd796f11947e4a809e08a31735408e401f0e4866d167852",
-    "trx_id": "41343f27-4193-425d-aa39-591aa172b4db",
-    "action": "del",
-    "memo": ""
-}
-```
-
-**Params**:
-
-| Param | Description |
-| --- | --- |
-| "sign" | 组拥有者的签名（可通过 pubkey 验证） |
-| "action" | "del" |
-| "memo" | "" |
-
-[>>> Back to Top](#top)
-
-<span id="test-group-config"></span>
-
-# Group Config
-
-<span id="api-post-group-config-add"></span>
-
-## Add group config
-
-**API**:  ```*/api/v1/group/config```
-
-- Method: POST
-- Usage : Add group config
+- Usage : Add app config
 - Params :
   - [group_id](#param-group_id)
   - action
@@ -1602,7 +1441,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"int", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/config | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"int", "value":"100", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
 ```
 
 **Params**:
@@ -1613,7 +1452,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_
     "group_id": "c8795b55-90bf-4b58-aaa0-86d11fe4e16a",
     "name": "test_bool",
     "type": "int",
-    "value": "false",
+    "value": "100",
     "memo": "add test_bool to group"
 }
 ```
@@ -1623,7 +1462,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_
 | "action" | add or del |
 | "name" | 配置项的名称 |
 | "type" | 配置项的类型，可选值为 "int", "bool", "string" |
-| "value" | 配置项的值，必须与 type 相对应 |
+| "value" | 配置项的值，必须与 type 相对应，且转换为字符串，比如`"100"`,`"false"`。原因为 json: cannot unmarshal bool into Go struct field AppConfigParam.value of type string |
 | "memo" | memo |
 
 权限：
@@ -1648,14 +1487,16 @@ API return value:
 
 [>>> Back to Top](#top)
 
-<span id="api-get-group-config-keylist"></span>
+<span id="api-get-app-config-keylist"></span>
 
-## Get group config keylist
+## Get app config keylist
+
+group 的 key 是 owner 通过 [app config](#api-add-app-config) 自行添加的。
 
 **API**:  ```*/api/v1/group/{group_id}/config/keylist```
 
 - Method: GET
-- Usage : Get group config keylist
+- Usage : Get app config keylist
 - Params :
   - [group_id](#param-group_id)
 
@@ -1686,14 +1527,14 @@ API return value:
 
 [>>> Back to Top](#top)
 
-<span id="api-get-group-config-keyname"></span>
+<span id="api-get-app-config-key"></span>
 
-## Get group config keyname
+## Get app config key
 
-**API**:  ```*/api/v1/group/{group_id}/config/{KEY_NAME}```
+**API**:  ```*/api/v1/group/{group_id}/config/{key}```
 
 - Method: GET
-- Usage : Get group config keyname
+- Usage : Get app config key
 - Params :
   - [group_id](#param-group_id)
   - key_name
@@ -1718,18 +1559,18 @@ API return value:
 }
 ```
 
-参数同[添加组内配置](#api-post-group-config-add)
+参数同[添加组内配置](#api-add-app-config)
 
 [>>> Back to Top](#top)
 
-<span id="api-post-group-schema"></span>
+<span id="api-post-app-schema"></span>
 
-## Add group schema
+## Add app schema
 
 **API**:  ```*/api/v1/group/schema```
 
 - Method: POST
-- Usage : Add group schema
+- Usage : Add app schema
 - Params :
   - [group_id](#param-group_id)
   - rule
@@ -1757,11 +1598,11 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","ty
 
 [>>> Back to Top](#top)
 
-<span id="api-get-group-schema"></span>
+<span id="api-get-app-schema"></span>
 
 ## Get group schema
 
-**API**:  ```*/api/v1/group/{group_id}/schema```
+**API**:  ```*/api/v1/group/{group_id}/app/schema```
 
 - Method: GET
 - Usage : Get group schema
@@ -1948,7 +1789,7 @@ API return value:
 
 <span id="test-chainconfig"></span>
 
-# Chain Config: allow/deny list
+# Chain Config: allow/deny auth mode and list
 
 <span id="about-chainconfig"></span>
 
@@ -1978,6 +1819,16 @@ Each trx type has their own allow/deny list and "follow" rule for the user(pubke
 - b. if trxtype is set to "FOLLOW_DNY_LIST", since the pubkey IS NOT in deny list, access will be granted.
 
 For a pubkey is denied, it CAN STILL send a trx with certain trxtype and get the trx_id, BUT owner/producer will reject this trx, that means the trx will NOT be packaged in to a block and broadcast to the group.
+
+_Rule 1 has the highest priority and Rule 3 has the lowest._
+
+For example, a trxtype (such as "POST") of a group is set to "FOLLOW_DNY_LIST" or "FOLLOW_ALW_LIST" , whatever, and a pubkey was both added to the denylist/allowlist. In this case, rule 1 is in effect, so the pubkey can send trxs of the trxtype ("POST") to the group and these trxs will be packaged in to blocks.
+
+为了让权限管理具备最好的灵活性，以上 3 条规则的优先级，由高到低生效，即第 1 条最高，第 3 条最低。
+
+设想一种特殊情况，某 pubkey 被同时加入 allow 名单和 deny 名单时，不管 authtype 是如何设置的，第 1 条已满足，于是第 1 条会生效。
+
+产品实现时，最好避免把同一个 pubkey 同时加入 allow 名单和 deny 名单。以保持 authtype 和 allow/deny 名单简约、一致、明了。
 
 Therefor the CLIENT APP should check the group authentication rules to give error message back to user.
 
@@ -2075,6 +1926,17 @@ Params:
 <span id="api-update-list"></span>
 
 ### Update allow/deny list for trxType/trxTypes
+
+<!-- 旧版本的黑名单的介绍
+
+说明：只有创建该组的节点才能执行此操作，也就是需要 group_owner 的权限，添加后会通过 block 广播至组中其他节点
+
+注意：黑名单操作分为 2 种情况
+
+1. 被组屏蔽的节点发出的 trx 会被 producer 或拒绝拒绝，因此无法向节点中发布内容，但是因为新块是通过广播发送的，此时该节点仍可以获得组中得新块（也即只要节点不退出，仍然可以看到新内容)
+
+2. 被组屏蔽的节点如果退出并再次打开，此时发送的 ASK_NEXT 请求将被 Owner 或 Producer 拒绝，因此无法获取节点中最新的块
+-->
 
 **API**: v1/group/chainconfig 
 

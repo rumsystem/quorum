@@ -180,9 +180,14 @@ func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 }
 
 func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
+	group_log.Debugf("<%s> GetAnnouncedUsers called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
+
+//func (grp *Group) GetAnnounceUser() ([]*quorumpb.AnnounceItem, error) {
+//	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
+//	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+//}
 
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
