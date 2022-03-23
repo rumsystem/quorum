@@ -57,16 +57,19 @@ You can try:
   - [Add app schema](#api-post-app-schema)
   - [Get app schema](#api-get-app-schema)
 - [Private Group](#test-private-group)
-  - [Announce user](#api-post-announce-user)
-  - [Get announced users](#api-get-announced-users)
-  - [Owner approve a user](#api-post-group-user)
-- [Chain Config: allow/deny auth mode and list](#test-chainconfig) <font color="red"><sup>new</sup></font>
-  - [What's new?](#about-chainconfig) <font color="red"><sup>new</sup></font>
-  - [get FOLLOWING rules for certain trxType](#api-get-authtype) <font color="red"><sup>new</sup></font>
-  - [Set Following rules for certain trxType](#api-set-authtype) <font color="red"><sup>new</sup></font>
-  - [Update allow/deny list for trxType/trxTypes](#api-update-list) <font color="red"><sup>new</sup></font>
-  - [Get group allow/deny list](#api-get-list) <font color="red"><sup>new</sup></font>
-  - [API Update for client api](#about-chainconfig-for-client) <font color="red"><sup>new</sup></font>
+  - [Create Private Group](#create-private-group)
+  - User Management
+    - [Announce as group user](#api-post-announce-user)
+    - [Get announced users](#api-get-announced-users)
+    - [Owner approve a user](#api-post-group-user)
+  - [Tips about chainconfig](#tips-chainconfig)
+- [Chain Config: allow/deny auth mode and list](#test-chainconfig)
+  - [What's new?](#about-chainconfig)
+  - [get FOLLOWING rules for certain trxType](#api-get-authtype)
+  - [Set Following rules for certain trxType](#api-set-authtype)
+  - [Update allow/deny list for trxType/trxTypes](#api-update-list)
+  - [Get group allow/deny list](#api-get-list)
+  - [API Update for client api](#about-chainconfig-for-client)
 
 Common params:
 
@@ -84,8 +87,8 @@ Common params:
   - [app_key](#param-app_key)
   - [consensus_type](#param-consensus_type)
   - [encryption_type](#param-encryption_type)
-  - [TrxType/trx_type](#param-trxtype) <font color="red"><sup>new</sup></font>
-  - [Authtype/trx_auth_mode](#param-authtype) <font color="red"><sup>new</sup></font>
+  - [TrxType/trx_type](#param-trxtype)
+  - [Authtype/trx_auth_mode](#param-authtype)
 
 <span id="quick-start"></span>
 
@@ -1633,17 +1636,33 @@ API return value:
 
 # Private Group
 
-强加密类型的种子网络。这类种子网络的特点是，任何人即便可以拿到 seed 并由此加入 group，但如果没被 owner approved as user，是无法获取到 content 的，即能拿到 trxs 但 trx 的 Content 字段为空。以此保证 group 的内容隐私。
+"Private" stands for encryption type.
+
+强加密类型的种子网络。这类种子网络的特点是，任何人即便可以拿到 seed 并由此加入 group，但如果没有被 owner approved as user，是无法获取到 content 的，即能拿到 trxs 但 trx 的 Content 字段为空。以此保证 group 的内容隐私。
+
+<span id="create-private-group"></span>
+
+## Create Private Group
+
+When [creating a group](#api-create-group), you need to set `encryption_type` as "private", and then you'll get a private group. 
+
+The `encryption_type` can not be changed after group was created.
+
+## User Management 
+
+Private group 的用户管理，本质上是管理解密权限。
+
+在解密权限管理上，owner 与 user 的行为一致，即 owner 应该 announce 并 approve 自己，以获得内容解密权限。其它 user 也需要 announce 自己，然后由 owner 决定是否通过该申请。
 
 **workflow**:
 
 1. Announce user's encrypt pubkey to a group
 2. view announced users
-3. approve a users
+3. Owner approve a user or remove
 
 <span id="api-post-announce-user"></span>
 
-## user: Announce user
+### Any: Announce as group user
 
 **API**: ```*/api/v1/group/announce```
 
@@ -1698,7 +1717,7 @@ API return value:
 
 <span id="api-get-announced-users"></span>
 
-## ANY: Get announced users
+### ANY: Get announced users
 
 **API**: ```*/api/v1/group/{group_id}/announced/users```
 
@@ -1738,7 +1757,7 @@ API return value:
 
 <span id="api-post-group-user"></span>
 
-## Owner approve a user or remove
+### Owner approve a user or remove
 
 **API**: ```*/api/v1/group/user```
 
@@ -1782,6 +1801,22 @@ API return value:
 | Param | Description |
 | --- | --- |
 | "sign" | signature |
+
+<span id="tips-chainconfig"></span>
+
+## Tips about chainconfig
+
+由于 private group 管理解密权限，chainconfig 管理出块权限，这两者在底层实现上是解耦的，而当 private group 创建后， auth mode 被默认设为 FOLLOW_DNY_LIST 模式，其效果为：任何加入 group 的人都可以发布内容并上链，只不过没有获得解密权限的人无法解密内容。
+
+如果 private group 的创建者想要杜绝*非目标用户*制造链上数据，只想让那些被 approved 的 user （或者只有少量指定用户）才可以发布内容并上链，那么可这样实现：
+- 创建 private group 后，立即更新 POST auth mode 设置为 FOLLOW_ALW_LIST 模式。这样所有加入 group 的人，都默认不可以发布内容上链。
+- owner 在 approve 每条 announce as user 的申请（该操作赋予该 user 内容解密权限）后：
+  - 如果希望该用户可以发布内容上链，那就把该用户也更新到 allow list；
+  - 如果不希望该用户拥有发布内容的权限，则无需任何操作。
+
+关于 auth mode 与 allow list 等 chainconfig 的具体说明，请移步：[Chain Config: allow/deny auth mode and list](test-chainconfig)。
+
+请您留意，每种 trx type 都可以单独设置 auth mode，较常见的是只修改 POST 类型的 auth mode，通常无需改动其它 trx type 的默认设置。
 
 [>>> Back to Top](#top)
 
