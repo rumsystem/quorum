@@ -182,6 +182,10 @@ func doRefresh() {
 				// check trx state, update, so it will be removed or retied in next poll
 				groupmgr := GetGroupMgr()
 				if group, ok := groupmgr.Groups[item.GroupId]; ok {
+					if group.GetSyncerStatus() != IDLE {
+						chain_log.Debugf("<pubqueue>: group is not up to date yet.")
+					}
+					// make sure data are updated to the latest change
 					trx, _, err := group.GetTrx(item.Trx.TrxId)
 					if err != nil {
 						chain_log.Errorf("<pubqueue>: %s", err.Error())
