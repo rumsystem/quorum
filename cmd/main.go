@@ -79,38 +79,6 @@ func createPubQueueDb(path string) (*storage.QSBadger, error) {
 	return &pubQueueDb, nil
 }
 
-func createDb(path string) (*storage.DbMgr, error) {
-	var err error
-	groupDb := storage.QSBadger{}
-	dataDb := storage.QSBadger{}
-	err = groupDb.Init(path + "_groups")
-	if err != nil {
-		return nil, err
-	}
-
-	err = dataDb.Init(path + "_db")
-	if err != nil {
-		return nil, err
-	}
-
-	manager := storage.DbMgr{&groupDb, &dataDb, nil, path}
-	return &manager, nil
-}
-
-func createAppDb(path string) (*appdata.AppDb, error) {
-	var err error
-	db := storage.QSBadger{}
-	err = db.Init(path + "_appdb")
-	if err != nil {
-		return nil, err
-	}
-
-	app := appdata.NewAppDb()
-	app.Db = &db
-	app.DataPath = path
-	return app, nil
-}
-
 func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 	// NOTE: hardcode seed directory path
 	seedPath := filepath.Join(filepath.Dir(dataDir), "seeds")
