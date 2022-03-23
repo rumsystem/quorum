@@ -35,10 +35,12 @@ type QuorumWasmContext struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
 
-	Qchan chan struct{}
+	Qchan        chan struct{}
+	PubqueueChan chan bool
 }
 
 func NewQuorumWasmContext(qchan chan struct{}, config *quorumConfig.BrowserConfig, node *quorumP2P.Node, ethAddr string, nodeOpt *options.NodeOptions, appDb *appdata.AppDb, dbMgr *storage.DbMgr, ctx context.Context, cancel context.CancelFunc) *QuorumWasmContext {
-	qCtx := QuorumWasmContext{ethAddr, nodeOpt, node, appDb, dbMgr, config, ctx, cancel, qchan}
+	pubqueueChan := make(chan bool)
+	qCtx := QuorumWasmContext{ethAddr, nodeOpt, node, appDb, dbMgr, config, ctx, cancel, qchan, pubqueueChan}
 	return &qCtx
 }

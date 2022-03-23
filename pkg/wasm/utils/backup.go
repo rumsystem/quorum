@@ -32,7 +32,7 @@ func KeystoreBackupRaw(password string, onWrite func(string), onFinish func()) e
 		return err
 	}
 
-	idb.ForeachRO(func(k, v []byte, e error) error {
+	idb.Foreach(func(k, v []byte, e error) error {
 		if e != nil {
 			return e
 		}

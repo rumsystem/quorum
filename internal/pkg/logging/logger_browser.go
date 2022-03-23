@@ -81,7 +81,7 @@ func (logger *BrowserLogger) Panicf(format string, args ...interface{}) {
 }
 
 func (logger *BrowserLogger) log(level int, format string, args ...interface{}) {
-	if logger.level > level {
+	if logLevel > level {
 		return
 	}
 	msg := getMessage(format, args)
