@@ -40,6 +40,13 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
+
+	//reload all announced user(if private)
+	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		group_log.Debugf("<%s> Private group load announced user key", item.GroupId)
+		grp.ChainCtx.UpdUserList()
+	}
+
 	grp.ChainCtx.CreateConsensus()
 
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
