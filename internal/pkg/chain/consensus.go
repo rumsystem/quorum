@@ -7,5 +7,5 @@ type Consensus interface {
 	Snapshot() Snapshot
 	SetProducer(p Producer)
 	SetUser(u User)
-	SetSnapShot(s Snapshot)
+	SetSnapshot(s Snapshot)
 }

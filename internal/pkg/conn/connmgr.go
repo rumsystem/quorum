@@ -318,6 +318,45 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 	return fmt.Errorf("Can not find psChannel")
 }
 
+func (connMgr *ConnMgr) SendSnapshotPsconn(snapshot *quorumpb.Snapshot, psChannel PsConnChanel, chanelId ...string) error {
+	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
+
+	var pkg *quorumpb.Package
+	pkg = &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(snapshot)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_SNAPSHOT
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	if psChannel == ProducerChannel {
+		conn_log.Debugf("<%s> Send block via Producer_Channel", connMgr.GroupId)
+		psconn := connMgr.getProducerPsConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == UserChannel {
+		conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		conn_log.Debugf("<%s> Send block via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
+		psconn, err := connMgr.getSyncConn(chanelId[0])
+		if err != nil {
+			return err
+		}
+		return psconn.Publish(pkgBytes)
+	}
+
+	return fmt.Errorf("Can not find psChannel")
+}
+
 func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
 	conn_log.Debugf("<%s> SendBlockRex called", connMgr.GroupId)
 	var pkg *quorumpb.Package

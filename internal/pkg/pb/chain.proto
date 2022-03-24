@@ -3,9 +3,9 @@ package quorum.pb;
 option go_package = "github.com/rumsystem/quorum/internal/pkg/pb";
 
 enum PackageType {
-    TRX   = 0;
-    BLOCK = 1;
-    SNAPSHOT =2;
+    TRX      = 0;
+    BLOCK    = 1;
+    SNAPSHOT = 2;
 }
 
 message Package {
@@ -73,17 +73,30 @@ message Block {
 	int64    TimeStamp      = 9; 
 }
 
-message ChainSnapshot {
-    string   MsgId        = 1;
-    string   SnapshotId   = 2;
-    int64    TotalCount   = 3;
-    int64    Count        = 4;
-    int64    Seq          = 5;
-    repeated Trx Trxs     = 6;
-    string   SenderPubkey = 7;
-    bytes    Hash         = 8;
-    bytes    Singature    = 9;
-    int64    TimeStamp    = 10;
+message Snapshot {
+    string   SnapshotId                 = 1;
+    string   SnapshotPackageId          = 2;
+    int64    TotalCount                 = 3;
+    string   GroupId                    = 4;    
+    int64    Nonce                      = 5;
+    repeated SnapshotItem SnapshotItems = 6;
+    string   SenderPubkey               = 7;
+    bytes    Hash                       = 8;
+    bytes    Singature                  = 9;
+    int64    TimeStamp                  = 10;
+    int64    HighestHeight              = 11;
+    string   HighestBlockId             = 12;
+}
+
+message SnapshotItem {
+    string           SnapshotItemId = 1;
+    SnapShotItemType Type           = 2;
+    bytes            Data           = 3; 
+}
+
+enum SnapShotItemType {
+	SNAPSHOT_APP_CONFIG   = 0;    //app_config item
+	SNAPSHOT_CHAIN_CONFIG = 1;    //chain_config item
 }
 
 message BlockDbChunk {

@@ -617,6 +617,7 @@ func (chain *Chain) CreateConsensus() error {
 
 	var user User
 	var producer Producer
+	var snapshot Snapshot
 
 	if chain.Consensus == nil || chain.Consensus.User() == nil {
 		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
@@ -639,6 +640,15 @@ func (chain *Chain) CreateConsensus() error {
 	} else {
 		chain_log.Infof("<%s> no producer created", chain.groupId)
 		producer = nil
+	}
+
+	if chain.Consensus == nil || chain.Consensus.Snapshot() == nil {
+		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
+		snapshot = &MolassesSnapshot{}
+		snapshot.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+	} else {
+		chain_log.Infof("<%s> reuse molasses snapshot", chain.groupId)
+		snapshot = chain.Consensus.Snapshot()
 	}
 
 	if chain.Consensus == nil {
@@ -712,4 +722,15 @@ func (chain *Chain) IsSyncerIdle() bool {
 	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
+}
+
+func (chain *Chain) StartSnapshot() {
+	chain_log.Debug("<%s> StartSnapshot called", chain.groupId)
+	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+		//I am producer, start snapshot ticker
+		chain_log.Debugf("<%s> Owner start snapshotgroupId", chain.groupId)
+		chain.Consensus.Snapshot().Start()
+	} else {
+		chain_log.Debugf("<%s> User wait for snapshot", chain.groupId)
+	}
 }

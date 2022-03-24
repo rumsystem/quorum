@@ -42,6 +42,8 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 
+	grp.ChainCtx.StartSnapshot()
+
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
 

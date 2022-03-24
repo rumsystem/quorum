@@ -7,5 +7,5 @@ type Snapshot interface {
 	SetInterval(sec int)
 	Start() error
 	Stop() error
-	GetSnapshot() ([]*quorumpb.Trx, error)
+	SendSnapshot() error
 }
