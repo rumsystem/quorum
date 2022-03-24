@@ -240,10 +240,6 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
-		for _, key := range keys {
-			group_log.Debugf("------> private key <%s> ", key)
-		}
-
 		if err != nil {
 			return "", err
 		}
