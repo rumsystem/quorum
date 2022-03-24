@@ -130,6 +130,21 @@ func ForceSyncGroup(groupId string) (syncRes *GroupForceSyncRetStruct, err error
 	return &ret, nil
 }
 
+func GetPubQueue(groupId string) (*handlers.PubQueueInfo, error) {
+	url := fmt.Sprintf(
+		"%s/api/v1/group/%s/pubqueue", ApiServer, groupId)
+	ret := handlers.PubQueueInfo{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil || ret.GroupId == "" {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
 func IsQuorumContentMessage(content ContentStruct) bool {
 	// only support Note
 	if content.TypeUrl == "quorum.pb.Object" {
