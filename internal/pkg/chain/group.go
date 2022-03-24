@@ -40,6 +40,13 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
+
+	//reload all announced user(if private)
+	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		group_log.Debugf("<%s> Private group load announced user key", item.GroupId)
+		grp.ChainCtx.UpdUserList()
+	}
+
 	grp.ChainCtx.CreateConsensus()
 
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
@@ -233,6 +240,10 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
+		for _, key := range keys {
+			group_log.Debugf("------> private key <%s> ", key)
+		}
+
 		if err != nil {
 			return "", err
 		}
