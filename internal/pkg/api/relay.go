@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
@@ -129,11 +128,8 @@ func SendRelayResponseByRex(relayresp *quorumpb.RelayResp, to string) error {
 	rex := nodectx.GetNodeCtx().Node.RumExchange
 	relayresp.RelayPeerId = []byte(rex.Host.ID())
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_RELAY_RESP, RelayResp: relayresp}
-	topeerid, err := peer.Decode(to)
-	if err == nil {
-		err = rex.PublishTo(rummsg, topeerid)
-	}
-	return err
+
+	return rex.PublishToPeerId(rummsg, to)
 }
 
 func SendRelayRequestByRex(relayreq *quorumpb.RelayReq) error {

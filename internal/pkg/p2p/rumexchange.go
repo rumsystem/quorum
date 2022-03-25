@@ -31,7 +31,7 @@ type Chain interface {
 	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
 }
 
-type RumHandlerFunc func(msg *quorumpb.RumMsg, s network.Stream)
+type RumHandlerFunc func(msg *quorumpb.RumMsg, s network.Stream) error
 
 type RumHandler struct {
 	Handler RumHandlerFunc
@@ -109,7 +109,6 @@ func (r *RexService) ConnectRex(ctx context.Context) error {
 
 func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIface) {
 	rumexchangelog.Debugf("disabled call chain reg : %s", groupid)
-	//fmt.Println(cdhIface)
 	_, ok := r.chainmgr[groupid]
 	if ok == false {
 		r.chainmgr[groupid] = cdhIface
@@ -118,10 +117,60 @@ func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIfa
 }
 
 //Publish to one connected peer with peer.Id
-func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
-	rumexchangelog.Debugf("publish msg to peer: %s", to)
+//func (r *RexService) PublishTo(msg *quorumpb.RumMsg, to peer.ID) error {
+//	rumexchangelog.Debugf("publish msg to peer: %s", to)
+//	ctx := context.Background()
+//	s, err := r.Host.NewStream(ctx, to, r.ProtocolId)
+//	if err != nil {
+//		rumexchangelog.Debugf("create network stream to %s err: %s", to, err)
+//		return err
+//	}
+//	defer func() { _ = s.Close() }()
+//	bufw := bufio.NewWriter(s)
+//	wc := protoio.NewDelimitedWriter(bufw)
+//	err = wc.WriteMsg(msg)
+//	if err != nil {
+//		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+//		return err
+//	} else {
+//		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
+//	}
+//	bufw.Flush()
+//	return nil
+//}
+
+func (r *RexService) PublishTo(msg *quorumpb.RumMsg, s network.Stream) error {
+	rumexchangelog.Debugf("PublishResponse msg to peer: %s", s.Conn().RemotePeer())
+	//ctx := context.Background()
+	//s, err := r.Host.NewStream(ctx, to, r.ProtocolId)
+	//if err != nil {
+	//	rumexchangelog.Debugf("create network stream to %s err: %s", to, err)
+	//	return err
+	//}
+	//defer func() { _ = s.Close() }()
+	bufw := bufio.NewWriter(s)
+	wc := protoio.NewDelimitedWriter(bufw)
+	err := wc.WriteMsg(msg)
+	if err != nil {
+		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+		return err
+	} else {
+		rumexchangelog.Debugf("writemsg to network stream succ: %s.", s.Conn().RemotePeer())
+	}
+	bufw.Flush()
+	return nil
+}
+
+func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
+	rumexchangelog.Debugf("PublishResponse msg to peer: %s", to)
 	ctx := context.Background()
-	s, err := r.Host.NewStream(ctx, to, r.ProtocolId)
+
+	toid, err := peer.Decode(to)
+	if err != nil {
+		return err
+	}
+
+	s, err := r.Host.NewStream(ctx, toid, r.ProtocolId)
 	if err != nil {
 		rumexchangelog.Debugf("create network stream to %s err: %s", to, err)
 		return err
@@ -161,13 +210,45 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 		bufw := bufio.NewWriter(s)
 		wc := protoio.NewDelimitedWriter(bufw)
 		err = wc.WriteMsg(msg)
+		bufw.Flush()
 		if err != nil {
 			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		} else {
 			succ++
 			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+			reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
+			readertimer := time.NewTimer(20 * time.Second)
+			go func() {
+				<-readertimer.C
+				if reader != nil {
+					reader.Close()
+					reader = nil
+				}
+				rumexchangelog.Debugf("timeout closed")
+			}()
+			defer func() {
+				readertimer.Stop()
+				if reader != nil {
+					reader.Close()
+					reader = nil
+				}
+			}()
+			if reader != nil {
+				msgdata, err := reader.ReadMsg()
+				if err == nil {
+					var rummsg quorumpb.RumMsg
+					err = proto.Unmarshal(msgdata, &rummsg)
+					if err == nil {
+						rumexchangelog.Debugf("read reply:")
+						fmt.Println(msgdata)
+						fmt.Println(err)
+						r.HandleRumExchangeMsg(&rummsg, s)
+					} else {
+						rumexchangelog.Warningf("msg err: %s", err)
+					}
+				}
+			}
 		}
-		bufw.Flush()
 
 	}
 
@@ -188,16 +269,33 @@ func (r *RexService) PublishToOneRandom(msg *quorumpb.RumMsg) error {
 			r.peerstore.AddIgnorePeer(p)
 			return err
 		}
-		defer func() { _ = s.Close() }()
+		defer func() {
+			_ = s.Close()
+			rumexchangelog.Debugf("defer close the stream", err)
+		}()
 		bufw := bufio.NewWriter(s)
 		wc := protoio.NewDelimitedWriter(bufw)
 		err = wc.WriteMsg(msg)
+		bufw.Flush()
 		if err != nil {
 			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		} else {
-			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+			rumexchangelog.Debugf("writemsg to network stream succ: %s. wait the response", p)
+			reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
+			//TEST reader close
+			readertimer := time.NewTimer(10 * time.Second)
+			go func() {
+				<-readertimer.C
+				reader.Close()
+				rumexchangelog.Debugf("timeout closed")
+			}()
+			defer readertimer.Stop()
+			msgdata, err := reader.ReadMsg()
+			rumexchangelog.Debugf("read reply:")
+			fmt.Println(msgdata)
+			fmt.Println(err)
 		}
-		bufw.Flush()
+
 	}
 	return err
 }
@@ -206,6 +304,33 @@ func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) 
 	noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
 	r.notificationch <- noti
 	rumexchangelog.Debugf("join channel %s notification emit %s.", connrespmsg.ChannelId, r.Host.ID())
+}
+
+func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Stream) {
+	switch rummsg.MsgType {
+	case quorumpb.RumMsgType_RELAY_REQ, quorumpb.RumMsgType_RELAY_RESP:
+		for _, v := range r.msgtypehandlers {
+			if v.Name == "rumrelay" {
+				v.Handler(rummsg, s)
+				break
+			}
+		}
+	case quorumpb.RumMsgType_IF_CONN, quorumpb.RumMsgType_CONN_RESP:
+		for _, v := range r.msgtypehandlers {
+			if v.Name == "rumsession" {
+				v.Handler(rummsg, s)
+				break
+			}
+		}
+	case quorumpb.RumMsgType_CHAIN_DATA:
+		rumexchangelog.Debugf("type is CHAIN_DATA")
+		for _, v := range r.msgtypehandlers {
+			if v.Name == "rumchaindata" {
+				v.Handler(rummsg, s)
+				break
+			}
+		}
+	}
 }
 
 func (r *RexService) Handler(s network.Stream) {
@@ -224,49 +349,26 @@ func (r *RexService) Handler(s network.Stream) {
 		var rummsg quorumpb.RumMsg
 		err = proto.Unmarshal(msgdata, &rummsg)
 		if err == nil {
-			switch rummsg.MsgType {
-			case quorumpb.RumMsgType_RELAY_REQ, quorumpb.RumMsgType_RELAY_RESP:
-				for _, v := range r.msgtypehandlers {
-					if v.Name == "rumrelay" {
-						v.Handler(&rummsg, s)
-						break
-					}
-				}
-			case quorumpb.RumMsgType_IF_CONN, quorumpb.RumMsgType_CONN_RESP:
-				for _, v := range r.msgtypehandlers {
-					if v.Name == "rumsession" {
-						v.Handler(&rummsg, s)
-						break
-					}
-				}
-			case quorumpb.RumMsgType_CHAIN_DATA:
-				rumexchangelog.Debugf("type is CHAIN_DATA")
-				for _, v := range r.msgtypehandlers {
-					if v.Name == "rumchaindata" {
-						v.Handler(&rummsg, s)
-						break
-					}
-				}
-			}
+			r.HandleRumExchangeMsg(&rummsg, s)
 		} else {
 			rumexchangelog.Warningf("msg err: %s", err)
 		}
 	}
 }
 
-func (r *RexService) handlePackage(frompeerid peer.ID, pkg *quorumpb.Package) {
+func (r *RexService) handlePackage(pkg *quorumpb.Package, s network.Stream) {
 	if pkg.Type == quorumpb.PackageType_TRX {
-		rumexchangelog.Infof("receive a trx, from %s", frompeerid)
+		rumexchangelog.Infof("receive a trx, from %s", s.Conn().RemotePeer())
 		var trx *quorumpb.Trx
 		trx = &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
 			chainDataHandler, ok := r.chainmgr[trx.GroupId]
 			if ok == true {
-				r.peerstore.Save(trx.GroupId, frompeerid, peerstoreTTL)
-				chainDataHandler.HandleTrxRex(trx, frompeerid)
+				r.peerstore.Save(trx.GroupId, s.Conn().RemotePeer(), peerstoreTTL)
+				chainDataHandler.HandleTrxRex(trx, s)
 			} else {
-				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
+				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, s.Conn().RemotePeer())
 			}
 		} else {
 			rumexchangelog.Warningf(err.Error())

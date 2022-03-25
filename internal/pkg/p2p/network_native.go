@@ -160,7 +160,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	}
 
 	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
-	//RumExchange: rexservice, RumSession: rexsession,
+	//RumExchange: rexservice
 
 	//reconnect peers
 
@@ -186,20 +186,16 @@ func (node *Node) SetRumExchange(ctx context.Context, dbmgr *storage.DbMgr) {
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	var rexservice *RexService
-	var rexsession *RexSession
 	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
-	//rexsession = NewRexSession(rexservice)
 	rexchaindata := NewRexChainData(rexservice)
 	rexrelay := NewRexRelay(rexservice, dbmgr)
-	//rexservice.SetHandlerMatchMsgType("rumsession", rexsession.Handler)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
 	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
 	networklog.Infof("Enable protocol RumExchange")
 
 	node.peerStatus = peerStatus
 	node.RumExchange = rexservice
-	node.RumSession = rexsession
 
 	if rexnotification != nil {
 		go node.rexhandler(ctx, rexnotification)

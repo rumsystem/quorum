@@ -6,7 +6,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/network"
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
@@ -183,13 +183,9 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 
 	//Rex
 	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
-
 	if nodectx.GetNodeCtx().Node.RumExchange != nil {
 		nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 	}
-
-	//initial rex session
-	//connMgr.InitRexSession()
 
 	//initial ps conn for user channel and sync channel
 	connMgr.InitialPsConn()
@@ -210,12 +206,6 @@ func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey str
 	return nil
 }
 
-func (connMgr *ConnMgr) UpdateProviderPeerIdPool(peerPubkey, peerId string) error {
-	conn_log.Debugf("UpdateProviderPeerIdPool called, groupId <%s>", connMgr.GroupId)
-	connMgr.ProviderPeerIdPool[peerPubkey] = peerId
-	return connMgr.InitRexSession()
-}
-
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	conn_log.Debugf("AddProducer, groupId <%s>", connMgr.GroupId)
 	connMgr.ProducerPool = make(map[string]string)
@@ -233,26 +223,6 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 		connMgr.StableProdPsConn = false
 	}
 
-	return nil
-}
-
-func (connMgr *ConnMgr) InitRexSession() error {
-	conn_log.Debugf("InitSession called, groupId <%s>", connMgr.GroupId)
-	if peerId, ok := connMgr.ProviderPeerIdPool[connMgr.OwnerPubkey]; ok {
-		if nodectx.GetNodeCtx().Node.RumSession == nil {
-			return nil
-		}
-		err := nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, connMgr.ProducerChannelId)
-		if err != nil {
-			return err
-		}
-		err = nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, connMgr.SyncChannelId)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf(ERR_CAN_NOT_FIND_OWENR_PEER_ID)
-	}
 	return nil
 }
 
@@ -417,7 +387,7 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 	return fmt.Errorf("Can not find psChannel")
 }
 
-func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
+func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
@@ -434,10 +404,10 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	if to == "" {
+	if s == nil {
 		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
 	} else {
-		return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
+		return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, s)
 	}
 }
 

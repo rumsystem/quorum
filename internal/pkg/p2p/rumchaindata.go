@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"github.com/libp2p/go-libp2p-core/network"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -14,7 +15,7 @@ func NewRexChainData(rex *RexService) *RexChainData {
 	return &RexChainData{rex: rex}
 }
 
-func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) {
+func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error {
 	frompeerid := s.Conn().RemotePeer()
 	pkg := rummsg.DataPackage
 	if pkg.Type == quorumpb.PackageType_TRX {
@@ -25,7 +26,7 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) {
 		if err == nil {
 			targetchain, ok := r.rex.chainmgr[trx.GroupId]
 			if ok == true {
-				targetchain.HandleTrxRex(trx, frompeerid)
+				return targetchain.HandleTrxRex(trx, s)
 			} else {
 				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
 			}
@@ -36,4 +37,5 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) {
 		rumexchangelog.Warningf("receive a non-trx package, %s", pkg.Type)
 	}
 
+	return fmt.Errorf("unsupported trx type: %s", pkg.Type)
 }
