@@ -405,9 +405,9 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
 	if s == nil {
-		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
+		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg) //publish to all(or some random) peers
 	} else {
-		return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, s)
+		return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 	}
 }
 
