@@ -60,7 +60,7 @@ You can try:
   - [Create Private Group](#create-private-group)
   - User Management
     - [Announce as group user](#api-post-announce-user)
-    - [Get announced users](#api-get-announced-users)
+    - [Get announced users or a user](#api-get-announced-users)
     - [Owner approve a user](#api-post-group-user)
   - [Tips about chainconfig](#tips-chainconfig)
 - [Chain Config: allow/deny auth mode and list](#test-chainconfig)
@@ -414,6 +414,7 @@ API return value:
             "group_name": "my_test_group",
             "owner_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
             "user_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
+            "user_eth_addr": "0x721d91555b2Ecf34aa87E3566E34cDcDbaf125DF",
             "consensus_type": "POA",
             "encryption_type": "PUBLIC",
             "cipher_key": "f4ee312ef7331a2897b547da0387d56a7fe3ea5796e0b628f892786d1e7ec15d",
@@ -430,10 +431,13 @@ API return value:
 - Params:
     * [consensus_type](#param-consensus_type) 
     * [encryption_type](#param-encryption_type)
+    * user_eth_addr <sup>[1]</sup>
     * cipher_key
     * last_updated
     * highest_height      <sup>[2]</sup>
     * highest_block_id    <sup>[3]</sup>
+
+<sup>[1]</sup> The eth address of current user. 当前用户的 ETH 地址。
 
 <sup>[2]</sup> Heighty of the "highest" block in this group
 
@@ -1657,7 +1661,7 @@ Private group 的用户管理，本质上是管理解密权限。
 **workflow**:
 
 1. Announce user's encrypt pubkey to a group
-2. view announced users
+2. view announced users or a user
 3. Owner approve a user or remove
 
 <span id="api-post-announce-user"></span>
@@ -1717,12 +1721,14 @@ API return value:
 
 <span id="api-get-announced-users"></span>
 
-### ANY: Get announced users
+### ANY: Get announced users or a user
 
 **API**: ```*/api/v1/group/{group_id}/announced/users```
 
+**API**: ```*/api/v1/group/{group_id}/announced/user/{pubkey}```
+
 - Method: GET
-- Usage : get announced users
+- Usage : get announced users or a user
 - Params :
   - [group_id](#param-group_id)
 
@@ -1730,6 +1736,10 @@ API return value:
 
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/users
+```
+
+```bash
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/user/CAISIQMaZWI95T0kxDNcB3DxO0T/BraC1gEKxZRVihcxevtUgg==
 ```
 
 API return value:
