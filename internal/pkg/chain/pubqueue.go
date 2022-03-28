@@ -95,7 +95,7 @@ func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 
 func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQueueItem, error) {
 	items := []*PublishQueueItem{}
-	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
+	publishQueueWatcher.db.PrefixForeach([]byte(fmt.Sprintf("%s_%s", PUBQUEUE_PREFIX, groupId)), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
 			// continue
@@ -142,25 +142,6 @@ func doRefresh() {
 		return
 	}
 	publishQueueWatcher.running = true
-
-	// remove succeed trx (wasm compatable)
-	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
-		if err != nil {
-			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			// continue
-			return false, nil
-		}
-		item, err := ParsePublishQueueItem(k, v)
-		if err != nil {
-			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			return false, nil
-		}
-		if item.State == PublishQueueItemStateSuccess {
-			return true, nil
-		}
-
-		return false, nil
-	})
 
 	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
 		if err != nil {
