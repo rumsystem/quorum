@@ -18,8 +18,8 @@ import (
 
 const (
 	Hours = 0
-	Mins  = 5
-	Sec   = 0
+	Mins  = 0
+	Sec   = 30
 )
 
 const OBJECT_SIZE_LIMIT = 200 * 1024 //(200Kb)
