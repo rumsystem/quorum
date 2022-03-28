@@ -68,6 +68,17 @@ func checkLockError(err error) {
 	}
 }
 
+func createPubQueueDb(path string) (*storage.QSBadger, error) {
+	var err error
+	pubQueueDb := storage.QSBadger{}
+	err = pubQueueDb.Init(path + "_pubqueue")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pubQueueDb, nil
+}
+
 func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 	// NOTE: hardcode seed directory path
 	seedPath := filepath.Join(filepath.Dir(dataDir), "seeds")
@@ -324,6 +335,14 @@ func mainRet(config cli.Config) int {
 		if nodeoptions.IsRexTestMode == true {
 			chain.GetGroupMgr().SetRumExchangeTestMode()
 		}
+
+		// init the publish queue watcher
+		doneCh := make(chan bool)
+		pubqueueDb, err := createPubQueueDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		chain.InitPublishQueueWatcher(doneCh, pubqueueDb)
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()
