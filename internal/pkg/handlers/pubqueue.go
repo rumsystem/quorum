@@ -17,3 +17,7 @@ func GetPubQueue(groupId string) (*PubQueueInfo, error) {
 
 	return &ret, nil
 }
+
+func PubQueueAck(trxIds []string) ([]string, error) {
+	return chain.GetPubQueueWatcher().Ack(trxIds)
+}

@@ -112,6 +112,32 @@ func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQue
 	return items, nil
 }
 
+func (watcher *PublishQueueWatcher) Ack(trxIds []string) ([]string, error) {
+	acked := []string{}
+
+	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err.Error())
+			// continue
+			return false, err
+		}
+		item, err := ParsePublishQueueItem(k, v)
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err.Error())
+			return false, err
+		}
+		for _, trxId := range trxIds {
+			if item.Trx.TrxId == trxId {
+				acked = append(acked, trxId)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+
+	return acked, nil
+}
+
 var publishQueueWatcher PublishQueueWatcher = PublishQueueWatcher{}
 
 func GetPubQueueWatcher() *PublishQueueWatcher {
