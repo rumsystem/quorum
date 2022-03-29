@@ -42,7 +42,7 @@ type PubQueueAckPayload struct {
 // @Description ack pubqueue trxs
 // @Accept json
 // @Produce json
-// @Param data body []string
+// @Param data body PubQueueAckPayload
 // @Success 200 {object} []string
 // @Router /api/v1/trx/ack [post]
 func (h *Handler) PubQueueAck(c echo.Context) (err error) {
