@@ -30,6 +30,12 @@ const (
 	MAX_RETRY_COUNT              = 10
 )
 
+var autoAck bool = false
+
+func SetAutoAck(ack bool) {
+	autoAck = ack
+}
+
 func (item *PublishQueueItem) GetKey() ([]byte, error) {
 	// PREFIX_GROUPID_TRXID
 	validStates := []string{PublishQueueItemStatePending, PublishQueueItemStateSuccess, PublishQueueItemStateFail}
@@ -178,6 +184,31 @@ func doRefresh() {
 		return
 	}
 	publishQueueWatcher.running = true
+
+	if autoAck {
+		// auto remove
+		publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
+			if err != nil {
+				chain_log.Warnf("<pubqueue>: %s", err.Error())
+				// continue
+				return false, nil
+			}
+			item, err := ParsePublishQueueItem(k, v)
+			if err != nil {
+				chain_log.Warnf("<pubqueue>: %s", err.Error())
+				return false, nil
+			}
+			if item.State == PublishQueueItemStateSuccess {
+				return true, nil
+			}
+
+			if item.State == PublishQueueItemStateFail && item.RetryCount > MAX_RETRY_COUNT {
+				return true, nil
+			}
+
+			return false, nil
+		})
+	}
 
 	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
 		if err != nil {
