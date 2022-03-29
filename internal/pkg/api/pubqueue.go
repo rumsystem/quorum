@@ -31,6 +31,10 @@ func (h *Handler) GetPubQueue(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, info)
 }
 
+type PubQueueAckPayload struct {
+	TrxIds []string `json:"trx_ids"`
+}
+
 // @Tags Chain
 // @Summary PubQueueAck
 // @Description ack pubqueue trxs
@@ -41,13 +45,18 @@ func (h *Handler) GetPubQueue(c echo.Context) (err error) {
 // @Router /api/v1/trx/ack [post]
 func (h *Handler) PubQueueAck(c echo.Context) (err error) {
 	output := make(map[string]string)
-	trxIds := []string{}
-	if err = c.Bind(trxIds); err != nil {
+	payload := &PubQueueAckPayload{}
+	if err = c.Bind(payload); err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	res, err := handlers.PubQueueAck(trxIds)
+	if len(payload.TrxIds) == 0 {
+		output[ERROR_INFO] = "trx_ids is empty"
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
+	res, err := handlers.PubQueueAck(payload.TrxIds)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
