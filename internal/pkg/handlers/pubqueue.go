@@ -7,8 +7,8 @@ type PubQueueInfo struct {
 	Data    []*chain.PublishQueueItem
 }
 
-func GetPubQueue(groupId string) (*PubQueueInfo, error) {
-	items, err := chain.GetPubQueueWatcher().GetGroupItems(groupId)
+func GetPubQueue(groupId string, status string, trxId string) (*PubQueueInfo, error) {
+	items, err := chain.GetPubQueueWatcher().GetGroupItems(groupId, status, trxId)
 	if err != nil {
 		return nil, err
 	}

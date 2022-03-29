@@ -16,12 +16,14 @@ import (
 func (h *Handler) GetPubQueue(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupId := c.Param("group_id")
+	trxId := c.QueryParam("trx")
+	status := c.QueryParam("status")
 	if groupId == "" {
 		output[ERROR_INFO] = "group_id can't be nil."
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	info, err := handlers.GetPubQueue(groupId)
+	info, err := handlers.GetPubQueue(groupId, status, trxId)
 	if err != nil {
 		output := make(map[string]interface{})
 		output[ERROR_INFO] = err.Error()

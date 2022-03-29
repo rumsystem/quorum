@@ -93,7 +93,7 @@ func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 	return publishQueueWatcher.db.Set(newK, newV)
 }
 
-func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQueueItem, error) {
+func (watcher *PublishQueueWatcher) GetGroupItems(groupId string, status string, trxId string) ([]*PublishQueueItem, error) {
 	items := []*PublishQueueItem{}
 	publishQueueWatcher.db.PrefixForeach([]byte(fmt.Sprintf("%s_%s", PUBQUEUE_PREFIX, groupId)), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -106,7 +106,17 @@ func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQue
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
 			return nil
 		}
-		items = append(items, item)
+		valid := true
+		if status != "" {
+			valid = valid && (item.State == status)
+		}
+		if trxId != "" {
+			valid = valid && (item.Trx.TrxId == trxId)
+		}
+		if valid {
+			items = append(items, item)
+		}
+
 		return nil
 	})
 	return items, nil
