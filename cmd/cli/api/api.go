@@ -130,9 +130,9 @@ func ForceSyncGroup(groupId string) (syncRes *GroupForceSyncRetStruct, err error
 	return &ret, nil
 }
 
-func GetPubQueue(groupId string) (*handlers.PubQueueInfo, error) {
+func GetPubQueue(groupId string, trxId string, status string) (*handlers.PubQueueInfo, error) {
 	url := fmt.Sprintf(
-		"%s/api/v1/group/%s/pubqueue", ApiServer, groupId)
+		"%s/api/v1/group/%s/pubqueue?trx=%s&status=%s", ApiServer, groupId, trxId, status)
 	ret := handlers.PubQueueInfo{}
 	body, err := httpGet(url)
 	if err != nil {

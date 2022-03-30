@@ -20,6 +20,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
+	"github.com/rumsystem/quorum/cmd/cli/utils"
 )
 
 var quorumPage = cview.NewFlex()
@@ -907,6 +908,7 @@ func goQuorumNick(nick string) {
 	} else {
 		cmdInput.SetLabel(fmt.Sprintf("Nickname TRX %s Sent: ", ret.TrxId))
 		cmdInput.SetText("Wait for syncing...")
+		go goAutoAckGroupTrx(curGroup)
 	}
 }
 
@@ -917,7 +919,7 @@ func goQuorumJWT() {
 	} else {
 		if ret.Token != "" {
 			cmdInput.SetLabel(fmt.Sprintf("JWT saved: "))
-			cmdInput.SetLabel(ret.Token)
+			cmdInput.SetText(ret.Token)
 			config.RumConfig.Quorum.JWT = ret.Token
 			quorumData.StartTicker(QuorumRefreshAll)
 		}
@@ -933,29 +935,29 @@ func goQuorumCreateContent(content string) {
 		} else {
 			cmdInput.SetLabel(fmt.Sprintf("TRX %s: ", ret.TrxId))
 			cmdInput.SetText("Syncing with peers..")
-			// validate the trx to check if it is succeed
-			go func() {
-				select {
-				case <-time.After(30 * time.Second):
-					trxInfo, err := api.TrxInfo(curGroup, ret.TrxId)
-					if err != nil {
-						Error("Timed Out", fmt.Sprintf(
-							"Content not found in 30s. Please check trx status in pubqueue.\nTRX: %s\n%s\n%s", ret.TrxId, content, err.Error()))
-					} else {
-						if trxInfo.TrxId != ret.TrxId {
-							Error("Timed Out", fmt.Sprintf("Content not found in 30s.\nTRX: %s\n%s", ret.TrxId, content))
-							return
-						}
-						_, err := api.PubQueueAck([]string{trxInfo.TrxId})
-						if err != nil {
-							Error("Failed to ACK trx", fmt.Sprintf(
-								"ACK error: %s.\nTRX: %s\n%s\n", err.Error(), ret.TrxId, content))
-						}
-					}
-				}
-			}()
+			go goAutoAckGroupTrx(curGroup)
 			App.SetFocus(contentView)
 		}
+	}
+}
+
+func goAutoAckGroupTrx(groupId string) {
+	trxIds, err := utils.CheckTrx(groupId, "", "")
+	if err != nil {
+		Error("Failed to check trx info from pubqueue", err.Error())
+		return
+	}
+	if len(trxIds) > 0 {
+		cmdInput.SetLabel(fmt.Sprintf("[%d] TRX ACKED: ", len(trxIds)))
+		info := ""
+		for idx, tId := range trxIds {
+			if idx >= 2 {
+				info += ".."
+				break
+			}
+			info += fmt.Sprintf("%s ", tId)
+		}
+		cmdInput.SetText(info)
 	}
 }
 
