@@ -145,6 +145,25 @@ func GetPubQueue(groupId string) (*handlers.PubQueueInfo, error) {
 	return &ret, nil
 }
 
+func PubQueueAck(trxIds []string) ([]string, error) {
+	url := fmt.Sprintf("%s/api/v1/trx/ack", ApiServer)
+	param := qApi.PubQueueAckPayload{trxIds}
+	payload, err := json.Marshal(&param)
+	if err != nil {
+		return nil, err
+	}
+	ret := []string{}
+	body, err := httpPost(url, payload)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
 func IsQuorumContentMessage(content ContentStruct) bool {
 	// only support Note
 	if content.TypeUrl == "quorum.pb.Object" {
