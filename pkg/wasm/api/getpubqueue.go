@@ -7,6 +7,10 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 )
 
-func GetPubQueue(groupId string) (*handlers.PubQueueInfo, error) {
-	return handlers.GetPubQueue(groupId)
+func GetPubQueue(groupId string, status string, trxId string) (*handlers.PubQueueInfo, error) {
+	return handlers.GetPubQueue(groupId, status, trxId)
+}
+
+func PubQueueAck(trxIds []string) ([]string, error) {
+	return handlers.PubQueueAck(trxIds)
 }
