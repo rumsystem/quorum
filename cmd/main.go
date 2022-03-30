@@ -436,6 +436,9 @@ func main() {
 	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
 
 	config, err := cli.ParseFlags()
+
+	chain.SetAutoAck(config.AutoAck)
+
 	lvl, err := logging.LevelFromString("info")
 	logging.SetAllLoggers(lvl)
 	logging.SetLogLevel("appsync", "error")
