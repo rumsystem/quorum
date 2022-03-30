@@ -940,10 +940,16 @@ func goQuorumCreateContent(content string) {
 					trxInfo, err := api.TrxInfo(curGroup, ret.TrxId)
 					if err != nil {
 						Error("Timed Out", fmt.Sprintf(
-							"Content not found in 30s.\nTRX: %s\n%s\n%s", ret.TrxId, content, err.Error()))
+							"Content not found in 30s. Please check trx status in pubqueue.\nTRX: %s\n%s\n%s", ret.TrxId, content, err.Error()))
 					} else {
 						if trxInfo.TrxId != ret.TrxId {
 							Error("Timed Out", fmt.Sprintf("Content not found in 30s.\nTRX: %s\n%s", ret.TrxId, content))
+							return
+						}
+						_, err := api.PubQueueAck([]string{trxInfo.TrxId})
+						if err != nil {
+							Error("Failed to ACK trx", fmt.Sprintf(
+								"ACK error: %s.\nTRX: %s\n%s\n", err.Error(), ret.TrxId, content))
 						}
 					}
 				}
