@@ -424,16 +424,12 @@ func main() {
 	update := flag.Bool("update", false, "Update to the latest version")
 	updateFrom := flag.String("from", "github", "Update from: github/qingcloud, default to github")
 
-	// restore flag
+	// backup/restore flag
 	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
-	backupFile := flag.String("backup-file", "", "the backup file for restoring")
-	password := flag.String("password", "", "the password for restoring")
-	/*
-		keystoreDir := flag.String("keystore-dir", "", "the directory path for restoring")
-		configDir := flag.String("config-dir", "", "the config directory for restoring")
-	*/
-	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
 	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
+	backupFile := flag.String("backup-file", "", "the backup file for restoring")
+	password := flag.String("password", "", "the password for backuping/restoring")
+	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
 
 	config, err := cli.ParseFlags()
 
@@ -537,10 +533,11 @@ func main() {
 	}
 
 	if *isRestore {
-		passwd := *password
-		if passwd == "" {
-			passwd = os.Getenv("RUM_KSPASSWD")
+		passwd, err := handlers.GetKeystorePassword(*password)
+		if err != nil {
+			mainlog.Fatalf("handlers.GetKeystorePassword failed: %s", err)
 		}
+
 		params := handlers.RestoreParam{
 			Peername:    config.PeerName,
 			BackupFile:  *backupFile,
@@ -555,7 +552,7 @@ func main() {
 	}
 
 	if *isBackup {
-		handlers.Backup(config, *backupFile)
+		handlers.Backup(config, *backupFile, *password)
 		return
 	}
 	if err := utils.EnsureDir(config.DataDir); err != nil {

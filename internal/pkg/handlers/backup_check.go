@@ -157,7 +157,8 @@ func loadAndDecryptTrx(blockDbDir, seedDir string) error {
 				seedPath := filepath.Join(seedDir, fmt.Sprintf("%s.json", groupId))
 				seed, err := loadGroupSeed(seedPath)
 				if err != nil {
-					return fmt.Errorf("load group seed from backuped file failed: %s", err)
+					logger.Warningf("load group seed from backuped file failed: %s", err)
+					continue
 				}
 				ciperKey, err := hex.DecodeString(seed.CipherKey)
 				if err != nil {

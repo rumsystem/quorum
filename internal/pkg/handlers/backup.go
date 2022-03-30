@@ -47,12 +47,12 @@ func getBlockPrefixKey() string {
 }
 
 // Backup backup block from data db and {config,keystore,seeds} directory
-func Backup(config cli.Config, dstPath string) {
+func Backup(config cli.Config, dstPath string, password string) {
 	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
 		logger.Fatalf("backup directory %s is exists", dstPath)
 	}
 
-	password, err := GetKeystorePassword()
+	password, err := GetKeystorePassword(password)
 	if err != nil {
 		logger.Fatalf("GetKeystorePassword failed: %s", err)
 	}
@@ -120,7 +120,11 @@ func Backup(config cli.Config, dstPath string) {
 }
 
 // GetKeystorePassword get password for keystore
-func GetKeystorePassword() (string, error) {
+func GetKeystorePassword(_password string) (string, error) {
+	if _password != "" {
+		return _password, nil
+	}
+
 	password := os.Getenv("RUM_KSPASSWD")
 	if password != "" {
 		return password, nil
