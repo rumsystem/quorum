@@ -49,7 +49,7 @@ func getBlockPrefixKey() string {
 // Backup backup block from data db and {config,keystore,seeds} directory
 func Backup(config cli.Config, dstPath string) {
 	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
-		logger.Fatalf("backup directory %s is exists")
+		logger.Fatalf("backup directory %s is exists", dstPath)
 	}
 
 	password, err := GetKeystorePassword()
