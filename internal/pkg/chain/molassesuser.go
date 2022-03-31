@@ -179,7 +179,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply trxs
-	err = user.applyTrxs(trxs, user.nodename)
+	err = user.applyTrxs(trxs, block, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	return nil
 }
 
-func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error {
+func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, block *quorumpb.Block, nodename string) error {
 	molauser_log.Debugf("<%s> applyTrxs called", user.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
@@ -298,8 +298,20 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			trx.Data = decryptData
 		}
 
+		//apply trx
 		molauser_log.Debugf("<%s> try apply trx <%s>", user.groupId, trx.TrxId)
-		//apply trx content
+
+		//check if snapshotTag is available
+		if trx.Type != quorumpb.TrxType_POST {
+			snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(trx.GroupId, nodename)
+			if err == nil && snapshotTag != nil {
+				if snapshotTag.HighestHeight > user.grpItem.HighestHeight {
+					molauser_log.Debugf("<%s> snapshotTag exist, trx already applied, ignore <%s>", user.groupId, trx.TrxId)
+					continue
+				}
+			}
+		}
+
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
 			molauser_log.Debugf("<%s> apply POST trx", user.groupId)

@@ -28,6 +28,7 @@ const TRX_AUTH_TYPE_PREFIX string = "trx_auth" //trx auth type
 const ALLW_LIST_PREFIX string = "alw_list"     //allow list
 const DENY_LIST_PREFIX string = "dny_list"     //deny list
 const NONCE_PREFIX string = "nonce"            //group trx nonce
+const SNAPSHOT_PREFIX string = "snapshot"      //group snapshot
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
@@ -634,6 +635,61 @@ func (dbMgr *DbMgr) UpdateChainConfig(trx *quorumpb.Trx, prefix ...string) (err 
 	}
 }
 
+func (dbMgr *DbMgr) UpdSnapshotChainConfig(data []byte, prefix ...string) (err error) {
+	dbmgr_log.Infof("UpdateChainConfig called")
+	nodeprefix := getPrefix(prefix...)
+	item := &quorumpb.ChainConfigItem{}
+
+	if err := proto.Unmarshal(data, item); err != nil {
+		dbmgr_log.Infof(err.Error())
+		return err
+	}
+
+	if item.Type == quorumpb.ChainConfigType_SET_TRX_AUTH_MODE {
+		authModeItem := &quorumpb.SetTrxAuthModeItem{}
+		if err := proto.Unmarshal(item.Data, authModeItem); err != nil {
+			dbmgr_log.Infof(err.Error())
+			return err
+		}
+
+		key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + authModeItem.Type.String()
+		return dbMgr.Db.Set([]byte(key), data)
+	} else if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST ||
+		item.Type == quorumpb.ChainConfigType_UPD_DNY_LIST {
+		ruleListItem := &quorumpb.ChainSendTrxRuleListItem{}
+		if err := proto.Unmarshal(item.Data, ruleListItem); err != nil {
+			return err
+		}
+
+		var key string
+		if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST {
+			key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + ALLW_LIST_PREFIX + "_" + ruleListItem.Pubkey
+		} else {
+			key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + DENY_LIST_PREFIX + "_" + ruleListItem.Pubkey
+		}
+
+		dbmgr_log.Infof("key %s", key)
+
+		if ruleListItem.Action == quorumpb.ActionType_ADD {
+			//TBD, check config conflict
+			//if pubkey in both allow list and deny list, should check no conflict for trxType
+			return dbMgr.Db.Set([]byte(key), data)
+		} else {
+			exist, err := dbMgr.Db.IsExist([]byte(key))
+			if !exist {
+				if err != nil {
+					return err
+				}
+				return errors.New("key Not Found")
+			}
+		}
+
+		return dbMgr.Db.Delete([]byte(key))
+	} else {
+		return errors.New("Unsupported ChainConfig type")
+	}
+}
+
 func (dbMgr *DbMgr) GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error) {
 	nodoeprefix := getPrefix(prefix...)
 	key := nodoeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + trxType.String()
@@ -860,6 +916,35 @@ func (dbMgr *DbMgr) UpdateAppConfig(trx *quorumpb.Trx, Prefix ...string) (err er
 	if item.Action == quorumpb.ActionType_ADD {
 		dbmgr_log.Infof("Add AppConfig item")
 		return dbMgr.Db.Set([]byte(key), trx.Data)
+	} else if item.Action == quorumpb.ActionType_REMOVE {
+		dbmgr_log.Infof("Remove AppConfig item")
+		exist, err := dbMgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return errors.New("AppConfig key not Found")
+		}
+
+		return dbMgr.Db.Delete([]byte(key))
+	} else {
+		return errors.New("Unknown ACTION")
+	}
+}
+
+func (dbMgr *DbMgr) UpdSnapshotAppConfig(data []byte, Prefix ...string) (err error) {
+	nodeprefix := getPrefix(Prefix...)
+	item := &quorumpb.AppConfigItem{}
+	if err := proto.Unmarshal(data, item); err != nil {
+		return err
+	}
+
+	dbmgr_log.Debugf("<%s> <%s> <%s> <%s>", item.Action, item.Name, item.Type, item.Value)
+	key := nodeprefix + APP_CONFIG_PREFIX + "_" + item.GroupId + "_" + item.Name
+
+	if item.Action == quorumpb.ActionType_ADD {
+		dbmgr_log.Infof("Add AppConfig item")
+		return dbMgr.Db.Set([]byte(key), data)
 	} else if item.Action == quorumpb.ActionType_REMOVE {
 		dbmgr_log.Infof("Remove AppConfig item")
 		exist, err := dbMgr.Db.IsExist([]byte(key))
@@ -1250,6 +1335,40 @@ func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (nonce uint64
 	key := nodeprefix + NONCE_PREFIX + "_" + groupId
 	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
 	return seq.Next()
+}
+
+//update group snapshot
+func (dbMgr *DbMgr) UpdateSnapshotTag(groupId string, snapshotTag *quorumpb.SnapShotTag, prefix ...string) error {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
+	value, err := proto.Marshal(snapshotTag)
+	if err != nil {
+		return err
+	}
+	return dbMgr.Db.Set([]byte(key), value)
+}
+
+func (dbMgr *DbMgr) GetSnapshotTag(groupId string, prefix ...string) (*quorumpb.SnapShotTag, error) {
+	nodeprefix := getPrefix(prefix...)
+	key := nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
+
+	//check if item exist
+	exist, err := dbMgr.Db.IsExist([]byte(key))
+	if !exist {
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.New("SnapshotTag Not Found")
+	}
+
+	snapshotTag := quorumpb.SnapShotTag{}
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	err = proto.Unmarshal(value, &snapshotTag)
+	return &snapshotTag, err
 }
 
 func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error) {

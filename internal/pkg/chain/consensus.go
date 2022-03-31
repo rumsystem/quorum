@@ -4,8 +4,10 @@ type Consensus interface {
 	Name() string
 	Producer() Producer
 	User() User
-	Snapshot() Snapshot
+	SnapshotSender() SnapshotSender
+	SnapshotReceiver() SnapshotReceiver
 	SetProducer(p Producer)
 	SetUser(u User)
-	SetSnapshot(s Snapshot)
+	SetSnapshotSender(sss SnapshotSender)
+	SetSnapshotReceiver(ssr SnapshotReceiver)
 }

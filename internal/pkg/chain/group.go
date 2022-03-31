@@ -42,6 +42,7 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 
+	//start send snapshot
 	grp.ChainCtx.StartSnapshot()
 
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
@@ -57,6 +58,9 @@ func (grp *Group) Teardown() {
 
 	//unregisted chainctx with conn
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+
+	//stop snapshot
+	grp.ChainCtx.StopSnapshot()
 
 	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
 }
@@ -123,6 +127,9 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
+
+	//start send snapshot
+	grp.ChainCtx.StartSnapshot()
 
 	return nil
 }

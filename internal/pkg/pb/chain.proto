@@ -81,11 +81,11 @@ message Snapshot {
     int64    Nonce                      = 5;
     repeated SnapshotItem SnapshotItems = 6;
     string   SenderPubkey               = 7;
-    bytes    Hash                       = 8;
-    bytes    Singature                  = 9;
-    int64    TimeStamp                  = 10;
-    int64    HighestHeight              = 11;
-    string   HighestBlockId             = 12;
+    bytes    Singature                  = 8;
+    int64    TimeStamp                  = 9;
+    int64    HighestHeight              = 10;
+    string   HighestBlockId             = 11;
+    bytes    ItemsHash                  = 12;
 }
 
 message SnapshotItem {
@@ -97,6 +97,16 @@ message SnapshotItem {
 enum SnapShotItemType {
 	SNAPSHOT_APP_CONFIG   = 0;    //app_config item
 	SNAPSHOT_CHAIN_CONFIG = 1;    //chain_config item
+}
+
+message SnapShotTag {
+    int64  TimeStamp                  = 1;
+    int64  HighestHeight              = 2;
+    string HighestBlockId             = 3;
+    bytes  ItemsHash                  = 4;
+    int64  Nonce                      = 5;   
+    string SnapshotPackageId          = 6;
+    string SenderPubkey               = 7;
 }
 
 message BlockDbChunk {

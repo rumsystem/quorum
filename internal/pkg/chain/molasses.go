@@ -3,14 +3,15 @@ package chain
 //"fmt"
 
 type Molasses struct {
-	name     string
-	producer Producer
-	user     User
-	snapshot Snapshot
+	name       string
+	producer   Producer
+	user       User
+	sssender   SnapshotSender
+	ssreceiver SnapshotReceiver
 }
 
-func NewMolasses(p Producer, u User) *Molasses {
-	return &Molasses{name: "Molasses", producer: p, user: u}
+func NewMolasses(p Producer, u User, sss SnapshotSender, ssr SnapshotReceiver) *Molasses {
+	return &Molasses{name: "Molasses", producer: p, user: u, sssender: sss, ssreceiver: ssr}
 }
 
 func (m *Molasses) Name() string {
@@ -25,8 +26,12 @@ func (m *Molasses) User() User {
 	return m.user
 }
 
-func (m *Molasses) Snapshot() Snapshot {
-	return m.snapshot
+func (m *Molasses) SnapshotSender() SnapshotSender {
+	return m.sssender
+}
+
+func (m *Molasses) SnapshotReceiver() SnapshotReceiver {
+	return m.ssreceiver
 }
 
 func (m *Molasses) SetProducer(p Producer) {
@@ -37,6 +42,10 @@ func (m *Molasses) SetUser(u User) {
 	m.user = u
 }
 
-func (m *Molasses) SetSnapshot(s Snapshot) {
-	m.snapshot = s
+func (m *Molasses) SetSnapshotSender(sss SnapshotSender) {
+	m.sssender = sss
+}
+
+func (m *Molasses) SetSnapshotReceiver(ssr SnapshotReceiver) {
+	m.ssreceiver = ssr
 }
