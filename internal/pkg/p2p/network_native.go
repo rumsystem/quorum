@@ -252,10 +252,6 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 						connectedCount++
 					}
 				}
-				if node.RumExchange != nil {
-					networklog.Infof("have new peers, try to connect with rumexchange...")
-					node.RumExchange.ConnectRex(ctx)
-				}
 			}
 			if connectedCount >= maxpeers {
 				if notify == false {

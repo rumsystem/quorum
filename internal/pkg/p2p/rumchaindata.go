@@ -18,6 +18,7 @@ func NewRexChainData(rex *RexService) *RexChainData {
 func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error {
 	frompeerid := s.Conn().RemotePeer()
 	pkg := rummsg.DataPackage
+
 	if pkg.Type == quorumpb.PackageType_TRX {
 		rumexchangelog.Infof("receive a trx, from %s", frompeerid)
 		var trx *quorumpb.Trx
