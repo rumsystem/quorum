@@ -548,6 +548,7 @@ func main() {
 			SeedDir:     *seedDir,
 		}
 		restore(params)
+
 		return
 	}
 
@@ -555,6 +556,7 @@ func main() {
 		handlers.Backup(config, *backupFile, *password)
 		return
 	}
+
 	if err := utils.EnsureDir(config.DataDir); err != nil {
 		panic(err)
 	}
@@ -632,9 +634,11 @@ func restore(params handlers.RestoreParam) {
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,
 	)
+	defer os.RemoveAll("certs") // NOTE: HARDCODE
+
 	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
 	ctx := context.Background()
-	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
+	checkctx, _ := context.WithTimeout(ctx, 300*time.Second)
 	if ok := testnode.CheckApiServerRunning(checkctx, peerBaseUrl); !ok {
 		mainlog.Fatal("api server start failed")
 	}

@@ -20,7 +20,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func checkSignAndEncryptWithKeystore(keystoreName, keystoreDir, configDir, peerName, password string) error {
+func CheckSignAndEncryptWithKeystore(keystoreName, keystoreDir, configDir, peerName, password string) error {
 	ks, _, err := localcrypto.InitDirKeyStore(keystoreName, keystoreDir)
 	if err != nil {
 		return fmt.Errorf("localcrypto.InitKeystore failed: %s", err)
