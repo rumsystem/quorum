@@ -12,6 +12,7 @@ import (
 type PubqueueDataModel struct {
 	Groups        qApi.GroupInfoList
 	Trxs          []*chain.PublishQueueItem
+	Cache         map[string][]*chain.PublishQueueItem
 	CurGroup      string
 	TickerCh      chan struct{}
 	TickerRunning bool
@@ -98,4 +99,17 @@ func (m *PubqueueDataModel) SetTrxs(trxs []*chain.PublishQueueItem) {
 	defer m.RWMutex.Unlock()
 
 	m.Trxs = trxs
+}
+
+func (m *PubqueueDataModel) GetCache(gid string) ([]*chain.PublishQueueItem, bool) {
+	m.RLock()
+	defer m.RUnlock()
+	data, ok := m.Cache[gid]
+	return data, ok
+}
+
+func (m *PubqueueDataModel) UpdateCache(gid string, contents []*chain.PublishQueueItem) {
+	m.RWMutex.Lock()
+	defer m.RWMutex.Unlock()
+	m.Cache[gid] = contents
 }
