@@ -45,6 +45,7 @@ func Restore(params RestoreParam) {
 	if err != nil {
 		logger.Fatalf("os.Open(%s) failed: %s", encZipPath, err)
 	}
+	defer encZipFile.Close()
 
 	zipFile, err := age.Decrypt(encZipFile, identities...)
 	if err != nil {
@@ -59,6 +60,7 @@ func Restore(params RestoreParam) {
 	if err := ioutil.WriteFile(zipFilePath, buf.Bytes(), 0600); err != nil {
 		logger.Fatalf("ioutil.WriteFile failed: %s", err)
 	}
+	defer os.Remove(zipFilePath)
 
 	absZipFilePath, err := filepath.Abs(zipFilePath)
 	if err != nil {
@@ -69,6 +71,7 @@ func Restore(params RestoreParam) {
 	if err := utils.Unzip(zipFilePath, absUnZipDir); err != nil {
 		logger.Fatalf("unzip backup zip archive failed: %v", err)
 	}
+	defer os.RemoveAll(absUnZipDir)
 
 	// copy config dir
 	if err := utils.CheckAndCreateDir(params.ConfigDir); err != nil {
