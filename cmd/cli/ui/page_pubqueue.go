@@ -11,8 +11,10 @@ import (
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
+	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
 
 var pubqueuePage = cview.NewFlex()
@@ -167,9 +169,8 @@ func goPubqueueTrx() {
 		// get all trx in current queue
 		trxs, err := api.GetPubQueue(curGroup, "", "")
 		checkFatalError(err)
-		if len(trxs.Data) > 0 {
-			pubqueueData.SetTrxs(trxs.Data)
-		}
+		pubqueueData.SetTrxs(trxs.Data)
+		drawPubqueueContent()
 	}
 }
 
@@ -208,8 +209,13 @@ func drawPubqueueGroups() {
 
 func drawPubqueueContent() {
 	pubqueuePageRight.Clear()
+	cipherKey := ""
+	groupType := "PUBLIC"
+
 	for _, group := range pubqueueData.GetGroups().GroupInfos {
 		if group.GroupId == pubqueueData.GetCurrentGroup() {
+			cipherKey = group.CipherKey
+			groupType = group.EncryptionType
 			fmt.Fprintf(pubqueuePageRight, "Name:   %s\n", group.GroupName)
 			fmt.Fprintf(pubqueuePageRight, "ID:     %s\n", group.GroupId)
 			fmt.Fprintf(pubqueuePageRight, "Owner:  %s\n", group.OwnerPubKey)
@@ -228,6 +234,27 @@ func drawPubqueueContent() {
 	for i, trx := range trxs {
 		fmt.Fprintf(pubqueuePageRight, "[\"%d\"][::b]%s[-:-:-]\n", i, trx.Trx.TrxId)
 		fmt.Fprintf(pubqueuePageRight, "Updated: %s\n", time.Unix(0, trx.UpdateAt))
+		fmt.Fprintf(pubqueuePageRight, "State: %s\n", trx.State)
+		fmt.Fprintf(pubqueuePageRight, "RetryCount: %d\n", trx.RetryCount)
+
+		fmt.Fprintf(pubqueuePageRight, "\t- trx %s\n", trx.Trx.TrxId)
+		trxData, err := decodeTrxData(groupType, cipherKey, trx.Trx.Data)
+		if err != nil {
+			fmt.Fprintf(pubqueuePageRight, "\t[red:]Failed to decode: %s[-:-:-]\n", err.Error())
+		} else {
+			trxContent, typeUrl, err := quorumpb.BytesToMessage(trx.Trx.TrxId, trxData)
+			if err != nil {
+				config.Logger.Error(err)
+				fmt.Fprintf(pubqueuePageRight, "\t[red:]Failed to decode: %s[-:-:-]\n", err.Error())
+			} else {
+				fmt.Fprintf(pubqueuePageRight, "\t\t - TypeUrl: %s\n", typeUrl)
+				contentStr := fmt.Sprintf("%s", trxContent)
+				if len(contentStr) > 1024 {
+					contentStr = contentStr[0:1024] + "..."
+				}
+				fmt.Fprintf(pubqueuePageRight, "\t\t - Content: %s\n", contentStr)
+			}
+		}
 
 		fmt.Fprintf(pubqueuePageRight, "\n\n")
 	}
