@@ -591,22 +591,22 @@ func (producer *MolassesProducer) applyTrxs(trxs []*quorumpb.Trx) error {
 			nodectx.GetDbMgr().AddPost(trx, producer.nodename)
 		case quorumpb.TrxType_PRODUCER:
 			molaproducer_log.Debugf("<%s> apply PRODUCER trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateProducer(trx, producer.nodename)
+			nodectx.GetDbMgr().UpdateProducerTrx(trx, producer.nodename)
 			producer.cIface.UpdProducerList()
 			producer.cIface.CreateConsensus()
 		case quorumpb.TrxType_USER:
 			molaproducer_log.Debugf("<%s> apply USER trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateUser(trx, producer.nodename)
+			nodectx.GetDbMgr().UpdateUserTrx(trx, producer.nodename)
 			producer.cIface.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			molaproducer_log.Debugf("<%s> apply ANNOUNCE trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateAnnounce(trx, producer.nodename)
+			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, producer.nodename)
 		case quorumpb.TrxType_APP_CONFIG:
 			molaproducer_log.Debugf("<%s> apply APP_CONFIG trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateAppConfig(trx, producer.nodename)
+			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, producer.nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			molaproducer_log.Debugf("<%s> apply CHAIN_CONFIG trx", producer.groupId)
-			nodectx.GetDbMgr().UpdateChainConfig(trx, producer.nodename)
+			nodectx.GetDbMgr().UpdateChainConfigTrx(trx, producer.nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molaproducer_log.Debugf("<%s> apply SCHEMA trx", producer.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, producer.nodename)

@@ -97,6 +97,9 @@ message SnapshotItem {
 enum SnapShotItemType {
 	SNAPSHOT_APP_CONFIG   = 0;    //app_config item
 	SNAPSHOT_CHAIN_CONFIG = 1;    //chain_config item
+    SNAPSHOT_PRODUCER     = 2;    //producer item
+    SNAPSHOT_USER         = 3;    //user item
+    SNAPSHOT_ANNOUNCE     = 4;    //announce item
 }
 
 message SnapShotTag {

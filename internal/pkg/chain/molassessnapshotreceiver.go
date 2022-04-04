@@ -137,15 +137,33 @@ func (ssreceiver *MolassesSnapshotReceiver) VerifySignature(s *quorumpb.Snapshot
 
 func (ssreceiver *MolassesSnapshotReceiver) applySnapshot(snapshots map[string]*quorumpb.Snapshot) error {
 	snapshotreceiver_log.Debugf("<%s> applySnapshot called", ssreceiver.groupId)
+	var prefix []string
+	prefix[0] = ssreceiver.nodename
+
 	for _, snapshot := range snapshots {
 		for _, snapshotdata := range snapshot.SnapshotItems {
 			if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_APP_CONFIG {
-				err := nodectx.GetDbMgr().UpdSnapshotAppConfig(snapshotdata.Data)
+				err := nodectx.GetDbMgr().UpdateAppConfig(snapshotdata.Data, prefix)
 				if err != nil {
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_CHAIN_CONFIG {
-				err := nodectx.GetDbMgr().UpdSnapshotChainConfig(snapshotdata.Data)
+				err := nodectx.GetDbMgr().UpdateChainConfig(snapshotdata.Data, prefix)
+				if err != nil {
+					return err
+				}
+			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_ANNOUNCE {
+				err := nodectx.GetDbMgr().UpdateAnnounce(snapshotdata.Data, prefix)
+				if err != nil {
+					return err
+				}
+			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_PRODUCER {
+				err := nodectx.GetDbMgr().UpdateProducer(snapshotdata.Data, prefix)
+				if err != nil {
+					return err
+				}
+			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_USER {
+				err := nodectx.GetDbMgr().UpdateUser(snapshotdata.Data, prefix)
 				if err != nil {
 					return err
 				}

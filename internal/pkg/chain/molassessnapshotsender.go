@@ -244,5 +244,47 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 		result = append(result, snapshotItem)
 	}
 
+	var users [][]byte
+	users, err = nodectx.GetDbMgr().GetAllUserInBytes(sssender.groupId, sssender.nodename)
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range users {
+		var snapshotItem *quorumpb.SnapshotItem
+		snapshotItem = &quorumpb.SnapshotItem{}
+		snapshotItem.SnapshotItemId = guuid.New().String()
+		snapshotItem.Type = quorumpb.SnapShotItemType_SNAPSHOT_USER
+		snapshotItem.Data = user
+		result = append(result, snapshotItem)
+	}
+
+	var producers [][]byte
+	users, err = nodectx.GetDbMgr().GetAllProducerInBytes(sssender.groupId, sssender.nodename)
+	if err != nil {
+		return nil, err
+	}
+	for _, producer := range producers {
+		var snapshotItem *quorumpb.SnapshotItem
+		snapshotItem = &quorumpb.SnapshotItem{}
+		snapshotItem.SnapshotItemId = guuid.New().String()
+		snapshotItem.Type = quorumpb.SnapShotItemType_SNAPSHOT_PRODUCER
+		snapshotItem.Data = producer
+		result = append(result, snapshotItem)
+	}
+
+	var announces [][]byte
+	announces, err = nodectx.GetDbMgr().GetAllAnnounceInBytes(sssender.groupId, sssender.nodename)
+	if err != nil {
+		return nil, err
+	}
+	for _, announce := range announces {
+		var snapshotItem *quorumpb.SnapshotItem
+		snapshotItem = &quorumpb.SnapshotItem{}
+		snapshotItem.SnapshotItemId = guuid.New().String()
+		snapshotItem.Type = quorumpb.SnapShotItemType_SNAPSHOT_ANNOUNCE
+		snapshotItem.Data = announce
+		result = append(result, snapshotItem)
+	}
+
 	return result, nil
 }
