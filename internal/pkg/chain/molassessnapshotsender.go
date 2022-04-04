@@ -16,8 +16,8 @@ import (
 
 var snapshotsender_log = logging.Logger("sssender")
 
-const DEFAULT_SNAPSHOT_INTERVAL time.Duration = 5 //60s
-const PACKAGE_TOTAL_SIZE int = 900 * 1024         //Maximum package payload is 900K
+const DEFAULT_SNAPSHOT_INTERVAL time.Duration = 60 //60s
+const PACKAGE_TOTAL_SIZE int = 900 * 1024          //Maximum package payload is 900K
 
 type SnapshotSenderStatus int
 

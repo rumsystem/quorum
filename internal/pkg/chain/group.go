@@ -158,6 +158,10 @@ func (grp *Group) GetSyncerStatus() int8 {
 	return grp.ChainCtx.syncer.Status
 }
 
+func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
+	return grp.ChainCtx.GetSnapshotTag()
+}
+
 func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
 	group_log.Debugf("<%s> GetGroupCtn called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetGrpCtnt(grp.Item.GroupId, filter, grp.ChainCtx.nodename)

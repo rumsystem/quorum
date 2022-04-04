@@ -648,6 +648,14 @@ func (chain *Chain) UpdUserList() {
 	}
 }
 
+func (chain *Chain) GetSnapshotTag() (tag *quorumpb.SnapShotTag, err error) {
+	if chain.Consensus.SnapshotReceiver() != nil {
+		return chain.Consensus.SnapshotReceiver().GetTag(), nil
+	} else {
+		return nil, errors.New("Sender don't have snapshot tag")
+	}
+}
+
 func (chain *Chain) CreateConsensus() error {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
 

@@ -78,12 +78,12 @@ func (ssreceiver *MolassesSnapshotReceiver) ApplySnapshot(s *quorumpb.Snapshot) 
 	snapshotpackage, _ := ssreceiver.snapshotpackages[s.SnapshotPackageId]
 
 	if len(snapshotpackage) == int(s.TotalCount) {
-		snapshotreceiver_log.Debugf("<%s> apply snapshot", s.GroupId)
+		snapshotreceiver_log.Debugf("<%s> try apply snapshot", s.GroupId)
 		if ssreceiver.snapshotTag.HighestBlockId == s.HighestBlockId &&
 			ssreceiver.snapshotTag.HighestHeight == s.HighestHeight {
 			snapshotreceiver_log.Debugf("<%s> snapshot already applied, only update snapshot tag", s.GroupId)
 		} else {
-			err := ssreceiver.applySnapshot(snapshotpackage)
+			err := ssreceiver.doApply(snapshotpackage)
 			if err != nil {
 				return err
 			}
@@ -135,10 +135,14 @@ func (ssreceiver *MolassesSnapshotReceiver) VerifySignature(s *quorumpb.Snapshot
 	return verify, err
 }
 
-func (ssreceiver *MolassesSnapshotReceiver) applySnapshot(snapshots map[string]*quorumpb.Snapshot) error {
-	snapshotreceiver_log.Debugf("<%s> applySnapshot called", ssreceiver.groupId)
+func (ssreceiver *MolassesSnapshotReceiver) GetTag() *quorumpb.SnapShotTag {
+	return ssreceiver.snapshotTag
+}
+
+func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorumpb.Snapshot) error {
+	snapshotreceiver_log.Debugf("<%s> apply called", ssreceiver.groupId)
 	var prefix []string
-	prefix[0] = ssreceiver.nodename
+	prefix = append(prefix, ssreceiver.nodename)
 
 	for _, snapshot := range snapshots {
 		for _, snapshotdata := range snapshot.SnapshotItems {
