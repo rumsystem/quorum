@@ -151,6 +151,7 @@ func NewHTTPClient() (*http.Client, error) {
 		RootCAs:      caCertPool,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
+
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
 	client := &http.Client{Timeout: 30 * time.Second, Transport: transport}
