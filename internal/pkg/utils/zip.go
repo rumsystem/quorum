@@ -10,6 +10,8 @@ import (
 
 // ZipDir zip files in a directory, do not include the directory itself
 func ZipDir(dir string, zipPath string) error {
+	logger.Infof("creating zip archive for %s => %s ...", dir, zipPath)
+
 	// create a new zip archive
 	outZipFile, err := os.Create(zipPath)
 	if err != nil {
@@ -17,8 +19,15 @@ func ZipDir(dir string, zipPath string) error {
 	}
 	defer outZipFile.Close()
 
-	logger.Debugf("creating zip archive...")
 	zipWriter := zip.NewWriter(outZipFile)
+	defer zipWriter.Close()
+
+	// do not change working directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get current directory failed: %s", err)
+	}
+	defer os.Chdir(currentDir)
 
 	// change to the directory
 	absPath, err := filepath.Abs(dir)
@@ -32,7 +41,7 @@ func ZipDir(dir string, zipPath string) error {
 
 	basePath := "." // current directory
 	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
-		logger.Infof("write %s to archive...", path)
+		logger.Debugf("write %s to archive...", path)
 		if err != nil {
 			return err
 		}

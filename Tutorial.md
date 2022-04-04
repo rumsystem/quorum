@@ -59,16 +59,19 @@ You can try:
   - [Get App config keylist](#api-get-app-config-keylist)
   - [Get App config keyname](#api-get-app-config-keyname)
 - [Private Group](#test-private-group)
-  - [Announce user](#api-post-announce-user)
-  - [Get announced users](#api-get-announced-users)
-  - [Owner approve a user](#api-post-group-user)
-- [Chain Config: allow/deny list](#test-chainconfig) <font color="red"><sup>new</sup></font>
-  - [What's new?](#about-chainconfig) <font color="red"><sup>new</sup></font>
-  - [get FOLLOWING rules for certain trxType](#api-get-authtype) <font color="red"><sup>new</sup></font>
-  - [Set Following rules for certain trxType](#api-set-authtype) <font color="red"><sup>new</sup></font>
-  - [Update allow/deny list for trxType/trxTypes](#api-update-list) <font color="red"><sup>new</sup></font>
-  - [Get group allow/deny list](#api-get-list) <font color="red"><sup>new</sup></font>
-  - [API Update for client api](#about-chainconfig-for-client) <font color="red"><sup>new</sup></font>
+  - [Create Private Group](#create-private-group)
+  - User Management
+    - [Announce as group user](#api-post-announce-user)
+    - [Get announced users or a user](#api-get-announced-users)
+    - [Owner approve a user](#api-post-group-user)
+  - [Tips about chainconfig](#tips-chainconfig)
+- [Chain Config: allow/deny auth mode and list](#test-chainconfig)
+  - [What's new?](#about-chainconfig)
+  - [get FOLLOWING rules for certain trxType](#api-get-authtype)
+  - [Set Following rules for certain trxType](#api-set-authtype)
+  - [Update allow/deny list for trxType/trxTypes](#api-update-list)
+  - [Get group allow/deny list](#api-get-list)
+  - [API Update for client api](#about-chainconfig-for-client)
 
 Common params:
 
@@ -86,8 +89,8 @@ Common params:
   - [app_key](#param-app_key)
   - [consensus_type](#param-consensus_type)
   - [encryption_type](#param-encryption_type)
-  - [TrxType/trx_type](#param-trxtype) <font color="red"><sup>new</sup></font>
-  - [Authtype/trx_auth_mode](#param-authtype) <font color="red"><sup>new</sup></font>
+  - [TrxType/trx_type](#param-trxtype)
+  - [Authtype/trx_auth_mode](#param-authtype)
 
 <span id="quick-start"></span>
 
@@ -413,6 +416,7 @@ API return value:
             "group_name": "my_test_group",
             "owner_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
             "user_pubkey": "CAISIQP67zriZHvC+OWv1X8QzFIwm8CKIM+5KRx1FsUSHQoKxg==",
+            "user_eth_addr": "0x721d91555b2Ecf34aa87E3566E34cDcDbaf125DF",
             "consensus_type": "POA",
             "encryption_type": "PUBLIC",
             "cipher_key": "f4ee312ef7331a2897b547da0387d56a7fe3ea5796e0b628f892786d1e7ec15d",
@@ -437,11 +441,14 @@ API return value:
 - Params:
     * [consensus_type](#param-consensus_type) 
     * [encryption_type](#param-encryption_type)
+    * user_eth_addr <sup>[1]</sup>
     * cipher_key
     * last_updated
     * highest_height      <sup>[2]</sup>
     * highest_block_id    <sup>[3]</sup>
     * snapshot_info
+
+<sup>[1]</sup> The eth address of current user. 当前用户的 ETH 地址。
 
 <sup>[2]</sup> Heighty of the "highest" block in this group
 
@@ -1055,7 +1062,7 @@ Trx 生命周期，加密和出块过程
 |---|---|---|
 | POST | user 发送组内信息(POST Object)|[Post content](#api-post-content)|
 | ANNOUNCE | user 宣布自己在组内的公钥|[Anounce user](#api-post-announce-user)|
-| AUTH | Owner 调整组内权限|
+| AUTH | Owner 调整 chain 权限|[chainconfig](#test-chainconfig)
 | SCHEMA | Owner 管理组内数据 schema|[Group config](#test-group-config)|
 | PRODUCER|  Owner 管理组内 producer|[Producers](#test-producers)|
 
@@ -1092,7 +1099,7 @@ Trx 生命周期，加密和出块过程
 
 5. 如果超时被触发，没有查到结果，即认为发送 trx 失败，客户端可以自行处理重发
 
-* AUTH 相关的 trx 处理方式相同（[黑名单](#test-deniedlist)）
+* AUTH 相关的 trx 处理方式相同（[白名单/黑名单](#test-chainconfig)）
 
 [>>> Back to Top](#top)
 
@@ -1429,178 +1436,11 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 
 [>>> Back to Top](#top)
 
-<span id="test-deniedlist"></span>
+<span id="test-app-config"></span>
 
-# DeniedList 
+# App Config
 
-<font color="red">Apis about DeniedList are no longer available , and updated to [chain config](#test-chainconfig).</font>
-
-<span id="api-get-deniedlist"></span>
-
-## Get deniedlist
-
-**API**: ```*/api/v1/group/{group_id}/deniedlist```
-
-- Method: GET
-- Usage : Get deniedlist
-- Params :
-  - [group_id](#param-group_id)
-
-**Example**:
-
-```bash
-curl -k -X GET -H 'Content-Type: application/json' https://127.0.0.1:8002/api/v1/group/:group_id/deniedlist
-```
-
-说明：获取一个节点禁止访问名单列表
-
-API return value:
-
-```json
-[
-    {
-        "GroupId": "f4273294-2792-4141-80ba-687ce706bc5b",
-        "PeerId": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY111",
-        "GroupOwnerPubkey": "CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==",
-        "GroupOwnerSign": "3046022100c2c07b0b03ea5a624dbe07b2cb30ad08a5282a017b873c8defbec9656ae4f8da022100a3659f8410151c811ee331de9cbdf719ec9db33170a95dddfe2c443ace36f3c3",
-        "TimeStamp": 1632514808574721034,
-        "Action": "add",
-        "Memo": ""
-    }
-]
-```
-
-数组，包含该组已经被 Owner 屏幕的用户 id 列表
-
-| Param | Description |
-| --- | --- |
-| "GroupId" |
-| "PeerId" | 被屏蔽的用户 id |
-| "GroupOwnerPubkey" | public key of group owner (ecdsa) |
-| "GroupOwnerSign" | 组拥有者的签名（可通过 pubkey 验证） |
-| "Timestamp" | 操作执行的时间戳 |
-| "Acition" | "add" |
-| "memo" |
-
-[>>> Back to Top](#top)
-
-<span id="api-post-deniedlist-add"></span>
-
-## Add deniedlist
-
-**API**: ```*/api/v1/group/deniedlist```
-
-- Method: POST
-- Usage : Add deniedlist
-- Params :
-  - [peer_id](#param-peer_id)
-  - [group_id](#param-group_id)
-  - action
-
-**Example**:
-
-```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"add"}' https://127.0.0.1:8002/api/v1/group/deniedlist
-```
-
-**Params**:
-
-```json
-{
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m",
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "action": "add"
-}
-```
-
-| Param | Description |
-| --- | --- |
-| "action" | "add" |
-| "memo" | memo |
-
-说明：只有创建该组的节点才能执行此操作，也就是需要 group_owner 的权限，添加后会通过 block 广播至组中其他节点
-
-注意：黑名单操作分为 2 种情况
-
-1. 被组屏蔽的节点发出的 trx 会被 producer 或拒绝拒绝，因此无法向节点中发布内容，但是因为新块是通过广播发送的，此时该节点仍可以获得组中得新块（也即只要节点不退出，仍然可以看到新内容)
-
-2. 被组屏蔽的节点如果退出并再次打开，此时发送的 ASK_NEXT 请求将被 Owner 或 Producer 拒绝，因此无法获取节点中最新的块
-
-API return value:
-
-```json
-{
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJYt7m",
-    "owner_pubkey": "CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==",
-    "sign": "30460221008d7480261a3a33f552b268429a08f8b0ede03b4ddc8014d470d84e707a80d600022100b1616d4662f3e7f0c7594381e425e0c26cf25b66a2cef9437d320cccb0871e5b",
-    "trx_id": "2f434ac3-c2a8-494a-9c58-d03a8b51dab5",
-    "action": "add",
-    "memo": ""
-}
-```
-
-**Params**:
-
-| Param | Description |
-| --- | --- |
-| "sign" | 组拥有者的签名（可通过 pubkey 验证） |
-| "memo" | "Add" |
-
-[>>> Back to Top](#top)
-
-<span id="api-post-deniedlist-del"></span>
-
-## Del deniedlist
-
-**API**: ```*/api/v1/group/deniedlist```
-
-- Method: POST
-- Usage : Del deniedlist
-- Params :
-  - [peer_id](#param-peer_id)
-  - [group_id](#param-group_id)
-  - action
-
-**Example**:
-
-```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"peer_id":"QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222","group_id":"f4273294-2792-4141-80ba-687ce706bc5b", "action":"del"}' http://127.0.0.1:8002/api/v1/group/deniedlist
-```
-
-**Params**:
-
-```json
-{
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222",
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "action": "del"
-}
-```
-
-API return value:
-
-```json
-{
-    "group_id": "f4273294-2792-4141-80ba-687ce706bc5b",
-    "peer_id": "QmQZcijmay86LFCDFiuD8ToNhZwCYZ9XaNpeDWVWWJY222",
-    "owner_pubkey": "CAISIQMOjdI2nmRsvg7de3phG579MvqSDkn3lx8TEpiY066DSg==",
-    "sign": "304402202854e4ed1efa7f4bc468fe73b566d3159e001fddd2d1625008463d2812bdc85a02207f40c91a8a12a139ddd796f11947e4a809e08a31735408e401f0e4866d167852",
-    "trx_id": "41343f27-4193-425d-aa39-591aa172b4db",
-    "action": "del",
-    "memo": ""
-}
-```
-
-**Params**:
-
-| Param | Description |
-| --- | --- |
-| "sign" | 组拥有者的签名（可通过 pubkey 验证） |
-| "action" | "del" |
-| "memo" | "" |
-
-[>>> Back to Top](#top)
+<span id="api-add-app-config"></span>
 
 <span id="test-app-config"></span>
 
@@ -1646,7 +1486,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_
 | "action" | add or del |
 | "name" | 配置项的名称 |
 | "type" | 配置项的类型，可选值为 "int", "bool", "string" |
-| "value" | 配置项的值，必须与 type 相对应 |
+| "value" | 配置项的值，必须与 type 相对应，且转换为字符串，比如`"100"`,`"false"`。原因为 json: cannot unmarshal bool into Go struct field AppConfigParam.value of type string |
 | "memo" | memo |
 
 权限：
@@ -1673,12 +1513,14 @@ API return value:
 
 <span id="api-get-app-config-keylist"></span>
 
-## Get group config keylist
+## Get app config keylist
+
+group 的 key 是 owner 通过 [app config](#api-add-app-config) 自行添加的。
 
 **API**:  ```*/api/v1/group/{group_id}/appconfig/keylist```
 
 - Method: GET
-- Usage : Get group config keylist
+- Usage : Get app config keylist
 - Params :
   - [group_id](#param-group_id)
 
@@ -1711,12 +1553,12 @@ API return value:
 
 <span id="api-get-app-config-keyname"></span>
 
-## Get group config keyname
+## Get app config key
 
 **API**:  ```*/api/v1/group/{group_id}/appconfig/{KEY_NAME}```
 
 - Method: GET
-- Usage : Get group config keyname
+- Usage : Get app config key
 - Params :
   - [group_id](#param-group_id)
   - key_name
@@ -1741,7 +1583,7 @@ API return value:
 }
 ```
 
-参数同[添加组内配置](#api-post-group-config-add)
+参数同[添加组内配置](#api-add-app-config)
 
 [>>> Back to Top](#top)
 
@@ -1749,17 +1591,33 @@ API return value:
 
 # Private Group
 
-强加密类型的种子网络。这类种子网络的特点是，任何人即便可以拿到 seed 并由此加入 group，但如果没被 owner approved as user，是无法获取到 content 的，即能拿到 trxs 但 trx 的 Content 字段为空。以此保证 group 的内容隐私。
+"Private" stands for encryption type.
+
+强加密类型的种子网络。这类种子网络的特点是，任何人即便可以拿到 seed 并由此加入 group，但如果没有被 owner approved as user，是无法获取到 content 的，即能拿到 trxs 但 trx 的 Content 字段为空。以此保证 group 的内容隐私。
+
+<span id="create-private-group"></span>
+
+## Create Private Group
+
+When [creating a group](#api-create-group), you need to set `encryption_type` as "private", and then you'll get a private group. 
+
+The `encryption_type` can not be changed after group was created.
+
+## User Management 
+
+Private group 的用户管理，本质上是管理解密权限。
+
+在解密权限管理上，owner 与 user 的行为一致，即 owner 应该 announce 并 approve 自己，以获得内容解密权限。其它 user 也需要 announce 自己，然后由 owner 决定是否通过该申请。
 
 **workflow**:
 
 1. Announce user's encrypt pubkey to a group
-2. view announced users
-3. approve a users
+2. view announced users or a user
+3. Owner approve a user or remove
 
 <span id="api-post-announce-user"></span>
 
-## user: Announce user
+### Any: Announce as group user
 
 **API**: ```*/api/v1/group/announce```
 
@@ -1814,12 +1672,14 @@ API return value:
 
 <span id="api-get-announced-users"></span>
 
-## ANY: Get announced users
+### ANY: Get announced users or a user
 
 **API**: ```*/api/v1/group/{group_id}/announced/users```
 
+**API**: ```*/api/v1/group/{group_id}/announced/user/{pubkey}```
+
 - Method: GET
-- Usage : get announced users
+- Usage : get announced users or a user
 - Params :
   - [group_id](#param-group_id)
 
@@ -1827,6 +1687,10 @@ API return value:
 
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/users
+```
+
+```bash
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/user/CAISIQMaZWI95T0kxDNcB3DxO0T/BraC1gEKxZRVihcxevtUgg==
 ```
 
 API return value:
@@ -1854,7 +1718,7 @@ API return value:
 
 <span id="api-post-group-user"></span>
 
-## Owner approve a user or remove
+### Owner approve a user or remove
 
 **API**: ```*/api/v1/group/user```
 
@@ -1899,13 +1763,29 @@ API return value:
 | --- | --- |
 | "sign" | signature |
 
+<span id="tips-chainconfig"></span>
+
+## Tips about chainconfig
+
+由于 private group 管理解密权限，chainconfig 管理出块权限，这两者在底层实现上是解耦的，而当 private group 创建后， auth mode 被默认设为 FOLLOW_DNY_LIST 模式，其效果为：任何加入 group 的人都可以发布内容并上链，只不过没有获得解密权限的人无法解密内容。
+
+如果 private group 的创建者想要杜绝*非目标用户*制造链上数据，只想让那些被 approved 的 user （或者只有少量指定用户）才可以发布内容并上链，那么可这样实现：
+- 创建 private group 后，立即更新 POST auth mode 设置为 FOLLOW_ALW_LIST 模式。这样所有加入 group 的人，都默认不可以发布内容上链。
+- owner 在 approve 每条 announce as user 的申请（该操作赋予该 user 内容解密权限）后：
+  - 如果希望该用户可以发布内容上链，那就把该用户也更新到 allow list；
+  - 如果不希望该用户拥有发布内容的权限，则无需任何操作。
+
+关于 auth mode 与 allow list 等 chainconfig 的具体说明，请移步：[Chain Config: allow/deny auth mode and list](test-chainconfig)。
+
+请您留意，每种 trx type 都可以单独设置 auth mode，较常见的是只修改 POST 类型的 auth mode，通常无需改动其它 trx type 的默认设置。
+
 [>>> Back to Top](#top)
 
 ---
 
 <span id="test-chainconfig"></span>
 
-# Chain Config: allow/deny list
+# Chain Config: allow/deny auth mode and list
 
 <span id="about-chainconfig"></span>
 
@@ -1935,6 +1815,16 @@ Each trx type has their own allow/deny list and "follow" rule for the user(pubke
 - b. if trxtype is set to "FOLLOW_DNY_LIST", since the pubkey IS NOT in deny list, access will be granted.
 
 For a pubkey is denied, it CAN STILL send a trx with certain trxtype and get the trx_id, BUT owner/producer will reject this trx, that means the trx will NOT be packaged in to a block and broadcast to the group.
+
+_Rule 1 has the highest priority and Rule 3 has the lowest._
+
+For example, a trxtype (such as "POST") of a group is set to "FOLLOW_DNY_LIST" or "FOLLOW_ALW_LIST" , whatever, and a pubkey was both added to the denylist/allowlist. In this case, rule 1 is in effect, so the pubkey can send trxs of the trxtype ("POST") to the group and these trxs will be packaged in to blocks.
+
+为了让权限管理具备最好的灵活性，以上 3 条规则的优先级，由高到低生效，即第 1 条最高，第 3 条最低。
+
+设想一种特殊情况，某 pubkey 被同时加入 allow 名单和 deny 名单时，不管 authtype 是如何设置的，第 1 条已满足，于是第 1 条会生效。
+
+产品实现时，最好避免把同一个 pubkey 同时加入 allow 名单和 deny 名单。以保持 authtype 和 allow/deny 名单简约、一致、明了。
 
 Therefor the CLIENT APP should check the group authentication rules to give error message back to user.
 
@@ -2032,6 +1922,17 @@ Params:
 <span id="api-update-list"></span>
 
 ### Update allow/deny list for trxType/trxTypes
+
+<!-- 旧版本的黑名单的介绍
+
+说明：只有创建该组的节点才能执行此操作，也就是需要 group_owner 的权限，添加后会通过 block 广播至组中其他节点
+
+注意：黑名单操作分为 2 种情况
+
+1. 被组屏蔽的节点发出的 trx 会被 producer 或拒绝拒绝，因此无法向节点中发布内容，但是因为新块是通过广播发送的，此时该节点仍可以获得组中得新块（也即只要节点不退出，仍然可以看到新内容)
+
+2. 被组屏蔽的节点如果退出并再次打开，此时发送的 ASK_NEXT 请求将被 Owner 或 Producer 拒绝，因此无法获取节点中最新的块
+-->
 
 **API**: v1/group/chainconfig 
 
@@ -2392,6 +2293,7 @@ Owner will send snapshot every 1 minute regardless if there is anything changed,
 
 Snapshot rule doesn't apply to a producer node. A producer node still need wait till block syncing finished to make new block.
 
+[>>> Back to Top](#top)
 
 
 

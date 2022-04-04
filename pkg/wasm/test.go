@@ -1,3 +1,4 @@
+//go:build js && wasm
 // +build js,wasm
 
 package wasm
@@ -107,4 +108,53 @@ func IndexDBTest() {
 
 		println("Test Done: OK")
 	}
+
+	// {
+	// 	// this won't pass,
+	// 	// cursors can not be nested in indexeddb
+	// 	dbMgr2 := quorumStorage.QSIndexDB{}
+	// 	err = dbMgr2.Init("test2")
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	// nest
+	// 	keys := [][]byte{}
+	// 	values := [][]byte{}
+	// 	keyPrefix := "key"
+	// 	i := 0
+	// 	for i < 10 {
+	// 		k, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(i))
+	// 		keys = append(keys, k)
+	// 		values = append(values, []byte(fmt.Sprintf("value-%d", i)))
+	// 		i += 1
+	// 	}
+	// 	err = dbMgr.BatchWrite(keys, values)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	err = dbMgr2.BatchWrite(keys, values)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+
+	// 	err = dbMgr.PrefixForeach([]byte(keyPrefix), func(k []byte, v []byte, err error) error {
+	// 		println("dbMgr: ", string(k), string(v))
+	// 		err = dbMgr2.PrefixForeach([]byte(keyPrefix), func(k []byte, v []byte, err error) error {
+	// 			println("dbMgr2: ", string(k), string(v))
+	// 			return nil
+	// 		})
+	// 		return nil
+	// 	})
+
+	// 	for _, k := range keys {
+	// 		err = dbMgr.Delete([]byte(k))
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		err = dbMgr2.Delete([]byte(k))
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
+	// }
 }

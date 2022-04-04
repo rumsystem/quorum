@@ -68,6 +68,17 @@ func checkLockError(err error) {
 	}
 }
 
+func createPubQueueDb(path string) (*storage.QSBadger, error) {
+	var err error
+	pubQueueDb := storage.QSBadger{}
+	err = pubQueueDb.Init(path + "_pubqueue")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pubQueueDb, nil
+}
+
 func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 	// NOTE: hardcode seed directory path
 	seedPath := filepath.Join(filepath.Dir(dataDir), "seeds")
@@ -317,6 +328,14 @@ func mainRet(config cli.Config) int {
 			chain.GetGroupMgr().SetRumExchangeTestMode()
 		}
 
+		// init the publish queue watcher
+		doneCh := make(chan bool)
+		pubqueueDb, err := createPubQueueDb(datapath)
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		chain.InitPublishQueueWatcher(doneCh, pubqueueDb)
+
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()
 		if err != nil {
@@ -405,18 +424,17 @@ func main() {
 	update := flag.Bool("update", false, "Update to the latest version")
 	updateFrom := flag.String("from", "github", "Update from: github/qingcloud, default to github")
 
-	// restore flag
+	// backup/restore flag
 	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
-	backupFile := flag.String("backup-file", "", "the backup file for restoring")
-	password := flag.String("password", "", "the password for restoring")
-	/*
-		keystoreDir := flag.String("keystore-dir", "", "the directory path for restoring")
-		configDir := flag.String("config-dir", "", "the config directory for restoring")
-	*/
-	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
 	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
+	backupFile := flag.String("backup-file", "", "the backup file for restoring")
+	password := flag.String("password", "", "the password for backuping/restoring")
+	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
 
 	config, err := cli.ParseFlags()
+
+	chain.SetAutoAck(config.AutoAck)
+
 	lvl, err := logging.LevelFromString("info")
 	logging.SetAllLoggers(lvl)
 	logging.SetLogLevel("appsync", "error")
@@ -517,10 +535,11 @@ func main() {
 	}
 
 	if *isRestore {
-		passwd := *password
-		if passwd == "" {
-			passwd = os.Getenv("RUM_KSPASSWD")
+		passwd, err := handlers.GetKeystorePassword(*password)
+		if err != nil {
+			mainlog.Fatalf("handlers.GetKeystorePassword failed: %s", err)
 		}
+
 		params := handlers.RestoreParam{
 			Peername:    config.PeerName,
 			BackupFile:  *backupFile,
@@ -531,13 +550,15 @@ func main() {
 			SeedDir:     *seedDir,
 		}
 		restore(params)
+
 		return
 	}
 
 	if *isBackup {
-		handlers.Backup(config, *backupFile)
+		handlers.Backup(config, *backupFile, *password)
 		return
 	}
+
 	if err := utils.EnsureDir(config.DataDir); err != nil {
 		panic(err)
 	}
@@ -615,9 +636,11 @@ func restore(params handlers.RestoreParam) {
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,
 	)
+	defer os.RemoveAll("certs") // NOTE: HARDCODE
+
 	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
 	ctx := context.Background()
-	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
+	checkctx, _ := context.WithTimeout(ctx, 300*time.Second)
 	if ok := testnode.CheckApiServerRunning(checkctx, peerBaseUrl); !ok {
 		mainlog.Fatal("api server start failed")
 	}

@@ -301,6 +301,37 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("GetChainTrxDenyList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetChainTrxDenyList(groupId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("GetChainTrxAuthMode", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		groupId := args[0].String()
+		trxType := args[1].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetChainTrxAuthMode(groupId, trxType)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("GetAppConfigKeyList", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		groupId := args[0].String()
 		handler := func() (map[string]interface{}, error) {
@@ -382,6 +413,32 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("GetPubQueue", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		groupId := args[0].String()
+		status := ""
+		trxId := ""
+		if len(args) >= 2 { // optional
+			status = args[1].String()
+		}
+		if len(args) >= 3 {
+			trxId = args[2].String()
+		}
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.GetPubQueue(groupId, status, trxId)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("PostToGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		jsonStr := args[0].String()
 		handler := func() (map[string]interface{}, error) {
@@ -437,7 +494,7 @@ func RegisterJSFunctions() {
 		includestarttrx := args[5].Bool()
 
 		senders := []string{}
-		for i := 5; i < len(args); i += 1 {
+		for i := 6; i < len(args); i += 1 {
 			sender := args[i].String()
 			senders = append(senders, sender)
 		}

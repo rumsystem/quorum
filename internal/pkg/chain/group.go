@@ -40,6 +40,13 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
+
+	//reload all announced user(if private)
+	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		group_log.Debugf("<%s> Private group load announced user key", item.GroupId)
+		grp.ChainCtx.UpdUserList()
+	}
+
 	grp.ChainCtx.CreateConsensus()
 
 	//start send snapshot
@@ -193,9 +200,14 @@ func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 }
 
 func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
+	group_log.Debugf("<%s> GetAnnouncedUsers called", grp.Item.GroupId)
 	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
+
+//func (grp *Group) GetAnnounceUser() ([]*quorumpb.AnnounceItem, error) {
+//	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
+//	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+//}
 
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)

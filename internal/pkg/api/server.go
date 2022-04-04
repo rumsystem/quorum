@@ -51,6 +51,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/psping", h.PSPingPeer(node))
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
+		r.POST("/v1/trx/ack", h.PubQueueAck)
+
 		r.GET("/v1/groups", h.GetGroups)
 		r.GET("/v1/group/:group_id/content", h.GetGroupCtn)
 		r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
@@ -58,11 +60,13 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 		r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
 		r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
+		r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
 		r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
 		//r.GET("/v1/group/:group_id/app/schema", h.GetGroupAppSchema)
 		r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 		r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 		r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
+		r.GET("/v1/group/:group_id/pubqueue", h.GetPubQueue)
 
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/apply", apph.ApplyToken)

@@ -18,8 +18,8 @@ import (
 
 const (
 	Hours = 0
-	Mins  = 5
-	Sec   = 0
+	Mins  = 0
+	Sec   = 30
 )
 
 const OBJECT_SIZE_LIMIT = 200 * 1024 //(200Kb)
@@ -82,13 +82,9 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 	}
 
 	trx.Data = encryptdData
-
-	trx.TimeStamp = time.Now().UnixNano()
 	trx.Version = nodectx.GetNodeCtx().Version
-	timein := time.Now().Local().Add(time.Hour*time.Duration(Hours) +
-		time.Minute*time.Duration(Mins) +
-		time.Second*time.Duration(Sec))
-	trx.Expired = timein.UnixNano()
+
+	updateTrxTimeLimit(&trx)
 
 	bytes, err := proto.Marshal(&trx)
 	if err != nil {
@@ -96,6 +92,15 @@ func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data [
 	}
 	hashed := localcrypto.Hash(bytes)
 	return &trx, hashed, nil
+}
+
+// set TimeStamp and Expired for trx
+func updateTrxTimeLimit(trx *quorumpb.Trx) {
+	trx.TimeStamp = time.Now().UnixNano()
+	timein := time.Now().Local().Add(time.Hour*time.Duration(Hours) +
+		time.Minute*time.Duration(Mins) +
+		time.Second*time.Duration(Sec))
+	trx.Expired = timein.UnixNano()
 }
 
 func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
