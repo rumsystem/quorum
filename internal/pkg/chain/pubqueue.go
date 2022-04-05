@@ -300,7 +300,7 @@ func doRefresh() {
 }
 
 func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
-	chain_log.Debugf("<pubqueue>: %v to group(%s)", trx, groupId)
+	//chain_log.Debugf("<pubqueue>: %v to group(%s)", trx, groupId)
 	item := PublishQueueItem{groupId, PublishQueueItemStatePending, 0, time.Now().UnixNano(), trx}
 	return publishQueueWatcher.UpsertItem(&item)
 }

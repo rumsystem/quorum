@@ -793,7 +793,7 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 }
 
 func (dbMgr *DbMgr) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return dbMgr.UpdateUser(trx.Data, prefix)
+	return dbMgr.UpdateProducer(trx.Data, prefix)
 }
 
 func (dbMgr *DbMgr) UpdateProducer(data []byte, prefix []string) (err error) {
@@ -842,7 +842,6 @@ func (dbMgr *DbMgr) UpdateUser(data []byte, prefix []string) (err error) {
 	}
 
 	key := nodeprefix + USR_PREFIX + "_" + item.GroupId + "_" + item.UserPubkey
-
 	dbmgr_log.Infof("upd user with key %s", key)
 
 	if item.Action == quorumpb.ActionType_ADD {
@@ -958,65 +957,65 @@ func (dbMgr *DbMgr) GetAllAppConfigInBytes(groupId string, Prefix ...string) ([]
 func (dbMgr *DbMgr) GetAllChainConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
 	nodeprefix := getPrefix(Prefix...)
 	key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_"
-	var appConfigByteList [][]byte
+	var chainConfigByteList [][]byte
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
-		appConfigByteList = append(appConfigByteList, v)
+		chainConfigByteList = append(chainConfigByteList, v)
 		return nil
 	})
 
-	return appConfigByteList, err
+	return chainConfigByteList, err
 }
 
 func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][]byte, error) {
 	nodeprefix := getPrefix(Prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_"
-	var appConfigByteList [][]byte
+	var announceByteList [][]byte
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
-		appConfigByteList = append(appConfigByteList, v)
+		announceByteList = append(announceByteList, v)
 		return nil
 	})
 
-	return appConfigByteList, err
+	return announceByteList, err
 }
 
 func (dbMgr *DbMgr) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]byte, error) {
 	nodeprefix := getPrefix(Prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_"
-	var appConfigByteList [][]byte
+	var producerByteList [][]byte
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
-		appConfigByteList = append(appConfigByteList, v)
+		producerByteList = append(producerByteList, v)
 		return nil
 	})
 
-	return appConfigByteList, err
+	return producerByteList, err
 }
 
 func (dbMgr *DbMgr) GetAllUserInBytes(groupId string, Prefix ...string) ([][]byte, error) {
 	nodeprefix := getPrefix(Prefix...)
 	key := nodeprefix + USR_PREFIX + "_" + groupId + "_"
-	var appConfigByteList [][]byte
+	var usersByteList [][]byte
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
-		appConfigByteList = append(appConfigByteList, v)
+		usersByteList = append(usersByteList, v)
 		return nil
 	})
 
-	return appConfigByteList, err
+	return usersByteList, err
 }
 
 func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
