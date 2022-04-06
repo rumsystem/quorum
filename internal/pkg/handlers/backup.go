@@ -95,12 +95,12 @@ func Backup(config cli.Config, dstPath string, password string) {
 	BackupBlock(config.DataDir, config.PeerName, blockDstPath)
 
 	// zip backup directory
-	defer os.RemoveAll(dstPath)
 	zipFilePath := fmt.Sprintf("%s.zip", dstPath)
+	defer utils.RemoveAll(dstPath)
+	defer utils.RemoveAll(zipFilePath)
 	if err := utils.ZipDir(dstPath, zipFilePath); err != nil {
 		logger.Fatalf("utils.ZipDir(%s, %s) failed: %s", dstPath, zipFilePath, err)
 	}
-	defer os.RemoveAll(zipFilePath)
 
 	// check keystore signature and encrypt
 	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, keystoreDstPath, configDstPath, config.PeerName, password); err != nil {
