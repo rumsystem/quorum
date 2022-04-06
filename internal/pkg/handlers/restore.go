@@ -52,26 +52,26 @@ func Restore(params RestoreParam) {
 		logger.Fatalf("decrypt encrypted zip file failed: %v", err)
 	}
 	zipFilePath := strings.Replace(encZipPath, ".enc", "", 1)
+	absZipFilePath, err := filepath.Abs(zipFilePath)
+	if err != nil {
+		logger.Fatalf("filepath.Abs(%s) failed: %s", zipFilePath, err)
+	}
+	defer utils.RemoveAll(absZipFilePath)
+
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(zipFile)
 	if err != nil {
 		logger.Fatalf("buf.ReadFrom failed: %s", err)
 	}
-	if err := ioutil.WriteFile(zipFilePath, buf.Bytes(), 0600); err != nil {
+	if err := ioutil.WriteFile(absZipFilePath, buf.Bytes(), 0600); err != nil {
 		logger.Fatalf("ioutil.WriteFile failed: %s", err)
 	}
-	defer os.Remove(zipFilePath)
 
-	absZipFilePath, err := filepath.Abs(zipFilePath)
-	if err != nil {
-		logger.Fatalf("filepath.Abs(%s) failed: %s", zipFilePath, err)
-	}
 	absUnZipDir := utils.PathTrimExt(absZipFilePath)
-
+	defer utils.RemoveAll(absUnZipDir)
 	if err := utils.Unzip(zipFilePath, absUnZipDir); err != nil {
 		logger.Fatalf("unzip backup zip archive failed: %v", err)
 	}
-	defer os.RemoveAll(absUnZipDir)
 
 	// copy config dir
 	if err := utils.CheckAndCreateDir(params.ConfigDir); err != nil {

@@ -617,6 +617,42 @@ func restore(params handlers.RestoreParam) {
 		return
 	}
 
+	var err error
+	params.BackupFile, err = filepath.Abs(params.BackupFile)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.BackupFile, err)
+	}
+	params.ConfigDir, err = filepath.Abs(params.ConfigDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.ConfigDir, err)
+	}
+	params.KeystoreDir, err = filepath.Abs(params.KeystoreDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.KeystoreDir, err)
+	}
+	params.DataDir, _ = filepath.Abs(params.DataDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.DataDir, err)
+	}
+	params.SeedDir, err = filepath.Abs(params.SeedDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.SeedDir, err)
+	}
+
+	// go to restore directory before restore
+	restoreDir := filepath.Dir(params.DataDir)
+	if err := utils.EnsureDir(restoreDir); err != nil {
+		mainlog.Fatalf("utils.EnsureDir(%s) failed: %s", restoreDir, err)
+	}
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		mainlog.Fatalf("os.Getwd failed: %s", err)
+	}
+
+	os.Chdir(restoreDir)
+	defer os.Chdir(currentDir)
+
 	handlers.Restore(params)
 
 	var pidch chan int
@@ -634,7 +670,7 @@ func restore(params handlers.RestoreParam) {
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,
 	)
-	defer os.RemoveAll("certs") // NOTE: HARDCODE
+	defer utils.RemoveAll("certs") // NOTE: HARDCODE
 
 	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
 	ctx := context.Background()

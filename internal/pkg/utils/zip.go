@@ -101,6 +101,7 @@ func Unzip(zipPath string, dstPath string) error {
 	if err != nil {
 		return err
 	}
+	defer zipReader.Close()
 
 	if err := os.MkdirAll(dstPath, 0700); err != nil {
 		return err
