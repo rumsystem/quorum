@@ -194,7 +194,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply trxs
-	err = user.applyTrxs(trxs, block, user.nodename)
+	err = user.applyTrxs(trxs, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	return nil
 }
 
-func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, block *quorumpb.Block, nodename string) error {
+func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error {
 	molauser_log.Debugf("<%s> applyTrxs called", user.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied

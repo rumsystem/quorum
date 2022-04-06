@@ -1,6 +1,9 @@
 package chain
 
 import (
+	"errors"
+	"sync"
+
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -21,6 +24,7 @@ type MolassesSnapshotReceiver struct {
 	latestBlockId     string
 	latestBlockHeight int64
 	snapshotTag       *quorumpb.SnapShotTag
+	applySnapshotMu   sync.RWMutex
 }
 
 func (ssreceiver *MolassesSnapshotReceiver) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
@@ -43,6 +47,7 @@ func (ssreceiver *MolassesSnapshotReceiver) Init(item *quorumpb.GroupItem, noden
 	ssreceiver.snapshotTag = snapshotTag
 }
 
+// Do NOT block PSConn goroutine when apply snapshot
 func (ssreceiver *MolassesSnapshotReceiver) ApplySnapshot(s *quorumpb.Snapshot) error {
 	snapshotreceiver_log.Debugf("<%s> ApplySnapshot called", ssreceiver.groupId)
 
@@ -83,26 +88,8 @@ func (ssreceiver *MolassesSnapshotReceiver) ApplySnapshot(s *quorumpb.Snapshot) 
 			ssreceiver.snapshotTag.HighestHeight == s.HighestHeight {
 			snapshotreceiver_log.Debugf("<%s> snapshot already applied, only update snapshot tag", s.GroupId)
 		} else {
-			err := ssreceiver.doApply(snapshotpackage)
-			if err != nil {
-				return err
-			}
+			go ssreceiver.doApply(snapshotpackage, s)
 		}
-
-		ssreceiver.snapshotTag.TimeStamp = s.TimeStamp
-		ssreceiver.snapshotTag.HighestHeight = s.HighestHeight
-		ssreceiver.snapshotTag.HighestBlockId = s.HighestBlockId
-		ssreceiver.snapshotTag.Nonce = s.Nonce
-		ssreceiver.snapshotTag.SnapshotPackageId = s.SnapshotPackageId
-		ssreceiver.snapshotTag.SenderPubkey = s.SenderPubkey
-
-		err := nodectx.GetDbMgr().UpdateSnapshotTag(ssreceiver.groupId, ssreceiver.snapshotTag, ssreceiver.nodename)
-		if err != nil {
-			return err
-		}
-
-		//remove snapshot package
-		delete(ssreceiver.snapshotpackages, s.SnapshotPackageId)
 	}
 
 	return nil
@@ -139,7 +126,10 @@ func (ssreceiver *MolassesSnapshotReceiver) GetTag() *quorumpb.SnapShotTag {
 	return ssreceiver.snapshotTag
 }
 
-func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorumpb.Snapshot) error {
+func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorumpb.Snapshot, s *quorumpb.Snapshot) error {
+	ssreceiver.applySnapshotMu.Lock()
+	defer ssreceiver.applySnapshotMu.Unlock()
+
 	snapshotreceiver_log.Debugf("<%s> apply called", ssreceiver.groupId)
 	var prefix []string
 	prefix = append(prefix, ssreceiver.nodename)
@@ -149,32 +139,56 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 			if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_APP_CONFIG {
 				err := nodectx.GetDbMgr().UpdateAppConfig(snapshotdata.Data, prefix)
 				if err != nil {
+					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type APP_CONFIG, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_CHAIN_CONFIG {
 				err := nodectx.GetDbMgr().UpdateChainConfig(snapshotdata.Data, prefix)
 				if err != nil {
+					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type CHAIN_CONFIG, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_ANNOUNCE {
 				err := nodectx.GetDbMgr().UpdateAnnounce(snapshotdata.Data, prefix)
 				if err != nil {
+					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type ANNOUNCE, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_PRODUCER {
 				err := nodectx.GetDbMgr().UpdateProducer(snapshotdata.Data, prefix)
 				if err != nil {
+					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type PRODUCER, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_USER {
 				err := nodectx.GetDbMgr().UpdateUser(snapshotdata.Data, prefix)
 				if err != nil {
+					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type USE, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else {
 				snapshotreceiver_log.Warningf("<%s> Unknown snapshot data type", ssreceiver.groupId)
+				return errors.New("Unknown snapshot data type")
 			}
 		}
 	}
+
+	//update snapshotTag
+	ssreceiver.snapshotTag.TimeStamp = s.TimeStamp
+	ssreceiver.snapshotTag.HighestHeight = s.HighestHeight
+	ssreceiver.snapshotTag.HighestBlockId = s.HighestBlockId
+	ssreceiver.snapshotTag.Nonce = s.Nonce
+	ssreceiver.snapshotTag.SnapshotPackageId = s.SnapshotPackageId
+	ssreceiver.snapshotTag.SenderPubkey = s.SenderPubkey
+
+	err := nodectx.GetDbMgr().UpdateSnapshotTag(ssreceiver.groupId, ssreceiver.snapshotTag, ssreceiver.nodename)
+	if err != nil {
+		snapshotreceiver_log.Warningf("<%s> UpdateSnapshotTag failed, err <%s>", ssreceiver.groupId, err.Error())
+		return err
+	}
+
+	//remove snapshot package
+	delete(ssreceiver.snapshotpackages, s.SnapshotPackageId)
+
 	return nil
 }
