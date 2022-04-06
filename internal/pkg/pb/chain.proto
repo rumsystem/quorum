@@ -47,6 +47,11 @@ enum ActionType {
     REMOVE = 1;
 }
 
+enum TrxStroageType {
+    CHAIN    = 0;
+    CACHE = 1;
+}
+
 message Trx {
   string  TrxId        = 1;
   TrxType Type         = 2;    
@@ -59,6 +64,7 @@ message Trx {
   int64   Nonce        = 9;
   string  SenderPubkey = 10;  
   bytes   SenderSign   = 11;
+  TrxStroageType StorageType = 12;
 }
 
 message Block {

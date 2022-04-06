@@ -10,6 +10,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -181,7 +182,12 @@ func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
 	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetTrx(trxId, grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().GetTrx(trxId, storage.Chain, grp.ChainCtx.nodename)
+}
+
+func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) {
+	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
+	return nodectx.GetDbMgr().GetTrx(trxId, storage.Cache, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {

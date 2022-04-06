@@ -29,6 +29,13 @@ const DENY_LIST_PREFIX string = "dny_list"     //deny list
 const NONCE_PREFIX string = "nonce"            //group trx nonce
 const SNAPSHOT_PREFIX string = "snapshot"      //group snapshot
 
+type TrxStorageType uint
+
+const (
+	Chain TrxStorageType = iota
+	Cache
+)
+
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
 	Db          QuorumStorage
@@ -96,24 +103,57 @@ func (dbMgr *DbMgr) RmTrx(trxId string, nonce int64, prefix ...string) error {
 }
 
 //Get Trx
-func (dbMgr *DbMgr) GetTrx(trxId string, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
+func (dbMgr *DbMgr) GetTrx(trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
 	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_" + trxId
-
 	var trx quorumpb.Trx
 	var nonces []int64
 
-	err = dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		perr := proto.Unmarshal(v, &trx)
-		if perr != nil {
-			return perr
-		}
-		nonces = append(nonces, trx.Nonce)
-		return nil
-	})
+	var key string
+	if storagetype == Chain {
+		key = nodeprefix + TRX_PREFIX + "_" + trxId
+		err = dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+			if err != nil {
+				return err
+			}
+			perr := proto.Unmarshal(v, &trx)
+			if perr != nil {
+				return perr
+			}
+			nonces = append(nonces, trx.Nonce)
+			return nil
+		})
+		trx.StorageType = quorumpb.TrxStroageType_CHAIN
+	} else if storagetype == Cache {
+		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX
+		err = dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+			if err != nil {
+				return err
+			}
+			chunk := quorumpb.BlockDbChunk{}
+			perr := proto.Unmarshal(v, &chunk)
+			if perr != nil {
+				return perr
+			}
+			if chunk.BlockItem != nil && chunk.BlockItem.Trxs != nil {
+				for _, blocktrx := range chunk.BlockItem.Trxs {
+					if blocktrx.TrxId == trxId {
+						nonces = append(nonces, blocktrx.Nonce)
+
+						clonedtrxbuff, _ := proto.Marshal(blocktrx)
+						perr = proto.Unmarshal(clonedtrxbuff, &trx)
+						if perr != nil {
+							return perr
+						}
+						trx.StorageType = quorumpb.TrxStroageType_CACHE
+						return nil
+					}
+				}
+			}
+
+			return nil
+		})
+
+	}
 
 	return &trx, nonces, err
 }
