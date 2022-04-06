@@ -8,6 +8,7 @@ import (
 type ChainDataHandlerIface interface {
 	HandleTrxPsConn(trx *quorumpb.Trx) error
 	HandleBlockPsConn(block *quorumpb.Block) error
+	HandleSnapshotPsConn(snapshot *quorumpb.Snapshot) error
 	HandleTrxRex(trx *quorumpb.Trx, from peer.ID) error
 	HandleBlockRex(block *quorumpb.Block, from peer.ID) error
 }

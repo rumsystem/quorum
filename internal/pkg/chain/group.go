@@ -49,6 +49,9 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 
 	grp.ChainCtx.CreateConsensus()
 
+	//start send snapshot
+	grp.ChainCtx.StartSnapshot()
+
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
 
@@ -62,6 +65,9 @@ func (grp *Group) Teardown() {
 
 	//unregisted chainctx with conn
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+
+	//stop snapshot
+	grp.ChainCtx.StopSnapshot()
 
 	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
 }
@@ -129,6 +135,9 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 
+	//start send snapshot
+	grp.ChainCtx.StartSnapshot()
+
 	return nil
 }
 
@@ -154,6 +163,10 @@ func (grp *Group) StopSync() error {
 
 func (grp *Group) GetSyncerStatus() int8 {
 	return grp.ChainCtx.syncer.Status
+}
+
+func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
+	return grp.ChainCtx.GetSnapshotTag()
 }
 
 func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {

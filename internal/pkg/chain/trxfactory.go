@@ -127,6 +127,7 @@ func (factory *TrxFactory) VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		Type:         trx.Type,
 		GroupId:      trx.GroupId,
 		SenderPubkey: trx.SenderPubkey,
+		Nonce:        trx.Nonce,
 		Data:         trx.Data,
 		TimeStamp:    trx.TimeStamp,
 		Version:      trx.Version,

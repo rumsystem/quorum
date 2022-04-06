@@ -50,12 +50,14 @@ You can try:
   - [Add producer](#api-post-producer-add)
   - [Get producers](#api-get-producers)
   - [Owner remove producer](#api-post-producer-remove)
+- [DeniedList](#test-deniedlist)  <font color="red"><sup>abandoned</sup></font>
+  - [Get deniedlist](#api-get-deniedlist)
+  - [Add deniedlist](#api-post-deniedlist-add)
+  - [Del deniedlist](#api-post-deniedlist-del)
 - [App Config](#test-app-config)
-  - [Add app config](#api-add-app-config)
-  - [Get app config keylist](#api-get-app-config-keylist)
-  - [Get app config key](#api-get-app-config-key)
-  - [Add app schema](#api-post-app-schema)
-  - [Get app schema](#api-get-app-schema)
+  - [Add App config](#api-post-group-config-add)
+  - [Get App config keylist](#api-get-app-config-keylist)
+  - [Get App config keyname](#api-get-app-config-keyname)
 - [Private Group](#test-private-group)
   - [Create Private Group](#create-private-group)
   - User Management
@@ -423,6 +425,14 @@ API return value:
             "highest_height": 0,
             "highest_block_id": "a865ae03-d8ce-40fc-abf6-ea6f6132c35a",
             "group_status": "IDLE"
+            "snapshot_info": {
+                 "TimeStamp": 1649096392051580700,
+                 "HighestHeight": 0,
+                 "HighestBlockId": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
+                 "Nonce": 19500,
+                 "SnapshotPackageId": "9d381d97-1cf4-4d13-9f95-b816f01f4df5",
+                 "SenderPubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA=="
+            } 
         }
     ]
 }
@@ -436,6 +446,7 @@ API return value:
     * last_updated
     * highest_height      <sup>[2]</sup>
     * highest_block_id    <sup>[3]</sup>
+    * snapshot_info
 
 <sup>[1]</sup> The eth address of current user. 当前用户的 ETH 地址。
 
@@ -1431,12 +1442,18 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 
 <span id="api-add-app-config"></span>
 
-## Add app config 
+<span id="test-app-config"></span>
+
+# App Config
+
+<span id="api-post-group-config-add"></span>
+
+## Add app config
 
 **API**:  ```*/api/v1/group/appconfig```
 
 - Method: POST
-- Usage : Add app config
+- Usage : Add app config item
 - Params :
   - [group_id](#param-group_id)
   - action
@@ -1448,7 +1465,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"int", "value":"100", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"bool", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
 ```
 
 **Params**:
@@ -1458,8 +1475,8 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_
     "action": "add",
     "group_id": "c8795b55-90bf-4b58-aaa0-86d11fe4e16a",
     "name": "test_bool",
-    "type": "int",
-    "value": "100",
+    "type": "bool",
+    "value": "false",
     "memo": "add test_bool to group"
 }
 ```
@@ -1500,7 +1517,7 @@ API return value:
 
 group 的 key 是 owner 通过 [app config](#api-add-app-config) 自行添加的。
 
-**API**:  ```*/api/v1/group/{group_id}/config/keylist```
+**API**:  ```*/api/v1/group/{group_id}/appconfig/keylist```
 
 - Method: GET
 - Usage : Get app config keylist
@@ -1511,7 +1528,7 @@ group 的 key 是 owner 通过 [app config](#api-add-app-config) 自行添加的
 
 ```bash
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/config/keylist
-API：/v1/group/<GROUP_ID>/config/keylist
+API：/v1/group/<GROUP_ID>/appconfig/keylist
 ```
 
 API return value:
@@ -1534,11 +1551,11 @@ API return value:
 
 [>>> Back to Top](#top)
 
-<span id="api-get-app-config-key"></span>
+<span id="api-get-app-config-keyname"></span>
 
 ## Get app config key
 
-**API**:  ```*/api/v1/group/{group_id}/config/{key}```
+**API**:  ```*/api/v1/group/{group_id}/appconfig/{KEY_NAME}```
 
 - Method: GET
 - Usage : Get app config key
@@ -1549,7 +1566,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/config/test_string | jq
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/appconfig/test_string | jq
 ```
 
 API return value:
@@ -1567,72 +1584,6 @@ API return value:
 ```
 
 参数同[添加组内配置](#api-add-app-config)
-
-[>>> Back to Top](#top)
-
-<span id="api-post-app-schema"></span>
-
-## Add app schema
-
-**API**:  ```*/api/v1/group/schema```
-
-- Method: POST
-- Usage : Add app schema
-- Params :
-  - [group_id](#param-group_id)
-  - rule
-  - type
-  - aciton
-  - memo
-
-添加组内 app 的 schema json
-
-**Example**:
-
-```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"rule":"new_schema","type":"schema_type", "group_id":"13a25432-b791-4d17-a52f-f69266fc3f18", "action":"add", "memo":"memo"}' https://127.0.0.1:8002/api/v1/group/schema
-```
-
-```json
-{
-    "rule": "new_schema",
-    "type": "schema_type",
-    "group_id": "13a25432-b791-4d17-a52f-f69266fc3f18",
-    "action": "add",
-    "memo": "memo"
-}
-```
-
-[>>> Back to Top](#top)
-
-<span id="api-get-app-schema"></span>
-
-## Get group schema
-
-**API**:  ```*/api/v1/group/{group_id}/app/schema```
-
-- Method: GET
-- Usage : Get group schema
-- Params :
-  - [group_id](#param-group_id)
-
-**Example**:
-
-```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/13a25432-b791-4d17-a52f-f69266fc3f18/app/schema | jq
-```
-
-API return value:
-
-```json
-[
-    {
-        "Type": "schema_type",
-        "Rule": "new_schema",
-        "TimeStamp": 1636047963013888300
-    }
-]
-```
 
 [>>> Back to Top](#top)
 
@@ -2275,3 +2226,75 @@ auth type, string, can be one of these:
 - "FOLLOW_DNY_LIST"
 
 [>>> Back to Top](#top)
+
+# Snapshot
+
+<span id="about-snapshot"></span>
+
+To speed up new node initial synchorize, group owner will "boardcast" a snapshot every 1 minute to all node connected.
+The snapshot includes the latest configuration infomation of a group, includes:
+- all added user(s)
+- all added producer(s)
+- all chain config
+- all app config
+- all announced user or producer
+
+After a  node received snapshot from owner(wether in syncing or not), it will apply all configuration info to local db.That means the node have all up-to-date configuration and no need to wait block syncing finished.
+Clinet app should check snapshot "tag" by using getGroups API. A new section is added to group info, 
+
+example:
+
+```bash
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8004/api/v1/groups | jq
+```
+
+{
+  "groups": [
+    {
+      "group_id": "0b0c5c0c-26a1-44e5-9edb-ace5ea6e0e47",
+      "group_name": "my_test_group",
+      "owner_pubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA==",
+      "user_pubkey": "CAISIQM2e3Pdt1wBeoDhYaOW+QocCZwTk37HBaGhuJsiRjdK+A==",
+      "consensus_type": "POA",
+      "encryption_type": "PUBLIC",
+      "cipher_key": "578aa2d4f97be40dc254a25b621836d248c027ae2fd3bf86aeaa9fed462b4f02",
+      "app_key": "test_app",
+      "last_updated": 1649096357747287600,
+      "highest_height": 0,
+      "highest_block_id": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
+      "group_status": "IDLE",
+      "snapshot_info": {
+        "TimeStamp": 1649096392051580700,
+        "HighestHeight": 0,
+        "HighestBlockId": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
+        "Nonce": 19500,
+        "SnapshotPackageId": "9d381d97-1cf4-4d13-9f95-b816f01f4df5",
+        "SenderPubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA=="
+      }
+    }
+  ]
+}
+
+```
+parameters:
+
+        "TimeStamp":         owner time stamp
+        "HighestHeight":     current group highest height from owner
+        "HighestBlockId":    current group highest block id
+        "Nonce":             nonce, increase continuly 
+        "SnapshotPackageId": snapshot id
+        "SenderPubkey":      group owner pubkcy
+      }
+```
+
+After join a new group, syncing block will start automatically and the snapshot_info section will return 'nil' before a valided snapshot is received and applied. For app development, we suggest wait till a valid snapshot is received before allow user use any function provided by the app.
+
+Owner will send snapshot every 1 minute regardless if there is anything changed, client node will check the snapshot and APPLY IT ONLY IF SOMETHING CHANGED, but the snapshot tag will be UPDATED ACCORDING TO LATEST SNAPSHOT RECEIVED.
+
+Snapshot rule doesn't apply to a producer node. A producer node still need wait till block syncing finished to make new block.
+
+[>>> Back to Top](#top)
+
+
+
+
