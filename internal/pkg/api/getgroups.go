@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
+	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 type groupInfo struct {
@@ -13,6 +14,7 @@ type groupInfo struct {
 	GroupName      string        `json:"group_name" validate:"required"`
 	OwnerPubKey    string        `json:"owner_pubkey" validate:"required"`
 	UserPubkey     string        `json:"user_pubkey" validate:"required"`
+	UserEthaddr    string        `json:"user_eth_addr" validate:"required"`
 	ConsensusType  string        `json:"consensus_type" validate:"required"`
 	EncryptionType string        `json:"encryption_type" validate:"required"`
 	CipherKey      string        `json:"cipher_key" validate:"required"`
@@ -71,6 +73,11 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.LastUpdated = value.Item.LastUpdate
 		group.HighestHeight = value.Item.HighestHeight
 		group.HighestBlockId = value.Item.HighestBlockId
+
+		ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(group.UserPubkey)
+		if err == nil {
+			group.UserEthaddr = ethaddr
+		}
 
 		switch value.GetSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
