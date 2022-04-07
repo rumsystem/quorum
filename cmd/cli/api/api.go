@@ -130,6 +130,40 @@ func ForceSyncGroup(groupId string) (syncRes *GroupForceSyncRetStruct, err error
 	return &ret, nil
 }
 
+func GetPubQueue(groupId string, trxId string, status string) (*handlers.PubQueueInfo, error) {
+	url := fmt.Sprintf(
+		"%s/api/v1/group/%s/pubqueue?trx=%s&status=%s", ApiServer, groupId, trxId, status)
+	ret := handlers.PubQueueInfo{}
+	body, err := httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil || ret.GroupId == "" {
+		return nil, errors.New(string(body))
+	}
+	return &ret, nil
+}
+
+func PubQueueAck(trxIds []string) ([]string, error) {
+	url := fmt.Sprintf("%s/api/v1/trx/ack", ApiServer)
+	param := qApi.PubQueueAckPayload{trxIds}
+	payload, err := json.Marshal(&param)
+	if err != nil {
+		return nil, err
+	}
+	ret := []string{}
+	body, err := httpPost(url, payload)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, errors.New(string(body))
+	}
+	return ret, nil
+}
+
 func IsQuorumContentMessage(content ContentStruct) bool {
 	// only support Note
 	if content.TypeUrl == "quorum.pb.Object" {

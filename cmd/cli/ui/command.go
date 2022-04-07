@@ -138,15 +138,18 @@ func cmdInputInit() {
 				return
 			} else if strings.HasPrefix(cmdStr, model.CommandModeBlocks.Cmd) {
 				reset("")
-				QuorumExit()
-				NetworkPageExit()
+				exitAll()
 
 				Blocks()
+			} else if strings.HasPrefix(cmdStr, model.CommandModePubqueue.Cmd) {
+				reset("")
+				exitAll()
+
+				Pubqueue()
 			} else if strings.HasPrefix(cmdStr, model.CommandModeQuorum.Cmd) {
 				reset("")
 
-				BlocksExit()
-				NetworkPageExit()
+				exitAll()
 
 				if config.RumConfig.Quorum.Server != "" {
 					Quorum(config.RumConfig.Quorum.Server)
@@ -156,8 +159,7 @@ func cmdInputInit() {
 			} else if strings.HasPrefix(cmdStr, model.CommandModeNetwork.Cmd) {
 				reset("")
 
-				BlocksExit()
-				QuorumExit()
+				exitAll()
 				NetworkPage()
 			} else if strings.HasPrefix(cmdStr, model.CommandNetworkPing.Cmd) {
 				reset("")
@@ -187,4 +189,10 @@ func cmdActivate() {
 	cmdInput.SetLabel("[::b]/CMD <..args>: [::-]")
 	cmdInput.SetText("")
 	App.SetFocus(cmdInput)
+}
+
+func exitAll() {
+	BlocksExit()
+	QuorumExit()
+	NetworkPageExit()
 }

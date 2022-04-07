@@ -47,14 +47,26 @@ func getBlockPrefixKey() string {
 }
 
 // Backup backup block from data db and {config,keystore,seeds} directory
-func Backup(config cli.Config, dstPath string) {
-	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
-		logger.Fatalf("backup directory %s is exists")
+func Backup(config cli.Config, dstPath string, password string) {
+	// get keystore password
+	password, err := GetKeystorePassword(password)
+	if err != nil {
+		logger.Fatalf("handlers.GetKeystorePassword failed: %s", err)
 	}
 
-	password, err := GetKeystorePassword()
+	// check keystore signature and encrypt
+	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, config.KeyStoreDir, config.ConfigDir, config.PeerName, password); err != nil {
+		logger.Fatalf("check keystore failed: %s", err)
+	}
+
+	// check dst path
+	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
+		logger.Fatalf("backup directory %s is exists", dstPath)
+	}
+
+	dstPath, err = filepath.Abs(dstPath)
 	if err != nil {
-		logger.Fatalf("GetKeystorePassword failed: %s", err)
+		logger.Fatalf("get abs path for %s failed: %s", dstPath, err)
 	}
 
 	// backup config directory
@@ -83,15 +95,15 @@ func Backup(config cli.Config, dstPath string) {
 	BackupBlock(config.DataDir, config.PeerName, blockDstPath)
 
 	// zip backup directory
-	defer os.RemoveAll(dstPath)
 	zipFilePath := fmt.Sprintf("%s.zip", dstPath)
+	defer utils.RemoveAll(dstPath)
+	defer utils.RemoveAll(zipFilePath)
 	if err := utils.ZipDir(dstPath, zipFilePath); err != nil {
 		logger.Fatalf("utils.ZipDir(%s, %s) failed: %s", dstPath, zipFilePath, err)
 	}
-	defer os.RemoveAll(zipFilePath)
 
 	// check keystore signature and encrypt
-	if err := checkSignAndEncryptWithKeystore(config.KeyStoreName, keystoreDstPath, configDstPath, config.PeerName, password); err != nil {
+	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, keystoreDstPath, configDstPath, config.PeerName, password); err != nil {
 		logger.Fatalf("check keystore failed: %s", err)
 	}
 
@@ -109,6 +121,8 @@ func Backup(config cli.Config, dstPath string) {
 	if err != nil {
 		logger.Fatalf("os.Open(%s) failed: %s", zipFilePath, err)
 	}
+	defer zipFile.Close()
+
 	encZipPath := fmt.Sprintf("%s.enc", zipFilePath)
 	encZipFile, err := os.Create(encZipPath)
 	if err != nil {
@@ -120,11 +134,15 @@ func Backup(config cli.Config, dstPath string) {
 }
 
 // GetKeystorePassword get password for keystore
-func GetKeystorePassword() (string, error) {
+func GetKeystorePassword(_password string) (string, error) {
+	if _password != "" {
+		return _password, nil
+	}
+
 	password := os.Getenv("RUM_KSPASSWD")
 	if password != "" {
 		return password, nil
 	}
-	password, err := localcrypto.PassphrasePromptForUnlock()
-	return password, err
+
+	return localcrypto.PassphrasePromptForUnlock()
 }

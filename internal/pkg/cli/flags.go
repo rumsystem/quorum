@@ -30,6 +30,7 @@ type Config struct {
 	IsPing             bool
 	KeyStoreDir        string
 	KeyStoreName       string
+	AutoAck            bool
 }
 
 func (al *addrList) String() string {
@@ -95,6 +96,8 @@ func ParseFlags() (Config, error) {
 	flag.BoolVar(&config.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flag.BoolVar(&config.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flag.BoolVar(&config.IsDebug, "debug", false, "show debug log")
+	flag.BoolVar(&config.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
+
 	flag.Parse()
 
 	configDir, err := filepath.Abs(config.ConfigDir)

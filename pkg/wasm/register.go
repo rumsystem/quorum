@@ -418,9 +418,17 @@ func RegisterJSFunctions() {
 			return nil
 		}
 		groupId := args[0].String()
+		status := ""
+		trxId := ""
+		if len(args) >= 2 { // optional
+			status = args[1].String()
+		}
+		if len(args) >= 3 {
+			trxId = args[2].String()
+		}
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
-			res, err := quorumAPI.GetPubQueue(groupId)
+			res, err := quorumAPI.GetPubQueue(groupId, status, trxId)
 			if err != nil {
 				return ret, err
 			}

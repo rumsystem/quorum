@@ -432,18 +432,17 @@ func main() {
 	update := flag.Bool("update", false, "Update to the latest version")
 	updateFrom := flag.String("from", "github", "Update from: github/qingcloud, default to github")
 
-	// restore flag
+	// backup/restore flag
 	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
-	backupFile := flag.String("backup-file", "", "the backup file for restoring")
-	password := flag.String("password", "", "the password for restoring")
-	/*
-		keystoreDir := flag.String("keystore-dir", "", "the directory path for restoring")
-		configDir := flag.String("config-dir", "", "the config directory for restoring")
-	*/
-	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
 	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
+	backupFile := flag.String("backup-file", "", "the backup file for restoring")
+	password := flag.String("password", "", "the password for backuping/restoring")
+	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
 
 	config, err := cli.ParseFlags()
+
+	chain.SetAutoAck(config.AutoAck)
+
 	lvl, err := logging.LevelFromString("info")
 	logging.SetAllLoggers(lvl)
 	logging.SetLogLevel("appsync", "error")
@@ -460,14 +459,16 @@ func main() {
 		logging.SetLogLevel("chain", "debug")
 		//logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
-		//logging.SetLogLevel("group", "debug")
 		logging.SetLogLevel("syncer", "debug")
 		logging.SetLogLevel("producer", "debug")
-		//logging.SetLogLevel("user", "debug")
-		//logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("trxmgr", "debug")
 		logging.SetLogLevel("conn", "debug")
 		logging.SetLogLevel("rumexchange", "debug")
+		logging.SetLogLevel("ssreceiver", "debug")
+		logging.SetLogLevel("sssender", "debug")
+		//logging.SetLogLevel("group", "debug")
+		//logging.SetLogLevel("user", "debug")
+		//logging.SetLogLevel("groupmgr", "debug")
 		//logging.SetLogLevel("ping", "debug")
 		logging.SetLogLevel("chan", "debug")
 		//logging.SetLogLevel("pubsub", "debug")
@@ -542,10 +543,11 @@ func main() {
 	}
 
 	if *isRestore {
-		passwd := *password
-		if passwd == "" {
-			passwd = os.Getenv("RUM_KSPASSWD")
+		passwd, err := handlers.GetKeystorePassword(*password)
+		if err != nil {
+			mainlog.Fatalf("handlers.GetKeystorePassword failed: %s", err)
 		}
+
 		params := handlers.RestoreParam{
 			Peername:    config.PeerName,
 			BackupFile:  *backupFile,
@@ -556,13 +558,15 @@ func main() {
 			SeedDir:     *seedDir,
 		}
 		restore(params)
+
 		return
 	}
 
 	if *isBackup {
-		handlers.Backup(config, *backupFile)
+		handlers.Backup(config, *backupFile, *password)
 		return
 	}
+
 	if err := utils.EnsureDir(config.DataDir); err != nil {
 		panic(err)
 	}
@@ -623,6 +627,42 @@ func restore(params handlers.RestoreParam) {
 		return
 	}
 
+	var err error
+	params.BackupFile, err = filepath.Abs(params.BackupFile)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.BackupFile, err)
+	}
+	params.ConfigDir, err = filepath.Abs(params.ConfigDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.ConfigDir, err)
+	}
+	params.KeystoreDir, err = filepath.Abs(params.KeystoreDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.KeystoreDir, err)
+	}
+	params.DataDir, _ = filepath.Abs(params.DataDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.DataDir, err)
+	}
+	params.SeedDir, err = filepath.Abs(params.SeedDir)
+	if err != nil {
+		mainlog.Fatalf("get absolute path for %s failed: %s", params.SeedDir, err)
+	}
+
+	// go to restore directory before restore
+	restoreDir := filepath.Dir(params.DataDir)
+	if err := utils.EnsureDir(restoreDir); err != nil {
+		mainlog.Fatalf("utils.EnsureDir(%s) failed: %s", restoreDir, err)
+	}
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		mainlog.Fatalf("os.Getwd failed: %s", err)
+	}
+
+	os.Chdir(restoreDir)
+	defer os.Chdir(currentDir)
+
 	handlers.Restore(params)
 
 	var pidch chan int
@@ -640,9 +680,11 @@ func restore(params handlers.RestoreParam) {
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,
 	)
+	defer utils.RemoveAll("certs") // NOTE: HARDCODE
+
 	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
 	ctx := context.Background()
-	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
+	checkctx, _ := context.WithTimeout(ctx, 300*time.Second)
 	if ok := testnode.CheckApiServerRunning(checkctx, peerBaseUrl); !ok {
 		mainlog.Fatal("api server start failed")
 	}

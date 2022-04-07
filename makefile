@@ -50,7 +50,7 @@ test-main:
 	go test -timeout 99999s cmd/main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20
 
 test-main-rex: 
-	go test -timeout 99999s cmd/main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20 -rextest=true
+	go test -timeout 99999s cmd/main_rex_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20 -rextest=true
 
 test-api: 
 	go test -v internal/pkg/api/*

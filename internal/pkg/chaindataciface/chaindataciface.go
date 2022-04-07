@@ -10,4 +10,5 @@ type ChainDataHandlerIface interface {
 	HandleBlockPsConn(block *quorumpb.Block) error
 	HandleTrxRex(trx *quorumpb.Trx, fromstream network.Stream) error
 	HandleBlockRex(block *quorumpb.Block, fromstream network.Stream) error
+	HandleSnapshotPsConn(snapshot *quorumpb.Snapshot) error
 }

@@ -45,27 +45,30 @@ func Restore(params RestoreParam) {
 	if err != nil {
 		logger.Fatalf("os.Open(%s) failed: %s", encZipPath, err)
 	}
+	defer encZipFile.Close()
 
 	zipFile, err := age.Decrypt(encZipFile, identities...)
 	if err != nil {
 		logger.Fatalf("decrypt encrypted zip file failed: %v", err)
 	}
 	zipFilePath := strings.Replace(encZipPath, ".enc", "", 1)
+	absZipFilePath, err := filepath.Abs(zipFilePath)
+	if err != nil {
+		logger.Fatalf("filepath.Abs(%s) failed: %s", zipFilePath, err)
+	}
+	defer utils.RemoveAll(absZipFilePath)
+
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(zipFile)
 	if err != nil {
 		logger.Fatalf("buf.ReadFrom failed: %s", err)
 	}
-	if err := ioutil.WriteFile(zipFilePath, buf.Bytes(), 0600); err != nil {
+	if err := ioutil.WriteFile(absZipFilePath, buf.Bytes(), 0600); err != nil {
 		logger.Fatalf("ioutil.WriteFile failed: %s", err)
 	}
 
-	absZipFilePath, err := filepath.Abs(zipFilePath)
-	if err != nil {
-		logger.Fatalf("filepath.Abs(%s) failed: %s", zipFilePath, err)
-	}
 	absUnZipDir := utils.PathTrimExt(absZipFilePath)
-
+	defer utils.RemoveAll(absUnZipDir)
 	if err := utils.Unzip(zipFilePath, absUnZipDir); err != nil {
 		logger.Fatalf("unzip backup zip archive failed: %v", err)
 	}

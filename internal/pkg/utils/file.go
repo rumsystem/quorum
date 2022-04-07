@@ -35,3 +35,13 @@ func CheckAndCreateDir(path string) error {
 
 	return nil
 }
+
+// RemoveAll wrap os.RemoveAll and output log
+func RemoveAll(path string) error {
+	err := os.RemoveAll(path)
+	if err != nil {
+		logger.Errorf("remove %s failed: %s", path, err)
+	}
+
+	return err
+}

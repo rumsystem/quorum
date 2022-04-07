@@ -216,6 +216,15 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					} else {
 						channel_log.Warningf(err.Error())
 					}
+				} else if pkg.Type == quorumpb.PackageType_SNAPSHOT {
+					var snapshot *quorumpb.Snapshot
+					snapshot = &quorumpb.Snapshot{}
+					err := proto.Unmarshal(pkg.Data, snapshot)
+					if err == nil {
+						psconn.chain.HandleSnapshotPsConn(snapshot)
+					} else {
+						channel_log.Warningf(err.Error())
+					}
 				}
 			} else {
 				channel_log.Warningf(err.Error())

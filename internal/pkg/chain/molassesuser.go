@@ -313,24 +313,36 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			trx.Data = decryptData
 		}
 
+		//apply trx
 		molauser_log.Debugf("<%s> try apply trx <%s>", user.groupId, trx.TrxId)
-		//apply trx content
+
+		//check if snapshotTag is available
+		if trx.Type != quorumpb.TrxType_POST {
+			snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(trx.GroupId, nodename)
+			if err == nil && snapshotTag != nil {
+				if snapshotTag.HighestHeight > user.grpItem.HighestHeight {
+					molauser_log.Debugf("<%s> snapshotTag exist, trx already applied, ignore <%s>", user.groupId, trx.TrxId)
+					continue
+				}
+			}
+		}
+
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
 			molauser_log.Debugf("<%s> apply POST trx", user.groupId)
 			nodectx.GetDbMgr().AddPost(trx, nodename)
 		case quorumpb.TrxType_PRODUCER:
 			molauser_log.Debugf("<%s> apply PRODUCER trx", user.groupId)
-			nodectx.GetDbMgr().UpdateProducer(trx, nodename)
+			nodectx.GetDbMgr().UpdateProducerTrx(trx, nodename)
 			user.cIface.UpdProducerList()
 			user.cIface.CreateConsensus()
 		case quorumpb.TrxType_USER:
 			molauser_log.Debugf("<%s> apply USER trx", user.groupId)
-			nodectx.GetDbMgr().UpdateUser(trx, nodename)
+			nodectx.GetDbMgr().UpdateUserTrx(trx, nodename)
 			user.cIface.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			molauser_log.Debugf("<%s> apply ANNOUNCE trx", user.groupId)
-			nodectx.GetDbMgr().UpdateAnnounce(trx, nodename)
+			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, nodename)
 		case quorumpb.TrxType_SCHEMA:
 			molauser_log.Debugf("<%s> apply SCHEMA trx", user.groupId)
 			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
@@ -338,10 +350,10 @@ func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error
 			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
 		case quorumpb.TrxType_APP_CONFIG:
 			molauser_log.Debugf("<%s> apply APP_CONFIG trx", user.groupId)
-			nodectx.GetDbMgr().UpdateAppConfig(trx, nodename)
+			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			molauser_log.Debugf("<%s> apply CHAIN_CONFIG trx", user.groupId)
-			err := nodectx.GetDbMgr().UpdateChainConfig(trx, nodename)
+			err := nodectx.GetDbMgr().UpdateChainConfigTrx(trx, nodename)
 			if err != nil {
 				fmt.Println(err.Error())
 			}

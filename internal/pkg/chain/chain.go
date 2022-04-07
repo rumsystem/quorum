@@ -121,6 +121,18 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		chain_log.Errorf("HandleTrxPsConn called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return errors.New("Trx Version mismatch")
 	}
+
+	verified, err := chain.trxFactory.VerifyTrx(trx)
+	if err != nil {
+		chain_log.Warnf("<%s> verify Trx failed with err <%s>", chain.groupId, err.Error())
+		return errors.New("Verify Trx failed")
+	}
+
+	if !verified {
+		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender %s", chain.groupId, trx.SenderPubkey)
+		return errors.New("Invalid Trx")
+	}
+
 	switch trx.Type {
 	case quorumpb.TrxType_POST:
 		chain.producerAddTrx(trx)
@@ -170,6 +182,30 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 
 func (chain *Chain) HandleBlockRex(block *quorumpb.Block, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleBlockRex called", chain.groupId)
+	return nil
+}
+
+func (chain *Chain) HandleSnapshotPsConn(snapshot *quorumpb.Snapshot) error {
+	chain_log.Debugf("<%s> HandleSnapshotPsConn called", chain.groupId)
+	if snapshot.SenderPubkey == chain.group.Item.OwnerPubKey {
+		if chain.Consensus.SnapshotReceiver() != nil {
+			//check signature
+			verified, err := chain.Consensus.SnapshotReceiver().VerifySignature(snapshot)
+			if err != nil {
+				chain_log.Debugf("<%s> verify snapshot failed", chain.groupId)
+				return err
+			}
+
+			if !verified {
+				chain_log.Debugf("<%s> Invalid snapshot, signature invalid", chain.groupId)
+				return errors.New("Invalid signature")
+			}
+			chain.Consensus.SnapshotReceiver().ApplySnapshot(snapshot)
+		}
+	} else {
+		chain_log.Warningf("<%s> Snapshot from unknown source(not owner), pubkey <%s>", chain.groupId, snapshot.SenderPubkey)
+	}
+
 	return nil
 }
 
@@ -608,11 +644,21 @@ func (chain *Chain) UpdUserList() {
 	}
 }
 
+func (chain *Chain) GetSnapshotTag() (tag *quorumpb.SnapShotTag, err error) {
+	if chain.Consensus.SnapshotReceiver() != nil {
+		return chain.Consensus.SnapshotReceiver().GetTag(), nil
+	} else {
+		return nil, errors.New("Sender don't have snapshot tag")
+	}
+}
+
 func (chain *Chain) CreateConsensus() error {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
 
 	var user User
 	var producer Producer
+	var snapshotreceiver SnapshotReceiver
+	var snapshotsender SnapshotSender
 
 	if chain.Consensus == nil || chain.Consensus.User() == nil {
 		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
@@ -637,13 +683,37 @@ func (chain *Chain) CreateConsensus() error {
 		producer = nil
 	}
 
+	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+		if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
+			chain_log.Infof("<%s> Create and initial molasses SnapshotSender", chain.groupId)
+			snapshotsender = &MolassesSnapshotSender{}
+			snapshotsender.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+		} else {
+			chain_log.Infof("<%s> reuse molasses snapshotsender", chain.groupId)
+			snapshotsender = chain.Consensus.SnapshotSender()
+		}
+		snapshotreceiver = nil
+	} else {
+		if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
+			chain_log.Infof("<%s> Create and initial molasses SnapshotReceiver", chain.groupId)
+			snapshotreceiver = &MolassesSnapshotReceiver{}
+			snapshotreceiver.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+		} else {
+			chain_log.Infof("<%s> reuse molasses snapshot", chain.groupId)
+			snapshotreceiver = chain.Consensus.SnapshotReceiver()
+		}
+		snapshotsender = nil
+	}
+
 	if chain.Consensus == nil {
 		chain_log.Infof("<%s> created consensus", chain.groupId)
-		chain.Consensus = NewMolasses(producer, user)
+		chain.Consensus = NewMolasses(producer, user, snapshotsender, snapshotreceiver)
 	} else {
 		chain_log.Infof("<%s> reuse consensus", chain.groupId)
 		chain.Consensus.SetProducer(producer)
 		chain.Consensus.SetUser(user)
+		chain.Consensus.SetSnapshotSender(snapshotsender)
+		chain.Consensus.SetSnapshotReceiver(snapshotreceiver)
 	}
 
 	return nil
@@ -697,7 +767,7 @@ func (chain *Chain) StopSync() error {
 }
 
 func (chain *Chain) IsSyncerIdle() bool {
-	chain_log.Debug("IsSyncerIdle called, groupId <%s>", chain.groupId)
+	chain_log.Debugf("IsSyncerIdle called, groupId <%s>", chain.groupId)
 
 	if chain.syncer.Status == SYNCING_BACKWARD ||
 		chain.syncer.Status == SYNCING_FORWARD ||
@@ -708,4 +778,30 @@ func (chain *Chain) IsSyncerIdle() bool {
 	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
+}
+
+func (chain *Chain) StartSnapshot() {
+	chain_log.Debugf("<%s> StartSnapshot called", chain.groupId)
+	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+		//I am producer, start snapshot ticker
+		chain_log.Debugf("<%s> Owner start snapshot", chain.groupId)
+		if chain.Consensus.SnapshotSender() == nil {
+			chain_log.Debugf("<%s> snapshotsender is nil", chain.groupId)
+			return
+		}
+		chain.Consensus.SnapshotSender().Start()
+	}
+}
+
+func (chain *Chain) StopSnapshot() {
+	chain_log.Debugf("<%s> StopSnapshot called", chain.groupId)
+	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+		//I am producer, start snapshot ticker
+		chain_log.Debugf("<%s> Owner stop snapshot", chain.groupId)
+		if chain.Consensus.SnapshotSender() == nil {
+			chain_log.Debugf("<%s> snapshotsender is nil", chain.groupId)
+			return
+		}
+		chain.Consensus.SnapshotSender().Stop()
+	}
 }

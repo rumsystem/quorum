@@ -30,6 +30,12 @@ const (
 	MAX_RETRY_COUNT              = 10
 )
 
+var autoAck bool = false
+
+func SetAutoAck(ack bool) {
+	autoAck = ack
+}
+
 func (item *PublishQueueItem) GetKey() ([]byte, error) {
 	// PREFIX_GROUPID_TRXID
 	validStates := []string{PublishQueueItemStatePending, PublishQueueItemStateSuccess, PublishQueueItemStateFail}
@@ -93,9 +99,9 @@ func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 	return publishQueueWatcher.db.Set(newK, newV)
 }
 
-func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQueueItem, error) {
+func (watcher *PublishQueueWatcher) GetGroupItems(groupId string, status string, trxId string) ([]*PublishQueueItem, error) {
 	items := []*PublishQueueItem{}
-	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
+	publishQueueWatcher.db.PrefixForeach([]byte(fmt.Sprintf("%s_%s", PUBQUEUE_PREFIX, groupId)), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
 			// continue
@@ -106,10 +112,46 @@ func (watcher *PublishQueueWatcher) GetGroupItems(groupId string) ([]*PublishQue
 			chain_log.Warnf("<pubqueue>: %s", err.Error())
 			return nil
 		}
-		items = append(items, item)
+		valid := true
+		if status != "" {
+			valid = valid && (item.State == status)
+		}
+		if trxId != "" {
+			valid = valid && (item.Trx.TrxId == trxId)
+		}
+		if valid {
+			items = append(items, item)
+		}
+
 		return nil
 	})
 	return items, nil
+}
+
+func (watcher *PublishQueueWatcher) Ack(trxIds []string) ([]string, error) {
+	acked := []string{}
+
+	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err.Error())
+			// continue
+			return false, err
+		}
+		item, err := ParsePublishQueueItem(k, v)
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err.Error())
+			return false, err
+		}
+		for _, trxId := range trxIds {
+			if item.Trx.TrxId == trxId {
+				acked = append(acked, trxId)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+
+	return acked, nil
 }
 
 var publishQueueWatcher PublishQueueWatcher = PublishQueueWatcher{}
@@ -143,24 +185,30 @@ func doRefresh() {
 	}
 	publishQueueWatcher.running = true
 
-	// remove succeed trx (wasm compatable)
-	publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
-		if err != nil {
-			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			// continue
-			return false, nil
-		}
-		item, err := ParsePublishQueueItem(k, v)
-		if err != nil {
-			chain_log.Warnf("<pubqueue>: %s", err.Error())
-			return false, nil
-		}
-		if item.State == PublishQueueItemStateSuccess {
-			return true, nil
-		}
+	if autoAck {
+		// auto remove
+		publishQueueWatcher.db.PrefixCondDelete([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) (bool, error) {
+			if err != nil {
+				chain_log.Warnf("<pubqueue>: %s", err.Error())
+				// continue
+				return false, nil
+			}
+			item, err := ParsePublishQueueItem(k, v)
+			if err != nil {
+				chain_log.Warnf("<pubqueue>: %s", err.Error())
+				return false, nil
+			}
+			if item.State == PublishQueueItemStateSuccess {
+				return true, nil
+			}
 
-		return false, nil
-	})
+			if item.State == PublishQueueItemStateFail && item.RetryCount > MAX_RETRY_COUNT {
+				return true, nil
+			}
+
+			return false, nil
+		})
+	}
 
 	publishQueueWatcher.db.PrefixForeach([]byte(PUBQUEUE_PREFIX), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -252,7 +300,7 @@ func doRefresh() {
 }
 
 func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
-	chain_log.Debugf("<pubqueue>: %v to group(%s)", trx.TrxId, groupId)
+	//chain_log.Debugf("<pubqueue>: %v to group(%s)", trx.TrxId, groupId)
 	item := PublishQueueItem{groupId, PublishQueueItemStatePending, 0, time.Now().UnixNano(), trx}
 	return publishQueueWatcher.UpsertItem(&item)
 }
