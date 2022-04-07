@@ -439,6 +439,25 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("PubQueueAck", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		trxIds := []string{}
+		for i := 0; i < len(args); i += 1 {
+			trxId := args[i].String()
+			trxIds = append(trxIds, trxId)
+		}
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.PubQueueAck(trxIds)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("PostToGroup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		jsonStr := args[0].String()
 		handler := func() (map[string]interface{}, error) {
