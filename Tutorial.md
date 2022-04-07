@@ -50,12 +50,8 @@ You can try:
   - [Add producer](#api-post-producer-add)
   - [Get producers](#api-get-producers)
   - [Owner remove producer](#api-post-producer-remove)
-- [DeniedList](#test-deniedlist)  <font color="red"><sup>abandoned</sup></font>
-  - [Get deniedlist](#api-get-deniedlist)
-  - [Add deniedlist](#api-post-deniedlist-add)
-  - [Del deniedlist](#api-post-deniedlist-del)
 - [App Config](#test-app-config)
-  - [Add App config](#api-post-group-config-add)
+  - [Add App config](#api-add-app-config)
   - [Get App config keylist](#api-get-app-config-keylist)
   - [Get App config keyname](#api-get-app-config-keyname)
 - [Private Group](#test-private-group)
@@ -72,6 +68,7 @@ You can try:
   - [Update allow/deny list for trxType/trxTypes](#api-update-list)
   - [Get group allow/deny list](#api-get-list)
   - [API Update for client api](#about-chainconfig-for-client)
+- [SnapShot](#about-snapshot)
 
 Common params:
 
@@ -424,7 +421,7 @@ API return value:
             "last_updated": 1631725187659332400,
             "highest_height": 0,
             "highest_block_id": "a865ae03-d8ce-40fc-abf6-ea6f6132c35a",
-            "group_status": "IDLE"
+            "group_status": "IDLE",
             "snapshot_info": {
                  "TimeStamp": 1649096392051580700,
                  "HighestHeight": 0,
@@ -446,7 +443,7 @@ API return value:
     * last_updated
     * highest_height      <sup>[2]</sup>
     * highest_block_id    <sup>[3]</sup>
-    * snapshot_info
+    * [snapshot_info](#about-snapshot)
 
 <sup>[1]</sup> The eth address of current user. 当前用户的 ETH 地址。
 
@@ -1442,12 +1439,6 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 
 <span id="api-add-app-config"></span>
 
-<span id="test-app-config"></span>
-
-# App Config
-
-<span id="api-post-group-config-add"></span>
-
 ## Add app config
 
 **API**:  ```*/api/v1/group/appconfig```
@@ -2099,6 +2090,74 @@ Same trxType for a pubkey can be added to both allow list and deny list, that is
 
 [>>> Back to Top](#top)
 
+<span id="about-snapshot"></span>
+
+# Snapshot
+
+To speed up new node initial synchorize, group owner will "boardcast" a snapshot every 1 minute to all node connected.
+The snapshot includes the latest configuration infomation of a group, includes:
+
+- all added user(s)
+- all added producer(s)
+- all chain config
+- all app config
+- all announced user or producer
+
+After a  node received snapshot from owner(wether in syncing or not), it will apply all configuration info to local db.That means the node have all up-to-date configuration and no need to wait block syncing finished.
+Clinet app should check snapshot "tag" by using getGroups API. A new section is added to group info.
+
+example:
+
+```bash
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8004/api/v1/groups | jq
+```
+
+{
+  "groups": [
+    {
+      "group_id": "0b0c5c0c-26a1-44e5-9edb-ace5ea6e0e47",
+      "group_name": "my_test_group",
+      "owner_pubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA==",
+      "user_pubkey": "CAISIQM2e3Pdt1wBeoDhYaOW+QocCZwTk37HBaGhuJsiRjdK+A==",
+      "consensus_type": "POA",
+      "encryption_type": "PUBLIC",
+      "cipher_key": "578aa2d4f97be40dc254a25b621836d248c027ae2fd3bf86aeaa9fed462b4f02",
+      "app_key": "test_app",
+      "last_updated": 1649096357747287600,
+      "highest_height": 0,
+      "highest_block_id": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
+      "group_status": "IDLE",
+      "snapshot_info": {
+        "TimeStamp": 1649096392051580700,
+        "HighestHeight": 0,
+        "HighestBlockId": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
+        "Nonce": 19500,
+        "SnapshotPackageId": "9d381d97-1cf4-4d13-9f95-b816f01f4df5",
+        "SenderPubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA=="
+      }
+    }
+  ]
+}
+
+```
+
+parameters:
+
+"TimeStamp":         owner time stamp
+"HighestHeight":     current group highest height from owner
+"HighestBlockId":    current group highest block id
+"Nonce":             nonce, increase continuly 
+"SnapshotPackageId": snapshot id
+"SenderPubkey":      group owner pubkcy
+
+After join a new group, syncing block will start automatically and the snapshot_info section will return 'nil' before a valided snapshot is received and applied. For app development, we suggest wait till a valid snapshot is received before allow user use any function provided by the app.
+
+Owner will send snapshot every 1 minute regardless if there is anything changed, client node will check the snapshot and APPLY IT ONLY IF SOMETHING CHANGED, but the snapshot tag will be UPDATED ACCORDING TO LATEST SNAPSHOT RECEIVED.
+
+Snapshot rule doesn't apply to a producer node. A producer node still need wait till block syncing finished to make new block.
+
+[>>> Back to Top](#top)
+
 <span id="param-list"></span>
 
 # Common Params
@@ -2226,75 +2285,3 @@ auth type, string, can be one of these:
 - "FOLLOW_DNY_LIST"
 
 [>>> Back to Top](#top)
-
-# Snapshot
-
-<span id="about-snapshot"></span>
-
-To speed up new node initial synchorize, group owner will "boardcast" a snapshot every 1 minute to all node connected.
-The snapshot includes the latest configuration infomation of a group, includes:
-- all added user(s)
-- all added producer(s)
-- all chain config
-- all app config
-- all announced user or producer
-
-After a  node received snapshot from owner(wether in syncing or not), it will apply all configuration info to local db.That means the node have all up-to-date configuration and no need to wait block syncing finished.
-Clinet app should check snapshot "tag" by using getGroups API. A new section is added to group info, 
-
-example:
-
-```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8004/api/v1/groups | jq
-```
-
-{
-  "groups": [
-    {
-      "group_id": "0b0c5c0c-26a1-44e5-9edb-ace5ea6e0e47",
-      "group_name": "my_test_group",
-      "owner_pubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA==",
-      "user_pubkey": "CAISIQM2e3Pdt1wBeoDhYaOW+QocCZwTk37HBaGhuJsiRjdK+A==",
-      "consensus_type": "POA",
-      "encryption_type": "PUBLIC",
-      "cipher_key": "578aa2d4f97be40dc254a25b621836d248c027ae2fd3bf86aeaa9fed462b4f02",
-      "app_key": "test_app",
-      "last_updated": 1649096357747287600,
-      "highest_height": 0,
-      "highest_block_id": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
-      "group_status": "IDLE",
-      "snapshot_info": {
-        "TimeStamp": 1649096392051580700,
-        "HighestHeight": 0,
-        "HighestBlockId": "5f3a1cb7-822a-4fb8-ae84-864c496ab8de",
-        "Nonce": 19500,
-        "SnapshotPackageId": "9d381d97-1cf4-4d13-9f95-b816f01f4df5",
-        "SenderPubkey": "CAISIQMuaL8Y5TxbaO0ult7BTjYYhgrteewJANQGt/CYANjxQA=="
-      }
-    }
-  ]
-}
-
-```
-parameters:
-
-        "TimeStamp":         owner time stamp
-        "HighestHeight":     current group highest height from owner
-        "HighestBlockId":    current group highest block id
-        "Nonce":             nonce, increase continuly 
-        "SnapshotPackageId": snapshot id
-        "SenderPubkey":      group owner pubkcy
-      }
-```
-
-After join a new group, syncing block will start automatically and the snapshot_info section will return 'nil' before a valided snapshot is received and applied. For app development, we suggest wait till a valid snapshot is received before allow user use any function provided by the app.
-
-Owner will send snapshot every 1 minute regardless if there is anything changed, client node will check the snapshot and APPLY IT ONLY IF SOMETHING CHANGED, but the snapshot tag will be UPDATED ACCORDING TO LATEST SNAPSHOT RECEIVED.
-
-Snapshot rule doesn't apply to a producer node. A producer node still need wait till block syncing finished to make new block.
-
-[>>> Back to Top](#top)
-
-
-
-
