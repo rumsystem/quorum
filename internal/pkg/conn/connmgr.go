@@ -6,7 +6,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/network"
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
@@ -21,6 +21,9 @@ const (
 	USER_CHANNEL_PREFIX     = "user_channel_"
 	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
 	SYNC_CHANNEL_PREFIX     = "sync_channel_"
+
+	RelayUserType  string = "user"
+	RelayGroupType string = "group"
 )
 
 const (
@@ -111,6 +114,33 @@ func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, 
 	return nil
 }
 
+func (conn *Conn) RegisterChainRelay(groupId, userSignPubkey, relaytype string) error {
+	conn_log.Debugf("RegisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
+	key := fmt.Sprintf("%s%s", groupId, relaytype)
+	if _, ok := conn.ConnMgrs[key]; ok {
+		return nil
+	} else {
+		connMgr := &ConnMgr{}
+		connMgr.InitGroupRelayConnMgr(groupId, userSignPubkey, relaytype)
+		conn.ConnMgrs[key] = connMgr
+	}
+	return nil
+}
+
+func (conn *Conn) UnregisterChainRelay(relayid, groupId, relaytype string) error {
+	conn_log.Debugf("UnregisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
+	key := fmt.Sprintf("%s%s", groupId, relaytype)
+	if connMgr, ok := conn.ConnMgrs[key]; ok {
+		for channelId, _ := range connMgr.PsConns {
+			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveRelayChannel(channelId)
+			delete(connMgr.PsConns, channelId)
+		}
+		delete(conn.ConnMgrs, key)
+		return nil
+	}
+	return errors.New(fmt.Sprintf("unknown relay: %s", relayid))
+}
+
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
 	conn_log.Debugf("UnregisterChainCtx called, groupId <%s>", groupId)
 
@@ -153,13 +183,9 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 
 	//Rex
 	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
-
 	if nodectx.GetNodeCtx().Node.RumExchange != nil {
 		nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 	}
-
-	//initial rex session
-	//connMgr.InitRexSession()
 
 	//initial ps conn for user channel and sync channel
 	connMgr.InitialPsConn()
@@ -167,10 +193,17 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	return nil
 }
 
-func (connMgr *ConnMgr) UpdateProviderPeerIdPool(peerPubkey, peerId string) error {
-	conn_log.Debugf("UpdateProviderPeerIdPool called, groupId <%s>", connMgr.GroupId)
-	connMgr.ProviderPeerIdPool[peerPubkey] = peerId
-	return connMgr.InitRexSession()
+func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
+	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
+	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
+	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+	connMgr.GroupId = groupId
+	connMgr.UserSignPubkey = userSignPubkey
+	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
+	connMgr.InitialPsConnRelay(relaytype)
+
+	return nil
 }
 
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
@@ -190,26 +223,6 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 		connMgr.StableProdPsConn = false
 	}
 
-	return nil
-}
-
-func (connMgr *ConnMgr) InitRexSession() error {
-	conn_log.Debugf("InitSession called, groupId <%s>", connMgr.GroupId)
-	if peerId, ok := connMgr.ProviderPeerIdPool[connMgr.OwnerPubkey]; ok {
-		if nodectx.GetNodeCtx().Node.RumSession == nil {
-			return nil
-		}
-		err := nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, connMgr.ProducerChannelId)
-		if err != nil {
-			return err
-		}
-		err = nodectx.GetNodeCtx().Node.RumSession.InitSession(peerId, connMgr.SyncChannelId)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf(ERR_CAN_NOT_FIND_OWENR_PEER_ID)
-	}
 	return nil
 }
 
@@ -410,7 +423,7 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 	return fmt.Errorf("Can not find psChannel")
 }
 
-func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
+func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
@@ -427,10 +440,10 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, to peer.ID) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	if to == "" {
-		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
+	if s == nil {
+		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg) //publish to all(or some random) peers
 	} else {
-		return nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, to)
+		return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 	}
 }
 
@@ -440,4 +453,26 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
+}
+
+func (connMgr *ConnMgr) InitialPsConnRelay(relaytype string) {
+	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
+	if relaytype == RelayGroupType {
+		conn_log.Debugf("<%s> init with RelayGroupType ", connMgr.GroupId)
+		//relay newblock/snapshot boardcasting
+		userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.UserChannelId)
+		connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+		//relay producer channel for user's ask
+		producerChannelId := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
+		connMgr.PsConns[connMgr.ProducerChannelId] = producerChannelId
+	} else if relaytype == RelayUserType {
+		conn_log.Debugf("<%s> init with RelayUserType ", connMgr.GroupId)
+		//relay producer channel for user's ask
+		producerChannelId := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
+		connMgr.PsConns[connMgr.ProducerChannelId] = producerChannelId
+		//relay sync channel for producer's response
+		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.SyncChannelId)
+		connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
+	}
+
 }

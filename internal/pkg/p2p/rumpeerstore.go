@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"math/rand"
 	"sync"
@@ -62,6 +63,23 @@ func (rps *RumGroupPeerStore) Get(groupid string) []peer.ID {
 		}
 	}
 	return result
+}
+
+func (rps *RumGroupPeerStore) GetOneRandomPeer(connectPeers []peer.ID) (peer.ID, error) {
+	ignoredpeers := rps.Get(ignoregroupid)
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(connectPeers), func(i, j int) { connectPeers[i], connectPeers[j] = connectPeers[j], connectPeers[i] })
+
+	for _, newp := range connectPeers {
+		for _, ip := range ignoredpeers {
+			if ip == newp {
+				break
+			}
+		}
+		return newp, nil
+	}
+
+	return "", fmt.Errorf("no available peer")
 }
 
 func (rps *RumGroupPeerStore) GetRandomPeer(groupid string, count int, connectPeers []peer.ID) []peer.ID {

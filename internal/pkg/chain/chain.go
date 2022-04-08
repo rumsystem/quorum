@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -84,7 +84,7 @@ func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 	return nodectx.GetDbMgr().UpdGroup(chain.group.Item)
 }
 
-func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, from peer.ID) error {
+func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
 		chain_log.Errorf("HandleTrxRex called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
@@ -97,12 +97,12 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, from peer.ID) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockForward(trx, conn.RumExchange, from)
+		chain.handleReqBlockForward(trx, conn.RumExchange, s)
 	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockBackward(trx, conn.RumExchange, from)
+		chain.handleReqBlockBackward(trx, conn.RumExchange, s)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -152,12 +152,12 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockForward(trx, conn.PubSub, "")
+		chain.handleReqBlockForward(trx, conn.PubSub, nil)
 	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockBackward(trx, conn.PubSub, "")
+		chain.handleReqBlockBackward(trx, conn.PubSub, nil)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -180,7 +180,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (chain *Chain) HandleBlockRex(block *quorumpb.Block, from peer.ID) error {
+func (chain *Chain) HandleBlockRex(block *quorumpb.Block, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleBlockRex called", chain.groupId)
 	return nil
 }
@@ -249,7 +249,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, from peer.ID) error {
+func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
 	if networktype == conn.PubSub {
 		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
@@ -320,7 +320,8 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 					if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 						return err
 					} else {
-						return cmgr.SendTrxRex(trx, from)
+						//reply to the source net stream
+						return cmgr.SendTrxRex(trx, s)
 					}
 				}
 			} else {
@@ -334,7 +335,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	return nil
 }
 
-func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, from peer.ID) error {
+func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
 	if networktype == conn.PubSub {
 		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 			return nil
@@ -401,17 +402,12 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 				return err
 			}
 
-			var pkg *quorumpb.Package
-			pkg = &quorumpb.Package{}
-			pbBytes, err := proto.Marshal(trx)
-			if err != nil {
+			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 				return err
+			} else {
+				//reply to the source net stream
+				return cmgr.SendTrxRex(trx, s)
 			}
-			pkg.Type = quorumpb.PackageType_TRX
-			pkg.Data = pbBytes
-
-			rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-			nodectx.GetNodeCtx().Node.RumExchange.PublishTo(rummsg, from)
 
 		} else {
 			chain_log.Debugf("GetBlockBackwordByReqTrx err %s", err)

@@ -310,13 +310,13 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 		return err
 	}
 	if syncer.rumExchangeTestMode == true {
-		return connMgr.SendTrxRex(trx, "")
+		return connMgr.SendTrxRex(trx, nil)
 	}
 
 	if syncer.syncNetworkType == conn.PubSub {
 		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	} else {
-		return connMgr.SendTrxRex(trx, "")
+		return connMgr.SendTrxRex(trx, nil)
 	}
 }
 
@@ -337,13 +337,13 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
 	}
 
 	if syncer.rumExchangeTestMode == true {
-		return connMgr.SendTrxRex(trx, "")
+		return connMgr.SendTrxRex(trx, nil)
 	}
 
 	if syncer.syncNetworkType == conn.PubSub {
 		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	} else {
-		return connMgr.SendTrxRex(trx, "")
+		return connMgr.SendTrxRex(trx, nil)
 	}
 }
 

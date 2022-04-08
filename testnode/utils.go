@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
@@ -126,4 +127,37 @@ func CheckApiServerRunning(ctx context.Context, baseUrl string) bool {
 			}
 		}
 	}
+}
+
+func GetAllGroupTrxIds(ctx context.Context, baseUrl string, group_id string, height_blockid string) *[]string {
+	trxids := []string{}
+	_, resp, err := RequestAPI(baseUrl, fmt.Sprintf("/api/v1/block/%s/%s", group_id, height_blockid), "GET", "")
+	if err != nil {
+		return &trxids
+	}
+	block := &quorumpb.Block{}
+	if err := json.Unmarshal(resp, &block); err == nil {
+		prevBlockId := block.PrevBlockId
+		for {
+			_, resp, err := RequestAPI(baseUrl, fmt.Sprintf("/api/v1/block/%s/%s", group_id, prevBlockId), "GET", "")
+			if err != nil {
+				break
+			}
+			err = json.Unmarshal(resp, &block)
+			if err != nil {
+				break
+			}
+			if prevBlockId == "" || prevBlockId == block.PrevBlockId {
+				break
+			}
+
+			for _, trx := range block.Trxs {
+				trxids = append(trxids, trx.TrxId)
+			}
+			prevBlockId = block.PrevBlockId
+		}
+
+	}
+
+	return &trxids
 }

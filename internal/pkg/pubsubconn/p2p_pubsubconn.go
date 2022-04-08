@@ -24,6 +24,7 @@ type P2pPubSubConn struct {
 	Ctx          context.Context
 	mu           sync.RWMutex
 	cancel       context.CancelFunc
+	pubsubcancel pubsub.RelayCancelFunc
 }
 
 type PubSubConnMgr struct {
@@ -61,6 +62,32 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface i
 	return psconn.(*P2pPubSubConn)
 }
 
+func (pscm *PubSubConnMgr) CreatePubSubRelayByChannelId(channelId string) *P2pPubSubConn {
+	_, ok := pscm.connmgr.Load(channelId)
+	if ok == false {
+		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
+		psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: pscm.ps, nodename: pscm.nodename}
+		psconn.JoinChannelAsRelay(channelId)
+		pscm.connmgr.Store(channelId, psconn)
+	}
+	psconn, _ := pscm.connmgr.Load(channelId)
+	return psconn.(*P2pPubSubConn)
+}
+
+func (pscm *PubSubConnMgr) LeaveRelayChannel(channelId string) {
+	psconni, ok := pscm.connmgr.Load(channelId)
+	if ok == true {
+		psconn := psconni.(*P2pPubSubConn)
+		psconn.mu.Lock()
+		defer psconn.mu.Unlock()
+		if psconn.pubsubcancel != nil {
+			psconn.pubsubcancel()
+		}
+	} else {
+		channel_log.Infof("psconn relay channel <%s> not exist", channelId)
+	}
+}
+
 func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 	psconni, ok := pscm.connmgr.Load(channelId)
 	if ok == true {
@@ -84,10 +111,24 @@ func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
 
 }
 
-//func InitP2pPubSubConn(ctx context.Context, ps *pubsub.PubSub, nodename string) *P2pPubSubConn {
-//	ctxwithcancel, cancel := context.WithCancel(ctx)
-//	return &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: ps, nodename: nodename}
-//}
+func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
+	var err error
+	psconn.Cid = cId
+	psconn.Topic, err = psconn.ps.Join(cId)
+	if err != nil {
+		channel_log.Infof("Join <%s> failed", cId)
+		return err
+	} else {
+		channel_log.Infof("Join <%s> done", cId)
+	}
+	relayCancel, err := psconn.Topic.Relay()
+	psconn.pubsubcancel = func() {
+		relayCancel()
+		channel_log.Infof("Cancel relay <%s> done", cId)
+
+	}
+	return err
+}
 
 func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 	var err error
@@ -99,7 +140,6 @@ func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
 	} else {
 		channel_log.Errorf("Join <%s> done", cId)
 	}
-
 	psconn.Subscription, err = psconn.Topic.Subscribe()
 	if err != nil {
 		channel_log.Errorf("Subscribe <%s> failed", cId)

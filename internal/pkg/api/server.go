@@ -45,7 +45,6 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/:group_id/startsync", h.StartSync)
 		r.POST("/v1/group/appconfig", h.MgrAppConfig)
 		r.GET("/v1/node", h.GetNodeInfo)
-		r.POST("/v1/rex/initsession", h.RexInitSession(node))
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 		r.GET("/v1/network/peers/ping", h.PingPeer(node))
 		r.POST("/v1/psping", h.PSPingPeer(node))
@@ -67,10 +66,15 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 		r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 		r.GET("/v1/group/:group_id/pubqueue", h.GetPubQueue)
-
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/apply", apph.ApplyToken)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
+
+		r.POST("/v1/preview/relay/req", h.RequestRelay)
+		r.GET("/v1/preview/relay", h.ListRelay)
+		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
+		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)
+
 	} else {
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
 	}
