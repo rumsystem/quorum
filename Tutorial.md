@@ -2112,6 +2112,7 @@ example:
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8004/api/v1/groups | jq
 ```
 
+```
 {
   "groups": [
     {
@@ -2138,17 +2139,16 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:800
     }
   ]
 }
-
 ```
 
 parameters:
 
-"TimeStamp":         owner time stamp
-"HighestHeight":     current group highest height from owner
-"HighestBlockId":    current group highest block id
-"Nonce":             nonce, increase continuly 
-"SnapshotPackageId": snapshot id
-"SenderPubkey":      group owner pubkcy
+- "TimeStamp":         owner time stamp
+- "HighestHeight":     current group highest height from owner
+- "HighestBlockId":    current group highest block id
+- "Nonce":             nonce, increase continuly
+- "SnapshotPackageId": snapshot id
+- "SenderPubkey":      group owner pubkcy
 
 After join a new group, syncing block will start automatically and the snapshot_info section will return 'nil' before a valided snapshot is received and applied. For app development, we suggest wait till a valid snapshot is received before allow user use any function provided by the app.
 
