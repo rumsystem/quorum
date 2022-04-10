@@ -197,7 +197,7 @@ RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
 6. Start `user node`
 
 ```bash
-go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer usertracer.json -debug=true
+go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apilisten :8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir userkeystore  -jsontracer usertracer.json -debug=true
 ```
 
 6. Backup/Restore
