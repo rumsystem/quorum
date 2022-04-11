@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 

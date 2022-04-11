@@ -23,12 +23,12 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/api"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	"github.com/rumsystem/quorum/testnode"
 

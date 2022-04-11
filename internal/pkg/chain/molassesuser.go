@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"

@@ -10,10 +10,10 @@ import (
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/libp2p/go-libp2p-core/peer"
+	quorumCrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	quorumCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"

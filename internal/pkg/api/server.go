@@ -8,8 +8,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/p2p"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"

@@ -5,8 +5,8 @@ import (
 	"sort"
 
 	"github.com/labstack/echo/v4"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/chain"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
 )
 
 type groupInfo struct {

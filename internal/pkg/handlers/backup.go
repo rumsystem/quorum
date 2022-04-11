@@ -14,7 +14,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
 
 func GetDataPath(dataDir, peerName string) string {

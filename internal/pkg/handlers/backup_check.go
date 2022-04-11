@@ -12,7 +12,7 @@ import (
 	"math/rand"
 	"path/filepath"
 
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"

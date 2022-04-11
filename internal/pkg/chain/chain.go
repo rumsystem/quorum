@@ -12,7 +12,7 @@ import (
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
 
 var chain_log = logging.Logger("chain")

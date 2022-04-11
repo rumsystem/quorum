@@ -3,7 +3,7 @@ package chain
 import (
 	"bytes"
 
-	localCrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localCrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"

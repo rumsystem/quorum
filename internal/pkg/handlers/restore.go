@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"filippo.io/age"
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )

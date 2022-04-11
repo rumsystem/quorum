@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 
-	localcrypto "github.com/rumsystem/quorum/internal/pkg/crypto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"google.golang.org/protobuf/proto"

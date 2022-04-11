@@ -13,7 +13,7 @@ import (
 	"syscall/js"
 
 	"filippo.io/age"
-	"github.com/rumsystem/quorum/internal/pkg/crypto"
+	"github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 )
