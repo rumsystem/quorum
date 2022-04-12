@@ -46,17 +46,13 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 	return nil
 }
 
-type UpdateProfileResult struct {
-	TrxID string `json:"trx_id" validate:"required"`
-}
-
 // @Tags User
 // @Summary UpdateProfile
 // @Description Update user profile
 // @Accept json
 // @Produce json
 // @Param data body quorumpb.Activity true "Activity object"
-// @Success 200 {object} SchemaResult
+// @Success 200 {object} handlers.UpdateProfileResult
 // @Router /api/v1/group/profile [post]
 func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 	output := make(map[string]string)
