@@ -41,7 +41,7 @@ var avatar = []byte{
 	51, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
 }
 
-func updateProfile(api string, payload updateProfileParam) (*UpdateProfileResult, error) {
+func updateProfile(api string, payload updateProfileParam) (*handlers.UpdateProfileResult, error) {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func updateProfile(api string, payload updateProfileParam) (*UpdateProfileResult
 		return nil, err
 	}
 
-	var result UpdateProfileResult
+	var result handlers.UpdateProfileResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
