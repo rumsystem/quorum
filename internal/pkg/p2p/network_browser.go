@@ -116,13 +116,38 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 
 	publicGater := &PublicGater{}
 
-	host, err := libp2p.New(libp2p.ListenAddrs(),
+	libp2poptions := []libp2p.Option{routing,
+		libp2p.ListenAddrs(),
 		libp2p.Transport(ws.New),
 		routing,
 		libp2p.Ping(false),
 		identity,
 		libp2p.ConnectionGater(publicGater),
-	)
+	}
+
+	if nodeopt.EnableRelay && !nodeopt.EnableRelayService {
+		libp2poptions = append(libp2poptions,
+			libp2p.EnableAutoRelay() /* we could set static relays here */)
+	}
+	if nodeopt.EnableRelayService {
+		libp2poptions = append(libp2poptions,
+			libp2p.DisableRelay(),
+			libp2p.EnableRelayService(),
+			libp2p.ForceReachabilityPublic(),
+			libp2p.AddrsFactory(func(addrs []maddr.Multiaddr) []maddr.Multiaddr {
+				for i, addr := range addrs {
+					saddr := addr.String()
+					if strings.HasPrefix(saddr, "/ip4/127.0.0.1/") {
+						addrNoIP := strings.TrimPrefix(saddr, "/ip4/127.0.0.1")
+						addrs[i] = maddr.StringCast("/dns4/localhost" + addrNoIP)
+					}
+				}
+				return addrs
+			}),
+		)
+	}
+
+	host, err := libp2p.New(libp2poptions)
 	if err != nil {
 		return nil, err
 	}

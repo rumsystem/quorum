@@ -153,6 +153,8 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	}
 
 	options := &NodeOptions{}
+	options.EnableRelay = v.GetBool("EnableRelay")
+	options.EnableRelayService = v.GetBool("EnableRelayService")
 	options.EnableNat = v.GetBool("EnableNat")
 	options.EnableRumExchange = v.GetBool("EnableRumExchange")
 	options.EnableDevNetwork = v.GetBool("EnableDevNetwork")
