@@ -143,13 +143,17 @@ func mainRet(config cli.Config) int {
 		peername = "bootstrap"
 	}
 
-	//Load node options
+	//Load node options from config
 	nodeoptions, err := options.InitNodeOptions(config.ConfigDir, peername)
 	if err != nil {
 		cancel()
 		mainlog.Fatalf(err.Error())
 	}
+
+	// overwrite by cli flags
 	nodeoptions.IsRexTestMode = config.IsRexTestMode
+	nodeoptions.EnableRelay = config.EnableRelay
+	nodeoptions.EnableRelayService = config.EnableRelayService
 
 	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
 	ksi := localcrypto.GetKeystore()
