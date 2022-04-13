@@ -72,7 +72,11 @@ A peer-to-peer system must provide economic incentive to minimize the Free-rider
 
 <span id="build_quorum"></span>
 
-Build the quorum binary by running the [./scripts/build.sh](./scripts/build.sh) script.
+Build the quorum binary by running the command: `make linux` or  `make buildall`. You can find the binary file in the `dist` dir.
+
+*or*
+
+Build the Docker image by running the command: `sudo docker build -t quorum .`
 
 ### Build API Document:
 
@@ -110,6 +114,20 @@ OPTIONS:
    -datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
    -keystoredir a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
    -debug       enable logging level to debug or not
+```
+
+*or*
+
+Run RUM inside Docker:
+
+```
+mkdir -p dockerdata/data
+mkdir -p dockerdata/certs
+mkdir -p dockerdata/config
+mkdir -p dockerdata/keystore
+
+docker run --user 1001 -v $(pwd)/dockerdata/data:/data  -v $(pwd)/dockerdata/certs:/certs -v $(pwd)/dockerdata/config:/config -v $(pwd)/dockerdata/keystore:/keystore -p 127.0.0.1:8002:8002 -p 8000:8000 -p 8001:8001 -e RUM_KSPASSWD='myverysecretpassword' quorum -listen /ip4/0.0.0.0/tcp/8000 -listen /ip4/0.0.0.0/tcp/8001/ws  -apilisten 0.0.0.0:8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
+
 ```
 
 *or*
@@ -292,7 +310,7 @@ Add more producers to prevent outages.
 
 ### Run a RUM peer on server
 
-1. Build the quorum binary by running the [./scripts/build.sh](./scripts/build.sh) script.
+1. Build the quorum binary by running the command: `make linux` or  `make buildall`. You can find the binary file in the `dist` dir.
 2. Add a shell script to run the peer:
 
 ```bash
