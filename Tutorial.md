@@ -95,7 +95,7 @@ Common params:
 
 1. 安装 RUM
 
-[下载安装包](https://docs.prsdev.club/#/rum-app/test)
+[下载安装包](https://rumsystem.github.io/rum-docs/#/rum-app/test)
 
 [自行编译最新包](https://github.com/rumsystem/quorum)
 
@@ -136,9 +136,22 @@ session.get(f"{url}/node")
 
 ## Generate API Docs
 
-```go run cmd/docs.go```
+```sh
+go install github.com/swaggo/swag/cmd/swag@v1.7.0
+# make sure the version as the same of swaggo/swag in god.mod,
+# only the first time you build need to run above.
+export PATH=$(go env GOPATH)/bin:$PATH
+# check GOPATH in PATH,
+# if not in run the command above.
+./scripts/swag_init.sh
+# due to project continue developing sometime it may build failure
+# when this happen you can check for a older head or read the deploy version below
+go run cmd/docs.go
+```
 
 Open url ```http://localhost:1323/swagger/index.html``` in the browser.
+
+or you can read deploy version [https://rumsystem.github.io/quorum-api/](https://rumsystem.github.io/quorum-api/)
 
 <span id="docs-api"></span>
 

@@ -79,15 +79,24 @@ Build the quorum binary by running the command: `make linux` or  `make buildall`
 Build the Docker image by running the command: `sudo docker build -t quorum .`
 
 ### Build API Document:
-
 Running:
 
 ```sh
+go install github.com/swaggo/swag/cmd/swag@v1.7.0
+# make sure the version as the same of swaggo/swag in god.mod,
+# only the first time you build need to run above.
+export PATH=$(go env GOPATH)/bin:$PATH
+# check GOPATH in PATH,
+# if not in run the command above.
 ./scripts/swag_init.sh
+# due to project continue developing sometime it may build failure
+# when this happen you can check for a older head or read the deploy version below
 go run cmd/docs.go
 ```
 
 and then open browser with <http://localhost:1323/swagger/index.html>.
+
+or you can read deploy version [https://rumsystem.github.io/quorum-api/](https://rumsystem.github.io/quorum-api/)
 
 *or*
 
