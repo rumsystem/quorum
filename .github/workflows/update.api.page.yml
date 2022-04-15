@@ -43,7 +43,7 @@ jobs:
       - name: Checkout quorum-api repo
         uses: actions/checkout@v3
         with:
-          repository: jklfds9527/quorum-api
+          repository: rumsystem/quorum-api
           ssh-key: ${{ secrets.QUORUM_API_ACCESS_KEY }}
 
       - name: Download swagger.json from artifact
