@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine AS build
+FROM golang:1.18-alpine AS build
 RUN addgroup -S quorum && adduser -S -G quorum quorum
 RUN apk add build-base
 RUN apk add git
