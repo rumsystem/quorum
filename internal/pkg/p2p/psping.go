@@ -40,7 +40,7 @@ func (p *PSPing) EnablePing() error {
 	topicid := fmt.Sprintf("PSPing:%s", peerid)
 	p.Topic, err = p.ps.Join(topicid)
 	if err != nil {
-		ping_log.Infof("Enable PSPing channel <%s> failed", topicid)
+		ping_log.Infof("Enable PSPing channel <%s> failed: %s", topicid, err)
 		return err
 	} else {
 		ping_log.Infof("Enable PSPing channel <%s> done", topicid)
@@ -48,8 +48,7 @@ func (p *PSPing) EnablePing() error {
 
 	p.Subscription, err = p.Topic.Subscribe()
 	if err != nil {
-		ping_log.Fatalf("Subscribe PSPing channel <%s> failed", topicid)
-		ping_log.Fatalf(err.Error())
+		ping_log.Fatalf("Subscribe PSPing channel <%s> failed: %s", topicid, err)
 		return err
 	} else {
 		ping_log.Infof("Subscribe PSPing channel <%s> done", topicid)
@@ -68,12 +67,12 @@ func (p *PSPing) PingReq(dstpeerid string) ([10]int64, error) {
 	var err error
 	p.Topic, err = p.ps.Join(dsttopicid)
 	if err != nil {
-		ping_log.Errorf("Join PSPing dest channel <%s> failed:%s", dsttopicid, err.Error())
+		ping_log.Errorf("Join PSPing dest channel <%s> failed: %s", dsttopicid, err.Error())
 		return result, err
 	}
 	p.Subscription, err = p.Topic.Subscribe()
 	if err != nil {
-		ping_log.Errorf("Subscribe PSPing dest channel <%s> failed:%s", dsttopicid, err.Error())
+		ping_log.Errorf("Subscribe PSPing dest channel <%s> failed: %s", dsttopicid, err.Error())
 		return result, err
 	} else {
 		ping_log.Infof("Subscribe PSPing dest channel <%s> done", dsttopicid)
@@ -85,11 +84,11 @@ func (p *PSPing) PingReq(dstpeerid string) ([10]int64, error) {
 		p.Subscription.Cancel()
 		err := p.Topic.Close()
 		if err != nil {
-			ping_log.Infof("Close PSPing Topic <%s> failed", dsttopicid)
+			ping_log.Errorf("Close PSPing Topic <%s> failed: %s", dsttopicid, err)
 		}
 	}()
 	if err != nil {
-		ping_log.Infof("Join PSPing channel <%s> failed", dsttopicid)
+		ping_log.Errorf("Join PSPing channel <%s> failed: %s", dsttopicid, err)
 		return result, err
 	} else {
 		ping_log.Infof("Join PSPing channel <%s> done", dsttopicid)

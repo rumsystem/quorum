@@ -30,6 +30,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/testnode"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -288,6 +289,10 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
+		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
+			mainlog.Fatalf("init stats db failed: %s", err)
+		}
+
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
 		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
@@ -326,6 +331,10 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
+
+		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
+			mainlog.Fatalf("init stats db failed: %s", err)
+		}
 
 		//initial conn
 		conn.InitConn()

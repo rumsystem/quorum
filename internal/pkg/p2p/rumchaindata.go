@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -21,8 +22,7 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error 
 
 	if pkg.Type == quorumpb.PackageType_TRX {
 		rumexchangelog.Infof("receive a trx, from %s", frompeerid)
-		var trx *quorumpb.Trx
-		trx = &quorumpb.Trx{}
+		trx := &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
 			targetchain, ok := r.rex.chainmgr[trx.GroupId]

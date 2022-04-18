@@ -18,6 +18,7 @@ import (
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -46,7 +47,7 @@ type RexService struct {
 	chainmgr           map[string]iface.ChainDataHandlerIface
 	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
-	streampool         sync.Map //map[peer.ID]network.Stream
+	streampool         sync.Map //map[peer.ID]streamPoolItem
 	msgtypehandlerlock sync.RWMutex
 }
 
@@ -105,11 +106,13 @@ func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s, err := r.Host.NewStream(ctx, peerid, r.ProtocolId)
 	newpoolitem := &streamPoolItem{s: s, cancel: cancel}
-	if err == nil {
-		go r.HandlerProcessloop(ctx, s)
-		r.streampool.Store(peerid, newpoolitem)
+	if err != nil {
+		return nil, err
 	}
-	return newpoolitem, err
+
+	go r.HandlerProcessloop(ctx, s)
+	r.streampool.Store(peerid, newpoolitem)
+	return newpoolitem, nil
 }
 
 func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIface) {
@@ -121,15 +124,34 @@ func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIfa
 }
 
 func (r *RexService) PublishToStream(msg *quorumpb.RumMsg, s network.Stream) error {
-	rumexchangelog.Debugf("PublishResponse msg to peer: %s", s.Conn().RemotePeer())
+	remotePeer := s.Conn().RemotePeer()
+	log := stats.NetworkStats{
+		From:      r.Host.ID().String(),
+		To:        remotePeer.String(),
+		Action:    stats.PublishToStream,
+		Direction: "out",
+		Size:      proto.Size(msg),
+	}
+	rumexchangelog.Debugf("PublishResponse msg to peer: %s", remotePeer)
 	bufw := bufio.NewWriter(s)
 	wc := protoio.NewDelimitedWriter(bufw)
 	err := wc.WriteMsg(msg)
 	if err != nil {
 		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+
+		log.Success = false
+		if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+			rumexchangelog.Warningf("add network log to db failed: %s", err)
+		}
+
 		return err
 	} else {
-		rumexchangelog.Debugf("writemsg to network stream succ: %s.", s.Conn().RemotePeer())
+		rumexchangelog.Debugf("writemsg to network stream succ: %s.", remotePeer)
+
+		log.Success = true
+		if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+			rumexchangelog.Warningf("add network log to db failed: %s", err)
+		}
 	}
 	bufw.Flush()
 	return nil
@@ -149,22 +171,45 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 		return err
 	}
 	s := poolitem.s
+	remotePeer := s.Conn().RemotePeer()
+
+	log := stats.NetworkStats{
+		From:      r.Host.ID().String(),
+		To:        remotePeer.String(),
+		Action:    stats.PublishToPeerID,
+		Direction: "out",
+		Size:      proto.Size(msg),
+	}
+
 	bufw := bufio.NewWriter(s)
 	wc := protoio.NewDelimitedWriter(bufw)
 	err = wc.WriteMsg(msg)
 	if err != nil {
 		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-		r.streampool.Delete(s.Conn().RemotePeer())
+		r.streampool.Delete(remotePeer)
+		r.peerstore.AddIgnorePeer(toid)
 		s.Close()
+
+		log.Success = false
+		if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+			rumexchangelog.Warningf("add network log to db failed: %s", err)
+		}
+
 		return err
 	} else {
+		log.Success = true
+		if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+			rumexchangelog.Warningf("add network log to db failed: %s", err)
+		}
+
 		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
 	}
 	bufw.Flush()
+
 	return nil
 }
 
-//Publish to All connected peers
+//Publish to 5 random connected peers
 func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	//TODO: select peers
 	succ := 0
@@ -174,26 +219,12 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
 
 	for _, p := range randompeerlist {
-		poolitem, err := r.GetStream(p)
-		if err != nil {
-			rumexchangelog.Debugf("create network stream err: %s", err)
-			r.peerstore.AddIgnorePeer(p)
-			continue
-		}
-		s := poolitem.s
-		bufw := bufio.NewWriter(s)
-		wc := protoio.NewDelimitedWriter(bufw)
-		err = wc.WriteMsg(msg)
-		bufw.Flush()
-		if err != nil {
+		if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
 			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-			r.streampool.Delete(s.Conn().RemotePeer())
-			s.Close()
 		} else {
 			succ++
 			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
 		}
-
 	}
 
 	return nil
@@ -206,28 +237,16 @@ func (r *RexService) PublishToOneRandom(msg *quorumpb.RumMsg) error {
 	peers := r.Host.Network().Peers()
 	p, err := r.peerstore.GetOneRandomPeer(peers)
 	rumexchangelog.Debugf("PublishToOneRandom to peer: %s err:", p, err)
-	if err == nil {
-		poolitem, err := r.GetStream(p)
-		if err != nil {
-			rumexchangelog.Debugf("create network stream err: %s", err)
-			r.peerstore.AddIgnorePeer(p)
-			return err
-		}
-		s := poolitem.s
-		bufw := bufio.NewWriter(s)
-		wc := protoio.NewDelimitedWriter(bufw)
-		err = wc.WriteMsg(msg)
-		bufw.Flush()
-		if err != nil {
-			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-			r.streampool.Delete(s.Conn().RemotePeer())
-			s.Close()
-		} else {
-			rumexchangelog.Debugf("writemsg to network stream succ: %s. wait the response", p)
-		}
-
+	if err != nil {
+		return err
 	}
-	return err
+
+	if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
+		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+		return err
+	}
+	rumexchangelog.Debugf("writemsg to network stream succ: %s. wait the response", p)
+	return nil
 }
 
 func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) {
@@ -237,10 +256,25 @@ func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) 
 }
 
 func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Stream) {
+	remotePeer := s.Conn().RemotePeer()
+	localPeer := r.Host.ID()
+	log := stats.NetworkStats{
+		From:      localPeer.String(),
+		To:        remotePeer.String(),
+		Direction: "in",
+		Size:      proto.Size(rummsg),
+		Success:   true,
+	}
+	log.Action = log.Action.GetByRumMsgType(rummsg.MsgType)
+
 	switch rummsg.MsgType {
 	case quorumpb.RumMsgType_RELAY_REQ, quorumpb.RumMsgType_RELAY_RESP:
 		for _, v := range r.msgtypehandlers {
 			if v.Name == "rumrelay" {
+				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+					networklog.Warningf("add network log to db failed: %s", err)
+				}
+
 				v.Handler(rummsg, s)
 				break
 			}
@@ -248,6 +282,10 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 	case quorumpb.RumMsgType_IF_CONN, quorumpb.RumMsgType_CONN_RESP:
 		for _, v := range r.msgtypehandlers {
 			if v.Name == "rumsession" {
+				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+					networklog.Warningf("add network log to db failed: %s", err)
+				}
+
 				v.Handler(rummsg, s)
 				break
 			}
@@ -255,6 +293,10 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 	case quorumpb.RumMsgType_CHAIN_DATA:
 		for _, v := range r.msgtypehandlers {
 			if v.Name == "rumchaindata" {
+				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+					networklog.Warningf("add network log to db failed: %s", err)
+				}
+
 				v.Handler(rummsg, s)
 				break
 			}
@@ -268,8 +310,10 @@ func (r *RexService) Handler(s network.Stream) {
 }
 
 func (r *RexService) HandlerProcessloop(ctx context.Context, s network.Stream) {
+	remotePeer := s.Conn().RemotePeer()
+
 	reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
-	defer rumexchangelog.Debugf("RumExchange stream handler %s exit", s.Conn().RemotePeer())
+	defer rumexchangelog.Debugf("RumExchange stream handler %s exit", remotePeer)
 	for {
 		select {
 		case <-ctx.Done():
@@ -281,15 +325,15 @@ func (r *RexService) HandlerProcessloop(ctx context.Context, s network.Stream) {
 					rumexchangelog.Debugf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
 					_ = s.Reset()
 				} else {
-					rumexchangelog.Debugf("RumExchange stream handler EOF %s", s.Conn().RemotePeer())
-					r.streampool.Delete(s.Conn().RemotePeer())
+					rumexchangelog.Debugf("RumExchange stream handler EOF %s", remotePeer)
+					r.streampool.Delete(remotePeer)
 					_ = s.Close()
 				}
 				return
 			}
+
 			var rummsg quorumpb.RumMsg
-			err = proto.Unmarshal(msgdata, &rummsg)
-			if err == nil {
+			if err = proto.Unmarshal(msgdata, &rummsg); err == nil {
 				r.HandleRumExchangeMsg(&rummsg, s)
 			}
 		}

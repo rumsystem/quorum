@@ -37,7 +37,7 @@ func GetConn() *Conn {
 }
 
 type Conn struct {
-	ConnMgrs map[string]*ConnMgr
+	ConnMgrs map[string]*ConnMgr // key: groupId or groupId+relaytype
 }
 
 type ConnMgr struct {
@@ -47,13 +47,13 @@ type ConnMgr struct {
 	SyncChannelId         string
 	OwnerPubkey           string
 	UserSignPubkey        string
-	ProviderPeerIdPool    map[string]string
-	ProducerPool          map[string]string
+	ProviderPeerIdPool    map[string]string // key: group owner PubKey; value: group owner peerId
+	ProducerPool          map[string]string // key: group producer Pubkey; value: group producer Pubkey
 	StableProdPsConn      bool
 	producerChannTimer    *time.Timer
-	SyncChannelTimersPool map[string]*time.Timer
+	SyncChannelTimersPool map[string]*time.Timer // key: channelId; value: syncTimer
 	DataHandlerIface      iface.ChainDataHandlerIface
-	PsConns               map[string]*pubsubconn.P2pPubSubConn
+	PsConns               map[string]*pubsubconn.P2pPubSubConn // key: channelId
 	Rex                   *p2p.RexService
 }
 
@@ -96,8 +96,10 @@ func (t PsConnChanel) String() string {
 	}
 }
 
-const CLOSE_PRD_CHANN_TIMER time.Duration = 20  //5s
-const CLOSE_SYNC_CHANN_TIMER time.Duration = 20 //5s
+const (
+	CLOSE_PRD_CHANN_TIMER  time.Duration = 20 * time.Second
+	CLOSE_SYNC_CHANN_TIMER time.Duration = 20 * time.Second
+)
 
 func InitConn() error {
 	conn_log.Debug("Initconn called")
@@ -145,16 +147,13 @@ func (conn *Conn) UnregisterChainCtx(groupId string) error {
 	conn_log.Debugf("UnregisterChainCtx called, groupId <%s>", groupId)
 
 	connMgr, err := conn.GetConnMgr(groupId)
-
 	if err != nil {
 		return err
 	}
+	defer delete(conn.ConnMgrs, groupId)
 
 	connMgr.LeaveAllChannels()
-	//if in syncing, stop it
-
-	//remove connMgr
-	delete(conn.ConnMgrs, groupId)
+	// TODO: if in syncing, stop it
 
 	return nil
 }
@@ -182,7 +181,6 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	connMgr.DataHandlerIface = cIface
 
 	//Rex
-	//nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 	if nodectx.GetNodeCtx().Node.RumExchange != nil {
 		nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 	}
@@ -241,7 +239,7 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 		if !connMgr.StableProdPsConn { //is user, no need to keep producer psconn
 			conn_log.Debugf("<%s> reset connection timer for producer psconn <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 			connMgr.producerChannTimer.Stop()
-			connMgr.producerChannTimer.Reset(CLOSE_PRD_CHANN_TIMER * time.Second)
+			connMgr.producerChannTimer.Reset(CLOSE_PRD_CHANN_TIMER)
 		}
 		return psconn
 	} else {
@@ -249,7 +247,7 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsconn
 		if !connMgr.StableProdPsConn {
 			conn_log.Debugf("<%s> create close_conn timer for producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER*time.Second, func() {
+			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
 				conn_log.Debugf("<%s> time up, close producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
 				delete(connMgr.PsConns, connMgr.ProducerChannelId)
@@ -265,7 +263,7 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 		conn_log.Debugf("<%s> reset connection timer for syncer psconn <%s>", connMgr.GroupId, channelId)
 		if timer, ok := connMgr.SyncChannelTimersPool[channelId]; ok {
 			timer.Stop()
-			timer.Reset(CLOSE_SYNC_CHANN_TIMER * time.Second)
+			timer.Reset(CLOSE_SYNC_CHANN_TIMER)
 		} else {
 			return nil, fmt.Errorf("Can not find timer for syncer channel")
 		}
@@ -274,7 +272,7 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, connMgr.DataHandlerIface)
 		connMgr.PsConns[channelId] = syncerPsconn
 		conn_log.Debugf("<%s> create close_conn timer for syncer channel <%s>", connMgr.GroupId, channelId)
-		syncTimer := time.AfterFunc(CLOSE_PRD_CHANN_TIMER*time.Second, func() {
+		syncTimer := time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
 			conn_log.Debugf("<%s> time up, close syncer channel <%s>", connMgr.GroupId, channelId)
 			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
 			delete(connMgr.PsConns, channelId)
@@ -292,17 +290,15 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 
 func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnChanel, chanelId ...string) error {
 	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
 		return err
 	}
 
+	pkg := &quorumpb.Package{}
 	pkg.Type = quorumpb.PackageType_BLOCK
 	pkg.Data = pbBytes
-
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
 		return err
@@ -331,17 +327,14 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 func (connMgr *ConnMgr) SendSnapshotPsconn(snapshot *quorumpb.Snapshot, psChannel PsConnChanel, chanelId ...string) error {
 	conn_log.Debugf("<%s> SendSnapshotPsconn called", connMgr.GroupId)
 
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
-
 	pbBytes, err := proto.Marshal(snapshot)
 	if err != nil {
 		return err
 	}
 
+	pkg := &quorumpb.Package{}
 	pkg.Type = quorumpb.PackageType_SNAPSHOT
 	pkg.Data = pbBytes
-
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
 		return err
@@ -429,14 +422,12 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
 
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
-
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
 		return err
 	}
 
+	pkg := &quorumpb.Package{}
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
@@ -449,8 +440,10 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 
 func (connMgr *ConnMgr) InitialPsConn() {
 	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
+
 	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+
 	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
 }
@@ -459,20 +452,23 @@ func (connMgr *ConnMgr) InitialPsConnRelay(relaytype string) {
 	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
 	if relaytype == RelayGroupType {
 		conn_log.Debugf("<%s> init with RelayGroupType ", connMgr.GroupId)
+
 		//relay newblock/snapshot boardcasting
-		userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.UserChannelId)
-		connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+		userPsConn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.UserChannelId)
+		connMgr.PsConns[connMgr.UserChannelId] = userPsConn
+
 		//relay producer channel for user's ask
-		producerChannelId := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
-		connMgr.PsConns[connMgr.ProducerChannelId] = producerChannelId
+		producerPsConn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
+		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsConn
 	} else if relaytype == RelayUserType {
 		conn_log.Debugf("<%s> init with RelayUserType ", connMgr.GroupId)
+
 		//relay producer channel for user's ask
-		producerChannelId := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
-		connMgr.PsConns[connMgr.ProducerChannelId] = producerChannelId
+		producerPsConn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
+		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsConn
+
 		//relay sync channel for producer's response
 		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.SyncChannelId)
 		connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
 	}
-
 }
