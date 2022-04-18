@@ -171,7 +171,7 @@ or you can read deploy version [https://rumsystem.github.io/quorum-api/](https:/
 
 follow steps below.
 
-4. cd to quorum souce code path and create `config/` dir
+4. cd to quorum source code path and create `config/` dir
 
 ```bash
 mkdir -p config
@@ -204,7 +204,7 @@ go run cmd/main.go -peername owner -listen /ip4/127.0.0.1/tcp/7002 -apilisten :8
 - env RUM_KSPASSWD can be used to input node password, like:
 
 ```bash
-RUM_KSPASSWD=<node_passwor> go run cmd/main.go...
+RUM_KSPASSWD=<node_password> go run cmd/main.go...
 ```
 
 6. Start `user node`
@@ -460,7 +460,7 @@ API return value:
 
 <sup>[1]</sup> The eth address of current user. 当前用户的 ETH 地址。
 
-<sup>[2]</sup> Heighty of the "highest" block in this group
+<sup>[2]</sup> Height of the "highest" block in this group
 
 <sup>[3]</sup> block_id of the "highest" block in this group
 
@@ -2117,7 +2117,7 @@ The snapshot includes the latest configuration infomation of a group, includes:
 - all announced user or producer
 
 After a  node received snapshot from owner(wether in syncing or not), it will apply all configuration info to local db.That means the node have all up-to-date configuration and no need to wait block syncing finished.
-Clinet app should check snapshot "tag" by using getGroups API. A new section is added to group info.
+Client app should check snapshot "tag" by using getGroups API. A new section is added to group info.
 
 example:
 

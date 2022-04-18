@@ -42,7 +42,7 @@ The internet is broken.
 
 Technology monopoly, especially social network monopoly, has become a worldwide problem. In the United States and the EU, technology companies have caused a lot of disputes over privacy and user data ownership issues. Criticism of traditional Internet platforms has long been a mainstream voice in various countries.
 
-Almost all online services are running on Client-Server architecture, which means all users' activities and data will be stored in centralized servers. User's data always be controlled by service providers not themself, this made the internet centralized by nature.
+Almost all online services are running on Client-Server architecture, which means all users' activities and data will be stored in centralized servers. User's data always be controlled by service providers not themselves, this made the internet centralized by nature.
 
 People urgently need an innovative model that no longer adopts the "privacy for advertising" mode: a new type of network system where data is owned by users and has a special way to distribute traffic without being controlled by the enterprise.
 
