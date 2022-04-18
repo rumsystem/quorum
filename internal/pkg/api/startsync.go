@@ -16,6 +16,7 @@ type StartSyncResult struct {
 // @Summary StartSync
 // @Description Start sync
 // @Produce json
+// @Param group_id path string  true "Group Id"
 // @Success 200 {object} StartSyncResult
 // @Router /api/v1/group/{group_id}/startsync [post]
 func (h *Handler) StartSync(c echo.Context) (err error) {

@@ -36,7 +36,7 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
 // @Param group_id path string true "Group Id"
 // @Param sign_pubkey path string true "User SignPubkey"
 // @Success 200 {object} handlers.AnnouncedUserListItem
-// @Router /api/v1/group/{group_id}/announced/user/:sign_pubkey [get]
+// @Router /api/v1/group/{group_id}/announced/user/{sign_pubkey} [get]
 func (h *Handler) GetAnnouncedGroupUser(c echo.Context) error {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")

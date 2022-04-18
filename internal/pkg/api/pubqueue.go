@@ -11,8 +11,9 @@ import (
 // @Summary GetPubQueue
 // @Description Return items in the publish queue
 // @Produce json
+// @Param group_id path string  true "Group Id"
 // @Success 200 {object} handlers.PubQueueInfo
-// @Router /api/v1/group/:group_id/pubqueue [get]
+// @Router /api/v1/group/{group_id}/pubqueue [get]
 func (h *Handler) GetPubQueue(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupId := c.Param("group_id")
