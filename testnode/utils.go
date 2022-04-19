@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 

@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 

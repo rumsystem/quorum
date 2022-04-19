@@ -7,11 +7,11 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
-	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
-	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
+	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
+	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
+	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
 	"google.golang.org/protobuf/proto"
 )
 

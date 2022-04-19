@@ -2,10 +2,11 @@ package utils
 
 import (
 	"fmt"
-	guuid "github.com/google/uuid"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"math/rand"
 	"time"
+
+	guuid "github.com/google/uuid"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 )
 
 /*

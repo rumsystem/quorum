@@ -3,9 +3,9 @@ package appdata
 import (
 	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
