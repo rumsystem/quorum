@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	_ "github.com/rumsystem/quorum/internal/pkg/stats" // for swag find stats.NetworkStatsSummary
 )
 
 // @Tags Node
