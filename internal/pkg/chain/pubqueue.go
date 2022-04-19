@@ -235,29 +235,42 @@ func doRefresh() {
 					if group.GetSyncerStatus() != IDLE {
 						chain_log.Debugf("<pubqueue>: group is not up to date yet.")
 					}
+					// try to find it from chain
 					trx, _, err := group.GetTrx(item.Trx.TrxId)
 					if err != nil {
 						chain_log.Errorf("<pubqueue>: %s", err.Error())
-					} else {
-						if trx.TrxId == item.Trx.TrxId {
-							// synced
-							chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
-							item.State = PublishQueueItemStateSuccess
-						} else {
-							// failed or still pending, check the expire time
-							chain_log.Debugf("<pubqueue>: trx %s not found, last updated at: %s, expire at: %s",
-								item.Trx.TrxId,
-								time.Unix(0, item.UpdateAt),
-								time.Unix(0, item.Trx.Expired),
-							)
-							now := time.Now().UnixNano()
-							if now >= item.Trx.Expired {
-								// Failed
-								chain_log.Infof("<pubqueue>: trx %s failed", item.Trx.TrxId)
-								item.State = PublishQueueItemStateFail
-							}
-						}
+						break
 					}
+					if trx.TrxId == item.Trx.TrxId {
+						// synced
+						chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
+						item.State = PublishQueueItemStateSuccess
+						break
+					}
+					// try to find it from cache
+					trx, _, err = group.GetTrxFromCache(item.Trx.TrxId)
+					if err != nil {
+						chain_log.Errorf("<pubqueue>: %s", err.Error())
+						break
+					}
+					if trx.TrxId == item.Trx.TrxId {
+						chain_log.Debugf("<pubqueue>: trx %s success(from cache)", trx.TrxId)
+						item.State = PublishQueueItemStateSuccess
+						break
+					}
+					// failed or still pending, check the expire time
+					chain_log.Debugf("<pubqueue>: trx %s not found, last updated at: %s, expire at: %s",
+						item.Trx.TrxId,
+						time.Unix(0, item.UpdateAt),
+						time.Unix(0, item.Trx.Expired),
+					)
+					now := time.Now().UnixNano()
+					if now >= item.Trx.Expired {
+						// Failed
+						chain_log.Infof("<pubqueue>: trx %s failed", item.Trx.TrxId)
+						item.State = PublishQueueItemStateFail
+					}
+
 				}
 			case PublishQueueItemStateFail:
 				// retry then mark as pending
