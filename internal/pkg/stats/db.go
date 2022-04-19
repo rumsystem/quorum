@@ -10,6 +10,10 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
+const (
+	dbPathSuffix = "_stats"
+)
+
 type StatsDB struct {
 	db        storage.QuorumStorage
 	localPeer peer.ID
@@ -17,21 +21,20 @@ type StatsDB struct {
 
 var statsDB *StatsDB
 
+func GetStatsDB() *StatsDB {
+	return statsDB
+}
+
 func InitDB(path string, localPeer peer.ID) error {
-	db := storage.QSBadger{}
-	suffix := "_stats"
-	if err := db.Init(path + suffix); err != nil {
-		return err
-	}
 	if statsDB == nil {
-		statsDB = &StatsDB{db: &db, localPeer: localPeer}
+		db, err := openStatsDB(path)
+		if err != nil {
+			return err
+		}
+		statsDB = &StatsDB{db: db, localPeer: localPeer}
 	}
 
 	return nil
-}
-
-func GetStatsDB() *StatsDB {
-	return statsDB
 }
 
 func GetLocalPeerID() peer.ID {
