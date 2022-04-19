@@ -2,10 +2,10 @@ package pubsubconn
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"sync"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -146,7 +146,7 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHan
 		From:      stats.GetLocalPeerID(),
 		Topic:     cId,
 		Action:    stats.JoinTopic,
-		Direction: "out",
+		Direction: network.DirOutbound,
 		Size:      0,
 		Success:   false,
 	}
@@ -172,7 +172,7 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHan
 		From:      stats.GetLocalPeerID(),
 		Topic:     cId,
 		Action:    stats.SubscribeTopic,
-		Direction: "out",
+		Direction: network.DirOutbound,
 		Size:      0,
 		Success:   false,
 	}
@@ -210,8 +210,8 @@ func (psconn *P2pPubSubConn) Publish(data []byte) error {
 		From:      stats.GetLocalPeerID(),
 		Topic:     psconn.Topic.String(),
 		Action:    stats.PublishToTopic,
-		Direction: "out",
-		Size:      binary.Size(data),
+		Direction: network.DirOutbound,
+		Size:      stats.GetBinarySize(data),
 		Success:   success,
 	}
 	if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
@@ -231,8 +231,8 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					To:        stats.GetLocalPeerID(),
 					Topic:     *msg.Topic,
 					Action:    stats.ReceiveFromTopic,
-					Direction: "in",
-					Size:      proto.Size(&pkg),
+					Direction: network.DirInbound,
+					Size:      stats.GetProtoSize(&pkg),
 					Success:   true,
 				}
 				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {

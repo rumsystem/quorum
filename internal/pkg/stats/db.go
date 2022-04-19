@@ -2,6 +2,7 @@ package stats
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -10,7 +11,7 @@ import (
 )
 
 type StatsDB struct {
-	db        storage.QSBadger
+	db        storage.QuorumStorage
 	localPeer peer.ID
 }
 
@@ -23,7 +24,7 @@ func InitDB(path string, localPeer peer.ID) error {
 		return err
 	}
 	if statsDB == nil {
-		statsDB = &StatsDB{db: db, localPeer: localPeer}
+		statsDB = &StatsDB{db: &db, localPeer: localPeer}
 	}
 
 	return nil
@@ -33,9 +34,9 @@ func GetStatsDB() *StatsDB {
 	return statsDB
 }
 
-func GetLocalPeerID() string {
+func GetLocalPeerID() peer.ID {
 	if statsDB != nil {
-		return statsDB.localPeer.String()
+		return statsDB.localPeer
 	}
 
 	panic("you must invoke stats.InitDB first")
@@ -51,6 +52,10 @@ func (sdb *StatsDB) AddNetworkLog(log *NetworkStats) error {
 	value, err := json.Marshal(log)
 	if err != nil {
 		return err
+	}
+
+	if sdb == nil || sdb.db == nil {
+		return errors.New("sdb or sdb.db is nil")
 	}
 
 	return sdb.db.Set([]byte(key), value)

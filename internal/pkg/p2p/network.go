@@ -115,10 +115,10 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 			networklog.Infof("connect: %s", peer)
 
 			log := stats.NetworkStats{
-				From:      node.Host.ID().String(),
-				To:        peer.ID.String(),
+				From:      node.Host.ID(),
+				To:        peer.ID,
 				Action:    stats.ConnectPeer,
-				Direction: "out",
+				Direction: network.DirOutbound,
 				Size:      0,
 				Success:   true,
 			}

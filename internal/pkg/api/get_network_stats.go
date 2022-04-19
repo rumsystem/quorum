@@ -13,8 +13,8 @@ import (
 // @Summary GetNetworkStatsSummary
 // @Description Get network stats summary
 // @Produce json
-// @Param start query time.Time false "起始时间"
-// @Param end query time.Time false "终止时间"
+// @Param start query time.Time false "Start Time"
+// @Param end query time.Time false "End Time"
 // @Success 200 {object} stats.NetworkStatsSummary
 // @Router /api/v1/network/stats [get]
 func (h *Handler) GetNetworkStatsSummary(c echo.Context) error {

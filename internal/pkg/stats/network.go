@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 )
@@ -60,35 +62,35 @@ func (na NetworkAction) GetByRumMsgType(msgType quorumpb.RumMsgType) NetworkActi
 }
 
 const (
-	// StatsKeyPrefix prefix for stats key
-	StatsKeyPrefix = "stats"
+	// NetworkStatsKeyPrefix prefix for stats key
+	NetworkStatsKeyPrefix = "network"
 )
 
 type NetworkStats struct {
-	From      string        `json:"from"`
-	To        string        `json:"to"`
-	Topic     string        `json:"topic"`
-	Direction string        `json:"direction"`
-	Action    NetworkAction `json:"action"`
-	Size      int           `json:"size"` // byte
-	Success   bool          `json:"success"`
-	CreatedAt *time.Time    `json:"created_at"`
+	From      peer.ID           `json:"from,omitempty"`
+	To        peer.ID           `json:"to,omitempty"`
+	Topic     string            `json:"topic"`
+	Direction network.Direction `json:"direction"`
+	Action    NetworkAction     `json:"action"`
+	Size      uint              `json:"size"` // byte
+	Success   bool              `json:"success"`
+	CreatedAt *time.Time        `json:"created_at"`
 }
 
 func (stats *NetworkStats) ToNetworkStatsSummaryItem() *NetworkStatsSummaryItem {
-	var successCount int64
-	var failedCount int64
+	var successCount uint
+	var failedCount uint
 	if stats.Success {
 		successCount = 1
 	} else {
 		failedCount = 1
 	}
 
-	var inSize int
-	var outSize int
-	if stats.Direction == "in" {
+	var inSize uint
+	var outSize uint
+	if stats.Direction == network.DirInbound {
 		inSize = stats.Size
-	} else if stats.Direction == "out" {
+	} else if stats.Direction == network.DirOutbound {
 		outSize = stats.Size
 	}
 
@@ -111,7 +113,7 @@ func (n *NetworkDBKey) String() string {
 	now := n.Datetime.Format(layout)
 	prefix := n.Prefix
 	if prefix == "" {
-		prefix = StatsKeyPrefix
+		prefix = NetworkStatsKeyPrefix
 	}
 	parts := []string{prefix, now, n.Action}
 	return strings.Join(parts, dbKeySep)
@@ -139,7 +141,7 @@ func ParseDBKey(key string) (*NetworkDBKey, error) {
 // GetDBKey returns db key
 func (n *NetworkStats) GetDBKey() string {
 	key := NetworkDBKey{
-		Prefix:   StatsKeyPrefix,
+		Prefix:   NetworkStatsKeyPrefix,
 		Datetime: *n.CreatedAt,
 		Action:   string(n.Action),
 	}
@@ -147,16 +149,16 @@ func (n *NetworkStats) GetDBKey() string {
 }
 
 func GetDBKeyPrefixByStr(s string) string {
-	parts := []string{StatsKeyPrefix, s}
+	parts := []string{NetworkStatsKeyPrefix, s}
 	return strings.Join(parts, dbKeySep)
 }
 
 type NetworkStatsSummaryItem struct {
 	Action       NetworkAction `json:"action"`
-	SuccessCount int64         `json:"success_count"`
-	FailedCount  int64         `json:"failed_count"`
-	InSize       int           `json:"in_size"`
-	OutSize      int           `json:"out_size"`
+	SuccessCount uint          `json:"success_count"`
+	FailedCount  uint          `json:"failed_count"`
+	InSize       uint          `json:"in_size"`
+	OutSize      uint          `json:"out_size"`
 }
 type NetworkStatsSummary struct {
 	Summary map[NetworkAction]*NetworkStatsSummaryItem `json:"summary"`

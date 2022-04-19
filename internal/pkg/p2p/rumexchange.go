@@ -126,11 +126,11 @@ func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIfa
 func (r *RexService) PublishToStream(msg *quorumpb.RumMsg, s network.Stream) error {
 	remotePeer := s.Conn().RemotePeer()
 	log := stats.NetworkStats{
-		From:      r.Host.ID().String(),
-		To:        remotePeer.String(),
+		From:      r.Host.ID(),
+		To:        remotePeer,
 		Action:    stats.PublishToStream,
-		Direction: "out",
-		Size:      proto.Size(msg),
+		Direction: network.DirOutbound,
+		Size:      stats.GetProtoSize(msg),
 	}
 	rumexchangelog.Debugf("PublishResponse msg to peer: %s", remotePeer)
 	bufw := bufio.NewWriter(s)
@@ -174,11 +174,11 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 	remotePeer := s.Conn().RemotePeer()
 
 	log := stats.NetworkStats{
-		From:      r.Host.ID().String(),
-		To:        remotePeer.String(),
+		From:      r.Host.ID(),
+		To:        remotePeer,
 		Action:    stats.PublishToPeerID,
-		Direction: "out",
-		Size:      proto.Size(msg),
+		Direction: network.DirOutbound,
+		Size:      stats.GetProtoSize(msg),
 	}
 
 	bufw := bufio.NewWriter(s)
@@ -259,10 +259,10 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 	remotePeer := s.Conn().RemotePeer()
 	localPeer := r.Host.ID()
 	log := stats.NetworkStats{
-		From:      localPeer.String(),
-		To:        remotePeer.String(),
-		Direction: "in",
-		Size:      proto.Size(rummsg),
+		From:      localPeer,
+		To:        remotePeer,
+		Direction: network.DirInbound,
+		Size:      stats.GetProtoSize(rummsg),
 		Success:   true,
 	}
 	log.Action = log.Action.GetByRumMsgType(rummsg.MsgType)
