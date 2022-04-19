@@ -245,8 +245,10 @@ func doRefresh() {
 						// synced
 						chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
+						item.Trx = trx
 						break
 					}
+
 					// try to find it from cache
 					trx, _, err = group.GetTrxFromCache(item.Trx.TrxId)
 					if err != nil {
@@ -256,6 +258,7 @@ func doRefresh() {
 					if trx.TrxId == item.Trx.TrxId {
 						chain_log.Debugf("<pubqueue>: trx %s success(from cache)", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
+						item.Trx = trx
 						break
 					}
 					// failed or still pending, check the expire time
