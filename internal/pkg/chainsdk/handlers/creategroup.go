@@ -15,8 +15,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
 type CreateGroupParam struct {

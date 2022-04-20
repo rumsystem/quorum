@@ -14,7 +14,7 @@ import (
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"google.golang.org/protobuf/proto"

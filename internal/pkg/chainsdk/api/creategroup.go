@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	handlers "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
 // @Tags Groups

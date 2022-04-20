@@ -8,7 +8,7 @@ import (
 	"time"
 
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"google.golang.org/protobuf/proto"
 
 	guuid "github.com/google/uuid"
