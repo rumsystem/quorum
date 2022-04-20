@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	iface "github.com/rumsystem/quorum/internal/pkg/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -42,6 +44,7 @@ func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) 
 	}
 	return pubsubconnmgr
 }
+
 func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
@@ -54,7 +57,8 @@ func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface i
 		if cdhIface != nil {
 			psconn.JoinChannel(channelId, cdhIface)
 		} else {
-			psconn.JoinChannelAsExchange(channelId)
+			// join channel as exchange
+			psconn.JoinChannel(channelId, nil)
 		}
 		pscm.connmgr.Store(channelId, psconn)
 	}
@@ -130,50 +134,62 @@ func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
 	return err
 }
 
-func (psconn *P2pPubSubConn) JoinChannelAsExchange(cId string) error {
-	var err error
-	psconn.Cid = cId
-	psconn.Topic, err = psconn.ps.Join(cId)
-	if err != nil {
-		channel_log.Errorf("Join <%s> failed", cId)
-		return err
-	} else {
-		channel_log.Errorf("Join <%s> done", cId)
-	}
-	psconn.Subscription, err = psconn.Topic.Subscribe()
-	if err != nil {
-		channel_log.Errorf("Subscribe <%s> failed", cId)
-		channel_log.Errorf(err.Error())
-		return err
-	} else {
-		channel_log.Infof("Subscribe <%s> done", cId)
-	}
-
-	//TODO: add a timer to leave the exchange channel
-	return nil
-}
-
 func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHandlerIface) error {
 	psconn.Cid = cId
-	psconn.chain = cdhIface
+
+	// cdhIface == nil, join channel as exchange
+	if cdhIface != nil {
+		psconn.chain = cdhIface
+	}
+
+	log := stats.NetworkStats{
+		From:      stats.GetLocalPeerID(),
+		Topic:     cId,
+		Action:    stats.JoinTopic,
+		Direction: network.DirOutbound,
+		Size:      0,
+		Success:   false,
+	}
 
 	var err error
 	//TODO: share the ps
 	psconn.Topic, err = psconn.ps.Join(cId)
 	if err != nil {
 		channel_log.Infof("Join <%s> failed", cId)
+		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
+			channel_log.Warningf("add network log to db failed: %s", e)
+		}
 		return err
 	} else {
 		channel_log.Infof("Join <%s> done", cId)
+		log.Success = true
+		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
+			channel_log.Warningf("add network log to db failed: %s", e)
+		}
+	}
+
+	log = stats.NetworkStats{
+		From:      stats.GetLocalPeerID(),
+		Topic:     cId,
+		Action:    stats.SubscribeTopic,
+		Direction: network.DirOutbound,
+		Size:      0,
+		Success:   false,
 	}
 
 	psconn.Subscription, err = psconn.Topic.Subscribe()
 	if err != nil {
-		channel_log.Fatalf("Subscribe <%s> failed", cId)
-		channel_log.Fatalf(err.Error())
+		channel_log.Fatalf("Subscribe <%s> failed: %s", cId, err)
+		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
+			channel_log.Warningf("add network log to db failed: %s", e)
+		}
 		return err
 	} else {
 		channel_log.Infof("Subscribe <%s> done", cId)
+		log.Success = true
+		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
+			channel_log.Warningf("add network log to db failed: %s", e)
+		}
 	}
 
 	go psconn.handleGroupChannel(psconn.Ctx)
@@ -181,13 +197,28 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHan
 }
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
-
 	psconn.mu.Lock()
 	defer psconn.mu.Unlock()
 	if psconn.Topic == nil {
 		return fmt.Errorf("Topic has been closed.")
 	}
-	return psconn.Topic.Publish(psconn.Ctx, data)
+
+	err := psconn.Topic.Publish(psconn.Ctx, data)
+
+	success := err == nil
+	log := stats.NetworkStats{
+		From:      stats.GetLocalPeerID(),
+		Topic:     psconn.Topic.String(),
+		Action:    stats.PublishToTopic,
+		Direction: network.DirOutbound,
+		Size:      stats.GetBinarySize(data),
+		Success:   success,
+	}
+	if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
+		channel_log.Warningf("add network log to db failed: %s", err)
+	}
+
+	return err
 }
 
 func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
@@ -195,8 +226,19 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 		msg, err := psconn.Subscription.Next(ctx)
 		if err == nil {
 			var pkg quorumpb.Package
-			err = proto.Unmarshal(msg.Data, &pkg)
-			if err == nil {
+			if err := proto.Unmarshal(msg.Data, &pkg); err == nil {
+				log := stats.NetworkStats{
+					To:        stats.GetLocalPeerID(),
+					Topic:     *msg.Topic,
+					Action:    stats.ReceiveFromTopic,
+					Direction: network.DirInbound,
+					Size:      stats.GetProtoSize(&pkg),
+					Success:   true,
+				}
+				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+					channel_log.Warningf("add network log to db failed: %s", err)
+				}
+
 				if pkg.Type == quorumpb.PackageType_BLOCK {
 					//is block
 					var blk *quorumpb.Block
