@@ -8,9 +8,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/stats"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"google.golang.org/protobuf/proto"
 )

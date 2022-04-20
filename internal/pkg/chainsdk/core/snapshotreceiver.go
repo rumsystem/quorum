@@ -1,6 +1,6 @@
 package chain
 
-import quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
+import quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 type SnapshotReceiver interface {
 	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)

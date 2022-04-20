@@ -8,8 +8,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type ReqRelayParam struct {

@@ -1,7 +1,7 @@
 package chain
 
 import (
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type Producer interface {

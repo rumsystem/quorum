@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type GrpProducerResult struct {

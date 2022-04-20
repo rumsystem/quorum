@@ -197,6 +197,7 @@ require (
 	github.com/raulk/go-watchdog v1.2.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
+	github.com/rumsystem/rumchaindata v0.0.0-20220412221838-4893d521183c // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spf13/afero v1.6.0 // indirect

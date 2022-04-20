@@ -8,8 +8,8 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 

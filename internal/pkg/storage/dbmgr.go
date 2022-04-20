@@ -8,8 +8,8 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 

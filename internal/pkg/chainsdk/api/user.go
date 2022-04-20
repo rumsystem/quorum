@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"

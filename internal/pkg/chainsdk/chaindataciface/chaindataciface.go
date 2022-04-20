@@ -2,7 +2,7 @@ package iface
 
 import (
 	"github.com/libp2p/go-libp2p-core/network"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type ChainDataHandlerIface interface {

@@ -8,9 +8,9 @@ import (
 	"strconv"
 
 	"github.com/google/orderedcode"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var appdatalog = logging.Logger("appdata")

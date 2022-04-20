@@ -11,8 +11,8 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type AppConfigParam struct {

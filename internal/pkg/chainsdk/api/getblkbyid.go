@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	_ "github.com/rumsystem/quorum/internal/pkg/data/pb" //import for swaggo
+	_ "github.com/rumsystem/rumchaindata/pkg/pb" //import for swaggo
 )
 
 // @Tags Chain

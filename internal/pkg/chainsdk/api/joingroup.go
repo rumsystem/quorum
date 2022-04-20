@@ -12,10 +12,10 @@ import (
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	handlers "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
 	"github.com/rumsystem/quorum/testnode"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"

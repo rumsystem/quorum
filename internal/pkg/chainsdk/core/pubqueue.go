@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type PublishQueueItem struct {

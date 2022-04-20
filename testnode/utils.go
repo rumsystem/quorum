@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 func RequestAPI(apiurl string, endpoint string, method string, data string) (int, []byte, error) {

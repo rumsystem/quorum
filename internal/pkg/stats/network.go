@@ -8,8 +8,8 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var logger = logging.Logger("stats")

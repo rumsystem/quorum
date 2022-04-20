@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 

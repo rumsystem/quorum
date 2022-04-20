@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/data/pb"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type GroupContentObjectItem struct {
