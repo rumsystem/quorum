@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	handlers "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
 // @Tags Node

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/testnode"
 )
 

@@ -11,7 +11,7 @@ import (
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type GrpUserResult struct {

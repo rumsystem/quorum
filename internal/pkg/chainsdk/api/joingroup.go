@@ -12,8 +12,8 @@ import (
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	handlers "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/testnode"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 

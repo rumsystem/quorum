@@ -10,7 +10,7 @@ import (
 	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )

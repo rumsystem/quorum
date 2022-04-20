@@ -5,7 +5,7 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type (

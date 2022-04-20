@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 

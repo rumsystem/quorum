@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"

@@ -14,8 +14,8 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 

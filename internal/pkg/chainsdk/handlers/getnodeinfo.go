@@ -6,7 +6,7 @@ import (
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 

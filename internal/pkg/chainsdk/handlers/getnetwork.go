@@ -9,8 +9,8 @@ import (
 	maddr "github.com/multiformats/go-multiaddr"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
