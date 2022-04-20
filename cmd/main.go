@@ -19,7 +19,7 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	"github.com/libp2p/go-libp2p-connmgr"
 	peerstore "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
@@ -27,18 +27,18 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/api"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	handlers "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	"github.com/rumsystem/quorum/testnode"
-
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/molassctx/options"
+	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
+	"github.com/rumsystem/quorum/testnode"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
 
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
@@ -270,7 +270,11 @@ func mainRet(config cli.Config) int {
 
 	if config.IsBootstrap == true {
 		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		node, err := p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(1000, 50000, 30), config.ListenAddresses, config.JsonTracer)
+		cm, err := connmgr.NewConnManager(1000, 50000, connmgr.WithGracePeriod(30*time.Second))
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		node, err = p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -288,6 +292,10 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
+		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
+			mainlog.Fatalf("init stats db failed: %s", err)
+		}
+
 		mainlog.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
 		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
 		go api.StartAPIServer(config, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
@@ -303,7 +311,11 @@ func mainRet(config cli.Config) int {
 		dbManager.TryMigration(1)
 
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, connmgr.NewConnManager(10, nodeoptions.ConnsHi, 60), config.ListenAddresses, config.JsonTracer)
+		cm, err := connmgr.NewConnManager(10, nodeoptions.ConnsHi, connmgr.WithGracePeriod(60*time.Second))
+		if err != nil {
+			mainlog.Fatalf(err.Error())
+		}
+		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil {
 			node.SetRumExchange(ctx, dbManager)
 		}
@@ -326,6 +338,10 @@ func mainRet(config cli.Config) int {
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
+
+		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
+			mainlog.Fatalf("init stats db failed: %s", err)
+		}
 
 		//initial conn
 		conn.InitConn()

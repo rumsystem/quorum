@@ -10,19 +10,19 @@ GOARCH = amd64
 compile: chain.proto activity_stream.proto rumexchange.proto
 
 chain.proto:
-	protoc -I=internal/pkg/pb --go_out=internal/pkg/pb internal/pkg/pb/chain.proto
-	mv internal/pkg/pb/github.com/rumsystem/quorum/internal/pkg/pb/chain.pb.go internal/pkg/pb/chain.pb.go
-	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/pb/chain.pb.go
+	protoc -I=internal/pkg/data/pb --go_out=internal/pkg/data/pb internal/pkg/data/pb/chain.proto
+	mv internal/pkg/data/pb/github.com/rumsystem/quorum/internal/pkg/data/pb/chain.pb.go internal/pkg/data/pb/chain.pb.go
+	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/data/pb/chain.pb.go
 
 activity_stream.proto:
-	protoc -I=internal/pkg/pb --go_out=internal/pkg/pb internal/pkg/pb/activity_stream.proto
-	mv internal/pkg/pb/github.com/rumsystem/quorum/internal/pkg/pb/activity_stream.pb.go internal/pkg/pb/activity_stream.pb.go
-	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/pb/activity_stream.pb.go
+	protoc -I=internal/pkg/data/pb --go_out=internal/pkg/data/pb internal/pkg/data/pb/activity_stream.proto
+	mv internal/pkg/data/pb/github.com/rumsystem/quorum/internal/pkg/data/pb/activity_stream.pb.go internal/pkg/data/pb/activity_stream.pb.go
+	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/data/pb/activity_stream.pb.go
 
 rumexchange.proto:
-	protoc -I=internal/pkg/pb --go_out=internal/pkg/pb internal/pkg/pb/rumexchange.proto 
-	mv internal/pkg/pb/github.com/rumsystem/quorum/internal/pkg/pb/rumexchange.pb.go internal/pkg/pb/rumexchange.pb.go
-	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/pb/rumexchange.pb.go
+	protoc -I=internal/pkg/data/pb --go_out=internal/pkg/data/pb internal/pkg/data/pb/rumexchange.proto 
+	mv internal/pkg/data/pb/github.com/rumsystem/quorum/internal/pkg/data/pb/rumexchange.pb.go internal/pkg/data/pb/rumexchange.pb.go
+	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/data/pb/rumexchange.pb.go
 
 linux:
 	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go

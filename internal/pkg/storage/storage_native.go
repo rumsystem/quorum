@@ -205,19 +205,21 @@ func (s *QSBadger) GetSequence(key []byte, bandwidth uint64) (Sequence, error) {
 }
 
 func CreateDb(path string) (*DbMgr, error) {
-	var err error
 	groupDb := QSBadger{}
 	dataDb := QSBadger{}
-	err = groupDb.Init(path + "_groups")
-	if err != nil {
+	if err := groupDb.Init(path + "_groups"); err != nil {
 		return nil, err
 	}
 
-	err = dataDb.Init(path + "_db")
-	if err != nil {
+	if err := dataDb.Init(path + "_db"); err != nil {
 		return nil, err
 	}
 
-	manager := DbMgr{&groupDb, &dataDb, nil, path}
+	manager := DbMgr{
+		GroupInfoDb: &groupDb,
+		Db:          &dataDb,
+		Auth:        nil,
+		DataPath:    path,
+	}
 	return &manager, nil
 }

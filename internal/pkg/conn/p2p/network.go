@@ -13,6 +13,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/stats"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -112,6 +113,18 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 		} else {
 			connectedCount++
 			networklog.Infof("connect: %s", peer)
+
+			log := stats.NetworkStats{
+				From:      node.Host.ID(),
+				To:        peer.ID,
+				Action:    stats.ConnectPeer,
+				Direction: network.DirOutbound,
+				Size:      0,
+				Success:   true,
+			}
+			if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
+				networklog.Warningf("add network log to db failed: %s", err)
+			}
 		}
 	}
 	return connectedCount

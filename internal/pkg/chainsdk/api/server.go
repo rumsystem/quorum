@@ -46,6 +46,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/appconfig", h.MgrAppConfig)
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
+		r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
 		r.GET("/v1/network/peers/ping", h.PingPeer(node))
 		r.POST("/v1/psping", h.PSPingPeer(node))
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
