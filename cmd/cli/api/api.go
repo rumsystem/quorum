@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/config"
-	qApi "github.com/rumsystem/quorum/internal/pkg/api"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	qApi "github.com/rumsystem/quorum/internal/pkg/chainsdk/api"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 )
 
 var ApiServer string

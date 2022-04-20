@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
-	qApi "github.com/rumsystem/quorum/internal/pkg/api"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	qApi "github.com/rumsystem/quorum/internal/pkg/chainsdk/api"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 )
 
 type PubqueueDataModel struct {

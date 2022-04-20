@@ -1,6 +1,6 @@
 package api
 
-import "github.com/rumsystem/quorum/internal/pkg/handlers"
+import "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 
 type AnnouncedGroupUserList struct {
 	Data []*handlers.AnnouncedUserListItem `json:"data"`

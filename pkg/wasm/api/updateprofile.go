@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 func UpdateProfile(data []byte) (*handlers.UpdateProfileResult, error) {

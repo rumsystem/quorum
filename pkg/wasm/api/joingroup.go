@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 /* from echo handlers, should be refactored later after wasm stabeld */

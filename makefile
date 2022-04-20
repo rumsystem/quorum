@@ -22,9 +22,24 @@ windows:
 wasm:
 	CGO_ENABLED=0 GO111MODULE=on GOOS=js GOARCH=wasm go build ${LDFLAGS} -o dist/js_wasm/${QUORUM_WASMLIB_NAME} cmd/wasm/lib.go
 
+
+cli_linux:
+	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+
+cli_freebsd:
+	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+
+cli_darwin:
+	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+
+cli_windows:
+	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+
+buildcli: cli_linux cli_freebsd cli_darwin cli_windows
+
 build: linux freebsd darwin windows wasm
 
-buildall: linux freebsd darwin windows wasm
+buildall: build buildcli
 
 doc: 
 	$(shell which swag) init -g ./cmd/main.go --parseDependency --parseInternal --parseDepth 2

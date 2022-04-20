@@ -25,8 +25,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/pubsubconn"
 )
 
 type PublicGater struct{}

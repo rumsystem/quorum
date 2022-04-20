@@ -9,7 +9,7 @@ import (
 
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/rumsystem/quorum/cmd/cli/api"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 )
 
 // global forms

@@ -4,7 +4,7 @@
 package api
 
 import (
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 )
 
 type AppConfigKeyList struct {
