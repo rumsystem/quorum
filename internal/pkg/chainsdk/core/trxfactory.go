@@ -2,18 +2,12 @@ package chain
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
-	"fmt"
-	"time"
-
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-
-	guuid "github.com/google/uuid"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"time"
 )
 
 const (
@@ -36,64 +30,6 @@ func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem, nodename string) 
 	factory.nodename = nodename
 }
 
-func (factory *TrxFactory) CreateTrxWithoutSign(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
-	var trx quorumpb.Trx
-
-	trxId := guuid.New()
-	trx.TrxId = trxId.String()
-	trx.Type = msgType
-	trx.GroupId = factory.groupItem.GroupId
-	trx.SenderPubkey = factory.groupItem.UserSignPubkey
-	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupId, factory.nodename)
-	if err != nil {
-		return &trx, []byte(""), err
-	}
-
-	trx.Nonce = int64(nonce)
-
-	var encryptdData []byte
-	if msgType == quorumpb.TrxType_POST && factory.groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		//for post, private group, encrypted by age for all announced group users
-		if len(encryptto) == 1 {
-			var err error
-			ks := localcrypto.GetKeystore()
-			if len(encryptto[0]) == 0 {
-				return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", factory.groupItem.GroupId)
-			}
-			encryptdData, err = ks.EncryptTo(encryptto[0], data)
-			if err != nil {
-				return &trx, []byte(""), err
-			}
-
-		} else {
-			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", factory.groupItem.GroupId)
-		}
-
-	} else {
-		var err error
-		ciperKey, err := hex.DecodeString(factory.groupItem.CipherKey)
-		if err != nil {
-			return &trx, []byte(""), err
-		}
-		encryptdData, err = localcrypto.AesEncrypt(data, ciperKey)
-		if err != nil {
-			return &trx, []byte(""), err
-		}
-	}
-
-	trx.Data = encryptdData
-	trx.Version = nodectx.GetNodeCtx().Version
-
-	updateTrxTimeLimit(&trx)
-
-	bytes, err := proto.Marshal(&trx)
-	if err != nil {
-		return &trx, []byte(""), err
-	}
-	hashed := localcrypto.Hash(bytes)
-	return &trx, hashed, nil
-}
-
 // set TimeStamp and Expired for trx
 func updateTrxTimeLimit(trx *quorumpb.Trx) {
 	trx.TimeStamp = time.Now().UnixNano()
@@ -104,7 +40,9 @@ func updateTrxTimeLimit(trx *quorumpb.Trx) {
 }
 
 func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
-	trx, hashed, err := factory.CreateTrxWithoutSign(msgType, data, encryptto...)
+	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupItem.GroupId, factory.nodename)
+	trx, hashed, err := rumchaindata.CreateTrxWithoutSign(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, msgType, int64(nonce), data, encryptto...)
+
 	if err != nil {
 		return trx, err
 	}
@@ -118,41 +56,6 @@ func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encr
 	trx.SenderSign = signature
 
 	return trx, nil
-}
-
-func (factory *TrxFactory) VerifyTrx(trx *quorumpb.Trx) (bool, error) {
-	//clone trxMsg to verify
-	clonetrxmsg := &quorumpb.Trx{
-		TrxId:        trx.TrxId,
-		Type:         trx.Type,
-		GroupId:      trx.GroupId,
-		SenderPubkey: trx.SenderPubkey,
-		Nonce:        trx.Nonce,
-		Data:         trx.Data,
-		TimeStamp:    trx.TimeStamp,
-		Version:      trx.Version,
-		Expired:      trx.Expired}
-
-	bytes, err := proto.Marshal(clonetrxmsg)
-	if err != nil {
-		return false, err
-	}
-
-	hashed := localcrypto.Hash(bytes)
-
-	//create pubkey
-	serializedpub, err := p2pcrypto.ConfigDecodeKey(trx.SenderPubkey)
-	if err != nil {
-		return false, err
-	}
-
-	pubkey, err := p2pcrypto.UnmarshalPublicKey(serializedpub)
-	if err != nil {
-		return false, err
-	}
-
-	verify, err := pubkey.Verify(hashed, trx.SenderSign)
-	return verify, err
 }
 
 func (factory *TrxFactory) GetUpdAppConfigTrx(item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {

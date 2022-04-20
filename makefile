@@ -7,23 +7,6 @@ GIT_COMMIT=$(shell git rev-list -1 HEAD)
 LDFLAGS = -ldflags "-X main.GitCommit=${GIT_COMMIT}"
 GOARCH = amd64
 
-compile: chain.proto activity_stream.proto rumexchange.proto
-
-chain.proto:
-	protoc -I=internal/pkg/data/pb --go_out=internal/pkg/data/pb internal/pkg/data/pb/chain.proto
-	mv internal/pkg/data/pb/github.com/rumsystem/quorum/internal/pkg/data/pb/chain.pb.go internal/pkg/data/pb/chain.pb.go
-	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/data/pb/chain.pb.go
-
-activity_stream.proto:
-	protoc -I=internal/pkg/data/pb --go_out=internal/pkg/data/pb internal/pkg/data/pb/activity_stream.proto
-	mv internal/pkg/data/pb/github.com/rumsystem/quorum/internal/pkg/data/pb/activity_stream.pb.go internal/pkg/data/pb/activity_stream.pb.go
-	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/data/pb/activity_stream.pb.go
-
-rumexchange.proto:
-	protoc -I=internal/pkg/data/pb --go_out=internal/pkg/data/pb internal/pkg/data/pb/rumexchange.proto 
-	mv internal/pkg/data/pb/github.com/rumsystem/quorum/internal/pkg/data/pb/rumexchange.pb.go internal/pkg/data/pb/rumexchange.pb.go
-	sed -i 's/TimeStamp,omitempty/TimeStamp,omitempty,string/g' internal/pkg/data/pb/rumexchange.pb.go
-
 linux:
 	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go
 
@@ -39,7 +22,7 @@ windows:
 wasm:
 	CGO_ENABLED=0 GO111MODULE=on GOOS=js GOARCH=wasm go build ${LDFLAGS} -o dist/js_wasm/${QUORUM_WASMLIB_NAME} cmd/wasm/lib.go
 
-build: compile linux freebsd darwin windows wasm
+build: linux freebsd darwin windows wasm
 
 buildall: linux freebsd darwin windows wasm
 
@@ -57,4 +40,4 @@ test-api:
 
 test: test-api test-main test-main-rex
 
-all: compile doc test buildall
+all: doc test buildall

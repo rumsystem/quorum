@@ -9,6 +9,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
@@ -122,7 +123,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		return errors.New("Trx Version mismatch")
 	}
 
-	verified, err := chain.trxFactory.VerifyTrx(trx)
+	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
 		chain_log.Warnf("<%s> verify Trx failed with err <%s>", chain.groupId, err.Error())
 		return errors.New("Verify Trx failed")
