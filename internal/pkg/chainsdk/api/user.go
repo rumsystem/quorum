@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
@@ -106,7 +107,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		buffer.Write([]byte(item.UserPubkey))
 		buffer.Write([]byte(item.EncryptPubkey))
 		buffer.Write([]byte(item.GroupOwnerPubkey))
-		hash := chain.Hash(buffer.Bytes())
+		hash := localcrypto.Hash(buffer.Bytes())
 
 		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)

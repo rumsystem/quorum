@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 
-	localCrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -103,8 +102,4 @@ func UpdateResendCount(trxs []*quorumpb.Trx) ([]*quorumpb.Trx, error) {
 		trx.ResendCount++
 	}
 	return trxs, nil
-}
-
-func Hash(data []byte) []byte {
-	return localCrypto.Hash(data)
 }

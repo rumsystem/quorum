@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -69,7 +70,7 @@ func GroupProducer(params *GrpProducerParam) (*GrpProducerResult, error) {
 		buffer.Write([]byte(item.GroupId))
 		buffer.Write([]byte(item.ProducerPubkey))
 		buffer.Write([]byte(item.GroupOwnerPubkey))
-		hash := chain.Hash(buffer.Bytes())
+		hash := localcrypto.Hash(buffer.Bytes())
 
 		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)

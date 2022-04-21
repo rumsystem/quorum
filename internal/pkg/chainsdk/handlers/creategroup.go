@@ -16,6 +16,7 @@ import (
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -70,7 +71,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
 
-	genesisBlock, err := chain.CreateGenesisBlock(groupid.String(), p2ppubkey)
+	genesisBlock, err := rumchaindata.CreateGenesisBlock(groupid.String(), p2ppubkey, ks)
 	if err != nil {
 		return nil, err
 	}

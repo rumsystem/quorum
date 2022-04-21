@@ -87,7 +87,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 		buffer.Write([]byte(item.Value))
 		buffer.Write([]byte(item.Memo))
 		buffer.Write(groupSignPubkey)
-		hash := chain.Hash(buffer.Bytes())
+		hash := localcrypto.Hash(buffer.Bytes())
 
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
 

@@ -244,7 +244,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		buffer.Write([]byte(params.EncryptionType))
 		buffer.Write([]byte(item.CipherKey))
 		buffer.Write([]byte(item.AppKey))
-		hashResult := chain.Hash(bufferResult.Bytes())
+		hashResult := localcrypto.Hash(bufferResult.Bytes())
 		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 

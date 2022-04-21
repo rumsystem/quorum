@@ -675,7 +675,7 @@ func (chain *Chain) CreateConsensus() error {
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
 		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
-			producer = &MolassesProducer{}
+			producer = &consensus.MolassesProducer{}
 			producer.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 		} else {
 			chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
@@ -690,7 +690,7 @@ func (chain *Chain) CreateConsensus() error {
 		if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
 			chain_log.Infof("<%s> Create and initial molasses SnapshotSender", chain.groupId)
 			snapshotsender = &MolassesSnapshotSender{}
-			snapshotsender.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+			snapshotsender.Init(chain.group.Item, chain.group.ChainCtx.nodename)
 		} else {
 			chain_log.Infof("<%s> reuse molasses snapshotsender", chain.groupId)
 			snapshotsender = chain.Consensus.SnapshotSender()
@@ -700,7 +700,7 @@ func (chain *Chain) CreateConsensus() error {
 		if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
 			chain_log.Infof("<%s> Create and initial molasses SnapshotReceiver", chain.groupId)
 			snapshotreceiver = &MolassesSnapshotReceiver{}
-			snapshotreceiver.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+			snapshotreceiver.Init(chain.group.Item, chain.group.ChainCtx.nodename)
 		} else {
 			chain_log.Infof("<%s> reuse molasses snapshot", chain.groupId)
 			snapshotreceiver = chain.Consensus.SnapshotReceiver()
@@ -710,7 +710,7 @@ func (chain *Chain) CreateConsensus() error {
 
 	if chain.Consensus == nil {
 		chain_log.Infof("<%s> created consensus", chain.groupId)
-		chain.Consensus = NewMolasses(producer, user, snapshotsender, snapshotreceiver)
+		chain.Consensus = consensus.NewMolasses(producer, user, snapshotsender, snapshotreceiver)
 	} else {
 		chain_log.Infof("<%s> reuse consensus", chain.groupId)
 		chain.Consensus.SetProducer(producer)

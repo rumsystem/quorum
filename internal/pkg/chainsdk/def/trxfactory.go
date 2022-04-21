@@ -14,4 +14,6 @@ type TrxFactoryIface interface {
 	GetUpdAppConfigTrx(item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
 	GetRegUserTrx(item *quorumpb.UserItem) (*quorumpb.Trx, error)
 	GetPostAnyTrx(content proto.Message, encryptto ...[]string) (*quorumpb.Trx, error)
+	GetReqBlockForwardTrx(block *quorumpb.Block) (*quorumpb.Trx, error)
+	GetReqBlockBackwardTrx(block *quorumpb.Block) (*quorumpb.Trx, error)
 }

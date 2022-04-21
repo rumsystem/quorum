@@ -8,6 +8,7 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/pkg/consensus"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -267,13 +268,13 @@ func doRefresh() {
 						// TODO: this might consume some storage, not gonna clean it by now
 						break
 					}
-					muser, ok := group.ChainCtx.Consensus.User().(*MolassesUser)
+					muser, ok := group.ChainCtx.Consensus.User().(*consensus.MolassesUser)
 					if !ok {
 						// ignore
 						chain_log.Errorf("<pubqueue>: trx %s resend failed, cannot cast user node to MolassesUser", item.Trx.TrxId)
 						break
 					}
-					trxId, err := muser.sendTrxWithoutRetry(item.Trx, conn.ProducerChannel)
+					trxId, err := muser.SendTrxWithoutRetry(item.Trx, conn.ProducerChannel)
 					if err != nil {
 						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
 					} else {

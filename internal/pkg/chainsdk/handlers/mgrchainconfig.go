@@ -153,7 +153,7 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	buffer.Write(bt)
 	buffer.Write([]byte(configItem.Memo))
 
-	hash := chain.Hash(buffer.Bytes())
+	hash := localcrypto.Hash(buffer.Bytes())
 
 	signature, err := ks.SignByKeyName(params.GroupId, hash)
 

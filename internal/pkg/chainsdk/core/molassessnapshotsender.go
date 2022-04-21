@@ -10,7 +10,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/pkg/consensus/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -32,8 +31,8 @@ const (
 */
 
 type MolassesSnapshotSender struct {
-	grpItem      *quorumpb.GroupItem
-	cIface       def.ChainMolassesIface
+	grpItem *quorumpb.GroupItem
+	//cIface       def.ChainMolassesIface
 	nodename     string
 	ticker       *time.Ticker
 	groupId      string
@@ -43,10 +42,10 @@ type MolassesSnapshotSender struct {
 	lastestNonce int64
 }
 
-func (sssender *MolassesSnapshotSender) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+func (sssender *MolassesSnapshotSender) Init(item *quorumpb.GroupItem, nodename string) {
 	snapshotsender_log.Debugf("<%s> Init called", sssender.groupId)
 	sssender.grpItem = item
-	sssender.cIface = iface
+	//sssender.cIface = iface
 	sssender.nodename = nodename
 	sssender.groupId = item.GroupId
 	sssender.status = SENDER_IDLE

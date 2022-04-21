@@ -33,7 +33,7 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
-func (user *MolassesUser) sendTrxWithoutRetry(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
+func (user *MolassesUser) SendTrxWithoutRetry(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
 	connMgr, err := conn.GetConn().GetConnMgr(user.groupId)
 	if err != nil {
 		return "", err
@@ -48,7 +48,7 @@ func (user *MolassesUser) sendTrxWithoutRetry(trx *quorumpb.Trx, channel conn.Ps
 }
 
 func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
-	_, err := user.sendTrxWithoutRetry(trx, channel)
+	_, err := user.SendTrxWithoutRetry(trx, channel)
 	if err != nil {
 		return "", err
 	}
