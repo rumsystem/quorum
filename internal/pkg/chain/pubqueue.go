@@ -16,10 +16,11 @@ type PublishQueueItem struct {
 	GroupId string
 
 	// in value only
-	State      string
-	RetryCount int
-	UpdateAt   int64 `json:"UpdateAt,string"`
-	Trx        *quorumpb.Trx
+	State       string
+	RetryCount  int
+	UpdateAt    int64 `json:"UpdateAt,string"`
+	Trx         *quorumpb.Trx
+	StorageType string
 }
 
 const (
@@ -245,7 +246,7 @@ func doRefresh() {
 						// synced
 						chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
-						item.Trx = trx
+						item.StorageType = trx.StorageType.String()
 						break
 					}
 
@@ -258,7 +259,7 @@ func doRefresh() {
 					if trx.TrxId == item.Trx.TrxId {
 						chain_log.Debugf("<pubqueue>: trx %s success(from cache)", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
-						item.Trx = trx
+						item.StorageType = trx.StorageType.String()
 						break
 					}
 					// failed or still pending, check the expire time
@@ -317,6 +318,6 @@ func doRefresh() {
 
 func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	//chain_log.Debugf("<pubqueue>: %v to group(%s)", trx.TrxId, groupId)
-	item := PublishQueueItem{groupId, PublishQueueItemStatePending, 0, time.Now().UnixNano(), trx}
+	item := PublishQueueItem{groupId, PublishQueueItemStatePending, 0, time.Now().UnixNano(), trx, ""}
 	return publishQueueWatcher.UpsertItem(&item)
 }

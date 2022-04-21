@@ -1,6 +1,8 @@
 package handlers
 
-import "github.com/rumsystem/quorum/internal/pkg/chain"
+import (
+	"github.com/rumsystem/quorum/internal/pkg/chain"
+)
 
 type PubQueueInfo struct {
 	GroupId string
@@ -11,6 +13,10 @@ func GetPubQueue(groupId string, status string, trxId string) (*PubQueueInfo, er
 	items, err := chain.GetPubQueueWatcher().GetGroupItems(groupId, status, trxId)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, item := range items {
+		item.StorageType = item.Trx.StorageType.String()
 	}
 
 	ret := PubQueueInfo{groupId, items}
