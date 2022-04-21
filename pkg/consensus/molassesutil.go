@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"bytes"
@@ -13,8 +13,6 @@ var molautil_log = logging.Logger("util")
 
 //find the highest block from the block tree
 func RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, currentHighestBlock *quorumpb.Block, nodename string) (int64, string, error) {
-	molautil_log.Debug("RecalChainHeight called")
-
 	newHighestHeight := currentHeight
 	newHighestBlockId := currentHighestBlock.BlockId
 	newHighestBlock := currentHighestBlock
@@ -85,7 +83,7 @@ func GetMyTrxs(blockIds []string, nodename string, userSignPubkey string) ([]*qu
 	for _, blockId := range blockIds {
 		block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
 		if err != nil {
-			chain_log.Warnf(err.Error())
+			//chain_log.Warnf(err.Error())
 			continue
 		}
 
@@ -93,18 +91,6 @@ func GetMyTrxs(blockIds []string, nodename string, userSignPubkey string) ([]*qu
 			if trx.SenderPubkey == userSignPubkey {
 				trxs = append(trxs, trx)
 			}
-		}
-	}
-	return trxs, nil
-}
-
-//get all trx from the block list
-func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
-	molautil_log.Debug("GetAllTrxs called")
-	var trxs []*quorumpb.Trx
-	for _, block := range blocks {
-		for _, trx := range block.Trxs {
-			trxs = append(trxs, trx)
 		}
 	}
 	return trxs, nil

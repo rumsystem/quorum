@@ -8,6 +8,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/pkg/consensus/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,7 +17,7 @@ var snapshotreceiver_log = logging.Logger("ssreceiver")
 
 type MolassesSnapshotReceiver struct {
 	grpItem           *quorumpb.GroupItem
-	cIface            ChainMolassesIface
+	cIface            def.ChainMolassesIface
 	nodename          string
 	groupId           string
 	snapshotpackages  map[string](map[string]*quorumpb.Snapshot)
@@ -27,7 +28,7 @@ type MolassesSnapshotReceiver struct {
 	applySnapshotMu   sync.RWMutex
 }
 
-func (ssreceiver *MolassesSnapshotReceiver) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
+func (ssreceiver *MolassesSnapshotReceiver) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
 	snapshotreceiver_log.Debugf("<%s> Init called", item.GroupId)
 	ssreceiver.grpItem = item
 	ssreceiver.cIface = iface

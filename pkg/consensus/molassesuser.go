@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"encoding/hex"
@@ -9,6 +9,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/pkg/consensus/def"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,13 +18,13 @@ import (
 type MolassesUser struct {
 	grpItem  *quorumpb.GroupItem
 	nodename string
-	cIface   ChainMolassesIface
+	cIface   def.ChainMolassesIface
 	groupId  string
 }
 
 var molauser_log = logging.Logger("user")
 
-func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
+func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
 	molauser_log.Debugf("Init called")
 	user.grpItem = item
 	user.nodename = nodename
@@ -51,7 +53,7 @@ func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) 
 		return "", err
 	}
 
-	err = TrxEnqueue(user.groupId, trx)
+	err = user.cIface.TrxEnqueue(user.groupId, trx)
 	if err != nil {
 		return "", err
 	}
@@ -173,7 +175,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//valid block with parent block
-	valid, err := IsBlockValid(block, parentBlock)
+	valid, err := rumchaindata.IsBlockValid(block, parentBlock)
 	if !valid {
 		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", user.groupId, block.BlockId)
 		molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
@@ -188,7 +190,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
-	trxs, err = GetAllTrxs(blocks)
+	trxs, err = rumchaindata.GetAllTrxs(blocks)
 	if err != nil {
 		return err
 	}

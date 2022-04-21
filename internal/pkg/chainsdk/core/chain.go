@@ -6,14 +6,16 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/pkg/consensus"
+	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
 
 var chain_log = logging.Logger("chain")
@@ -34,7 +36,7 @@ type Chain struct {
 	userPool           map[string]*quorumpb.UserItem
 	peerIdPool         map[string]string
 	chaindata          *ChainData
-	Consensus          Consensus
+	Consensus          def.Consensus
 	producerChannTimer *time.Timer
 	ProviderPeerIdPool map[string]string
 	trxFactory         *TrxFactory
@@ -64,11 +66,11 @@ func (chain *Chain) SetRumExchangeTestMode() {
 	chain.syncer.SetRumExchangeTestMode()
 }
 
-func (chain *Chain) GetChainCtx() *Chain {
+func (chain *Chain) GetChainSyncIface() chaindef.ChainSyncIface {
 	return chain
 }
 
-func (chain *Chain) GetTrxFactory() *TrxFactory {
+func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
@@ -656,14 +658,14 @@ func (chain *Chain) GetSnapshotTag() (tag *quorumpb.SnapShotTag, err error) {
 func (chain *Chain) CreateConsensus() error {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
 
-	var user User
-	var producer Producer
-	var snapshotreceiver SnapshotReceiver
-	var snapshotsender SnapshotSender
+	var user def.User
+	var producer def.Producer
+	var snapshotreceiver chaindef.SnapshotReceiver
+	var snapshotsender chaindef.SnapshotSender
 
 	if chain.Consensus == nil || chain.Consensus.User() == nil {
 		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
-		user = &MolassesUser{}
+		user = &consensus.MolassesUser{}
 		user.Init(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 	} else {
 		chain_log.Infof("<%s> reuse molasses user", chain.groupId)
@@ -718,6 +720,10 @@ func (chain *Chain) CreateConsensus() error {
 	}
 
 	return nil
+}
+
+func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
+	return TrxEnqueue(groupId, trx)
 }
 
 func (chain *Chain) SyncForward(blockId string, nodename string) error {

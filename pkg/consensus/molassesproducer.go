@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"bytes"
@@ -16,6 +16,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/pkg/consensus/def"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -47,11 +49,11 @@ type MolassesProducer struct {
 	statusmu          sync.RWMutex
 	addTrxmu          sync.RWMutex
 	nodename          string
-	cIface            ChainMolassesIface
+	cIface            def.ChainMolassesIface
 	groupId           string
 }
 
-func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface) {
+func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
 	molaproducer_log.Debug("Init called")
 	producer.grpItem = item
 	producer.cIface = iface
@@ -174,7 +176,8 @@ func (producer *MolassesProducer) produceBlock() {
 		return
 	}
 
-	newBlock, err := CreateBlock(topBlock, trxs, pubkeyBytes, producer.nodename)
+	ks := localcrypto.GetKeystore()
+	newBlock, err := rumchaindata.CreateBlock(topBlock, trxs, pubkeyBytes, ks, producer.nodename)
 	if err != nil {
 		molaproducer_log.Errorf("<%s> create block error", producer.groupId)
 		molaproducer_log.Errorf(err.Error())
@@ -291,7 +294,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 		if err.Error() == "PARENT_NOT_EXIST" {
 			molaproducer_log.Debugf("<%s> parent not found, sync backward for missing blocks from <%s>", producer.groupId, candidateBlkid, err)
-			return producer.cIface.GetChainCtx().SyncBackward(candidateBlkid, producer.nodename)
+			return producer.cIface.GetChainSyncIface().SyncBackward(candidateBlkid, producer.nodename)
 		}
 	} else {
 		molaproducer_log.Debugf("<%s> block saved", producer.groupId)
@@ -475,7 +478,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//valid block with parent block
-	valid, err := IsBlockValid(block, parentBlock)
+	valid, err := rumchaindata.IsBlockValid(block, parentBlock)
 	if !valid {
 		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", producer.groupId, block.BlockId)
 		molauser_log.Warningf("<%s> invalid block <%s>", producer.groupId, err.Error())
@@ -490,7 +493,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 
 	//get all trxs in those new blocks
 	var trxs []*quorumpb.Trx
-	trxs, err = GetAllTrxs(blocks)
+	trxs, err = rumchaindata.GetAllTrxs(blocks)
 	if err != nil {
 		return err
 	}

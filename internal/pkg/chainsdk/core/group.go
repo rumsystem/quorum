@@ -106,7 +106,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	buffer.Write([]byte(pItem.GroupId))
 	buffer.Write([]byte(pItem.ProducerPubkey))
 	buffer.Write([]byte(pItem.GroupOwnerPubkey))
-	hash := Hash(buffer.Bytes())
+	hash := localcrypto.Hash(buffer.Bytes())
 
 	ks := nodectx.GetNodeCtx().Keystore
 	signature, err := ks.SignByKeyName(item.GroupId, hash)

@@ -1,4 +1,4 @@
-package chain
+package def
 
 import (
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
