@@ -724,6 +724,5 @@ func (chain *Chain) StopSnapshot() {
 func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	n, err := nodectx.GetDbMgr().GetNextNouce(groupId, nodeprefix)
-	fmt.Printf("============nonce: %d nodename: %s\n", n, prefix)
 	return n, err
 }
