@@ -90,10 +90,10 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	group_log.Debugf("<%s> Update nonce called, with nodename <%s>", item.GroupId, grp.ChainCtx.nodename)
 	//update nonce, set nonce to 0
-	_, err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, grp.ChainCtx.nodename)
-	if err != nil {
-		return err
-	}
+	//_, err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, grp.ChainCtx.nodename)
+	//if err != nil {
+	//	return err
+	//}
 
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer

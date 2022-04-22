@@ -19,15 +19,21 @@ const (
 const OBJECT_SIZE_LIMIT = 200 * 1024 //(200Kb)
 
 type TrxFactory struct {
-	nodename  string
-	groupId   string
-	groupItem *quorumpb.GroupItem
+	nodename   string
+	groupId    string
+	groupItem  *quorumpb.GroupItem
+	chainNonce ChainNonce
 }
 
-func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem, nodename string) {
+type ChainNonce interface {
+	GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error)
+}
+
+func (factory *TrxFactory) Init(groupItem *quorumpb.GroupItem, nodename string, chainnonce ChainNonce) {
 	factory.groupItem = groupItem
 	factory.groupId = groupItem.GroupId
 	factory.nodename = nodename
+	factory.chainNonce = chainnonce
 }
 
 // set TimeStamp and Expired for trx
@@ -40,7 +46,7 @@ func updateTrxTimeLimit(trx *quorumpb.Trx) {
 }
 
 func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
-	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupItem.GroupId, factory.nodename)
+	nonce, err := factory.chainNonce.GetNextNouce(factory.groupItem.GroupId, factory.nodename)
 	if err != nil {
 		return nil, err
 	}

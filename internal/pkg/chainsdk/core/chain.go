@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -11,6 +12,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/consensus"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
@@ -53,7 +55,7 @@ func (chain *Chain) Init(group *Group) error {
 	chain.chaindata = &ChainData{nodectx.GetDbMgr()}
 
 	chain.trxFactory = &TrxFactory{}
-	chain.trxFactory.Init(group.Item, chain.nodename)
+	chain.trxFactory.Init(group.Item, chain.nodename, chain)
 
 	chain.syncer = &Syncer{}
 	chain.syncer.Init(group, chain)
@@ -718,4 +720,10 @@ func (chain *Chain) StopSnapshot() {
 		}
 		chain.Consensus.SnapshotSender().Stop()
 	}
+}
+func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
+	nodeprefix := utils.GetPrefix(prefix...)
+	n, err := nodectx.GetDbMgr().GetNextNouce(groupId, nodeprefix)
+	fmt.Printf("============nonce: %d nodename: %s\n", n, prefix)
+	return n, err
 }
