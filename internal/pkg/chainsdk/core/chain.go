@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
