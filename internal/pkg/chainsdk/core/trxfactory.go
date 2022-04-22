@@ -41,21 +41,10 @@ func updateTrxTimeLimit(trx *quorumpb.Trx) {
 
 func (factory *TrxFactory) CreateTrx(msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
 	nonce, err := nodectx.GetDbMgr().GetNextNouce(factory.groupItem.GroupId, factory.nodename)
-	trx, hashed, err := rumchaindata.CreateTrxWithoutSign(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, msgType, int64(nonce), data, encryptto...)
-
 	if err != nil {
-		return trx, err
+		return nil, err
 	}
-	ks := nodectx.GetNodeCtx().Keystore
-	keyname := factory.groupItem.GroupId
-	signature, err := ks.SignByKeyName(keyname, hashed)
-	if err != nil {
-		return trx, err
-	}
-
-	trx.SenderSign = signature
-
-	return trx, nil
+	return rumchaindata.CreateTrx(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, msgType, int64(nonce), data, encryptto...)
 }
 
 func (factory *TrxFactory) GetUpdAppConfigTrx(item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
