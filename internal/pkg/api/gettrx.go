@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/handlers"
 	_ "github.com/rumsystem/quorum/internal/pkg/pb" //import for swaggo
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // @Tags Chain
@@ -39,5 +40,10 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	return c.JSON(http.StatusOK, trx)
+	m := protojson.MarshalOptions{
+		EmitUnpopulated: true,
+	}
+	jsonString := m.Format(trx)
+
+	return c.String(http.StatusOK, jsonString)
 }
