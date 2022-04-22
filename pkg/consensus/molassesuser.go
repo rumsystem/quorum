@@ -229,7 +229,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if err != nil {
 		return err
 	}
-	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, user.grpItem.HighestHeight, topBlock, user.nodename)
+	newHeight, newHighestBlockId, err := user.cIface.RecalChainHeight(blocks, user.grpItem.HighestHeight, topBlock, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -239,13 +239,13 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if newHeight < user.grpItem.HighestHeight {
 
 		//from parent of the new blocks, get all blocks not belong to the longest path
-		resendBlocks, err := GetTrimedBlocks(blocks, user.nodename)
+		resendBlocks, err := user.cIface.GetTrimedBlocks(blocks, user.nodename)
 		if err != nil {
 			return err
 		}
 
 		var resendTrxs []*quorumpb.Trx
-		resendTrxs, err = GetMyTrxs(resendBlocks, user.nodename, user.grpItem.UserSignPubkey)
+		resendTrxs, err = user.cIface.GetMyTrxs(resendBlocks, user.nodename, user.grpItem.UserSignPubkey)
 
 		if err != nil {
 			return err

@@ -530,7 +530,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	if err != nil {
 		return err
 	}
-	newHeight, newHighestBlockId, err := RecalChainHeight(blocks, producer.grpItem.HighestHeight, topBlock, producer.nodename)
+	newHeight, newHighestBlockId, err := producer.cIface.RecalChainHeight(blocks, producer.grpItem.HighestHeight, topBlock, producer.nodename)
 	if err != nil {
 		return err
 	}
