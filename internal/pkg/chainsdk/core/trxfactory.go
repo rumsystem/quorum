@@ -125,25 +125,7 @@ func (factory *TrxFactory) GetReqBlockRespTrx(requester string, block *quorumpb.
 	}
 
 	//send ask next block trx out
-	return factory.CreateTrx(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes)
-}
-
-func (factory *TrxFactory) GetAskPeerIdTrx(req *quorumpb.AskPeerId) (*quorumpb.Trx, error) {
-	bItemBytes, err := proto.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return factory.CreateTrx(quorumpb.TrxType_ASK_PEERID, bItemBytes)
-}
-
-func (factory *TrxFactory) GetAskPeerIdRespTrx(req *quorumpb.AskPeerIdResp) (*quorumpb.Trx, error) {
-	bItemBytes, err := proto.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return factory.CreateTrx(quorumpb.TrxType_ASK_PEERID_RESP, bItemBytes)
+	return rumchaindata.CreateTrx(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK_RESP, int64(0), bItemBytes)
 }
 
 func (factory *TrxFactory) GetReqBlockForwardTrx(block *quorumpb.Block) (*quorumpb.Trx, error) {
@@ -157,7 +139,7 @@ func (factory *TrxFactory) GetReqBlockForwardTrx(block *quorumpb.Block) (*quorum
 		return nil, err
 	}
 
-	return factory.CreateTrx(quorumpb.TrxType_REQ_BLOCK_FORWARD, bItemBytes)
+	return rumchaindata.CreateTrx(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK_FORWARD, int64(0), bItemBytes)
 }
 
 func (factory *TrxFactory) GetReqBlockBackwardTrx(block *quorumpb.Block) (*quorumpb.Trx, error) {
@@ -171,7 +153,7 @@ func (factory *TrxFactory) GetReqBlockBackwardTrx(block *quorumpb.Block) (*quoru
 		return nil, err
 	}
 
-	return factory.CreateTrx(quorumpb.TrxType_REQ_BLOCK_BACKWARD, bItemBytes)
+	return rumchaindata.CreateTrx(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK_BACKWARD, int64(0), bItemBytes)
 }
 
 func (factory *TrxFactory) GetBlockProducedTrx(blk *quorumpb.Block) (*quorumpb.Trx, error) {
@@ -179,7 +161,7 @@ func (factory *TrxFactory) GetBlockProducedTrx(blk *quorumpb.Block) (*quorumpb.T
 	if err != nil {
 		return nil, err
 	}
-	return factory.CreateTrx(quorumpb.TrxType_BLOCK_PRODUCED, encodedcontent)
+	return rumchaindata.CreateTrx(factory.nodename, nodectx.GetNodeCtx().Version, factory.groupItem, quorumpb.TrxType_BLOCK_PRODUCED, int64(0), encodedcontent)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(content proto.Message, encryptto ...[]string) (*quorumpb.Trx, error) {
