@@ -23,6 +23,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -125,29 +126,26 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 		libp2p.ConnectionGater(publicGater),
 	}
 
-	if nodeopt.EnableRelay && !nodeopt.EnableRelayService {
+	if nodeOpt.EnableRelay {
+		relayServerAddr := ma.StringCast("/ip4/167.114.61.176/tcp/33334/p2p/16Uiu2HAmSJAg2hwhbAEHy63o1AjwXQ2ERkwZQp1EfoVxR3uZaBGh")
+
+		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
+		if err != nil {
+			panic(err)
+		}
+		staticRelays := []peer.AddrInfo{*relayServer}
 		libp2poptions = append(libp2poptions,
-			libp2p.EnableAutoRelay() /* we could set static relays here */)
-	}
-	if nodeopt.EnableRelayService {
-		libp2poptions = append(libp2poptions,
-			libp2p.DisableRelay(),
-			libp2p.EnableRelayService(),
-			libp2p.ForceReachabilityPublic(),
-			libp2p.AddrsFactory(func(addrs []maddr.Multiaddr) []maddr.Multiaddr {
-				for i, addr := range addrs {
-					saddr := addr.String()
-					if strings.HasPrefix(saddr, "/ip4/127.0.0.1/") {
-						addrNoIP := strings.TrimPrefix(saddr, "/ip4/127.0.0.1")
-						addrs[i] = maddr.StringCast("/dns4/localhost" + addrNoIP)
-					}
-				}
-				return addrs
-			}),
+			libp2p.EnableAutoRelay(
+				autorelay.WithStaticRelays(staticRelays),
+				autorelay.WithMaxCandidates(1),
+				autorelay.WithNumRelays(99999),
+				autorelay.WithBootDelay(0)),
 		)
 	}
 
-	host, err := libp2p.New(libp2poptions)
+	host, err := libp2p.New(
+		libp2poptions...,
+	)
 	if err != nil {
 		return nil, err
 	}
