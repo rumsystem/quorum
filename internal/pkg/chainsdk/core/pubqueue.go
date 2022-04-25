@@ -9,6 +9,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/pkg/consensus"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -278,7 +279,7 @@ func doRefresh() {
 					if err != nil {
 						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
 					} else {
-						updateTrxTimeLimit(item.Trx)
+						rumchaindata.UpdateTrxTimeLimit(item.Trx)
 						item.State = PublishQueueItemStatePending
 						item.RetryCount += 1
 

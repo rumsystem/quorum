@@ -40,7 +40,7 @@ type Chain struct {
 	Consensus          def.Consensus
 	producerChannTimer *time.Timer
 	ProviderPeerIdPool map[string]string
-	trxFactory         *TrxFactory
+	trxFactory         *rumchaindata.TrxFactory
 
 	syncer *Syncer
 }
@@ -53,8 +53,8 @@ func (chain *Chain) Init(group *Group) error {
 	chain.groupId = group.Item.GroupId
 	chain.chaindata = &ChainData{nodectx.GetDbMgr()}
 
-	chain.trxFactory = &TrxFactory{}
-	chain.trxFactory.Init(group.Item, chain.nodename, chain)
+	chain.trxFactory = &rumchaindata.TrxFactory{}
+	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, group.Item, chain.nodename, chain)
 
 	chain.syncer = &Syncer{}
 	chain.syncer.Init(group, chain)
