@@ -1,8 +1,8 @@
 package pubsubconn
 
-import iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
+import chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 
 type PubSubConn interface {
-	JoinChannel(cId string, cdhIface iface.ChainDataHandlerIface) error
+	JoinChannel(cId string, cdhIface chaindef.ChainDataHandlerIface) error
 	Publish(data []byte) error
 }

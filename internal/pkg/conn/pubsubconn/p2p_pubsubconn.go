@@ -7,7 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
+	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/stats"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -21,7 +21,7 @@ type P2pPubSubConn struct {
 	Cid          string
 	Topic        *pubsub.Topic
 	Subscription *pubsub.Subscription
-	chain        iface.ChainDataHandlerIface
+	chain        chaindef.ChainDataHandlerIface
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
@@ -50,7 +50,7 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
 
-func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface iface.ChainDataHandlerIface) *P2pPubSubConn {
+func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface chaindef.ChainDataHandlerIface) *P2pPubSubConn {
 	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
 		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
@@ -135,7 +135,7 @@ func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
 	return err
 }
 
-func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface iface.ChainDataHandlerIface) error {
+func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataHandlerIface) error {
 	psconn.Cid = cId
 
 	// cdhIface == nil, join channel as exchange

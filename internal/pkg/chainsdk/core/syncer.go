@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
+	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -38,14 +38,14 @@ type Syncer struct {
 	statusBeforeFail    int8
 	responses           map[string]*quorumpb.ReqBlockResp
 	blockReceived       map[string]string
-	cdnIface            iface.ChainDataHandlerIface
+	cdnIface            def.ChainDataHandlerIface
 	syncNetworkType     conn.P2pNetworkType
 	rwMutex             sync.RWMutex
 	localSyncFinished   bool
 	rumExchangeTestMode bool
 }
 
-func (syncer *Syncer) Init(group *Group, cdnIface iface.ChainDataHandlerIface) {
+func (syncer *Syncer) Init(group *Group, cdnIface def.ChainDataHandlerIface) {
 	syncer_log.Debugf("<%s> Init called", group.Item.GroupId)
 	syncer.Status = IDLE
 	syncer.Group = group

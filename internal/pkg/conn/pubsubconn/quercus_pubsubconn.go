@@ -7,7 +7,7 @@ import (
 
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
 	"github.com/huo-ju/quercus/pkg/quality"
-	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
+	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -20,7 +20,7 @@ var (
 type QuercusConn struct {
 	Cid          string
 	Subscription *pubsub.Subscription
-	chain        iface.ChainDataHandlerIface
+	chain        chaindef.ChainDataHandlerIface
 	ps           *pubsub.Pubsub
 	nodename     string
 	Ctx          context.Context
@@ -39,7 +39,7 @@ func InitQuercusConn(ctx context.Context, ps *pubsub.Pubsub, nodename string) *Q
 	return &QuercusConn{Ctx: ctx, ps: ps, nodename: nodename}
 }
 
-func (qconn *QuercusConn) JoinChannel(cId string, chain iface.ChainDataHandlerIface) error {
+func (qconn *QuercusConn) JoinChannel(cId string, chain chaindef.ChainDataHandlerIface) error {
 	qconn.Cid = cId
 	qconn.chain = chain
 	qconn.Subscription = qconn.ps.Subscribe(qconn.nodename, cId)

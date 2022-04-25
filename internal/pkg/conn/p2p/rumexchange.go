@@ -15,7 +15,7 @@ import (
 	msgio "github.com/libp2p/go-msgio"
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
-	iface "github.com/rumsystem/quorum/internal/pkg/chainsdk/chaindataciface"
+	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/stats"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -44,7 +44,7 @@ type RexService struct {
 	peerStatus         *PeerStatus
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
-	chainmgr           map[string]iface.ChainDataHandlerIface
+	chainmgr           map[string]chaindef.ChainDataHandlerIface
 	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
 	streampool         sync.Map //map[peer.ID]streamPoolItem
@@ -70,7 +70,7 @@ type streamPoolItem struct {
 
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	chainmgr := make(map[string]iface.ChainDataHandlerIface)
+	chainmgr := make(map[string]chaindef.ChainDataHandlerIface)
 	rumpeerstore := &RumGroupPeerStore{}
 	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
@@ -115,7 +115,7 @@ func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
 	return newpoolitem, nil
 }
 
-func (r *RexService) ChainReg(groupid string, cdhIface iface.ChainDataHandlerIface) {
+func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataHandlerIface) {
 	_, ok := r.chainmgr[groupid]
 	if ok == false {
 		r.chainmgr[groupid] = cdhIface
