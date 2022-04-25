@@ -17,7 +17,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type CreateGroupParam struct {
@@ -28,15 +28,15 @@ type CreateGroupParam struct {
 }
 
 type GroupSeed struct {
-	GenesisBlock   *quorumpb.Block `json:"genesis_block" validate:"required"`
-	GroupId        string          `json:"group_id" validate:"required"`
-	GroupName      string          `json:"group_name" validate:"required"`
-	OwnerPubkey    string          `json:"owner_pubkey" validate:"required"`
-	ConsensusType  string          `json:"consensus_type" validate:"required,oneof=pos poa"`
-	EncryptionType string          `json:"encryption_type" validate:"required,oneof=public private"`
-	CipherKey      string          `json:"cipher_key" validate:"required"`
-	AppKey         string          `json:"app_key" validate:"required"`
-	Signature      string          `json:"signature" validate:"required"`
+	GenesisBlock   *pb.Block `json:"genesis_block" validate:"required"`
+	GroupId        string    `json:"group_id" validate:"required"`
+	GroupName      string    `json:"group_name" validate:"required"`
+	OwnerPubkey    string    `json:"owner_pubkey" validate:"required"`
+	ConsensusType  string    `json:"consensus_type" validate:"required,oneof=pos poa"`
+	EncryptionType string    `json:"encryption_type" validate:"required,oneof=public private"`
+	CipherKey      string    `json:"cipher_key" validate:"required"`
+	AppKey         string    `json:"app_key" validate:"required"`
+	Signature      string    `json:"signature" validate:"required"`
 }
 
 func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*GroupSeed, error) {
@@ -88,19 +88,19 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	}
 
 	//create group item
-	var item *quorumpb.GroupItem
-	item = &quorumpb.GroupItem{}
+	var item *pb.GroupItem
+	item = &pb.GroupItem{}
 	item.GroupId = groupid.String()
 	item.GroupName = params.GroupName
 	item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
 	item.UserSignPubkey = item.OwnerPubKey
 	item.UserEncryptPubkey = groupEncryptPubkey
-	item.ConsenseType = quorumpb.GroupConsenseType_POA
+	item.ConsenseType = pb.GroupConsenseType_POA
 
 	if params.EncryptionType == "public" {
-		item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
+		item.EncryptType = pb.GroupEncryptType_PUBLIC
 	} else {
-		item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
+		item.EncryptType = pb.GroupEncryptType_PRIVATE
 	}
 
 	item.CipherKey = hex.EncodeToString(cipherKey)
@@ -194,9 +194,9 @@ func GenerateGroupSeedSignature(result *GroupSeed) error {
 	return nil
 }
 
-// ToPbGroupSeed convert `api.GroupSeed` to `quorumpb.GroupSeed`
-func ToPbGroupSeed(s GroupSeed) quorumpb.GroupSeed {
-	return quorumpb.GroupSeed{
+// ToPbGroupSeed convert `api.GroupSeed` to `pb.GroupSeed`
+func ToPbGroupSeed(s GroupSeed) pb.GroupSeed {
+	return pb.GroupSeed{
 		GenesisBlock:   s.GenesisBlock,
 		GroupId:        s.GroupId,
 		GroupName:      s.GroupName,
@@ -209,8 +209,8 @@ func ToPbGroupSeed(s GroupSeed) quorumpb.GroupSeed {
 	}
 }
 
-// FromPbGroupSeed convert `quorumpb.GroupSeed` to `api.GroupSeed`
-func FromPbGroupSeed(s *quorumpb.GroupSeed) GroupSeed {
+// FromPbGroupSeed convert `pb.GroupSeed` to `api.GroupSeed`
+func FromPbGroupSeed(s *pb.GroupSeed) GroupSeed {
 	return GroupSeed{
 		GenesisBlock:   s.GenesisBlock,
 		GroupId:        s.GroupId,
