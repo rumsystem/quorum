@@ -55,7 +55,6 @@ type ActionType int
 
 const (
 	JoinChannel ActionType = iota
-	JoinChannelAndPublishTest
 )
 
 type RexNotification struct {
@@ -271,17 +270,6 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 	case quorumpb.RumMsgType_RELAY_REQ, quorumpb.RumMsgType_RELAY_RESP:
 		for _, v := range r.msgtypehandlers {
 			if v.Name == "rumrelay" {
-				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
-					networklog.Warningf("add network log to db failed: %s", err)
-				}
-
-				v.Handler(rummsg, s)
-				break
-			}
-		}
-	case quorumpb.RumMsgType_IF_CONN, quorumpb.RumMsgType_CONN_RESP:
-		for _, v := range r.msgtypehandlers {
-			if v.Name == "rumsession" {
 				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
 					networklog.Warningf("add network log to db failed: %s", err)
 				}

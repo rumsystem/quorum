@@ -49,10 +49,6 @@ func (na NetworkAction) GetByRumMsgType(msgType quorumpb.RumMsgType) NetworkActi
 		return RumRelayReq
 	case quorumpb.RumMsgType_RELAY_RESP:
 		return RumRelayResp
-	case quorumpb.RumMsgType_IF_CONN:
-		return RumSessionIfConn
-	case quorumpb.RumMsgType_CONN_RESP:
-		return RumSessionConnResp
 	case quorumpb.RumMsgType_CHAIN_DATA:
 		return RumChainData
 	default:
