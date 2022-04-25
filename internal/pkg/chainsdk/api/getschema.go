@@ -21,6 +21,7 @@ type SchemaListItem struct {
 // @Param group_id path string true "Group Id"
 // @Success 200 {object} []SchemaListItem
 // @Router /api/v1/group/{group_id}/app/schema [get]
+
 func (h *Handler) GetGroupAppSchema(c echo.Context) (err error) {
 
 	output := make(map[string]string)

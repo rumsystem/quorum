@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -9,20 +8,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/testnode"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
-type GetTrxResult struct {
-	TrxId        string `json:"TrxId" validate:"required"`
-	GroupId      string `json:"GroupId" validate:"required"`
-	Data         string `json:"Data" validate:"required"`
-	TimeStamp    string `json:"TimeStamp" validate:"required"`
-	Version      string `json:"Version" validate:"required"`
-	Expired      int64  `json:"Expired" validate:"required"`
-	SenderPubkey string `json:"SenderPubkey" validate:"required"`
-	SenderSign   string `json:"SenderSign" validate:"required"`
-}
-
-func getTrx(api string, groupID string, trxID string) (*GetTrxResult, error) {
+func getTrx(api string, groupID string, trxID string) (*pb.Trx, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/trx/%s/%s", groupID, trxID)
 	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
@@ -33,8 +23,9 @@ func getTrx(api string, groupID string, trxID string) (*GetTrxResult, error) {
 		return nil, err
 	}
 
-	var result GetTrxResult
-	if err := json.Unmarshal(resp, &result); err != nil {
+	var result pb.Trx
+
+	if err := protojson.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
 

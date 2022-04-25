@@ -9,18 +9,19 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/testnode"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type GetBlockResult struct {
-	BlockId        string          `json:"BlockId" validate:"required"`
-	GroupId        string          `json:"GroupId" validate:"required"`
-	PrevBlockId    string          `json:"PrevBlockId,omitempty"`
-	PreviousHash   []byte          `json:"PreviousHash,omitempty"`
-	Trxs           []*GetTrxResult `json:"Trxs,omitempty"`
-	ProducerPubKey string          `json:"ProducerPubKey" validate:"required"`
-	Hash           []byte          `json:"Hash" validate:"required"`
-	Signature      []byte          `json:"Signature" validate:"required"`
-	TimeStamp      string          `json:"TimeStamp" validate:"required"`
+	BlockId        string    `json:"BlockId" validate:"required"`
+	GroupId        string    `json:"GroupId" validate:"required"`
+	PrevBlockId    string    `json:"PrevBlockId,omitempty"`
+	PreviousHash   []byte    `json:"PreviousHash,omitempty"`
+	Trxs           []*pb.Trx `json:"Trxs,omitempty"`
+	ProducerPubKey string    `json:"ProducerPubKey" validate:"required"`
+	Hash           []byte    `json:"Hash" validate:"required"`
+	Signature      []byte    `json:"Signature" validate:"required"`
+	TimeStamp      string    `json:"TimeStamp" validate:"required"`
 }
 
 func getBlockByID(api, groupID, blockID string) (*GetBlockResult, error) {
