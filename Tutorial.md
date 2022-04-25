@@ -69,6 +69,7 @@ You can try:
   - [Get group allow/deny list](#api-get-list)
   - [API Update for client api](#about-chainconfig-for-client)
 - [SnapShot](#about-snapshot)
+- [Pubqueue](#about-pubqueue)
 
 Common params:
 
@@ -2168,6 +2169,72 @@ After join a new group, syncing block will start automatically and the snapshot_
 Owner will send snapshot every 1 minute regardless if there is anything changed, client node will check the snapshot and APPLY IT ONLY IF SOMETHING CHANGED, but the snapshot tag will be UPDATED ACCORDING TO LATEST SNAPSHOT RECEIVED.
 
 Snapshot rule doesn't apply to a producer node. A producer node still need wait till block syncing finished to make new block.
+
+[>>> Back to Top](#top)
+
+<span id="about-pubqueue"></span>
+
+# Pubqueue
+
+pubqueue keeps track of the status of user-sent TRXs, TRXs that succeed will be marked, and failed TRXs will be retried until the 10th failure.
+
+By default, after a client sending TRXs, the client needs to query the corresponding TRXs' follow-up status via pubqueue, and for TRXs that succeed or failed 10 times, the client should ACK these TRXs with specific API (otherwise they will consume your system resources).
+
+If you don't care about the state of TRXs, quorum provides an autoack feature by adding the command line argument `-autoack=true` when starting quorum.
+
+There are two interfaces involved here.
+
+
+1. GET `/v1/group/:group_id/pubqueue`
+
+example
+
+```
+curl -k "https://localhost:8004/api/v1/group/6bd70de8-addc-4b03-8271-a5a5b02d1ebd/pubqueue" | jq
+```
+
+
+```
+{
+  "GroupId": "6bd70de8-addc-4b03-8271-a5a5b02d1ebd",
+  "Data": [
+    {
+      "GroupId": "6bd70de8-addc-4b03-8271-a5a5b02d1ebd",
+      "State": "SUCCESS",
+      "RetryCount": 0,
+      "UpdateAt": "1650786473293614500",
+      "Trx": {
+        "TrxId": "b5433111-f3a1-41e2-a03f-648e47a04dad",
+        "GroupId": "6bd70de8-addc-4b03-8271-a5a5b02d1ebd",
+        "Data": "jvFEEhBuwRpu7or2IUt8NdTZ1R/qzlXeJeseU7csZi+XYC28Fufj3aORoKVCAXyxBxZCuHe7kp6tKAScNxClqEX82+As+fKsBK6zTpB9gyO+fn2y",
+        "TimeStamp": "1650532131665550100",
+        "Version": "1.0.0",
+        "Expired": 1650532161665550000,
+        "Nonce": 24000,
+        "SenderPubkey": "CAISIQMrNsVK8/ZrJylBFJZEe6BnslK7B5wAygbxde+RG9Hafg==",
+        "SenderSign": "MEQCIDZlG/ILNC89z/OYEuADqYpHfx81pqA3RnOlLSCeypP3AiAFKLSD8M8TyNr6quYFCnuL1nzMwUlHWiEiVimDFCHlmQ=="
+      },
+      "StorageType": "CHAIN"
+    }
+  ]
+}
+```
+
+
+2. POST `POST /v1/trx/ack`
+
+It will return the TRXs that are succeefully acked.
+
+example
+
+```
+curl -k -X POST -H 'Content-Type: application/json' -d '{"trx_ids": ["b5433111-f3a1-41e2-a03f-648e47a04dad"]}' "https://localhost:8004/api/v1/trx/ack"
+```
+
+```
+["b5433111-f3a1-41e2-a03f-648e47a04dad"]
+```
+
 
 [>>> Back to Top](#top)
 
