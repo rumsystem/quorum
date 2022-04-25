@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	handlers "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	_ "github.com/rumsystem/rumchaindata/pkg/pb" //import for swaggo
 )
 
 // @Tags Groups
