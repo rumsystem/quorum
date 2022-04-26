@@ -6,7 +6,6 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -106,17 +105,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		libp2poptions = append(libp2poptions,
 			libp2p.DisableRelay(),
 			libp2p.EnableRelayService(),
-			libp2p.ForceReachabilityPublic(),
-			libp2p.AddrsFactory(func(addrs []maddr.Multiaddr) []maddr.Multiaddr {
-				for i, addr := range addrs {
-					saddr := addr.String()
-					if strings.HasPrefix(saddr, "/ip4/127.0.0.1/") {
-						addrNoIP := strings.TrimPrefix(saddr, "/ip4/127.0.0.1")
-						addrs[i] = maddr.StringCast("/dns4/localhost" + addrNoIP)
-					}
-				}
-				return addrs
-			}),
 		)
 	}
 
