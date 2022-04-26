@@ -725,3 +725,196 @@ func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64
 	n, err := nodectx.GetDbMgr().GetNextNouce(groupId, nodeprefix)
 	return n, err
 }
+
+func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
+	chain_log.Debugf("<%s> applyTrxs called", chain.groupId)
+	for _, trx := range trxs {
+		//check if trx already applied
+		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
+		if err != nil {
+			chain_log.Debugf("<%s> %s", chain.groupId, err.Error())
+			continue
+		}
+
+		if isExist {
+			chain_log.Debugf("<%s> trx <%s> existed, update trx only", chain.groupId, trx.TrxId)
+			nodectx.GetDbMgr().AddTrx(trx)
+			continue
+		}
+
+		originalData := trx.Data
+
+		//new trx, apply it
+		if trx.Type == quorumpb.TrxType_POST && chain.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+			//for post, private group, encrypted by pgp for all announced group user
+			ks := localcrypto.GetKeystore()
+			decryptData, err := ks.Decrypt(chain.groupId, trx.Data)
+			if err != nil {
+				trx.Data = []byte("")
+				//return err
+			} else {
+				//set trx.Data to decrypted []byte
+				trx.Data = decryptData
+			}
+
+		} else {
+			//decode trx data
+			ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+			if err != nil {
+				return err
+			}
+
+			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+			if err != nil {
+				return err
+			}
+
+			//set trx.Data to decrypted []byte
+			trx.Data = decryptData
+		}
+
+		//apply trx
+		chain_log.Debugf("<%s> try apply trx <%s>", chain.groupId, trx.TrxId)
+
+		//check if snapshotTag is available
+		if trx.Type != quorumpb.TrxType_POST {
+			snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(trx.GroupId, nodename)
+			if err == nil && snapshotTag != nil {
+				if snapshotTag.HighestHeight > chain.group.Item.HighestHeight {
+					chain_log.Debugf("<%s> snapshotTag exist, trx already applied, ignore <%s>", chain.groupId, trx.TrxId)
+					continue
+				}
+			}
+		}
+
+		switch trx.Type {
+		case quorumpb.TrxType_POST:
+			chain_log.Debugf("<%s> apply POST trx", chain.groupId)
+			nodectx.GetDbMgr().AddPost(trx, nodename)
+		case quorumpb.TrxType_PRODUCER:
+			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateProducerTrx(trx, nodename)
+			chain.UpdProducerList()
+			chain.CreateConsensus()
+		case quorumpb.TrxType_USER:
+			chain_log.Debugf("<%s> apply USER trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateUserTrx(trx, nodename)
+			chain.UpdUserList()
+		case quorumpb.TrxType_ANNOUNCE:
+			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, nodename)
+		case quorumpb.TrxType_APP_CONFIG:
+			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
+		case quorumpb.TrxType_CHAIN_CONFIG:
+			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupId)
+			err := nodectx.GetDbMgr().UpdateChainConfigTrx(trx, nodename)
+			if err != nil {
+				chain_log.Errorf("<%s> handle CHAIN_CONFIG trx", chain.groupId)
+			}
+		case quorumpb.TrxType_SCHEMA:
+			chain_log.Debugf("<%s> apply SCHEMA trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+		default:
+			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
+		}
+
+		//set trx data to original(encrypted)
+		trx.Data = originalData
+
+		//save trx to db
+		nodectx.GetDbMgr().AddTrx(trx, nodename)
+	}
+	return nil
+}
+
+func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) error {
+	chain_log.Debugf("<%s> applyTrxs called", chain.groupId)
+	for _, trx := range trxs {
+		//check if trx already applied
+		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
+		if err != nil {
+			chain_log.Debugf("<%s> %s", chain.groupId, err.Error())
+			continue
+		}
+
+		if isExist {
+			chain_log.Debugf("<%s> trx <%s> existed, update trx", chain.groupId, trx.TrxId)
+			nodectx.GetDbMgr().AddTrx(trx)
+			continue
+		}
+
+		originalData := trx.Data
+
+		if trx.Type == quorumpb.TrxType_POST && chain.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+			//for post, private group, encrypted by pgp for all announced group user
+			//just try decrypt it, if failed, save the original encrypted data
+			//the reason for that is, for private group, before owner add producer, owner is the only producer,
+			//since owner also needs to show POST data, and all announced user will encrypt for owner pubkey
+			//owner can actually decrypt POST
+			//for other producer, they can not decrpyt POST
+			ks := localcrypto.GetKeystore()
+			decryptData, err := ks.Decrypt(chain.group.Item.GroupId, trx.Data)
+			if err == nil {
+				//set trx.Data to decrypted []byte
+				trx.Data = decryptData
+			}
+		} else {
+			//decode trx data
+			ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+			if err != nil {
+				return err
+			}
+
+			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+			if err != nil {
+				return err
+			}
+
+			//set trx.Data to decrypted []byte
+			trx.Data = decryptData
+		}
+
+		chain_log.Debugf("<%s> apply trx <%s>", chain.groupId, trx.TrxId)
+		//apply trx content
+		switch trx.Type {
+		case quorumpb.TrxType_POST:
+			chain_log.Debugf("<%s> apply POST trx", chain.groupId)
+			nodectx.GetDbMgr().AddPost(trx, nodename)
+		case quorumpb.TrxType_PRODUCER:
+			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateProducerTrx(trx, nodename)
+			chain.UpdProducerList()
+			chain.CreateConsensus()
+		case quorumpb.TrxType_USER:
+			chain_log.Debugf("<%s> apply USER trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateUserTrx(trx, nodename)
+			chain.UpdUserList()
+		case quorumpb.TrxType_ANNOUNCE:
+			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, nodename)
+		case quorumpb.TrxType_APP_CONFIG:
+			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
+		case quorumpb.TrxType_CHAIN_CONFIG:
+			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupId)
+			err := nodectx.GetDbMgr().UpdateChainConfigTrx(trx, nodename)
+			if err != nil {
+				chain_log.Errorf("<%s> handle CHAIN_CONFIG trx", chain.groupId)
+			}
+		case quorumpb.TrxType_SCHEMA:
+			chain_log.Debugf("<%s> apply SCHEMA trx", chain.groupId)
+			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+		default:
+			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
+		}
+
+		//set trx data to original (encrypted)
+		trx.Data = originalData
+
+		//save trx to db
+		nodectx.GetDbMgr().AddTrx(trx, nodename)
+	}
+
+	return nil
+}

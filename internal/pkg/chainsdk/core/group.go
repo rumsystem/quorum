@@ -29,7 +29,7 @@ type Group struct {
 
 var group_log = logging.Logger("group")
 
-func (grp *Group) Init(item *quorumpb.GroupItem) {
+func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	group_log.Debugf("<%s> Init called", item.GroupId)
 	grp.Item = item
 
@@ -37,20 +37,17 @@ func (grp *Group) Init(item *quorumpb.GroupItem) {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.Init(grp)
 
-	//register chainctx with conn
-	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
-
-	//reload producers
-	grp.ChainCtx.UpdProducerList()
-
 	//reload all announced user(if private)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		group_log.Debugf("<%s> Private group load announced user key", item.GroupId)
 		grp.ChainCtx.UpdUserList()
 	}
 
+	//register chainctx with conn
+	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
+	//reload producers
+	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
-
 	//start send snapshot
 	grp.ChainCtx.StartSnapshot()
 
@@ -76,7 +73,6 @@ func (grp *Group) Teardown() {
 
 func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	group_log.Debugf("<%s> CreateGrp called", item.GroupId)
-
 	grp.Item = item
 
 	//create and initial chain
@@ -89,11 +85,6 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	}
 
 	group_log.Debugf("<%s> Update nonce called, with nodename <%s>", item.GroupId, grp.ChainCtx.nodename)
-	//update nonce, set nonce to 0
-	//_, err = nodectx.GetDbMgr().UpdateNonce(item.GroupId, grp.ChainCtx.nodename)
-	//if err != nil {
-	//	return err
-	//}
 
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer
@@ -131,12 +122,11 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 		return err
 	}
 
+	//register chainctx with conn
 	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
-
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
-
 	//start send snapshot
 	grp.ChainCtx.StartSnapshot()
 

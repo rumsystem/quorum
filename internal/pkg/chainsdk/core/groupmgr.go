@@ -56,7 +56,7 @@ func (groupMgr *GroupMgr) LoadAllGroups() error {
 		} else {
 			groupMgr_log.Debugf("load group: %s", item.GroupId)
 			groupMgr.Groups[item.GroupId] = group
-			group.Init(item)
+			group.LoadGroup(item)
 		}
 	}
 	return nil

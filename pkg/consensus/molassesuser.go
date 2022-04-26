@@ -1,11 +1,9 @@
 package consensus
 
 import (
-	"encoding/hex"
 	"errors"
-	"fmt"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	//localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -196,7 +194,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply trxs
-	err = user.applyTrxs(trxs, user.nodename)
+	err = user.cIface.ApplyUserTrxs(trxs, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -264,110 +262,6 @@ func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	for _, trx := range trxs {
 		molauser_log.Debugf("<%s> resend Trx <%s>", user.groupId, trx.TrxId)
 		user.sendTrx(trx, conn.ProducerChannel)
-	}
-	return nil
-}
-
-func (user *MolassesUser) applyTrxs(trxs []*quorumpb.Trx, nodename string) error {
-	molauser_log.Debugf("<%s> applyTrxs called", user.groupId)
-	for _, trx := range trxs {
-		//check if trx already applied
-		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
-		if err != nil {
-			molauser_log.Debugf("<%s> %s", user.groupId, err.Error())
-			continue
-		}
-
-		if isExist {
-			molauser_log.Debugf("<%s> trx <%s> existed, update trx only", user.groupId, trx.TrxId)
-			nodectx.GetDbMgr().AddTrx(trx)
-			continue
-		}
-
-		originalData := trx.Data
-
-		//new trx, apply it
-		if trx.Type == quorumpb.TrxType_POST && user.grpItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(user.grpItem.GroupId, trx.Data)
-			if err != nil {
-				trx.Data = []byte("")
-				//return err
-			} else {
-				//set trx.Data to decrypted []byte
-				trx.Data = decryptData
-			}
-
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(user.grpItem.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
-		}
-
-		//apply trx
-		molauser_log.Debugf("<%s> try apply trx <%s>", user.groupId, trx.TrxId)
-
-		//check if snapshotTag is available
-		if trx.Type != quorumpb.TrxType_POST {
-			snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(trx.GroupId, nodename)
-			if err == nil && snapshotTag != nil {
-				if snapshotTag.HighestHeight > user.grpItem.HighestHeight {
-					molauser_log.Debugf("<%s> snapshotTag exist, trx already applied, ignore <%s>", user.groupId, trx.TrxId)
-					continue
-				}
-			}
-		}
-
-		switch trx.Type {
-		case quorumpb.TrxType_POST:
-			molauser_log.Debugf("<%s> apply POST trx", user.groupId)
-			nodectx.GetDbMgr().AddPost(trx, nodename)
-		case quorumpb.TrxType_PRODUCER:
-			molauser_log.Debugf("<%s> apply PRODUCER trx", user.groupId)
-			nodectx.GetDbMgr().UpdateProducerTrx(trx, nodename)
-			user.cIface.UpdProducerList()
-			user.cIface.CreateConsensus()
-		case quorumpb.TrxType_USER:
-			molauser_log.Debugf("<%s> apply USER trx", user.groupId)
-			nodectx.GetDbMgr().UpdateUserTrx(trx, nodename)
-			user.cIface.UpdUserList()
-		case quorumpb.TrxType_ANNOUNCE:
-			molauser_log.Debugf("<%s> apply ANNOUNCE trx", user.groupId)
-			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, nodename)
-		case quorumpb.TrxType_SCHEMA:
-			molauser_log.Debugf("<%s> apply SCHEMA trx", user.groupId)
-			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
-		case quorumpb.TrxType_ASK_PEERID_RESP:
-			molauser_log.Debugf("<%s> handle ASK_PEERID_RESP trx", user.groupId)
-		case quorumpb.TrxType_APP_CONFIG:
-			molauser_log.Debugf("<%s> apply APP_CONFIG trx", user.groupId)
-			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
-		case quorumpb.TrxType_CHAIN_CONFIG:
-			molauser_log.Debugf("<%s> apply CHAIN_CONFIG trx", user.groupId)
-			err := nodectx.GetDbMgr().UpdateChainConfigTrx(trx, nodename)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-		default:
-			molauser_log.Warningf("<%s> unsupported msgType <%s>", user.groupId, trx.Type)
-		}
-
-		//set trx data to original(encrypted)
-		trx.Data = originalData
-
-		//save trx to db
-		nodectx.GetDbMgr().AddTrx(trx, nodename)
 	}
 	return nil
 }

@@ -10,10 +10,10 @@ type ChainMolassesIface interface {
 	GetTrxFactory() chaindef.TrxFactoryIface
 	UpdChainInfo(height int64, blockId string) error
 	TrxEnqueue(groupId string, trx *quorumpb.Trx) error
-	UpdProducerList()
-	UpdUserList()
 	CreateConsensus() error
 	RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, currentHighestBlock *quorumpb.Block, nodename string) (int64, string, error)
 	GetTrimedBlocks(blocks []*quorumpb.Block, nodename string) ([]string, error)
 	GetMyTrxs(blockIds []string, nodename string, userSignPubkey string) ([]*quorumpb.Trx, error)
+	ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error
+	ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) error
 }
