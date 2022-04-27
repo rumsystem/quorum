@@ -127,6 +127,7 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	}
 
 	if nodeOpt.EnableRelay {
+		// TODO: use channel as relayServer source, thus we can modify relayServer dynamicaly
 		relayServerAddr := ma.StringCast("/ip4/139.155.182.182/tcp/33333/ws/p2p/16Uiu2HAmMfW8CJms2hgcp8wHMut2MhLgpBP4NQEbLhuaaeWnac7t")
 
 		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
