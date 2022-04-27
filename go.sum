@@ -943,8 +943,6 @@ github.com/mitchellh/mapstructure v1.4.1/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RR
 github.com/mitchellh/mapstructure v1.4.3 h1:OVowDSCllw/YjdLkam3/sm7wEtOy59d8ndGgCcyj8cs=
 github.com/mitchellh/mapstructure v1.4.3/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/mitchellh/pointerstructure v1.2.0/go.mod h1:BRAsLI5zgXmw97Lf6s25bs8ohIXc3tViBH44KcwB2g4=
-github.com/mlctrez/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3 h1:LxbUigwXGhDSmFA207qvM5/psmYjDfHfL9bKbCTEKvQ=
-github.com/mlctrez/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3/go.mod h1:NRdRSwuEOR26cB+LuxNkcS5lQqcijPebQKBXXBhzD3M=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
@@ -1162,6 +1160,8 @@ github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6So
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
+github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3 h1:SI/FQE0X8llYEWwNevs+T+rOtugJCrBGZfliukg55/I=
+github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3/go.mod h1:NRdRSwuEOR26cB+LuxNkcS5lQqcijPebQKBXXBhzD3M=
 github.com/rumsystem/keystore v0.0.0-20220411174806-f3f15814a8f5 h1:+TZEXs4c4dYWXiMMMd0wW2bTXYDMCKirMa2ikY7n0I8=
 github.com/rumsystem/keystore v0.0.0-20220411174806-f3f15814a8f5/go.mod h1:tpBhYVatNfWik9EN45M3anWltvFOLckjv87lkwUCw2Q=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
