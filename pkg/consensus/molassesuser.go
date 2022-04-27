@@ -31,22 +31,8 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
-func (user *MolassesUser) SendTrxWithoutRetry(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
-	connMgr, err := conn.GetConn().GetConnMgr(user.groupId)
-	if err != nil {
-		return "", err
-	}
-
-	err = connMgr.SendTrxPubsub(trx, conn.ProducerChannel) /* Q: why hard coded? */
-	if err != nil {
-		return "", err
-	}
-
-	return trx.TrxId, nil
-}
-
 func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
-	_, err := user.SendTrxWithoutRetry(trx, channel)
+	_, err := conn.SendTrxWithoutRetry(user.groupId, trx, channel)
 	if err != nil {
 		return "", err
 	}

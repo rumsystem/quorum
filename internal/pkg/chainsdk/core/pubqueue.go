@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/pkg/consensus"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -84,9 +84,9 @@ func ParsePublishQueueItem(k, v []byte) (*PublishQueueItem, error) {
 }
 
 type PublishQueueWatcher struct {
-	db storage.QuorumStorage
-
-	running bool
+	db            storage.QuorumStorage
+	groupMgrIface chaindef.GroupMgrIface
+	running       bool
 }
 
 func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
@@ -163,10 +163,11 @@ func GetPubQueueWatcher() *PublishQueueWatcher {
 	return &publishQueueWatcher
 }
 
-func InitPublishQueueWatcher(done chan bool, db storage.QuorumStorage) {
+func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
 
 	publishQueueWatcher.db = db
 	publishQueueWatcher.running = false
+	publishQueueWatcher.groupMgrIface = groupMgrIface
 
 	// hard coded to 10s
 	ticker := time.NewTicker(10 * time.Second)
@@ -232,8 +233,8 @@ func doRefresh() {
 			switch item.State {
 			case PublishQueueItemStatePending:
 				// check trx state, update, so it will be removed or retied in next poll
-				groupmgr := GetGroupMgr()
-				if group, ok := groupmgr.Groups[item.GroupId]; ok {
+				group, err := publishQueueWatcher.groupMgrIface.GetGroup(item.GroupId)
+				if err == nil {
 					// make sure data is updated to the latest change
 					if group.GetSyncerStatus() != IDLE {
 						chain_log.Debugf("<pubqueue>: group is not up to date yet.")
@@ -276,35 +277,23 @@ func doRefresh() {
 						chain_log.Infof("<pubqueue>: trx %s failed", item.Trx.TrxId)
 						item.State = PublishQueueItemStateFail
 					}
-
 				}
 			case PublishQueueItemStateFail:
 				// retry then mark as pending
-				groupmgr := GetGroupMgr()
-				if group, ok := groupmgr.Groups[item.GroupId]; ok {
-					if item.RetryCount > MAX_RETRY_COUNT {
-						// TODO: this might consume some storage, not gonna clean it by now
-						break
-					}
-					muser, ok := group.ChainCtx.Consensus.User().(*consensus.MolassesUser)
-					if !ok {
-						// ignore
-						chain_log.Errorf("<pubqueue>: trx %s resend failed, cannot cast user node to MolassesUser", item.Trx.TrxId)
-						break
-					}
-					trxId, err := muser.SendTrxWithoutRetry(item.Trx, conn.ProducerChannel)
-					if err != nil {
-						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
-					} else {
-						rumchaindata.UpdateTrxTimeLimit(item.Trx)
-						item.State = PublishQueueItemStatePending
-						item.RetryCount += 1
-
-						chain_log.Debugf("<pubqueue>: trx %s resent(%d)", trxId, item.RetryCount)
-					}
-
+				if item.RetryCount > MAX_RETRY_COUNT {
+					// TODO: this might consume some storage, not gonna clean it by now
+					break
 				}
+				trxId, err := conn.SendTrxWithoutRetry(item.GroupId, item.Trx, conn.ProducerChannel)
+				if err != nil {
+					chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
+				} else {
+					rumchaindata.UpdateTrxTimeLimit(item.Trx)
+					item.State = PublishQueueItemStatePending
+					item.RetryCount += 1
 
+					chain_log.Debugf("<pubqueue>: trx %s resent(%d)", trxId, item.RetryCount)
+				}
 			default:
 			}
 

@@ -3,6 +3,7 @@ package chain
 import (
 	"fmt"
 
+	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -97,6 +98,13 @@ func (groupmgr *GroupMgr) TeardownAllGroups() {
 func (groupmgr *GroupMgr) GetGroupItem(groupId string) (*quorumpb.GroupItem, error) {
 	if grp, ok := groupmgr.Groups[groupId]; ok {
 		return grp.Item, nil
+	}
+	return nil, fmt.Errorf("group not exist: %s", groupId)
+}
+
+func (groupmgr *GroupMgr) GetGroup(groupId string) (chaindef.GroupIface, error) {
+	if grp, ok := groupmgr.Groups[groupId]; ok {
+		return grp, nil
 	}
 	return nil, fmt.Errorf("group not exist: %s", groupId)
 }

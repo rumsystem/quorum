@@ -358,7 +358,7 @@ func mainRet(config cli.Config) int {
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
-		chain.InitPublishQueueWatcher(doneCh, pubqueueDb)
+		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()

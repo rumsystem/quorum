@@ -175,7 +175,7 @@ func Bootstrap() error {
 	if err != nil {
 		return err
 	}
-	chain.InitPublishQueueWatcher(wasmCtx.PubqueueChan, pubqueueDb)
+	chain.InitPublishQueueWatcher(wasmCtx.PubqueueChan, chain.GetGroupMgr(), pubqueueDb)
 
 	/* start syncing all local groups */
 	err = chain.GetGroupMgr().LoadAllGroups()
