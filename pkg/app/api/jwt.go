@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -40,16 +41,6 @@ func getToken(name, role, jwtKey string) (string, error) {
 	return utils.NewJWTToken(name, role, jwtKey, exp)
 }
 
-func jwtFromHeader(c echo.Context, header string, authScheme string) (string, error) {
-	parts := strings.Split(header, ":")
-	auth := c.Request().Header.Get(parts[1])
-	l := len(authScheme)
-	if len(auth) > l+1 && auth[:l] == authScheme {
-		return auth[l+1:], nil
-	}
-	return "", errors.New("missing jwt token")
-}
-
 func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 	config := middleware.JWTConfig{
 		SigningMethod: "HS256",
@@ -86,4 +77,54 @@ func GetJWTRole(c echo.Context, jwtContextKey string) string {
 	}
 
 	return role.(string)
+}
+
+// @Tags Apps
+// @Summary RefreshToken
+// @Description Get a new auth token
+// @Produce json
+// @Param Authorization header string true "current auth token"
+// @Success 200 {object} TokenItem  "a new auth token"
+// @Router /app/api/v1/token/refresh [post]
+func (h *Handler) RefreshToken(c echo.Context) error {
+	nodeOpt := options.GetNodeOptions()
+	if nodeOpt == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"message": "Call InitNodeOptions() before use it",
+		})
+	}
+
+	// check token
+	jwtKey, err := getJWTKey(h)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"message": err.Error(),
+		})
+	}
+
+	// token invalid include expired or invalid
+	token := c.Get(jwtContextKey).(*jwt.Token)
+	tokenStr := token.Raw
+	if utils.IsJWTTokenExpired(tokenStr, jwtKey) {
+		logger.Infof("token expires, return new token")
+	} else if valid, err := utils.IsJWTTokenValid(tokenStr, jwtKey); !valid || err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"message": err.Error(),
+		})
+	}
+
+	role := GetJWTRole(c, jwtContextKey)
+	newTokenStr, err := getToken(h.PeerName, role, jwtKey)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"message": err.Error(),
+		})
+	}
+	if err := nodeOpt.SetJWTToken(role, newTokenStr); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"message": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, &TokenItem{Token: newTokenStr})
 }
