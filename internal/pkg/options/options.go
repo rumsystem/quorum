@@ -18,7 +18,8 @@ type NodeOptions struct {
 	MaxPeers           int
 	ConnsHi            int
 	NetworkName        string
-	JWTToken           string
+	SelfJWTToken       string
+	OthersJWTToken     string
 	JWTKey             string
 	SignKeyMap         map[string]string
 	mu                 sync.RWMutex
