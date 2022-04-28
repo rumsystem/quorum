@@ -13,7 +13,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	appapi "github.com/rumsystem/quorum/pkg/app/api"
+	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/encoding/protojson"
 )

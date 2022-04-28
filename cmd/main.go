@@ -35,8 +35,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	appapi "github.com/rumsystem/quorum/pkg/app/api"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
+	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	"github.com/rumsystem/quorum/testnode"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
