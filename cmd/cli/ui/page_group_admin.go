@@ -11,7 +11,7 @@ import (
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
-	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
 var adminPageHelpText = strings.TrimSpace(

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"

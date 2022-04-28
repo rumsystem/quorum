@@ -8,7 +8,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/cache"
 	"github.com/rumsystem/quorum/cmd/cli/config"
-	qApi "github.com/rumsystem/quorum/internal/pkg/chainsdk/api"
+	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
 )
 
 var DefaultPagerOpt = api.PagerOpt{StartTrxId: "", Reverse: true, Page: 0}

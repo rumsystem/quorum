@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 )
 

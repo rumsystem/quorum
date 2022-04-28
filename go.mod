@@ -15,7 +15,7 @@ replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.18.0
 
 //replace github.com/rumsystem/rumchaindata => ../rumchaindata
-//replace github.com/rumsystem/keystore => ../keystore
+replace github.com/rumsystem/keystore => ../keystore
 
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2

@@ -25,9 +25,7 @@ import (
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
-	"github.com/rumsystem/quorum/internal/pkg/chainsdk/api"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
@@ -38,6 +36,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/app/api"
+	"github.com/rumsystem/quorum/pkg/chainapi/api"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	"github.com/rumsystem/quorum/testnode"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
 

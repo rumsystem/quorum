@@ -3,7 +3,7 @@
 
 package api
 
-import "github.com/rumsystem/quorum/internal/pkg/chainsdk/handlers"
+import "github.com/rumsystem/quorum/pkg/chainapi/handlers"
 
 type ChainSendTrxRuleListItemResult struct {
 	Data []*handlers.ChainSendTrxRuleListItem `json:"data"`
