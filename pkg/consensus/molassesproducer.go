@@ -6,11 +6,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
-	guuid "github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -317,117 +315,6 @@ func (producer *MolassesProducer) startMergeBlock() error {
 	producer.blockPool = make(map[string]*quorumpb.Block)
 
 	return nil
-}
-
-func (producer *MolassesProducer) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks []*quorumpb.Block, isEmptyBlock bool, erer error) {
-	molaproducer_log.Debugf("<%s> GetBlockForward called", producer.groupId)
-
-	var reqBlockItem quorumpb.ReqBlock
-	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return "", nil, false, err
-	}
-
-	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, producer.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if !isAllow {
-		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
-		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
-	}
-
-	var subBlocks []*quorumpb.Block
-	subBlocks, err = nodectx.GetDbMgr().GetSubBlock(reqBlockItem.BlockId, producer.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if len(subBlocks) != 0 {
-		return reqBlockItem.UserId, subBlocks, false, nil
-	} else {
-		var emptyBlock *quorumpb.Block
-		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
-		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
-		subBlocks = append(subBlocks, emptyBlock)
-		return reqBlockItem.UserId, subBlocks, true, nil
-	}
-}
-
-func (producer *MolassesProducer) GetBlockBackward(trx *quorumpb.Trx) (requester string, block *quorumpb.Block, isEmptyBlock bool, err error) {
-	molaproducer_log.Debugf("<%s> GetBlockBackward called", producer.groupId)
-
-	var reqBlockItem quorumpb.ReqBlock
-
-	ciperKey, err := hex.DecodeString(producer.grpItem.CipherKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return "", nil, false, err
-	}
-
-	//check previllage
-	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, producer.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if !isAllow {
-		molaproducer_log.Debugf("<%s> user <%s>: trxType <%s> is denied", producer.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD.String())
-		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
-	}
-
-	isExist, err := nodectx.GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, producer.nodename)
-	if err != nil {
-		return "", nil, false, err
-	} else if !isExist {
-		return "", nil, false, fmt.Errorf("Block not exist")
-	}
-
-	blk, err := nodectx.GetDbMgr().GetBlock(reqBlockItem.BlockId, false, producer.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	isParentExit, err := nodectx.GetDbMgr().IsParentExist(blk.PrevBlockId, false, producer.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if isParentExit {
-		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", producer.groupId)
-		parentBlock, err := nodectx.GetDbMgr().GetParentBlock(reqBlockItem.BlockId, producer.nodename)
-		if err != nil {
-			return "", nil, false, err
-		}
-
-		return reqBlockItem.UserId, parentBlock, false, nil
-	} else {
-		molaproducer_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", producer.groupId)
-		var emptyBlock *quorumpb.Block
-		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
-		emptyBlock.ProducerPubKey = producer.grpItem.UserSignPubkey
-		return reqBlockItem.UserId, emptyBlock, true, nil
-	}
 }
 
 //addBlock for producer
