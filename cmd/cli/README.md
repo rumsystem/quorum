@@ -92,6 +92,8 @@ Fill the `ServerSSLCertificate` like `ServerSSLCertificate = "/home/xxx/quorum/c
 
 Notice: On windows you have to use the escaped string, for example `C:\\Users\\xxxx\\repos\\quorum\\certs\\server.crt`
 
+Tips: Start rumcli then press "q" to shutdown, and it will generate an empty config for you.
+
 ## Debug
 
 ```bash

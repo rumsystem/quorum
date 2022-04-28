@@ -23,6 +23,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -116,12 +117,36 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 
 	publicGater := &PublicGater{}
 
-	host, err := libp2p.New(libp2p.ListenAddrs(),
-		libp2p.Transport(ws.New),
+	libp2poptions := []libp2p.Option{
 		routing,
+		libp2p.ListenAddrs(),
+		libp2p.Transport(ws.New),
 		libp2p.Ping(false),
 		identity,
 		libp2p.ConnectionGater(publicGater),
+	}
+
+	if nodeOpt.EnableRelay {
+		// TODO: use channel as relayServer source, thus we can modify relayServer dynamicaly
+		relayServerAddr := ma.StringCast("/ip4/139.155.182.182/tcp/33333/ws/p2p/16Uiu2HAmMfW8CJms2hgcp8wHMut2MhLgpBP4NQEbLhuaaeWnac7t")
+
+		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
+		if err != nil {
+			panic(err)
+		}
+		staticRelays := []peer.AddrInfo{*relayServer}
+		libp2poptions = append(libp2poptions,
+			libp2p.EnableAutoRelay(
+				autorelay.WithStaticRelays(staticRelays),
+				autorelay.WithMaxCandidates(1),
+				autorelay.WithNumRelays(99999),
+				autorelay.WithBootDelay(0),
+			),
+		)
+	}
+
+	host, err := libp2p.New(
+		libp2poptions...,
 	)
 	if err != nil {
 		return nil, err

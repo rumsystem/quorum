@@ -26,6 +26,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -82,6 +83,30 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 			libp2p.Transport(ws.New),
 		),
 		identity,
+	}
+
+	if nodeopt.EnableRelay && !nodeopt.EnableRelayService {
+		// TODO: use channel as relayServer source, thus we can modify relayServer dynamicaly
+		relayServerAddr := maddr.StringCast("/ip4/139.155.182.182/tcp/33333/ws/p2p/16Uiu2HAmMfW8CJms2hgcp8wHMut2MhLgpBP4NQEbLhuaaeWnac7t")
+
+		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
+		if err != nil {
+			panic(err)
+		}
+		staticRelays := []peer.AddrInfo{*relayServer}
+		libp2poptions = append(libp2poptions,
+			libp2p.EnableAutoRelay(
+				autorelay.WithStaticRelays(staticRelays),
+				autorelay.WithMaxCandidates(1),
+				autorelay.WithNumRelays(99999),
+				autorelay.WithBootDelay(0)),
+		)
+	}
+	if nodeopt.EnableRelayService {
+		libp2poptions = append(libp2poptions,
+			libp2p.DisableRelay(),
+			libp2p.EnableRelayService(),
+		)
 	}
 
 	if ds != nil {

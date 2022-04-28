@@ -15,7 +15,7 @@ func Promisefy(fn func() (map[string]interface{}, error)) js.Value {
 		reject := args[1]
 		go func() {
 			panicHandler := func(err error) {
-				if err == nil {
+				if err != nil {
 					reject.Invoke(err.Error())
 				}
 			}

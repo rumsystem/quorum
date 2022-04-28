@@ -34,6 +34,8 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	config := quorumConfig.NewBrowserConfig(bootAddrs)
 
 	nodeOpt := options.NodeOptions{}
+	nodeOpt.EnableRelay = true
+	nodeOpt.EnableRelayService = false
 	nodeOpt.EnableNat = false
 	nodeOpt.NetworkName = config.NetworkName
 	nodeOpt.EnableDevNetwork = config.UseTestNet

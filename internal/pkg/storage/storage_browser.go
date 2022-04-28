@@ -92,7 +92,11 @@ func (s *QSIndexDB) Close() error {
 }
 
 func (s *QSIndexDB) Set(key []byte, val []byte) error {
-	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	txn, err := s.db.Transaction(idb.TransactionReadWrite, s.name)
+	if err != nil {
+		return err
+	}
+
 	store, _ := txn.ObjectStore(s.name)
 
 	k := BytesToArrayBuffer(key)
