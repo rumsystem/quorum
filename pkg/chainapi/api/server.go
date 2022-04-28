@@ -44,6 +44,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/content", h.PostToGroup)
 		r.POST("/v1/group/profile", h.UpdateProfile)
 		r.POST("/v1/network/peers", h.AddPeers)
+		r.POST("/v1/network/relay", h.AddRelayServers)
 		r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 		r.POST("/v1/group/producer", h.GroupProducer)
 		r.POST("/v1/group/user", h.GroupUser)

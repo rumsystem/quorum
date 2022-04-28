@@ -36,6 +36,12 @@ import (
 	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
+var peerChan = make(chan peer.AddrInfo)
+
+func GetRelayPeerChan() chan peer.AddrInfo {
+	return peerChan
+}
+
 func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
@@ -86,17 +92,9 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	}
 
 	if nodeopt.EnableRelay && !nodeopt.EnableRelayService {
-		// TODO: use channel as relayServer source, thus we can modify relayServer dynamicaly
-		relayServerAddr := maddr.StringCast("/ip4/139.155.182.182/tcp/33333/ws/p2p/16Uiu2HAmMfW8CJms2hgcp8wHMut2MhLgpBP4NQEbLhuaaeWnac7t")
-
-		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
-		if err != nil {
-			panic(err)
-		}
-		staticRelays := []peer.AddrInfo{*relayServer}
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
-				autorelay.WithStaticRelays(staticRelays),
+				autorelay.WithPeerSource(peerChan),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0)),
