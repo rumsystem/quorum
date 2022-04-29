@@ -625,7 +625,12 @@ func RegisterJSFunctions() {
 	}))
 
 	js.Global().Set("IndexDBTest", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		go IndexDBTest()
-		return js.ValueOf(true).Bool()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			ret["ok"] = true
+			IndexDBTest()
+			return ret, nil
+		}
+		return Promisefy(handler)
 	}))
 }

@@ -31,6 +31,8 @@ type Config struct {
 	KeyStoreDir        string
 	KeyStoreName       string
 	AutoAck            bool
+	EnableRelay        bool
+	EnableRelayService bool
 }
 
 func (al *addrList) String() string {
@@ -97,6 +99,8 @@ func ParseFlags() (Config, error) {
 	flag.BoolVar(&config.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flag.BoolVar(&config.IsDebug, "debug", false, "show debug log")
 	flag.BoolVar(&config.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
+	flag.BoolVar(&config.EnableRelay, "autorelay", false, "enable relay")
+	flag.BoolVar(&config.EnableRelayService, "relayservice", false, "provide relay service")
 
 	flag.Parse()
 

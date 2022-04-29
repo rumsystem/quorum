@@ -55,7 +55,8 @@ func (opt *NodeOptions) writeToconfig() error {
 	v.Set("EnableDevNetwork", opt.EnableDevNetwork)
 	v.Set("SignKeyMap", opt.SignKeyMap)
 	v.Set("JWTKey", opt.JWTKey)
-	v.Set("JWTToken", opt.JWTToken)
+	v.Set("SelfJWTToken", opt.SelfJWTToken)
+	v.Set("OthersJWTToken", opt.OthersJWTToken)
 	return v.WriteConfig()
 }
 
@@ -66,10 +67,17 @@ func (opt *NodeOptions) SetJWTKey(jwtKey string) error {
 	return opt.writeToconfig()
 }
 
-func (opt *NodeOptions) SetJWTToken(jwtToken string) error {
+func (opt *NodeOptions) SetJWTToken(role, jwtToken string) error {
 	opt.mu.Lock()
 	defer opt.mu.Unlock()
-	opt.JWTToken = jwtToken
+	if role == "self" {
+		opt.SelfJWTToken = jwtToken
+	} else if role == "others" {
+		opt.OthersJWTToken = jwtToken
+	} else {
+		return fmt.Errorf("un-support role: %s", role)
+	}
+
 	return opt.writeToconfig()
 }
 
@@ -130,19 +138,27 @@ func initConfigfile(dir string, keyname string) (*viper.Viper, error) {
 		}
 	}
 
-	jwtToken := v.GetString("JWTToken")
-	valid, _ := utils.IsJWTTokenValid(jwtToken, jwtKey)
-	if jwtToken == "" || !valid {
-		// HARDCOED: expire in 30 days
-		exp := time.Now().Add(time.Hour * 24 * 30)
-		jwtToken, err := utils.NewJWTToken(keyname, jwtKey, exp)
-		if err != nil {
-			return nil, err
+	for _, role := range []string{"self", "others"} {
+		var configKey string
+		if role == "self" {
+			configKey = "SelfJWTToken"
+		} else if role == "others" {
+			configKey = "OthersJWTToken"
 		}
+		jwtToken := v.GetString(configKey)
+		valid, _ := utils.IsJWTTokenValid(jwtToken, jwtKey)
+		if jwtToken == "" || !valid {
+			// HARDCOED: expire in 30 days
+			exp := time.Now().Add(time.Hour * 24 * 30)
+			jwtToken, err := utils.NewJWTToken(keyname, role, jwtKey, exp)
+			if err != nil {
+				return nil, err
+			}
 
-		v.Set("JWTToken", jwtToken)
-		if err := v.WriteConfig(); err != nil {
-			return nil, err
+			v.Set(configKey, jwtToken)
+			if err := v.WriteConfig(); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -160,6 +176,8 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	}
 
 	options := &NodeOptions{}
+	options.EnableRelay = v.GetBool("EnableRelay")
+	options.EnableRelayService = v.GetBool("EnableRelayService")
 	options.EnableNat = v.GetBool("EnableNat")
 	options.EnableRumExchange = v.GetBool("EnableRumExchange")
 	options.EnableDevNetwork = v.GetBool("EnableDevNetwork")
@@ -178,7 +196,8 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 
 	options.SignKeyMap = v.GetStringMapString("SignKeyMap")
 	options.JWTKey = v.GetString("JWTKey")
-	options.JWTToken = v.GetString("JWTToken")
+	options.SelfJWTToken = v.GetString("SelfJWTToken")
+	options.OthersJWTToken = v.GetString("OthersJWTToken")
 
 	return options, nil
 }

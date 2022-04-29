@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -623,7 +624,11 @@ func ApproveAnnouncedProducer(groupId string, user *handlers.AnnouncedProducerLi
 }
 
 func newHTTPClient() (*http.Client, error) {
-	certPath := config.RumConfig.Quorum.ServerSSLCertificate
+	certPath, err := filepath.Abs(config.RumConfig.Quorum.ServerSSLCertificate)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if certPath != "" {
 		caCert, err := ioutil.ReadFile(certPath)
