@@ -214,7 +214,7 @@ func (syncer *Syncer) AddLocalBlock(block *quorumpb.Block) error {
 
 	if producer {
 		syncer_log.Debugf("<%s> PRODUCER ADD LOCAL BLOCK <%s>", syncer.GroupId, block.BlockId)
-		err := syncer.Group.ChainCtx.Consensus.Producer().AddBlock(block)
+		err := syncer.Group.ChainCtx.AddBlock(block)
 		if err != nil {
 			syncer_log.Infof(err.Error())
 		}
@@ -255,7 +255,7 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 	if syncer.Status == SYNCING_FORWARD {
 		if producer {
 			syncer_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", syncer.GroupId)
-			err := syncer.Group.ChainCtx.Consensus.Producer().AddBlock(block)
+			err := syncer.Group.ChainCtx.AddBlock(block)
 			if err != nil {
 				syncer_log.Infof(err.Error())
 			}
@@ -274,7 +274,7 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 		var err error
 		if producer {
 			syncer_log.Debugf("<%s> SYNCING_BACKWARD, PRODUCER ADD BLOCK", syncer.GroupId)
-			err = syncer.Group.ChainCtx.Consensus.Producer().AddBlock(block)
+			err = syncer.Group.ChainCtx.AddBlock(block)
 		} else {
 			syncer_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", syncer.GroupId)
 			err = syncer.Group.ChainCtx.Consensus.User().AddBlock(block)

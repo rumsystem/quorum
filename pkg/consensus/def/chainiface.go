@@ -16,4 +16,5 @@ type ChainMolassesIface interface {
 	GetMyTrxs(blockIds []string, nodename string, userSignPubkey string) ([]*quorumpb.Trx, error)
 	ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error
 	ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) error
+	AddBlock(block *quorumpb.Block) error
 }

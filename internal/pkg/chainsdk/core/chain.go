@@ -1025,3 +1025,111 @@ func (chain *Chain) GetBlockBackward(trx *quorumpb.Trx) (requester string, block
 		return reqBlockItem.UserId, emptyBlock, true, nil
 	}
 }
+
+//addBlock for producer
+func (chain *Chain) AddBlock(block *quorumpb.Block) error {
+	chain_log.Debugf("<%s> AddBlock called", chain.groupId)
+	/*
+		//check if block is already in chain
+		isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, producer.nodename)
+		if err != nil {
+			return err
+		}
+		if isSaved {
+			return errors.New("Block already saved, ignore")
+		}
+	*/
+
+	//check if block is in cache
+	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	if isCached {
+		chain_log.Debugf("<%s> Block cached, update block", chain.groupId)
+	}
+
+	//Save block to cache
+	err = nodectx.GetDbMgr().AddBlock(block, true, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	if !parentExist {
+		chain_log.Debugf("<%s> parent of block <%s> is not exist", chain.groupId, block.BlockId)
+		return errors.New("PARENT_NOT_EXIST")
+	}
+
+	//get parent block
+	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	//valid block with parent block
+	valid, err := rumchaindata.IsBlockValid(block, parentBlock)
+	if !valid {
+		chain_log.Debugf("<%s> remove invalid block <%s> from cache", chain.groupId, block.BlockId)
+		chain_log.Warningf("<%s> invalid block <%s>", chain.groupId, err.Error())
+		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
+	}
+
+	//search cache, gather all blocks can be connected with this block
+	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	//get all trxs in those new blocks
+	var trxs []*quorumpb.Trx
+	trxs, err = rumchaindata.GetAllTrxs(blocks)
+	if err != nil {
+		return err
+	}
+
+	//apply those trxs
+	err = chain.ApplyProducerTrxs(trxs, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	//move blocks from cache to normal
+	for _, block := range blocks {
+		chain_log.Debugf("<%s> move block <%s> from cache to chain", chain.groupId, block.BlockId)
+		err := nodectx.GetDbMgr().AddBlock(block, false, chain.nodename)
+		if err != nil {
+			return err
+		}
+
+		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, block := range blocks {
+		err := nodectx.GetDbMgr().AddProducedBlockCount(chain.groupId, block.ProducerPubKey, chain.nodename)
+		if err != nil {
+			return err
+		}
+	}
+
+	chain_log.Debugf("<%s> chain height before recal: <%d>", chain.groupId, chain.group.Item.HighestHeight)
+	topBlock, err := nodectx.GetDbMgr().GetBlock(chain.group.Item.HighestBlockId, false, chain.nodename)
+	if err != nil {
+		return err
+	}
+	newHeight, newHighestBlockId, err := chain.RecalChainHeight(blocks, chain.group.Item.HighestHeight, topBlock, chain.nodename)
+	if err != nil {
+		return err
+	}
+	chain_log.Debugf("<%s> new height <%d>, new highest blockId %v", chain.groupId, newHeight, newHighestBlockId)
+
+	return chain.UpdChainInfo(newHeight, newHighestBlockId)
+}

@@ -8,5 +8,4 @@ type Producer interface {
 	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	AddTrx(trx *quorumpb.Trx)
 	AddProducedBlock(trx *quorumpb.Trx) error
-	AddBlock(block *quorumpb.Block) error
 }

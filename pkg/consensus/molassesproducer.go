@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"sync"
 	"time"
 
@@ -197,8 +196,8 @@ func (producer *MolassesProducer) produceBlock() {
 
 }
 
-func (producer *MolassesProducer) AddBlockToPool(block *quorumpb.Block) {
-	molaproducer_log.Debugf("<%s> AddBlockToPool called", producer.groupId)
+func (producer *MolassesProducer) addBlockToPool(block *quorumpb.Block) {
+	molaproducer_log.Debugf("<%s> addBlockToPool called", producer.groupId)
 	/*
 		if producer.cIface.IsSyncerReady() {
 			return
@@ -225,7 +224,7 @@ func (producer *MolassesProducer) AddProducedBlock(trx *quorumpb.Trx) error {
 	}
 
 	molaproducer_log.Debugf("<%s> add produced block to Pool", producer.groupId)
-	producer.AddBlockToPool(block)
+	producer.addBlockToPool(block)
 
 	//if merge already started
 	if producer.status == StatusMerging {
@@ -286,7 +285,7 @@ func (producer *MolassesProducer) startMergeBlock() error {
 	}
 
 	molaproducer_log.Debugf("<%s> winner <%s> (%s)", producer.groupId, producer.blockPool[candidateBlkid].ProducerPubKey, surfix)
-	err := producer.AddBlock(producer.blockPool[candidateBlkid])
+	err := producer.cIface.AddBlock(producer.blockPool[candidateBlkid])
 
 	if err != nil {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
@@ -315,113 +314,4 @@ func (producer *MolassesProducer) startMergeBlock() error {
 	producer.blockPool = make(map[string]*quorumpb.Block)
 
 	return nil
-}
-
-//addBlock for producer
-func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
-	molaproducer_log.Debugf("<%s> AddBlock called", producer.groupId)
-
-	/*
-		//check if block is already in chain
-		isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, producer.nodename)
-		if err != nil {
-			return err
-		}
-		if isSaved {
-			return errors.New("Block already saved, ignore")
-		}
-	*/
-
-	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	if isCached {
-		molaproducer_log.Debugf("<%s> Block cached, update block", producer.groupId)
-	}
-
-	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	if !parentExist {
-		molaproducer_log.Debugf("<%s> parent of block <%s> is not exist", producer.groupId, block.BlockId)
-		return errors.New("PARENT_NOT_EXIST")
-	}
-
-	//get parent block
-	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	//valid block with parent block
-	valid, err := rumchaindata.IsBlockValid(block, parentBlock)
-	if !valid {
-		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", producer.groupId, block.BlockId)
-		molauser_log.Warningf("<%s> invalid block <%s>", producer.groupId, err.Error())
-		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, producer.nodename)
-	}
-
-	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	//get all trxs in those new blocks
-	var trxs []*quorumpb.Trx
-	trxs, err = rumchaindata.GetAllTrxs(blocks)
-	if err != nil {
-		return err
-	}
-
-	//apply those trxs
-	err = producer.cIface.ApplyProducerTrxs(trxs, producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	//move blocks from cache to normal
-	for _, block := range blocks {
-		molaproducer_log.Debugf("<%s> move block <%s> from cache to chain", producer.groupId, block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, producer.nodename)
-		if err != nil {
-			return err
-		}
-
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, producer.nodename)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, block := range blocks {
-		err := nodectx.GetDbMgr().AddProducedBlockCount(producer.groupId, block.ProducerPubKey, producer.nodename)
-		if err != nil {
-			return err
-		}
-	}
-
-	molaproducer_log.Debugf("<%s> chain height before recal: <%d>", producer.groupId, producer.grpItem.HighestHeight)
-	topBlock, err := nodectx.GetDbMgr().GetBlock(producer.grpItem.HighestBlockId, false, producer.nodename)
-	if err != nil {
-		return err
-	}
-	newHeight, newHighestBlockId, err := producer.cIface.RecalChainHeight(blocks, producer.grpItem.HighestHeight, topBlock, producer.nodename)
-	if err != nil {
-		return err
-	}
-	molaproducer_log.Debugf("<%s> new height <%d>, new highest blockId %v", producer.groupId, newHeight, newHighestBlockId)
-
-	return producer.cIface.UpdChainInfo(newHeight, newHighestBlockId)
 }
