@@ -243,7 +243,11 @@ func (grp *Group) GetAppConfigItemString(keyName string) (string, error) {
 
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdAnnounce(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetAnnounceTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) PostToGroup(content proto.Message) (string, error) {
@@ -253,29 +257,54 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return grp.ChainCtx.Consensus.User().PostToGroup(content, keys)
+
+		trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx(content, keys)
+		if err != nil {
+			return "", err
+		}
+		return grp.sendTrx(trx, conn.ProducerChannel)
 	}
-	return grp.ChainCtx.Consensus.User().PostToGroup(content)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx(content)
+	if err != nil {
+		return "", err
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdProducer(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
 	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdUser(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	group_log.Debugf("<%s> UpdSchema called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdSchema(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdSchemaTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
-	return grp.ChainCtx.Consensus.User().UpdAppConfig(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
@@ -288,10 +317,25 @@ func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {
 	return nodectx.GetDbMgr().IsUserAnnounced(grp.Item.GroupId, userSignPubkey, grp.ChainCtx.nodename)
 }
 
+func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
+	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
+	if err != nil {
+		return "", err
+	}
+	err = connMgr.SendTrxPubsub(trx, channel)
+	if err != nil {
+		return "", err
+	}
+	return trx.TrxId, nil
+}
+
 func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
-	//return grp.ChainCtx.Consensus.User().UpdChainSendTrxRule(item)
-	return grp.ChainCtx.Consensus.User().UpdChainConfig(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx(item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) GetChainSendTrxDenyList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {

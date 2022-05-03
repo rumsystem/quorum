@@ -8,7 +8,7 @@ import (
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	"google.golang.org/protobuf/proto"
+	//"google.golang.org/protobuf/proto"
 )
 
 type MolassesUser struct {
@@ -29,100 +29,8 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
-func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
-	_, err := conn.SendTrxWithoutRetry(user.groupId, trx, channel)
-	if err != nil {
-		return "", err
-	}
-
-	err = user.cIface.TrxEnqueue(user.groupId, trx)
-	if err != nil {
-		return "", err
-	}
-
-	return trx.TrxId, nil
-}
-
-func (user *MolassesUser) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdAnnounce called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetAnnounceTrx(item)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (user *MolassesUser) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdChainConfig called", user.groupId)
-
-	trx, err := user.cIface.GetTrxFactory().GetChainConfigTrx(item)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (user *MolassesUser) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdSchema called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetUpdSchemaTrx(item)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (user *MolassesUser) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdProducer called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetRegProducerTrx(item)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (user *MolassesUser) UpdUser(item *quorumpb.UserItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdUser called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetRegUserTrx(item)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (user *MolassesUser) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
-	molauser_log.Debugf("<%s> UpdAppConfig called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetUpdAppConfigTrx(item)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (user *MolassesUser) PostToGroup(content proto.Message, encryptto ...[]string) (string, error) {
-	molauser_log.Debugf("<%s> PostToGroup called", user.groupId)
-	trx, err := user.cIface.GetTrxFactory().GetPostAnyTrx(content, encryptto...)
-	if err != nil {
-		return "", nil
-	}
-	return user.sendTrx(trx, conn.ProducerChannel)
-}
-
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
-
-	//commented by cuicat
-	/*
-		//check if block is already in chain
-		isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, user.nodename)
-		if err != nil {
-			return err
-		}
-
-		if isSaved {
-			return fmt.Errorf("Block %s already saved, ignore", block.BlockId)
-		}
-	*/
-
 	//check if block is in cache
 	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, user.nodename)
 	if err != nil {
@@ -238,6 +146,18 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	return user.cIface.UpdChainInfo(newHeight, newHighestBlockId)
+}
+
+func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
+	connMgr, err := conn.GetConn().GetConnMgr(user.groupId)
+	if err != nil {
+		return "", err
+	}
+	err = connMgr.SendTrxPubsub(trx, channel)
+	if err != nil {
+		return "", err
+	}
+	return trx.TrxId, nil
 }
 
 //resend all trx in the list
