@@ -3,10 +3,8 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
-	guuid "github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/network"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
@@ -53,7 +51,7 @@ func (chain *Chain) Init(group *Group) error {
 
 	chain.nodename = nodectx.GetNodeCtx().Name
 	chain.groupId = group.Item.GroupId
-	chain.chaindata = &ChainData{nodectx.GetDbMgr()}
+	chain.chaindata = &ChainData{nodename: chain.nodename, groupId: group.Item.GroupId, groupCipherKey: group.Item.CipherKey, userSignPubkey: group.Item.UserSignPubkey, dbmgr: nodectx.GetDbMgr()}
 
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, group.Item, chain.nodename, chain)
@@ -258,7 +256,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 		chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
 		clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 
-		requester, blocks, isEmpty, err := chain.GetBlockForward(trx)
+		requester, blocks, isEmpty, err := chain.chaindata.GetBlockForward(trx)
 		if err != nil {
 			return err
 		}
@@ -344,7 +342,7 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 		chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
 		clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 
-		requester, block, isEmpty, err := chain.GetBlockBackward(trx)
+		requester, block, isEmpty, err := chain.chaindata.GetBlockBackward(trx)
 		if err != nil {
 			return err
 		}
@@ -716,6 +714,7 @@ func (chain *Chain) StopSnapshot() {
 		chain.Consensus.SnapshotSender().Stop()
 	}
 }
+
 func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	n, err := nodectx.GetDbMgr().GetNextNouce(groupId, nodeprefix)
@@ -913,117 +912,6 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 	}
 
 	return nil
-}
-
-func (chain *Chain) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks []*quorumpb.Block, isEmptyBlock bool, erer error) {
-	chain_log.Debugf("<%s> GetBlockForward called", chain.groupId)
-
-	var reqBlockItem quorumpb.ReqBlock
-	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return "", nil, false, err
-	}
-
-	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, chain.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if !isAllow {
-		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", chain.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
-		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
-	}
-
-	var subBlocks []*quorumpb.Block
-	subBlocks, err = nodectx.GetDbMgr().GetSubBlock(reqBlockItem.BlockId, chain.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if len(subBlocks) != 0 {
-		return reqBlockItem.UserId, subBlocks, false, nil
-	} else {
-		var emptyBlock *quorumpb.Block
-		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
-		emptyBlock.ProducerPubKey = chain.group.Item.UserSignPubkey
-		subBlocks = append(subBlocks, emptyBlock)
-		return reqBlockItem.UserId, subBlocks, true, nil
-	}
-}
-
-func (chain *Chain) GetBlockBackward(trx *quorumpb.Trx) (requester string, block *quorumpb.Block, isEmptyBlock bool, err error) {
-	chain_log.Debugf("<%s> GetBlockBackward called", chain.groupId)
-
-	var reqBlockItem quorumpb.ReqBlock
-
-	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return "", nil, false, err
-	}
-
-	//check previllage
-	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, chain.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if !isAllow {
-		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", chain.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD.String())
-		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
-	}
-
-	isExist, err := nodectx.GetDbMgr().IsBlockExist(reqBlockItem.BlockId, false, chain.nodename)
-	if err != nil {
-		return "", nil, false, err
-	} else if !isExist {
-		return "", nil, false, fmt.Errorf("Block not exist")
-	}
-
-	blk, err := nodectx.GetDbMgr().GetBlock(reqBlockItem.BlockId, false, chain.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	isParentExit, err := nodectx.GetDbMgr().IsParentExist(blk.PrevBlockId, false, chain.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if isParentExit {
-		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
-		parentBlock, err := nodectx.GetDbMgr().GetParentBlock(reqBlockItem.BlockId, chain.nodename)
-		if err != nil {
-			return "", nil, false, err
-		}
-
-		return reqBlockItem.UserId, parentBlock, false, nil
-	} else {
-		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
-		var emptyBlock *quorumpb.Block
-		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
-		emptyBlock.ProducerPubKey = chain.group.Item.UserSignPubkey
-		return reqBlockItem.UserId, emptyBlock, true, nil
-	}
 }
 
 //addBlock for producer
