@@ -20,7 +20,7 @@ var (
 type QuercusConn struct {
 	Cid          string
 	Subscription *pubsub.Subscription
-	chain        chaindef.ChainDataHandlerIface
+	chain        chaindef.ChainDataSyncIface
 	ps           *pubsub.Pubsub
 	nodename     string
 	Ctx          context.Context
@@ -39,7 +39,7 @@ func InitQuercusConn(ctx context.Context, ps *pubsub.Pubsub, nodename string) *Q
 	return &QuercusConn{Ctx: ctx, ps: ps, nodename: nodename}
 }
 
-func (qconn *QuercusConn) JoinChannel(cId string, chain chaindef.ChainDataHandlerIface) error {
+func (qconn *QuercusConn) JoinChannel(cId string, chain chaindef.ChainDataSyncIface) error {
 	qconn.Cid = cId
 	qconn.chain = chain
 	qconn.Subscription = qconn.ps.Subscribe(qconn.nodename, cId)

@@ -52,7 +52,7 @@ type ConnMgr struct {
 	StableProdPsConn      bool
 	producerChannTimer    *time.Timer
 	SyncChannelTimersPool map[string]*time.Timer // key: channelId; value: syncTimer
-	DataHandlerIface      chaindef.ChainDataHandlerIface
+	DataHandlerIface      chaindef.ChainDataSyncIface
 	PsConns               map[string]*pubsubconn.P2pPubSubConn // key: channelId
 	Rex                   *p2p.RexService
 }
@@ -108,7 +108,7 @@ func InitConn() error {
 	return nil
 }
 
-func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface chaindef.ChainDataHandlerIface) error {
+func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("RegisterChainCtx called, groupId <%s>", groupId)
 	connMgr := &ConnMgr{}
 	connMgr.InitGroupConnMgr(groupId, ownerPubkey, userSignPubkey, cIface)
@@ -165,7 +165,7 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 	return nil, fmt.Errorf("connMgr for group <%s> not exist", groupId)
 }
 
-func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface chaindef.ChainDataHandlerIface) error {
+func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
 	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
 	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId

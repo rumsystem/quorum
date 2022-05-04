@@ -38,14 +38,14 @@ type Syncer struct {
 	statusBeforeFail    int8
 	responses           map[string]*quorumpb.ReqBlockResp
 	blockReceived       map[string]string
-	cdnIface            def.ChainDataHandlerIface
+	cdnIface            def.ChainDataSyncIface
 	syncNetworkType     conn.P2pNetworkType
 	rwMutex             sync.RWMutex
 	localSyncFinished   bool
 	rumExchangeTestMode bool
 }
 
-func (syncer *Syncer) Init(group *Group, cdnIface def.ChainDataHandlerIface) {
+func (syncer *Syncer) Init(group *Group, cdnIface def.ChainDataSyncIface) {
 	syncer_log.Debugf("<%s> Init called", group.Item.GroupId)
 	syncer.Status = IDLE
 	syncer.Group = group

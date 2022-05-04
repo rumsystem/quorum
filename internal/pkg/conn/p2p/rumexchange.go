@@ -44,7 +44,7 @@ type RexService struct {
 	peerStatus         *PeerStatus
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
-	chainmgr           map[string]chaindef.ChainDataHandlerIface
+	chainmgr           map[string]chaindef.ChainDataSyncIface
 	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
 	streampool         sync.Map //map[peer.ID]streamPoolItem
@@ -69,7 +69,7 @@ type streamPoolItem struct {
 
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	chainmgr := make(map[string]chaindef.ChainDataHandlerIface)
+	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
 	rumpeerstore := &RumGroupPeerStore{}
 	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
@@ -114,7 +114,7 @@ func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
 	return newpoolitem, nil
 }
 
-func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataHandlerIface) {
+func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataSyncIface) {
 	_, ok := r.chainmgr[groupid]
 	if ok == false {
 		r.chainmgr[groupid] = cdhIface

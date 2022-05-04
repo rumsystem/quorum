@@ -69,7 +69,7 @@ func (chain *Chain) SetRumExchangeTestMode() {
 	chain.syncer.SetRumExchangeTestMode()
 }
 
-func (chain *Chain) GetChainSyncIface() chaindef.ChainSyncIface {
+func (chain *Chain) GetChainSyncIface() chaindef.ChainDataSyncIface {
 	return chain
 }
 

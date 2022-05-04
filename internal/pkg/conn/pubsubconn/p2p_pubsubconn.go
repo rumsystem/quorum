@@ -21,7 +21,7 @@ type P2pPubSubConn struct {
 	Cid          string
 	Topic        *pubsub.Topic
 	Subscription *pubsub.Subscription
-	chain        chaindef.ChainDataHandlerIface
+	chain        chaindef.ChainDataSyncIface
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
@@ -50,7 +50,7 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
 
-func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface chaindef.ChainDataHandlerIface) *P2pPubSubConn {
+func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface chaindef.ChainDataSyncIface) *P2pPubSubConn {
 	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
 		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
@@ -135,7 +135,7 @@ func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
 	return err
 }
 
-func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataHandlerIface) error {
+func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataSyncIface) error {
 	psconn.Cid = cId
 
 	// cdhIface == nil, join channel as exchange
