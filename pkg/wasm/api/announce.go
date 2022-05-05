@@ -3,7 +3,7 @@ package api
 import (
 	"encoding/json"
 
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
 func Announce(data []byte) (*handlers.AnnounceResult, error) {

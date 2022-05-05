@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var logger = logging.Logger("stats")
@@ -49,10 +49,6 @@ func (na NetworkAction) GetByRumMsgType(msgType quorumpb.RumMsgType) NetworkActi
 		return RumRelayReq
 	case quorumpb.RumMsgType_RELAY_RESP:
 		return RumRelayResp
-	case quorumpb.RumMsgType_IF_CONN:
-		return RumSessionIfConn
-	case quorumpb.RumMsgType_CONN_RESP:
-		return RumSessionConnResp
 	case quorumpb.RumMsgType_CHAIN_DATA:
 		return RumChainData
 	default:

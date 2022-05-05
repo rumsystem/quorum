@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 )
 
 // this function will check trx in pubqueue

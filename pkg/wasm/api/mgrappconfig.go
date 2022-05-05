@@ -6,7 +6,7 @@ package api
 import (
 	"encoding/json"
 
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
 func MgrAppConfig(data []byte) (*handlers.AppConfigResult, error) {

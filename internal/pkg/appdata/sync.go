@@ -3,10 +3,10 @@ package appdata
 import (
 	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var appsynclog = logging.Logger("appsync")

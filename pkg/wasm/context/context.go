@@ -7,8 +7,8 @@ import (
 	"context"
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	quorumP2P "github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	quorumP2P "github.com/rumsystem/quorum/internal/pkg/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumConfig "github.com/rumsystem/quorum/pkg/wasm/config"
 )

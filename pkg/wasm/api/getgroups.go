@@ -5,7 +5,7 @@ package api
 
 import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"sort"
 )
 

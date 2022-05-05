@@ -12,7 +12,7 @@ import (
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rumsystem/quorum/cmd/cli/api"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
 var chainConfigPage = cview.NewFlex()

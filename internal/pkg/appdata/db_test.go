@@ -2,8 +2,8 @@ package appdata
 
 import (
 	"fmt"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"log"
 	"testing"
 	"time"

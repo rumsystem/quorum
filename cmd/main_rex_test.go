@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	api "github.com/rumsystem/quorum/internal/pkg/api"
+	api "github.com/rumsystem/quorum/pkg/chainapi/api"
 	"github.com/rumsystem/quorum/testnode"
 )
 

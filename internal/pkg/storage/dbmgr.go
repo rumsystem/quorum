@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -47,6 +49,7 @@ type DbMgr struct {
 	GroupInfoDb QuorumStorage
 	Db          QuorumStorage
 	Auth        QuorumStorage
+	seq         sync.Map
 	DataPath    string
 }
 
@@ -113,7 +116,7 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 
 //save trx
 func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + trx.TrxId + "_" + fmt.Sprint(trx.Nonce)
 	value, err := proto.Marshal(trx)
 	if err != nil {
@@ -125,14 +128,14 @@ func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
 //UNUSED
 //rm Trx
 func (dbMgr *DbMgr) RmTrx(trxId string, nonce int64, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
 	return dbMgr.Db.Delete([]byte(key))
 }
 
 //Get Trx
 func (dbMgr *DbMgr) GetTrx(trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var trx quorumpb.Trx
 	var nonces []int64
 
@@ -191,14 +194,14 @@ func (dbMgr *DbMgr) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
 }
 
 func (dbMgr *DbMgr) IsTrxExist(trxId string, nonce int64, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
 
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + BLK_PREFIX + "_" + gensisBlock.BlockId
 
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
@@ -226,7 +229,7 @@ func (dbMgr *DbMgr) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string
 
 //check if block existed
 func (dbMgr *DbMgr) IsBlockExist(blockId string, cached bool, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if cached {
 		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + blockId
@@ -239,7 +242,7 @@ func (dbMgr *DbMgr) IsBlockExist(blockId string, cached bool, prefix ...string) 
 
 //check if parent block existed
 func (dbMgr *DbMgr) IsParentExist(parentBlockId string, cached bool, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var pKey string
 	if cached {
 		pKey = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + parentBlockId
@@ -295,7 +298,7 @@ func (dbMgr *DbMgr) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...st
 
 //remove block
 func (dbMgr *DbMgr) RmBlock(blockId string, cached bool, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if cached {
 		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + blockId
@@ -316,7 +319,7 @@ func (dbMgr *DbMgr) GetBlock(blockId string, cached bool, prefix ...string) (*qu
 }
 
 func (dbMgr *DbMgr) GatherBlocksFromCache(newBlock *quorumpb.Block, cached bool, prefix ...string) ([]*quorumpb.Block, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var blocks []*quorumpb.Block
 	blocks = append(blocks, newBlock)
 	pointer1 := 0 //point to head
@@ -394,7 +397,7 @@ func (dbMgr *DbMgr) GetParentBlock(blockId string, prefix ...string) (*quorumpb.
 
 //get block chunk
 func (dbMgr *DbMgr) getBlockChunk(blockId string, cached bool, prefix ...string) (*quorumpb.BlockDbChunk, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if cached {
 		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + blockId
@@ -418,7 +421,7 @@ func (dbMgr *DbMgr) getBlockChunk(blockId string, cached bool, prefix ...string)
 
 //save block chunk
 func (dbMgr *DbMgr) saveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if cached {
 		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + chunk.BlockId
@@ -599,7 +602,7 @@ func (dbMgr *DbMgr) ApproveRelayReq(reqid string) (bool, *quorumpb.GroupRelayIte
 }
 
 func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var keys []string
 
 	//remove all group POST
@@ -720,7 +723,7 @@ func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 }
 
 func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + trx.GroupId + "_" + fmt.Sprint(trx.TimeStamp) + "_" + trx.TrxId
 	dbmgr_log.Infof("Add POST with key %s", key)
 
@@ -741,7 +744,7 @@ func (dbMgr *DbMgr) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 
 func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string) ([]*quorumpb.PostItem, error) {
 	var ctnList []*quorumpb.PostItem
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	pre := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + groupId + "_"
 	err := dbMgr.Db.PrefixForeach([]byte(pre), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -761,7 +764,7 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string)
 }
 
 //func (dbMgr *DbMgr) GetTrxContent(trxId string, prefix ...string) (*quorumpb.Trx, error) {
-//	nodeprefix := getPrefix(prefix...)
+//	nodeprefix := utils.GetPrefix(prefix...)
 //	var trx quorumpb.Trx
 //	key := nodeprefix + TRX_PREFIX + "_" + trxId
 //	err := dbMgr.Db.View(func(txn *badger.Txn) error {
@@ -792,7 +795,7 @@ func (dbMgr *DbMgr) UpdateChainConfigTrx(trx *quorumpb.Trx, prefix ...string) (e
 
 func (dbMgr *DbMgr) UpdateChainConfig(data []byte, prefix []string) (err error) {
 	dbmgr_log.Infof("UpdateChainConfig called")
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.ChainConfigItem{}
 
 	if err := proto.Unmarshal(data, item); err != nil {
@@ -844,7 +847,7 @@ func (dbMgr *DbMgr) UpdateChainConfig(data []byte, prefix []string) (err error) 
 }
 
 func (dbMgr *DbMgr) GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error) {
-	nodoeprefix := getPrefix(prefix...)
+	nodoeprefix := utils.GetPrefix(prefix...)
 	key := nodoeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + TRX_AUTH_TYPE_PREFIX + "_" + trxType.String()
 
 	//if not specified by group owner
@@ -879,7 +882,7 @@ func (dbMgr *DbMgr) GetSendTrxAuthListByGroupId(groupId string, listType quorump
 	var chainConfigList []*quorumpb.ChainConfigItem
 	var sendTrxRuleList []*quorumpb.ChainSendTrxRuleListItem
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if listType == quorumpb.AuthListType_ALLOW_LIST {
 		key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + ALLW_LIST_PREFIX
@@ -917,7 +920,7 @@ func (dbMgr *DbMgr) GetSendTrxAuthListByGroupId(groupId string, listType quorump
 }
 
 func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.TrxType, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 
 	keyAllow := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + ALLW_LIST_PREFIX + "_" + pubkey
 	keyDeny := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + DENY_LIST_PREFIX + "_" + pubkey
@@ -993,7 +996,7 @@ func (dbMgr *DbMgr) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) (err 
 }
 
 func (dbMgr *DbMgr) UpdateProducer(data []byte, prefix []string) (err error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.ProducerItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
@@ -1030,7 +1033,7 @@ func (dbMgr *DbMgr) UpdateUserTrx(trx *quorumpb.Trx, prefix ...string) (err erro
 
 func (dbMgr *DbMgr) UpdateUser(data []byte, prefix []string) (err error) {
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 
 	item := &quorumpb.UserItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
@@ -1066,7 +1069,7 @@ func (dbMgr *DbMgr) UpdateAppConfigTrx(trx *quorumpb.Trx, Prefix ...string) (err
 }
 
 func (dbMgr *DbMgr) UpdateAppConfig(data []byte, Prefix []string) (err error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	item := &quorumpb.AppConfigItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
@@ -1094,7 +1097,7 @@ func (dbMgr *DbMgr) UpdateAppConfig(data []byte, Prefix []string) (err error) {
 
 // name, type
 func (dbMgr *DbMgr) GetAppConfigKey(groupId string, prefix ...string) ([]string, []string, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId
 
 	var itemName []string
@@ -1117,7 +1120,7 @@ func (dbMgr *DbMgr) GetAppConfigKey(groupId string, prefix ...string) ([]string,
 }
 
 func (dbMgr *DbMgr) GetAppConfigItem(itemKey string, groupId string, Prefix ...string) (*quorumpb.AppConfigItem, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
@@ -1135,7 +1138,7 @@ func (dbMgr *DbMgr) GetAppConfigItem(itemKey string, groupId string, Prefix ...s
 }
 
 func (dbMgr *DbMgr) GetAllAppConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_"
 	var appConfigByteList [][]byte
 
@@ -1151,7 +1154,7 @@ func (dbMgr *DbMgr) GetAllAppConfigInBytes(groupId string, Prefix ...string) ([]
 }
 
 func (dbMgr *DbMgr) GetAllChainConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId + "_"
 	var chainConfigByteList [][]byte
 
@@ -1167,7 +1170,7 @@ func (dbMgr *DbMgr) GetAllChainConfigInBytes(groupId string, Prefix ...string) (
 }
 
 func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_"
 	var announceByteList [][]byte
 
@@ -1183,7 +1186,7 @@ func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][
 }
 
 func (dbMgr *DbMgr) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_"
 	var producerByteList [][]byte
 
@@ -1199,7 +1202,7 @@ func (dbMgr *DbMgr) GetAllProducerInBytes(groupId string, Prefix ...string) ([][
 }
 
 func (dbMgr *DbMgr) GetAllUserInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + USR_PREFIX + "_" + groupId + "_"
 	var usersByteList [][]byte
 
@@ -1215,7 +1218,7 @@ func (dbMgr *DbMgr) GetAllUserInBytes(groupId string, Prefix ...string) ([][]byt
 }
 
 func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
@@ -1234,7 +1237,7 @@ func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix .
 }
 
 func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, Prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
@@ -1253,7 +1256,7 @@ func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, Prefix 
 }
 
 func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, Prefix ...string) (string, error) {
-	nodeprefix := getPrefix(Prefix...)
+	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
 
 	value, err := dbMgr.Db.Get([]byte(key))
@@ -1277,7 +1280,7 @@ func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (p
 
 func (dbMgr *DbMgr) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + item.GroupId + "_" + item.ProducerPubkey
 	dbmgr_log.Infof("Add Producer with key %s", key)
 
@@ -1289,7 +1292,7 @@ func (dbMgr *DbMgr) AddProducer(item *quorumpb.ProducerItem, prefix ...string) e
 }
 
 func (dbMgr *DbMgr) AddProducedBlockCount(groupId, producerPubkey string, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_" + producerPubkey
 	var pProducer *quorumpb.ProducerItem
 	pProducer = &quorumpb.ProducerItem{}
@@ -1315,7 +1318,7 @@ func (dbMgr *DbMgr) AddProducedBlockCount(groupId, producerPubkey string, prefix
 
 func (dbMgr *DbMgr) GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error) {
 	var pList []*quorumpb.ProducerItem
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -1335,7 +1338,7 @@ func (dbMgr *DbMgr) GetProducers(groupId string, prefix ...string) ([]*quorumpb.
 
 func (dbMgr *DbMgr) GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserItem, error) {
 	var pList []*quorumpb.UserItem
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + USR_PREFIX + "_" + groupId
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -1354,7 +1357,7 @@ func (dbMgr *DbMgr) GetUsers(groupId string, prefix ...string) ([]*quorumpb.User
 }
 
 func (dbMgr *DbMgr) IsProducer(groupId, producerPubKey string, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + PRD_PREFIX + "_" + groupId + "_" + producerPubKey
 
 	//check if group exist
@@ -1366,7 +1369,7 @@ func (dbMgr *DbMgr) UpdateAnnounceTrx(trx *quorumpb.Trx, prefix ...string) (err 
 }
 
 func (dbMgr *DbMgr) UpdateAnnounce(data []byte, prefix []string) (err error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.AnnounceItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
@@ -1378,7 +1381,7 @@ func (dbMgr *DbMgr) UpdateAnnounce(data []byte, prefix []string) (err error) {
 func (dbMgr *DbMgr) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
 	var aList []*quorumpb.AnnounceItem
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String()
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -1399,7 +1402,7 @@ func (dbMgr *DbMgr) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([
 func (dbMgr *DbMgr) GetAnnounceProducersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
 	var aList []*quorumpb.AnnounceItem
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String()
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -1418,7 +1421,7 @@ func (dbMgr *DbMgr) GetAnnounceProducersByGroup(groupId string, prefix ...string
 }
 
 func (dbMgr *DbMgr) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pubkey
 
 	value, err := dbMgr.Db.Get([]byte(key))
@@ -1436,7 +1439,7 @@ func (dbMgr *DbMgr) GetAnnouncedProducer(groupId string, pubkey string, prefix .
 }
 
 func (dbMgr *DbMgr) GetAnnouncedUser(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pubkey
 
 	value, err := dbMgr.Db.Get([]byte(key))
@@ -1454,19 +1457,19 @@ func (dbMgr *DbMgr) GetAnnouncedUser(groupId string, pubkey string, prefix ...st
 }
 
 func (dbMgr *DbMgr) IsProducerAnnounced(groupId, producerSignPubkey string, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + producerSignPubkey
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userSignPubkey
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
 func (dbMgr *DbMgr) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
 
 	var pAnnounced *quorumpb.AnnounceItem
@@ -1496,7 +1499,7 @@ func (dbMgr *DbMgr) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, gro
 }
 
 func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userPubKey
 
 	//check if group user (announced) exist
@@ -1504,24 +1507,38 @@ func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, 
 }
 
 //update group nonce
-func (dbMgr *DbMgr) UpdateNonce(groupId string, prefix ...string) (nonce uint64, err error) {
-	nodeprefix := getPrefix(prefix...)
-	key := nodeprefix + NONCE_PREFIX + "_" + groupId
-	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
-	return seq.Next()
-}
+//func (dbMgr *DbMgr) UpdateNonce(groupId string, prefix ...string) (nonce uint64, err error) {
+//	nodeprefix := utils.GetPrefix(prefix...)
+//	key := nodeprefix + NONCE_PREFIX + "_" + groupId
+//	seq, err := dbMgr.Db.GetSequence([]byte(key), 1)
+//	if err == nil {
+//		defer seq.Release()
+//		return seq.Next()
+//	}
+//	return seq, err
+//}
 
 //get next nonce
-func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
-	nodeprefix := getPrefix(prefix...)
+func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, error) {
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + NONCE_PREFIX + "_" + groupId
-	seq, err := dbMgr.Db.GetSequence([]byte(key), 100)
-	return seq.Next()
+
+	nonceseq, succ := dbMgr.seq.Load(key)
+	if succ == false {
+		newseq, err := dbMgr.Db.GetSequence([]byte(key), 1)
+		if err != nil {
+			return 0, err
+		}
+		dbMgr.seq.Store(key, newseq)
+		return newseq.Next()
+	} else {
+		return nonceseq.(Sequence).Next()
+	}
 }
 
 //update group snapshot
 func (dbMgr *DbMgr) UpdateSnapshotTag(groupId string, snapshotTag *quorumpb.SnapShotTag, prefix ...string) error {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
 	value, err := proto.Marshal(snapshotTag)
 	if err != nil {
@@ -1531,7 +1548,7 @@ func (dbMgr *DbMgr) UpdateSnapshotTag(groupId string, snapshotTag *quorumpb.Snap
 }
 
 func (dbMgr *DbMgr) GetSnapshotTag(groupId string, prefix ...string) (*quorumpb.SnapShotTag, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
 
 	//check if item exist
@@ -1559,7 +1576,7 @@ func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error
 		return err
 	}
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + SMA_PREFIX + "_" + item.GroupId + "_" + item.Type
 
 	if item.Action == quorumpb.ActionType_ADD {
@@ -1584,7 +1601,7 @@ func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error
 func (dbMgr *DbMgr) GetAllSchemasByGroup(groupId string, prefix ...string) ([]*quorumpb.SchemaItem, error) {
 	var scmList []*quorumpb.SchemaItem
 
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + SMA_PREFIX + "_" + groupId
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -1604,7 +1621,7 @@ func (dbMgr *DbMgr) GetAllSchemasByGroup(groupId string, prefix ...string) ([]*q
 }
 
 func (dbMgr *DbMgr) GetSchemaByGroup(groupId, schemaType string, prefix ...string) (*quorumpb.SchemaItem, error) {
-	nodeprefix := getPrefix(prefix...)
+	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + SMA_PREFIX + "_" + groupId + "_" + schemaType
 
 	schema := quorumpb.SchemaItem{}
@@ -1621,31 +1638,23 @@ func (dbMgr *DbMgr) GetSchemaByGroup(groupId, schemaType string, prefix ...strin
 	return &schema, err
 }
 
-func getPrefix(prefix ...string) string {
-	nodeprefix := ""
-	if len(prefix) == 1 {
-		nodeprefix = prefix[0] + "_"
-	}
-	return nodeprefix
-}
-
 /*
-	//test only, show db contents
-	err = dbMgr.TrxDb.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			err := item.Value(func(v []byte) error {
-				fmt.Printf("key=%s, value=%s\n", k, v)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})*/
+   //test only, show db contents
+   err = dbMgr.TrxDb.View(func(txn *badger.Txn) error {
+           opts := badger.DefaultIteratorOptions
+           opts.PrefetchSize = 10
+           it := txn.NewIterator(opts)
+           defer it.Close()
+           for it.Rewind(); it.Valid(); it.Next() {
+                   item := it.Item()
+                   k := item.Key()
+                   err := item.Value(func(v []byte) error {
+                           fmt.Printf("key=%s, value=%s\n", k, v)
+                           return nil
+                   })
+                   if err != nil {
+                           return err
+                   }
+           }
+           return nil
+   })*/

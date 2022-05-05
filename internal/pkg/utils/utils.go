@@ -90,3 +90,11 @@ func IsDirEmpty(name string) (bool, error) {
 func PathTrimExt(path string) string {
 	return strings.TrimSuffix(path, filepath.Ext(path))
 }
+
+func GetPrefix(prefix ...string) string {
+	nodeprefix := ""
+	if len(prefix) == 1 {
+		nodeprefix = prefix[0] + "_"
+	}
+	return nodeprefix
+}

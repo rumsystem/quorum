@@ -16,6 +16,8 @@ replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
 
 replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3
 
+//replace github.com/rumsystem/rumchaindata => ../rumchaindata
+//replace github.com/rumsystem/keystore => ../keystore
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
 //replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
@@ -58,9 +60,10 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/keystore v0.0.0-20220411174806-f3f15814a8f5
+	github.com/rumsystem/rumchaindata v0.0.0-20220425182859-6604d5e84f5e
 	github.com/spf13/viper v1.10.1
 	github.com/swaggo/echo-swagger v1.1.0
-	github.com/swaggo/swag v1.7.0
+	github.com/swaggo/swag v1.8.1
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	google.golang.org/protobuf v1.28.0
 )

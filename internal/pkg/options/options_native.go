@@ -88,6 +88,13 @@ func (opt *NodeOptions) SetSignKeyMap(keyname, addr string) error {
 	return opt.writeToconfig()
 }
 
+func (opt *NodeOptions) DelSignKeyMap(keyname string) error {
+	opt.mu.Lock()
+	defer opt.mu.Unlock()
+	delete(opt.SignKeyMap, keyname)
+	return opt.writeToconfig()
+}
+
 func writeDefaultToconfig(v *viper.Viper) error {
 	v.Set("EnableNat", true)
 	v.Set("EnableRumExchange", false)

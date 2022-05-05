@@ -19,27 +19,26 @@ import (
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-connmgr"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	peerstore "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/api"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
-	"github.com/rumsystem/quorum/testnode"
-
+	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	appapi "github.com/rumsystem/quorum/pkg/app/api"
+	"github.com/rumsystem/quorum/pkg/chainapi/api"
+	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	"github.com/rumsystem/quorum/testnode"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
 
 	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
@@ -363,7 +362,7 @@ func mainRet(config cli.Config) int {
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
-		chain.InitPublishQueueWatcher(doneCh, pubqueueDb)
+		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()

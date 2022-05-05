@@ -13,8 +13,8 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
-	"github.com/rumsystem/quorum/internal/pkg/chain"
-	quorumpb "github.com/rumsystem/quorum/internal/pkg/pb"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var pubqueuePage = cview.NewFlex()

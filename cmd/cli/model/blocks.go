@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
-	qApi "github.com/rumsystem/quorum/internal/pkg/api"
+	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
 )
 
 // can only check from back to front
