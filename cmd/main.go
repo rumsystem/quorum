@@ -34,6 +34,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
@@ -291,7 +292,8 @@ func mainRet(config cli.Config) int {
 		}
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 		dbManager.TryMigration(1)
-		nodectx.InitCtx(ctx, "", node, dbManager, "pubsub", GitCommit)
+
+		nodectx.InitCtx(ctx, "", node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -338,7 +340,7 @@ func mainRet(config cli.Config) int {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
-		nodectx.InitCtx(ctx, nodename, node, dbManager, "pubsub", GitCommit)
+		nodectx.InitCtx(ctx, nodename, node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid

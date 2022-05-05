@@ -42,7 +42,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, user.nodename)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if !valid {
 		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", user.groupId, block.BlockId)
 		molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
-		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.nodename)
+		return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, user.nodename)
 	}
 
 	//search cache, gather all blocks can be connected with this block
@@ -94,12 +94,12 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	//move gathered blocks from cache to chain
 	for _, block := range blocks {
 		molauser_log.Debugf("<%s> move block <%s> from cache to chain", user.groupId, block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, user.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, user.nodename)
 		if err != nil {
 			return err
 		}
 
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.nodename)
+		err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, user.nodename)
 		if err != nil {
 			return err
 		}

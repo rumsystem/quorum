@@ -939,7 +939,7 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, chain.nodename)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -965,7 +965,7 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	if !valid {
 		chain_log.Debugf("<%s> remove invalid block <%s> from cache", chain.groupId, block.BlockId)
 		chain_log.Warningf("<%s> invalid block <%s>", chain.groupId, err.Error())
-		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
+		return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, chain.nodename)
 	}
 
 	//search cache, gather all blocks can be connected with this block
@@ -990,12 +990,12 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	//move blocks from cache to normal
 	for _, block := range blocks {
 		chain_log.Debugf("<%s> move block <%s> from cache to chain", chain.groupId, block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, chain.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, chain.nodename)
 		if err != nil {
 			return err
 		}
 
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, chain.nodename)
+		err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, chain.nodename)
 		if err != nil {
 			return err
 		}

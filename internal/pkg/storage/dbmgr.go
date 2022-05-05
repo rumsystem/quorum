@@ -253,65 +253,9 @@ func (dbMgr *DbMgr) IsParentExist(parentBlockId string, cached bool, prefix ...s
 	return dbMgr.Db.IsExist([]byte(pKey))
 }
 
-//add block
-func (dbMgr *DbMgr) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...string) error {
-	isSaved, err := dbMgr.IsBlockExist(newBlock.BlockId, cached, prefix...)
-	if err != nil {
-		return err
-	}
-
-	if isSaved {
-		dbmgr_log.Debugf("Block <%s> already saved, ignore", newBlock.BlockId)
-		return nil
-	}
-
-	//create new chunk
-	var chunk *quorumpb.BlockDbChunk
-	chunk = &quorumpb.BlockDbChunk{}
-	chunk.BlockId = newBlock.BlockId
-	chunk.BlockItem = newBlock
-
-	if cached {
-		chunk.Height = -1        //Set height of cached chunk to -1
-		chunk.ParentBlockId = "" //Set parent of cached chund to empty ""
-	} else {
-		//try get parent chunk
-		pChunk, err := dbMgr.getBlockChunk(newBlock.PrevBlockId, cached, prefix...)
-		if err != nil {
-			return err
-		}
-
-		//update parent chunk
-		pChunk.SubBlockId = append(pChunk.SubBlockId, chunk.BlockId)
-		err = dbMgr.saveBlockChunk(pChunk, cached, prefix...)
-		if err != nil {
-			return err
-		}
-
-		chunk.Height = pChunk.Height + 1     //increase height
-		chunk.ParentBlockId = pChunk.BlockId //point to parent
-	}
-
-	//save chunk
-	return dbMgr.saveBlockChunk(chunk, cached, prefix...)
-}
-
-//remove block
-func (dbMgr *DbMgr) RmBlock(blockId string, cached bool, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var key string
-	if cached {
-		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + blockId
-	} else {
-		key = nodeprefix + BLK_PREFIX + "_" + blockId
-	}
-
-	return dbMgr.Db.Delete([]byte(key))
-}
-
 //get block by block_id
 func (dbMgr *DbMgr) GetBlock(blockId string, cached bool, prefix ...string) (*quorumpb.Block, error) {
-	pChunk, err := dbMgr.getBlockChunk(blockId, cached, prefix...)
+	pChunk, err := dbMgr.GetBlockChunk(blockId, cached, prefix...)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +304,7 @@ func (dbMgr *DbMgr) GatherBlocksFromCache(newBlock *quorumpb.Block, cached bool,
 }
 
 func (dbMgr *DbMgr) GetBlockHeight(blockId string, prefix ...string) (int64, error) {
-	pChunk, err := dbMgr.getBlockChunk(blockId, false, prefix...)
+	pChunk, err := dbMgr.GetBlockChunk(blockId, false, prefix...)
 	if err != nil {
 		return -1, err
 	}
@@ -369,13 +313,13 @@ func (dbMgr *DbMgr) GetBlockHeight(blockId string, prefix ...string) (int64, err
 
 func (dbMgr *DbMgr) GetSubBlock(blockId string, prefix ...string) ([]*quorumpb.Block, error) {
 	var result []*quorumpb.Block
-	chunk, err := dbMgr.getBlockChunk(blockId, false, prefix...)
+	chunk, err := dbMgr.GetBlockChunk(blockId, false, prefix...)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, subChunkId := range chunk.SubBlockId {
-		subChunk, err := dbMgr.getBlockChunk(subChunkId, false, prefix...)
+		subChunk, err := dbMgr.GetBlockChunk(subChunkId, false, prefix...)
 		if err != nil {
 			return nil, err
 		}
@@ -386,17 +330,17 @@ func (dbMgr *DbMgr) GetSubBlock(blockId string, prefix ...string) ([]*quorumpb.B
 }
 
 func (dbMgr *DbMgr) GetParentBlock(blockId string, prefix ...string) (*quorumpb.Block, error) {
-	chunk, err := dbMgr.getBlockChunk(blockId, false, prefix...)
+	chunk, err := dbMgr.GetBlockChunk(blockId, false, prefix...)
 	if err != nil {
 		return nil, err
 	}
 
-	parentChunk, err := dbMgr.getBlockChunk(chunk.ParentBlockId, false, prefix...)
+	parentChunk, err := dbMgr.GetBlockChunk(chunk.ParentBlockId, false, prefix...)
 	return parentChunk.BlockItem, err
 }
 
 //get block chunk
-func (dbMgr *DbMgr) getBlockChunk(blockId string, cached bool, prefix ...string) (*quorumpb.BlockDbChunk, error) {
+func (dbMgr *DbMgr) GetBlockChunk(blockId string, cached bool, prefix ...string) (*quorumpb.BlockDbChunk, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if cached {
@@ -420,7 +364,7 @@ func (dbMgr *DbMgr) getBlockChunk(blockId string, cached bool, prefix ...string)
 }
 
 //save block chunk
-func (dbMgr *DbMgr) saveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, prefix ...string) error {
+func (dbMgr *DbMgr) SaveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if cached {
