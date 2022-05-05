@@ -22,6 +22,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: ApiTest
-      run: go test -v internal/pkg/api/*
+      run: go test -v pkg/chainapi/api/*
     - name: MainTest
       run: go test -timeout 1800s cmd/main_test.go -v -nodes=3 -posts=10 -timerange=5 -groups=5 -synctime=20
