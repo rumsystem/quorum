@@ -25,4 +25,12 @@ allow {
   input.method == "GET"
   input.path = ["api", "v1", "trx", group_id, trx_id]
   input.role == "others"
-}`
+}
+
+# Allow role other access POST /app/api/v1/token/refresh
+allow {
+  input.method == "POST"
+  input.path = ["app", "api", "v1", "token", "refresh"]
+  input.role == "others"
+}
+`
