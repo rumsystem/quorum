@@ -3,7 +3,7 @@
 
 package api
 
-import "github.com/rumsystem/quorum/internal/pkg/handlers"
+import "github.com/rumsystem/quorum/pkg/chainapi/handlers"
 
 func AddRelayServers(peers []string) (bool, error) {
 	return handlers.AddRelayServers(peers)
