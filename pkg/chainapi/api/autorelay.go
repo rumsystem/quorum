@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/rumsystem/quorum/internal/pkg/handlers"
+	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
 // @Tags Node
