@@ -734,10 +734,10 @@ func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string)
 //}
 
 func (dbMgr *DbMgr) UpdateChainConfigTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return dbMgr.UpdateChainConfig(trx.Data, prefix)
+	return dbMgr.UpdateChainConfig(trx.Data, prefix...)
 }
 
-func (dbMgr *DbMgr) UpdateChainConfig(data []byte, prefix []string) (err error) {
+func (dbMgr *DbMgr) UpdateChainConfig(data []byte, prefix ...string) (err error) {
 	dbmgr_log.Infof("UpdateChainConfig called")
 	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.ChainConfigItem{}
@@ -936,10 +936,10 @@ func (dbMgr *DbMgr) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Tr
 }
 
 func (dbMgr *DbMgr) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return dbMgr.UpdateProducer(trx.Data, prefix)
+	return dbMgr.UpdateProducer(trx.Data, prefix...)
 }
 
-func (dbMgr *DbMgr) UpdateProducer(data []byte, prefix []string) (err error) {
+func (dbMgr *DbMgr) UpdateProducer(data []byte, prefix ...string) (err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.ProducerItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
@@ -972,10 +972,10 @@ func (dbMgr *DbMgr) UpdateProducer(data []byte, prefix []string) (err error) {
 }
 
 func (dbMgr *DbMgr) UpdateUserTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return dbMgr.UpdateUser(trx.Data, prefix)
+	return dbMgr.UpdateUser(trx.Data, prefix...)
 }
 
-func (dbMgr *DbMgr) UpdateUser(data []byte, prefix []string) (err error) {
+func (dbMgr *DbMgr) UpdateUser(data []byte, prefix ...string) (err error) {
 
 	nodeprefix := utils.GetPrefix(prefix...)
 
@@ -1009,10 +1009,10 @@ func (dbMgr *DbMgr) UpdateUser(data []byte, prefix []string) (err error) {
 }
 
 func (dbMgr *DbMgr) UpdateAppConfigTrx(trx *quorumpb.Trx, Prefix ...string) (err error) {
-	return dbMgr.UpdateAppConfig(trx.Data, Prefix)
+	return dbMgr.UpdateAppConfig(trx.Data, Prefix...)
 }
 
-func (dbMgr *DbMgr) UpdateAppConfig(data []byte, Prefix []string) (err error) {
+func (dbMgr *DbMgr) UpdateAppConfig(data []byte, Prefix ...string) (err error) {
 	nodeprefix := utils.GetPrefix(Prefix...)
 	item := &quorumpb.AppConfigItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
@@ -1308,19 +1308,9 @@ func (dbMgr *DbMgr) IsProducer(groupId, producerPubKey string, prefix ...string)
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
-func (dbMgr *DbMgr) UpdateAnnounceTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return dbMgr.UpdateAnnounce(trx.Data, prefix)
-}
-
-func (dbMgr *DbMgr) UpdateAnnounce(data []byte, prefix []string) (err error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	item := &quorumpb.AnnounceItem{}
-	if err := proto.Unmarshal(data, item); err != nil {
-		return err
-	}
-	key := nodeprefix + ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + item.SignPubkey
-	return dbMgr.Db.Set([]byte(key), data)
-}
+//func (dbMgr *DbMgr) UpdateAnnounceTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
+//	return dbMgr.UpdateAnnounce(trx.Data, prefix)
+//}
 
 func (dbMgr *DbMgr) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
 	var aList []*quorumpb.AnnounceItem
@@ -1412,36 +1402,6 @@ func (dbMgr *DbMgr) IsUserAnnounced(groupId, userSignPubkey string, prefix ...st
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
-func (dbMgr *DbMgr) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
-
-	var pAnnounced *quorumpb.AnnounceItem
-	pAnnounced = &quorumpb.AnnounceItem{}
-
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return err
-	}
-
-	err = proto.Unmarshal(value, pAnnounced)
-	if err != nil {
-		return err
-	}
-
-	if result {
-		pAnnounced.Result = quorumpb.ApproveType_APPROVED
-	} else {
-		pAnnounced.Result = quorumpb.ApproveType_ANNOUNCED
-	}
-
-	value, err = proto.Marshal(pAnnounced)
-	if err != nil {
-		return err
-	}
-	return dbMgr.Db.Set([]byte(key), value)
-}
-
 func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userPubKey
@@ -1449,18 +1409,6 @@ func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, 
 	//check if group user (announced) exist
 	return dbMgr.Db.IsExist([]byte(key))
 }
-
-//update group nonce
-//func (dbMgr *DbMgr) UpdateNonce(groupId string, prefix ...string) (nonce uint64, err error) {
-//	nodeprefix := utils.GetPrefix(prefix...)
-//	key := nodeprefix + NONCE_PREFIX + "_" + groupId
-//	seq, err := dbMgr.Db.GetSequence([]byte(key), 1)
-//	if err == nil {
-//		defer seq.Release()
-//		return seq.Next()
-//	}
-//	return seq, err
-//}
 
 //get next nonce
 func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, error) {

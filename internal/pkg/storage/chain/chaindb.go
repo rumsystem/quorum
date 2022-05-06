@@ -5,6 +5,7 @@ import (
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type Storage struct {
@@ -75,4 +76,44 @@ func (cs *Storage) RmBlock(blockId string, cached bool, prefix ...string) error 
 	}
 
 	return cs.dbmgr.Db.Delete([]byte(key))
+}
+
+func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
+	nodeprefix := utils.GetPrefix(prefix...)
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
+
+	var pAnnounced *quorumpb.AnnounceItem
+	pAnnounced = &quorumpb.AnnounceItem{}
+
+	value, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	err = proto.Unmarshal(value, pAnnounced)
+	if err != nil {
+		return err
+	}
+
+	if result {
+		pAnnounced.Result = quorumpb.ApproveType_APPROVED
+	} else {
+		pAnnounced.Result = quorumpb.ApproveType_ANNOUNCED
+	}
+
+	value, err = proto.Marshal(pAnnounced)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.Db.Set([]byte(key), value)
+}
+
+func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
+	nodeprefix := utils.GetPrefix(prefix...)
+	item := &quorumpb.AnnounceItem{}
+	if err := proto.Unmarshal(data, item); err != nil {
+		return err
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + item.SignPubkey
+	return cs.dbmgr.Db.Set([]byte(key), data)
 }

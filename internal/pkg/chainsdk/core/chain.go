@@ -496,7 +496,7 @@ func (chain *Chain) UpdProducerList() {
 	announcedProducers, _ := nodectx.GetDbMgr().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
 		_, ok := chain.ProducerPool[item.SignPubkey]
-		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounceResult(quorumpb.AnnounceType_AS_PRODUCER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
 		if err != nil {
 			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
@@ -542,7 +542,7 @@ func (chain *Chain) UpdUserList() {
 	announcedUsers, _ := nodectx.GetDbMgr().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedUsers {
 		_, ok := chain.userPool[item.SignPubkey]
-		err := nodectx.GetDbMgr().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
 		if err != nil {
 			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
@@ -797,7 +797,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 			chain.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(trx.Data, nodename)
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
 			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
@@ -887,7 +887,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 			chain.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateAnnounceTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(trx.Data, nodename)
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
 			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
