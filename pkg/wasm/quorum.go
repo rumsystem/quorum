@@ -20,6 +20,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
+	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	quorumConfig "github.com/rumsystem/quorum/pkg/wasm/config"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 )
@@ -75,7 +76,7 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 
-	nodectx.InitCtx(ctx, "default", node, dbMgr, "pubsub", "wasm-version")
+	nodectx.InitCtx(ctx, "default", node, dbMgr, chainstorage.NewChainStorage(dbMgr), "pubsub", "wasm-version")
 	nodectx.GetNodeCtx().Keystore = k
 	keys, err := quorumCrypto.SignKeytoPeerKeys(defaultKey)
 	if err != nil {

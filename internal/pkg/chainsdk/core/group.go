@@ -79,7 +79,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.Init(grp)
 
-	err := nodectx.GetDbMgr().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
+	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	group_log.Infof("Group <%s> created", grp.Item.GroupId)
 
-	err = nodectx.GetDbMgr().AddGroup(grp.Item)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
-	return nodectx.GetDbMgr().RmGroup(grp.Item)
+	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item)
 }
 
 func (grp *Group) ClearGroup() error {

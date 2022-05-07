@@ -32,7 +32,7 @@ func (ssreceiver *MolassesSnapshotReceiver) Init(item *quorumpb.GroupItem, noden
 	ssreceiver.nodename = nodename
 	ssreceiver.groupId = item.GroupId
 	ssreceiver.snapshotpackages = make(map[string]map[string]*quorumpb.Snapshot)
-	snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(item.GroupId, nodename)
+	snapshotTag, err := nodectx.GetNodeCtx().GetChainStorage().GetSnapshotTag(item.GroupId, nodename)
 	if err != nil {
 		snapshotTag = &quorumpb.SnapShotTag{}
 		snapshotTag.Nonce = 0
@@ -176,7 +176,7 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 	ssreceiver.snapshotTag.SnapshotPackageId = s.SnapshotPackageId
 	ssreceiver.snapshotTag.SenderPubkey = s.SenderPubkey
 
-	err := nodectx.GetDbMgr().UpdateSnapshotTag(ssreceiver.groupId, ssreceiver.snapshotTag, ssreceiver.nodename)
+	err := nodectx.GetNodeCtx().GetChainStorage().UpdateSnapshotTag(ssreceiver.groupId, ssreceiver.snapshotTag, ssreceiver.nodename)
 	if err != nil {
 		snapshotreceiver_log.Warningf("<%s> UpdateSnapshotTag failed, err <%s>", ssreceiver.groupId, err.Error())
 		return err

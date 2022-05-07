@@ -114,25 +114,6 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 	}
 }
 
-//save trx
-func (dbMgr *DbMgr) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_" + trx.TrxId + "_" + fmt.Sprint(trx.Nonce)
-	value, err := proto.Marshal(trx)
-	if err != nil {
-		return err
-	}
-	return dbMgr.Db.Set([]byte(key), value)
-}
-
-//UNUSED
-//rm Trx
-func (dbMgr *DbMgr) RmTrx(trxId string, nonce int64, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
-	return dbMgr.Db.Delete([]byte(key))
-}
-
 //Get Trx
 func (dbMgr *DbMgr) GetTrx(trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
@@ -189,42 +170,11 @@ func (dbMgr *DbMgr) GetTrx(trxId string, storagetype TrxStorageType, prefix ...s
 	return &trx, nonces, err
 }
 
-func (dbMgr *DbMgr) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
-	return dbMgr.AddTrx(trx, prefix...)
-}
-
 func (dbMgr *DbMgr) IsTrxExist(trxId string, nonce int64, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
 
 	return dbMgr.Db.IsExist([]byte(key))
-}
-
-func (dbMgr *DbMgr) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + BLK_PREFIX + "_" + gensisBlock.BlockId
-
-	isExist, err := dbMgr.Db.IsExist([]byte(key))
-	if err != nil {
-		return err
-	}
-	if isExist {
-		dbmgr_log.Debugf("Genesis block <%s> exist, do nothing", gensisBlock.BlockId)
-		return nil
-	}
-
-	chunk := quorumpb.BlockDbChunk{}
-	chunk.BlockId = gensisBlock.BlockId
-	chunk.BlockItem = gensisBlock
-	chunk.ParentBlockId = ""
-	chunk.Height = 0
-
-	value, err := proto.Marshal(&chunk)
-	if err != nil {
-		return err
-	}
-
-	return dbMgr.Db.Set([]byte(key), value)
 }
 
 //check if block existed
@@ -260,47 +210,6 @@ func (dbMgr *DbMgr) GetBlock(blockId string, cached bool, prefix ...string) (*qu
 		return nil, err
 	}
 	return pChunk.BlockItem, nil
-}
-
-func (dbMgr *DbMgr) GatherBlocksFromCache(newBlock *quorumpb.Block, cached bool, prefix ...string) ([]*quorumpb.Block, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var blocks []*quorumpb.Block
-	blocks = append(blocks, newBlock)
-	pointer1 := 0 //point to head
-	pointer2 := 0 //point to tail
-
-	pre := nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
-
-	for {
-		err := dbMgr.Db.PrefixForeach([]byte(pre), func(k []byte, v []byte, err error) error {
-			if err != nil {
-				return err
-			}
-			chunk := quorumpb.BlockDbChunk{}
-			perr := proto.Unmarshal(v, &chunk)
-			if perr != nil {
-				return perr
-			}
-			if chunk.BlockItem.PrevBlockId == blocks[pointer1].BlockId {
-				blocks = append(blocks, chunk.BlockItem)
-				pointer2++
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			return blocks, err
-		}
-
-		if pointer1 == pointer2 {
-			break
-		}
-
-		pointer1++
-	}
-
-	return blocks, nil
 }
 
 func (dbMgr *DbMgr) GetBlockHeight(blockId string, prefix ...string) (int64, error) {
@@ -378,48 +287,6 @@ func (dbMgr *DbMgr) SaveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, pr
 		return err
 	}
 	return dbMgr.Db.Set([]byte(key), value)
-}
-
-func (dbMgr *DbMgr) AddGroup(groupItem *quorumpb.GroupItem) error {
-	//check if group exist
-	key := GROUPITEM_PREFIX + "_" + groupItem.GroupId
-	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(key))
-	if exist {
-		return errors.New("Group with same GroupId existed")
-	}
-
-	//add group to db
-	value, err := proto.Marshal(groupItem)
-	if err != nil {
-		return err
-	}
-	return dbMgr.GroupInfoDb.Set([]byte(key), value)
-}
-
-func (dbMgr *DbMgr) UpdGroup(groupItem *quorumpb.GroupItem) error {
-	value, err := proto.Marshal(groupItem)
-	if err != nil {
-		return err
-	}
-
-	key := GROUPITEM_PREFIX + "_" + groupItem.GroupId
-	//upd group to db
-	return dbMgr.GroupInfoDb.Set([]byte(key), value)
-}
-
-func (dbMgr *DbMgr) RmGroup(item *quorumpb.GroupItem) error {
-	//check if group exist
-	key := GROUPITEM_PREFIX + "_" + item.GroupId
-	exist, err := dbMgr.GroupInfoDb.IsExist([]byte(key))
-	if !exist {
-		if err != nil {
-			return err
-		}
-		return errors.New("Group Not Found")
-	}
-
-	//delete group
-	return dbMgr.GroupInfoDb.Delete([]byte(key))
 }
 
 func (dbMgr *DbMgr) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) (string, error) {
@@ -1425,68 +1292,6 @@ func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, erro
 		return newseq.Next()
 	} else {
 		return nonceseq.(Sequence).Next()
-	}
-}
-
-//update group snapshot
-func (dbMgr *DbMgr) UpdateSnapshotTag(groupId string, snapshotTag *quorumpb.SnapShotTag, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
-	value, err := proto.Marshal(snapshotTag)
-	if err != nil {
-		return err
-	}
-	return dbMgr.Db.Set([]byte(key), value)
-}
-
-func (dbMgr *DbMgr) GetSnapshotTag(groupId string, prefix ...string) (*quorumpb.SnapShotTag, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
-
-	//check if item exist
-	exist, err := dbMgr.Db.IsExist([]byte(key))
-	if !exist {
-		if err != nil {
-			return nil, err
-		}
-		return nil, errors.New("SnapshotTag Not Found")
-	}
-
-	snapshotTag := quorumpb.SnapShotTag{}
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-
-	err = proto.Unmarshal(value, &snapshotTag)
-	return &snapshotTag, err
-}
-
-func (dbMgr *DbMgr) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error) {
-	item := &quorumpb.SchemaItem{}
-	if err := proto.Unmarshal(trx.Data, item); err != nil {
-		return err
-	}
-
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + SMA_PREFIX + "_" + item.GroupId + "_" + item.Type
-
-	if item.Action == quorumpb.ActionType_ADD {
-		return dbMgr.Db.Set([]byte(key), trx.Data)
-	} else if item.Action == quorumpb.ActionType_REMOVE {
-		//check if item exist
-		exist, err := dbMgr.Db.IsExist([]byte(key))
-		if !exist {
-			if err != nil {
-				return err
-			}
-			return errors.New("Announce Not Found")
-		}
-
-		return dbMgr.Db.Delete([]byte(key))
-	} else {
-		err := errors.New("unknow msgType")
-		return err
 	}
 }
 

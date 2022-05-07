@@ -73,7 +73,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, user.nodename)
+	blocks, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, true, user.nodename)
 	if err != nil {
 		return err
 	}

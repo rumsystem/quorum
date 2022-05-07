@@ -85,7 +85,7 @@ func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 	chain.group.Item.HighestBlockId = blockId
 	chain.group.Item.LastUpdate = time.Now().UnixNano()
 	chain_log.Infof("<%s> Chain Info updated %d, %v", chain.group.Item.GroupId, height, blockId)
-	return nodectx.GetDbMgr().UpdGroup(chain.group.Item)
+	return nodectx.GetNodeCtx().GetChainStorage().UpdGroup(chain.group.Item)
 }
 
 func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
@@ -733,7 +733,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 
 		if isExist {
 			chain_log.Debugf("<%s> trx <%s> existed, update trx only", chain.groupId, trx.TrxId)
-			nodectx.GetDbMgr().AddTrx(trx)
+			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx)
 			continue
 		}
 
@@ -773,7 +773,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 
 		//check if snapshotTag is available
 		if trx.Type != quorumpb.TrxType_POST {
-			snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(trx.GroupId, nodename)
+			snapshotTag, err := nodectx.GetNodeCtx().GetChainStorage().GetSnapshotTag(trx.GroupId, nodename)
 			if err == nil && snapshotTag != nil {
 				if snapshotTag.HighestHeight > chain.group.Item.HighestHeight {
 					chain_log.Debugf("<%s> snapshotTag exist, trx already applied, ignore <%s>", chain.groupId, trx.TrxId)
@@ -809,7 +809,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 			}
 		case quorumpb.TrxType_SCHEMA:
 			chain_log.Debugf("<%s> apply SCHEMA trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateSchema(trx, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
 		}
@@ -818,7 +818,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 		trx.Data = originalData
 
 		//save trx to db
-		nodectx.GetDbMgr().AddTrx(trx, nodename)
+		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 	}
 	return nil
 }
@@ -835,7 +835,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 
 		if isExist {
 			chain_log.Debugf("<%s> trx <%s> existed, update trx", chain.groupId, trx.TrxId)
-			nodectx.GetDbMgr().AddTrx(trx)
+			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx)
 			continue
 		}
 
@@ -899,7 +899,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 			}
 		case quorumpb.TrxType_SCHEMA:
 			chain_log.Debugf("<%s> apply SCHEMA trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateSchema(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateSchema(trx, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
 		}
@@ -908,7 +908,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 		trx.Data = originalData
 
 		//save trx to db
-		nodectx.GetDbMgr().AddTrx(trx, nodename)
+		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 	}
 
 	return nil
@@ -969,7 +969,7 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, chain.nodename)
+	blocks, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, true, chain.nodename)
 	if err != nil {
 		return err
 	}
