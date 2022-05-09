@@ -76,6 +76,8 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 		return false, err
 	}
 
+	node.SetRumExchange(ctx, dbMgr)
+
 	nodectx.InitCtx(ctx, "default", node, dbMgr, "pubsub", "wasm-version")
 	nodectx.GetNodeCtx().Keystore = k
 	keys, err := quorumCrypto.SignKeytoPeerKeys(defaultKey)

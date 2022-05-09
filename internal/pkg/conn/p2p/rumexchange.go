@@ -103,7 +103,9 @@ func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
 	}
 	//new stream
 	ctx, cancel := context.WithCancel(context.Background())
-	s, err := r.Host.NewStream(ctx, peerid, r.ProtocolId)
+
+	// could be a transient stream(relay)
+	s, err := r.Host.NewStream(network.WithUseTransient(ctx, "quorum-relay"), peerid, r.ProtocolId)
 	newpoolitem := &streamPoolItem{s: s, cancel: cancel}
 	if err != nil {
 		return nil, err

@@ -187,9 +187,6 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
 	peerStatus := NewPeerStatus()
-	rexnotification := make(chan RexNotification, 1)
-	rexservice := NewRexService(host, peerStatus, nodeNetwork, ProtocolPrefix, rexnotification)
-	rexservice.SetDelegate()
 
 	nodeName := "default"
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodeName)

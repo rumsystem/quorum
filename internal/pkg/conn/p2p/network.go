@@ -14,6 +14,7 @@ import (
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/stats"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -159,4 +160,25 @@ func (node *Node) PeersProtocol() *map[string][]string {
 		}
 	}
 	return &protocolpeers
+}
+
+func (node *Node) SetRumExchange(ctx context.Context, dbmgr *storage.DbMgr) {
+	peerStatus := NewPeerStatus()
+	var rexnotification chan RexNotification
+	rexnotification = make(chan RexNotification, 1)
+	var rexservice *RexService
+	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice.SetDelegate()
+	rexchaindata := NewRexChainData(rexservice)
+	rexrelay := NewRexRelay(rexservice, dbmgr)
+	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
+	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
+	networklog.Infof("Enable protocol RumExchange")
+
+	node.peerStatus = peerStatus
+	node.RumExchange = rexservice
+
+	if rexnotification != nil {
+		go node.rexhandler(ctx, rexnotification)
+	}
 }
