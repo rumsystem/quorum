@@ -26,7 +26,7 @@ type TokenItem struct {
 	Token string `json:"token"`
 }
 
-func getJWTKey(h *Handler) (string, error) {
+func getJWTKey() (string, error) {
 	// get JWTKey from node options config file
 	nodeOpt := options.GetNodeOptions()
 	if nodeOpt == nil {
@@ -52,9 +52,6 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 			r := c.Request()
 			if strings.HasPrefix(r.Host, "localhost:") || r.Host == "localhost" || strings.HasPrefix(r.Host, "127.0.0.1") {
 				return true
-			} else if strings.HasPrefix(r.URL.Path, "/app/api/v1/token/apply") {
-				// FIXME: hardcode url path
-				return true
 			}
 
 			return false
@@ -64,12 +61,12 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 	return config
 }
 
-func GetJWTRole(c echo.Context, jwtContextKey string) string {
-	token := c.Get(jwtContextKey).(*jwt.Token)
-	if token == nil {
+func GetJWTRole(c echo.Context) string {
+	token, err := getJWTToken(c)
+	if err != nil {
+		logger.Errorf("get jwt token failed: %s", err)
 		return ""
 	}
-
 	claims := token.Claims.(jwt.MapClaims)
 	role, ok := claims["role"]
 	if !ok {
@@ -95,15 +92,21 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 	}
 
 	// check token
-	jwtKey, err := getJWTKey(h)
+	jwtKey, err := getJWTKey()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"message": err.Error(),
 		})
 	}
 
+	token, err := getJWTToken(c)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"message": err.Error(),
+		})
+	}
+
 	// token invalid include expired or invalid
-	token := c.Get(jwtContextKey).(*jwt.Token)
 	tokenStr := token.Raw
 	if utils.IsJWTTokenExpired(tokenStr, jwtKey) {
 		logger.Infof("token expires, return new token")
@@ -113,7 +116,8 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 		})
 	}
 
-	role := GetJWTRole(c, jwtContextKey)
+	role := GetJWTRole(c)
+
 	newTokenStr, err := getToken(h.PeerName, role, jwtKey)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -127,4 +131,37 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, &TokenItem{Token: newTokenStr})
+}
+
+func jwtFromHeader(c echo.Context) (string, error) {
+	config := CustomJWTConfig("")
+	header := config.TokenLookup
+	authScheme := config.AuthScheme
+	parts := strings.Split(header, ":")
+	auth := c.Request().Header.Get(parts[1])
+	l := len(authScheme)
+	if len(auth) > l+1 && auth[:l] == authScheme {
+		return auth[l+1:], nil
+	}
+	return "", errors.New("missing jwt token")
+}
+
+// getJWTToken get jwt token from echo context or http request header
+// can not get jwt token from c.Get(jwtContextKey) for localhost or 127.0.0.1
+func getJWTToken(c echo.Context) (*jwt.Token, error) {
+	token := c.Get(jwtContextKey)
+	if token != nil {
+		return (token.(*jwt.Token)), nil
+	}
+
+	tokenStr, err := jwtFromHeader(c)
+	if err != nil {
+		return nil, err
+	}
+
+	jwtKey, err := getJWTKey()
+	if err != nil {
+		return nil, errors.New("can not get jwt key")
+	}
+	return utils.ParseJWTToken(tokenStr, jwtKey)
 }

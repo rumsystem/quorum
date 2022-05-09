@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"syscall"
 
 	"github.com/labstack/echo/v4"
@@ -29,23 +28,10 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(OpaWithConfig(OpaConfig{
-		Skipper: func(c echo.Context) bool { // skip localhost
-			host := c.Request().Host
-			if strings.HasPrefix(host, "localhost:") || host == "localhost" || strings.HasPrefix(host, "127.0.0.1:") || host == "127.0.0.1" {
-				return true
-			}
-			return false
-		},
-		Policy: policyStr,
-		Query:  "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
-		InputFunc: func(c echo.Context) interface{} {
-			r := c.Request()
-			return map[string]interface{}{
-				"method": r.Method,
-				"path":   strings.Split(strings.Trim(r.URL.Path, "/"), "/"),
-				"role":   appapi.GetJWTRole(c, customJWTConfig.ContextKey),
-			}
-		},
+		Skipper:   localhostSkipper,
+		Policy:    policyStr,
+		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
+		InputFunc: opaInputFunc,
 	}))
 	r := e.Group("/api")
 	a := e.Group("/app/api")
