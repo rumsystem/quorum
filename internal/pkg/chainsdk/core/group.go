@@ -140,7 +140,7 @@ func (grp *Group) LeaveGrp() error {
 }
 
 func (grp *Group) ClearGroup() error {
-	return nodectx.GetDbMgr().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StartSync() error {
@@ -168,7 +168,7 @@ func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
 
 func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetBlock(blockId, false, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(blockId, false, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
@@ -183,17 +183,17 @@ func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) 
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetSchemas() ([]*quorumpb.SchemaItem, error) {
 	group_log.Debugf("<%s> GetSchema called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAnnounceProducersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAnnounceProducersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
@@ -340,17 +340,17 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 
 func (grp *Group) GetChainSendTrxDenyList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
 	group_log.Debugf("<%s> GetChainSendTrxDenyList called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_DENY_LIST, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_DENY_LIST, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetChainSendTrxAllowList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
 	group_log.Debugf("<%s> GetChainSendTrxAllowList called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetSendTrxAuthMode(trxType quorumpb.TrxType) (quorumpb.TrxAuthMode, error) {
 	group_log.Debugf("<%s> GetSendTrxAuthMode called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetTrxAuthModeByGroupId(grp.Item.GroupId, trxType, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetTrxAuthModeByGroupId(grp.Item.GroupId, trxType, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) AskPeerId() {

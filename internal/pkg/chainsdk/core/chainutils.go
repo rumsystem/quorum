@@ -13,7 +13,7 @@ func (chain *Chain) RecalChainHeight(blocks []*quorumpb.Block, currentHeight int
 	newHighestBlock := currentHighestBlock
 
 	for _, block := range blocks {
-		blockHeight, err := nodectx.GetDbMgr().GetBlockHeight(block.BlockId, nodename)
+		blockHeight, err := nodectx.GetNodeCtx().GetChainStorage().GetBlockHeight(block.BlockId, nodename)
 		if err != nil {
 			return -1, "INVALID_BLOCK_ID", err
 		}
@@ -58,7 +58,7 @@ func (chain *Chain) GetMyTrxs(blockIds []string, nodename string, userSignPubkey
 	var trxs []*quorumpb.Trx
 
 	for _, blockId := range blockIds {
-		block, err := nodectx.GetDbMgr().GetBlock(blockId, false, nodename)
+		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(blockId, false, nodename)
 		if err != nil {
 			//chain_log.Warnf(err.Error())
 			continue

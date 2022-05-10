@@ -315,6 +315,7 @@ func mainRet(config cli.Config) int {
 		}
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 		dbManager.TryMigration(1)
+		newchainstorage := chainstorage.NewChainStorage(dbManager)
 
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
 		cm, err := connmgr.NewConnManager(10, nodeoptions.ConnsHi, connmgr.WithGracePeriod(60*time.Second))
@@ -323,7 +324,8 @@ func mainRet(config cli.Config) int {
 		}
 		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil {
-			node.SetRumExchange(ctx, dbManager)
+			//node.SetRumExchange(ctx, dbManager)
+			node.SetRumExchange(ctx, newchainstorage)
 		}
 
 		_ = node.Bootstrap(ctx, config)
@@ -340,7 +342,7 @@ func mainRet(config cli.Config) int {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
-		nodectx.InitCtx(ctx, nodename, node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", GitCommit)
+		nodectx.InitCtx(ctx, nodename, node, dbManager, newchainstorage, "pubsub", GitCommit)
 		nodectx.GetNodeCtx().Keystore = ksi
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid

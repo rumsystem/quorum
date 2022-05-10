@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	guuid "github.com/google/uuid"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -49,7 +50,7 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 
 	//added by cuicat
 	//check if trx sender is in group block list
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
 	if err != nil {
 		return nil, nil
 	}
@@ -95,7 +96,7 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 
 	//added by cuicat
 	//check if trx sender is in group block list
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
 	if err != nil {
 		return nil, nil
 	}
@@ -112,7 +113,7 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 		return nil, errors.New("Block not exist")
 	}
 
-	block, err := d.dbmgr.GetBlock(reqBlockItem.BlockId, false, prefix...)
+	block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.BlockId, false, prefix...)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +179,7 @@ func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks
 		return "", nil, false, err
 	}
 
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
@@ -226,7 +227,7 @@ func (d *ChainData) GetBlockBackward(trx *quorumpb.Trx) (requester string, block
 	}
 
 	//check previllage
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, d.nodename)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
@@ -243,7 +244,7 @@ func (d *ChainData) GetBlockBackward(trx *quorumpb.Trx) (requester string, block
 		return "", nil, false, fmt.Errorf("Block not exist")
 	}
 
-	blk, err := d.dbmgr.GetBlock(reqBlockItem.BlockId, false, d.nodename)
+	blk, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.BlockId, false, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}

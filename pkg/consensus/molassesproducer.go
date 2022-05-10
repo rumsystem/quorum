@@ -72,7 +72,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	defer producer.addTrxmu.Unlock()
 
 	//check if trx sender is in group block list
-	isAllow, err := nodectx.GetDbMgr().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, producer.nodename)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, producer.nodename)
 	if err != nil {
 		return
 	}
@@ -125,7 +125,7 @@ func (producer *MolassesProducer) startProduceBlock() {
 
 func (producer *MolassesProducer) produceBlock() {
 	molaproducer_log.Debugf("<%s> produceBlock called", producer.groupId)
-	topBlock, err := nodectx.GetDbMgr().GetBlock(producer.grpItem.HighestBlockId, false, producer.nodename)
+	topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(producer.grpItem.HighestBlockId, false, producer.nodename)
 	if err != nil {
 		molaproducer_log.Info(err.Error())
 		return

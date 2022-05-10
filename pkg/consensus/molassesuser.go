@@ -59,7 +59,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//get parent block
-	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, user.nodename)
+	parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.PrevBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//calculate new height
 	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.HighestHeight)
-	topBlock, err := nodectx.GetDbMgr().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
+	topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}

@@ -33,7 +33,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
+	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
@@ -206,7 +206,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	return newnode, nil
 }
 
-func (node *Node) SetRumExchange(ctx context.Context, dbmgr *storage.DbMgr) {
+func (node *Node) SetRumExchange(ctx context.Context, cs csdef.ChainStorageIface) {
 	peerStatus := NewPeerStatus()
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
@@ -214,7 +214,7 @@ func (node *Node) SetRumExchange(ctx context.Context, dbmgr *storage.DbMgr) {
 	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
-	rexrelay := NewRexRelay(rexservice, dbmgr)
+	rexrelay := NewRexRelay(rexservice, cs)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
 	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
 	networklog.Infof("Enable protocol RumExchange")
