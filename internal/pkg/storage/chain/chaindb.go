@@ -64,29 +64,6 @@ func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
 	return cs.dbmgr.Db.Set([]byte(key), data)
 }
 
-//save trx
-func (cs *Storage) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.TRX_PREFIX + "_" + trx.TrxId + "_" + fmt.Sprint(trx.Nonce)
-	value, err := proto.Marshal(trx)
-	if err != nil {
-		return err
-	}
-	return cs.dbmgr.Db.Set([]byte(key), value)
-}
-
-//UNUSED
-//rm Trx
-func (cs *Storage) RmTrx(trxId string, nonce int64, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
-	return cs.dbmgr.Db.Delete([]byte(key))
-}
-
-func (cs *Storage) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
-	return cs.AddTrx(trx, prefix...)
-}
-
 //update group snapshot
 func (cs *Storage) UpdateSnapshotTag(groupId string, snapshotTag *quorumpb.SnapShotTag, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)

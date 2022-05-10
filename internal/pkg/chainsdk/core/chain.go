@@ -725,7 +725,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 	chain_log.Debugf("<%s> applyTrxs called", chain.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
 		if err != nil {
 			chain_log.Debugf("<%s> %s", chain.groupId, err.Error())
 			continue
@@ -827,7 +827,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 	chain_log.Debugf("<%s> applyTrxs called", chain.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
 		if err != nil {
 			chain_log.Debugf("<%s> %s", chain.groupId, err.Error())
 			continue

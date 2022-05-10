@@ -408,7 +408,7 @@ func mainRet(config cli.Config) int {
 		appsync.Start(10)
 		apph := &appapi.Handler{
 			Appdb:     appdb,
-			Chaindb:   dbManager,
+			Trxdb:     newchainstorage,
 			GitCommit: GitCommit,
 			Apiroot:   apiaddress,
 			ConfigDir: config.ConfigDir,

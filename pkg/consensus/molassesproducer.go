@@ -83,7 +83,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	}
 
 	//check if trx with same nonce exist, !!Only applied to client which support nonce
-	isExist, err := nodectx.GetDbMgr().IsTrxExist(trx.TrxId, trx.Nonce, producer.nodename)
+	isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, producer.nodename)
 	if isExist {
 		molaproducer_log.Debugf("<%s> Trx <%s> with nonce <%d> already packaged, ignore <%s>", producer.groupId, trx.TrxId, trx.Nonce)
 		return
