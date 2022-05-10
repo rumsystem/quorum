@@ -5,6 +5,7 @@ import (
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -39,7 +40,7 @@ func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) ([
 	if err != nil {
 		appsynclog.Errorf("ParseBlockTrxs on group %s err:  ", groupid, err)
 	}
-	return appsync.dbmgr.GetSubBlock(block.BlockId, appsync.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(block.BlockId, appsync.nodename)
 }
 
 //return the length of the path between the from and to block. and if the path can reach to the toblock.
@@ -51,7 +52,7 @@ func (appsync *AppSync) chainLength(fromBlockId string, toBlockId string) (uint,
 	nextblockid := fromBlockId
 
 	for {
-		subblocks, err := appsync.dbmgr.GetSubBlock(nextblockid, appsync.nodename)
+		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(nextblockid, appsync.nodename)
 		if err != nil {
 			return 0, false //error
 		}
@@ -94,7 +95,7 @@ func (appsync *AppSync) findNextBlock(blocks []*quorumpb.Block, toBlockId string
 
 func (appsync *AppSync) RunSync(groupid string, lastBlockId string, newBlockId string) {
 	var nextblock *quorumpb.Block
-	subblocks, err := appsync.dbmgr.GetSubBlock(lastBlockId, appsync.nodename)
+	subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(lastBlockId, appsync.nodename)
 	if err == nil {
 		nextblock = appsync.findNextBlock(subblocks, newBlockId)
 		for {

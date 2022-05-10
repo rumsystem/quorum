@@ -76,7 +76,7 @@ func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
 			break
 		}
 
-		subblocks, err := nodectx.GetDbMgr().GetSubBlock(startFrom, nodename)
+		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(startFrom, nodename)
 		if err != nil {
 			syncer_log.Debugf("<%s> GetSubBlock failed <%s>", syncer.GroupId, err.Error())
 			syncer.rwMutex.Lock()

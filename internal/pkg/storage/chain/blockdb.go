@@ -9,7 +9,7 @@ import (
 
 //add block
 func (cs *Storage) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...string) error {
-	isSaved, err := cs.dbmgr.IsBlockExist(newBlock.BlockId, cached, prefix...)
+	isSaved, err := cs.IsBlockExist(newBlock.BlockId, cached, prefix...)
 	if err != nil {
 		return err
 	}
@@ -138,4 +138,66 @@ func (cs *Storage) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string)
 	}
 
 	return cs.dbmgr.Db.Set([]byte(key), value)
+}
+
+func (cs *Storage) GetBlockHeight(blockId string, prefix ...string) (int64, error) {
+	pChunk, err := cs.dbmgr.GetBlockChunk(blockId, false, prefix...)
+	if err != nil {
+		return -1, err
+	}
+	return pChunk.Height, nil
+}
+
+//check if block existed
+func (cs *Storage) IsBlockExist(blockId string, cached bool, prefix ...string) (bool, error) {
+	nodeprefix := utils.GetPrefix(prefix...)
+	var key string
+	if cached {
+		key = nodeprefix + s.CHD_PREFIX + "_" + s.BLK_PREFIX + "_" + blockId
+	} else {
+		key = nodeprefix + s.BLK_PREFIX + "_" + blockId
+	}
+
+	return cs.dbmgr.Db.IsExist([]byte(key))
+}
+
+//check if parent block existed
+func (cs *Storage) IsParentExist(parentBlockId string, cached bool, prefix ...string) (bool, error) {
+	nodeprefix := utils.GetPrefix(prefix...)
+	var pKey string
+	if cached {
+		pKey = nodeprefix + s.CHD_PREFIX + "_" + s.BLK_PREFIX + "_" + parentBlockId
+	} else {
+		pKey = nodeprefix + s.BLK_PREFIX + "_" + parentBlockId
+	}
+
+	return cs.dbmgr.Db.IsExist([]byte(pKey))
+}
+
+func (cs *Storage) GetSubBlock(blockId string, prefix ...string) ([]*quorumpb.Block, error) {
+	var result []*quorumpb.Block
+	chunk, err := cs.dbmgr.GetBlockChunk(blockId, false, prefix...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, subChunkId := range chunk.SubBlockId {
+		subChunk, err := cs.dbmgr.GetBlockChunk(subChunkId, false, prefix...)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, subChunk.BlockItem)
+	}
+
+	return result, nil
+}
+
+func (cs *Storage) GetParentBlock(blockId string, prefix ...string) (*quorumpb.Block, error) {
+	chunk, err := cs.dbmgr.GetBlockChunk(blockId, false, prefix...)
+	if err != nil {
+		return nil, err
+	}
+
+	parentChunk, err := cs.dbmgr.GetBlockChunk(chunk.ParentBlockId, false, prefix...)
+	return parentChunk.BlockItem, err
 }

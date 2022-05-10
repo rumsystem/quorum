@@ -32,7 +32,7 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, user.nodename)
+	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//check if parent of block exist
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, user.nodename)
+	parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}

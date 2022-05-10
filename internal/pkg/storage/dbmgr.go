@@ -174,60 +174,6 @@ func (dbMgr *DbMgr) IsTrxExist(trxId string, nonce int64, prefix ...string) (boo
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
-//check if block existed
-func (dbMgr *DbMgr) IsBlockExist(blockId string, cached bool, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var key string
-	if cached {
-		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + blockId
-	} else {
-		key = nodeprefix + BLK_PREFIX + "_" + blockId
-	}
-
-	return dbMgr.Db.IsExist([]byte(key))
-}
-
-//check if parent block existed
-func (dbMgr *DbMgr) IsParentExist(parentBlockId string, cached bool, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var pKey string
-	if cached {
-		pKey = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + parentBlockId
-	} else {
-		pKey = nodeprefix + BLK_PREFIX + "_" + parentBlockId
-	}
-
-	return dbMgr.Db.IsExist([]byte(pKey))
-}
-
-func (dbMgr *DbMgr) GetSubBlock(blockId string, prefix ...string) ([]*quorumpb.Block, error) {
-	var result []*quorumpb.Block
-	chunk, err := dbMgr.GetBlockChunk(blockId, false, prefix...)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, subChunkId := range chunk.SubBlockId {
-		subChunk, err := dbMgr.GetBlockChunk(subChunkId, false, prefix...)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, subChunk.BlockItem)
-	}
-
-	return result, nil
-}
-
-func (dbMgr *DbMgr) GetParentBlock(blockId string, prefix ...string) (*quorumpb.Block, error) {
-	chunk, err := dbMgr.GetBlockChunk(blockId, false, prefix...)
-	if err != nil {
-		return nil, err
-	}
-
-	parentChunk, err := dbMgr.GetBlockChunk(chunk.ParentBlockId, false, prefix...)
-	return parentChunk.BlockItem, err
-}
-
 //get block chunk
 func (dbMgr *DbMgr) GetBlockChunk(blockId string, cached bool, prefix ...string) (*quorumpb.BlockDbChunk, error) {
 	nodeprefix := utils.GetPrefix(prefix...)

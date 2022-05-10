@@ -929,7 +929,7 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	*/
 
 	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, chain.nodename)
+	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, chain.nodename)
 	if err != nil {
 		return err
 	}
@@ -944,7 +944,7 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 		return err
 	}
 
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, chain.nodename)
+	parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, chain.nodename)
 	if err != nil {
 		return err
 	}
