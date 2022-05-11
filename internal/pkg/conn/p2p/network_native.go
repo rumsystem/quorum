@@ -33,7 +33,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 var peerChan = make(chan peer.AddrInfo)
