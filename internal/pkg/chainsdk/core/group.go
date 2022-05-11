@@ -110,7 +110,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	pItem.Memo = "Owner Registated as the first oroducer"
 	pItem.TimeStamp = time.Now().UnixNano()
 
-	err = nodectx.GetDbMgr().AddProducer(pItem, grp.ChainCtx.nodename)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
@@ -161,10 +161,10 @@ func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
 	return grp.ChainCtx.GetSnapshotTag()
 }
 
-func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
-	group_log.Debugf("<%s> GetGroupCtn called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetGrpCtnt(grp.Item.GroupId, filter, grp.ChainCtx.nodename)
-}
+//func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
+//	group_log.Debugf("<%s> GetGroupCtn called", grp.Item.GroupId)
+//	return nodectx.GetDbMgr().GetGrpCtnt(grp.Item.GroupId, filter, grp.ChainCtx.nodename)
+//}
 
 func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
@@ -208,7 +208,7 @@ func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
 
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error) {
@@ -218,12 +218,12 @@ func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error
 
 func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, err error) {
 	group_log.Debugf("<%s> GetAppConfigKeyList called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAppConfigKey(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigKey(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, error) {
 	group_log.Debugf("<%s> GetAppConfigItem called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAppConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAppConfigItemBool(keyName string) (bool, error) {
@@ -309,7 +309,7 @@ func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 
 func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
 	group_log.Debugf("<%s> IsProducerAnnounced called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().IsProducerAnnounced(grp.Item.GroupId, producerSignPubkey, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().IsProducerAnnounced(grp.Item.GroupId, producerSignPubkey, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {

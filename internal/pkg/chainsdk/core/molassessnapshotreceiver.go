@@ -132,7 +132,7 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 	for _, snapshot := range snapshots {
 		for _, snapshotdata := range snapshot.SnapshotItems {
 			if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_APP_CONFIG {
-				err := nodectx.GetDbMgr().UpdateAppConfig(snapshotdata.Data, ssreceiver.nodename)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfig(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type APP_CONFIG, err <%s>", ssreceiver.groupId, err.Error())
 					return err
@@ -150,7 +150,7 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_PRODUCER {
-				err := nodectx.GetDbMgr().UpdateProducer(snapshotdata.Data, ssreceiver.nodename)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateProducer(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type PRODUCER, err <%s>", ssreceiver.groupId, err.Error())
 					return err

@@ -217,7 +217,7 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 
 	var result []*quorumpb.SnapshotItem
 	var appConfigs [][]byte
-	appConfigs, err := nodectx.GetDbMgr().GetAllAppConfigInBytes(sssender.groupId, sssender.nodename)
+	appConfigs, err := nodectx.GetNodeCtx().GetChainStorage().GetAllAppConfigInBytes(sssender.groupId, sssender.nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +231,7 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 	}
 
 	var chainConfig [][]byte
-	chainConfig, err = nodectx.GetDbMgr().GetAllChainConfigInBytes(sssender.groupId, sssender.nodename)
+	chainConfig, err = nodectx.GetNodeCtx().GetChainStorage().GetAllChainConfigInBytes(sssender.groupId, sssender.nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 	}
 
 	var producers [][]byte
-	users, err = nodectx.GetDbMgr().GetAllProducerInBytes(sssender.groupId, sssender.nodename)
+	users, err = nodectx.GetNodeCtx().GetChainStorage().GetAllProducerInBytes(sssender.groupId, sssender.nodename)
 	if err != nil {
 		return nil, err
 	}

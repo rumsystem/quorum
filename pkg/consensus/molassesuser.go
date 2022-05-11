@@ -107,7 +107,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//update block produced count
 	for _, block := range blocks {
-		err := nodectx.GetDbMgr().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
 		if err != nil {
 			return err
 		}

@@ -209,3 +209,19 @@ func (cs *Storage) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Trx
 		return true, nil
 	}
 }
+
+func (cs *Storage) GetAllChainConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
+	nodeprefix := utils.GetPrefix(Prefix...)
+	key := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_"
+	var chainConfigByteList [][]byte
+
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		chainConfigByteList = append(chainConfigByteList, v)
+		return nil
+	})
+
+	return chainConfigByteList, err
+}

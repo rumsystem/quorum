@@ -788,7 +788,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
 		case quorumpb.TrxType_PRODUCER:
 			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateProducerTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateProducerTrx(trx, nodename)
 			chain.UpdProducerList()
 			chain.CreateConsensus()
 		case quorumpb.TrxType_USER:
@@ -800,7 +800,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(trx.Data, nodename)
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfigTrx(trx, nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupId)
 			err := nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfigTrx(trx, nodename)
@@ -878,7 +878,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
 		case quorumpb.TrxType_PRODUCER:
 			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateProducerTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateProducerTrx(trx, nodename)
 			chain.UpdProducerList()
 			chain.CreateConsensus()
 		case quorumpb.TrxType_USER:
@@ -890,7 +890,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(trx.Data, nodename)
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateAppConfigTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfigTrx(trx, nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupId)
 			err := nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfigTrx(trx, nodename)
@@ -1002,7 +1002,7 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	}
 
 	for _, block := range blocks {
-		err := nodectx.GetDbMgr().AddProducedBlockCount(chain.groupId, block.ProducerPubKey, chain.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(chain.groupId, block.ProducerPubKey, chain.nodename)
 		if err != nil {
 			return err
 		}

@@ -8,7 +8,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -41,7 +41,7 @@ func GetContent(groupId string, num int, startTrx string, nonce int64, reverse b
 		return nil, err
 	}
 	for _, trxid := range trxids {
-		trx, _, err := wasmCtx.DbMgr.GetTrx(trxid.TrxId, storage.Chain, nodectx.GetNodeCtx().Name)
+		trx, _, err := wasmCtx.GetChainStorage().GetTrx(trxid.TrxId, def.Chain, nodectx.GetNodeCtx().Name)
 		if err != nil {
 			println(err)
 			continue
