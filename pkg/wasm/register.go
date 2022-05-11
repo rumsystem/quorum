@@ -397,6 +397,21 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("P2PPing", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		peer := args[0].String()
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			res, err := quorumAPI.P2PPing(peer)
+			if err != nil {
+				return ret, err
+			}
+			retBytes, err := json.Marshal(res)
+			json.Unmarshal(retBytes, &ret)
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("UpdateProfile", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		jsonStr := args[0].String()
 		handler := func() (map[string]interface{}, error) {
