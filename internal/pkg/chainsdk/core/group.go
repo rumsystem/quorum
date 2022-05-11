@@ -198,7 +198,7 @@ func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
 
 func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedUsers called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 //func (grp *Group) GetAnnounceUser() ([]*quorumpb.AnnounceItem, error) {
@@ -213,7 +213,7 @@ func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, e
 
 func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, err error) {
@@ -310,11 +310,6 @@ func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
 	group_log.Debugf("<%s> IsProducerAnnounced called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().IsProducerAnnounced(grp.Item.GroupId, producerSignPubkey, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) IsUserAnnounced(userSignPubkey string) (bool, error) {
-	group_log.Debugf("<%s> IsUserAnnounced called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().IsUserAnnounced(grp.Item.GroupId, userSignPubkey, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {

@@ -20,3 +20,7 @@ type ChainStorageIface interface {
 type TrxStorageIface interface {
 	GetTrx(trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error)
 }
+
+type UserStorageIface interface {
+	IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error)
+}

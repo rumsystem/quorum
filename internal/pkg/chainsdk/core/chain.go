@@ -539,7 +539,7 @@ func (chain *Chain) UpdUserList() {
 	}
 
 	//update announced User result
-	announcedUsers, _ := nodectx.GetDbMgr().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
+	announcedUsers, _ := nodectx.GetNodeCtx().GetChainStorage().GetAnnounceUsersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedUsers {
 		_, ok := chain.userPool[item.SignPubkey]
 		err := nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounceResult(quorumpb.AnnounceType_AS_USER, chain.group.Item.GroupId, item.SignPubkey, ok, chain.nodename)
@@ -793,7 +793,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 			chain.CreateConsensus()
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateUserTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateUserTrx(trx, nodename)
 			chain.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
@@ -883,7 +883,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 			chain.CreateConsensus()
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupId)
-			nodectx.GetDbMgr().UpdateUserTrx(trx, nodename)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateUserTrx(trx, nodename)
 			chain.UpdUserList()
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)

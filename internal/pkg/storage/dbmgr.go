@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -160,43 +159,6 @@ func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	return groupItemList, err
 }
 
-func (dbMgr *DbMgr) UpdateUserTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return dbMgr.UpdateUser(trx.Data, prefix...)
-}
-
-func (dbMgr *DbMgr) UpdateUser(data []byte, prefix ...string) (err error) {
-
-	nodeprefix := utils.GetPrefix(prefix...)
-
-	item := &quorumpb.UserItem{}
-	if err := proto.Unmarshal(data, item); err != nil {
-		return err
-	}
-
-	key := nodeprefix + USR_PREFIX + "_" + item.GroupId + "_" + item.UserPubkey
-	dbmgr_log.Infof("upd user with key %s", key)
-
-	if item.Action == quorumpb.ActionType_ADD {
-		dbmgr_log.Infof("Add user")
-		return dbMgr.Db.Set([]byte(key), data)
-	} else if item.Action == quorumpb.ActionType_REMOVE {
-		//check if group exist
-		dbmgr_log.Infof("Remove user")
-		exist, err := dbMgr.Db.IsExist([]byte(key))
-		if !exist {
-			if err != nil {
-				return err
-			}
-			return errors.New("User Not Found")
-		}
-
-		return dbMgr.Db.Delete([]byte(key))
-	} else {
-		dbmgr_log.Infof("unknow msgType")
-		return errors.New("unknow msgType")
-	}
-}
-
 func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][]byte, error) {
 	nodeprefix := utils.GetPrefix(Prefix...)
 	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_"
@@ -211,22 +173,6 @@ func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][
 	})
 
 	return announceByteList, err
-}
-
-func (dbMgr *DbMgr) GetAllUserInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + USR_PREFIX + "_" + groupId + "_"
-	var usersByteList [][]byte
-
-	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		usersByteList = append(usersByteList, v)
-		return nil
-	})
-
-	return usersByteList, err
 }
 
 func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
@@ -288,59 +234,6 @@ func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, Prefi
 func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (pubkeylist []string, err error) {
 	keys := []string{}
 	return keys, nil
-}
-
-func (dbMgr *DbMgr) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
-	var aList []*quorumpb.AnnounceItem
-
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String()
-	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := quorumpb.AnnounceItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		aList = append(aList, &item)
-		return nil
-	})
-
-	return aList, err
-}
-
-func (dbMgr *DbMgr) GetAnnouncedUser(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pubkey
-
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-
-	var ann quorumpb.AnnounceItem
-	err = proto.Unmarshal(value, &ann)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ann, err
-}
-
-func (dbMgr *DbMgr) IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userSignPubkey
-	return dbMgr.Db.IsExist([]byte(key))
-}
-
-func (dbMgr *DbMgr) IsUser(groupId, userPubKey string, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userPubKey
-
-	//check if group user (announced) exist
-	return dbMgr.Db.IsExist([]byte(key))
 }
 
 //get next nonce

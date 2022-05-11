@@ -156,7 +156,7 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_USER {
-				err := nodectx.GetDbMgr().UpdateUser(snapshotdata.Data, ssreceiver.nodename)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateUser(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type USE, err <%s>", ssreceiver.groupId, err.Error())
 					return err

@@ -245,7 +245,7 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 	}
 
 	var users [][]byte
-	users, err = nodectx.GetDbMgr().GetAllUserInBytes(sssender.groupId, sssender.nodename)
+	users, err = nodectx.GetNodeCtx().GetChainStorage().GetAllUserInBytes(sssender.groupId, sssender.nodename)
 	if err != nil {
 		return nil, err
 	}

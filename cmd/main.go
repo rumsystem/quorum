@@ -396,6 +396,7 @@ func mainRet(config cli.Config) int {
 			Ctx:       ctx,
 			GitCommit: GitCommit,
 			Appdb:     appdb,
+			Userdb:    newchainstorage,
 		}
 
 		apiaddress := "https://%s/api/v1"
