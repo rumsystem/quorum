@@ -20,7 +20,7 @@ const PingSize = 32
 
 const PingID = "/quorum/ping/1.0.0"
 
-const pingTimeout = time.Second * 60
+const pingTimeout = time.Second * 5
 
 type PingService struct {
 	Host host.Host
