@@ -391,12 +391,12 @@ func mainRet(config cli.Config) int {
 
 		//run local http api service
 		h := &api.Handler{
-			Node:      node,
-			NodeCtx:   nodectx.GetNodeCtx(),
-			Ctx:       ctx,
-			GitCommit: GitCommit,
-			Appdb:     appdb,
-			Userdb:    newchainstorage,
+			Node:       node,
+			NodeCtx:    nodectx.GetNodeCtx(),
+			Ctx:        ctx,
+			GitCommit:  GitCommit,
+			Appdb:      appdb,
+			ChainAPIdb: newchainstorage,
 		}
 
 		apiaddress := "https://%s/api/v1"

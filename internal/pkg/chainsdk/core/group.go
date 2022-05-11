@@ -333,11 +333,6 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) GetChainSendTrxDenyList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
-	group_log.Debugf("<%s> GetChainSendTrxDenyList called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_DENY_LIST, grp.ChainCtx.nodename)
-}
-
 func (grp *Group) GetChainSendTrxAllowList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
 	group_log.Debugf("<%s> GetChainSendTrxAllowList called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, grp.ChainCtx.nodename)
@@ -346,17 +341,4 @@ func (grp *Group) GetChainSendTrxAllowList() ([]*quorumpb.ChainConfigItem, []*qu
 func (grp *Group) GetSendTrxAuthMode(trxType quorumpb.TrxType) (quorumpb.TrxAuthMode, error) {
 	group_log.Debugf("<%s> GetSendTrxAuthMode called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrxAuthModeByGroupId(grp.Item.GroupId, trxType, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) AskPeerId() {
-	/*
-		chain_log.Debugf("<%s> AskPeerId called", chain.groupId)
-		var req quorumpb.AskPeerId
-		req = quorumpb.AskPeerId{}
-
-		req.GroupId = chain.groupId
-		req.UserPeerId = nodectx.GetNodeCtx().Node.PeerID.Pretty()
-
-		return chain.GetProducerTrxMgr().SendAskPeerId(&req)
-	*/
 }

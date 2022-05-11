@@ -21,6 +21,7 @@ type TrxStorageIface interface {
 	GetTrx(trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error)
 }
 
-type UserStorageIface interface {
+type APIHandlerIface interface {
 	IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error)
+	GetSendTrxAuthListByGroupId(groupId string, listType quorumpb.AuthListType, prefix ...string) ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error)
 }

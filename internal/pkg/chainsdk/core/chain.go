@@ -63,6 +63,10 @@ func (chain *Chain) Init(group *Group) error {
 	return nil
 }
 
+func (chain *Chain) GetNodeName() string {
+	return chain.nodename
+}
+
 func (chain *Chain) SetRumExchangeTestMode() {
 	chain.syncer.SetRumExchangeTestMode()
 }
