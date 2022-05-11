@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -39,7 +38,6 @@ func (h *Handler) P2PPingPeer(node *p2p.Node) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		fmt.Println("PING...", params.PeerId)
 		result, err := handlers.P2PPing(node.Host, params.PeerId)
 
 		if err != nil {

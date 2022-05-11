@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
 type PingResp struct {
@@ -32,6 +33,8 @@ type P2PPingResp struct {
 	TTL [10]int64 `json:"ttl"`
 }
 
+var pingLogger = logging.Logger("ping")
+
 // p2p ping
 func P2PPing(h host.Host, remote string) (*P2PPingResp, error) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -49,6 +52,7 @@ func P2PPing(h host.Host, remote string) (*P2PPingResp, error) {
 				res := <-ch
 				if res.Error != nil {
 					resp.TTL[i] = 0
+					pingLogger.Error(res.Error.Error())
 				} else {
 					resp.TTL[i] = res.RTT.Milliseconds()
 				}

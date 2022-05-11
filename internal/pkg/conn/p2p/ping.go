@@ -78,7 +78,8 @@ type Result struct {
 }
 
 func (ps *PingService) Ping(ctx context.Context, p peer.ID) <-chan Result {
-	return Ping(ctx, ps.Host, p)
+	// we allow transient connection pingable
+	return Ping(network.WithUseTransient(ctx, "quorum-relay"), ps.Host, p)
 }
 
 // Ping pings the remote peer until the context is canceled, returning a stream
