@@ -23,5 +23,8 @@ type TrxStorageIface interface {
 
 type APIHandlerIface interface {
 	IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error)
+	IsProducerAnnounced(groupId, producerSignPubkey string, prefix ...string) (bool, error)
 	GetSendTrxAuthListByGroupId(groupId string, listType quorumpb.AuthListType, prefix ...string) ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error)
+	GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error)
+	GetAnnounceProducersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error)
 }

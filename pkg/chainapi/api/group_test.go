@@ -225,8 +225,11 @@ type GroupContentItem struct {
 }
 
 func getGroupContent(api string, groupID string) ([]GroupContentItem, error) {
-	urlSuffix := fmt.Sprintf("/api/v1/group/%s/content", groupID)
-	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+
+	//curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?starttrx=95f74d77-b15a-4cf5-a964-1c367c1b1909&num=20"
+
+	urlSuffix := fmt.Sprintf("/app/api/v1/group/%s/content", groupID)
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", "{\"senders\":[]}")
 	if err != nil {
 		return nil, err
 	}

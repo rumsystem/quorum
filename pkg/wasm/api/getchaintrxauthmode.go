@@ -3,8 +3,12 @@
 
 package api
 
-import "github.com/rumsystem/quorum/pkg/chainapi/handlers"
+import (
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
+)
 
 func GetChainTrxAuthMode(groupId, trxType string) (*handlers.TrxAuthItem, error) {
-	return handlers.GetChainTrxAuthMode(groupId, trxType)
+	wasmCtx := quorumContext.GetWASMContext()
+	return handlers.GetChainTrxAuthMode(wasmCtx.GetChainStorage(), groupId, trxType)
 }

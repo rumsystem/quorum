@@ -3,14 +3,18 @@
 
 package api
 
-import "github.com/rumsystem/quorum/pkg/chainapi/handlers"
+import (
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
+)
 
 type ChainSendTrxRuleListItemResult struct {
 	Data []*handlers.ChainSendTrxRuleListItem `json:"data"`
 }
 
 func GetChainTrxAllowList(groupId string) (*ChainSendTrxRuleListItemResult, error) {
-	res, err := handlers.GetChainTrxAllowList(groupId)
+	wasmCtx := quorumContext.GetWASMContext()
+	res, err := handlers.GetChainTrxAllowList(wasmCtx.GetChainStorage(), groupId)
 	if err != nil {
 		return nil, err
 	}

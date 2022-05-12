@@ -161,11 +161,6 @@ func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
 	return grp.ChainCtx.GetSnapshotTag()
 }
 
-//func (grp *Group) GetGroupCtn(filter string) ([]*quorumpb.PostItem, error) {
-//	group_log.Debugf("<%s> GetGroupCtn called", grp.Item.GroupId)
-//	return nodectx.GetDbMgr().GetGrpCtnt(grp.Item.GroupId, filter, grp.ChainCtx.nodename)
-//}
-
 func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(blockId, false, grp.ChainCtx.nodename)
@@ -201,11 +196,6 @@ func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
-//func (grp *Group) GetAnnounceUser() ([]*quorumpb.AnnounceItem, error) {
-//	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
-//	return nodectx.GetDbMgr().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
-//}
-
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
@@ -224,21 +214,6 @@ func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, er
 func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, error) {
 	group_log.Debugf("<%s> GetAppConfigItem called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) GetAppConfigItemBool(keyName string) (bool, error) {
-	group_log.Debugf("<%s> GetAppConfigItemBool called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAppConfigItemBool(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) GetAppConfigItemInt(keyName string) (int, error) {
-	group_log.Debugf("<%s> GetAppConfigItemInt called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAppConfigItemInt(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) GetAppConfigItemString(keyName string) (string, error) {
-	group_log.Debugf("<%s> GetAppConfigItemString called", grp.Item.GroupId)
-	return nodectx.GetDbMgr().GetAppConfigItemString(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
@@ -307,11 +282,6 @@ func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) IsProducerAnnounced(producerSignPubkey string) (bool, error) {
-	group_log.Debugf("<%s> IsProducerAnnounced called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().IsProducerAnnounced(grp.Item.GroupId, producerSignPubkey, grp.ChainCtx.nodename)
-}
-
 func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
 	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
 	if err != nil {
@@ -331,14 +301,4 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 		return "", nil
 	}
 	return grp.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (grp *Group) GetChainSendTrxAllowList() ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error) {
-	group_log.Debugf("<%s> GetChainSendTrxAllowList called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetSendTrxAuthListByGroupId(grp.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) GetSendTrxAuthMode(trxType quorumpb.TrxType) (quorumpb.TrxAuthMode, error) {
-	group_log.Debugf("<%s> GetSendTrxAuthMode called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrxAuthModeByGroupId(grp.Item.GroupId, trxType, grp.ChainCtx.nodename)
 }

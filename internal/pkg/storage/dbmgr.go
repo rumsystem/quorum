@@ -44,7 +44,7 @@ type DbMgr struct {
 func (dbMgr *DbMgr) CloseDb() {
 	dbMgr.GroupInfoDb.Close()
 	dbMgr.Db.Close()
-	dbMgr.Auth.Close()
+	//dbMgr.Auth.Close()
 	dbmgr_log.Infof("ChainCtx Db closed")
 }
 

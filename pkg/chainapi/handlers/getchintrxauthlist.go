@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 type TrxAuthItem struct {
@@ -12,7 +13,7 @@ type TrxAuthItem struct {
 	AuthType string
 }
 
-func GetChainTrxAuthMode(groupid string, trxType string) (*TrxAuthItem, error) {
+func GetChainTrxAuthMode(chainapidb def.APIHandlerIface, groupid string, trxType string) (*TrxAuthItem, error) {
 	trxAuthItem := TrxAuthItem{}
 
 	if groupid == "" {
@@ -27,7 +28,8 @@ func GetChainTrxAuthMode(groupid string, trxType string) (*TrxAuthItem, error) {
 			return nil, err
 		}
 
-		trxAuthType, err := group.GetSendTrxAuthMode(trxTypeProto)
+		trxAuthType, err := chainapidb.GetTrxAuthModeByGroupId(group.Item.GroupId, trxTypeProto, group.ChainCtx.GetNodeName())
+
 		if err != nil {
 			return nil, err
 		}
