@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -30,7 +31,7 @@ type PingResult struct {
 var ping_log = logging.Logger("ping")
 
 func NewPSPingService(ctx context.Context, ps *pubsub.PubSub, peerid peer.ID) *PSPing {
-	psping := &PSPing{PeerId: peerid, ps: ps, ctx: ctx}
+	psping := &PSPing{PeerId: peerid, ps: ps, ctx: network.WithUseTransient(ctx, "quorum-relay")}
 	return psping
 }
 
