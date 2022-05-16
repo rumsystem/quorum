@@ -47,8 +47,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	var pstore peerstore.Peerstore
 	var err error
 
-	ctxT := network.WithUseTransient(ctx, "quorum-relay")
-
 	//privKey p2pcrypto.PrivKey
 	ethprivkey := key.PrivateKey
 	privkeybytes := ethcrypto.FromECDSA(ethprivkey)
@@ -169,7 +167,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	options = append(options, pubsub.WithPeerOutboundQueueSize(128))
 
 	// allow transient connection here (may use circuit v2)
-	ps, err = pubsub.NewGossipSub(ctxT, host, options...)
+	ps, err = pubsub.NewGossipSub(ctx, host, options...)
 
 	if err != nil {
 		return nil, err
@@ -178,7 +176,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
 	// allow transient connection here (may use circuit v2)
-	psconnmgr := pubsubconn.InitPubSubConnMgr(ctxT, ps, nodename)
+	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
 	if isBootstrap == false && nodeopt.EnableRumExchange == true {
 	}

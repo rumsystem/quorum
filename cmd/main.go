@@ -20,6 +20,7 @@ import (
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	"github.com/libp2p/go-libp2p-core/network"
 	peerstore "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
@@ -132,7 +133,9 @@ func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 
 func mainRet(config cli.Config) int {
 	signalch = make(chan os.Signal, 1)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx_, cancel := context.WithCancel(context.Background())
+	ctx := network.WithUseTransient(ctx_, "quorum-relay")
+
 	defer cancel()
 
 	mainlog.Infof("Version: %s", GitCommit)

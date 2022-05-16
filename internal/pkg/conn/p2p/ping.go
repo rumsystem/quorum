@@ -79,7 +79,7 @@ type Result struct {
 
 func (ps *PingService) Ping(ctx context.Context, p peer.ID) <-chan Result {
 	// we allow transient connection pingable
-	return Ping(network.WithUseTransient(ctx, "quorum-relay"), ps.Host, p)
+	return Ping(ctx, ps.Host, p)
 }
 
 // Ping pings the remote peer until the context is canceled, returning a stream
@@ -93,12 +93,9 @@ func Ping(ctx context.Context, h host.Host, p peer.ID) <-chan Result {
 		return ch
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-
 	out := make(chan Result)
 	go func() {
 		defer close(out)
-		defer cancel()
 
 		for ctx.Err() == nil {
 			var res Result
