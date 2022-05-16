@@ -297,7 +297,8 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 }
 
 func (r *RexService) Handler(s network.Stream) {
-	ctx := context.Background()
+	ctx_ := context.Background()
+	ctx := network.WithUseTransient(ctx_, "quorum-relay")
 	r.HandlerProcessloop(ctx, s)
 }
 
