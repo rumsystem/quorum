@@ -73,6 +73,7 @@ func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, Prot
 	rumpeerstore := &RumGroupPeerStore{}
 	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
+	// FIXME: p2p/rumexchange.go:318 error: stream reset stream reset
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
 	return rexs
@@ -99,8 +100,13 @@ func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
 
 	poolitem, ok := r.streampool.Load(peerid)
 	if ok {
-		return poolitem.(*streamPoolItem), nil
+		streamitem := poolitem.(*streamPoolItem)
+		if !streamitem.s.Stat().Transient {
+			// otherwise we reconnect to transient node every time
+			return streamitem, nil
+		}
 	}
+
 	//new stream
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -297,8 +303,7 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 }
 
 func (r *RexService) Handler(s network.Stream) {
-	ctx_ := context.Background()
-	ctx := network.WithUseTransient(ctx_, "quorum-relay")
+	ctx := context.Background()
 	r.HandlerProcessloop(ctx, s)
 }
 
