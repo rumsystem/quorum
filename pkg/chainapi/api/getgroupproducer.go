@@ -18,7 +18,7 @@ func (h *Handler) GetGroupProducers(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
 
-	res, err := handlers.GetGroupProducers(groupid)
+	res, err := handlers.GetGroupProducers(h.ChainAPIdb, groupid)
 
 	if groupid == "" {
 		output[ERROR_INFO] = err.Error()

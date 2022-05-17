@@ -176,24 +176,14 @@ func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) 
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(trxId, def.Cache, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
-	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
-}
+//func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
+//	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
+//	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
+//}
 
 func (grp *Group) GetSchemas() ([]*quorumpb.SchemaItem, error) {
 	group_log.Debugf("<%s> GetSchema called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) GetAnnouncedProducers() ([]*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAnnounceProducersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
-}
-
-func (grp *Group) GetAnnouncedUsers() ([]*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedUsers called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAnnounceUsersByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {

@@ -1,9 +1,8 @@
 package options
 
 import (
-	"sync"
-
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"sync"
 )
 
 var optionslog = logging.Logger("options")
