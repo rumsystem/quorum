@@ -128,6 +128,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
+
 	pubsubblocklist := pubsub.NewMapBlacklist()
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
@@ -172,6 +173,10 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	if err != nil {
 		return nil, err
 	}
+
+	// enable pubsub ping
+	psPing := NewPSPingService(ctx, ps, host.ID())
+	psPing.EnablePing()
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 

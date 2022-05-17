@@ -135,6 +135,7 @@ func (p *PSPing) handlePingRequest() error {
 	for {
 		pingreqmsg, err := p.Subscription.Next(p.ctx)
 		if err == nil {
+			ping_log.Debugf("Ping req from <%s>", pingreqmsg.ReceivedFrom)
 			if pingreqmsg.ReceivedFrom != p.PeerId { //not me
 				var pspingreq quorumpb.PSPing
 				if err := proto.Unmarshal(pingreqmsg.Data, &pspingreq); err != nil {
