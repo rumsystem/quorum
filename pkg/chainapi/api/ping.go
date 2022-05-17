@@ -18,7 +18,7 @@ type P2PPingParam struct {
 // @Description P2PPingPeer is the same with ipfs ping, just rename the protocol name
 // @Accept json
 // @Produce json
-// @Param data body PingParam true "pingparam"
+// @Param data body P2PPingParam true "pingparam"
 // @Success 200 {object} handlers.PingResp
 // @Router /api/v1/psping [post]
 func (h *Handler) P2PPingPeer(node *p2p.Node) echo.HandlerFunc {

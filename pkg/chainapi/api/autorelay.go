@@ -7,12 +7,16 @@ import (
 	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
+type AddRelayServersResp struct {
+	Ok bool `json:"ok"`
+}
+
 // @Tags Node
 // @Summary AddRelayServers
 // @Accept json
 // @Produce json
 // @Param data body []string true "Peers List"
-// @Success 200 {boolean}
+// @Success 200 {object} AddRelayServersResp
 // @Router /api/v1/network/relay [post]
 func (h *Handler) AddRelayServers(c echo.Context) (err error) {
 	var input handlers.AddRelayParam
@@ -28,5 +32,6 @@ func (h *Handler) AddRelayServers(c echo.Context) (err error) {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
-	return c.JSON(http.StatusOK, ok)
+	resp := AddRelayServersResp{Ok: ok}
+	return c.JSON(http.StatusOK, resp)
 }
