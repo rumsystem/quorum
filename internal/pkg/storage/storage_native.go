@@ -5,6 +5,7 @@ package storage
 
 import (
 	"errors"
+	"time"
 
 	badger "github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
@@ -27,7 +28,22 @@ func (s *QSBadger) Init(path string) error {
 	if err != nil {
 		return err
 	}
+
+	// enable compaction
+	go dbGC(s.db)
 	return nil
+}
+
+func dbGC(db *badger.DB) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+	again:
+		err := db.RunValueLogGC(0.7)
+		if err == nil {
+			goto again
+		}
+	}
 }
 
 func (s *QSBadger) Close() error {
