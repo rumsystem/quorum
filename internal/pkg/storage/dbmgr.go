@@ -645,10 +645,11 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 
 	//remove all
 	for _, key_prefix := range keys {
-		err := dbMgr.Db.PrefixDelete([]byte(key_prefix))
+		n, err := dbMgr.Db.PrefixDelete([]byte(key_prefix))
 		if err != nil {
 			return err
 		}
+		dbmgr_log.Debugf("removed key with prefix %s: %d", key_prefix, n)
 	}
 
 	keys = nil
@@ -659,7 +660,7 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 	keys = append(keys, key)
 
 	for _, key_prefix := range keys {
-		err := dbMgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
+		n, err := dbMgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
 			if err != nil {
 				return false, err
 			}
@@ -679,11 +680,12 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 		if err != nil {
 			return err
 		}
+		dbmgr_log.Debugf("removed key with prefix %s: %d", key_prefix, n)
 	}
 
-	//remove all trx
+	// remove all trx
 	key = nodeprefix + TRX_PREFIX + "_"
-	err := dbMgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
+	n, err := dbMgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
 		if err != nil {
 			return false, err
 		}
@@ -701,6 +703,7 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 
 		return false, nil
 	})
+	dbmgr_log.Debugf("PrefixCondDelete key with prefix %s: %d", key, n)
 
 	if err != nil {
 		return err

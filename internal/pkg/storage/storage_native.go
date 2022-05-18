@@ -88,7 +88,7 @@ func (s *QSBadger) IsExist(key []byte) (bool, error) {
 	return false, err
 }
 
-func (s *QSBadger) PrefixDelete(prefix []byte) error {
+func (s *QSBadger) PrefixDelete(prefix []byte) (int, error) {
 	return s.PrefixForeachKey(prefix, prefix, false, func(k []byte, err error) error {
 		if err != nil {
 			return err
@@ -97,8 +97,9 @@ func (s *QSBadger) PrefixDelete(prefix []byte) error {
 	})
 }
 
-func (s *QSBadger) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) error {
-	return s.PrefixForeach(prefix, func(k []byte, v []byte, err error) error {
+func (s *QSBadger) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) (int, error) {
+	matched := 0
+	err := s.PrefixForeach(prefix, func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
@@ -107,10 +108,15 @@ func (s *QSBadger) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, e
 			return err
 		}
 		if del {
-			return s.Delete(k)
+			matched += 1
+			delErr := s.Delete(k)
+			if delErr != nil {
+				return delErr
+			}
 		}
 		return nil
 	})
+	return matched, err
 }
 
 func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
@@ -136,7 +142,9 @@ func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) e
 	return err
 }
 
-func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error {
+func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) (int, error) {
+	matched := 0
+
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 20
@@ -145,6 +153,7 @@ func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, f
 		it := txn.NewIterator(opts)
 		defer it.Close()
 		for it.Seek(prefix); it.ValidForPrefix(valid); it.Next() {
+			matched += 1
 			item := it.Item()
 			key := item.KeyCopy(nil)
 			ferr := fn(key, nil)
@@ -154,7 +163,7 @@ func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, f
 		}
 		return nil
 	})
-	return err
+	return matched, err
 }
 
 func (s *QSBadger) Foreach(fn func([]byte, []byte, error) error) error {

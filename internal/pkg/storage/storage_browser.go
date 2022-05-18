@@ -142,9 +142,10 @@ func (s *QSIndexDB) Get(key []byte) ([]byte, error) {
 	return bytes, nil
 }
 
-func (s *QSIndexDB) PrefixDelete(prefix []byte) error {
+func (s *QSIndexDB) PrefixDelete(prefix []byte) (int, error) {
 	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
 	store, _ := txn.ObjectStore(s.name)
+	matched := 0
 
 	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
 	if err != nil {
@@ -163,6 +164,7 @@ func (s *QSIndexDB) PrefixDelete(prefix []byte) error {
 		if !bytes.HasPrefix(k, prefix) {
 			return nil
 		}
+		matched += 1
 		_, err = store.Delete(key)
 		if err != nil {
 			return err
@@ -174,12 +176,14 @@ func (s *QSIndexDB) PrefixDelete(prefix []byte) error {
 		return err
 	}
 
-	return txn.Await(s.ctx)
+	err = txn.Await(s.ctx)
+	return matched, err
 }
 
-func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) error {
+func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) (int, error) {
 	txn, _ := s.db.Transaction(idb.TransactionReadWrite, s.name)
 	store, _ := txn.ObjectStore(s.name)
+	matched := 0
 	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
 	if err != nil {
 		return err
@@ -208,6 +212,7 @@ func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, 
 			return err
 		}
 		if del {
+			matched += 1
 			_, err = store.Delete(key)
 			if err != nil {
 				return err
@@ -217,10 +222,11 @@ func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, 
 	})
 
 	if err != nil {
-		return err
+		return matched, err
 	}
 
-	return txn.Await(s.ctx)
+	err = txn.Await(s.ctx)
+	return matched, err
 }
 
 func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
@@ -257,19 +263,20 @@ func (s *QSIndexDB) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) 
 }
 
 // for reverse, prefix is the upper bound, and valid is the actual prefix
-func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) error {
+func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) (int, error) {
 	txn, _ := s.db.Transaction(idb.TransactionReadOnly, s.name)
 	store, _ := txn.ObjectStore(s.name)
+	matched := 0
 	if !reverse {
 		kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
 		if err != nil {
-			return err
+			return matched, err
 		}
 		cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorNext)
 		if err != nil {
-			return err
+			return matched, derr
 		}
-		return cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
+		err = cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
 			key, err := cursor.Key()
 			if err != nil {
 				return err
@@ -278,28 +285,31 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 			if !bytes.HasPrefix(k, valid) {
 				return nil
 			}
+			matched += 1
 			ferr := fn(k, nil)
 			if ferr != nil {
 				return ferr
 			}
 			return nil
 		})
+		return matched, err
 	} else {
 		kRange, err := idb.NewKeyRangeUpperBound(BytesToArrayBuffer(prefix), false)
 		if err != nil {
-			return err
+			return matched, err
 		}
 		cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorPrevious)
 		if err != nil {
-			return err
+			return matched, err
 		}
-		return cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
+		err = cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
 			key, err := cursor.Key()
 			if err != nil {
 				return err
 			}
 			k := ArrayBufferToBytes(key)
 			if bytes.HasPrefix(k, valid) {
+				matched += 1
 				ferr := fn(k, nil)
 				if ferr != nil {
 					return ferr
@@ -307,6 +317,7 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 			}
 			return nil
 		})
+		return matched, err
 	}
 }
 
