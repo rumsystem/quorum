@@ -477,7 +477,7 @@ func main() {
 		logging.SetLogLevel("network", "debug")
 		logging.SetLogLevel("autonat", "debug")
 		logging.SetLogLevel("chain", "debug")
-		//logging.SetLogLevel("dbmgr", "debug")
+		logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
 		logging.SetLogLevel("syncer", "debug")
 		logging.SetLogLevel("producer", "debug")
@@ -489,9 +489,9 @@ func main() {
 		//logging.SetLogLevel("group", "debug")
 		//logging.SetLogLevel("user", "debug")
 		//logging.SetLogLevel("groupmgr", "debug")
-		//logging.SetLogLevel("ping", "debug")
+		logging.SetLogLevel("ping", "debug")
 		logging.SetLogLevel("chan", "debug")
-		//logging.SetLogLevel("pubsub", "debug")
+		logging.SetLogLevel("pubsub", "debug")
 	}
 
 	if *help {
