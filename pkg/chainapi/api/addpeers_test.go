@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/go-playground/validator/v10"
@@ -22,13 +23,13 @@ func addPeers(api string, payload handlers.AddPeerParam) (*handlers.AddPeerResul
 		return nil, err
 	}
 
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
 	var result handlers.AddPeerResult
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
+	}
+
+	if result.ErrCount > 0 {
+		return nil, fmt.Errorf("%s", result.Errs)
 	}
 
 	validate := validator.New()
