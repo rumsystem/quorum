@@ -30,16 +30,17 @@ func (s *QSBadger) Init(path string) error {
 	}
 
 	// enable compaction
-	go dbGC(s.db)
+	go dbGC(s.db, path)
 	return nil
 }
 
-func dbGC(db *badger.DB) {
+func dbGC(db *badger.DB, path string) {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
 	again:
-		err := db.RunValueLogGC(0.7)
+		err := db.RunValueLogGC(0.5)
+		dbmgr_log.Debugf("badger db %s GC finished, err: %s", path, err.Error())
 		if err == nil {
 			goto again
 		}
