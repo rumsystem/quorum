@@ -8,8 +8,8 @@ type QuorumStorage interface {
 	Get(key []byte) ([]byte, error)
 	PrefixDelete(prefix []byte) (int, error)
 	PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) (int, error)
-	PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error
 	PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) (int, error)
+	PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error
 	Foreach(fn func([]byte, []byte, error) error) error
 	IsExist([]byte) (bool, error)
 

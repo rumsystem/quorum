@@ -149,11 +149,11 @@ func (s *QSIndexDB) PrefixDelete(prefix []byte) (int, error) {
 
 	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
 	if err != nil {
-		return err
+		return matched, err
 	}
 	cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorNext)
 	if err != nil {
-		return err
+		return matched, err
 	}
 	err = cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
 		key, err := cursor.Key()
@@ -173,7 +173,7 @@ func (s *QSIndexDB) PrefixDelete(prefix []byte) (int, error) {
 	})
 
 	if err != nil {
-		return err
+		return matched, err
 	}
 
 	err = txn.Await(s.ctx)
@@ -186,11 +186,11 @@ func (s *QSIndexDB) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, 
 	matched := 0
 	kRange, err := idb.NewKeyRangeLowerBound(BytesToArrayBuffer(prefix), false)
 	if err != nil {
-		return err
+		return matched, err
 	}
 	cursorRequest, err := store.OpenCursorRange(kRange, idb.CursorNext)
 	if err != nil {
-		return err
+		return matched, err
 	}
 
 	err = cursorRequest.Iter(s.ctx, func(cursor *idb.CursorWithValue) error {
@@ -274,7 +274,7 @@ func (s *QSIndexDB) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, 
 		}
 		cursorRequest, err := store.OpenKeyCursorRange(kRange, idb.CursorNext)
 		if err != nil {
-			return matched, derr
+			return matched, err
 		}
 		err = cursorRequest.Iter(s.ctx, func(cursor *idb.Cursor) error {
 			key, err := cursor.Key()
