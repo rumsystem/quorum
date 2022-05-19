@@ -98,6 +98,12 @@ func (appsync *AppSync) RunSync(groupid string, lastBlockId string, newBlockId s
 	subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(lastBlockId, appsync.nodename)
 	if err == nil {
 		nextblock = appsync.findNextBlock(subblocks, newBlockId)
+		if nextblock == nil && lastBlockId != newBlockId {
+			err = nodectx.GetNodeCtx().GetChainStorage().RepairSubblocksList(lastBlockId, newBlockId, appsync.nodename)
+			if err != nil {
+				appsynclog.Errorf("run RepairSubblocksList on %s, err %s", lastBlockId, err)
+			}
+		}
 		for {
 			if nextblock == nil {
 				appsynclog.Infof("no new blocks, skip sync.")

@@ -1,10 +1,13 @@
 package chainstorage
 
 import (
+	"fmt"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
+	"log"
+	"os"
 )
 
 //add block
@@ -200,4 +203,50 @@ func (cs *Storage) GetParentBlock(blockId string, prefix ...string) (*quorumpb.B
 
 	parentChunk, err := cs.dbmgr.GetBlockChunk(chunk.ParentBlockId, false, prefix...)
 	return parentChunk.BlockItem, err
+}
+
+//try to find the subblocks of one block. search from the block to the to blockid
+func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...string) error {
+	if toblockid == blockid {
+		return fmt.Errorf("no new blocks, no need to repair")
+	}
+	blockChunk, err := cs.dbmgr.GetBlockChunk(blockid, false, prefix...)
+	if err != nil {
+		return err
+	}
+	blockChunk.SubBlockId = []string{}
+	succ := false
+	verifyblockid := toblockid
+	var dblogger *log.Logger
+	logfile, err := os.OpenFile(cs.dbmgr.DataPath+"_blockdbrepair.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer logfile.Close()
+	if err != nil {
+	}
+	dblogger = log.New(logfile, "blockdb ", log.LstdFlags)
+
+	dblogger.Printf("verify block: %s", blockid)
+	var verifyblockChunk *quorumpb.BlockDbChunk
+	for {
+		verifyblockChunk, err = cs.dbmgr.GetBlockChunk(verifyblockid, false, prefix...)
+		if verifyblockid == blockid {
+			break
+		}
+		if verifyblockChunk.ParentBlockId == blockid {
+			blockChunk.SubBlockId = append(blockChunk.SubBlockId, verifyblockChunk.BlockId)
+			dblogger.Printf("find the subblock of %s the subblockid is %s", blockid, verifyblockChunk.BlockId)
+			succ = true
+			break
+		}
+		verifyblockid = verifyblockChunk.ParentBlockId
+	}
+	if succ == false {
+		dblogger.Printf("not find the subblock of %s", blockid)
+	} else {
+		dblogger.Printf("update the subblockid of %s", blockid)
+		err = cs.dbmgr.SaveBlockChunk(blockChunk, false, prefix...)
+		if err != nil {
+			dblogger.Printf("Error: %s", err)
+		}
+	}
+	return nil
 }
