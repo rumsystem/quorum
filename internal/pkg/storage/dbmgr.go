@@ -3,6 +3,8 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -1636,6 +1638,51 @@ func (dbMgr *DbMgr) GetSchemaByGroup(groupId, schemaType string, prefix ...strin
 	}
 
 	return &schema, err
+}
+
+func (dbMgr *DbMgr) RepairSubblocksList(blockid, toblockid string, prefix ...string) error {
+	if toblockid == blockid {
+		return fmt.Errorf("no new blocks, no need to repair")
+	}
+	blockChunk, err := dbMgr.getBlockChunk(blockid, false, prefix...)
+	if err != nil {
+		return err
+	}
+	blockChunk.SubBlockId = []string{}
+	succ := false
+	verifyblockid := toblockid
+	var dblogger *log.Logger
+	logfile, err := os.OpenFile(dbMgr.DataPath+"_blockdbrepair.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer logfile.Close()
+	if err != nil {
+	}
+	dblogger = log.New(logfile, "blockdb ", log.LstdFlags)
+
+	dblogger.Printf("verify block: %s", blockid)
+	var verifyblockChunk *quorumpb.BlockDbChunk
+	for {
+		verifyblockChunk, err = dbMgr.getBlockChunk(verifyblockid, false, prefix...)
+		if verifyblockid == blockid {
+			break
+		}
+		if verifyblockChunk.ParentBlockId == blockid {
+			blockChunk.SubBlockId = append(blockChunk.SubBlockId, verifyblockChunk.BlockId)
+			dblogger.Printf("find the subblock of %s the subblockid is %s", blockid, verifyblockChunk.BlockId)
+			succ = true
+			break
+		}
+		verifyblockid = verifyblockChunk.ParentBlockId
+	}
+	if succ == false {
+		dblogger.Printf("not find the subblock of %s", blockid)
+	} else {
+		dblogger.Printf("update the subblockid of %s", blockid)
+		err = dbMgr.saveBlockChunk(blockChunk, false, prefix...)
+		if err != nil {
+			dblogger.Printf("Error: %s", err)
+		}
+	}
+	return nil
 }
 
 /*
