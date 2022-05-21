@@ -1661,8 +1661,11 @@ func (dbMgr *DbMgr) RepairSubblocksList(blockid, toblockid string, prefix ...str
 	dblogger.Printf("verify block: %s", blockid)
 	var verifyblockChunk *quorumpb.BlockDbChunk
 	for {
-		verifyblockChunk, err = dbMgr.getBlockChunk(verifyblockid, false, prefix...)
 		if verifyblockid == blockid {
+			break
+		}
+		verifyblockChunk, err = dbMgr.getBlockChunk(verifyblockid, false, prefix...)
+		if err != nil || verifyblockChunk == nil {
 			break
 		}
 		if verifyblockChunk.ParentBlockId == blockid {
