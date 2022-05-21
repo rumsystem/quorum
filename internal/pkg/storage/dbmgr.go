@@ -1640,7 +1640,7 @@ func (dbMgr *DbMgr) GetSchemaByGroup(groupId, schemaType string, prefix ...strin
 	return &schema, err
 }
 
-func (dbMgr *DbMgr) RepairSubblocksList(blockid, toblockid string, prefix ...string) error {
+func (dbMgr *DbMgr) RepairSubblocksList(groupid, blockid, toblockid string, prefix ...string) error {
 	if toblockid == blockid {
 		return fmt.Errorf("no new blocks, no need to repair")
 	}
@@ -1658,7 +1658,7 @@ func (dbMgr *DbMgr) RepairSubblocksList(blockid, toblockid string, prefix ...str
 	}
 	dblogger = log.New(logfile, "blockdb ", log.LstdFlags)
 
-	dblogger.Printf("verify block: %s", blockid)
+	dblogger.Printf("%s verify block: %s", groupid, blockid)
 	var verifyblockChunk *quorumpb.BlockDbChunk
 	for {
 		if verifyblockid == blockid {
@@ -1670,19 +1670,19 @@ func (dbMgr *DbMgr) RepairSubblocksList(blockid, toblockid string, prefix ...str
 		}
 		if verifyblockChunk.ParentBlockId == blockid {
 			blockChunk.SubBlockId = append(blockChunk.SubBlockId, verifyblockChunk.BlockId)
-			dblogger.Printf("find the subblock of %s the subblockid is %s", blockid, verifyblockChunk.BlockId)
+			dblogger.Printf("%s find the subblock of %s the subblockid is %s", groupid, blockid, verifyblockChunk.BlockId)
 			succ = true
 			break
 		}
 		verifyblockid = verifyblockChunk.ParentBlockId
 	}
 	if succ == false {
-		dblogger.Printf("not find the subblock of %s", blockid)
+		dblogger.Printf("%s not find the subblock of %s", groupid, blockid)
 	} else {
-		dblogger.Printf("update the subblockid of %s", blockid)
+		dblogger.Printf("%s update the subblockid of %s", groupid, blockid)
 		err = dbMgr.saveBlockChunk(blockChunk, false, prefix...)
 		if err != nil {
-			dblogger.Printf("Error: %s", err)
+			dblogger.Printf("%s Error: %s", groupid, err)
 		}
 	}
 	return nil
