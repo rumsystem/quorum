@@ -603,44 +603,44 @@ func (dbMgr *DbMgr) ApproveRelayReq(reqid string) (bool, *quorumpb.GroupRelayIte
 	return succ, &relayreq, err
 }
 
-func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
+func (dbMgr *DbMgr) RemoveGroupData(groupId string, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var keys []string
 
 	//remove all group POST
-	key := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + item.GroupId
+	key := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group producer
-	key = nodeprefix + PRD_PREFIX + "_" + item.GroupId
+	key = nodeprefix + PRD_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group users
-	key = nodeprefix + USR_PREFIX + "_" + item.GroupId
+	key = nodeprefix + USR_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group announced item
-	key = nodeprefix + ANN_PREFIX + "_" + item.GroupId
+	key = nodeprefix + ANN_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group schema item
-	key = nodeprefix + SMA_PREFIX + "_" + item.GroupId
+	key = nodeprefix + SMA_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group chain_config item
-	key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + item.GroupId
+	key = nodeprefix + CHAIN_CONFIG_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group app_config item
-	key = nodeprefix + APP_CONFIG_PREFIX + "_" + item.GroupId
+	key = nodeprefix + APP_CONFIG_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//nonce prefix
-	key = nodeprefix + NONCE_PREFIX + "_" + item.GroupId
+	key = nodeprefix + NONCE_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//snapshot
-	key = nodeprefix + SNAPSHOT_PREFIX + "_" + item.GroupId
+	key = nodeprefix + SNAPSHOT_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//remove all
@@ -671,7 +671,7 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 				return false, perr
 			}
 
-			if blockChunk.BlockItem.GroupId == item.GroupId {
+			if blockChunk.BlockItem.GroupId == groupId {
 				return true, nil
 			}
 			return false, nil
@@ -697,7 +697,7 @@ func (dbMgr *DbMgr) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) 
 			return false, perr
 		}
 
-		if trx.GroupId == item.GroupId {
+		if trx.GroupId == groupId {
 			return true, nil
 		}
 

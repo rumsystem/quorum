@@ -140,7 +140,7 @@ func (grp *Group) LeaveGrp() error {
 }
 
 func (grp *Group) ClearGroup() error {
-	return nodectx.GetDbMgr().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
+	return nodectx.GetDbMgr().RemoveGroupData(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StartSync() error {
