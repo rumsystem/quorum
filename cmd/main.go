@@ -491,7 +491,7 @@ func main() {
 		//logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("ping", "debug")
 		logging.SetLogLevel("chan", "debug")
-		logging.SetLogLevel("pubsub", "debug")
+		//logging.SetLogLevel("pubsub", "debug")
 	}
 
 	if *help {
