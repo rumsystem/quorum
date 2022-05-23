@@ -307,8 +307,12 @@ func doRefresh() {
 	publishQueueWatcher.running = false
 }
 
-func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
+func (watcher *PublishQueueWatcher) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	//chain_log.Debugf("<pubqueue>: %v to group(%s)", trx.TrxId, groupId)
 	item := PublishQueueItem{groupId, PublishQueueItemStatePending, 0, time.Now().UnixNano(), trx, ""}
-	return publishQueueWatcher.UpsertItem(&item)
+	return watcher.UpsertItem(&item)
+}
+
+func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
+	return publishQueueWatcher.TrxEnqueue(groupId, trx)
 }
