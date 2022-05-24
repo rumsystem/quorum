@@ -10,7 +10,7 @@ for GOOS in linux ; do
             bin="quorum"
         fi
         env CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH \
-            go build -ldflags "-X main.GitCommit=$GIT_COMMIT" \
+            go build -ldflags "-X main.GitCommit=$GIT_COMMIT -s -w" \
             -o dist/${GOOS}_${GOARCH}/$bin cmd/main.go
     done
 done

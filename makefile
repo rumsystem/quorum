@@ -4,7 +4,7 @@ QUORUM_BIN_NAME=quorum
 QUORUM_WASMLIB_NAME=lib.wasm
 CLI_BIN_NAME=rumcli
 GIT_COMMIT=$(shell git rev-list -1 HEAD)
-LDFLAGS = -ldflags "-X main.GitCommit=${GIT_COMMIT}"
+LDFLAGS = -ldflags "-X main.GitCommit=${GIT_COMMIT} -s -w"
 GOARCH = amd64
 
 linux:

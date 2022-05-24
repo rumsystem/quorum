@@ -32,7 +32,7 @@ jobs:
         qingcloud_bucket: ${{ secrets.QINGCLOUD_BUCKET }}
         project_path: "./cmd"
         source_files: "main.go"
-        ldflags: "-X main.GitCommit=${{ env.GIT_COMMIT }} -X main.ReleaseVersion=${{ env.RELEASE_TAG }}"
+        ldflags: "-X main.GitCommit=${{ env.GIT_COMMIT }} -X main.ReleaseVersion=${{ env.RELEASE_TAG }} -s -w"
         binary_name: "quorum"
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}

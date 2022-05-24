@@ -31,7 +31,7 @@ jobs:
         qingcloud_config: ${{ secrets.QINGCLOUD_CONFIG }}
         qingcloud_bucket: ${{ secrets.QINGCLOUD_BUCKET }}
         project_path: "./cmd/cli"
-        ldflags: "-X main.GitCommit=${{ env.GIT_COMMIT }} -X main.ReleaseVersion=${{ env.RELEASE_TAG }}"
+        ldflags: "-X main.GitCommit=${{ env.GIT_COMMIT }} -X main.ReleaseVersion=${{ env.RELEASE_TAG }} -s -w"
         binary_name: "rumcli"
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
