@@ -60,6 +60,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.POST("/v1/trx/ack", h.PubQueueAck)
 
+		r.POST("/v1/nodesdk/trx", h.SendTrx)
+
 		r.GET("/v1/groups", h.GetGroups)
 		r.GET("/v1/group/:group_id/content", h.GetGroupCtn)
 		r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)

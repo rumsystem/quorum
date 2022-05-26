@@ -126,16 +126,19 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		return errors.New("Trx Version mismatch")
 	}
 
-	verified, err := rumchaindata.VerifyTrx(trx)
-	if err != nil {
-		chain_log.Warnf("<%s> verify Trx failed with err <%s>", chain.groupId, err.Error())
-		return errors.New("Verify Trx failed")
-	}
+	// *huoju*
+	/*
+		verified, err := rumchaindata.VerifyTrx(trx)
+		if err != nil {
+			chain_log.Warnf("<%s> verify Trx failed with err <%s>", chain.groupId, err.Error())
+			return errors.New("Verify Trx failed")
+		}
 
-	if !verified {
-		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender %s", chain.groupId, trx.SenderPubkey)
-		return errors.New("Invalid Trx")
-	}
+		if !verified {
+			chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender %s", chain.groupId, trx.SenderPubkey)
+			return errors.New("Invalid Trx")
+		}
+	*/
 
 	switch trx.Type {
 	case quorumpb.TrxType_POST:

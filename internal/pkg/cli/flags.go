@@ -14,25 +14,26 @@ type addrList []maddr.Multiaddr
 type ipList []net.IP
 
 type Config struct {
-	RendezvousString   string
-	BootstrapPeers     addrList
-	ListenAddresses    addrList
-	SSLCertIPAddresses ipList
-	APIListenAddresses string
-	ProtocolID         string
-	IsBootstrap        bool
-	IsRexTestMode      bool
-	PeerName           string
-	JsonTracer         string
-	IsDebug            bool
-	ConfigDir          string
-	DataDir            string
-	IsPing             bool
-	KeyStoreDir        string
-	KeyStoreName       string
-	AutoAck            bool
-	EnableRelay        bool
-	EnableRelayService bool
+	RendezvousString     string
+	BootstrapPeers       addrList
+	ListenAddresses      addrList
+	SSLCertIPAddresses   ipList
+	APIListenAddresses   string
+	NodeAPIListenAddress string
+	ProtocolID           string
+	IsBootstrap          bool
+	IsRexTestMode        bool
+	PeerName             string
+	JsonTracer           string
+	IsDebug              bool
+	ConfigDir            string
+	DataDir              string
+	IsPing               bool
+	KeyStoreDir          string
+	KeyStoreName         string
+	AutoAck              bool
+	EnableRelay          bool
+	EnableRelayService   bool
 }
 
 func (al *addrList) String() string {
@@ -88,7 +89,8 @@ func ParseFlags() (Config, error) {
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.Var(&config.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: `-listen /ip4/127.0.0.1/tcp/4215 -listen /ip/127.0.0.1/tcp/5215/ws`")
 	flag.Var(&config.SSLCertIPAddresses, "ips", "IPAddresses field of x509 certificate")
-	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "Adds a multiaddress to the listen list")
+	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "Adds a multiaddress to the listen list for chainsdk")
+	flag.StringVar(&config.NodeAPIListenAddress, "nodeapilisten", ":5216", "Adds a multiaddress to the listen list for nodesdk")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
 	flag.StringVar(&config.ConfigDir, "configdir", "./config/", "config and keys dir")
 	flag.StringVar(&config.DataDir, "datadir", "./data/", "config dir")
