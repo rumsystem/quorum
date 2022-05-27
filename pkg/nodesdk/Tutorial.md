@@ -4,11 +4,11 @@ Dev environment setup
  RUM_KSPASSWD=123 go run cmd/main.go -peername n1 -listen /ip4/127.0.0.1/tcp/7002 -apilisten :8002 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAkwZ53wCxAecczHiypKFJhWXwfP1G87n8G5R4i5qhszy8v -keystoredir n1keystore -jsontracer n1tracer.json --debug true
 
 # Run light node (nodesdk)
-RUM_KSPASSWD=123 go run ./pkg/nodesdk/cmd/main.go -peername nodesdk -listen /ip4/127.0.0.1/tcp/6002  -keystoredir nodesdkkeystore --debug true
+RUM_KSPASSWD=123 go run ./pkg/nodesdk/cmd/main.go -peername nodesdk  --nodeapilisten 127.0.0.1:6002  -keystoredir nodesdkkeystore --debug true
 
 # KeyStore 
 ## Create new signature keypair with Alias
-curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_signature", "type":"sign"}' https://127.0.0.1:5216/nodesdk_api/v1/keystore/create | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_signature", "type":"sign"}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/create | jq
 
 Result:
 {
@@ -19,7 +19,7 @@ Result:
 }
 
 ## Create new encrypt keypair with Alias
-curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_encrypt", "type":"encrypt"}' https://127.0.0.1:5216/nodesdk_api/v1/keystore/create | jq
+curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_encrypt", "type":"encrypt"}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/create | jq
 
 {
   "Alias": "my_encrypt",
@@ -29,7 +29,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_encrypt", "
 }
 
 ## List all keypairs
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:5216/nodesdk_api/v1/keystore/listall | jq
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/listall | jq
 
 {
   "keys": [
@@ -87,7 +87,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_g
 }
 
 ## light node join group
- curl -k -X POST -H 'Content-Type: application/json' -d '{"seed":{"genesis_block":{"BlockId":"cb25698d-dd90-4f18-bbae-f22233256a39","GroupId":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","ProducerPubKey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","Hash":"Xu8/VIr37w/TrmPsf95lmhwVTtGFP4ZFxj/hvM03RJA=","Signature":"MEQCIANcuz+opbZfpUqLTT2os9sEG3tqOelMqXhN6H559UwjAiAhFhaiSzuspWpv1wtRrokDyvaKjVgoj9gnNnh0ZUN/zQ==","TimeStamp":"1652985871447913818"},"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","group_name":"my_test_group","owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","consensus_type":"poa","encryption_type":"public","cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c","app_key":"test_app","signature":"3045022100e1b793c1ff8e02f93c4e54debb39de23a0f19c69f088bdf62354ac233b0f0341022039223bd22f08db98ad7c0af7aeb6b597c5bcda4712772b210c395f6f93fdfe66"}, "sign_alias":"my_signature", "encrypt_alias":"my_encrypt", "urls":["https://127.0.0.1:8002"]}' https://127.0.0.1:5216/nodesdk_api/v1/group/join
+ curl -k -X POST -H 'Content-Type: application/json' -d '{"seed":{"genesis_block":{"BlockId":"cb25698d-dd90-4f18-bbae-f22233256a39","GroupId":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","ProducerPubKey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","Hash":"Xu8/VIr37w/TrmPsf95lmhwVTtGFP4ZFxj/hvM03RJA=","Signature":"MEQCIANcuz+opbZfpUqLTT2os9sEG3tqOelMqXhN6H559UwjAiAhFhaiSzuspWpv1wtRrokDyvaKjVgoj9gnNnh0ZUN/zQ==","TimeStamp":"1652985871447913818"},"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","group_name":"my_test_group","owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","consensus_type":"poa","encryption_type":"public","cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c","app_key":"test_app","signature":"3045022100e1b793c1ff8e02f93c4e54debb39de23a0f19c69f088bdf62354ac233b0f0341022039223bd22f08db98ad7c0af7aeb6b597c5bcda4712772b210c395f6f93fdfe66"}, "sign_alias":"my_signature", "encrypt_alias":"my_encrypt", "urls":["https://127.0.0.1:8002"]}' https://127.0.0.1:6002/nodesdk_api/v1/group/join
 
  {"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","group_name":"my_test_group","owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","sign_alias":"my_signature","encrypt_alias":"my_signature","consensus_type":"poa","encryption_type":"public","cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c","app_key":"test_app","signature":"304402206b2ccbe262cc20e3020b4bd9f89b2909b1a07a54403e501d15a7f4cecfdb866e02207a8142721d677a5c1053cc7c897688b89d2edcc2b0217fce109d567c8a8e31af"}
 
@@ -144,12 +144,12 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3e
 "{\"genesis_block\":{\"BlockId\":\"cb25698d-dd90-4f18-bbae-f22233256a39\",\"GroupId\":\"93502b34-b3ec-43bf-b96a-2b1f42ef6e06\",\"ProducerPubKey\":\"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==\",\"Hash\":\"Xu8/VIr37w/TrmPsf95lmhwVTtGFP4ZFxj/hvM03RJA=\",\"Signature\":\"MEQCIANcuz+opbZfpUqLTT2os9sEG3tqOelMqXhN6H559UwjAiAhFhaiSzuspWpv1wtRrokDyvaKjVgoj9gnNnh0ZUN/zQ==\",\"TimeStamp\":\"1652985871447913818\"},\"group_id\":\"93502b34-b3ec-43bf-b96a-2b1f42ef6e06\",\"group_name\":\"my_test_group\",\"owner_pubkey\":\"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==\",\"consensus_type\":\"poa\",\"encryption_type\":\"public\",\"cipher_key\":\"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c\",\"app_key\":\"test_app\",\"signature\":\"3045022100e1b793c1ff8e02f93c4e54debb39de23a0f19c69f088bdf62354ac233b0f0341022039223bd22f08db98ad7c0af7aeb6b597c5bcda4712772b210c395f6f93fdfe66\"}"
 
 ## Light node post to group
-curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"fae1a2a3-6453-4762-9bcb-f1bf030b3ec5", "type":"Group"}}'  https://127.0.0.1:5216/nodesdk_api/v1/group/content
+curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"fae1a2a3-6453-4762-9bcb-f1bf030b3ec5", "type":"Group"}}'  https://127.0.0.1:6002/nodesdk_api/v1/group/content
 
 {"trx_id":"8277955f-ec2a-4901-b62e-0e3f70863044","err_info":"OK"}
 
 ## Light node get trx info
-curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:5216/nodesdk_api/v1/trx/fae1a2a3-6453-4762-9bcb-f1bf030b3ec5/f0c6c39f-d451-4cca-90d2-875dc7b6c239 | jq
+curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:6002/nodesdk_api/v1/trx/fae1a2a3-6453-4762-9bcb-f1bf030b3ec5/f0c6c39f-d451-4cca-90d2-875dc7b6c239 | jq
 
 {
   "TrxId": "f0c6c39f-d451-4cca-90d2-875dc7b6c239",
@@ -192,3 +192,27 @@ curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:5216/
   "Signature": "MEQCIDfU6P6+vWgdvwQIzPNfdx1XzOg+rYFo+G9W0CwPgkFbAiAseQ8hEzKmk7XNIxQLuery3lo2linl57zkOHf6Eqdc0A==",
   "TimeStamp": "1653594371238961928"
 }
+
+## Full node get content
+ curl -k -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "https://localhost:8002/app/api/v1/group/3e91ed4e-e36c-4beb-a290-e20b84e31b76/content?starttrx=cfb7ee1d-7eb3-49f6-8659-d5256b631262&num=20&includestarttrx=true" | jq
+
+[
+  {
+    "TrxId": "cfb7ee1d-7eb3-49f6-8659-d5256b631262",
+    "Publisher": "04e62e9640688077f2fd6b241afbf16bc18f0b28637890d6fb2db4e942ffc7b8f4a302fbb5bf5ec093011975c75bbb494275af74ed6812e0860d0776dbcd61fd22",
+    "Content": {
+      "type": "Note",
+      "content": "simple note by aa",
+      "name": "A simple Node id1"
+    },
+    "TypeUrl": "quorum.pb.Object",
+    "TimeStamp": 1653677551890876200
+  }
+]
+
+
+ ## Light node get content
+ curl -k -X POST -H 'Content-Type: application/json'  -d '{"group_id":"3e91ed4e-e36c-4beb-a290-e20b84e31b76", "num":20, "start_trx":"cfb7ee1d-7eb3-49f6-8659-d5256b631262", "reverse":"false", "include_start_trx":"false"}'  https://127.0.0.1:6002/nodesdk_api/v1/group/getctn | jq
+
+
+"[{\"TrxId\":\"cfb7ee1d-7eb3-49f6-8659-d5256b631262\",\"Publisher\":\"04e62e9640688077f2fd6b241afbf16bc18f0b28637890d6fb2db4e942ffc7b8f4a302fbb5bf5ec093011975c75bbb494275af74ed6812e0860d0776dbcd61fd22\",\"Content\":\"yKSA4e5de3RHGigW4s/kRSOi+h/I/CN68cb+8Pue1vOCGqifFy8742yVRLAOaZkGwDu+YWRBGtCnwFPoEUQitb57EGc0BAGlGaLkpWEwC/vAHeLsPpwZmw83t0K+98XqndWUsh4aastK5wcmTYY/xg==\",\"TimeStamp\":1653677551890876112}]\n"

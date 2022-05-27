@@ -186,10 +186,6 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		fmt.Println(signPubkey)
-		fmt.Println(signKeyName)
-		fmt.Println(params.SignAlias)
-
 		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(params.EncryptAlias, localcrypto.Encrypt)
 		if err != nil {
 			output[ERROR_INFO] = "Get encrypt pubkey failed"

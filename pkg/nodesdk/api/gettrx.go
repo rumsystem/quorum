@@ -76,13 +76,6 @@ func (h *NodeSDKHandler) GetTrx() echo.HandlerFunc {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-
-		/*
-			m := protojson.MarshalOptions{
-				EmitUnpopulated: true,
-			}
-			jsonString := m.Format(trx)
-		*/
 		return c.JSON(http.StatusOK, trx)
 	}
 }

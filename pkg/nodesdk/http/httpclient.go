@@ -96,6 +96,40 @@ func (hc *HttpClient) Get(url string) ([]byte, error) {
 	return body, err
 }
 
+func (hc *HttpClient) GetWithBody(url string, reqData []byte) ([]byte, error) {
+	http_log.Infof("Get called, groupId <%s>", url)
+
+	fullUrl, err := hc.getFullUrl(url)
+	if err != nil {
+		return nil, err
+	}
+
+	jwt := config.RumConfig.Quorum.JWT
+	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodGet, fullUrl, bytes.NewBuffer(reqData))
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	if jwt != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	}
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	jwtErr := hc.checkJWTError(string(body))
+	if jwtErr != nil {
+		return nil, jwtErr
+	}
+	return body, err
+}
+
 func (hc *HttpClient) Post(url string, data []byte) ([]byte, error) {
 	http_log.Infof("Post called, <%s>", url)
 
