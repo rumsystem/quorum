@@ -1,14 +1,74 @@
-Dev environment setup
+# NodeSDK 
 
-# Run full node (chainsdk)
+  - NodeSDK provide several APIs for app creator to quick development quorum app
+  - NodeSDK doesn't require user node to sync all block/trx data with full node (chainsdk)
+  - NodeSDK should connect chain API provided by other full node which has the specified group used by NodeSDK
+  - Currently NodeSDK does not support private group
+
+# NodeSDK local r&d env quick start
+
+## Download source code
+  https://github.com/rumsystem/quorum/tree/nodesdk
+
+## Run full node (chainsdk)
  RUM_KSPASSWD=123 go run cmd/main.go -peername n1 -listen /ip4/127.0.0.1/tcp/7002 -apilisten :8002 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAkwZ53wCxAecczHiypKFJhWXwfP1G87n8G5R4i5qhszy8v -keystoredir n1keystore -jsontracer n1tracer.json --debug true
 
-# Run light node (nodesdk)
+## Run light node (nodesdk)
 RUM_KSPASSWD=123 go run ./pkg/nodesdk/cmd/main.go -peername nodesdk  --nodeapilisten 127.0.0.1:6002  -keystoredir nodesdkkeystore --debug true
 
-# KeyStore 
-## Create new signature keypair with Alias
+Params
+  - nodeapilisten : nodesdk listening port
+
+## Full node create a group
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group | jq
+
+{
+    "genesis_block": {
+        "BlockId": "80e3dbd6-24de-46cd-9290-ed2ae93ec3ac",
+        "GroupId": "c0020941-e648-40c9-92dc-682645acd17e",
+        "ProducerPubKey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
+        "Hash": "LOZa0CLITIpuQqpvXb6LyXV9z+2rSoU4JwBq0BCXttc=",
+        "Signature": "MEQCICAXCicQ6f4hRNSoJR89DF3a6AKpe6ZgLXsjXqH9H3jxAiA8dpukcriwEu8amouh2ZEKA2peXr3ctKQwxI3R6+nrfg==",
+        "Timestamp": 1632503907836381400
+    },
+    "group_id": "c0020941-e648-40c9-92dc-682645acd17e",
+    "group_name": "my_test_group",
+    "owner_pubkey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
+    "owner_encryptpubkey": "age18kngxt6lkxqulldvxu8xs2ey77rrzwjhqpdey527ad4gkn3euu9sj3ah5j",
+    "consensus_type": "poa",
+    "encryption_type": "public",
+    "cipher_key": "8e9bd83f84cf1408484d24f486861947a1db3fbe6eb3c61e31af55a4803aedc1",
+    "app_key": "test_app",
+    "signature": "304502206897c3c67247cba2e8d5991501b3fd471fcca06f15915efdcd814b9e99c9a48a022100aa3024eb5663da6cbbde150132a4ff52c6c6aeeb49e0c039b4c28e72b071382f"
+}
+
+## Full node add appconfig
+curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"80ca64d5-de6f-4a92-9c3d-43390b22fdfc", "name":"test_bool", "type":"bool", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
+
+{
+  "group_id": "80ca64d5-de6f-4a92-9c3d-43390b22fdfc",
+  "signature": "3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6",
+  "trx_id": "ba5918b0-fb71-43a4-9569-49a0243d6a72"
+}
+
+# NodeSDK APIs
+
+## KeyStore 
+  - NodeSDK use keystore and "alias" to manage key pairs.
+  - An Alias bundled with a pair of public key/private key.
+  - There are 2 types of key, signature key and encrypt key, they are different.
+  - When join a group, user are asked to give both signature key and encrypt key by using alias
+  - A signature key is as same as "User pubkey" in chainSDK, use to "sign" all user trx send from nodesdk
+  - A encrypt key is as same as "User encrypt pubkey" in chainSDK (reverse for future use)
+  - A pair of key has a "keyname", which is generated automatically 
+  - A pair of key (with keyname) can be paired with MULTIPLE alias
+
+### Create new signature keypair with Alias
 curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_signature", "type":"sign"}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/create | jq
+
+params:
+  alias: alias of the new keypair create
+  type : type of key, one of "sign" "encrypt"
 
 Result:
 {
@@ -18,9 +78,19 @@ Result:
   "Pubkey": "04ed309b6cc7f175bab9d467b1eaa3ca2bad9ff5e42a6d0add884e45a0ead039225cca5c1d5afb3589881f05d0cb3392f332c03546af41fff15ce84831dc364e43"
 }
 
-## Create new encrypt keypair with Alias
+Alias  : Alias of the key pair
+Keyname: name of the key pair
+KeyType: type of the key pair
+Pubkey : pubkey of the key pair
+
+### Create new encrypt keypair with Alias
 curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_encrypt", "type":"encrypt"}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/create | jq
 
+params:
+  alias: alias of the new keypair create
+  type : type of key, one of "sign" "encrypt"
+
+Result:
 {
   "Alias": "my_encrypt",
   "Keyname": "c2d14c51-f19d-4094-9ddb-ec7bf7862b9d",
@@ -28,9 +98,20 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_encrypt", "
   "Pubkey": "age1emlvjpwg3v6vkym54dkwcadzu9h397fuvpz02nvu7qjl6delxgdq3d57rf"
 }
 
-## List all keypairs
+Alias  : Alias of the key pair
+Keyname: name of the key pair
+KeyType: type of the key pair
+Pubkey : pubkey of the key pair
+
+### List all keypairs
+
+List all keypairs in key store
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/listall | jq
 
+params:
+  //
+
+result：
 {
   "keys": [
     {
@@ -55,45 +136,60 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:600
   ]
 }
 
-## Remove an exist alias (unbind an alias with keypair)
-curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_sign_alias"}' https://127.0.0.1:5216/nodesdk_api/v1/keystore/remove | jq
+"Alias": All alias paired with this keypair
+"Keyname": key name
+"Keytype": key type
 
-## Rebind alias with other keypair (keyname)
+### Remove an exist alias (unbind an alias with keypair)
+curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_sign_alias"}' https://127.0.0.1:5216/nodesdk_api/v1/keystore/remove | jq
+params:
+  alias : alias to remove
+
+only the alias will be removed, keypair still in keystore
+
+### Rebind alias with other keypair (keyname)
 curl -k -X POST -H 'Content-Type: application/json' -d '{"alias":"my_sign_alias", "keyname":"9e183036-ceb1-4ce5-a61e-147779db5ed4", "type":"sign"}' https://127.0.0.1:5216/nodesdk_api/v1/keystore/bindalias | jq
 
+bind alias with other key name (key pair)
+params:
+  alias : alias to remove
+  keyname : keyname(key pair) to pair with 
 
-# Group
-## Full node create a group
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group | jq
 
-{
-    "genesis_block": {
-        "BlockId": "80e3dbd6-24de-46cd-9290-ed2ae93ec3ac",
-        "GroupId": "c0020941-e648-40c9-92dc-682645acd17e",
-        "ProducerPubKey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-        "Hash": "LOZa0CLITIpuQqpvXb6LyXV9z+2rSoU4JwBq0BCXttc=",
-        "Signature": "MEQCICAXCicQ6f4hRNSoJR89DF3a6AKpe6ZgLXsjXqH9H3jxAiA8dpukcriwEu8amouh2ZEKA2peXr3ctKQwxI3R6+nrfg==",
-        "Timestamp": 1632503907836381400
-    },
-    "group_id": "c0020941-e648-40c9-92dc-682645acd17e",
-    "group_name": "my_test_group",
-    "owner_pubkey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-    "owner_encryptpubkey": "age18kngxt6lkxqulldvxu8xs2ey77rrzwjhqpdey527ad4gkn3euu9sj3ah5j",
-    "consensus_type": "poa",
-    "encryption_type": "public",
-    "cipher_key": "8e9bd83f84cf1408484d24f486861947a1db3fbe6eb3c61e31af55a4803aedc1",
-    "app_key": "test_app",
-    "signature": "304502206897c3c67247cba2e8d5991501b3fd471fcca06f15915efdcd814b9e99c9a48a022100aa3024eb5663da6cbbde150132a4ff52c6c6aeeb49e0c039b4c28e72b071382f"
-}
+## NodeSDK group
 
-## light node join group
+### NodeSDK join group
  curl -k -X POST -H 'Content-Type: application/json' -d '{"seed":{"genesis_block":{"BlockId":"cb25698d-dd90-4f18-bbae-f22233256a39","GroupId":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","ProducerPubKey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","Hash":"Xu8/VIr37w/TrmPsf95lmhwVTtGFP4ZFxj/hvM03RJA=","Signature":"MEQCIANcuz+opbZfpUqLTT2os9sEG3tqOelMqXhN6H559UwjAiAhFhaiSzuspWpv1wtRrokDyvaKjVgoj9gnNnh0ZUN/zQ==","TimeStamp":"1652985871447913818"},"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","group_name":"my_test_group","owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","consensus_type":"poa","encryption_type":"public","cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c","app_key":"test_app","signature":"3045022100e1b793c1ff8e02f93c4e54debb39de23a0f19c69f088bdf62354ac233b0f0341022039223bd22f08db98ad7c0af7aeb6b597c5bcda4712772b210c395f6f93fdfe66"}, "sign_alias":"my_signature", "encrypt_alias":"my_encrypt", "urls":["https://127.0.0.1:8002"]}' https://127.0.0.1:6002/nodesdk_api/v1/group/join
 
- {"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","group_name":"my_test_group","owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","sign_alias":"my_signature","encrypt_alias":"my_signature","consensus_type":"poa","encryption_type":"public","cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c","app_key":"test_app","signature":"304402206b2ccbe262cc20e3020b4bd9f89b2909b1a07a54403e501d15a7f4cecfdb866e02207a8142721d677a5c1053cc7c897688b89d2edcc2b0217fce109d567c8a8e31af"}
+API:
+  /nodesdk_api/v1/group/join
 
-## light node list all groups
+params:
+  seed : group seed
+  sign_alias : key pair (by alias) used to sign
+  encrypt_alias : key pair (by alias) used to encrypt
+  urls: ChainSDK API urls list
+
+Result :
+ {
+  "group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06",
+  "group_name":"my_test_group",
+  "owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==",
+  "sign_alias":"my_signature",
+  "encrypt_alias":"my_signature",
+  "consensus_type":"poa",
+  "encryption_type":"public",
+  "cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c",
+  "app_key":"test_app","signature":"304402206b2ccbe262cc20e3020b4bd9f89b2909b1a07a54403e501d15a7f4cecfdb866e02207a8142721d677a5c1053cc7c897688b89d2edcc2b0217fce109d567c8a8e31af"}
+
+### NodeSDK list all local groups
+
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/listall | jq
 
+API:
+  /nodesdk_api/v1/group/listall
+
+result:
 {
   "groups": [
     {
@@ -116,9 +212,16 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:600
   ]
 }
 
-## Light node list 1 group by groupid
- curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06"}' https://127.0.0.1:5216/nodesdk_api/v1/group/list | jq
+### NodeSDK list group by groupid
+ curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06"}' https://127.0.0.1:6002/nodesdk_api/v1/group/list | jq
 
+API:
+  /nodesdk_api/v1/group/list
+
+params:
+  group_id : group id
+
+result:
  {
   "group_id": "93502b34-b3ec-43bf-b96a-2b1f42ef6e06",
   "group_name": "my_test_group",
@@ -137,18 +240,45 @@ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:600
   ]
 }
 
-## Light node get group seed
-curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06"}' https://127.0.0.1:5216/nodesdk_api/v1/group/seed | jq
+### NodeSDK get group seed
+curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06"}' https://127.0.0.1:6002/nodesdk_api/v1/group/seed | jq
 
+API:
+  /nodesdk_api/v1/group/seed
+
+params:
+  group_id : group id
+
+result:
 "{\"genesis_block\":{\"BlockId\":\"cb25698d-dd90-4f18-bbae-f22233256a39\",\"GroupId\":\"93502b34-b3ec-43bf-b96a-2b1f42ef6e06\",\"ProducerPubKey\":\"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==\",\"Hash\":\"Xu8/VIr37w/TrmPsf95lmhwVTtGFP4ZFxj/hvM03RJA=\",\"Signature\":\"MEQCIANcuz+opbZfpUqLTT2os9sEG3tqOelMqXhN6H559UwjAiAhFhaiSzuspWpv1wtRrokDyvaKjVgoj9gnNnh0ZUN/zQ==\",\"TimeStamp\":\"1652985871447913818\"},\"group_id\":\"93502b34-b3ec-43bf-b96a-2b1f42ef6e06\",\"group_name\":\"my_test_group\",\"owner_pubkey\":\"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==\",\"consensus_type\":\"poa\",\"encryption_type\":\"public\",\"cipher_key\":\"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c\",\"app_key\":\"test_app\",\"signature\":\"3045022100e1b793c1ff8e02f93c4e54debb39de23a0f19c69f088bdf62354ac233b0f0341022039223bd22f08db98ad7c0af7aeb6b597c5bcda4712772b210c395f6f93fdfe66\"}"
 
-## Light node post to group
+### NodeSDK post to group
 curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"fae1a2a3-6453-4762-9bcb-f1bf030b3ec5", "type":"Group"}}'  https://127.0.0.1:6002/nodesdk_api/v1/group/content
 
-{"trx_id":"8277955f-ec2a-4901-b62e-0e3f70863044","err_info":"OK"}
+API:
+  /nodesdk_api/v1/group/content
 
-## Light node get trx info
+Params:
+  same as chainSDK
+
+Result:
+  {
+    "trx_id":"8277955f-ec2a-4901-b62e-0e3f70863044",
+    "err_info":"OK"
+  }
+
+trx_id: trx id
+  * After post, chainSDK will start produce new block to package this trx, it takes 10s to finished, nodesdk should query trx info with trx_id from result till success get trx info from chainsdk, otherwise nodesdk should try post again. 
+
+### NodeSDK get trx info
+
 curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:6002/nodesdk_api/v1/trx/fae1a2a3-6453-4762-9bcb-f1bf030b3ec5/f0c6c39f-d451-4cca-90d2-875dc7b6c239 | jq
+
+
+API:
+ /nodesdk_api/v1/trx/<group_id>/<trx_id>
+
+result:
 
 {
   "TrxId": "f0c6c39f-d451-4cca-90d2-875dc7b6c239",
@@ -165,8 +295,12 @@ curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:6002/
   "StorageType": "CHAIN"
 }
 
-## Light node get block 
+### NodeSDK get block 
+
 curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:5216/nodesdk_api/v1/block/fae1a2a3-6453-4762-9bcb-f1bf030b3ec5/815ae44a-bef8-43e2-9af5-62451e85b8c8 | jq
+
+API:
+ /nodesdk_api/v1/trx/<group_id>/<block_id>
 
 {
   "BlockId": "815ae44a-bef8-43e2-9af5-62451e85b8c8",
@@ -192,97 +326,51 @@ curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:5216/
   "TimeStamp": "1653594371238961928"
 }
 
-## Full node get content
- curl -k -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "https://localhost:8002/app/api/v1/group/3e91ed4e-e36c-4beb-a290-e20b84e31b76/content?starttrx=cfb7ee1d-7eb3-49f6-8659-d5256b631262&num=20&includestarttrx=true" | jq
-
-[
-  {
-    "TrxId": "cfb7ee1d-7eb3-49f6-8659-d5256b631262",
-    "Publisher": "04e62e9640688077f2fd6b241afbf16bc18f0b28637890d6fb2db4e942ffc7b8f4a302fbb5bf5ec093011975c75bbb494275af74ed6812e0860d0776dbcd61fd22",
-    "Content": {
-      "type": "Note",
-      "content": "simple note by aa",
-      "name": "A simple Node id1"
-    },
-    "TypeUrl": "quorum.pb.Object",
-    "TimeStamp": 1653677551890876200
-  }
-]
-
- ## Light node get content
+ ### NodeSDK get content
  curl -k -X POST -H 'Content-Type: application/json'  -d '{"group_id":"3e91ed4e-e36c-4beb-a290-e20b84e31b76", "num":20, "start_trx":"cfb7ee1d-7eb3-49f6-8659-d5256b631262", "reverse":"false", "include_start_trx":"false"}'  https://127.0.0.1:6002/nodesdk_api/v1/group/getctn | jq
 
+API:
+  /nodesdk_api/v1/group/getctn 
+
+Params:
+  Same as chainSDK
+
+Result:
 
 "[{\"TrxId\":\"cfb7ee1d-7eb3-49f6-8659-d5256b631262\",\"Publisher\":\"04e62e9640688077f2fd6b241afbf16bc18f0b28637890d6fb2db4e942ffc7b8f4a302fbb5bf5ec093011975c75bbb494275af74ed6812e0860d0776dbcd61fd22\",\"Content\":\"yKSA4e5de3RHGigW4s/kRSOi+h/I/CN68cb+8Pue1vOCGqifFy8742yVRLAOaZkGwDu+YWRBGtCnwFPoEUQitb57EGc0BAGlGaLkpWEwC/vAHeLsPpwZmw83t0K+98XqndWUsh4aastK5wcmTYY/xg==\",\"TimeStamp\":1653677551890876112}]\n"
 
-## Full node get producers
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/producers | jq
-[
-  {
-    "ProducerPubkey": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
-    "OwnerPubkey": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
-    "OwnerSign": "3046022100dda6a1f8b2fa56d71eb0e2a030f708de7d8e872587d291fb05c3a73a16f8826e022100c77b5a63ea408a526a33dd32bef16015a3dfb17e2bd54dc4e30af21505c2b649",
-    "TimeStamp": 1653931807609874000,
-    "BlockProduced": 3
-  }
-]
 
-## Light node get producers
+### NodeSDK get producers
  curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/producers | jq
 
+ API:
+  /nodesdk_api/v1/group/<group_id>/producers
+
+Result:
 "[{\"ProducerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerSign\":\"3046022100dda6a1f8b2fa56d71eb0e2a030f708de7d8e872587d291fb05c3a73a16f8826e022100c77b5a63ea408a526a33dd32bef16015a3dfb17e2bd54dc4e30af21505c2b649\",\"TimeStamp\":1653931807609873910,\"BlockProduced\":3}]\n"
 
-## Full node add appconfig
-curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"80ca64d5-de6f-4a92-9c3d-43390b22fdfc", "name":"test_bool", "type":"bool", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
 
-{
-  "group_id": "80ca64d5-de6f-4a92-9c3d-43390b22fdfc",
-  "signature": "3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6",
-  "trx_id": "ba5918b0-fb71-43a4-9569-49a0243d6a72"
-}
-
-## Full node list appconfig keylist
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/keylist
-[{"Name":"test_bool","Type":"BOOL"}]
-
-## Light node list appconfig key
+### NodeSDK list appconfig key
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/keylist
+
+ API:
+  /nodesdk_api/v1/group/<group_id>/appconfig/keylist
+
+Result:
 "[{\"Name\":\"test_bool\",\"Type\":\"BOOL\"}]\n"
 
-## Full node get appconfig by key name
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/test_bool | jq
-{
-  "Name": "test_bool",
-  "Type": "BOOL",
-  "Value": "false",
-  "OwnerPubkey": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
-  "OwnerSign": "3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6",
-  "Memo": "add test_bool to group",
-  "TimeStamp": 1653935104730944800
-}
-
-## Light node get appconfig by key name 
+### NodeSDK get appconfig by key name 
  curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/test_bool | jq
+
+ API:
+  /nodesdk_api/v1/group/<group_id>/appconfig/<key>
+
+Result:
  "{\"Name\":\"test_bool\",\"Type\":\"BOOL\",\"Value\":\"false\",\"OwnerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerSign\":\"3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6\",\"Memo\":\"add test_bool to group\",\"TimeStamp\":1653935104730944664}\n"
 
-## NodeSDK other GET API List
-Auth
-  GET /nodesdk_api/v1/group/:groupId/trx/auth/:type
-  GET /nodesdk_api/v1/group/:groupId/trx/allowlist
-  GET /nodesdk_api/v1/group/:groupId/trx/denylist
 
-
-AppConfig
-  GET /api/v1/group/:groupId/appconfig/keylist
-  GET /api/v1/group/:groupId/appconfig/:key
-
-
-Producer
-  GET /api/v1/group/:groupId/announced/producers
-  GET /api/v1/group/:groupId/producers
-
-User
+### NodeSDK get announced user
+TBD:
+  POST /api/v1/group/announce
   GET /api/v1/group/:groupId/announced/users
   GET /api/v1/group/:groupId/announced/user/:publisher
-  POST /api/v1/group/announce
-  POST /api/v1/group/user

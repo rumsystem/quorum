@@ -74,22 +74,6 @@ type NodeSDKGetChainDataItem struct {
 	Req     []byte
 }
 
-type AuthTypeItem struct {
-	GroupId  string
-	TrxType  string
-	JwtToken string
-}
-
-type AuthAllowListItem struct {
-	GroupId  string
-	JwtToken string
-}
-
-type AuthDenyListItem struct {
-	GroupId  string
-	JwtToken string
-}
-
 type AppConfigKeyListItem struct {
 	GroupId  string
 	JwtToken string
@@ -123,4 +107,20 @@ type ProducerListItem struct {
 	OwnerSign      string
 	TimeStamp      int64
 	BlockProduced  int64
+}
+
+type AuthTypeItem struct {
+	GroupId  string
+	TrxType  string
+	JwtToken string
+}
+
+type AuthAllowListItem struct {
+	GroupId  string
+	JwtToken string
+}
+
+type AuthDenyListItem struct {
+	GroupId  string
+	JwtToken string
 }
