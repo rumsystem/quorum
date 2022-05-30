@@ -455,6 +455,7 @@ func main() {
 	// backup/restore flag
 	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
 	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
+	isBackupWasm := flag.Bool("backup-to-wasm", false, "backup the keystore data in wasm known format")
 	backupFile := flag.String("backup-file", "", "the backup file for restoring")
 	password := flag.String("password", "", "the password for backuping/restoring")
 	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
@@ -584,6 +585,11 @@ func main() {
 
 	if *isBackup {
 		handlers.Backup(config, *backupFile, *password)
+		return
+	}
+
+	if *isBackupWasm {
+		handlers.BackupForWasm(config, *backupFile, *password)
 		return
 	}
 

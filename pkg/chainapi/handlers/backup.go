@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -56,6 +57,88 @@ func getBlockPrefixKey() string {
 	return nodename + "_" + storage.BLK_PREFIX + "_"
 }
 
+// BackupForWasm will backup keystore in wasm known format
+func BackupForWasm(config cli.Config, dstPath string, password string) {
+	// get keystore password
+	password, err := GetKeystorePassword(password)
+	if err != nil {
+		logger.Fatalf("handlers.GetKeystorePassword failed: %s", err)
+	}
+
+	// check keystore signature and encrypt
+	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, config.KeyStoreDir, config.ConfigDir, config.PeerName, password); err != nil {
+		logger.Fatalf("check keystore failed: %s", err)
+	}
+
+	// check dst path
+	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
+		logger.Fatalf("backup directory %s is exists", dstPath)
+	}
+
+	/*
+	   wasm need a single file in following format
+
+	   ```
+	   {"key": "", "value": ""}
+	   {"key": "", "value": ""}
+	   ...
+	   ```
+	   each row is encrypted(aes) then encoded with base64 algorithm
+	*/
+	wasmDstPath := getWasmBackupPath(dstPath)
+	wasmKeystoreContent := []string{}
+	if err := filepath.Walk(config.KeyStoreDir, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		r, err := age.NewScryptRecipient(password)
+		if err != nil {
+			return err
+		}
+
+		keyBytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		pair := make(map[string]interface{})
+		key := filepath.Base(path)
+		pair["key"] = key
+		pair["value"] = string(keyBytes)
+		kvBytes, err := json.Marshal(pair)
+		if err != nil {
+			return err
+		}
+
+		output := new(bytes.Buffer)
+		if err := crypto.AgeEncrypt([]age.Recipient{r}, bytes.NewReader(kvBytes), output); err != nil {
+			return err
+		}
+		encryptedKvBytes, err := ioutil.ReadAll(output)
+		if err != nil {
+			return err
+		}
+		res := base64.StdEncoding.EncodeToString(encryptedKvBytes)
+		wasmKeystoreContent = append(wasmKeystoreContent, res)
+		return nil
+	}); err != nil {
+		logger.Fatalf("export keystore to wasm failed: %s", err)
+	}
+	if len(wasmKeystoreContent) > 0 {
+		if err := os.MkdirAll(filepath.Dir(wasmDstPath), 0770); err != nil {
+			logger.Fatalf("create wasm keystore path failed: %s", err)
+		}
+
+		f, err := os.Create(wasmDstPath)
+		if err != nil {
+			logger.Fatalf("create wasm keystore file failed: %s", err)
+		}
+		defer f.Close()
+
+		f.WriteString(strings.Join(wasmKeystoreContent, "\n"))
+	}
+}
+
 // Backup backup block from data db and {config,keystore,seeds} directory
 func Backup(config cli.Config, dstPath string, password string) {
 	// get keystore password
@@ -89,58 +172,6 @@ func Backup(config cli.Config, dstPath string, password string) {
 	keystoreDstPath := getKeystoreBackupPath(dstPath)
 	if err := utils.Copy(config.KeyStoreDir, keystoreDstPath); err != nil {
 		logger.Fatalf("copy %s => %s failed: %s", config.KeyStoreDir, dstPath, err)
-	}
-
-	/*
-	   wasm need a single file in following format
-
-	   ```
-	   {"key": "", "value": ""}
-	   {"key": "", "value": ""}
-	   ...
-	   ```
-	   each row is encrypted(aes) then encoded with base64 algorithm
-	*/
-	wasmDstPath := getWasmBackupPath(dstPath)
-	wasmKeystoreContent := ""
-	if err := filepath.Walk(config.KeyStoreDir, func(path string, info os.FileInfo, err error) error {
-		r, err := age.NewScryptRecipient(password)
-		if err != nil {
-			return err
-		}
-
-		keyBytes, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		pair := make(map[string]interface{})
-		key := filepath.Base(path)
-		pair["key"] = key
-		pair["value"] = string(keyBytes)
-		kvBytes, err := json.Marshal(pair)
-		if err != nil {
-			return err
-		}
-
-		output := new(bytes.Buffer)
-		if err := crypto.AgeEncrypt([]age.Recipient{r}, bytes.NewReader(kvBytes), output); err != nil {
-			return err
-		}
-		encryptedKvBytes, err := ioutil.ReadAll(output)
-		if err != nil {
-			return err
-		}
-		res := base64.StdEncoding.EncodeToString(encryptedKvBytes)
-		wasmKeystoreContent += res
-		return nil
-	}); err != nil {
-		logger.Fatalf("export keystore to wasm failed: %s", err)
-	}
-	if wasmKeystoreContent != "" {
-		if err := ioutil.WriteFile(wasmDstPath, []byte(wasmKeystoreContent), 0644); err != nil {
-			logger.Fatalf("export keystore to wasm failed: %s", err)
-		}
 	}
 
 	// SaveAllGroupSeeds
