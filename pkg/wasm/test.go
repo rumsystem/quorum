@@ -69,7 +69,7 @@ func IndexDBTest() {
 
 		rKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(100))
 		i = 0
-		err = dbMgr.PrefixForeachKey(rKey, []byte(keyPrefix), true, func(k []byte, err error) error {
+		_, err = dbMgr.PrefixForeachKey(rKey, []byte(keyPrefix), true, func(k []byte, err error) error {
 			i += 1
 			curKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(100-i))
 			if !bytes.Equal(k, curKey) {
@@ -82,7 +82,7 @@ func IndexDBTest() {
 		}
 
 		i = 0
-		err = dbMgr.PrefixForeachKey([]byte(keyPrefix), []byte(keyPrefix), false, func(k []byte, err error) error {
+		_, err = dbMgr.PrefixForeachKey([]byte(keyPrefix), []byte(keyPrefix), false, func(k []byte, err error) error {
 			curKey, _ := orderedcode.Append(nil, keyPrefix, "-", orderedcode.Infinity, uint64(i))
 			i += 1
 			if !bytes.Equal(k, curKey) {
