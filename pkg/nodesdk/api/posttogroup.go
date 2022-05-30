@@ -7,23 +7,16 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/golang/protobuf/proto"
 	"github.com/labstack/echo/v4"
 	data "github.com/rumsystem/quorum/pkg/nodesdk/data"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type CustomValidatorPost struct {
 	Validator *validator.Validate
 }
-
-type NodeSDKTrxItem struct {
-	TrxData   []byte
-	CipherKey string
-}
-
-const POST_TO_GROUP_REQUEST_URI string = "/api/v1/nodesdk/trx"
 
 func (cv *CustomValidatorPost) Validate(i interface{}) error {
 	switch i.(type) {
@@ -61,11 +54,6 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 		}
 	}
 	return nil
-}
-
-type TrxResult struct {
-	TrxId   string `json:"trx_id" validate:"required"`
-	ErrInfo string `json:"err_info" validate:"required"`
 }
 
 type SendTrxResult struct {
@@ -107,15 +95,44 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem, nodesdkctx.GetCtx())
 
 		trx, err := trxFactory.GetPostAnyTrx(paramspb.Object)
-		fmt.Println(trx.TrxId)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
 
+		trxBytes, err := proto.Marshal(trx)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		trxItem := new(NodeSDKTrxItem)
+		trxItem.TrxBytes = trxBytes
+		trxItem.JwtToken = JwtToken
+
+		trxItemBytes, err := json.Marshal(trxItem)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		encryptData, err := getEncryptData(trxItemBytes, nodesdkGroupItem.Group.CipherKey)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		item := new(NodeSDKSendTrxItem)
+		item.GroupId = nodesdkGroupItem.Group.GroupId
+		item.TrxItem = encryptData
+
+		itemBytes, err := json.Marshal(item)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
 		//just get the first one
-
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
@@ -128,36 +145,12 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		data, err := proto.Marshal(trx)
+		resultInBytes, err := httpClient.Post(POST_TRX_URI, itemBytes)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		trxItem := new(NodeSDKTrxItem)
-		trxItem.TrxData = data
-		trxItem.CipherKey = nodesdkGroupItem.Group.CipherKey
-
-		trxItemData, err := json.Marshal(trxItem)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		resultInBytes, err := httpClient.Post(POST_TO_GROUP_REQUEST_URI, trxItemData)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		var result *SendTrxResult
-		result = &SendTrxResult{}
-		err = json.Unmarshal(resultInBytes, result)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		return c.JSON(http.StatusOK, result)
+		return c.JSON(http.StatusOK, string(resultInBytes))
 	}
 }

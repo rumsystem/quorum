@@ -41,35 +41,29 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	r.POST("/v1/keystore/remove", h.RmAlias())
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx())
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock())
+
+	r.GET("/v1/group/:group_id/producers", h.GetProducers)
+	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
+	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUsers)
+	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
+	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
+
+	//TBD
 	r.POST("/v1/group/apihosts", h.UpdApiHostUrl)
 
 	//TBD
 	r.POST("/v1/group/announce", h.Announce)
 
 	//TBD
-	r.POST("/v1/group/appconfig", h.MgrAppConfig)
-
-	//TBD
 	r.POST("/v1/group/profile", h.UpdProfile)
 
-	//TBD
-	//r.GET("/v1/group/:group_id/content", h.GetGrpCtn)
+	//not support, chainSdk should give something else to the nodesdk
+	//r.GET("/v1/node", h.GetNodeInfo)
 
-	//Discuss with front end
-	r.GET("/v1/group/:group_id/producers", h.GetProducers)
-	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
-	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUsers)
-	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
-	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
-	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
-
-	//Discuss with front end
+	//not support, should not return this to nodesdk
 	//r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	//r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	//r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
-
-	//not support
-	//r.GET("/v1/node", h.GetNodeInfo)
 
 	certPath, keyPath, err := utils.GetTLSCerts()
 	if err != nil {

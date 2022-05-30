@@ -40,9 +40,11 @@ type NodeSdkGroupContentObjectItem struct {
 	TimeStamp int64
 }
 
-const JwtToken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-
 func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
+	if is_user_blocked(c) {
+		return c.JSON(http.StatusForbidden, "")
+	}
+
 	output := make(map[string]string)
 	getGroupCtnReqItem := new(GetGroupCtnReqItem)
 
@@ -73,7 +75,7 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		if reqItem.JwtToken != JwtToken {
+		if reqItem.JwtToken != NodeSDKJwtToken {
 			output[ERROR_INFO] = "INVALID_JWT_TOKEN"
 			return c.JSON(http.StatusBadRequest, output)
 		}

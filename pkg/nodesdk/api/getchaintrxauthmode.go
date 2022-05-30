@@ -8,16 +8,20 @@ import (
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
-func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
+func (h *NodeSDKHandler) GetChainTrxAuthMode(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
+	trxType := c.Param("trx_type")
 
 	if groupid == "" {
 		output[ERROR_INFO] = "group_id can not be empty"
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	signPubkey := c.Param("sign_pubkey")
+	if trxType == "" {
+		output[ERROR_INFO] = "trx_type can not be empty"
+		return c.JSON(http.StatusBadRequest, output)
+	}
 
 	dbMgr := nodesdkctx.GetDbMgr()
 	nodesdkGroupItem, err := dbMgr.GetGroupInfo(groupid)
@@ -26,12 +30,12 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	reqItem := new(AnnGrpUser)
-	reqItem.GroupId = groupid
-	reqItem.SignPubkey = signPubkey
-	reqItem.JwtToken = JwtToken
+	authTypeItem := new(AuthTypeItem)
+	authTypeItem.GroupId = groupid
+	authTypeItem.TrxType = trxType
+	authTypeItem.JwtToken = JwtToken
 
-	itemBytes, err := json.Marshal(reqItem)
+	itemBytes, err := json.Marshal(authTypeItem)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -46,13 +50,14 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 	getItem := new(NodeSDKGetChainDataItem)
 	getItem.GroupId = groupid
 	getItem.Req = encryptData
-	getItem.ReqType = ANNOUNCED_USER
+	getItem.ReqType = AUTH_TYPE
 
 	reqBytes, err := json.Marshal(getItem)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
+
 	//just get the first one
 	httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 	if err != nil {

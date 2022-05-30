@@ -1,17 +1,13 @@
 package nodesdkapi
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
-
-const GET_CTN_URI string = "/api/v1/nodesdk/groupctn"
 
 type GetGroupCtnPrarms struct {
 	GroupId         string   `json:"group_id" validate:"required"`
@@ -43,8 +39,6 @@ type GroupContentObjectItem struct {
 type GetGroupCtnResult struct {
 	Contents []*GroupContentObjectItem `json:"contents"`
 }
-
-const JwtToken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
 func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -80,13 +74,17 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ciperKey, err := hex.DecodeString(nodesdkGroupItem.Group.CipherKey)
+		encryptData, err := getEncryptData(itemBytes, nodesdkGroupItem.Group.CipherKey)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		encryptData, err := localcrypto.AesEncrypt(itemBytes, ciperKey)
+		getGroupCtnReqItem := new(GetGroupCtnReqItem)
+		getGroupCtnReqItem.GroupId = params.GroupId
+		getGroupCtnReqItem.Req = encryptData
+
+		reqBytes, err := json.Marshal(getGroupCtnReqItem)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -100,16 +98,6 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 		}
 
 		err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		getGroupCtnReqItem := new(GetGroupCtnReqItem)
-		getGroupCtnReqItem.GroupId = params.GroupId
-		getGroupCtnReqItem.Req = encryptData
-
-		reqBytes, err := json.Marshal(getGroupCtnReqItem)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

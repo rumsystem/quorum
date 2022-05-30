@@ -92,8 +92,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_g
  {"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06","group_name":"my_test_group","owner_pubkey":"CAISIQL/jjZqqCV//uWoTjF1G1YvYDQTp1p05xudX2NaabSLDg==","sign_alias":"my_signature","encrypt_alias":"my_signature","consensus_type":"poa","encryption_type":"public","cipher_key":"7d6cce45adcdb58ad10400df079e0a8655df7c633b51e76c796cf0e413827d4c","app_key":"test_app","signature":"304402206b2ccbe262cc20e3020b4bd9f89b2909b1a07a54403e501d15a7f4cecfdb866e02207a8142721d677a5c1053cc7c897688b89d2edcc2b0217fce109d567c8a8e31af"}
 
 ## light node list all groups
-
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:5216/nodesdk_api/v1/group/listall | jq
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/listall | jq
 
 {
   "groups": [
@@ -210,9 +209,80 @@ curl -k -X GET -H 'Content-Type: application/json' -d {} https://127.0.0.1:5216/
   }
 ]
 
-
  ## Light node get content
  curl -k -X POST -H 'Content-Type: application/json'  -d '{"group_id":"3e91ed4e-e36c-4beb-a290-e20b84e31b76", "num":20, "start_trx":"cfb7ee1d-7eb3-49f6-8659-d5256b631262", "reverse":"false", "include_start_trx":"false"}'  https://127.0.0.1:6002/nodesdk_api/v1/group/getctn | jq
 
 
 "[{\"TrxId\":\"cfb7ee1d-7eb3-49f6-8659-d5256b631262\",\"Publisher\":\"04e62e9640688077f2fd6b241afbf16bc18f0b28637890d6fb2db4e942ffc7b8f4a302fbb5bf5ec093011975c75bbb494275af74ed6812e0860d0776dbcd61fd22\",\"Content\":\"yKSA4e5de3RHGigW4s/kRSOi+h/I/CN68cb+8Pue1vOCGqifFy8742yVRLAOaZkGwDu+YWRBGtCnwFPoEUQitb57EGc0BAGlGaLkpWEwC/vAHeLsPpwZmw83t0K+98XqndWUsh4aastK5wcmTYY/xg==\",\"TimeStamp\":1653677551890876112}]\n"
+
+## Full node get producers
+curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/producers | jq
+[
+  {
+    "ProducerPubkey": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
+    "OwnerPubkey": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
+    "OwnerSign": "3046022100dda6a1f8b2fa56d71eb0e2a030f708de7d8e872587d291fb05c3a73a16f8826e022100c77b5a63ea408a526a33dd32bef16015a3dfb17e2bd54dc4e30af21505c2b649",
+    "TimeStamp": 1653931807609874000,
+    "BlockProduced": 3
+  }
+]
+
+## Light node get producers
+ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/producers | jq
+
+"[{\"ProducerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerSign\":\"3046022100dda6a1f8b2fa56d71eb0e2a030f708de7d8e872587d291fb05c3a73a16f8826e022100c77b5a63ea408a526a33dd32bef16015a3dfb17e2bd54dc4e30af21505c2b649\",\"TimeStamp\":1653931807609873910,\"BlockProduced\":3}]\n"
+
+## Full node add appconfig
+curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"80ca64d5-de6f-4a92-9c3d-43390b22fdfc", "name":"test_bool", "type":"bool", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
+
+{
+  "group_id": "80ca64d5-de6f-4a92-9c3d-43390b22fdfc",
+  "signature": "3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6",
+  "trx_id": "ba5918b0-fb71-43a4-9569-49a0243d6a72"
+}
+
+## Full node list appconfig keylist
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/keylist
+[{"Name":"test_bool","Type":"BOOL"}]
+
+## Light node list appconfig key
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/keylist
+"[{\"Name\":\"test_bool\",\"Type\":\"BOOL\"}]\n"
+
+## Full node get appconfig by key name
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/test_bool | jq
+{
+  "Name": "test_bool",
+  "Type": "BOOL",
+  "Value": "false",
+  "OwnerPubkey": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
+  "OwnerSign": "3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6",
+  "Memo": "add test_bool to group",
+  "TimeStamp": 1653935104730944800
+}
+
+## Light node get appconfig by key name 
+ curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/appconfig/test_bool | jq
+ "{\"Name\":\"test_bool\",\"Type\":\"BOOL\",\"Value\":\"false\",\"OwnerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerSign\":\"3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6\",\"Memo\":\"add test_bool to group\",\"TimeStamp\":1653935104730944664}\n"
+
+## NodeSDK other GET API List
+Auth
+  GET /nodesdk_api/v1/group/:groupId/trx/auth/:type
+  GET /nodesdk_api/v1/group/:groupId/trx/allowlist
+  GET /nodesdk_api/v1/group/:groupId/trx/denylist
+
+
+AppConfig
+  GET /api/v1/group/:groupId/appconfig/keylist
+  GET /api/v1/group/:groupId/appconfig/:key
+
+
+Producer
+  GET /api/v1/group/:groupId/announced/producers
+  GET /api/v1/group/:groupId/producers
+
+User
+  GET /api/v1/group/:groupId/announced/users
+  GET /api/v1/group/:groupId/announced/user/:publisher
+  POST /api/v1/group/announce
+  POST /api/v1/group/user

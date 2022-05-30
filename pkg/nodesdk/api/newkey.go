@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -51,6 +52,7 @@ func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 			keytype = localcrypto.Encrypt
 		}
 
+		nodeoptions := options.GetNodeOptions()
 		ks := nodesdkctx.GetKeyStore()
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if !ok {
@@ -61,7 +63,13 @@ func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 		keyname := guuid.New().String()
 
 		password := os.Getenv("RUM_KSPASSWD")
-		_, err = dirks.NewKey(keyname, keytype, password)
+		newsignaddr, err := dirks.NewKey(keyname, keytype, password)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		err = nodeoptions.SetSignKeyMap(keyname, newsignaddr)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
