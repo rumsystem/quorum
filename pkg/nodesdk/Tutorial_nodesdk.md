@@ -183,7 +183,6 @@ Result :
   "app_key":"test_app","signature":"304402206b2ccbe262cc20e3020b4bd9f89b2909b1a07a54403e501d15a7f4cecfdb866e02207a8142721d677a5c1053cc7c897688b89d2edcc2b0217fce109d567c8a8e31af"}
 
 ### NodeSDK list all local groups
-
 curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/listall | jq
 
 API:
@@ -205,6 +204,51 @@ result:
       "last_updated": 0,
       "highest_height": 0,
       "highest_block_id": "",
+      "chain_apis": [
+        "https://127.0.0.1:8002"
+      ]
+    }
+  ]
+}
+
+### NodeSDK get group info
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/info | jq
+
+API:
+  /nodesdk_api/v1/group/:group_id/info
+
+result:
+  {
+  "GroupId": "80ca64d5-de6f-4a92-9c3d-43390b22fdfc",
+  "Owner": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
+  "HighestBlockId": "fa637f55-a7d2-4475-affe-fabf76034d6b",
+  "HighestHeight": 4,
+  "LatestUpdate": 1653935114735942400,
+  "Provider": "CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==",
+  "Singature": "FAKE_SIGN"
+}
+
+After join a group, group info is empty, App use NodeSDK should get groupInfo by itself, if successful,  groupInfo will be update to DB automatially.
+
+### NodeSDK list all local groups after get group info
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/listall | jq
+
+result:
+{
+  "groups": [
+    {
+      "group_id": "80ca64d5-de6f-4a92-9c3d-43390b22fdfc",
+      "group_name": "my_test_group",
+      "sign_alias": "my_signature",
+      "encrypt_alias": "my_encrypt",
+      "user_eth_addr": "045c494662152fa5b9c31e06de316b1ad3a9bafe101d7ed314dbb92499490c7e5c3ce3e78db471dc302d05a8418684b588660039358f5f6399c838c01d5ffffd2a",
+      "consensus_type": "POA",
+      "encryption_type": "PUBLIC",
+      "cipher_key": "9aecbdc3010ba4856c59d8c750615c605bcb775f9a2c4fcdeca04317802f56fd",
+      "app_key": "test_app",
+      "last_updated": 1653935114735942400,
+      "highest_height": 4,
+      "highest_block_id": "fa637f55-a7d2-4475-affe-fabf76034d6b",
       "chain_apis": [
         "https://127.0.0.1:8002"
       ]
@@ -367,10 +411,3 @@ Result:
 
 Result:
  "{\"Name\":\"test_bool\",\"Type\":\"BOOL\",\"Value\":\"false\",\"OwnerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerSign\":\"3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6\",\"Memo\":\"add test_bool to group\",\"TimeStamp\":1653935104730944664}\n"
-
-
-### NodeSDK get announced user
-TBD:
-  POST /api/v1/group/announce
-  GET /api/v1/group/:groupId/announced/users
-  GET /api/v1/group/:groupId/announced/user/:publisher

@@ -57,9 +57,9 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 		groupInfo.EncryptionType = groupItem.Group.EncryptType.String()
 		groupInfo.CipherKey = groupItem.Group.CipherKey
 		groupInfo.AppKey = groupItem.Group.AppKey
-		groupInfo.LastUpdated = 0     //TBD
-		groupInfo.HighestHeight = 0   //TBD
-		groupInfo.HighestBlockId = "" //TBD
+		groupInfo.LastUpdated = groupItem.Group.LastUpdate
+		groupInfo.HighestHeight = groupItem.Group.HighestHeight
+		groupInfo.HighestBlockId = groupItem.Group.HighestBlockId
 		groupInfo.ChainApis = groupItem.ApiUrl
 		return c.JSON(http.StatusOK, groupInfo)
 	}

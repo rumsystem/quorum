@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -29,6 +30,11 @@ type GetDataNodeSDKItem struct {
 	GroupId string
 	ReqType string
 	Req     []byte
+}
+
+type GrpInfo struct {
+	GroupId  string
+	JwtToken string
 }
 
 type AuthTypeItem struct {
@@ -74,10 +80,23 @@ type AnnGrpUser struct {
 	JwtToken   string
 }
 
+type GrpInfoNodeSDK struct {
+	GroupId        string
+	Owner          string
+	HighestBlockId string
+	HighestHeight  int64
+	LatestUpdate   int64
+	Provider       string
+	Singature      string
+}
+
 func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 	if is_user_blocked(c) {
 		return c.JSON(http.StatusForbidden, "")
 	}
+
+	fmt.Println("Called")
+
 	output := make(map[string]string)
 	getDataNodeSDKItem := new(GetDataNodeSDKItem)
 
@@ -104,6 +123,8 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			output[ERROR_INFO] = "DECRYPT_DATA_FAILED"
 			return c.JSON(http.StatusBadRequest, output)
 		}
+
+		fmt.Println(getDataNodeSDKItem.ReqType)
 
 		switch getDataNodeSDKItem.ReqType {
 		case AUTH_TYPE:
@@ -251,6 +272,43 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				return c.JSON(http.StatusBadRequest, output)
 			}
 			return c.JSON(http.StatusOK, res)
+		case GROUP_INFO:
+			item := new(GrpInfo)
+			err = json.Unmarshal(decryptData, item)
+			if err != nil {
+				output[ERROR_INFO] = "INVALID_DATA"
+				return c.JSON(http.StatusBadRequest, output)
+			}
+			if item.JwtToken != NodeSDKJwtToken {
+				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
+				return c.JSON(http.StatusBadRequest, output)
+			}
+
+			if grp, ok := groupmgr.Groups[item.GroupId]; ok {
+				grpInfo := new(GrpInfoNodeSDK)
+				grpInfo.GroupId = grp.Item.GroupId
+				grpInfo.Owner = grp.Item.OwnerPubKey
+				grpInfo.Provider = grp.Item.UserSignPubkey
+				grpInfo.LatestUpdate = grp.Item.LastUpdate
+				grpInfo.HighestBlockId = grp.Item.HighestBlockId
+				grpInfo.HighestHeight = grp.Item.HighestHeight
+
+				/*
+					Sign hash with user pubkey
+					groInfoBytes, err := json.Marshal(grpInfo)
+					if err != nil {
+						output[ERROR_INFO] = "INTERNAL_ERROR"
+						return c.JSON(http.StatusBadRequest, output)
+					}
+					hash := localcrypto.Hash(groInfoBytes)
+				*/
+
+				grpInfo.Singature = "FAKE_SIGN"
+				return c.JSON(http.StatusOK, grpInfo)
+			} else {
+				output[ERROR_INFO] = "INVALID_GROUP"
+				return c.JSON(http.StatusBadRequest, output)
+			}
 		default:
 			output[ERROR_INFO] = "UNKNOWN_REQ_TYPE"
 			return c.JSON(http.StatusBadRequest, output)

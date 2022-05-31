@@ -42,25 +42,25 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx())
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock())
 
+	r.GET("/v1/group/:group_id/info", h.GetGroupInfo)
 	r.GET("/v1/group/:group_id/producers", h.GetProducers)
 	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
 	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUsers)
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 
+	r.POST("/v1/group/profile", h.UpdProfile)
+
 	//TBD
 	r.POST("/v1/group/apihosts", h.UpdApiHostUrl)
 
 	//TBD
-	r.POST("/v1/group/announce", h.Announce)
-
-	//TBD
-	r.POST("/v1/group/profile", h.UpdProfile)
 
 	//not support, chainSdk should give something else to the nodesdk
 	//r.GET("/v1/node", h.GetNodeInfo)
 
 	//not support, should not return this to nodesdk
+	//r.POST("/v1/group/announce", h.Announce)
 	//r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	//r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	//r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)

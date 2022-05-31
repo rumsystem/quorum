@@ -43,6 +43,8 @@ const BLACK_LIST_OP_PREFIX string = "blklistop_"
 
 const JwtToken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
+const GROUP_INFO string = "group_info"
+
 const AUTH_TYPE string = "auth_type"
 const AUTH_ALLOWLIST string = "auth_allowlist"
 const AUTH_DENYLIST string = "auth_denylist"
@@ -123,4 +125,19 @@ type AuthAllowListItem struct {
 type AuthDenyListItem struct {
 	GroupId  string
 	JwtToken string
+}
+
+type GrpInfo struct {
+	GroupId  string
+	JwtToken string
+}
+
+type GrpInfoNodeSDK struct {
+	GroupId        string
+	Owner          string
+	HighestBlockId string
+	HighestHeight  int64
+	LatestUpdate   int64
+	Provider       string
+	Singature      string
 }
