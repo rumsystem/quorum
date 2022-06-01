@@ -2,7 +2,6 @@ package nodesdkapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -90,8 +89,6 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 	grpInfo.Group.HighestBlockId = result.HighestBlockId
 	grpInfo.Group.HighestHeight = result.HighestHeight
 	grpInfo.Group.LastUpdate = result.LatestUpdate
-
-	fmt.Println(grpInfo.Group.HighestHeight)
 
 	err = dbMgr.UpdGroup(grpInfo)
 	if err != nil {
