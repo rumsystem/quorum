@@ -13,6 +13,8 @@ import (
 	"syscall/js"
 
 	"filippo.io/age"
+	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
@@ -20,6 +22,7 @@ import (
 
 var backupLogger = logging.Logger("backup")
 
+// password should be the keystore password, it is used to get the addr
 func KeystoreBackupRaw(password string, onWrite func(string), onFinish func()) error {
 	idb := quorumStorage.QSIndexDB{}
 	err := idb.Init("keystore")
@@ -41,6 +44,21 @@ func KeystoreBackupRaw(password string, onWrite func(string), onFinish func()) e
 		key := string(k)
 		pair["key"] = key
 		pair["value"] = string(v)
+
+		if strings.HasPrefix(key, crypto.Sign.Prefix()) {
+			key, err := ethkeystore.DecryptKey(v, password)
+			if err != nil {
+				backupLogger.Fatalf(err.Error())
+			}
+			privKey := key.PrivateKey
+			addr := ethcrypto.PubkeyToAddress(privKey.PublicKey)
+			// Make sure we're really operating on the requested key (no swap attacks)
+			if key.Address != addr {
+				backupLogger.Fatalf("key content mismatch: have account %x, want %x", key.Address, addr)
+			}
+			pair["addr"] = addr
+		}
+
 		backupLogger.Info("exporting " + key)
 
 		kvBytes, err := json.Marshal(pair)

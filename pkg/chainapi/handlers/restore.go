@@ -4,7 +4,10 @@
 package handlers
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,7 +15,9 @@ import (
 	"strings"
 
 	"filippo.io/age"
+	"github.com/rumsystem/keystore/pkg/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
@@ -106,6 +111,79 @@ func Restore(params RestoreParam) {
 	if err := restoreBlockDB(srcBlockDBDir, dstBlockDBDir); err != nil {
 		logger.Fatalf("restoreBlockDB(%s) failed: %s", srcBlockDBDir, err)
 	}
+}
+
+// from wasm export file(keystore)
+func RestoreFromWasm(param RestoreParam) {
+	wasmDstPath := param.BackupFile
+
+	readFile, err := os.Open(wasmDstPath)
+	defer readFile.Close()
+	if err != nil {
+		logger.Fatalf("failed to restore from wasm keystore: %s", err)
+	}
+
+	identities := []age.Identity{
+		&crypto.LazyScryptIdentity{param.Password},
+	}
+
+	fileScanner := bufio.NewScanner(readFile)
+	fileScanner.Split(bufio.ScanLines)
+
+	nodeoptions, err := options.InitNodeOptions(param.ConfigDir, param.Peername)
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
+	for fileScanner.Scan() {
+		row := fileScanner.Text()
+		if len(row) == 0 {
+			break
+		}
+
+		enc, err := base64.StdEncoding.DecodeString(row)
+		if err != nil {
+			logger.Fatalf("base64 decode config data failed: %s", err)
+		}
+
+		r, err := age.Decrypt(bytes.NewReader(enc), identities...)
+		if err != nil {
+			logger.Fatalf("decrypt config data failed: %v", err)
+		}
+
+		kvBytes, err := ioutil.ReadAll(r)
+		if err != nil {
+			logger.Fatalf("ioutil.ReadAll config failed: %v", err)
+		}
+		pair := make(map[string]interface{})
+		err = json.Unmarshal(kvBytes, &pair)
+		if err != nil {
+			logger.Fatalf("failed to restore from wasm keystore: %s", err)
+		}
+		k := pair["key"].(string)
+		v := pair["value"].(string)
+		logger.Infof("Loading %s", k)
+
+		if strings.HasPrefix(k, crypto.Sign.Prefix()) {
+			addr := pair["addr"].(string)
+			keyName := strings.ReplaceAll(k, crypto.Sign.Prefix(), "")
+			nodeoptions.SetSignKeyMap(keyName, addr)
+		}
+
+		ksPath := filepath.Join(param.KeystoreDir, k)
+		if err := os.MkdirAll(filepath.Dir(ksPath), 0770); err != nil {
+			logger.Fatalf("create wasm keystore path failed: %s", err)
+		}
+		f, err := os.Create(ksPath)
+		if err != nil {
+			logger.Fatalf("create wasm keystore file failed: %s", err)
+		}
+		f.Write([]byte(v))
+		f.Close()
+
+		logger.Infof("OK")
+	}
+
 }
 
 // restoreBlockDB restore block data to `data/{peerName}_db`
