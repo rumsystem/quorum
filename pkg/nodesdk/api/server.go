@@ -30,10 +30,10 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	r.POST("/v1/group/join", h.JoinGroup())
 	r.POST("/v1/group/leave", h.LeaveGroup())
 	r.GET("/v1/group/listall", h.GetAllGroups())
-	r.GET("/v1/group/list", h.GetGroupById())
+	r.GET("/v1/group/:group_id/list", h.GetGroupById())
 	r.POST("/v1/group/content", h.PostToGroup())
 	r.POST("/v1/group/getctn", h.GetGroupCtn())
-	r.GET("/v1/group/seed", h.GetGroupSeed())
+	r.GET("/v1/group/:group_id/seed", h.GetGroupSeed())
 
 	r.POST("/v1/keystore/create", h.CreateNewKeyWithAlias())
 	r.GET("/v1/keystore/listall", h.GetAllAlias())
