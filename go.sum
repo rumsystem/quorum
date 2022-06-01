@@ -1246,6 +1246,8 @@ github.com/rumsystem/rumchaindata v0.0.0-20220525021636-c78109f627c9 h1:MkxqEE8v
 github.com/rumsystem/rumchaindata v0.0.0-20220525021636-c78109f627c9/go.mod h1:Fgsn/Rxhzy72415wG6nlROC/GssC/GlrxEo5ly5tQh0=
 github.com/rumsystem/rumchaindata v0.0.0-20220525023952-cf9f3665971b h1:Ha4MHooMUBPkH7PhLrgHMn945hJIDGjsAfNytecs99I=
 github.com/rumsystem/rumchaindata v0.0.0-20220525023952-cf9f3665971b/go.mod h1:Fgsn/Rxhzy72415wG6nlROC/GssC/GlrxEo5ly5tQh0=
+github.com/rumsystem/rumchaindata v0.0.0-20220601172351-68d1b5f86577 h1:fvzXYDFuLiogT54bfvVfmERUqx6VS5lGV2jhEF94ZnY=
+github.com/rumsystem/rumchaindata v0.0.0-20220601172351-68d1b5f86577/go.mod h1:Fgsn/Rxhzy72415wG6nlROC/GssC/GlrxEo5ly5tQh0=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=

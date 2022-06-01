@@ -11,8 +11,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	data "github.com/rumsystem/quorum/pkg/nodesdk/data"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -85,11 +85,10 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 		}
 	}
 
-	var trxFactory *data.TrxFactory
-	trxFactory = &data.TrxFactory{}
-	trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem, nodesdkctx.GetCtx())
+	trxFactory := &rumchaindata.TrxFactory{}
+	trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name, nodesdkctx.GetCtx())
 
-	trx, err := trxFactory.GetPostAnyTrx(paramspb.Person)
+	trx, err := trxFactory.GetPostAnyTrxWithKeyAlias(nodesdkGroupItem.SignAlias, paramspb.Object)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
