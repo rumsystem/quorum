@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -180,20 +179,26 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 
 		//*huoju*
 		//API does not work???
+		//ConfigEncodeKey
 		signPubkey, err := dirks.GetEncodedPubkeyByAlias(params.SignAlias, localcrypto.Sign)
 		if err != nil {
 			output[ERROR_INFO] = "Get Sign pubkey failed"
 			return c.JSON(http.StatusBadRequest, output)
 		}
+		pubkeybytes, err := hex.DecodeString(signPubkey)
+		if err != nil {
+			output[ERROR_INFO] = "Decode Sign pubkey failed"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+		decodedsignpubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
 
 		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(params.EncryptAlias, localcrypto.Encrypt)
 		if err != nil {
 			output[ERROR_INFO] = "Get encrypt pubkey failed"
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		fmt.Println(encryptPubkey)
-		fmt.Println(encryptKeyName)
-		fmt.Println(params.SignAlias)
 
 		//create nodesdkgroupitem
 		var item *quorumpb.NodeSDKGroupItem
@@ -205,7 +210,7 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		group.GroupId = params.Seed.GroupId
 		group.GroupName = params.Seed.GroupName
 		group.OwnerPubKey = params.Seed.OwnerPubkey
-		group.UserSignPubkey = signPubkey
+		group.UserSignPubkey = p2pcrypto.ConfigEncodeKey(decodedsignpubkey)
 		group.UserEncryptPubkey = encryptPubkey
 		group.LastUpdate = 0 //update after getGroupInfo from ChainSDKAPI
 		group.HighestHeight = 0
