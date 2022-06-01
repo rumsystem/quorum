@@ -69,6 +69,12 @@ func (h *NodeSDKHandler) GetAppConfigKey(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	result := string(resultInBytes)
+	result := new([]*AppConfigKeyListItem)
+	err = json.Unmarshal(resultInBytes, result)
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
+
 	return c.JSON(http.StatusOK, result)
 }

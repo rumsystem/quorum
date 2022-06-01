@@ -36,10 +36,6 @@ type GroupContentObjectItem struct {
 	TimeStamp int64
 }
 
-type GetGroupCtnResult struct {
-	Contents []*GroupContentObjectItem `json:"contents"`
-}
-
 func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var err error
@@ -109,7 +105,14 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		result := string(resultInBytes)
+		result := new([]*GroupContentObjectItem)
+		err = json.Unmarshal(resultInBytes, result)
+
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
 		return c.JSON(http.StatusOK, result)
 	}
 }

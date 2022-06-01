@@ -257,7 +257,7 @@ result:
 }
 
 ### NodeSDK list group by groupid
- curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06"}' https://127.0.0.1:6002/nodesdk_api/v1/group/list | jq
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/list | jq
 
 API:
   /nodesdk_api/v1/group/list
@@ -285,7 +285,7 @@ result:
 }
 
 ### NodeSDK get group seed
-curl -k -X GET -H 'Content-Type: application/json' -d '{"group_id":"93502b34-b3ec-43bf-b96a-2b1f42ef6e06"}' https://127.0.0.1:6002/nodesdk_api/v1/group/seed | jq
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/seed | jq
 
 API:
   /nodesdk_api/v1/group/seed
@@ -380,9 +380,14 @@ Params:
   Same as chainSDK
 
 Result:
-
-"[{\"TrxId\":\"cfb7ee1d-7eb3-49f6-8659-d5256b631262\",\"Publisher\":\"04e62e9640688077f2fd6b241afbf16bc18f0b28637890d6fb2db4e942ffc7b8f4a302fbb5bf5ec093011975c75bbb494275af74ed6812e0860d0776dbcd61fd22\",\"Content\":\"yKSA4e5de3RHGigW4s/kRSOi+h/I/CN68cb+8Pue1vOCGqifFy8742yVRLAOaZkGwDu+YWRBGtCnwFPoEUQitb57EGc0BAGlGaLkpWEwC/vAHeLsPpwZmw83t0K+98XqndWUsh4aastK5wcmTYY/xg==\",\"TimeStamp\":1653677551890876112}]\n"
-
+[
+  {
+    "TrxId": "5a590b72-3577-4989-a0e3-b50cabf5063a",
+    "Publisher": "045c494662152fa5b9c31e06de316b1ad3a9bafe101d7ed314dbb92499490c7e5c3ce3e78db471dc302d05a8418684b588660039358f5f6399c838c01d5ffffd2a",
+    "Content": "N3QPdHmLot2ADOWBsB84GQkUkQVl7jVAlZRFf8mCp8pi51d+q2t+TeZ95Lj03nC7iSPUv4QnPMzWvo4A/ROo/Tv4iHQ87HX1guIQ1KC8nff2ksLbl+RqxfXEaaLpQwbSfkOyXLAaKFE48EmMnbOEEw==",
+    "TimeStamp": 1653933252237444400
+  }
+]
 
 ### NodeSDK get producers
  curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:6002/nodesdk_api/v1/group/80ca64d5-de6f-4a92-9c3d-43390b22fdfc/producers | jq
