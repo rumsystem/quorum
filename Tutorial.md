@@ -1532,7 +1532,7 @@ group 的 key 是 owner 通过 [app config](#api-add-app-config) 自行添加的
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/config/keylist
+curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/appconfig/keylist
 API：/v1/group/<GROUP_ID>/appconfig/keylist
 ```
 
