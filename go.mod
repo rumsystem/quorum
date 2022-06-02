@@ -18,6 +18,7 @@ replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0
 
 //replace github.com/rumsystem/rumchaindata => ../rumchaindata
 //replace github.com/rumsystem/keystore => ../keystore
+
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
 //replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
@@ -59,7 +60,7 @@ require (
 	github.com/open-policy-agent/opa v0.39.0
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/rumsystem/keystore v0.0.0-20220520205747-1b1ed5c74859
+	github.com/rumsystem/keystore v0.0.0-20220602192804-2943b530ca3c
 	github.com/rumsystem/rumchaindata v0.0.0-20220601172351-68d1b5f86577
 	github.com/spf13/viper v1.11.0
 	github.com/swaggo/echo-swagger v1.1.0
