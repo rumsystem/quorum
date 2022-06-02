@@ -79,6 +79,10 @@ func (chain *Chain) GetSyncer() *Syncer {
 	return chain.syncer
 }
 
+func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
+	return GetPubQueueWatcher()
+}
+
 func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
 	chain_log.Debugf("<%s> UpdChainInfo called", chain.groupId)
 	chain.group.Item.HighestHeight = height

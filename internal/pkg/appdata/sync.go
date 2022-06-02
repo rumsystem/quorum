@@ -97,6 +97,13 @@ func (appsync *AppSync) RunSync(groupid string, lastBlockId string, newBlockId s
 	subblocks, err := appsync.dbmgr.GetSubBlock(lastBlockId, appsync.nodename)
 	if err == nil {
 		nextblock = appsync.findNextBlock(subblocks, newBlockId)
+		if nextblock == nil && lastBlockId != newBlockId {
+			err = appsync.dbmgr.RepairSubblocksList(groupid, lastBlockId, newBlockId, appsync.nodename)
+			if err != nil {
+				appsynclog.Errorf("run RepairSubblocksList on %s, err %s", lastBlockId, err)
+			}
+		}
+
 		for {
 			if nextblock == nil {
 				appsynclog.Infof("no new blocks, skip sync.")
