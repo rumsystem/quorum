@@ -63,8 +63,8 @@ func loadSignTxParam(param SignTxParam) (*FmtSignTxParam, error) {
 // @Description signature transaction with private key
 // @Accept json
 // @Produce json
-// @Param data body handlers.SignTxParam true "tx param"
-// @Success 200 {object} handlers.SignTxResult
+// @Param data body SignTxParam true "tx param"
+// @Success 200 {object} SignTxResult
 // @Router /nodesdk_api/v1/keystore/signtx [post]
 func (h *NodeSDKHandler) SignTx(c echo.Context) (err error) {
 	output := make(map[string]string)
