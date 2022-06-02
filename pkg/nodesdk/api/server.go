@@ -36,6 +36,7 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	r.POST("/v1/keystore/create", h.CreateNewKeyWithAlias())
 	r.POST("/v1/keystore/bindalias", h.BindAliasWithKeyName())
 	r.POST("/v1/keystore/remove", h.RmAlias())
+	r.POST("/v1/keystore/signtx", h.SignTx)
 
 	r.GET("/v1/group/listall", h.GetAllGroups())
 	r.GET("/v1/group/:group_id/list", h.GetGroupById())
