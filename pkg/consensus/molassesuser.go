@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -153,10 +154,17 @@ func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) 
 	if err != nil {
 		return "", err
 	}
+
 	err = connMgr.SendTrxPubsub(trx, channel)
 	if err != nil {
 		return "", err
 	}
+
+	err = user.cIface.GetPubqueueIface().TrxEnqueue(user.groupId, trx)
+	if err != nil {
+		return "", err
+	}
+
 	return trx.TrxId, nil
 }
 

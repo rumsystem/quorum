@@ -92,7 +92,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 
 	//remove all
 	for _, key_prefix := range keys {
-		err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
+		_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
 		if err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 	keys = append(keys, key)
 
 	for _, key_prefix := range keys {
-		err := cs.dbmgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
+		_, err := cs.dbmgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
 			if err != nil {
 				return false, err
 			}
@@ -130,7 +130,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 
 	//remove all trx
 	key = nodeprefix + s.TRX_PREFIX + "_"
-	err := cs.dbmgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
+	_, err := cs.dbmgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
 		if err != nil {
 			return false, err
 		}

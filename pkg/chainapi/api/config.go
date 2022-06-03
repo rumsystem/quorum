@@ -23,3 +23,5 @@ const GROUP_NAME_MIN_LENGTH int = 5
 const ERROR_INFO string = "error"
 
 const BLACK_LIST_OP_PREFIX string = "blklistop_"
+
+const NodeSDKJwtToken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"

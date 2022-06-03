@@ -82,7 +82,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 
 		//decrypt trx data
 		if trx.Type == quorumpb.TrxType_POST && groupitem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
+			//for post, private group, encrypted by age for all announced group user
 			ks := localcrypto.GetKeystore()
 			decryptData, err := ks.Decrypt(groupid, trx.Data)
 			if err != nil {

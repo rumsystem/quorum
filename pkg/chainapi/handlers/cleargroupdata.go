@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -31,17 +30,15 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[params.GroupId]
-	if !ok {
-		return nil, fmt.Errorf("Group %s not exist", params.GroupId)
-	}
-
-	// stop syncing first, to avoid starving in browser (indexeddb)
-	if err := group.StopSync(); err != nil {
-		return nil, err
-	}
-
-	if err := group.ClearGroup(); err != nil {
-		return nil, err
+	if ok {
+		// stop syncing first, to avoid starving in browser (indexeddb)
+		if err := group.StopSync(); err != nil {
+			return nil, err
+		}
+		// group may not exists or already be left
+		if err := group.ClearGroup(); err != nil {
+			return nil, err
+		}
 	}
 
 	var groupSignPubkey []byte

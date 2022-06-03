@@ -36,49 +36,50 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 		return nil, err
 	}
 
-	ks := nodectx.GetNodeCtx().Keystore
-
-	hexkey, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
-	pubkeybytes, err := hex.DecodeString(hexkey)
-	p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
-	if err != nil {
-		return nil, errors.New("group key can't be decoded, err:" + err.Error())
-	}
-
-	item := &quorumpb.AppConfigItem{}
-	item.GroupId = params.GroupId
-	if params.Action == "add" {
-		item.Action = quorumpb.ActionType_ADD
-	} else {
-		item.Action = quorumpb.ActionType_REMOVE
-	}
-	item.Name = params.Name
-	if params.Type == "bool" {
-		item.Type = quorumpb.AppConfigType_BOOL
-		_, err := strconv.ParseBool(params.Value)
-		if err != nil {
-			return nil, errors.New("type/value mismatch")
-		}
-	} else if params.Type == "int" {
-		item.Type = quorumpb.AppConfigType_INT
-		_, err := strconv.Atoi(params.Value)
-		if err != nil {
-			return nil, errors.New("type/value mismatch")
-		}
-	} else {
-		item.Type = quorumpb.AppConfigType_STRING
-	}
-
-	item.Value = params.Value
-	item.Memo = params.Memo
-
 	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
+	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
 		return nil, errors.New("Can not find group")
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, errors.New("Only group owner can add or remove config of it")
 	} else {
+
+		ks := nodectx.GetNodeCtx().Keystore
+
+		hexkey, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+		pubkeybytes, err := hex.DecodeString(hexkey)
+		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+		groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
+		if err != nil {
+			return nil, errors.New("group key can't be decoded, err:" + err.Error())
+		}
+
+		item := &quorumpb.AppConfigItem{}
+		item.GroupId = params.GroupId
+		if params.Action == "add" {
+			item.Action = quorumpb.ActionType_ADD
+		} else {
+			item.Action = quorumpb.ActionType_REMOVE
+		}
+		item.Name = params.Name
+		if params.Type == "bool" {
+			item.Type = quorumpb.AppConfigType_BOOL
+			_, err := strconv.ParseBool(params.Value)
+			if err != nil {
+				return nil, errors.New("type/value mismatch")
+			}
+		} else if params.Type == "int" {
+			item.Type = quorumpb.AppConfigType_INT
+			_, err := strconv.Atoi(params.Value)
+			if err != nil {
+				return nil, errors.New("type/value mismatch")
+			}
+		} else {
+			item.Type = quorumpb.AppConfigType_STRING
+		}
+
+		item.Value = params.Value
+		item.Memo = params.Memo
+
 		var buffer bytes.Buffer
 		buffer.Write([]byte(item.GroupId))
 		buffer.Write([]byte(item.Action.String()))

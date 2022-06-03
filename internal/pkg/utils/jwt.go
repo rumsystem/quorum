@@ -18,13 +18,22 @@ func NewJWTToken(name string, role string, jwtKey string, exp time.Time) (string
 	return token.SignedString([]byte(jwtKey))
 }
 
-// IsJWTTokenExpires checks if the token is expired
-func IsJWTTokenExpired(tokenStr string, jwtKey string) bool {
+// ParseJWTToken parse jwt token string to *jwt.Token
+func ParseJWTToken(tokenStr string, jwtKey string) (*jwt.Token, error) {
 	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(jwtKey), nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
+	return token, nil
+}
+
+// IsJWTTokenExpires checks if the token is expired
+func IsJWTTokenExpired(tokenStr string, jwtKey string) bool {
+	_, err := ParseJWTToken(tokenStr, jwtKey)
 	if err != nil {
 		e := err.(*jwt.ValidationError)
 		if e.Errors == jwt.ValidationErrorExpired {
@@ -37,11 +46,7 @@ func IsJWTTokenExpired(tokenStr string, jwtKey string) bool {
 
 // IsJWTTokenValid checks if the token is valid, invalid include expired or invalid
 func IsJWTTokenValid(tokenStr string, jwtKey string) (bool, error) {
-	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtKey), nil
-	})
-
+	_, err := ParseJWTToken(tokenStr, jwtKey)
 	if err != nil {
 		e := err.(*jwt.ValidationError)
 		if e.Errors == jwt.ValidationErrorExpired {

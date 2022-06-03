@@ -27,9 +27,9 @@ type GrpUserResult struct {
 }
 
 type GrpUserParam struct {
-	Action     string `from:"action"          json:"action"           validate:"required,oneof=add remove"`
-	UserPubkey string `from:"user_pubkey" json:"user_pubkey"  validate:"required"`
-	GroupId    string `from:"group_id"        json:"group_id"         validate:"required"`
+	Action     string `from:"action"          json:"action"       validate:"required,oneof=add remove"`
+	UserPubkey string `from:"user_pubkey"     json:"user_pubkey"  validate:"required"`
+	GroupId    string `from:"group_id"        json:"group_id"     validate:"required"`
 	Memo       string `from:"memo"            json:"memo"`
 }
 

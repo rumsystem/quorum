@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"syscall"
 
 	"github.com/labstack/echo/v4"
@@ -29,23 +28,10 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(OpaWithConfig(OpaConfig{
-		Skipper: func(c echo.Context) bool { // skip localhost
-			host := c.Request().Host
-			if strings.HasPrefix(host, "localhost:") || host == "localhost" || strings.HasPrefix(host, "127.0.0.1:") || host == "127.0.0.1" {
-				return true
-			}
-			return false
-		},
-		Policy: policyStr,
-		Query:  "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
-		InputFunc: func(c echo.Context) interface{} {
-			r := c.Request()
-			return map[string]interface{}{
-				"method": r.Method,
-				"path":   strings.Split(strings.Trim(r.URL.Path, "/"), "/"),
-				"role":   appapi.GetJWTRole(c, customJWTConfig.ContextKey),
-			}
-		},
+		Skipper:   localhostSkipper,
+		Policy:    policyStr,
+		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
+		InputFunc: opaInputFunc,
 	}))
 	r := e.Group("/api")
 	a := e.Group("/app/api")
@@ -73,7 +59,6 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.POST("/v1/trx/ack", h.PubQueueAck)
-
 		r.GET("/v1/groups", h.GetGroups)
 		r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 		r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
@@ -90,10 +75,17 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
 
+		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
+
 		r.POST("/v1/preview/relay/req", h.RequestRelay)
 		r.GET("/v1/preview/relay", h.ListRelay)
 		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
 		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)
+
+		//for nodesdk
+		r.POST("/v1/nodesdk/trx", h.SendTrx)
+		r.POST("/v1/nodesdk/groupctn", h.GetContentNSdk)
+		r.POST("/v1/nodesdk/getchaindata", h.GetDataNSdk)
 
 	} else {
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
