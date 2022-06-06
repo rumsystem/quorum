@@ -104,7 +104,8 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 		pair := make(map[string]interface{})
 		key := filepath.Base(path)
 		pair["key"] = key
-		pair["value"] = string(keyBytes)
+		// FIXME: binary format
+		pair["value"] = base64.StdEncoding.EncodeToString(keyBytes)
 		kvBytes, err := json.Marshal(pair)
 		if err != nil {
 			return err

@@ -161,7 +161,7 @@ func RestoreFromWasm(param RestoreParam) {
 			logger.Fatalf("failed to restore from wasm keystore: %s", err)
 		}
 		k := pair["key"].(string)
-		v := pair["value"].(string)
+		v, _ := base64.StdEncoding.DecodeString(pair["value"].(string))
 		logger.Infof("Loading %s", k)
 
 		if strings.HasPrefix(k, crypto.Sign.Prefix()) {
@@ -178,7 +178,7 @@ func RestoreFromWasm(param RestoreParam) {
 		if err != nil {
 			logger.Fatalf("create wasm keystore file failed: %s", err)
 		}
-		f.Write([]byte(v))
+		f.Write(v)
 		f.Close()
 
 		logger.Infof("OK")

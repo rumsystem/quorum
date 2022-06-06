@@ -43,7 +43,7 @@ func KeystoreBackupRaw(password string, onWrite func(string), onFinish func()) e
 		pair := make(map[string]interface{})
 		key := string(k)
 		pair["key"] = key
-		pair["value"] = string(v)
+		pair["value"] = base64.StdEncoding.EncodeToString(v)
 
 		if strings.HasPrefix(key, crypto.Sign.Prefix()) {
 			key, err := ethkeystore.DecryptKey(v, password)
@@ -136,10 +136,10 @@ func KeystoreRestoreRaw(password string, keystoreStr string) error {
 			return err
 		}
 		k := pair["key"].(string)
-		v := pair["value"].(string)
+		v, _ := base64.StdEncoding.DecodeString(pair["value"].(string))
 		backupLogger.Info("Loading " + k)
 
-		err = idb.Set([]byte(k), []byte(v))
+		err = idb.Set([]byte(k), v)
 		if err != nil {
 			return err
 		}
