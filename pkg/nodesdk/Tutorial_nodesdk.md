@@ -434,3 +434,18 @@ Result:
 
 Result:
  "{\"Name\":\"test_bool\",\"Type\":\"BOOL\",\"Value\":\"false\",\"OwnerPubkey\":\"CAISIQKBxdGuEjsljYbPgfbZTti8NAoFbW+Sh8YvCFF/PRqH4A==\",\"OwnerSign\":\"3046022100bf921a9fd48fca33092cff445680e6f50431354951183dff176fdfebfb160eef022100d8b903fe5a67f1934e2e1229a9b923496146cd885c98c2200def2f3b0b7ee2c6\",\"Memo\":\"add test_bool to group\",\"TimeStamp\":1653935104730944664}\n"
+
+
+### NodeSDK Update API list
+curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"80ca64d5-de6f-4a92-9c3d-43390b22fdfc", "urls":["127.0.0.1:9002"]}' https://127.0.0.1:6002/nodesdk_api/v1/group/apihosts | jq
+
+API:
+/nodesdk_api/v1/group/apihosts 
+
+Params:
+  group_id : group id
+  urls : array of new API lists
+
+Result:
+  200 OK
+
