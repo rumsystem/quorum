@@ -33,8 +33,9 @@ func main() {
 	if ReleaseVersion == "" {
 		ReleaseVersion = "v1.0.0"
 	}
+
 	if GitCommit == "" {
-		GitCommit = "1.0.0" //"devel"
+		GitCommit = "devel"
 	}
 
 	help := flag.Bool("h", false, "Display Help")
@@ -79,8 +80,6 @@ func main() {
 }
 
 func mainRet(config cli.Config) int {
-	mainlog.Infof("Version: %s", GitCommit)
-
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -218,7 +217,7 @@ func mainRet(config cli.Config) int {
 		mainlog.Fatalf(err.Error())
 	}
 
-	nodesdkctx.Init(ctx, nodename, dbManager, GitCommit)
+	nodesdkctx.Init(ctx, nodename, dbManager)
 	nodesdkctx.GetCtx().Keystore = ksi
 	nodesdkctx.GetCtx().PublicKey = keys.PubKey
 	nodesdkctx.GetCtx().PeerId = peerid
@@ -227,7 +226,6 @@ func mainRet(config cli.Config) int {
 	nodeHandler := &nodesdkapi.NodeSDKHandler{
 		NodeSdkCtx: nodesdkctx.GetCtx(),
 		Ctx:        ctx,
-		GitCommit:  GitCommit,
 	}
 
 	nodeApiAddress := "https://%s/api/v1"

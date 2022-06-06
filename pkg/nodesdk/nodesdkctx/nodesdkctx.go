@@ -27,11 +27,11 @@ func GetCtx() *NodeSdkCtx {
 	return nodesdkCtx
 }
 
-func Init(ctx context.Context, name string, db *nodesdkdb.DbMgr, ver string) {
+func Init(ctx context.Context, name string, db *nodesdkdb.DbMgr) {
 	nodesdkCtx = &NodeSdkCtx{}
 	nodesdkCtx.Name = name
 	nodesdkCtx.Ctx = ctx
-	nodesdkCtx.Version = ver
+	nodesdkCtx.Version = "1.0.0"
 	nodesdkCtx.DbMgr = db
 	nodesdkCtx.HttpClients = make(map[string]*http_client.HttpClient)
 }
