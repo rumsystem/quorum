@@ -7,6 +7,7 @@ import (
 
 type ChainMolassesIface interface {
 	GetChainSyncIface() chaindef.ChainDataSyncIface
+	GetPubqueueIface() chaindef.PublishQueueIface
 	GetTrxFactory() chaindef.TrxFactoryIface
 	UpdChainInfo(height int64, blockId string) error
 	RecalChainHeight(blocks []*quorumpb.Block, currentHeight int64, currentHighestBlock *quorumpb.Block, nodename string) (int64, string, error)

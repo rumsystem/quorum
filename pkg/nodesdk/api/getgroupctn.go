@@ -1,12 +1,16 @@
 package nodesdkapi
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type GetGroupCtnPrarms struct {
@@ -32,7 +36,8 @@ type GetGroupCtnReqItem struct {
 type GroupContentObjectItem struct {
 	TrxId     string
 	Publisher string
-	Content   []byte
+	Content   proto.Message
+	TypeUrl   string
 	TimeStamp int64
 }
 
@@ -105,14 +110,40 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		result := new([]*GroupContentObjectItem)
-		err = json.Unmarshal(resultInBytes, result)
+		trxs := new([]*quorumpb.Trx)
+		err = json.Unmarshal(resultInBytes, trxs)
+
+		ctnobjList := []*GroupContentObjectItem{}
+		for _, trx := range *trxs {
+
+			//TODO: support private group
+			//if item.TrxType == quorumpb.TrxType_POST && nodesdkGroupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+			//	nodesdk not support private group now, encrypted by age for all announced group user
+			//}
+			//decrypt message by AES, for public group
+			ciperKey, err := hex.DecodeString(nodesdkGroupItem.Group.CipherKey)
+			if err != nil {
+				return err
+			}
+
+			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+			if err != nil {
+				return err
+			}
+			ctnobj, typeurl, errum := quorumpb.BytesToMessage(trx.TrxId, decryptData)
+			if errum != nil {
+				c.Logger().Errorf("Unmarshal trx.Data %s Err: %s", trx.TrxId, errum)
+			} else {
+				ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: trx.SenderPubkey, Content: ctnobj, TimeStamp: trx.TimeStamp, TypeUrl: typeurl}
+				ctnobjList = append(ctnobjList, ctnobjitem)
+			}
+		}
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		return c.JSON(http.StatusOK, result)
+		return c.JSON(http.StatusOK, ctnobjList)
 	}
 }

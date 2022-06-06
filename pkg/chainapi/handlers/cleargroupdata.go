@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type ClearGroupDataParam struct {
@@ -31,16 +31,15 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[params.GroupId]
-	if !ok {
-		return nil, fmt.Errorf("Group %s not exist", params.GroupId)
+	if ok {
+		// stop syncing first, to avoid starving in browser (indexeddb)
+		if err := group.StopSync(); err != nil {
+			return nil, err
+		}
 	}
 
-	// stop syncing first, to avoid starving in browser (indexeddb)
-	if err := group.StopSync(); err != nil {
-		return nil, err
-	}
-
-	if err := group.ClearGroup(); err != nil {
+	// group may not exists or already be left
+	if err := nodectx.GetDbMgr().RemoveGroupData(params.GroupId, nodectx.GetNodeCtx().Name); err != nil {
 		return nil, err
 	}
 

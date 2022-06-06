@@ -32,14 +32,6 @@ type GetGroupCtnReqItem struct {
 	Req     []byte
 }
 
-type NodeSdkGroupContentObjectItem struct {
-	TrxId     string
-	Publisher string
-	Content   []byte
-	//TypeUrl   string
-	TimeStamp int64
-}
-
 func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 	if is_user_blocked(c) {
 		return c.JSON(http.StatusForbidden, "")
@@ -80,7 +72,7 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		num := reqItem.Req.Num //strconv.Atoi(reqItem.Num)
+		num := reqItem.Req.Num
 		nonce, _ := strconv.ParseInt(reqItem.Req.Nonce, 10, 64)
 		starttrx := reqItem.Req.StartTrx
 		if num == 0 {
@@ -107,20 +99,16 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ctnobjList := []*NodeSdkGroupContentObjectItem{}
+		trxList := []*quorumpb.Trx{}
 		for _, trxid := range trxids {
 			trx, _, err := group.GetTrx(trxid.TrxId)
 			if err != nil {
 				c.Logger().Errorf("GetTrx Err: %s", err)
 				continue
 			}
-			//don't decrypt trx data, nodesdk client will do it
-			//huoju
-			//how to handle typeurl
-			ctnobjitem := &NodeSdkGroupContentObjectItem{TrxId: trx.TrxId, Publisher: trx.SenderPubkey, Content: trx.Data, TimeStamp: trx.TimeStamp}
-			ctnobjList = append(ctnobjList, ctnobjitem)
+			trxList = append(trxList, trx)
 		}
-		return c.JSON(http.StatusOK, ctnobjList)
+		return c.JSON(http.StatusOK, trxList)
 	} else {
 		output[ERROR_INFO] = "INVALID_GROUP"
 		return c.JSON(http.StatusBadRequest, output)
