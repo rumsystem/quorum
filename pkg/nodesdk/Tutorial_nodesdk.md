@@ -155,6 +155,24 @@ params:
   alias : alias to remove
   keyname : keyname(key pair) to pair with 
 
+### signature transaction with keystore alias
+curl -k -s -X POST -H 'Content-Type: application/json' -d '{"keyalias":"default", "nonce": 0, "to": "0x2a4cb8346e7abb258a91763e8eb762385d105ea0", "value": 0, "gas_limit": 3000000, "gas_price": 0, "data": "0xa9059cbb0000000000000000000000003a0075d4c979839e31d1abccacdf3fcae981fe33000000000000000000000000000000000000000000000000000000000000000a", "chain_id": 19890609}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/signtx | jq
+
+signature transaction with keystore alias
+
+params:
+  keyalias: key alias
+  nonce: account nonce
+  value: msg.value
+  gas_price:
+  gas_limit:
+  data: hex string of contract abi encode byte array
+  chain_id: network chain id
+
+params refs:
+  https://docs.ethers.io/v5/api/providers/types/#providers-TransactionRequest
+  https://github.com/ethereum/go-ethereum/blob/d8ff53dfb8a516f47db37dbc7fd7ad18a1e8a125/mobile/types.go#L241
+  https://github.com/ethereum/go-ethereum/blob/d8ff53dfb8a516f47db37dbc7fd7ad18a1e8a125/core/types/transaction_signing.go#L89
 
 ## NodeSDK group
 
