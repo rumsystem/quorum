@@ -4,7 +4,6 @@
 package handlers
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
@@ -120,28 +119,31 @@ func RestoreFromWasm(param RestoreParam) {
 	readFile, err := os.Open(wasmDstPath)
 	defer readFile.Close()
 	if err != nil {
-		logger.Fatalf("failed to restore from wasm keystore: %s", err)
+		logger.Fatalf("failed to restore from wasm backup file: %s", err)
 	}
 
 	identities := []age.Identity{
 		&crypto.LazyScryptIdentity{param.Password},
 	}
 
-	fileScanner := bufio.NewScanner(readFile)
-	fileScanner.Split(bufio.ScanLines)
+	backupObj := QuorumWasmExportObject{}
+	backupBytes, err := ioutil.ReadAll(readFile)
+	if err != nil {
+		logger.Fatalf("failed to restore from wasm backup file: %s", err)
+	}
+	err = json.Unmarshal(backupBytes, &backupObj)
+	if err != nil {
+		logger.Fatalf("failed to decode backup file: %s", err)
+	}
 
 	nodeoptions, err := options.InitNodeOptions(param.ConfigDir, param.Peername)
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
 
-	for fileScanner.Scan() {
-		row := fileScanner.Text()
-		if len(row) == 0 {
-			break
-		}
-
-		enc, err := base64.StdEncoding.DecodeString(row)
+	// restore keystore files
+	for _, ks := range backupObj.Keystore {
+		enc, err := base64.StdEncoding.DecodeString(ks)
 		if err != nil {
 			logger.Fatalf("base64 decode config data failed: %s", err)
 		}
@@ -180,10 +182,25 @@ func RestoreFromWasm(param RestoreParam) {
 		}
 		f.Write(v)
 		f.Close()
-
 		logger.Infof("OK")
 	}
 
+	// restore seeds
+	if err := utils.CheckAndCreateDir(param.SeedDir); err != nil {
+		logger.Fatalf("create directory %s failed: %s", param.SeedDir, err)
+	}
+
+	for _, seed := range backupObj.Seeds {
+		seedByte, err := json.MarshalIndent(seed, "", "  ")
+		if err != nil {
+			logger.Fatalf("marshal group seed failed: %s", err)
+		}
+
+		path := filepath.Join(param.SeedDir, fmt.Sprintf("%s.json", seed.GroupId))
+		if err := ioutil.WriteFile(path, seedByte, 0644); err != nil {
+			logger.Fatalf("write group seed failed: %s", err)
+		}
+	}
 }
 
 // restoreBlockDB restore block data to `data/{peerName}_db`
