@@ -1,6 +1,6 @@
 package handlers
 
 type QuorumWasmExportObject struct {
-	Keystore []string `json:"keystore"`
-	Seeds    []string `json:"seeds"`
+	Keystore []string    `json:"keystore"`
+	Seeds    []GroupSeed `json:"seeds"`
 }

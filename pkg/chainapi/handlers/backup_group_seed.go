@@ -52,20 +52,3 @@ func SaveAllGroupSeeds(appdb *appdata.AppDb, seedDir string) error {
 
 	return nil
 }
-
-func ExportAllGroupSeeds(appdb *appdata.AppDb) ([]string, error) {
-	ret := []string{}
-	seeds, err := GetAllGroupSeeds(appdb)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, seed := range seeds {
-		seedByte, err := json.Marshal(seed)
-		if err != nil {
-			return nil, fmt.Errorf("marshal group seed failed: %s", err)
-		}
-		ret = append(ret, string(seedByte))
-	}
-	return ret, nil
-}

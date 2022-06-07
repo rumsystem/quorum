@@ -133,7 +133,7 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 	if err != nil {
 		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
 	}
-	seeds, err := ExportAllGroupSeeds(appdb)
+	seeds, err := GetAllGroupSeeds(appdb)
 	backupObj.Seeds = seeds
 
 	if err := os.MkdirAll(filepath.Dir(wasmDstPath), 0770); err != nil {
