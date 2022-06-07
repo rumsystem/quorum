@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -50,7 +49,7 @@ func getKeystoreBackupPath(dstPath string) string {
 
 // for wasm side
 func getWasmBackupPath(dstPath string) string {
-	return filepath.Join(dstPath, "wasm/keystore")
+	return filepath.Join(dstPath, "wasm/backup.json")
 }
 
 func getBlockPrefixKey() string {
@@ -104,7 +103,6 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 		pair := make(map[string]interface{})
 		key := filepath.Base(path)
 		pair["key"] = key
-		// FIXME: binary format
 		pair["value"] = base64.StdEncoding.EncodeToString(keyBytes)
 		kvBytes, err := json.Marshal(pair)
 		if err != nil {
@@ -125,19 +123,32 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 	}); err != nil {
 		logger.Fatalf("export keystore to wasm failed: %s", err)
 	}
-	if len(wasmKeystoreContent) > 0 {
-		if err := os.MkdirAll(filepath.Dir(wasmDstPath), 0770); err != nil {
-			logger.Fatalf("create wasm keystore path failed: %s", err)
-		}
 
-		f, err := os.Create(wasmDstPath)
-		if err != nil {
-			logger.Fatalf("create wasm keystore file failed: %s", err)
-		}
-		defer f.Close()
+	backupObj := QuorumWasmExportObject{}
+	backupObj.Keystore = wasmKeystoreContent
 
-		f.WriteString(strings.Join(wasmKeystoreContent, "\n"))
+	// ExportAllGroupSeeds
+	dataPath := GetDataPath(config.DataDir, config.PeerName)
+	appdb, err := appdata.CreateAppDb(dataPath)
+	if err != nil {
+		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
 	}
+	seeds, err := ExportAllGroupSeeds(appdb)
+	backupObj.Seeds = seeds
+
+	if err := os.MkdirAll(filepath.Dir(wasmDstPath), 0770); err != nil {
+		logger.Fatalf("create wasm keystore path failed: %s", err)
+	}
+
+	f, err := os.Create(wasmDstPath)
+	if err != nil {
+		logger.Fatalf("create wasm keystore file failed: %s", err)
+	}
+	defer f.Close()
+
+	backupBytes, err := json.Marshal(backupObj)
+
+	f.Write(backupBytes)
 }
 
 // Backup backup block from data db and {config,keystore,seeds} directory
