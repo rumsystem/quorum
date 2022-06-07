@@ -249,3 +249,56 @@ func KeystoreRestoreRaw(password string, keystoreStr string) error {
 
 	return nil
 }
+
+func RestoreWasmRaw(password string, backupContent string) error {
+	idb := quorumStorage.QSIndexDB{}
+	err := idb.Init("keystore")
+	if err != nil {
+		return err
+	}
+
+	identities := []age.Identity{
+		&crypto.LazyScryptIdentity{password},
+	}
+
+	backupObj := handlers.QuorumWasmExportObject{}
+	err = json.Unmarshal([]byte(backupContent), &backupObj)
+	if err != nil {
+		return err
+	}
+
+	for _, ks := range backupObj.Keystore {
+		enc, err := base64.StdEncoding.DecodeString(ks)
+		if err != nil {
+			return fmt.Errorf("base64 decode config data failed: %s", err)
+		}
+
+		r, err := age.Decrypt(bytes.NewReader(enc), identities...)
+		if err != nil {
+			return fmt.Errorf("decrypt config data failed: %v", err)
+		}
+
+		kvBytes, err := ioutil.ReadAll(r)
+		if err != nil {
+			return fmt.Errorf("ioutil.ReadAll config failed: %v", err)
+		}
+		pair := make(map[string]interface{})
+		err = json.Unmarshal(kvBytes, &pair)
+		if err != nil {
+			return err
+		}
+		k := pair["key"].(string)
+		v, _ := base64.StdEncoding.DecodeString(pair["value"].(string))
+		backupLogger.Info("Loading " + k)
+
+		err = idb.Set([]byte(k), v)
+		if err != nil {
+			return err
+		}
+		backupLogger.Info("OK")
+	}
+
+	// seeds are ignored by now, could done by js side
+
+	return nil
+}

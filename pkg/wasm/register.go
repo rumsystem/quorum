@@ -110,6 +110,25 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("RestoreWasmRaw", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		password := args[0].String()
+		content := args[1].String()
+
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			err := utils.RestoreWasmRaw(
+				password,
+				content,
+			)
+			if err != nil {
+				return nil, err
+			}
+			ret["ok"] = true
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("StartQuorum", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if qChan == nil {
 			qChan = make(chan struct{}, 0)
