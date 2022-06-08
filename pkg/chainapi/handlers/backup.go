@@ -75,14 +75,11 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 	}
 
 	/*
-	   wasm need a single file in following format
+			   wasm need a single file in json format
 
-	   ```
-	   {"key": "", "value": ""}
-	   {"key": "", "value": ""}
-	   ...
-	   ```
-	   each row is encrypted(aes) then encoded with base64 algorithm
+			   ```
+		     {"keystore": [], "seeds": []}
+			   ```
 	*/
 	wasmDstPath := getWasmBackupPath(dstPath)
 	wasmKeystoreContent := []string{}
