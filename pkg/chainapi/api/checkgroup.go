@@ -52,7 +52,7 @@ func (h *Handler) CheckGroup(c echo.Context) (err error) {
 				break
 			}
 			if len(subBlocks) == 0 {
-				log.Printf("can't find subblocks. blockid timestamp %d blocknum %s quit", blk.TimeStamp, blocknum)
+				log.Printf("can't find subblocks. blockid timestamp %d blocknum %d quit", blk.TimeStamp, blocknum)
 				errblock++
 				//break
 			}
