@@ -37,7 +37,7 @@ func (h *Handler) CheckGroup(c echo.Context) (err error) {
 			}
 			blk, err = group.GetBlock(prevblkid)
 			if err != nil {
-				log.Println("try to get blkid %s", prevblkid)
+				log.Printf("try to get blkid %s", prevblkid)
 				log.Println(err)
 				break
 			}
@@ -47,12 +47,12 @@ func (h *Handler) CheckGroup(c echo.Context) (err error) {
 			log.Printf("check blkid: %s prev blkid: %s", blk.BlockId, prevblkid)
 			subBlocks, err2 := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(blk.BlockId, nodename)
 			if err2 != nil {
-				log.Println("try to get subblock err blkid %s", blk.BlockId)
+				log.Printf("try to get subblock err blkid %s", blk.BlockId)
 				log.Println(err2)
 				break
 			}
 			if len(subBlocks) == 0 {
-				log.Printf("can't find subblocks. blockid timestamp %d blocknum quit", blk.TimeStamp, blocknum)
+				log.Printf("can't find subblocks. blockid timestamp %d blocknum %s quit", blk.TimeStamp, blocknum)
 				errblock++
 				//break
 			}
