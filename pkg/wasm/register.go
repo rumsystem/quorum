@@ -36,6 +36,11 @@ func RegisterJSFunctions() {
 		return utils.GetKeystoreBackupReadableStream(password)
 	}))
 
+	js.Global().Set("GetBackupReadableStream", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		password := args[0].String()
+		return utils.GetBackupReadableStream(password)
+	}))
+
 	js.Global().Set("KeystoreBackupRaw", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		password := args[0].String()
 		onWrite := args[1]
@@ -61,6 +66,31 @@ func RegisterJSFunctions() {
 		return Promisefy(handler)
 	}))
 
+	js.Global().Set("BackupWasmRaw", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		password := args[0].String()
+		onWrite := args[1]
+		onFinish := args[2]
+
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			err := utils.BackupWasmRaw(
+				password,
+				func(str string) {
+					onWrite.Invoke(js.ValueOf(str))
+				},
+				func() {
+					onFinish.Invoke()
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+			ret["ok"] = true
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
 	js.Global().Set("KeystoreRestoreRaw", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		password := args[0].String()
 		content := args[1].String()
@@ -68,6 +98,25 @@ func RegisterJSFunctions() {
 		handler := func() (map[string]interface{}, error) {
 			ret := make(map[string]interface{})
 			err := utils.KeystoreRestoreRaw(
+				password,
+				content,
+			)
+			if err != nil {
+				return nil, err
+			}
+			ret["ok"] = true
+			return ret, nil
+		}
+		return Promisefy(handler)
+	}))
+
+	js.Global().Set("RestoreWasmRaw", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		password := args[0].String()
+		content := args[1].String()
+
+		handler := func() (map[string]interface{}, error) {
+			ret := make(map[string]interface{})
+			err := utils.RestoreWasmRaw(
 				password,
 				content,
 			)

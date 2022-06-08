@@ -454,7 +454,9 @@ func main() {
 
 	// backup/restore flag
 	isRestore := flag.Bool("restore", false, "restore the config, keystore and group seed")
+	isRestoreFromWasm := flag.Bool("restore-from-wasm", false, "restore keystore from wasm version")
 	isBackup := flag.Bool("backup", false, "backup the config, keystore, group seed and group data")
+	isBackupWasm := flag.Bool("backup-to-wasm", false, "backup the keystore data in wasm known format")
 	backupFile := flag.String("backup-file", "", "the backup file for restoring")
 	password := flag.String("password", "", "the password for backuping/restoring")
 	seedDir := flag.String("seeddir", "", "the group seed directory for restoring")
@@ -562,7 +564,7 @@ func main() {
 		return
 	}
 
-	if *isRestore {
+	if *isRestore || *isRestoreFromWasm {
 		passwd, err := handlers.GetKeystorePassword(*password)
 		if err != nil {
 			mainlog.Fatalf("handlers.GetKeystorePassword failed: %s", err)
@@ -577,13 +579,18 @@ func main() {
 			DataDir:     config.DataDir,
 			SeedDir:     *seedDir,
 		}
-		restore(params)
+		restore(params, *isRestoreFromWasm)
 
 		return
 	}
 
 	if *isBackup {
 		handlers.Backup(config, *backupFile, *password)
+		return
+	}
+
+	if *isBackupWasm {
+		handlers.BackupForWasm(config, *backupFile, *password)
 		return
 	}
 
@@ -641,7 +648,7 @@ func ping(config cli.Config) {
 	}
 }
 
-func restore(params handlers.RestoreParam) {
+func restore(params handlers.RestoreParam, isRestoreFromWasm bool) {
 	if params.Peername == "" || params.BackupFile == "" || params.Password == "" || params.KeystoreDir == "" || params.ConfigDir == "" || params.SeedDir == "" || params.DataDir == "" {
 		fmt.Printf("usage: %s -restore -peername=<peername> -backup-file=<backup-file-path> -password=<password> -keystoredir=<keystore-dir> -configdir=<config-dir> -seeddir=<seed-dir> -datadir=<data-dir>\n", os.Args[0])
 		return
@@ -683,7 +690,11 @@ func restore(params handlers.RestoreParam) {
 	os.Chdir(restoreDir)
 	defer os.Chdir(currentDir)
 
-	handlers.Restore(params)
+	if isRestoreFromWasm {
+		handlers.RestoreFromWasm(params)
+	} else {
+		handlers.Restore(params)
+	}
 
 	var pidch chan int
 	process := os.Args[0]

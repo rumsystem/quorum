@@ -4,7 +4,11 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -14,6 +18,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
+	"github.com/rumsystem/keystore/pkg/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
 
@@ -42,8 +47,105 @@ func getKeystoreBackupPath(dstPath string) string {
 	return filepath.Join(dstPath, "keystore")
 }
 
+// for wasm side
+func getWasmBackupPath(dstPath string) string {
+	return filepath.Join(dstPath, "wasm/backup.json")
+}
+
 func getBlockPrefixKey() string {
 	return nodename + "_" + storage.BLK_PREFIX + "_"
+}
+
+// BackupForWasm will backup keystore in wasm known format
+func BackupForWasm(config cli.Config, dstPath string, password string) {
+	// get keystore password
+	password, err := GetKeystorePassword(password)
+	if err != nil {
+		logger.Fatalf("handlers.GetKeystorePassword failed: %s", err)
+	}
+
+	// check keystore signature and encrypt
+	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, config.KeyStoreDir, config.ConfigDir, config.PeerName, password); err != nil {
+		logger.Fatalf("check keystore failed: %s", err)
+	}
+
+	// check dst path
+	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
+		logger.Fatalf("backup directory %s is exists", dstPath)
+	}
+
+	/*
+			   wasm need a single file in json format
+
+			   ```
+		     {"keystore": [], "seeds": []}
+			   ```
+	*/
+	wasmDstPath := getWasmBackupPath(dstPath)
+	wasmKeystoreContent := []string{}
+	if err := filepath.Walk(config.KeyStoreDir, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		r, err := age.NewScryptRecipient(password)
+		if err != nil {
+			return err
+		}
+
+		keyBytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		pair := make(map[string]interface{})
+		key := filepath.Base(path)
+		pair["key"] = key
+		pair["value"] = base64.StdEncoding.EncodeToString(keyBytes)
+		kvBytes, err := json.Marshal(pair)
+		if err != nil {
+			return err
+		}
+
+		output := new(bytes.Buffer)
+		if err := crypto.AgeEncrypt([]age.Recipient{r}, bytes.NewReader(kvBytes), output); err != nil {
+			return err
+		}
+		encryptedKvBytes, err := ioutil.ReadAll(output)
+		if err != nil {
+			return err
+		}
+		res := base64.StdEncoding.EncodeToString(encryptedKvBytes)
+		wasmKeystoreContent = append(wasmKeystoreContent, res)
+		return nil
+	}); err != nil {
+		logger.Fatalf("export keystore to wasm failed: %s", err)
+	}
+
+	backupObj := QuorumWasmExportObject{}
+	backupObj.Keystore = wasmKeystoreContent
+
+	// ExportAllGroupSeeds
+	dataPath := GetDataPath(config.DataDir, config.PeerName)
+	appdb, err := appdata.CreateAppDb(dataPath)
+	if err != nil {
+		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
+	}
+	seeds, err := GetAllGroupSeeds(appdb)
+	backupObj.Seeds = seeds
+
+	if err := os.MkdirAll(filepath.Dir(wasmDstPath), 0770); err != nil {
+		logger.Fatalf("create wasm keystore path failed: %s", err)
+	}
+
+	f, err := os.Create(wasmDstPath)
+	if err != nil {
+		logger.Fatalf("create wasm keystore file failed: %s", err)
+	}
+	defer f.Close()
+
+	backupBytes, err := json.Marshal(backupObj)
+
+	f.Write(backupBytes)
 }
 
 // Backup backup block from data db and {config,keystore,seeds} directory

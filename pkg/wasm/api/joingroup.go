@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
@@ -74,11 +74,12 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	println("Load sign key: OK")
 	userEncryptKey, err := initEncodeKey(params.GroupId, bks)
 	if err != nil {
 		return nil, err
 	}
-	println("Load sign key and encode key: OK")
+	println("Load encode key: OK")
 
 	/* Create GroupItem */
 	item := createGroupItem(&params, ownerPubkeyBytes, groupSignPubkey, userEncryptKey)
