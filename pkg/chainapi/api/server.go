@@ -82,6 +82,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
 		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)
 
+		r.POST("/v1/keystore/signtx", h.SignTx)
+
 		//for nodesdk
 		r.POST("/v1/nodesdk/trx", h.SendTrx)
 		r.POST("/v1/nodesdk/groupctn", h.GetContentNSdk)
