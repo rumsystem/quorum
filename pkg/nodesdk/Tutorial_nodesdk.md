@@ -155,13 +155,16 @@ params:
   alias : alias to remove
   keyname : keyname(key pair) to pair with 
 
-### signature transaction with keystore alias
-curl -k -s -X POST -H 'Content-Type: application/json' -d '{"keyalias":"default", "nonce": 0, "to": "0x2a4cb8346e7abb258a91763e8eb762385d105ea0", "value": 0, "gas_limit": 3000000, "gas_price": 0, "data": "0xa9059cbb0000000000000000000000003a0075d4c979839e31d1abccacdf3fcae981fe33000000000000000000000000000000000000000000000000000000000000000a", "chain_id": 19890609}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/signtx | jq
+### signature transaction with key alias or key name
+curl -k -s -X POST -H 'Content-Type: application/json' -d '{"keyalias": "default", "nonce": 0, "to": "0x2a4cb8346e7abb258a91763e8eb762385d105ea0", "value": 0, "gas_limit": 3000000, "gas_price": 0, "data": "0xa9059cbb0000000000000000000000003a0075d4c979839e31d1abccacdf3fcae981fe33000000000000000000000000000000000000000000000000000000000000000a", "chain_id": 19890609}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/signtx | jq
+
+curl -k -s -X POST -H 'Content-Type: application/json' -d '{"keyname": "default", "nonce": 0, "to": "0x2a4cb8346e7abb258a91763e8eb762385d105ea0", "value": 0, "gas_limit": 3000000, "gas_price": 0, "data": "0xa9059cbb0000000000000000000000003a0075d4c979839e31d1abccacdf3fcae981fe33000000000000000000000000000000000000000000000000000000000000000a", "chain_id": 19890609}' https://127.0.0.1:6002/nodesdk_api/v1/keystore/signtx | jq
 
 signature transaction with keystore alias
 
 params:
   keyalias: key alias
+  keyname: key name
   nonce: account nonce
   value: msg.value
   gas_price:
