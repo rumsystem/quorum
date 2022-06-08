@@ -230,6 +230,19 @@ RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup -backup-file /tm
 restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -restore -backup-file /tmp/quorum-backup.zip.enc -configdir $restoreDir/config -datadir $restoreDir/data -keystoredir $restoreDir/keystore -seeddir $restoreDir/seeds
 ```
 
+> backup for wasm
+
+```bash
+RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup-to-wasm -backup-file /tmp/quorum-backup
+```
+
+> restore from wasm
+
+```bash
+restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -restore-from-wasm -backup-file /tmp/wasm.backup.json -configdir $restoreDir/config -datadir $restoreDir/data -keystoredir $restoreDir/keystore -seeddir $restoreDir/seeds
+```
+
+
 [>>> Back to Top](#top)
 
 <span id="test-node"></span>
