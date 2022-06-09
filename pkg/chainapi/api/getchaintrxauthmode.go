@@ -19,7 +19,7 @@ func (h *Handler) GetChainTrxAuthMode(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
 	trxType := c.Param("trx_type")
-	res, err := handlers.GetChainTrxAuthMode(groupid, trxType)
+	res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, groupid, trxType)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 type ProducerListItem struct {
@@ -15,14 +16,14 @@ type ProducerListItem struct {
 	BlockProduced  int64
 }
 
-func GetGroupProducers(groupid string) ([]*ProducerListItem, error) {
+func GetGroupProducers(chainapidb def.APIHandlerIface, groupid string) ([]*ProducerListItem, error) {
 	if groupid == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		prdList, err := group.GetProducers()
+		prdList, err := chainapidb.GetProducers(group.Item.GroupId, group.ChainCtx.GetNodeName())
 		if err != nil {
 			return nil, err
 		}

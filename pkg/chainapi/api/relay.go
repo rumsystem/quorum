@@ -66,17 +66,17 @@ func (h *Handler) RequestRelay(c echo.Context) (err error) {
 
 func (h *Handler) ListRelay(c echo.Context) (err error) {
 	output := make(map[string]string)
-	reqresults, err := nodectx.GetDbMgr().GetRelayReq("")
+	reqresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayReq("")
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
-	approvedresults, err := nodectx.GetDbMgr().GetRelayApproved("")
+	approvedresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayApproved("")
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
 	}
-	activityresults, err := nodectx.GetDbMgr().GetRelayActivity("")
+	activityresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayActivity("")
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -89,7 +89,7 @@ func (h *Handler) ListRelay(c echo.Context) (err error) {
 func (h *Handler) RemoveRelay(c echo.Context) (err error) {
 	output := make(map[string]string)
 	relayid := c.Param("relay_id")
-	succ, relayitem, err := nodectx.GetDbMgr().DeleteRelay(relayid)
+	succ, relayitem, err := nodectx.GetNodeCtx().GetChainStorage().DeleteRelay(relayid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -103,7 +103,7 @@ func (h *Handler) RemoveRelay(c echo.Context) (err error) {
 func (h *Handler) ApproveRelay(c echo.Context) (err error) {
 	output := make(map[string]string)
 	reqid := c.Param("req_id")
-	succ, reqitem, err := nodectx.GetDbMgr().ApproveRelayReq(reqid)
+	succ, reqitem, err := nodectx.GetNodeCtx().GetChainStorage().ApproveRelayReq(reqid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -161,5 +161,5 @@ func SaveRelayRequest(input *ReqRelayParam) (string, error) {
 	item.Duration = input.Duration
 	item.Type = input.RelayType
 	item.SenderSign = input.SenderSign
-	return nodectx.GetDbMgr().AddRelayReq(item)
+	return nodectx.GetNodeCtx().GetChainStorage().AddRelayReq(item)
 }

@@ -10,6 +10,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -30,7 +31,7 @@ type GrpProducerParam struct {
 	Memo           string `from:"memo"            json:"memo"`
 }
 
-func GroupProducer(params *GrpProducerParam) (*GrpProducerResult, error) {
+func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*GrpProducerResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
@@ -43,7 +44,7 @@ func GroupProducer(params *GrpProducerParam) (*GrpProducerResult, error) {
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, errors.New("Only group owner can add or remove producer")
 	} else {
-		isAnnounced, err := group.IsProducerAnnounced(params.ProducerPubkey)
+		isAnnounced, err := chainapidb.IsProducerAnnounced(group.Item.GroupId, params.ProducerPubkey, group.ChainCtx.GetNodeName())
 		if err != nil {
 			return nil, err
 		}

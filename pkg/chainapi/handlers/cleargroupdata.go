@@ -9,7 +9,6 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type ClearGroupDataParam struct {
@@ -36,11 +35,10 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 		if err := group.StopSync(); err != nil {
 			return nil, err
 		}
-	}
-
-	// group may not exists or already be left
-	if err := nodectx.GetDbMgr().RemoveGroupData(params.GroupId, nodectx.GetNodeCtx().Name); err != nil {
-		return nil, err
+		// group may not exists or already be left
+		if err := group.ClearGroup(); err != nil {
+			return nil, err
+		}
 	}
 
 	var groupSignPubkey []byte

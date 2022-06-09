@@ -8,6 +8,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 )
 
 type NodeStatus int8
@@ -32,6 +33,7 @@ type NodeCtx struct {
 	Ctx       context.Context
 	Version   string
 	Status    NodeStatus
+	chaindb   *chainstorage.Storage
 }
 
 var nodeCtx *NodeCtx
@@ -48,10 +50,15 @@ func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }
 
-func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, channeltype string, gitcommit string) {
+func (nodeCtx *NodeCtx) GetChainStorage() *chainstorage.Storage {
+	return nodeCtx.chaindb
+}
+
+func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, chaindb *chainstorage.Storage, channeltype string, gitcommit string) {
 	nodeCtx = &NodeCtx{}
 	nodeCtx.Name = name
 	nodeCtx.Node = node
+	nodeCtx.chaindb = chaindb
 
 	dbMgr = db
 

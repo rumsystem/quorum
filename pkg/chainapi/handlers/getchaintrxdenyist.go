@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
-func GetChainTrxDenyList(groupid string) ([]*ChainSendTrxRuleListItem, error) {
+func GetChainTrxDenyList(chainapidb def.APIHandlerIface, groupid string) ([]*ChainSendTrxRuleListItem, error) {
 	if groupid == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
@@ -15,7 +17,7 @@ func GetChainTrxDenyList(groupid string) ([]*ChainSendTrxRuleListItem, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		chainConfigItem, denyItemList, err := group.GetChainSendTrxDenyList()
+		chainConfigItem, denyItemList, err := chainapidb.GetSendTrxAuthListByGroupId(group.Item.GroupId, quorumpb.AuthListType_DENY_LIST, group.ChainCtx.GetNodeName())
 		if err != nil {
 			return nil, err
 		}

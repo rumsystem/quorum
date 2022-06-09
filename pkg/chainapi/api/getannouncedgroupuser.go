@@ -18,7 +18,7 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
 
-	res, err := handlers.GetAnnouncedGroupUsers(groupid)
+	res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, groupid)
 
 	if err != nil {
 		output[ERROR_INFO] = err.Error()

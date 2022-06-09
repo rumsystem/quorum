@@ -33,7 +33,7 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 	//check if block is in cache
-	isCached, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, true, user.nodename)
+	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -43,13 +43,13 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//Save block to cache
-	err = nodectx.GetDbMgr().AddBlock(block, true, user.nodename)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
 	if err != nil {
 		return err
 	}
 
 	//check if parent of block exist
-	parentExist, err := nodectx.GetDbMgr().IsParentExist(block.PrevBlockId, false, user.nodename)
+	parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//get parent block
-	parentBlock, err := nodectx.GetDbMgr().GetBlock(block.PrevBlockId, false, user.nodename)
+	parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.PrevBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -70,11 +70,11 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if !valid {
 		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", user.groupId, block.BlockId)
 		molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
-		return nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.nodename)
+		return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, user.nodename)
 	}
 
 	//search cache, gather all blocks can be connected with this block
-	blocks, err := nodectx.GetDbMgr().GatherBlocksFromCache(block, true, user.nodename)
+	blocks, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -95,12 +95,12 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	//move gathered blocks from cache to chain
 	for _, block := range blocks {
 		molauser_log.Debugf("<%s> move block <%s> from cache to chain", user.groupId, block.BlockId)
-		err := nodectx.GetDbMgr().AddBlock(block, false, user.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, user.nodename)
 		if err != nil {
 			return err
 		}
 
-		err = nodectx.GetDbMgr().RmBlock(block.BlockId, true, user.nodename)
+		err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, user.nodename)
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//update block produced count
 	for _, block := range blocks {
-		err := nodectx.GetDbMgr().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//calculate new height
 	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.HighestHeight)
-	topBlock, err := nodectx.GetDbMgr().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
+	topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
 	if err != nil {
 		return err
 	}

@@ -138,7 +138,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
 				return c.JSON(http.StatusBadRequest, output)
 			}
-			res, err := handlers.GetChainTrxAuthMode(item.GroupId, item.TrxType)
+			res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, item.GroupId, item.TrxType)
 			if err != nil {
 				output[ERROR_INFO] = err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -155,7 +155,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
 				return c.JSON(http.StatusBadRequest, output)
 			}
-			res, err := handlers.GetChainTrxAllowList(item.GroupId)
+			res, err := handlers.GetChainTrxAllowList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				output[ERROR_INFO] = err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -172,7 +172,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
 				return c.JSON(http.StatusBadRequest, output)
 			}
-			res, err := handlers.GetChainTrxDenyList(item.GroupId)
+			res, err := handlers.GetChainTrxDenyList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				output[ERROR_INFO] = err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -223,7 +223,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
 				return c.JSON(http.StatusBadRequest, output)
 			}
-			res, err := handlers.GetAnnouncedGroupProducer(item.GroupId)
+			res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				output[ERROR_INFO] = err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -241,7 +241,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				return c.JSON(http.StatusBadRequest, output)
 			}
 			if item.SignPubkey == "" {
-				res, err := handlers.GetAnnouncedGroupUsers(item.GroupId)
+				res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, item.GroupId)
 				if err != nil {
 					output[ERROR_INFO] = err.Error()
 					return c.JSON(http.StatusBadRequest, output)
@@ -266,7 +266,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
 				return c.JSON(http.StatusBadRequest, output)
 			}
-			res, err := handlers.GetGroupProducers(item.GroupId)
+			res, err := handlers.GetGroupProducers(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				output[ERROR_INFO] = err.Error()
 				return c.JSON(http.StatusBadRequest, output)

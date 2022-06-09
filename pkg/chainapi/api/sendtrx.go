@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/conn"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -81,7 +80,7 @@ func (h *Handler) SendTrx(c echo.Context) (err error) {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		trxId, err := group.SendTrx(trx, conn.ProducerChannel)
+		trxId, err := group.SendRawTrx(trx)
 		var sendTrxResult *SendTrxResult
 		if err != nil {
 			sendTrxResult = &SendTrxResult{TrxId: trxId, ErrInfo: err.Error()}

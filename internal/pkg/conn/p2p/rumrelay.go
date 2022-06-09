@@ -6,17 +6,18 @@ import (
 	guuid "github.com/google/uuid"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-msgio/protoio"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
+	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type RexRelay struct {
-	rex   *RexService
-	dbmgr *storage.DbMgr
+	rex *RexService
+	cs  csdef.ChainStorageIface
+	//dbmgr *storage.DbMgr
 }
 
-func NewRexRelay(rex *RexService, dbmgr *storage.DbMgr) *RexRelay {
-	return &RexRelay{rex: rex, dbmgr: dbmgr}
+func NewRexRelay(rex *RexService, cs csdef.ChainStorageIface) *RexRelay {
+	return &RexRelay{rex: rex, cs: cs}
 }
 
 func (r *RexRelay) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error {
@@ -29,7 +30,7 @@ func (r *RexRelay) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error {
 		item.SenderSign = rummsg.RelayReq.SenderSign
 		item.Memo = rummsg.RelayReq.Memo
 		item.ReqPeerId = s.Conn().RemotePeer().Pretty()
-		r.dbmgr.AddRelayReq(item)
+		r.cs.AddRelayReq(item)
 
 		//TEST write response
 		bufw := bufio.NewWriter(s)
@@ -52,7 +53,7 @@ func (r *RexRelay) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error {
 		item.SenderSign = rummsg.RelayResp.SenderSign
 		item.Memo = rummsg.RelayResp.Memo
 		item.RelayPeerId = s.Conn().RemotePeer().Pretty()
-		r.dbmgr.AddRelayActivity(item)
+		r.cs.AddRelayActivity(item)
 	}
 	return nil
 }

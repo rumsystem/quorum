@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 type AnnouncedProducerListItem struct {
@@ -16,14 +17,14 @@ type AnnouncedProducerListItem struct {
 	TimeStamp       int64  `validate:"required"`
 }
 
-func GetAnnouncedGroupProducer(groupid string) ([]*AnnouncedProducerListItem, error) {
+func GetAnnouncedGroupProducer(chainapidb def.APIHandlerIface, groupid string) ([]*AnnouncedProducerListItem, error) {
 	if groupid == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		prdList, err := group.GetAnnouncedProducers()
+		prdList, err := chainapidb.GetAnnounceProducersByGroup(group.Item.GroupId, group.ChainCtx.GetNodeName())
 		if err != nil {
 			return nil, err
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	guuid "github.com/google/uuid"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -49,7 +50,7 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 
 	//added by cuicat
 	//check if trx sender is in group block list
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
 	if err != nil {
 		return nil, nil
 	}
@@ -61,7 +62,7 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 
 	chain_log.Debugf("<%s> GetBlockForward block id: %s", trx.GroupId, reqBlockItem.BlockId)
 
-	subBlocks, err := d.dbmgr.GetSubBlock(reqBlockItem.BlockId, prefix...)
+	subBlocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(reqBlockItem.BlockId, prefix...)
 	return subBlocks, err
 }
 
@@ -95,7 +96,7 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 
 	//added by cuicat
 	//check if trx sender is in group block list
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
 	if err != nil {
 		return nil, nil
 	}
@@ -105,24 +106,24 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 		return nil, nil
 	}
 
-	isExist, err := d.dbmgr.IsBlockExist(reqBlockItem.BlockId, false, prefix...)
+	isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(reqBlockItem.BlockId, false, prefix...)
 	if err != nil {
 		return nil, err
 	} else if !isExist {
 		return nil, errors.New("Block not exist")
 	}
 
-	block, err := d.dbmgr.GetBlock(reqBlockItem.BlockId, false, prefix...)
+	block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.BlockId, false, prefix...)
 	if err != nil {
 		return nil, err
 	}
 
-	isParentExit, err := d.dbmgr.IsParentExist(block.PrevBlockId, false, prefix...)
+	isParentExit, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, prefix...)
 	if err != nil {
 		return nil, err
 	}
 	if isParentExit {
-		parentBlock, err := d.dbmgr.GetParentBlock(reqBlockItem.BlockId, prefix...)
+		parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetParentBlock(reqBlockItem.BlockId, prefix...)
 		return parentBlock, err
 	}
 	return nil, errors.New("Parent Block not exist")
@@ -178,7 +179,7 @@ func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks
 		return "", nil, false, err
 	}
 
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
@@ -189,7 +190,7 @@ func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks
 	}
 
 	var subBlocks []*quorumpb.Block
-	subBlocks, err = d.dbmgr.GetSubBlock(reqBlockItem.BlockId, d.nodename)
+	subBlocks, err = nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(reqBlockItem.BlockId, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
@@ -226,7 +227,7 @@ func (d *ChainData) GetBlockBackward(trx *quorumpb.Trx) (requester string, block
 	}
 
 	//check previllage
-	isAllow, err := d.dbmgr.CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, d.nodename)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_BACKWARD, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
@@ -236,26 +237,26 @@ func (d *ChainData) GetBlockBackward(trx *quorumpb.Trx) (requester string, block
 		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
 	}
 
-	isExist, err := d.dbmgr.IsBlockExist(reqBlockItem.BlockId, false, d.nodename)
+	isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(reqBlockItem.BlockId, false, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	} else if !isExist {
 		return "", nil, false, fmt.Errorf("Block not exist")
 	}
 
-	blk, err := d.dbmgr.GetBlock(reqBlockItem.BlockId, false, d.nodename)
+	blk, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.BlockId, false, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
 
-	isParentExit, err := d.dbmgr.IsParentExist(blk.PrevBlockId, false, d.nodename)
+	isParentExit, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(blk.PrevBlockId, false, d.nodename)
 	if err != nil {
 		return "", nil, false, err
 	}
 
 	if isParentExit {
 		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", d.groupId)
-		parentBlock, err := d.dbmgr.GetParentBlock(reqBlockItem.BlockId, d.nodename)
+		parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetParentBlock(reqBlockItem.BlockId, d.nodename)
 		if err != nil {
 			return "", nil, false, err
 		}

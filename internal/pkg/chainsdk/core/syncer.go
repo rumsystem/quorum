@@ -76,7 +76,7 @@ func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
 			break
 		}
 
-		subblocks, err := nodectx.GetDbMgr().GetSubBlock(startFrom, nodename)
+		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(startFrom, nodename)
 		if err != nil {
 			syncer_log.Debugf("<%s> GetSubBlock failed <%s>", syncer.GroupId, err.Error())
 			syncer.rwMutex.Lock()
@@ -100,7 +100,7 @@ func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
 			syncer.localSyncFinished = true
 			syncer.rwMutex.Unlock()
 		}
-		topBlock, err := nodectx.GetDbMgr().GetBlock(syncer.Group.Item.HighestBlockId, false, nodename)
+		topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(syncer.Group.Item.HighestBlockId, false, nodename)
 		if err != nil {
 			syncer_log.Debugf("<%s> Get Top Block failed <%s>", syncer.GroupId, err.Error())
 			syncer.rwMutex.Lock()
@@ -409,7 +409,7 @@ func (syncer *Syncer) stopWaitBlock() {
 }
 
 func (syncer *Syncer) GetBlockToGenesis(blockid string, genesisblkid string) (string, error) {
-	blk, err := nodectx.GetDbMgr().GetBlock(blockid, false, syncer.nodeName)
+	blk, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(blockid, false, syncer.nodeName)
 	if err != nil {
 		return "", err
 	}

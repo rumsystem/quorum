@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type ChainSendTrxRuleListItem struct {
@@ -16,7 +18,7 @@ type ChainSendTrxRuleListItem struct {
 	Memo             string   `validate:"required"`
 }
 
-func GetChainTrxAllowList(groupid string) ([]*ChainSendTrxRuleListItem, error) {
+func GetChainTrxAllowList(chainapidb def.APIHandlerIface, groupid string) ([]*ChainSendTrxRuleListItem, error) {
 	if groupid == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
@@ -24,7 +26,8 @@ func GetChainTrxAllowList(groupid string) ([]*ChainSendTrxRuleListItem, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		chainConfigItemList, allowItemList, err := group.GetChainSendTrxAllowList()
+		chainConfigItemList, allowItemList, err := chainapidb.GetSendTrxAuthListByGroupId(group.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, group.ChainCtx.GetNodeName())
+
 		if err != nil {
 			return nil, err
 		}

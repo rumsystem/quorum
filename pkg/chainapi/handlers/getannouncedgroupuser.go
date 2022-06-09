@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 type AnnouncedUserListItem struct {
@@ -16,14 +17,14 @@ type AnnouncedUserListItem struct {
 	TimeStamp              int64
 }
 
-func GetAnnouncedGroupUsers(groupid string) ([]*AnnouncedUserListItem, error) {
+func GetAnnouncedGroupUsers(chainapidb def.APIHandlerIface, groupid string) ([]*AnnouncedUserListItem, error) {
 	if groupid == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		usrList, err := group.GetAnnouncedUsers()
+		usrList, err := chainapidb.GetAnnounceUsersByGroup(group.Item.GroupId, group.ChainCtx.GetNodeName())
 		if err != nil {
 			return nil, err
 		}

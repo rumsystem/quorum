@@ -17,7 +17,8 @@ import (
 func (h *Handler) GetChainTrxAllowList(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
-	res, err := handlers.GetChainTrxAllowList(groupid)
+	res, err := handlers.GetChainTrxAllowList(h.ChainAPIdb, groupid)
+
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

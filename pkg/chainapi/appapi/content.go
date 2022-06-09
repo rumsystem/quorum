@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,7 +74,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	}
 	ctnobjList := []*GroupContentObjectItem{}
 	for _, trxid := range trxids {
-		trx, _, err := h.Chaindb.GetTrx(trxid.TrxId, storage.Chain, h.NodeName)
+		trx, _, err := h.Trxdb.GetTrx(trxid.TrxId, def.Chain, h.NodeName)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue

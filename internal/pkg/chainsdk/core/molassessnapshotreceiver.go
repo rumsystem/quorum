@@ -32,7 +32,7 @@ func (ssreceiver *MolassesSnapshotReceiver) Init(item *quorumpb.GroupItem, noden
 	ssreceiver.nodename = nodename
 	ssreceiver.groupId = item.GroupId
 	ssreceiver.snapshotpackages = make(map[string]map[string]*quorumpb.Snapshot)
-	snapshotTag, err := nodectx.GetDbMgr().GetSnapshotTag(item.GroupId, nodename)
+	snapshotTag, err := nodectx.GetNodeCtx().GetChainStorage().GetSnapshotTag(item.GroupId, nodename)
 	if err != nil {
 		snapshotTag = &quorumpb.SnapShotTag{}
 		snapshotTag.Nonce = 0
@@ -129,37 +129,34 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 	defer ssreceiver.applySnapshotMu.Unlock()
 
 	snapshotreceiver_log.Debugf("<%s> apply called", ssreceiver.groupId)
-	var prefix []string
-	prefix = append(prefix, ssreceiver.nodename)
-
 	for _, snapshot := range snapshots {
 		for _, snapshotdata := range snapshot.SnapshotItems {
 			if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_APP_CONFIG {
-				err := nodectx.GetDbMgr().UpdateAppConfig(snapshotdata.Data, prefix)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfig(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type APP_CONFIG, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_CHAIN_CONFIG {
-				err := nodectx.GetDbMgr().UpdateChainConfig(snapshotdata.Data, prefix)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type CHAIN_CONFIG, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_ANNOUNCE {
-				err := nodectx.GetDbMgr().UpdateAnnounce(snapshotdata.Data, prefix)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type ANNOUNCE, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_PRODUCER {
-				err := nodectx.GetDbMgr().UpdateProducer(snapshotdata.Data, prefix)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateProducer(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type PRODUCER, err <%s>", ssreceiver.groupId, err.Error())
 					return err
 				}
 			} else if snapshotdata.Type == quorumpb.SnapShotItemType_SNAPSHOT_USER {
-				err := nodectx.GetDbMgr().UpdateUser(snapshotdata.Data, prefix)
+				err := nodectx.GetNodeCtx().GetChainStorage().UpdateUser(snapshotdata.Data, ssreceiver.nodename)
 				if err != nil {
 					snapshotreceiver_log.Warningf("<%s> applySnapshot failed, type USE, err <%s>", ssreceiver.groupId, err.Error())
 					return err
@@ -179,7 +176,7 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 	ssreceiver.snapshotTag.SnapshotPackageId = s.SnapshotPackageId
 	ssreceiver.snapshotTag.SenderPubkey = s.SenderPubkey
 
-	err := nodectx.GetDbMgr().UpdateSnapshotTag(ssreceiver.groupId, ssreceiver.snapshotTag, ssreceiver.nodename)
+	err := nodectx.GetNodeCtx().GetChainStorage().UpdateSnapshotTag(ssreceiver.groupId, ssreceiver.snapshotTag, ssreceiver.nodename)
 	if err != nil {
 		snapshotreceiver_log.Warningf("<%s> UpdateSnapshotTag failed, err <%s>", ssreceiver.groupId, err.Error())
 		return err
