@@ -9,20 +9,24 @@ LDFLAGS = -ldflags "-X main.GitCommit=${GIT_COMMIT}"
 GOARCH = amd64
 
 linux:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go
-	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} pkg/nodesdk/cmd/main.go
+	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go
+
+	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
 freebsd:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go
-	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} pkg/nodesdk/cmd/main.go
+	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go cmd/utils.go
+
+	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
 darwin:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go
-	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/darwin_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} pkg/nodesdk/cmd/main.go
+	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go cmd/utils.go
+
+	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/darwin_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
 windows:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${QUORUM_BIN_NAME}.exe cmd/main.go
-	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} pkg/nodesdk/cmd/main.go
+	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${QUORUM_BIN_NAME}.exe cmd/main.go cmd/utils.go
+
+	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
 wasm:
 	CGO_ENABLED=0 GO111MODULE=on GOOS=js GOARCH=wasm go build ${LDFLAGS} -o dist/js_wasm/${QUORUM_WASMLIB_NAME} cmd/wasm/lib.go

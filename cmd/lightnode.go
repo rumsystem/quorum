@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -94,105 +92,10 @@ func mainRet(config cli.Config) int {
 		mainlog.Fatalf(err.Error())
 	}
 
-	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
-	ksi := localcrypto.GetKeystore()
+	ks, defaultkey, err := InitDefaultKeystore(config, nodeoptions)
 	if err != nil {
 		cancel()
 		mainlog.Fatalf(err.Error())
-	}
-	if err != nil {
-		cancel()
-		mainlog.Fatalf(err.Error())
-	}
-
-	ks, ok := ksi.(*localcrypto.DirKeyStore)
-	if ok == false {
-		//TODO: test other keystore type?
-		//if there are no other keystores, exit and show error info.
-		cancel()
-		mainlog.Fatalf(err.Error())
-	}
-
-	password := os.Getenv("RUM_KSPASSWD")
-	if signkeycount > 0 {
-		if password == "" {
-			password, err = localcrypto.PassphrasePromptForUnlock()
-		}
-		err = ks.Unlock(nodeoptions.SignKeyMap, password)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-	} else {
-		if password == "" {
-			password, err = localcrypto.PassphrasePromptForEncryption()
-			if err != nil {
-				mainlog.Fatalf(err.Error())
-				cancel()
-				return 0
-			}
-			fmt.Println("Please keeping your password safe, We can't recover or reset your password.")
-			fmt.Println("Your password:", password)
-			fmt.Println("After saving the password, press any key to continue.")
-			os.Stdin.Read(make([]byte, 1))
-		}
-
-		signkeyhexstr, err := localcrypto.LoadEncodedKeyFrom(config.ConfigDir, peername, "txt")
-		if err != nil {
-			cancel()
-			mainlog.Fatalf(err.Error())
-		}
-		var addr string
-		if signkeyhexstr != "" {
-			addr, err = ks.Import(DEFAUT_KEY_NAME, signkeyhexstr, localcrypto.Sign, password)
-		} else {
-			addr, err = ks.NewKey(DEFAUT_KEY_NAME, localcrypto.Sign, password)
-			if err != nil {
-				mainlog.Fatalf(err.Error())
-				cancel()
-				return 0
-			}
-		}
-
-		if addr == "" {
-			mainlog.Fatalf("Load or create new signkey failed")
-			cancel()
-			return 0
-		}
-		err = nodeoptions.SetSignKeyMap(DEFAUT_KEY_NAME, addr)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-		err = ks.Unlock(nodeoptions.SignKeyMap, password)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-
-		fmt.Printf("load signkey: %d press any key to continue...\n", signkeycount)
-	}
-
-	_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
-	signkeycount = ks.UnlockedKeyCount(localcrypto.Sign)
-	if signkeycount == 0 {
-		mainlog.Fatalf("load signkey error, exit... %s", err)
-		cancel()
-		return 0
-	}
-
-	//Load default sign keys
-	key, err := ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
-
-	defaultkey, ok := key.(*ethkeystore.Key)
-	if ok == false {
-		fmt.Println("load default key error, exit...")
-		mainlog.Fatalf(err.Error())
-		cancel()
-		return 0
 	}
 	keys, err := localcrypto.SignKeytoPeerKeys(defaultkey)
 
@@ -218,7 +121,7 @@ func mainRet(config cli.Config) int {
 	}
 
 	nodesdkctx.Init(ctx, nodename, dbManager)
-	nodesdkctx.GetCtx().Keystore = ksi
+	nodesdkctx.GetCtx().Keystore = ks
 	nodesdkctx.GetCtx().PublicKey = keys.PubKey
 	nodesdkctx.GetCtx().PeerId = peerid
 
@@ -250,15 +153,4 @@ func mainRet(config cli.Config) int {
 	mainlog.Infof("Exit command received. Exiting...")
 
 	return 0
-}
-
-// reutrn EBUSY if LOCK is exist
-func checkLockError(err error) {
-	if err != nil {
-		errStr := err.Error()
-		if strings.Contains(errStr, "Another process is using this Badger database.") {
-			mainlog.Errorf(errStr)
-			os.Exit(16)
-		}
-	}
 }
