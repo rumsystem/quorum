@@ -73,7 +73,6 @@ func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, Prot
 	rumpeerstore := &RumGroupPeerStore{}
 	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
-	// FIXME: p2p/rumexchange.go:318 error: stream reset stream reset
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
 	return rexs
@@ -96,17 +95,7 @@ func (r *RexService) SetHandlerMatchMsgType(name string, handler RumHandlerFunc)
 	r.msgtypehandlers = append(r.msgtypehandlers, RumHandler{handler, name})
 }
 
-func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
-
-	poolitem, ok := r.streampool.Load(peerid)
-	if ok {
-		streamitem := poolitem.(*streamPoolItem)
-		if !streamitem.s.Stat().Transient {
-			// otherwise we reconnect to transient node every time
-			return streamitem, nil
-		}
-	}
-
+func (r *RexService) NewStream(peerid peer.ID) (*streamPoolItem, error) {
 	//new stream
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -118,10 +107,20 @@ func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
 	if err != nil {
 		return nil, err
 	}
+	r.streampool.Store(peerid, newpoolitem)
 
 	go r.HandlerProcessloop(ctxT, s)
-	r.streampool.Store(peerid, newpoolitem)
+
 	return newpoolitem, nil
+}
+
+func (r *RexService) GetStream(peerid peer.ID) (*streamPoolItem, error) {
+	poolitem, ok := r.streampool.Load(peerid)
+	if ok {
+		streamitem := poolitem.(*streamPoolItem)
+		return streamitem, nil
+	}
+	return r.NewStream(peerid)
 }
 
 func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataSyncIface) {
@@ -309,9 +308,10 @@ func (r *RexService) Handler(s network.Stream) {
 
 func (r *RexService) HandlerProcessloop(ctx context.Context, s network.Stream) {
 	remotePeer := s.Conn().RemotePeer()
+	rumexchangelog.Debugf("RumExchange stream handler %s start", remotePeer)
+	defer rumexchangelog.Debugf("RumExchange stream handler %s exit", remotePeer)
 
 	reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
-	defer rumexchangelog.Debugf("RumExchange stream handler %s exit", remotePeer)
 	for {
 		select {
 		case <-ctx.Done():
@@ -320,14 +320,16 @@ func (r *RexService) HandlerProcessloop(ctx context.Context, s network.Stream) {
 			msgdata, err := reader.ReadMsg()
 			if err != nil {
 				if err != io.EOF {
-					rumexchangelog.Debugf("RumExchange stream handler from %s error: %s stream reset", s.Conn().RemotePeer(), err)
+					stat := s.Conn().Stat()
+					rumexchangelog.Debugf("RumExchange stream handler from %s error: %s, stat: %v", s.Conn().RemotePeer(), err, stat)
 					_ = s.Reset()
+					return
 				} else {
 					rumexchangelog.Debugf("RumExchange stream handler EOF %s", remotePeer)
 					r.streampool.Delete(remotePeer)
 					_ = s.Close()
+					return
 				}
-				return
 			}
 
 			var rummsg quorumpb.RumMsg
