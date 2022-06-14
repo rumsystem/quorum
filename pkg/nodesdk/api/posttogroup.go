@@ -18,6 +18,10 @@ type CustomValidatorPost struct {
 	Validator *validator.Validate
 }
 
+type TrxResult struct {
+	TrxId string `json:"trx_id" validate:"required"`
+}
+
 func (cv *CustomValidatorPost) Validate(i interface{}) error {
 	switch i.(type) {
 	case *quorumpb.Activity:
@@ -56,11 +60,6 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 	return nil
 }
 
-type SendTrxResult struct {
-	TrxId   string `json:"trx_id"   validate:"required"`
-	ErrInfo string `json:"err_info" validate:"required"`
-}
-
 func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var err error
@@ -78,8 +77,8 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		dbMgr := nodesdkctx.GetDbMgr()
-		nodesdkGroupItem, err := dbMgr.GetGroupInfo(paramspb.Target.Id)
+		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(paramspb.Target.Id)
+
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -145,11 +144,18 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		}
 
 		resultInBytes, err := httpClient.Post(POST_TRX_URI, itemBytes)
+		res := TrxResult{}
+		err = json.Unmarshal(resultInBytes, &res)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-
-		return c.JSON(http.StatusOK, string(resultInBytes))
+		if res.TrxId == "" {
+			errres := APIErrorResult{}
+			err = json.Unmarshal(resultInBytes, &errres)
+			output[ERROR_INFO] = errres.Error
+			return c.JSON(http.StatusBadRequest, output)
+		}
+		return c.JSON(http.StatusOK, res)
 	}
 }

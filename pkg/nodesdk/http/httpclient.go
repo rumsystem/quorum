@@ -163,10 +163,6 @@ func (hc *HttpClient) Post(url string, data []byte) ([]byte, error) {
 		return nil, jwtErr
 	}
 
-	if strings.Contains(string(body), "error") {
-		return nil, errors.New(string(body))
-	}
-
 	return body, err
 }
 

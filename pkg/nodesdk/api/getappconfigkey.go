@@ -17,8 +17,7 @@ func (h *NodeSDKHandler) GetAppConfigKey(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	dbMgr := nodesdkctx.GetDbMgr()
-	nodesdkGroupItem, err := dbMgr.GetGroupInfo(groupid)
+	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

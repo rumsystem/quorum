@@ -12,9 +12,10 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
+	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	nodesdkapi "github.com/rumsystem/quorum/pkg/nodesdk/api"
-	nodesdkdb "github.com/rumsystem/quorum/pkg/nodesdk/db"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -115,12 +116,12 @@ func mainRet(config cli.Config) int {
 	nodename := "nodesdk_default"
 
 	datapath := config.DataDir + "/" + config.PeerName
-	dbManager, err := nodesdkdb.CreateDb(datapath)
+	dbManager, err := storage.CreateDb(datapath)
 	if err != nil {
 		mainlog.Fatalf(err.Error())
 	}
 
-	nodesdkctx.Init(ctx, nodename, dbManager)
+	nodesdkctx.Init(ctx, nodename, dbManager, chainstorage.NewChainStorage(dbManager))
 	nodesdkctx.GetCtx().Keystore = ks
 	nodesdkctx.GetCtx().PublicKey = keys.PubKey
 	nodesdkctx.GetCtx().PeerId = peerid

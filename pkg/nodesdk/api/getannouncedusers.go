@@ -19,8 +19,7 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 
 	signPubkey := c.Param("sign_pubkey")
 
-	dbMgr := nodesdkctx.GetDbMgr()
-	nodesdkGroupItem, err := dbMgr.GetGroupInfo(groupid)
+	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

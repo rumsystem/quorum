@@ -276,14 +276,13 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		encodedSign := hex.EncodeToString(signature)
 
 		//save nodesdkgroupitem to db
-		dbMgr := nodesdkctx.GetDbMgr()
-		err = dbMgr.AddGroup(item)
+		err = nodesdkctx.GetCtx().GetChainStorage().AddGroupV2(item)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		joinGrpResult := &JoinGroupResult{GroupId: group.GroupId, GroupName: group.GroupName, OwnerPubkey: group.OwnerPubKey, ConsensusType: params.Seed.ConsensusType, EncryptionType: params.Seed.EncryptionType, SignAlias: params.SignAlias, EncryptAlias: params.SignAlias, CipherKey: group.CipherKey, AppKey: group.AppKey, Signature: encodedSign}
+		joinGrpResult := &JoinGroupResult{GroupId: group.GroupId, GroupName: group.GroupName, OwnerPubkey: group.OwnerPubKey, ConsensusType: params.Seed.ConsensusType, EncryptionType: params.Seed.EncryptionType, SignAlias: params.SignAlias, EncryptAlias: params.EncryptAlias, CipherKey: group.CipherKey, AppKey: group.AppKey, Signature: encodedSign}
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}
 }

@@ -1,11 +1,9 @@
 package nodesdkapi
 
 import (
-	"fmt"
-	"net/http"
-
 	"github.com/labstack/echo/v4"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
+	"net/http"
 )
 
 type GetGroupSeedParams struct {
@@ -23,14 +21,12 @@ func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		dbMgr := nodesdkctx.GetDbMgr()
-		groupItem, err := dbMgr.GetGroupInfo(groupid)
+		groupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		fmt.Println(groupItem.GroupSeed)
 		return c.JSON(http.StatusOK, groupItem.GroupSeed)
 	}
 }
