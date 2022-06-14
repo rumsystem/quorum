@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/labstack/echo/v4"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -46,9 +47,7 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var groups []*GroupInfo
 		output := make(map[string]string)
-
-		dbMgr := nodesdkctx.GetDbMgr()
-		nodesdkGroupItems, err := dbMgr.GetAllGroups()
+		nodesdkGroupItems, err := nodesdkctx.GetCtx().GetChainStorage().GetAllGroupsV2()
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -61,16 +60,13 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 			groupInfo.SignAlias = groupItem.SignAlias
 			groupInfo.EncryptAlias = groupItem.EncryptAlias
 
-			/*
-				Check with huoju
-				ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
-				if err != nil {
-					output[ERROR_INFO] = err.Error()
-					return c.JSON(http.StatusBadRequest, output)
-				}
-			*/
+			ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
 
-			groupInfo.UserEthaddr = groupItem.Group.UserSignPubkey
+			if err != nil {
+				output[ERROR_INFO] = err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
+			groupInfo.UserEthaddr = ethaddr
 			groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()
 			groupInfo.EncryptionType = groupItem.Group.EncryptType.String()
 			groupInfo.CipherKey = groupItem.Group.CipherKey

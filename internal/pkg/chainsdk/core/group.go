@@ -134,7 +134,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item)
+	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)
 }
 
 func (grp *Group) ClearGroup() error {

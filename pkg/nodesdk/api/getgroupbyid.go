@@ -23,8 +23,7 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		dbMgr := nodesdkctx.GetDbMgr()
-		groupItem, err := dbMgr.GetGroupInfo(groupid)
+		groupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

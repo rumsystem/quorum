@@ -13,8 +13,7 @@ import (
 )
 
 type SendTrxResult struct {
-	TrxId   string `json:"trx_id"   validate:"required"`
-	ErrInfo string `json:"err_info" validate:"required"`
+	TrxId string `json:"trx_id"   validate:"required"`
 }
 
 type NodeSDKTrxItem struct {
@@ -34,11 +33,13 @@ func is_user_blocked(c echo.Context) bool {
 
 func (h *Handler) SendTrx(c echo.Context) (err error) {
 
+	output := make(map[string]string)
+
 	if is_user_blocked(c) {
-		return c.JSON(http.StatusForbidden, "")
+		output[ERROR_INFO] = "BLOCKED_USER"
+		return c.JSON(http.StatusForbidden, output)
 	}
 
-	output := make(map[string]string)
 	sendTrxItem := new(NodeSDKSendTrxItem)
 	if err = c.Bind(sendTrxItem); err != nil {
 		output[ERROR_INFO] = err.Error()
@@ -83,10 +84,10 @@ func (h *Handler) SendTrx(c echo.Context) (err error) {
 		trxId, err := group.SendRawTrx(trx)
 		var sendTrxResult *SendTrxResult
 		if err != nil {
-			sendTrxResult = &SendTrxResult{TrxId: trxId, ErrInfo: err.Error()}
-			return c.JSON(http.StatusOK, sendTrxResult)
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
 		} else {
-			sendTrxResult = &SendTrxResult{TrxId: trxId, ErrInfo: "OK"}
+			sendTrxResult = &SendTrxResult{TrxId: trxId}
 			return c.JSON(http.StatusOK, sendTrxResult)
 		}
 

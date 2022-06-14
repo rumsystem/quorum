@@ -17,8 +17,7 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	dbMgr := nodesdkctx.GetDbMgr()
-	nodesdkGroupItem, err := dbMgr.GetGroupInfo(groupid)
+	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -81,7 +80,7 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 
 	//update db
 	//save nodesdkgroupitem to db
-	grpInfo, err := dbMgr.GetGroupInfo(groupid)
+	grpInfo, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -90,7 +89,7 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 	grpInfo.Group.HighestHeight = result.HighestHeight
 	grpInfo.Group.LastUpdate = result.LatestUpdate
 
-	err = dbMgr.UpdGroup(grpInfo)
+	err = nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(grpInfo)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

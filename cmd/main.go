@@ -11,11 +11,9 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
-	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
@@ -42,7 +40,6 @@ import (
 	"github.com/rumsystem/quorum/testnode"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
 
-	//_ "google.golang.org/protobuf/proto/reflect/protoreflect" //import for swaggo
 	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
 
 	"github.com/phayes/freeport"
@@ -57,17 +54,6 @@ var (
 	signalch       chan os.Signal
 	mainlog        = logging.Logger("main")
 )
-
-// reutrn EBUSY if LOCK is exist
-func checkLockError(err error) {
-	if err != nil {
-		errStr := err.Error()
-		if strings.Contains(errStr, "Another process is using this Badger database.") {
-			mainlog.Errorf(errStr)
-			os.Exit(16)
-		}
-	}
-}
 
 func createPubQueueDb(path string) (*storage.QSBadger, error) {
 	var err error
@@ -155,101 +141,10 @@ func mainRet(config cli.Config) int {
 	nodeoptions.EnableRelay = config.EnableRelay
 	nodeoptions.EnableRelayService = config.EnableRelayService
 
-	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
-	ksi := localcrypto.GetKeystore()
+	ks, defaultkey, err := InitDefaultKeystore(config, nodeoptions)
 	if err != nil {
 		cancel()
 		mainlog.Fatalf(err.Error())
-	}
-
-	ks, ok := ksi.(*localcrypto.DirKeyStore)
-	if ok == false {
-		//TODO: test other keystore type?
-		//if there are no other keystores, exit and show error info.
-		cancel()
-		mainlog.Fatalf(err.Error())
-	}
-
-	password := os.Getenv("RUM_KSPASSWD")
-	if signkeycount > 0 {
-		if password == "" {
-			password, err = localcrypto.PassphrasePromptForUnlock()
-		}
-		err = ks.Unlock(nodeoptions.SignKeyMap, password)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-	} else {
-		if password == "" {
-			password, err = localcrypto.PassphrasePromptForEncryption()
-			if err != nil {
-				mainlog.Fatalf(err.Error())
-				cancel()
-				return 0
-			}
-			fmt.Println("Please keeping your password safe, We can't recover or reset your password.")
-			fmt.Println("Your password:", password)
-			fmt.Println("After saving the password, press any key to continue.")
-			os.Stdin.Read(make([]byte, 1))
-		}
-
-		signkeyhexstr, err := localcrypto.LoadEncodedKeyFrom(config.ConfigDir, peername, "txt")
-		if err != nil {
-			cancel()
-			mainlog.Fatalf(err.Error())
-		}
-		var addr string
-		if signkeyhexstr != "" {
-			addr, err = ks.Import(DEFAUT_KEY_NAME, signkeyhexstr, localcrypto.Sign, password)
-		} else {
-			addr, err = ks.NewKey(DEFAUT_KEY_NAME, localcrypto.Sign, password)
-			if err != nil {
-				mainlog.Fatalf(err.Error())
-				cancel()
-				return 0
-			}
-		}
-
-		if addr == "" {
-			mainlog.Fatalf("Load or create new signkey failed")
-			cancel()
-			return 0
-		}
-		err = nodeoptions.SetSignKeyMap(DEFAUT_KEY_NAME, addr)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-		err = ks.Unlock(nodeoptions.SignKeyMap, password)
-		if err != nil {
-			mainlog.Fatalf(err.Error())
-			cancel()
-			return 0
-		}
-
-		fmt.Printf("load signkey: %d press any key to continue...\n", signkeycount)
-	}
-
-	_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
-	signkeycount = ks.UnlockedKeyCount(localcrypto.Sign)
-	if signkeycount == 0 {
-		mainlog.Fatalf("load signkey error, exit... %s", err)
-		cancel()
-		return 0
-	}
-
-	//Load default sign keys
-	key, err := ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
-
-	defaultkey, ok := key.(*ethkeystore.Key)
-	if ok == false {
-		fmt.Println("load default key error, exit...")
-		mainlog.Fatalf(err.Error())
-		cancel()
-		return 0
 	}
 	keys, err := localcrypto.SignKeytoPeerKeys(defaultkey)
 
@@ -267,7 +162,7 @@ func mainRet(config cli.Config) int {
 
 	mainlog.Infof("eth addresss: <%s>", ethaddr)
 	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
-	checkLockError(err)
+	CheckLockError(err)
 	if err != nil {
 		cancel()
 		mainlog.Fatalf(err.Error())
@@ -294,7 +189,7 @@ func mainRet(config cli.Config) int {
 		dbManager.TryMigration(1)
 
 		nodectx.InitCtx(ctx, "", node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", GitCommit)
-		nodectx.GetNodeCtx().Keystore = ksi
+		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
@@ -343,7 +238,7 @@ func mainRet(config cli.Config) int {
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config)
 		nodectx.InitCtx(ctx, nodename, node, dbManager, newchainstorage, "pubsub", GitCommit)
-		nodectx.GetNodeCtx().Keystore = ksi
+		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
@@ -384,7 +279,7 @@ func mainRet(config cli.Config) int {
 		if err != nil {
 			mainlog.Fatalf(err.Error())
 		}
-		checkLockError(err)
+		CheckLockError(err)
 
 		// compatible with earlier versions: load group seeds and save to appdata
 		saveLocalSeedsToAppdata(appdb, config.DataDir)

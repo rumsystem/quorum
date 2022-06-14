@@ -28,8 +28,7 @@ func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	dbMgr := nodesdkctx.GetDbMgr()
-	nodesdkGroupItem, err := dbMgr.GetGroupInfo(params.GroupId)
+	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(params.GroupId)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
@@ -37,7 +36,7 @@ func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
 
 	nodesdkGroupItem.ApiUrl = params.ChainAPIUrl
 
-	err = dbMgr.UpdGroup(nodesdkGroupItem)
+	err = nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(nodesdkGroupItem)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

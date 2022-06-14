@@ -35,8 +35,7 @@ func (h *NodeSDKHandler) LeaveGroup() echo.HandlerFunc {
 		}
 
 		//save nodesdkgroupitem to db
-		dbMgr := nodesdkctx.GetDbMgr()
-		err = dbMgr.RmGroup(params.GroupId)
+		err = nodesdkctx.GetCtx().GetChainStorage().RmGroup(params.GroupId)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

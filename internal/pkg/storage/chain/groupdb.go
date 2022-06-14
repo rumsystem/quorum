@@ -35,9 +35,9 @@ func (cs *Storage) UpdGroup(groupItem *quorumpb.GroupItem) error {
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-func (cs *Storage) RmGroup(item *quorumpb.GroupItem) error {
+func (cs *Storage) RmGroup(groupId string) error {
 	//check if group exist
-	key := s.GROUPITEM_PREFIX + "_" + item.GroupId
+	key := s.GROUPITEM_PREFIX + "_" + groupId
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		if err != nil {
@@ -154,4 +154,83 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 	}
 
 	return nil
+}
+
+func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
+	//check if group exist
+	key := s.GROUPITEM_PREFIX + "_" + groupItem.Group.GroupId
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	if exist {
+		return errors.New("Group with same GroupId existed")
+	}
+
+	//add group to db
+	value, err := proto.Marshal(groupItem)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
+}
+
+//Get Gorup Info
+func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, error) {
+	key := s.GROUPITEM_PREFIX + "_" + groupId
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	if !exist {
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.New("Group Not Found")
+	}
+
+	groupInfoByte, err := cs.dbmgr.GroupInfoDb.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var groupInfo *quorumpb.NodeSDKGroupItem
+	groupInfo = &quorumpb.NodeSDKGroupItem{}
+	err = proto.Unmarshal(groupInfoByte, groupInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	//delete group
+	return groupInfo, nil
+}
+
+func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
+	var result []*quorumpb.NodeSDKGroupItem
+
+	key := s.GROUPITEM_PREFIX
+	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		var item *quorumpb.NodeSDKGroupItem
+		item = &quorumpb.NodeSDKGroupItem{}
+		err = proto.Unmarshal(v, item)
+		if err != nil {
+			return err
+		}
+		result = append(result, item)
+		return nil
+	})
+	return result, err
+}
+
+func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
+	value, err := proto.Marshal(groupItem)
+	if err != nil {
+		return err
+	}
+
+	key := s.GROUPITEM_PREFIX + groupItem.Group.GroupId
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	if !exist {
+		return errors.New("Group is not existed")
+	}
+
+	//upd group to db
+	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
 }
