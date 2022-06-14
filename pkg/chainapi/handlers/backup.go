@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -18,6 +19,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
+	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/rumsystem/keystore/pkg/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
@@ -101,10 +104,23 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 		key := filepath.Base(path)
 		pair["key"] = key
 		pair["value"] = base64.StdEncoding.EncodeToString(keyBytes)
-		kvBytes, err := json.Marshal(pair)
 		if err != nil {
 			return err
 		}
+		if strings.HasPrefix(key, crypto.Sign.Prefix()) {
+			key, err := ethkeystore.DecryptKey(keyBytes, password)
+			if err != nil {
+				return err
+			}
+			privKey := key.PrivateKey
+			addr := ethcrypto.PubkeyToAddress(privKey.PublicKey)
+			// Make sure we're really operating on the requested key (no swap attacks)
+			if key.Address != addr {
+				return fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
+			}
+			pair["addr"] = addr.String()
+		}
+		kvBytes, err := json.Marshal(pair)
 
 		output := new(bytes.Buffer)
 		if err := crypto.AgeEncrypt([]age.Recipient{r}, bytes.NewReader(kvBytes), output); err != nil {
