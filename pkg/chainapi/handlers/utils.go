@@ -26,7 +26,7 @@ func initSignKey(groupId string, ks localcrypto.Keystore, nodeoptions *options.N
 	return hexkey, nil
 }
 
-func initEncodeKey(groupId string, bks localcrypto.Keystore) (string, error) {
+func initEncryptKey(groupId string, bks localcrypto.Keystore) (string, error) {
 	userEncryptKey, err := bks.GetEncodedPubkey(groupId, localcrypto.Encrypt)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "key not exist ") {

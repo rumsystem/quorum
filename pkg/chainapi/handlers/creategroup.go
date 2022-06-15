@@ -82,7 +82,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	}
 
 	/* init encode key */
-	groupEncryptPubkey, err := initEncodeKey(groupid.String(), ks)
+	groupEncryptPubkey, err := initEncryptKey(groupid.String(), ks)
 	if err != nil {
 		return nil, err
 	}
