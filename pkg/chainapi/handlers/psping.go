@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
@@ -18,8 +17,7 @@ type PingResp struct {
 
 // pubsub ping
 func Ping(ps *pubsub.PubSub, id peer.ID, remote string) (*PingResp, error) {
-	ctx_, cancel := context.WithCancel(context.Background())
-	ctx := network.WithUseTransient(ctx_, "quorum-relay")
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	psping := p2p.NewPSPingService(ctx, ps, id)
@@ -39,8 +37,7 @@ var pingLogger = logging.Logger("ping")
 
 // p2p ping
 func P2PPing(h host.Host, remote string) (*P2PPingResp, error) {
-	ctx_, cancel := context.WithCancel(context.Background())
-	ctx := network.WithUseTransient(ctx_, "quorum-relay")
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	ps := p2p.NewPingService(h)

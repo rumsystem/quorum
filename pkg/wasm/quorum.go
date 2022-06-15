@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	quorumCrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -32,8 +31,7 @@ var mainLogger = logging.Logger("main")
 const DEFAUT_KEY_NAME string = "default"
 
 func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool, error) {
-	ctx_, cancel := context.WithCancel(context.Background())
-	ctx := network.WithUseTransient(ctx_, "quorum-relay")
+	ctx, cancel := context.WithCancel(context.Background())
 
 	config := quorumConfig.NewBrowserConfig(bootAddrs)
 

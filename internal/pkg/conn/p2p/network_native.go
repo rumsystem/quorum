@@ -27,6 +27,7 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -102,7 +103,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	if nodeopt.EnableRelayService {
 		libp2poptions = append(libp2poptions,
 			libp2p.DisableRelay(),
-			libp2p.EnableRelayService(),
+			libp2p.EnableRelayService(relay.WithLimit(nil)),
 		)
 	}
 
