@@ -231,6 +231,10 @@ func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...stri
 		if verifyblockid == blockid {
 			break
 		}
+		if verifyblockChunk == nil {
+			dblogger.Printf("the block is nil, id: %s", verifyblockid)
+			break
+		}
 		if verifyblockChunk.ParentBlockId == blockid {
 			blockChunk.SubBlockId = append(blockChunk.SubBlockId, verifyblockChunk.BlockId)
 			dblogger.Printf("find the subblock of %s the subblockid is %s", blockid, verifyblockChunk.BlockId)
