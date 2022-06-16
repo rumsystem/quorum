@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // NewJWTToken creates a new jwt token
-func NewJWTToken(name string, role string, jwtKey string, exp time.Time) (string, error) {
+func NewJWTToken(name string, role string, allowGroups []string, jwtKey string, exp time.Time) (string, error) {
+	if allowGroups == nil {
+		allowGroups = []string{}
+	}
+
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["name"] = name
 	claims["role"] = role
+	claims["allowGroups"] = allowGroups
 	claims["exp"] = exp.Unix()
 
 	return token.SignedString([]byte(jwtKey))

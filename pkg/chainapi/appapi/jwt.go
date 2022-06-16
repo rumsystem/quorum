@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -35,10 +35,10 @@ func getJWTKey() (string, error) {
 	return nodeOpt.JWTKey, nil
 }
 
-func getToken(name, role, jwtKey string) (string, error) {
+func getToken(name string, role string, allowGroups []string, jwtKey string) (string, error) {
 	// FIXME: hardcode
 	exp := time.Now().Add(time.Hour * 24 * 30)
-	return utils.NewJWTToken(name, role, jwtKey, exp)
+	return utils.NewJWTToken(name, role, allowGroups, jwtKey, exp)
 }
 
 func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
@@ -48,6 +48,9 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 		AuthScheme:    "Bearer",
 		TokenLookup:   "header:" + echo.HeaderAuthorization,
 		ContextKey:    jwtContextKey,
+		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
+			return utils.ParseJWTToken(auth, jwtKey)
+		},
 		Skipper: func(c echo.Context) bool {
 			r := c.Request()
 			if strings.HasPrefix(r.Host, "localhost:") || r.Host == "localhost" || strings.HasPrefix(r.Host, "127.0.0.1") {
@@ -59,6 +62,21 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 	}
 
 	return config
+}
+
+func GetJWTName(c echo.Context) string {
+	token, err := getJWTToken(c)
+	if err != nil {
+		logger.Errorf("get jwt token failed: %s", err)
+		return ""
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	name, ok := claims["name"]
+	if !ok {
+		return ""
+	}
+
+	return name.(string)
 }
 
 func GetJWTRole(c echo.Context) string {
@@ -74,6 +92,31 @@ func GetJWTRole(c echo.Context) string {
 	}
 
 	return role.(string)
+}
+
+func GetJWTAllowGroups(c echo.Context) []string {
+	groups := []string{}
+	token, err := getJWTToken(c)
+	if err != nil {
+		logger.Errorf("get jwt token failed: %s", err)
+		return groups
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	allowGroups, ok := claims["allowGroups"]
+	if !ok {
+		return groups
+	}
+
+	items, ok := allowGroups.([]interface{})
+	if !ok {
+		logger.Errorf("cast allowGroups to `[]interface{}` failed")
+		return groups
+	}
+
+	for _, v := range items {
+		groups = append(groups, v.(string))
+	}
+	return groups
 }
 
 // @Tags Apps
@@ -116,15 +159,17 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 		})
 	}
 
+	name := GetJWTName(c)
 	role := GetJWTRole(c)
+	allowGroups := GetJWTAllowGroups(c)
 
-	newTokenStr, err := getToken(h.PeerName, role, jwtKey)
+	newTokenStr, err := getToken(name, role, allowGroups, jwtKey)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"message": err.Error(),
 		})
 	}
-	if err := nodeOpt.SetJWTToken(role, newTokenStr); err != nil {
+	if err := nodeOpt.SetJWTTokenMap(name, newTokenStr); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"message": err.Error(),
 		})
