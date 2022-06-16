@@ -6,7 +6,6 @@ package options
 import (
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
@@ -55,8 +54,7 @@ func (opt *NodeOptions) writeToconfig() error {
 	v.Set("EnableDevNetwork", opt.EnableDevNetwork)
 	v.Set("SignKeyMap", opt.SignKeyMap)
 	v.Set("JWTKey", opt.JWTKey)
-	v.Set("SelfJWTToken", opt.SelfJWTToken)
-	v.Set("OthersJWTToken", opt.OthersJWTToken)
+	v.Set("JWTTokenMap", opt.JWTTokenMap)
 	return v.WriteConfig()
 }
 
@@ -67,17 +65,17 @@ func (opt *NodeOptions) SetJWTKey(jwtKey string) error {
 	return opt.writeToconfig()
 }
 
-func (opt *NodeOptions) SetJWTToken(role, jwtToken string) error {
+func (opt *NodeOptions) SetJWTTokenMap(name, jwtToken string) error {
 	opt.mu.Lock()
 	defer opt.mu.Unlock()
-	if role == "self" {
-		opt.SelfJWTToken = jwtToken
-	} else if role == "others" {
-		opt.OthersJWTToken = jwtToken
-	} else {
-		return fmt.Errorf("un-support role: %s", role)
-	}
+	opt.JWTTokenMap[name] = jwtToken
+	return opt.writeToconfig()
+}
 
+func (opt *NodeOptions) DelJWTTokenMap(name string) error {
+	opt.mu.Lock()
+	defer opt.mu.Unlock()
+	delete(opt.JWTTokenMap, name)
 	return opt.writeToconfig()
 }
 
@@ -129,39 +127,6 @@ func initConfigfile(dir string, keyname string) (*viper.Viper, error) {
 		}
 	}
 
-	jwtKey := v.GetString("JWTKey")
-	if jwtKey == "" {
-		jwtKey = utils.GetRandomStr(JWTKeyLength)
-		v.Set("JWTKey", jwtKey)
-		if err := v.WriteConfig(); err != nil {
-			return nil, err
-		}
-	}
-
-	for _, role := range []string{"self", "others"} {
-		var configKey string
-		if role == "self" {
-			configKey = "SelfJWTToken"
-		} else if role == "others" {
-			configKey = "OthersJWTToken"
-		}
-		jwtToken := v.GetString(configKey)
-		valid, _ := utils.IsJWTTokenValid(jwtToken, jwtKey)
-		if jwtToken == "" || !valid {
-			// HARDCOED: expire in 30 days
-			exp := time.Now().Add(time.Hour * 24 * 30)
-			jwtToken, err := utils.NewJWTToken(keyname, role, jwtKey, exp)
-			if err != nil {
-				return nil, err
-			}
-
-			v.Set(configKey, jwtToken)
-			if err := v.WriteConfig(); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	return v, nil
 }
 
@@ -196,8 +161,7 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 
 	options.SignKeyMap = v.GetStringMapString("SignKeyMap")
 	options.JWTKey = v.GetString("JWTKey")
-	options.SelfJWTToken = v.GetString("SelfJWTToken")
-	options.OthersJWTToken = v.GetString("OthersJWTToken")
+	options.JWTTokenMap = v.GetStringMapString("JWTTokenMap")
 
 	return options, nil
 }
