@@ -7,11 +7,9 @@ import (
 	"syscall"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	"github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -23,7 +21,6 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	quitch = signalch
 	e := echo.New()
 	e.Binder = new(CustomBinder)
-	e.Use(middleware.JWTWithConfig(appapi.CustomJWTConfig(nodeopt.JWTKey)))
 	r := e.Group("/nodesdk_api")
 
 	r.GET("/quit", quitapp)

@@ -27,7 +27,7 @@ const ANNOUNCED_USER string = "announced_user"
 const GROUP_PRODUCER string = "group_producer"
 
 type GetDataNodeSDKItem struct {
-	GroupId string
+	GroupId string `param:"group_id" validate:"required"`
 	ReqType string
 	Req     []byte
 }

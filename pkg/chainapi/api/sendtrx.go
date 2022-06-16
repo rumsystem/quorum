@@ -22,7 +22,7 @@ type NodeSDKTrxItem struct {
 }
 
 type NodeSDKSendTrxItem struct {
-	GroupId string
+	GroupId string `param:"group_id" validate:"required"`
 	TrxItem []byte
 }
 
