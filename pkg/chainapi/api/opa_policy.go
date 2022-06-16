@@ -11,6 +11,10 @@ allow {
 	input.role == "chain"
 }
 
+#######################
+# rules for node role #
+#######################
+
 # Allow all user access POST /app/api/v1/token/refresh
 allow {
   input.method == "POST"
@@ -20,15 +24,32 @@ allow {
 # allow all for "*" in allow_groups
 allow {
 	input.allow_groups == ["*"]
-	input.path[0] == "v1"
-	input.path[1] == "nodesdk"
+	input.path[0] == "api"
+	input.path[1] == "v1"
+	input.path[2] == "node"
 }
 
-# Allow access /v1/nodesdk/...
+# Allow access /api/v1/node/trx/:group_id
 allow {
   some group_id
   input.method == "POST"
-  input.path = ["v1", "nodesdk", "groupctn", group_id]
+  input.path = ["api", "v1", "node", "trx", group_id]
+  input.allow_groups[_] == group_id
+}
+
+# Allow access /api/v1/node/groupctn/:group_id
+allow {
+  some group_id
+  input.method == "POST"
+  input.path = ["api", "v1", "node", "groupctn", group_id]
+  input.allow_groups[_] == group_id
+}
+
+# Allow access /api/v1/node/getchaindata/:group_id
+allow {
+  some group_id
+  input.method == "POST"
+  input.path = ["api", "v1", "node", "getchaindata", group_id]
   input.allow_groups[_] == group_id
 }
 `

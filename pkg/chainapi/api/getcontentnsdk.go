@@ -28,7 +28,7 @@ type GetGroupCtnItem struct {
 }
 
 type GetGroupCtnReqItem struct {
-	GroupId string
+	GroupId string `param:"group_id" validate:"required"`
 	Req     []byte
 }
 

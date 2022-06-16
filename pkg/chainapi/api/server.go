@@ -85,9 +85,9 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/keystore/signtx", h.SignTx)
 
 		//for nodesdk
-		r.POST("/v1/nodesdk/trx", h.SendTrx)
-		r.POST("/v1/nodesdk/groupctn", h.GetContentNSdk)
-		r.POST("/v1/nodesdk/getchaindata", h.GetDataNSdk)
+		r.POST("/v1/node/trx/:group_id", h.SendTrx)
+		r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)
+		r.POST("/v1/node/getchaindata/:group_id", h.GetDataNSdk)
 
 	} else {
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
