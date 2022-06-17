@@ -121,7 +121,7 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		}
 
 		item := new(NodeSDKSendTrxItem)
-		item.GroupId = nodesdkGroupItem.Group.GroupId
+		groupId := nodesdkGroupItem.Group.GroupId
 		item.TrxItem = encryptData
 
 		itemBytes, err := json.Marshal(item)
@@ -143,7 +143,7 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		resultInBytes, err := httpClient.Post(POST_TRX_URI, itemBytes)
+		resultInBytes, err := httpClient.Post(GetPostTrxURI(groupId), itemBytes)
 		res := TrxResult{}
 		err = json.Unmarshal(resultInBytes, &res)
 		if err != nil {

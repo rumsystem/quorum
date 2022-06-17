@@ -29,8 +29,7 @@ type GetGroupCtnItem struct {
 }
 
 type GetGroupCtnReqItem struct {
-	GroupId string
-	Req     []byte
+	Req []byte
 }
 
 type GroupContentObjectItem struct {
@@ -81,7 +80,7 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 		}
 
 		getGroupCtnReqItem := new(GetGroupCtnReqItem)
-		getGroupCtnReqItem.GroupId = params.GroupId
+		groupId := params.GroupId
 		getGroupCtnReqItem.Req = encryptData
 
 		reqBytes, err := json.Marshal(getGroupCtnReqItem)
@@ -103,7 +102,7 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		resultInBytes, err := httpClient.Post(GET_CTN_URI, reqBytes)
+		resultInBytes, err := httpClient.Post(GetGroupCtnURI(groupId), reqBytes)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

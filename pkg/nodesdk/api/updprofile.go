@@ -117,7 +117,7 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 	}
 
 	item := new(NodeSDKSendTrxItem)
-	item.GroupId = nodesdkGroupItem.Group.GroupId
+	groupId := nodesdkGroupItem.Group.GroupId
 	item.TrxItem = encryptData
 
 	itemBytes, err := json.Marshal(item)
@@ -139,7 +139,7 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	resultInBytes, err := httpClient.Post(POST_TRX_URI, itemBytes)
+	resultInBytes, err := httpClient.Post(GetPostTrxURI(groupId), itemBytes)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)
