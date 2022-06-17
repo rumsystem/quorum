@@ -134,8 +134,8 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
-	if isBootstrap == true {
-		// turn off the mesh in bootstrapnode
+	if isBootstrap == true || nodeopt.EnableRelayService {
+		// turn off the mesh in bootstrapnode and relay node
 		pubsub.GossipSubD = 0
 		pubsub.GossipSubDscore = 0
 		pubsub.GossipSubDlo = 0
@@ -168,7 +168,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	options = append(options, pubsub.WithGossipSubProtocols(protos, features))
 	options = append(options, pubsub.WithPeerOutboundQueueSize(128))
 
-	// allow transient connection here (may use circuit v2)
 	ps, err = pubsub.NewGossipSub(ctx, host, options...)
 
 	if err != nil {
@@ -181,17 +180,11 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	// allow transient connection here (may use circuit v2)
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	if isBootstrap == false && nodeopt.EnableRumExchange == true {
-	}
-
 	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
-	//RumExchange: rexservice
 
 	//reconnect peers
-
 	storedpeers := []peer.AddrInfo{}
 	if ds != nil {
 		for _, peer := range pstore.Peers() {
@@ -199,7 +192,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 			storedpeers = append(storedpeers, peerinfo)
 		}
 	}
-	if len(storedpeers) > 0 {
+	if len(storedpeers) > 0 && !nodeopt.EnableRelayService {
 		//TODO: try connect every x minutes for x*y minutes?
 		go func() {
 			newnode.AddPeers(ctx, storedpeers)
