@@ -14,12 +14,12 @@ linux:
 	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
 freebsd:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go cmd/utils.go
+	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go
 
 	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
 darwin:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go cmd/utils.go
+	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${QUORUM_BIN_NAME} cmd/main.go cmd/utils.go
 
 	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/darwin_${GOARCH}/${LIGHT_QUORUM_BIN_NAME} cmd/lightnode.go cmd/utils.go
 
@@ -50,16 +50,16 @@ build: linux freebsd darwin windows wasm
 
 buildall: build buildcli
 
-doc: 
+doc:
 	$(shell which swag) init -g ./cmd/main.go --parseDependency --parseInternal --parseDepth 2
 
-test-main: 
+test-main:
 	go test -timeout 99999s cmd/main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20
 
-test-main-rex: 
+test-main-rex:
 	go test -timeout 99999s cmd/main_rex_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20 -rextest=true
 
-test-api: 
+test-api:
 	go test -v internal/pkg/api/*
 
 test: test-api test-main test-main-rex
