@@ -74,6 +74,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/group/:group_id/pubqueue", h.GetPubQueue)
 		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
+		a.POST("/v1/token/create", apph.CreateToken)
 
 		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 
