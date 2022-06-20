@@ -38,3 +38,25 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 		return c.JSON(http.StatusOK, res)
 	}
 }
+
+func (h *Handler) CreateGroupUrl() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var err error
+		output := make(map[string]string)
+
+		params := new(handlers.CreateGroupParam)
+		if err = c.Bind(params); err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		res, err := handlers.CreateGroupUrl(params, options.GetNodeOptions(), h.Appdb)
+
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		return c.JSON(http.StatusOK, res)
+	}
+}

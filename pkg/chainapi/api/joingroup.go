@@ -15,6 +15,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	"github.com/rumsystem/quorum/testnode"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"github.com/go-playground/validator/v10"
@@ -256,6 +257,227 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
 			return c.JSON(http.StatusBadRequest, output)
 		}
+
+		return c.JSON(http.StatusOK, joinGrpResult)
+	}
+}
+
+func (h *Handler) JoinGroupV2() echo.HandlerFunc {
+	return func(c echo.Context) error {
+
+		var err error
+		output := make(map[string]string)
+		//validate := validator.New()
+		//params := new(handlers.GroupSeed)
+		params := make(map[string]string)
+
+		if err = c.Bind(&params); err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+		seed, err := handlers.UrlToGroupSeed(params["seed"])
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+		//if err = validate.Struct(params); err != nil {
+		//}
+		//FORTEST
+		//return c.JSON(http.StatusBadRequest, output)
+
+		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
+		if err != nil {
+			output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		//TODO: verify seed.GenesisBlock
+		nodeoptions := options.GetNodeOptions()
+
+		var groupSignPubkey []byte
+		ks := nodectx.GetNodeCtx().Keystore
+		dirks, ok := ks.(*localcrypto.DirKeyStore)
+		if ok == true {
+			hexkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
+				newsignaddr, err := dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Sign)
+				if err == nil && newsignaddr != "" {
+					_, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+					err = nodeoptions.SetSignKeyMap(seed.GenesisBlock.GroupId, newsignaddr)
+					if err != nil {
+						output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
+						return c.JSON(http.StatusBadRequest, output)
+					}
+					hexkey, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+				} else {
+					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(seed.GenesisBlock.GroupId))
+					if err != nil {
+						output[ERROR_INFO] = "create new group key err:" + err.Error()
+						return c.JSON(http.StatusBadRequest, output)
+					}
+					hexkey, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+				}
+			}
+
+			pubkeybytes, err := hex.DecodeString(hexkey)
+			p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+			groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
+			if err != nil {
+				output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
+		} else {
+			output[ERROR_INFO] = fmt.Sprintf("unknown keystore type  %v:", ks)
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+		if err != nil {
+			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		ownerPubkey, err := p2pcrypto.UnmarshalPublicKey(ownerPubkeyBytes)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		//decode signature
+		//decodedSignature, err := hex.DecodeString(params.Signature)
+		//if err != nil {
+		//	return c.JSON(http.StatusBadRequest, output)
+		//}
+
+		//decode cipherkey
+		//cipherKey, err := hex.DecodeString(seed.CipherKey)
+		//if err != nil {
+		//	return c.JSON(http.StatusBadRequest, output)
+		//}
+
+		groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+		if err != nil {
+			if strings.HasPrefix(err.Error(), "key not exist") {
+				groupEncryptkey, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+
+				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(seed.GenesisBlock.GroupId))
+				if err != nil {
+					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
+					return c.JSON(http.StatusBadRequest, output)
+				}
+				groupEncryptkey, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+			} else {
+				output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
+		}
+
+		_ = ownerPubkey
+		//_ = cipherKey
+		_ = groupEncryptkey
+
+		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		if r == false {
+			output[ERROR_INFO] = "Join Group failed, can not verify signature"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		var item *quorumpb.GroupItem
+		item = &quorumpb.GroupItem{}
+
+		item.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
+		item.GroupId = seed.GenesisBlock.GroupId
+		item.GroupName = seed.GroupName
+		item.CipherKey = seed.CipherKey
+		item.AppKey = seed.AppKey
+
+		if seed.ConsensusType == "poa" {
+			item.ConsenseType = quorumpb.GroupConsenseType_POA
+		} else if seed.ConsensusType == "pos" {
+			item.ConsenseType = quorumpb.GroupConsenseType_POS
+		}
+
+		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+
+		userEncryptKey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+		if err != nil {
+			if strings.HasPrefix(err.Error(), "key not exist") {
+				userEncryptKey, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+				if err != nil {
+					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
+					return c.JSON(http.StatusBadRequest, output)
+				}
+			} else {
+				output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
+				return c.JSON(http.StatusBadRequest, output)
+			}
+		}
+
+		item.UserEncryptPubkey = userEncryptKey
+		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+
+		if seed.EncryptionType == "public" {
+			item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
+		} else {
+			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
+		}
+
+		item.HighestBlockId = seed.GenesisBlock.BlockId
+		item.HighestHeight = 0
+		item.LastUpdate = seed.GenesisBlock.TimeStamp
+		item.GenesisBlock = seed.GenesisBlock
+
+		//create the group
+		var group *chain.Group
+		group = &chain.Group{}
+		err = group.CreateGrp(item)
+		if nodeoptions.IsRexTestMode == true {
+			group.SetRumExchangeTestMode()
+		}
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		//start sync
+		err = group.StartSync()
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		//add group to context
+		groupmgr := chain.GetGroupMgr()
+		groupmgr.Groups[group.Item.GroupId] = group
+
+		var bufferResult bytes.Buffer
+		bufferResult.Write(genesisBlockBytes)
+		bufferResult.Write([]byte(item.GroupId))
+		bufferResult.Write([]byte(item.GroupName))
+		bufferResult.Write(ownerPubkeyBytes)
+		bufferResult.Write(groupSignPubkey)
+		bufferResult.Write([]byte(groupEncryptkey))
+		//buffer.Write([]byte(params.ConsensusType))
+		//buffer.Write([]byte(params.EncryptionType))
+		//buffer.Write([]byte(item.CipherKey))
+		//buffer.Write([]byte(item.AppKey))
+		hashResult := localcrypto.Hash(bufferResult.Bytes())
+		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
+		encodedSign := hex.EncodeToString(signature)
+
+		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: seed.ConsensusType, EncryptionType: seed.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
+
+		//TODO save url seed
+		// save group seed to appdata
+		//pbGroupSeed := handlers.ToPbGroupSeed(*params)
+		//if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
+		//	output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
+		//	return c.JSON(http.StatusBadRequest, output)
+		//}
 
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}

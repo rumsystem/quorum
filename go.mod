@@ -16,7 +16,8 @@ replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
 
 replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3
 
-//replace github.com/rumsystem/rumchaindata => ../rumchaindata
+replace github.com/rumsystem/rumchaindata => ../rumchaindata
+
 //replace github.com/rumsystem/keystore => ../keystore
 
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
