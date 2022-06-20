@@ -60,9 +60,15 @@ func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		keyname := guuid.New().String()
+		keyname := dirks.AliasToKeyname(params.Alias)
+		if keyname != "" {
+			output[ERROR_INFO] = "Existed alias"
+			return c.JSON(http.StatusBadRequest, output)
+		}
 
 		password := os.Getenv("RUM_KSPASSWD")
+		keyname = guuid.New().String()
+
 		newsignaddr, err := dirks.NewKey(keyname, keytype, password)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
