@@ -92,6 +92,11 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		trxFactory := &rumchaindata.TrxFactory{}
 		trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name, nodesdkctx.GetCtx())
 
+		//assign type to paramspb.Object
+		if paramspb.Object.Type == "" {
+			paramspb.Object.Type = paramspb.Type
+		}
+
 		trx, err := trxFactory.GetPostAnyTrxWithKeyAlias(nodesdkGroupItem.SignAlias, paramspb.Object)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

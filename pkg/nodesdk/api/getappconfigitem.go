@@ -8,6 +8,15 @@ import (
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
+type GetAppConfigResultItem struct {
+	Name        string
+	Type        string
+	Value       string
+	OwnerPubkey string
+	Memo        string
+	Timestamp   int
+}
+
 func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 	output := make(map[string]string)
 	groupid := c.Param("group_id")
@@ -72,6 +81,11 @@ func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	result := string(resultInBytes)
+	result := new(*GetAppConfigResultItem)
+	err = json.Unmarshal(resultInBytes, result)
+	if err != nil {
+		output[ERROR_INFO] = err.Error()
+		return c.JSON(http.StatusBadRequest, output)
+	}
 	return c.JSON(http.StatusOK, result)
 }
