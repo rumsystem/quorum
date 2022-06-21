@@ -27,6 +27,7 @@ func main() {
 	version := flag.Bool("version", false, "Show the version")
 	update := flag.Bool("update", false, "Update to the latest version")
 	updateFrom := flag.String("from", "qingcloud", "Update from: github/qingcloud, default to qingcloud")
+	configPath := flag.String("config", "", "Default to $XDG_CONFIG_HOME/rumcli/config.toml")
 
 	flag.Parse()
 
@@ -52,7 +53,7 @@ func main() {
 		return
 	}
 
-	config.Init()
+	config.Init(*configPath)
 	cache.Init()
 	ui.Init()
 

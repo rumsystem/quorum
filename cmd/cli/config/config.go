@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/adrg/xdg"
@@ -31,13 +32,28 @@ type RumCliConfig struct {
 
 var RumConfig RumCliConfig
 var Logger *logging.ZapEventLogger
+var absConfigFilePath string
 
-func Init() {
+func Init(configPath string) {
+	var configFilePath string
+	var err error
+
 	initLogger()
-	configFilePath, err := xdg.ConfigFile("rumcli/config.toml")
-	if err != nil {
-		Logger.Fatal(err)
+
+	if configPath == "" {
+		configFilePath, err = xdg.ConfigFile("rumcli/config.toml")
+		if err != nil {
+			Logger.Fatal(err)
+		}
+	} else {
+		configFilePath, err = filepath.Abs(configPath)
+		if err != nil {
+			Logger.Fatal(err)
+		}
 	}
+
+	absConfigFilePath = configFilePath
+
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		// path/to/whatever does not exist
 		f, err := os.OpenFile(configFilePath, os.O_APPEND|os.O_CREATE, 0644)
@@ -51,6 +67,10 @@ func Init() {
 	}
 
 	initKeyStore()
+}
+
+func Reload() {
+	Init(absConfigFilePath)
 }
 
 func initLogger() {
