@@ -16,7 +16,7 @@ replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
 
 replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3
 
-replace github.com/rumsystem/rumchaindata => ../rumchaindata
+//replace github.com/rumsystem/rumchaindata => ../rumchaindata
 
 //replace github.com/rumsystem/keystore => ../keystore
 
@@ -62,7 +62,7 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/keystore v0.0.0-20220602192804-2943b530ca3c
-	github.com/rumsystem/rumchaindata v0.0.0-20220601172351-68d1b5f86577
+	github.com/rumsystem/rumchaindata v0.0.0-20220620233322-1ed63902d227
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.11.0
 	github.com/swaggo/echo-swagger v1.1.0
