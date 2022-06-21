@@ -43,7 +43,6 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 	}
 
 	getItem := new(NodeSDKGetChainDataItem)
-	getItem.GroupId = groupid
 	getItem.Req = encryptData
 	getItem.ReqType = ANNOUNCED_USER
 
@@ -65,7 +64,7 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	resultInBytes, err := httpClient.Post(GET_CHAIN_DATA_URI, reqBytes)
+	resultInBytes, err := httpClient.Post(GetChainDataURI(groupid), reqBytes)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()
 		return c.JSON(http.StatusBadRequest, output)

@@ -1,5 +1,7 @@
 package nodesdkapi
 
+import "fmt"
+
 //const name
 const GROUP_NAME string = "group_name"
 const GROUP_ID string = "group_id"
@@ -56,12 +58,23 @@ const ANNOUNCED_PRODUCER string = "announced_producer"
 const ANNOUNCED_USER string = "announced_user"
 const GROUP_PRODUCER string = "group_producer"
 
-const POST_TRX_URI string = "/api/v1/nodesdk/trx"
-const GET_CTN_URI string = "/api/v1/nodesdk/groupctn"
-const GET_CHAIN_DATA_URI string = "/api/v1/nodesdk/getchaindata"
+const POST_TRX_URI string = "/api/v1/node/trx"
+const GET_CTN_URI string = "/api/v1/node/groupctn"
+const GET_CHAIN_DATA_URI string = "/api/v1/node/getchaindata"
+
+func GetPostTrxURI(groupId string) string {
+	return fmt.Sprintf("%s/%s", POST_TRX_URI, groupId)
+}
+
+func GetGroupCtnURI(groupId string) string {
+	return fmt.Sprintf("%s/%s", GET_CTN_URI, groupId)
+}
+
+func GetChainDataURI(groupId string) string {
+	return fmt.Sprintf("%s/%s", GET_CHAIN_DATA_URI, groupId)
+}
 
 type NodeSDKSendTrxItem struct {
-	GroupId string
 	TrxItem []byte
 }
 
@@ -71,7 +84,6 @@ type NodeSDKTrxItem struct {
 }
 
 type NodeSDKGetChainDataItem struct {
-	GroupId string
 	ReqType string
 	Req     []byte
 }
