@@ -5,6 +5,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -14,10 +15,17 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
+	"github.com/rumsystem/quorum/internal/pkg/cli"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
 type RelayNode struct {
@@ -48,8 +56,16 @@ func (node *RelayNode) eventhandler(ctx context.Context) {
 	}
 }
 
-func NewRelayServiceNode(ctx context.Context, key *ethkeystore.Key, listenAddresses []maddr.Multiaddr) (*RelayNode, error) {
-	var err error
+func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions, key *ethkeystore.Key, listenAddresses []maddr.Multiaddr) (*RelayNode, error) {
+	routingProtocol := fmt.Sprintf("%s/%s", ProtocolPrefix, nodeOpt.NetworkName)
+	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
+		dhtOpts := dual.DHTOption(
+			dht.Mode(dht.ModeServer),
+			dht.Concurrency(10),
+			dht.ProtocolPrefix(protocol.ID(routingProtocol)),
+		)
+		return dual.New(ctx, host, dhtOpts)
+	})
 
 	//privKey p2pcrypto.PrivKey
 	ethprivkey := key.PrivateKey
@@ -61,21 +77,26 @@ func NewRelayServiceNode(ctx context.Context, key *ethkeystore.Key, listenAddres
 
 	identity := libp2p.Identity(priv)
 
+	pstore, err := pstoremem.NewPeerstore()
+	if err != nil {
+		return nil, err
+	}
+
 	libp2poptions := []libp2p.Option{
+		routing,
 		libp2p.ListenAddrs(listenAddresses...),
 		libp2p.NATPortMap(),
+		libp2p.EnableNATService(),
 		libp2p.Ping(false),
+		libp2p.Peerstore(pstore),
 		libp2p.ChainOptions(
 			libp2p.Transport(tcp.NewTCPTransport),
 			libp2p.Transport(ws.New),
 		),
-		identity,
-	}
-
-	libp2poptions = append(libp2poptions,
 		libp2p.DisableRelay(),
 		libp2p.EnableRelayService(relay.WithLimit(nil)),
-	)
+		identity,
+	}
 
 	host, err := libp2p.New(
 		libp2poptions...,
@@ -93,4 +114,8 @@ func NewRelayServiceNode(ctx context.Context, key *ethkeystore.Key, listenAddres
 
 	go node.eventhandler(ctx)
 	return node, nil
+}
+
+func (node *RelayNode) Bootstrap(ctx context.Context, config cli.RelayNodeConfig) error {
+	return bootstrap(ctx, node.Host, config.BootstrapPeers)
 }

@@ -203,13 +203,17 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 }
 
 func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
+	return bootstrap(ctx, node.Host, config.BootstrapPeers)
+}
+
+func bootstrap(ctx context.Context, h host.Host, addrs cli.AddrList) error {
 	var wg sync.WaitGroup
-	for _, peerAddr := range config.BootstrapPeers {
+	for _, peerAddr := range addrs {
 		peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := node.Host.Connect(ctx, *peerinfo); err != nil {
+			if err := h.Connect(ctx, *peerinfo); err != nil {
 				networklog.Warning(err)
 			} else {
 				networklog.Infof("Connection established with bootstrap node %s:", *peerinfo)

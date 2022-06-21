@@ -104,12 +104,17 @@ func runRelayNodeRet(config cli.RelayNodeConfig) int {
 	mainlog.Infof("peer ID: <%s>", peerid)
 	mainlog.Infof("eth addresss: <%s>", ethaddr)
 
+	relayNode, err := p2p.NewRelayServiceNode(ctx, relayNodeOpt, defaultkey, config.ListenAddresses)
 	if err != nil {
 		cancel()
 		mainlog.Fatalf(err.Error())
 	}
 
-	_, err = p2p.NewRelayServiceNode(ctx, defaultkey, config.ListenAddresses)
+	err = relayNode.Bootstrap(ctx, config)
+	if err != nil {
+		cancel()
+		mainlog.Fatalf(err.Error())
+	}
 
 	//attach signal
 	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)

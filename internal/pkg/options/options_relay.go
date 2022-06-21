@@ -11,10 +11,11 @@ import (
 )
 
 type RelayNodeOptions struct {
-	ConfigDir  string
-	PeerName   string
-	SignKeyMap map[string]string
-	mu         sync.RWMutex
+	ConfigDir   string
+	PeerName    string
+	NetworkName string
+	SignKeyMap  map[string]string
+	mu          sync.RWMutex
 }
 
 func InitRelayNodeOptions(configdir, peername string) (*RelayNodeOptions, error) {
@@ -72,6 +73,7 @@ func initRelayNodeConfigfile(dir string, keyname string) (*viper.Viper, error) {
 }
 
 func writeDefaultRelayNodeConfig(v *viper.Viper) error {
+	v.Set("NetworkName", defaultNetworkName)
 	v.Set("SignKeyMap", map[string]string{})
 	return v.SafeWriteConfig()
 }
@@ -87,6 +89,9 @@ func loadRelayNodeOptions(dir string, keyname string) (*RelayNodeOptions, error)
 	}
 
 	options := &RelayNodeOptions{}
+	if options.NetworkName == "" {
+		options.NetworkName = defaultNetworkName
+	}
 	options.SignKeyMap = v.GetStringMapString("SignKeyMap")
 
 	return options, nil

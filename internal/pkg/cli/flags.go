@@ -10,13 +10,13 @@ import (
 	maddr "github.com/multiformats/go-multiaddr"
 )
 
-type addrList []maddr.Multiaddr
+type AddrList []maddr.Multiaddr
 type ipList []net.IP
 
 type Config struct {
 	RendezvousString     string
-	BootstrapPeers       addrList
-	ListenAddresses      addrList
+	BootstrapPeers       AddrList
+	ListenAddresses      AddrList
 	SSLCertIPAddresses   ipList
 	APIListenAddresses   string
 	NodeAPIListenAddress string
@@ -36,7 +36,7 @@ type Config struct {
 	EnableRelayService   bool
 }
 
-func (al *addrList) String() string {
+func (al *AddrList) String() string {
 	strs := make([]string, len(*al))
 	for i, addr := range *al {
 		strs[i] = addr.String()
@@ -44,7 +44,7 @@ func (al *addrList) String() string {
 	return strings.Join(strs, ",")
 }
 
-func (al *addrList) Set(value string) error {
+func (al *AddrList) Set(value string) error {
 	addrlist := strings.Split(value, ",")
 
 	for _, v := range addrlist {
@@ -123,7 +123,8 @@ func ParseFlags() (Config, error) {
 }
 
 type RelayNodeConfig struct {
-	ListenAddresses addrList
+	BootstrapPeers  AddrList
+	ListenAddresses AddrList
 	PeerName        string
 	IsDebug         bool
 	ConfigDir       string
@@ -133,6 +134,7 @@ type RelayNodeConfig struct {
 
 func ParseRelayNodeFlags() (RelayNodeConfig, error) {
 	config := RelayNodeConfig{}
+	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.Var(&config.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: `-listen /ip4/127.0.0.1/tcp/4215 -listen /ip/127.0.0.1/tcp/5215/ws`")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
 	flag.StringVar(&config.ConfigDir, "configdir", "./config/", "config and keys dir")
