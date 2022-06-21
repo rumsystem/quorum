@@ -51,7 +51,7 @@ build: linux freebsd darwin windows wasm
 buildall: build buildcli
 
 doc:
-	$(shell which swag) init -g ./cmd/main.go --parseDependency --parseInternal --parseDepth 2
+	$(shell which swag) init -g ./cmd/main.go -g ./cmd/utils.go --parseDependency --parseInternal --parseDepth 2 --parseGoList=false
 
 test-main:
 	go test -timeout 99999s cmd/main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20

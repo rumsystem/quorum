@@ -18,4 +18,4 @@ jobs:
     - name: Swag
       run: |
         go install github.com/swaggo/swag/cmd/swag@latest
-        swag init -g ./cmd/main.go --parseDependency --parseInternal --parseDepth 2
+        make doc
