@@ -138,19 +138,19 @@ session.get(f"{url}/node")
 ## Generate API Docs
 
 ```sh
-go install github.com/swaggo/swag/cmd/swag@v1.7.0
+go install github.com/swaggo/swag/cmd/swag@latest
 # make sure the version as the same of swaggo/swag in god.mod,
 # only the first time you build need to run above.
 export PATH=$(go env GOPATH)/bin:$PATH
 # check GOPATH in PATH,
 # if not in run the command above.
-./scripts/swag_init.sh
+make gen-doc
 # due to project continue developing sometime it may build failure
 # when this happen you can check for a older head or read the deploy version below
-go run cmd/docs.go
+make serve-doc
 ```
 
-Open url ```http://localhost:1323/swagger/index.html``` in the browser.
+Open url ```http://localhost:1323/index.html``` in the browser.
 
 or you can read deploy version [https://rumsystem.github.io/quorum-api/](https://rumsystem.github.io/quorum-api/)
 

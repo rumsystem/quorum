@@ -50,8 +50,11 @@ build: linux freebsd darwin windows wasm
 
 buildall: build buildcli
 
-doc:
+gen-doc:
 	$(shell which swag) init -g ./cmd/main.go -g ./cmd/utils.go --parseDependency --parseInternal --parseDepth 2 --parseGoList=false
+
+serve-doc: gen-doc
+	go run ./cmd/docs.go
 
 test-main:
 	go test -timeout 99999s cmd/main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20
