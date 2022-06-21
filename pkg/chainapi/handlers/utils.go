@@ -7,6 +7,7 @@ import (
 	"fmt"
 	guuid "github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	"github.com/rumsystem/rumchaindata/pkg/pb"
 	"math/big"
 	"net/url"
@@ -170,8 +171,12 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, error) {
 		Trxs:           nil,
 		Signature:      b64signbyte,
 	}
-	//ConsensusType  //string    `json:"consensus_type" validate:"required,oneof=pos poa"`
-	//EncryptionType //string    `json:"encryption_type" validate:"required,oneof=public private"`
+
+	hash, err := rumchaindata.BlockHash(genesisBlock)
+	if err != nil {
+		return nil, err
+	}
+	genesisBlock.Hash = hash
 
 	consensustype := "poa"
 	if q.Get("n") == "1" {

@@ -9,7 +9,6 @@ import (
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	//"google.golang.org/protobuf/proto"
 )
 
 type MolassesUser struct {
