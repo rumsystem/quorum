@@ -174,7 +174,7 @@ func (producer *MolassesProducer) produceBlock() {
 	}
 
 	ks := localcrypto.GetKeystore()
-	newBlock, err := rumchaindata.CreateBlock(topBlock, trxs, pubkeyBytes, ks, producer.nodename)
+	newBlock, err := rumchaindata.CreateBlock(topBlock, trxs, pubkeyBytes, ks, "", producer.nodename)
 	if err != nil {
 		molaproducer_log.Errorf("<%s> create block error", producer.groupId)
 		molaproducer_log.Errorf(err.Error())
