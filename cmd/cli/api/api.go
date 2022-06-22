@@ -512,17 +512,17 @@ func JoinGroup(seed string) (*JoinRespStruct, error) {
 	return &ret, nil
 }
 
-func GetBlockById(groupId string, id string) (*BlockStruct, error) {
+func GetBlockById(groupId string, id string) (*pb.Block, error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
 	url := fmt.Sprintf("%s/api/v1/block/%s/%s", ApiServer, groupId, id)
-	ret := BlockStruct{}
+	ret := pb.Block{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(body, &ret)
+	err = protojson.Unmarshal(body, &ret)
 	if err != nil {
 		return nil, errors.New(string(body))
 	}

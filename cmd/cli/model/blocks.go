@@ -6,6 +6,7 @@ import (
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 // can only check from back to front
@@ -21,9 +22,9 @@ var DefaultBlockRange = BlockRangeOpt{"", "", 20, false}
 type BlocksDataModel struct {
 	Pager         map[string]BlockRangeOpt
 	Groups        qApi.GroupInfoList
-	Blocks        []api.BlockStruct
+	Blocks        []pb.Block
 	NextBlocks    map[string][]string
-	Cache         map[string][]api.BlockStruct
+	Cache         map[string][]pb.Block
 	CurGroup      string
 	TickerCh      chan struct{}
 	TickerRunning bool
@@ -88,14 +89,14 @@ func (m *BlocksDataModel) GetGroups() qApi.GroupInfoList {
 	return m.Groups
 }
 
-func (m *BlocksDataModel) GetCache(gid string) ([]api.BlockStruct, bool) {
+func (m *BlocksDataModel) GetCache(gid string) ([]pb.Block, bool) {
 	m.RLock()
 	defer m.RUnlock()
 	data, ok := m.Cache[gid]
 	return data, ok
 }
 
-func (m *BlocksDataModel) UpdateCache(gid string, contents []api.BlockStruct) {
+func (m *BlocksDataModel) UpdateCache(gid string, contents []pb.Block) {
 	m.RWMutex.Lock()
 	defer m.RWMutex.Unlock()
 	m.Cache[gid] = contents
@@ -113,14 +114,14 @@ func (m *BlocksDataModel) SetCurrentGroup(gid string) {
 	m.CurGroup = gid
 }
 
-func (m *BlocksDataModel) GetBlocks() []api.BlockStruct {
+func (m *BlocksDataModel) GetBlocks() []pb.Block {
 	m.RLock()
 	defer m.RUnlock()
 
 	return m.Blocks
 }
 
-func (m *BlocksDataModel) GetBlockById(id string) *api.BlockStruct {
+func (m *BlocksDataModel) GetBlockById(id string) *pb.Block {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -133,7 +134,7 @@ func (m *BlocksDataModel) GetBlockById(id string) *api.BlockStruct {
 	return nil
 }
 
-func (m *BlocksDataModel) GetBlockByIndex(i int) *api.BlockStruct {
+func (m *BlocksDataModel) GetBlockByIndex(i int) *pb.Block {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -144,7 +145,7 @@ func (m *BlocksDataModel) GetBlockByIndex(i int) *api.BlockStruct {
 	return nil
 }
 
-func (m *BlocksDataModel) SetBlocks(blocks []api.BlockStruct) {
+func (m *BlocksDataModel) SetBlocks(blocks []pb.Block) {
 	m.RWMutex.Lock()
 	defer m.RWMutex.Unlock()
 
