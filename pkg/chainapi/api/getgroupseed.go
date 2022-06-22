@@ -25,6 +25,12 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("get group seed failed: %s", err)})
 	}
+	seedurl, err := handlers.GroupSeedToUrl(1, []string{}, seed)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("seedurl output failed: %s", err)})
+	}
 
-	return c.JSON(http.StatusOK, seed)
+	output := make(map[string]string)
+	output["seed"] = seedurl
+	return c.JSON(http.StatusOK, output)
 }

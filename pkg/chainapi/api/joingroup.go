@@ -267,8 +267,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 
 		var err error
 		output := make(map[string]string)
-		//validate := validator.New()
-		//params := new(handlers.GroupSeed)
 		params := make(map[string]string)
 
 		if err = c.Bind(&params); err != nil {
@@ -280,11 +278,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		//if err = validate.Struct(params); err != nil {
-		//}
-		//FORTEST
-		//return c.JSON(http.StatusBadRequest, output)
-
 		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
 		if err != nil {
 			output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
@@ -337,23 +330,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ownerPubkey, err := p2pcrypto.UnmarshalPublicKey(ownerPubkeyBytes)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		//decode signature
-		//decodedSignature, err := hex.DecodeString(params.Signature)
-		//if err != nil {
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
-
-		//decode cipherkey
-		//cipherKey, err := hex.DecodeString(seed.CipherKey)
-		//if err != nil {
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
-
 		groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "key not exist") {
@@ -371,9 +347,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			}
 		}
 
-		_ = ownerPubkey
-		//_ = cipherKey
-		_ = groupEncryptkey
+		//_ = ownerPubkey
+		//_ = groupEncryptkey
 
 		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
@@ -461,10 +436,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		bufferResult.Write(ownerPubkeyBytes)
 		bufferResult.Write(groupSignPubkey)
 		bufferResult.Write([]byte(groupEncryptkey))
-		//buffer.Write([]byte(params.ConsensusType))
-		//buffer.Write([]byte(params.EncryptionType))
-		//buffer.Write([]byte(item.CipherKey))
-		//buffer.Write([]byte(item.AppKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
 		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
@@ -473,11 +444,11 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 
 		//TODO save url seed
 		// save group seed to appdata
-		//pbGroupSeed := handlers.ToPbGroupSeed(*params)
-		//if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
-		//	output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
+		pbGroupSeed := handlers.ToPbGroupSeed(*seed)
+		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
+			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
+			return c.JSON(http.StatusBadRequest, output)
+		}
 
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}
