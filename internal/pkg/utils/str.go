@@ -1,6 +1,9 @@
 package utils
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 func LongestCommonPrefix(strs []string) string {
 	if len(strs) == 0 {
@@ -18,4 +21,12 @@ func LongestCommonPrefix(strs []string) string {
 	}
 
 	return prefix
+}
+
+func LowerFirstLetter(s string) string {
+	for i, v := range s {
+		return string(unicode.ToLower(v)) + s[i+1:]
+	}
+
+	return s
 }

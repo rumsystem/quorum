@@ -2,7 +2,6 @@ package nodesdkapi
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"syscall"
 
@@ -10,8 +9,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var quitch chan os.Signal
@@ -19,8 +16,7 @@ var quitch chan os.Signal
 //StartAPIServer : Start local web server
 func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHandler, nodeopt *options.NodeOptions) {
 	quitch = signalch
-	e := echo.New()
-	e.Binder = new(CustomBinder)
+	e := utils.NewEcho(config.IsDebug)
 	r := e.Group("/nodesdk_api")
 
 	r.GET("/quit", quitapp)
@@ -61,23 +57,6 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 		panic(err)
 	}
 	e.Logger.Fatal(e.StartTLS(config.NodeAPIListenAddress, certPath, keyPath))
-}
-
-type CustomBinder struct{}
-
-func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
-	db := new(echo.DefaultBinder)
-	switch i.(type) {
-	case *quorumpb.Activity:
-		bodyBytes, err := ioutil.ReadAll(c.Request().Body)
-		err = protojson.Unmarshal(bodyBytes, i.(*quorumpb.Activity))
-		return err
-	default:
-		if err = db.Bind(i, c); err != echo.ErrUnsupportedMediaType {
-			return
-		}
-		return err
-	}
 }
 
 func quitapp(c echo.Context) (err error) {
