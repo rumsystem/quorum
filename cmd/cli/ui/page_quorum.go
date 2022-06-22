@@ -622,6 +622,18 @@ func drawQuorumGroups() {
 			}
 		}
 	})
+
+	// set current item
+	curGroup := quorumData.GetCurrentGroup()
+	if curGroup != "" {
+		for i, group := range quorumData.GetGroups().GroupInfos {
+			if group.GroupId == curGroup {
+				groupListView.SetCurrentItem(i)
+				break
+			}
+		}
+	}
+
 	drawQuorumCurrentGroup()
 	App.Draw()
 }
@@ -786,11 +798,9 @@ func goQuorumGroups() {
 		}
 		Error("Failed to get groups", err.Error())
 	} else {
-		oldGroups := quorumData.GetGroups().GroupInfos
+		sort.Sort(groupsInfo)
 		quorumData.SetGroups(*groupsInfo)
-		if len(groupsInfo.GroupInfos) != len(oldGroups) {
-			drawQuorumGroups()
-		}
+		drawQuorumGroups()
 		drawQuorumCurrentGroup()
 	}
 }
@@ -875,9 +885,13 @@ func QuorumRefreshAll() {
 	go goQuorumNode()
 
 	go func() {
-		goQuorumGroups()
 		if quorumData.Counter%10 == 0 {
+			// default to 5 seconds
 			goQuorumContent()
+		}
+		if quorumData.Counter%20 == 0 {
+			// default to 10 seconds
+			goQuorumGroups()
 		}
 	}()
 }
