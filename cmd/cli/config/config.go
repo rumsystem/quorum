@@ -126,6 +126,9 @@ func initKeyStore() {
 }
 
 func Save() string {
+	if absConfigFilePath == "" {
+		return ""
+	}
 
 	var configBuffer bytes.Buffer
 	e := toml.NewEncoder(&configBuffer)
@@ -138,12 +141,7 @@ func Save() string {
 		Logger.Fatal(err)
 	}
 
-	configFilePath, err := xdg.ConfigFile("rumcli/config.toml")
-	if err != nil {
-		Logger.Fatal(err)
-	}
-
-	f, err := os.OpenFile(configFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(absConfigFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		Logger.Fatal(err)
 	}
@@ -152,5 +150,5 @@ func Save() string {
 		Logger.Fatal(err)
 	}
 	f.Close()
-	return configFilePath
+	return absConfigFilePath
 }
