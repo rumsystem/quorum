@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -142,62 +142,47 @@ func GetJWTAllowGroups(c echo.Context) []string {
 // @Success 200 {object} TokenItem  "a new auth token"
 // @Router /app/api/v1/token/create [post]
 func (h *Handler) CreateToken(c echo.Context) error {
+	cc := c.(*utils.CustomContext)
+
 	var err error
-	output := make(map[string]string)
 
 	if !isFromLocalhost(c.Request().Host) {
-		output[ERROR_INFO] = "only localhost can access this rest api"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("only localhost can access this rest api")
 	}
 
-	validate := validator.New()
 	params := new(CreateJWTParams)
-	if err = c.Bind(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-	if err = validate.Struct(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := cc.BindAndValidate(params); err != nil {
+		return err
 	}
 
 	if params.Role == "node" {
 		if params.AllowGroups == nil || len(params.AllowGroups) == 0 {
-			output[ERROR_INFO] = "allow_groups field must not be empty for node jwt"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("allow_groups field must not be empty for node jwt")
 		}
 	} else {
 		if params.AllowGroups != nil || len(params.AllowGroups) > 0 {
-			output[ERROR_INFO] = "allow_groups field must be empty for chain jwt"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("allow_groups field must be empty for chain jwt")
 		}
 	}
 
 	nodeOpt := options.GetNodeOptions()
 	if nodeOpt == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "Call InitNodeOptions() before use it",
-		})
+		return errors.New("Call InitNodeOptions() before use it")
 	}
 
 	jwtKey, err := getJWTKey()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": err.Error(),
-		})
+		return err
 	}
 
 	tokenStr, err := utils.NewJWTToken(params.Name, params.Role, params.AllowGroups, jwtKey, params.ExpiresAt)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": err.Error(),
-		})
+		return err
 	}
 	if err := nodeOpt.SetJWTTokenMap(params.Name, tokenStr); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "save jwt to config file failed",
-		})
+		return errors.New("save jwt to config file failed")
 	}
+
 	return c.JSON(http.StatusOK, &TokenItem{Token: tokenStr})
 }
 
@@ -211,24 +196,18 @@ func (h *Handler) CreateToken(c echo.Context) error {
 func (h *Handler) RefreshToken(c echo.Context) error {
 	nodeOpt := options.GetNodeOptions()
 	if nodeOpt == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "Call InitNodeOptions() before use it",
-		})
+		return errors.New("Call InitNodeOptions() before use it")
 	}
 
 	// check token
 	jwtKey, err := getJWTKey()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": err.Error(),
-		})
+		return err
 	}
 
 	token, err := getJWTToken(c)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"message": err.Error(),
-		})
+		return err
 	}
 
 	// token invalid include expired or invalid
@@ -236,9 +215,7 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 	if utils.IsJWTTokenExpired(tokenStr, jwtKey) {
 		logger.Infof("token expires, return new token")
 	} else if valid, err := utils.IsJWTTokenValid(tokenStr, jwtKey); !valid || err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"message": err.Error(),
-		})
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	name := GetJWTName(c)
@@ -247,14 +224,10 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 
 	newTokenStr, err := getToken(name, role, allowGroups, jwtKey)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": err.Error(),
-		})
+		return err
 	}
 	if err := nodeOpt.SetJWTTokenMap(name, newTokenStr); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": err.Error(),
-		})
+		return err
 	}
 
 	return c.JSON(http.StatusOK, &TokenItem{Token: newTokenStr})
