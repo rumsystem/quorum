@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"syscall"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var quitch chan os.Signal
@@ -23,8 +20,7 @@ var quitch chan os.Signal
 //StartAPIServer : Start local web server
 func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
 	quitch = signalch
-	e := echo.New()
-	e.Binder = new(CustomBinder)
+	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(OpaWithConfig(OpaConfig{
@@ -99,23 +95,6 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		panic(err)
 	}
 	e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, keyPath))
-}
-
-type CustomBinder struct{}
-
-func (cb *CustomBinder) Bind(i interface{}, c echo.Context) (err error) {
-	db := new(echo.DefaultBinder)
-	switch i.(type) {
-	case *quorumpb.Activity:
-		bodyBytes, err := ioutil.ReadAll(c.Request().Body)
-		err = protojson.Unmarshal(bodyBytes, i.(*quorumpb.Activity))
-		return err
-	default:
-		if err = db.Bind(i, c); err != echo.ErrUnsupportedMediaType {
-			return
-		}
-		return err
-	}
 }
 
 func quitapp(c echo.Context) (err error) {
