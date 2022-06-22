@@ -3,6 +3,7 @@
 package ui
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +22,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
 	"github.com/rumsystem/quorum/cmd/cli/utils"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var quorumPage = cview.NewFlex()
@@ -727,16 +729,14 @@ func drawQuorumContent() {
 	App.Draw()
 }
 
-func drawQuorumContentInfo(trx api.TrxStruct) {
+func drawQuorumContentInfo(trx pb.Trx) {
 	contentInfoView.Clear()
 	fmt.Fprintf(contentInfoView, "TrxId:     %s\n", trx.TrxId)
 	fmt.Fprintf(contentInfoView, "GroupId:   %s\n", trx.GroupId)
 	fmt.Fprintf(contentInfoView, "Sender:    %s\n", trx.SenderPubkey)
-	fmt.Fprintf(contentInfoView, "Signature: %s\n", trx.SenderSign)
-	ts, err := strconv.Atoi(trx.TimeStamp)
-	if err != nil {
-		fmt.Fprintf(contentInfoView, "TimeStamp: %s\n", time.Unix(0, int64(ts)))
-	}
+	fmt.Fprintf(contentInfoView, "Signature: %s\n", base64.StdEncoding.EncodeToString(trx.SenderSign))
+	fmt.Fprintf(contentInfoView, "TimeStamp: %s\n", time.Unix(0, trx.TimeStamp))
+
 	fmt.Fprintf(contentInfoView, "Version:   %s\n", trx.Version)
 
 	mixinUID := quorumData.GetUserMixinUID(trx.SenderPubkey, trx.GroupId)

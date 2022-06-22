@@ -16,6 +16,8 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var ApiServer string
@@ -479,17 +481,17 @@ func DelGroup(gid string) (*GroupDelRetStruct, error) {
 	return &ret, nil
 }
 
-func TrxInfo(groupId string, trxId string) (trx *TrxStruct, err error) {
+func TrxInfo(groupId string, trxId string) (trx *pb.Trx, err error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
 	url := fmt.Sprintf("%s/api/v1/trx/%s/%s", ApiServer, groupId, trxId)
-	ret := TrxStruct{}
+	ret := pb.Trx{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(body, &ret)
+	err = protojson.Unmarshal(body, &ret)
 	if err != nil {
 		return nil, errors.New(string(body))
 	}
