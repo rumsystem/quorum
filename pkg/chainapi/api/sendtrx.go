@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -78,6 +79,18 @@ func (h *Handler) SendTrx(c echo.Context) (err error) {
 		err = proto.Unmarshal(trxItem.TrxBytes, trx)
 		if err != nil {
 			output[ERROR_INFO] = "INVALID_DATA"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		//check if trx sender is in group block list
+		isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, nodectx.GetNodeCtx().Name)
+		if err != nil {
+			output[ERROR_INFO] = "CHECK_AUTH_FAILED"
+			return c.JSON(http.StatusBadRequest, output)
+		}
+
+		if !isAllow {
+			output[ERROR_INFO] = "OPERATION_DENY"
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
