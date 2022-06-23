@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	"fmt"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -218,6 +219,60 @@ func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
 	})
 	return result, err
 }
+
+func groupSeedKey(groupID string) []byte {
+	return []byte(fmt.Sprintf("%s_%s", s.GROUPSEED_PREFIX, groupID))
+}
+
+func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
+	fmt.Println(seed)
+	key := groupSeedKey(seed.GenesisBlock.GroupId)
+
+	value, err := proto.Marshal(seed)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.GroupInfoDb.Set(key, value)
+}
+
+func (cs *Storage) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
+	key := groupSeedKey(groupID)
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist(key)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New("Group seed not exist")
+	}
+
+	value, err := cs.dbmgr.GroupInfoDb.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var result quorumpb.GroupSeed
+	if err := proto.Unmarshal(value, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+//func (cs *Storage) AddGroupSeedV2(groupItem *quorumpb.NodeSDKGroupItem) error {
+//	//check if group exist
+//	key := s.GROUPITEM_PREFIX + "_" + groupItem.Group.GroupId
+//	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+//	if exist {
+//		return errors.New("Group with same GroupId existed")
+//	}
+//
+//	//add group to db
+//	value, err := proto.Marshal(groupItem)
+//	if err != nil {
+//		return err
+//	}
+//	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
+//}
 
 func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	value, err := proto.Marshal(groupItem)

@@ -2,6 +2,7 @@ package nodesdkapi
 
 import (
 	"github.com/labstack/echo/v4"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	"net/http"
 )
@@ -21,12 +22,20 @@ func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		groupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
+		pbseed, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupSeed(groupid)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
+		seed := handlers.FromPbGroupSeed(pbseed)
 
-		return c.JSON(http.StatusOK, groupItem.GroupSeed)
+		seedurl, err := handlers.GroupSeedToUrl(1, []string{}, &seed)
+		if err != nil {
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
+		}
+		output["seed"] = seedurl
+
+		return c.JSON(http.StatusOK, output)
 	}
 }

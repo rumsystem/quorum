@@ -30,8 +30,9 @@ const NONCE_PREFIX string = "nonce"            //group trx nonce
 const SNAPSHOT_PREFIX string = "snapshot"      //group snapshot
 
 //groupinfo db
-const GROUPITEM_PREFIX string = "grpitem" //relay
-const RELAY_PREFIX string = "rly"         //relay
+const GROUPITEM_PREFIX string = "grpitem"
+const GROUPSEED_PREFIX string = "grpseed"
+const RELAY_PREFIX string = "rly" //relay
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
