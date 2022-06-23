@@ -225,7 +225,7 @@ func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 		return err
 	}
 
-	key := s.GROUPITEM_PREFIX + groupItem.Group.GroupId
+	key := s.GROUPITEM_PREFIX + "_" + groupItem.Group.GroupId
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		return errors.New("Group is not existed")

@@ -273,7 +273,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		seed, err := handlers.UrlToGroupSeed(params["seed"])
+		seed, _, err := handlers.UrlToGroupSeed(params["seed"])
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -284,7 +284,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		//TODO: verify seed.GenesisBlock
 		nodeoptions := options.GetNodeOptions()
 
 		var groupSignPubkey []byte
@@ -346,9 +345,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 				return c.JSON(http.StatusBadRequest, output)
 			}
 		}
-
-		//_ = ownerPubkey
-		//_ = groupEncryptkey
 
 		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
@@ -436,13 +432,13 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		bufferResult.Write(ownerPubkeyBytes)
 		bufferResult.Write(groupSignPubkey)
 		bufferResult.Write([]byte(groupEncryptkey))
+		bufferResult.Write([]byte(item.CipherKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
 		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: seed.ConsensusType, EncryptionType: seed.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
 
-		//TODO save url seed
 		// save group seed to appdata
 		pbGroupSeed := handlers.ToPbGroupSeed(*seed)
 		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {

@@ -102,21 +102,21 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	return query, nil
 }
 
-func UrlToGroupSeed(seedurl string) (*GroupSeed, error) {
+func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	if !strings.HasPrefix(seedurl, "rum://seed?") {
-		return nil, errors.New("invalid Seed URL")
+		return nil, nil, errors.New("invalid Seed URL")
 	}
 	u, err := url.Parse(seedurl)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	q, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	version := q.Get("v")
 	if version != "1" {
-		return nil, errors.New("unsupport seed url version")
+		return nil, nil, errors.New("unsupport seed url version")
 	}
 	b64bstr := q.Get("b")
 	b64gstr := q.Get("g")
@@ -125,11 +125,11 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, error) {
 	b64gbyte, err := base64.RawURLEncoding.DecodeString(b64gstr)
 	b64buuid, err := guuid.FromBytes(b64bbyte)
 	if err != nil {
-		return nil, fmt.Errorf("uuid decode err: %s", err)
+		return nil, nil, fmt.Errorf("uuid decode err: %s", err)
 	}
 	b64guuid, err := guuid.FromBytes(b64gbyte)
 	if err != nil {
-		return nil, fmt.Errorf("uuid decode err: %s", err)
+		return nil, nil, fmt.Errorf("uuid decode err: %s", err)
 	}
 
 	b64producerpubkey := q.Get("k")
@@ -145,20 +145,20 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, error) {
 	b64signbyte, err := base64.RawURLEncoding.DecodeString(b64sign)
 
 	if err != nil {
-		return nil, fmt.Errorf("sign decode err: %s", err)
+		return nil, nil, fmt.Errorf("sign decode err: %s", err)
 	}
 
 	b64cipher := q.Get("c")
 	cipherkeybytes, err := base64.RawURLEncoding.DecodeString(b64cipher)
 	if err != nil {
-		return nil, fmt.Errorf("seed decode err: %s", err)
+		return nil, nil, fmt.Errorf("seed decode err: %s", err)
 	}
 
 	cipherkeyhexstr := hex.EncodeToString(cipherkeybytes)
 
 	appkey, err := url.QueryUnescape(q.Get("y"))
 	if err != nil {
-		return nil, fmt.Errorf("seed decode err: %s", err)
+		return nil, nil, fmt.Errorf("seed decode err: %s", err)
 	}
 
 	genesisBlock := &pb.Block{
@@ -174,7 +174,7 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, error) {
 
 	hash, err := rumchaindata.BlockHash(genesisBlock)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	genesisBlock.Hash = hash
 
@@ -200,5 +200,13 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, error) {
 		CipherKey:      cipherkeyhexstr,
 		AppKey:         appkey,
 	}
-	return seed, nil
+
+	urlstr := q.Get("u")
+	urls := strings.Split(urlstr, "|")
+	for i, u := range urls {
+		if !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "http://") {
+			urls[i] = fmt.Sprintf("%s%s", "https://", u)
+		}
+	}
+	return seed, urls, nil
 }

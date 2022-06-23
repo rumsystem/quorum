@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -95,8 +94,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 		return c.JSON(http.StatusForbidden, "")
 	}
 
-	fmt.Println("Called")
-
 	output := make(map[string]string)
 	getDataNodeSDKItem := new(GetDataNodeSDKItem)
 
@@ -123,8 +120,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			output[ERROR_INFO] = "DECRYPT_DATA_FAILED"
 			return c.JSON(http.StatusBadRequest, output)
 		}
-
-		fmt.Println(getDataNodeSDKItem.ReqType)
 
 		switch getDataNodeSDKItem.ReqType {
 		case AUTH_TYPE:
@@ -294,16 +289,17 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				grpInfo.HighestHeight = grp.Item.HighestHeight
 
 				/*
-					Sign hash with user pubkey
+					//Did we really need a sign from fullnode ?
+					Sign hash with fullnode pubkey
 					groInfoBytes, err := json.Marshal(grpInfo)
 					if err != nil {
 						output[ERROR_INFO] = "INTERNAL_ERROR"
 						return c.JSON(http.StatusBadRequest, output)
 					}
 					hash := localcrypto.Hash(groInfoBytes)
+					grpInfo.Singature = "FAKE_SIGN"
 				*/
 
-				grpInfo.Singature = "FAKE_SIGN"
 				return c.JSON(http.StatusOK, grpInfo)
 			} else {
 				output[ERROR_INFO] = "INVALID_GROUP"
