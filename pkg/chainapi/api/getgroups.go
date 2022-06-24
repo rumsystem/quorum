@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"sort"
 
+	"encoding/hex"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	//localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 )
 
@@ -74,9 +76,15 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.HighestHeight = value.Item.HighestHeight
 		group.HighestBlockId = value.Item.HighestBlockId
 
-		ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(group.UserPubkey)
-		if err == nil {
-			group.UserEthaddr = ethaddr
+		b, err := hex.DecodeString(group.UserPubkey)
+		if err != nil {
+			//try libp2pkey
+		} else {
+			ethpubkey, err := ethcrypto.UnmarshalPubkey(b)
+			if err == nil {
+				ethaddr := ethcrypto.PubkeyToAddress(*ethpubkey)
+				group.UserEthaddr = ethaddr.Hex()
+			}
 		}
 
 		switch value.GetSyncerStatus() {
