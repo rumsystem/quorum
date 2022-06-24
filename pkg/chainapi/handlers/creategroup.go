@@ -151,6 +151,7 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	}
 	seedurl, err := GroupSeedToUrl(1, []string{"127.0.0.1:8080"}, createGrpResult)
 	result["seed"] = seedurl
+	result["group_id"] = groupid.String()
 	return result, err
 }
 
