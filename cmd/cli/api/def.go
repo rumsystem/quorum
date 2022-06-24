@@ -78,18 +78,6 @@ func (a ContentList) Len() int           { return len(a) }
 func (a ContentList) Less(i, j int) bool { return a[i].TimeStamp < a[j].TimeStamp }
 func (a ContentList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-// /api/v1/trx/$id
-type TrxStruct struct {
-	TrxId        string `json:"TrxId"`
-	GroupId      string `json:"GroupId"`
-	Data         []byte `json:"Data"`
-	TimeStamp    string `json:"TimeStamp"`
-	Version      string `json:"Version"`
-	Expired      int64  `json:"Expired"`
-	SenderPubkey string `json:"SenderPubkey"`
-	SenderSign   string `json:"SenderSign"`
-}
-
 type TrxRespStruct struct {
 	TrxId string `json:"trx_id"`
 }
@@ -181,20 +169,6 @@ type GroupDelRetStruct struct {
 type GroupForceSyncRetStruct struct {
 	GroupId string `json:"GroupId"`
 	Error   string `json:"Error"`
-}
-
-// Get /v1/block/:group_id/:block_id
-type BlockStruct struct {
-	BlockId        string       `json:"BlockId,omitempty"`
-	GroupId        string       `json:"GroupId,omitempty"`
-	PrevBlockId    string       `json:"PrevBlockId,omitempty"`
-	PreviousHash   []byte       `json:"PreviousHash,omitempty"`
-	Trxs           []*TrxStruct `json:"Trxs,omitempty"`
-	ProducerId     string       `json:"ProducerId,omitempty"`
-	ProducerPubKey string       `json:"ProducerPubKey,omitempty"`
-	Hash           []byte       `json:"Hash,omitempty"`
-	Signature      []byte       `json:"Signature,omitempty"`
-	TimeStamp      string       `json:"TimeStamp,omitempty"`
 }
 
 // GET /api/v1/network/peers/ping

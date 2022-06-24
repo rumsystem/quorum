@@ -123,7 +123,7 @@ func cmdInputInit() {
 				return
 			} else if strings.HasPrefix(cmdStr, model.CommandConfigReload.Cmd) {
 				reset("")
-				config.Init()
+				config.Reload()
 				if config.RumConfig.Quorum.Server != "" {
 					Quorum(config.RumConfig.Quorum.Server)
 				} else {
