@@ -198,6 +198,9 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		ConsensusType:  consensustype,
 		EncryptionType: encryptiontype,
 		CipherKey:      cipherkeyhexstr,
+		GroupId:        genesisBlock.GroupId,
+		OwnerPubkey:    genesisBlock.ProducerPubKey,
+		Signature:      string(genesisBlock.Signature),
 		AppKey:         appkey,
 	}
 
