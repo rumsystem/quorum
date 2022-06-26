@@ -12,7 +12,7 @@ import (
 func (h *NodeSDKHandler) GetProducers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)

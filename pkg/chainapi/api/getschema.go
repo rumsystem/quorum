@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -26,13 +25,13 @@ type SchemaListItem struct {
 func (h *Handler) GetGroupAppSchema(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[groupid]
 	if !ok {
-		return rumerrors.NewBadRequestError(fmt.Sprintf("Group %s not exist", groupid))
+		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound.Error())
 	}
 
 	schemaList, err := group.GetSchemas()

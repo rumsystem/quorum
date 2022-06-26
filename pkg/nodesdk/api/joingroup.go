@@ -66,17 +66,17 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		ks := nodesdkctx.GetKeyStore()
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if !ok {
-			return rumerrors.NewBadRequestError("Open keystore failed")
+			return rumerrors.NewBadRequestError(rumerrors.ErrOpenKeystore.Error())
 		}
 
 		signKeyName := dirks.AliasToKeyname(params.SignAlias)
 		if signKeyName == "" {
-			return rumerrors.NewBadRequestError("sign alias is not exist")
+			return rumerrors.NewBadRequestError(rumerrors.ErrSignAliasNotFound.Error())
 		}
 
 		encryptKeyName := dirks.AliasToKeyname(params.EncryptAlias)
 		if encryptKeyName == "" {
-			return rumerrors.NewBadRequestError("encrypt alias is not exist")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptAliasNotFound.Error())
 		}
 
 		// should check keytype
@@ -98,20 +98,20 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		//check type
 		alias, ok := allAlias[params.EncryptAlias]
 		if !ok {
-			return rumerrors.NewBadRequestError("encrypt alias is not exist")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptAliasNotFound.Error())
 		}
 
 		if alias.Type != localcrypto.Encrypt {
-			return rumerrors.NewBadRequestError("Type mismatch for given encrypt alias")
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidAliasType.Error())
 		}
 
 		alias, ok = allAlias[params.SignAlias]
 		if !ok {
-			return rumerrors.NewBadRequestError("Sign alias is not exist")
+			return rumerrors.NewBadRequestError(rumerrors.ErrAliasNotFound.Error())
 		}
 
 		if alias.Type != localcrypto.Sign {
-			return rumerrors.NewBadRequestError("Type mismatch for given sign alias")
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidAliasType.Error())
 		}
 
 		//check seed signature
@@ -154,7 +154,7 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		}
 
 		if !verifiy {
-			return rumerrors.NewBadRequestError("Join Group failed, can not verify signature")
+			return rumerrors.NewBadRequestError(rumerrors.ErrJoinGroup.Error())
 		}
 
 		//*huoju*
@@ -162,12 +162,12 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		//ConfigEncodeKey
 		signPubkey, err := dirks.GetEncodedPubkeyByAlias(params.SignAlias, localcrypto.Sign)
 		if err != nil {
-			return rumerrors.NewBadRequestError("Get Sign pubkey failed")
+			return rumerrors.NewBadRequestError(rumerrors.ErrGetSignPubKey.Error())
 		}
 
 		pubkeybytes, err := hex.DecodeString(signPubkey)
 		if err != nil {
-			return rumerrors.NewBadRequestError("Decode Sign pubkey failed")
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidSignPubKey.Error())
 		}
 
 		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
@@ -194,11 +194,11 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 
 		switch params.Seed.EncryptionType {
 		case "private":
-			return rumerrors.NewBadRequestError("Private group is not supported by NodeSDK, please use chainsdk to run a full node")
+			return rumerrors.NewBadRequestError(rumerrors.ErrPrivateGroupNotSupported.Error())
 		case "public":
 			group.EncryptType = quorumpb.GroupEncryptType_PUBLIC
 		default:
-			return rumerrors.NewBadRequestError("Unsupported encryption type")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported.Error())
 		}
 
 		switch params.Seed.ConsensusType {
@@ -207,7 +207,7 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		case "pos":
 			group.ConsenseType = quorumpb.GroupConsenseType_POS
 		default:
-			return rumerrors.NewBadRequestError("Unsupported consensus type")
+			return rumerrors.NewBadRequestError(rumerrors.ErrConsensusTypeNotSupported.Error())
 		}
 
 		group.CipherKey = params.Seed.CipherKey
@@ -219,13 +219,13 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 
 		for _, url := range params.ChainAPIUrl {
 			if !isValidUrl(url) {
-				return rumerrors.NewBadRequestError("invalid chainAPI url")
+				return rumerrors.NewBadRequestError(rumerrors.ErrInvalidChainAPIURL.Error())
 			}
 		}
 		item.ApiUrl = params.ChainAPIUrl
 		seed, err := json.Marshal(params.Seed)
 		if err != nil {
-			return rumerrors.NewBadRequestError("invalid chainAPI url")
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidChainAPIURL.Error())
 		}
 		item.GroupSeed = string(seed) //save seed string for future use
 

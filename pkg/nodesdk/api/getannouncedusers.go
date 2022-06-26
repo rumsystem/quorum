@@ -13,7 +13,7 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 
 	if groupid == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	signPubkey := c.Param("sign_pubkey")

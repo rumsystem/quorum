@@ -16,7 +16,7 @@ func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		groupid := c.Param("group_id")
 		if groupid == "" {
-			return rumerrors.NewBadRequestError("empty group id")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 		}
 
 		groupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)

@@ -80,7 +80,7 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		}
 
 		if nodesdkGroupItem.Group.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			return rumerrors.NewBadRequestError("NodeSDK can not post to private group, use ChainSDK instead")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported.Error())
 		}
 
 		trxFactory := &rumchaindata.TrxFactory{}

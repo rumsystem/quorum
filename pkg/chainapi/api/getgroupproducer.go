@@ -18,7 +18,7 @@ import (
 func (h *Handler) GetGroupProducers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	res, err := handlers.GetGroupProducers(h.ChainAPIdb, groupid)

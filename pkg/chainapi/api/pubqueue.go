@@ -21,7 +21,7 @@ func (h *Handler) GetPubQueue(c echo.Context) (err error) {
 	trxId := c.QueryParam("trx")
 	status := c.QueryParam("status")
 	if groupId == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	info, err := handlers.GetPubQueue(groupId, status, trxId)
@@ -53,7 +53,7 @@ func (h *Handler) PubQueueAck(c echo.Context) (err error) {
 	}
 
 	if len(payload.TrxIds) == 0 {
-		return rumerrors.NewBadRequestError("trx_ids is empty")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxIDList.Error())
 	}
 
 	res, err := handlers.PubQueueAck(payload.TrxIds)

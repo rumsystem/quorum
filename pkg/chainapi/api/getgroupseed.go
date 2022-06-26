@@ -18,7 +18,7 @@ import (
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
 	if groupId == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	seed, err := handlers.GetGroupSeed(groupId, h.Appdb)

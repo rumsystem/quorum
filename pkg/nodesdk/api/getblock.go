@@ -16,12 +16,12 @@ func (h *NodeSDKHandler) GetBlock() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		groupid := c.Param("group_id")
 		if groupid == "" {
-			return rumerrors.NewBadRequestError("empty group id")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 		}
 
 		blockid := c.Param("block_id")
 		if blockid == "" {
-			return rumerrors.NewBadRequestError("empty block id")
+			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyBlockID.Error())
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)

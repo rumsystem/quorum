@@ -65,7 +65,7 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 	}
 
 	if nodesdkGroupItem.Group.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		return rumerrors.NewBadRequestError("NodeSDK can not post to private group, use ChainSDK instead")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported.Error())
 	}
 
 	if paramspb.Person.Image != nil {

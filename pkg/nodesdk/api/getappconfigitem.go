@@ -21,7 +21,7 @@ type GetAppConfigResultItem struct {
 func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError("empty group id")
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	key := c.Param("key")
