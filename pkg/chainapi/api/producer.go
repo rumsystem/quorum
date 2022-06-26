@@ -24,10 +24,6 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		return err
 	}
 
-	if err = c.Bind(params); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
-	}
-
 	res, err := handlers.GroupProducer(h.ChainAPIdb, params)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err.Error())
