@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -15,18 +16,14 @@ import (
 // @Success 200 {array} handlers.AnnouncedUserListItem
 // @Router /api/v1/group/{group_id}/announced/users [get]
 func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
-	output := make(map[string]string)
 	groupid := c.Param("group_id")
 
 	res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, groupid)
-
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, res)
-
 }
 
 // @Tags User
@@ -38,17 +35,13 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
 // @Success 200 {object} handlers.AnnouncedUserListItem
 // @Router /api/v1/group/{group_id}/announced/user/{sign_pubkey} [get]
 func (h *Handler) GetAnnouncedGroupUser(c echo.Context) error {
-	output := make(map[string]string)
 	groupid := c.Param("group_id")
 	sign_pubkey := c.Param("sign_pubkey")
 
 	res, err := handlers.GetAnnouncedGroupUser(groupid, sign_pubkey)
-
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, res)
-
 }

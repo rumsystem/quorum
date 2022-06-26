@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
@@ -51,37 +52,30 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 }
 
 func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
-	output := make(map[string]string)
 	paramspb := new(quorumpb.Activity)
 	if err = c.Bind(paramspb); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	groupid := paramspb.Target.Id
 
 	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
-
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	if nodesdkGroupItem.Group.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		output[ERROR_INFO] = "NodeSDK can not post to private group, use ChainSDK instead"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("NodeSDK can not post to private group, use ChainSDK instead")
 	}
 
 	if paramspb.Person.Image != nil {
 		_, formatname, err := image.Decode(bytes.NewReader(paramspb.Person.Image.Content))
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 		if fmt.Sprintf("image/%s", formatname) != strings.ToLower(paramspb.Person.Image.MediaType) {
-
-			output[ERROR_INFO] = fmt.Sprintf("image format don't match, mediatype is %s but the file is %s", strings.ToLower(paramspb.Person.Image.MediaType), fmt.Sprintf("image/%s", formatname))
-			return c.JSON(http.StatusBadRequest, output)
+			msg := fmt.Sprintf("image format don't match, mediatype is %s but the file is %s", strings.ToLower(paramspb.Person.Image.MediaType), fmt.Sprintf("image/%s", formatname))
+			return rumerrors.NewBadRequestError(msg)
 		}
 	}
 
@@ -90,14 +84,12 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 
 	trx, err := trxFactory.GetPostAnyTrxWithKeyAlias(nodesdkGroupItem.SignAlias, paramspb.Person)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	trxBytes, err := proto.Marshal(trx)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	trxItem := new(NodeSDKTrxItem)
@@ -106,14 +98,12 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 
 	trxItemBytes, err := json.Marshal(trxItem)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	encryptData, err := getEncryptData(trxItemBytes, nodesdkGroupItem.Group.CipherKey)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	item := new(NodeSDKSendTrxItem)
@@ -122,27 +112,23 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 
 	itemBytes, err := json.Marshal(item)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	//just get the first one
 	httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	resultInBytes, err := httpClient.Post(GetPostTrxURI(groupId), itemBytes)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, string(resultInBytes))

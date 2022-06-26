@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -16,15 +17,12 @@ import (
 // @Success 200 {object} handlers.AppConfigKeyItem
 // @Router /api/v1/group/{group_id}/config/{key} [get]
 func (h *Handler) GetAppConfigItem(c echo.Context) (err error) {
-	output := make(map[string]string)
-
 	groupId := c.Param("group_id")
 	itemKey := c.Param("key")
 
 	res, err := handlers.GetAppConfigKey(itemKey, groupId)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, res)

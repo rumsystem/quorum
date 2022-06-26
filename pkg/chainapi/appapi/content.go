@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -39,7 +40,6 @@ type SenderList struct {
 // @Success 200 {array} GroupContentObjectItem
 // @Router /app/api/v1/group/{group_id}/content [post]
 func (h *Handler) ContentByPeers(c echo.Context) (err error) {
-	output := make(map[string]string)
 	groupid := c.Param("group_id")
 	num, _ := strconv.Atoi(c.QueryParam("num"))
 	nonce, _ := strconv.ParseInt(c.QueryParam("nonce"), 10, 64)
@@ -57,21 +57,20 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	}
 	senderlist := &SenderList{}
 	if err = c.Bind(&senderlist); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	trxids, err := h.Appdb.GetGroupContentBySenders(groupid, senderlist.Senders, starttrx, nonce, num, reverse, includestarttrx)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	groupitem, err := groupmgr.GetGroupItem(groupid)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	ctnobjList := []*GroupContentObjectItem{}
 	for _, trxid := range trxids {
 		trx, _, err := h.Trxdb.GetTrx(trxid.TrxId, def.Chain, h.NodeName)

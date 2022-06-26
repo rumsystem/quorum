@@ -1,10 +1,10 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -18,12 +18,12 @@ import (
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
 	if groupId == "" {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "group_id can't be nil."})
+		return rumerrors.NewBadRequestError("empty group id")
 	}
 
 	seed, err := handlers.GetGroupSeed(groupId, h.Appdb)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("get group seed failed: %s", err)})
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, seed)

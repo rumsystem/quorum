@@ -1,14 +1,20 @@
 package api
 
 import (
-	"fmt"
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	"net/http"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 type PubkeyParam struct {
 	EncodedPubkey string `from:"encoded_pubkey" json:"encoded_pubkey" validate:"required"`
+}
+
+type PubkeyToEthaddrResult struct {
+	Addr string `json:"addr"`
 }
 
 // @Tags Tools
@@ -20,20 +26,18 @@ type PubkeyParam struct {
 // @Success 200 {object} map[string]string
 // @Router /api/v1/tools/pubkeytoaddr [post]
 func (h *Handler) PubkeyToEthaddr(c echo.Context) (err error) {
-	var input PubkeyParam
-	output := make(map[string]string)
+	cc := c.(*utils.CustomContext)
 
-	if err = c.Bind(&input); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	input := new(PubkeyParam)
+	if err := cc.BindAndValidate(input); err != nil {
+		return err
 	}
 
-	fmt.Println()
 	ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(input.EncodedPubkey)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
-	output["addr"] = ethaddr
-	return c.JSON(http.StatusOK, output)
+
+	result := PubkeyToEthaddrResult{Addr: ethaddr}
+	return c.JSON(http.StatusOK, result)
 }

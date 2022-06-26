@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -15,14 +16,14 @@ import (
 // @Success 200 {array} handlers.ProducerListItem
 // @Router /api/v1/group/{group_id}/producers [get]
 func (h *Handler) GetGroupProducers(c echo.Context) (err error) {
-	output := make(map[string]string)
 	groupid := c.Param("group_id")
+	if groupid == "" {
+		return rumerrors.NewBadRequestError("empty group id")
+	}
 
 	res, err := handlers.GetGroupProducers(h.ChainAPIdb, groupid)
-
-	if groupid == "" {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, res)

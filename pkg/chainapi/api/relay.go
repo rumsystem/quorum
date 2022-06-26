@@ -8,20 +8,22 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type ReqRelayParam struct {
-	GroupId    string `from:"group_id"      json:"group_id"      validate:"required"`
-	UserPubkey string `from:"user_pubkey"      json:"user_pubkey"`
-	RelayType  string `from:"relay_type"  json:"relay_type"  validate:"required,oneof=user group"`
-	Duration   int64  `from:"duration"  json:"duration"  validate:"required"`
+	GroupId    string `from:"group_id" json:"group_id" validate:"required"`
+	UserPubkey string `from:"user_pubkey" json:"user_pubkey"`
+	RelayType  string `from:"relay_type" json:"relay_type" validate:"required,oneof=user group"`
+	Duration   int64  `from:"duration" json:"duration" validate:"required"`
 	SenderSign string `json:"signature" validate:"required"`
 }
 
 type RelayResult struct {
-	Result bool `from:"result"      json:"result"      validate:"required"`
+	Result bool `from:"result" json:"result" validate:"required"`
 	//ReqId string `from:"req_id"      json:"req_id"      validate:"required"`
 }
 
@@ -37,13 +39,12 @@ type RelayList struct {
 }
 
 func (h *Handler) RequestRelay(c echo.Context) (err error) {
-	var input ReqRelayParam
-	output := make(map[string]string)
-
-	if err = c.Bind(&input); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	cc := c.(*utils.CustomContext)
+	input := new(ReqRelayParam)
+	if err := cc.BindAndValidate(input); err != nil {
+		return err
 	}
+
 	if input.RelayType == conn.RelayUserType || input.RelayType == conn.RelayGroupType {
 		relayreq := quorumpb.RelayReq{}
 		relayreq.GroupId = input.GroupId
@@ -53,33 +54,30 @@ func (h *Handler) RequestRelay(c echo.Context) (err error) {
 		relayreq.SenderSign = input.SenderSign
 		err := SendRelayRequestByRex(&relayreq)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 		ret := RelayResult{true}
 		return c.JSON(http.StatusOK, ret)
 	} else {
-		output[ERROR_INFO] = fmt.Sprintf("unsupported relay type %s", input.RelayType)
-		return c.JSON(http.StatusBadRequest, output)
+		msg := fmt.Sprintf("unsupported relay type %s", input.RelayType)
+		return rumerrors.NewBadRequestError(msg)
 	}
 }
 
 func (h *Handler) ListRelay(c echo.Context) (err error) {
-	output := make(map[string]string)
 	reqresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayReq("")
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	approvedresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayApproved("")
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	activityresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayActivity("")
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	ret := RelayList{ReqList: reqresults, ApprovedList: approvedresults, ActivityList: activityresults}
@@ -87,27 +85,28 @@ func (h *Handler) ListRelay(c echo.Context) (err error) {
 }
 
 func (h *Handler) RemoveRelay(c echo.Context) (err error) {
-	output := make(map[string]string)
 	relayid := c.Param("relay_id")
+
 	succ, relayitem, err := nodectx.GetNodeCtx().GetChainStorage().DeleteRelay(relayid)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	conn := conn.GetConn()
 	conn.UnregisterChainRelay(relayid, relayitem.GroupId, relayitem.Type)
 	ret := &RelayApproveResult{ReqId: relayid, Result: succ}
+
 	return c.JSON(http.StatusOK, ret)
 }
 
 func (h *Handler) ApproveRelay(c echo.Context) (err error) {
-	output := make(map[string]string)
 	reqid := c.Param("req_id")
+
 	succ, reqitem, err := nodectx.GetNodeCtx().GetChainStorage().ApproveRelayReq(reqid)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	if succ == true {
 		conn := conn.GetConn()
 		//add relay

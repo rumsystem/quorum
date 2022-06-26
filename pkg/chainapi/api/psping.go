@@ -3,9 +3,10 @@ package api
 import (
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -23,26 +24,15 @@ type PSPingParam struct {
 // @Router /api/v1/psping [post]
 func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 	return func(c echo.Context) (err error) {
-
-		validate := validator.New()
+		cc := c.(*utils.CustomContext)
 		params := new(PSPingParam)
-		output := make(map[string]interface{})
-
-		if err = c.Bind(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		if err = validate.Struct(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
 		}
 
 		result, err := handlers.Ping(node.Pubsub, node.Host.ID(), params.PeerId)
-
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		return c.JSON(http.StatusOK, result)
