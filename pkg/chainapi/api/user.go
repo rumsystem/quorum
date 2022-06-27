@@ -6,13 +6,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 type GrpUserResult struct {
@@ -42,58 +43,43 @@ type GrpUserParam struct {
 // @Success 200 {object} GrpUserResult
 // @Router /api/v1/group/user [post]
 func (h *Handler) GroupUser(c echo.Context) (err error) {
-	output := make(map[string]string)
-	validate := validator.New()
+	cc := c.(*utils.CustomContext)
+
 	params := new(GrpUserParam)
-
-	if err = c.Bind(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-
-	if err = validate.Struct(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := cc.BindAndValidate(params); err != nil {
+		return err
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
-		output[ERROR_INFO] = "Can not find group"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("Can not find group")
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		output[ERROR_INFO] = "Only group owner can add or remove user"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("Only group owner can add or remove user")
 	} else {
 		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		if !isAnnounced {
-			output[ERROR_INFO] = "User is not announced"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("User is not announced")
 		}
 
 		user, err := group.GetAnnouncedUser(params.UserPubkey)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		if user.Action == quorumpb.ActionType_REMOVE && params.Action == "add" {
-			output[ERROR_INFO] = "Can not add a none active user"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Can not add a none active user")
 		}
 
 		if user.Result == quorumpb.ApproveType_ANNOUNCED && params.Action == "remove" {
-			output[ERROR_INFO] = "Can not remove an unapprove user"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Can not remove an unapprove user")
 		}
 
 		if user.Result == quorumpb.ApproveType_APPROVED && params.Action == "add" {
-			output[ERROR_INFO] = "Can not add an approved user"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Can not add an approved user")
 		}
 
 		item := &quorumpb.UserItem{}
@@ -111,10 +97,8 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 
 		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
-
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		item.GroupOwnerSign = hex.EncodeToString(signature)
@@ -123,21 +107,26 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		} else if params.Action == "remove" {
 			item.Action = quorumpb.ActionType_REMOVE
 		} else {
-			output[ERROR_INFO] = "Unknown action"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Unknown action")
 		}
 
 		item.Memo = params.Memo
 		item.TimeStamp = time.Now().UnixNano()
 		trxId, err := group.UpdUser(item)
-
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
-		var blockGrpUserResult *GrpUserResult
-		blockGrpUserResult = &GrpUserResult{GroupId: item.GroupId, UserPubkey: item.UserPubkey, EncryptPubkey: item.EncryptPubkey, OwnerPubkey: item.GroupOwnerPubkey, Sign: item.GroupOwnerSign, Action: item.Action.String(), Memo: item.Memo, TrxId: trxId}
+		blockGrpUserResult := &GrpUserResult{
+			GroupId:       item.GroupId,
+			UserPubkey:    item.UserPubkey,
+			EncryptPubkey: item.EncryptPubkey,
+			OwnerPubkey:   item.GroupOwnerPubkey,
+			Sign:          item.GroupOwnerSign,
+			Action:        item.Action.String(),
+			Memo:          item.Memo,
+			TrxId:         trxId,
+		}
 
 		return c.JSON(http.StatusOK, blockGrpUserResult)
 	}

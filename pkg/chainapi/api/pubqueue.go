@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -15,20 +17,16 @@ import (
 // @Success 200 {object} handlers.PubQueueInfo
 // @Router /api/v1/group/{group_id}/pubqueue [get]
 func (h *Handler) GetPubQueue(c echo.Context) (err error) {
-	output := make(map[string]string)
 	groupId := c.Param("group_id")
 	trxId := c.QueryParam("trx")
 	status := c.QueryParam("status")
 	if groupId == "" {
-		output[ERROR_INFO] = "group_id can't be nil."
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	info, err := handlers.GetPubQueue(groupId, status, trxId)
 	if err != nil {
-		output := make(map[string]interface{})
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	return c.JSON(http.StatusOK, info)
@@ -47,22 +45,21 @@ type PubQueueAckPayload struct {
 // @Success 200 {object} []string
 // @Router /api/v1/trx/ack [post]
 func (h *Handler) PubQueueAck(c echo.Context) (err error) {
-	output := make(map[string]string)
+	cc := c.(*utils.CustomContext)
+
 	payload := &PubQueueAckPayload{}
-	if err = c.Bind(payload); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := cc.BindAndValidate(payload); err != nil {
+		return err
 	}
 
 	if len(payload.TrxIds) == 0 {
-		output[ERROR_INFO] = "trx_ids is empty"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxIDList.Error())
 	}
 
 	res, err := handlers.PubQueueAck(payload.TrxIds)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	return c.JSON(http.StatusOK, res)
 }

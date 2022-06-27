@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	_ "github.com/rumsystem/rumchaindata/pkg/pb" //import for swaggo
 	"google.golang.org/protobuf/encoding/protojson"
@@ -18,26 +19,20 @@ import (
 // @Success 200 {object} pb.Trx
 // @Router /api/v1/trx/{group_id}/{trx_id} [get]
 func (h *Handler) GetTrx(c echo.Context) (err error) {
-
-	output := make(map[string]string)
-
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		output[ERROR_INFO] = "group_id can't be nil."
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	trxid := c.Param("trx_id")
 	if trxid == "" {
-		output[ERROR_INFO] = "trx_id can't be nil."
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxID.Error())
 	}
 
 	//should return nonce count to client?
 	trx, _, err := handlers.GetTrx(groupid, trxid)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	m := protojson.MarshalOptions{

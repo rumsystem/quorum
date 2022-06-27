@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -16,18 +17,15 @@ import (
 // @Success 200 {object} handlers.AddPeerResult
 // @Router /api/v1/network/peers [post]
 func (h *Handler) AddPeers(c echo.Context) (err error) {
-	var input handlers.AddPeerParam
-	output := make(map[string]string)
-
-	if err = c.Bind(&input); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	params := new(handlers.AddPeerParam)
+	if err := c.Bind(params); err != nil {
+		rumerrors.NewBadRequestError(err.Error())
 	}
 
-	result, err := handlers.AddPeers(input)
+	result, err := handlers.AddPeers(*params)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
+
 	return c.JSON(http.StatusOK, result)
 }

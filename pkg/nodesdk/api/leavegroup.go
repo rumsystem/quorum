@@ -3,8 +3,9 @@ package nodesdkapi
 import (
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -18,30 +19,20 @@ type LeaveGroupResult struct {
 
 func (h *NodeSDKHandler) LeaveGroup() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var err error
-		output := make(map[string]string)
-		validate := validator.New()
+		cc := c.(*utils.CustomContext)
 
 		params := new(LeaveGroupParams)
-
-		if err = c.Bind(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
 		}
 
-		if err = validate.Struct(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		//save nodesdkgroupitem to db
-		err = nodesdkctx.GetCtx().GetChainStorage().RmGroup(params.GroupId)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		// save nodesdkgroupitem to db
+		if err := nodesdkctx.GetCtx().GetChainStorage().RmGroup(params.GroupId); err != nil {
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		leaveGroupResult := &LeaveGroupResult{GroupId: params.GroupId}
+
 		return c.JSON(http.StatusOK, leaveGroupResult)
 	}
 }

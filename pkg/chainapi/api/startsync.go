@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -20,13 +21,12 @@ type StartSyncResult struct {
 // @Success 200 {object} StartSyncResult
 // @Router /api/v1/group/{group_id}/startsync [post]
 func (h *Handler) StartSync(c echo.Context) (err error) {
-	output := make(map[string]string)
 	groupid := c.Param("group_id")
 
 	res, err := handlers.StartSync(groupid)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
+
 	return c.JSON(http.StatusOK, res)
 }

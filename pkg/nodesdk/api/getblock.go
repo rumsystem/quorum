@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -13,53 +14,41 @@ const GET_BLOCK_URI string = "/api/v1/block"
 
 func (h *NodeSDKHandler) GetBlock() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var err error
-		output := make(map[string]string)
-
 		groupid := c.Param("group_id")
 		if groupid == "" {
-			output[ERROR_INFO] = "group_id can't be nil."
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 		}
 
 		blockid := c.Param("block_id")
 		if blockid == "" {
-			output[ERROR_INFO] = "block_id can't be nil."
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyBlockID.Error())
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
-		err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl); err != nil {
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		uri := GET_BLOCK_URI + "/" + groupid + "/" + blockid
 
 		resultInBytes, err := httpClient.Get(uri)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		block := new(quorumpb.Block)
-		err = json.Unmarshal(resultInBytes, block)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := json.Unmarshal(resultInBytes, block); err != nil {
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		return c.JSON(http.StatusOK, block)

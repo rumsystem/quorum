@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -42,25 +43,15 @@ type GroupContentObjectItem struct {
 
 func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var err error
-		output := make(map[string]string)
-
-		validate := validator.New()
+		cc := c.(*utils.CustomContext)
 		params := new(GetGroupCtnPrarms)
-		if err = c.Bind(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		if err = validate.Struct(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(params.GroupId)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		getGroupCtnItem := new(GetGroupCtnItem)
@@ -69,14 +60,12 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 
 		itemBytes, err := json.Marshal(getGroupCtnItem)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		encryptData, err := getEncryptData(itemBytes, nodesdkGroupItem.Group.CipherKey)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		getGroupCtnReqItem := new(GetGroupCtnReqItem)
@@ -85,31 +74,28 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 
 		reqBytes, err := json.Marshal(getGroupCtnReqItem)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
-		err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl); err != nil {
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		resultInBytes, err := httpClient.Post(GetGroupCtnURI(groupId), reqBytes)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		trxs := new([]*quorumpb.Trx)
-		err = json.Unmarshal(resultInBytes, trxs)
+		if err := json.Unmarshal(resultInBytes, trxs); err != nil {
+			return rumerrors.NewBadRequestError(err.Error())
+		}
 
 		ctnobjList := []*GroupContentObjectItem{}
 		for _, trx := range *trxs {
@@ -135,11 +121,6 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 				ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: trx.SenderPubkey, Content: ctnobj, TimeStamp: trx.TimeStamp, TypeUrl: typeurl}
 				ctnobjList = append(ctnobjList, ctnobjitem)
 			}
-		}
-
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
 		}
 
 		return c.JSON(http.StatusOK, ctnobjList)

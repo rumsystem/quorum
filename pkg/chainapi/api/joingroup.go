@@ -13,14 +13,15 @@ import (
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	"github.com/rumsystem/quorum/testnode"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 )
 
 type JoinGroupResult struct {
@@ -46,26 +47,18 @@ type JoinGroupResult struct {
 // @Router /api/v1/group/join [post]
 func (h *Handler) JoinGroup() echo.HandlerFunc {
 	return func(c echo.Context) error {
-
 		var err error
-		output := make(map[string]string)
-		validate := validator.New()
+		cc := c.(*utils.CustomContext)
+
 		params := new(handlers.GroupSeed)
-
-		if err = c.Bind(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		if err = validate.Struct(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
 		}
 
 		genesisBlockBytes, err := json.Marshal(params.GenesisBlock)
 		if err != nil {
-			output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			msg := fmt.Sprintf("unmarshal genesis block failed with msg: %s" + err.Error())
+			return rumerrors.NewBadRequestError(msg)
 		}
 
 		nodeoptions := options.GetNodeOptions()
@@ -81,15 +74,15 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 					_, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 					err = nodeoptions.SetSignKeyMap(params.GroupId, newsignaddr)
 					if err != nil {
-						output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
-						return c.JSON(http.StatusBadRequest, output)
+						msg := fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
+						return rumerrors.NewBadRequestError(msg)
 					}
 					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				} else {
 					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(params.GroupId))
 					if err != nil {
-						output[ERROR_INFO] = "create new group key err:" + err.Error()
-						return c.JSON(http.StatusBadRequest, output)
+						msg := "create new group key err:" + err.Error()
+						return rumerrors.NewBadRequestError(msg)
 					}
 					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				}
@@ -99,35 +92,35 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
 			groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
 			if err != nil {
-				output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				msg := "group key can't be decoded, err: " + err.Error()
+				return rumerrors.NewBadRequestError(msg)
 			}
 		} else {
-			output[ERROR_INFO] = fmt.Sprintf("unknown keystore type  %v:", ks)
-			return c.JSON(http.StatusBadRequest, output)
+			msg := fmt.Sprintf("unknown keystore type  %v:", ks)
+			return rumerrors.NewBadRequestError(msg)
 		}
 
 		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(params.OwnerPubkey)
 		if err != nil {
-			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			msg := "Decode OwnerPubkey failed: " + err.Error()
+			return rumerrors.NewBadRequestError(msg)
 		}
 
 		ownerPubkey, err := p2pcrypto.UnmarshalPublicKey(ownerPubkeyBytes)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		//decode signature
 		decodedSignature, err := hex.DecodeString(params.Signature)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		//decode cipherkey
 		cipherKey, err := hex.DecodeString(params.CipherKey)
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		groupEncryptkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
@@ -137,13 +130,13 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(params.GroupId))
 				if err != nil {
-					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
-					return c.JSON(http.StatusBadRequest, output)
+					msg := "Create key pair failed with msg:" + err.Error()
+					return rumerrors.NewBadRequestError(msg)
 				}
 				groupEncryptkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 			} else {
-				output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				msg := "Create key pair failed with msg:" + err.Error()
+				return rumerrors.NewBadRequestError(msg)
 			}
 		}
 
@@ -160,13 +153,11 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		hash := localcrypto.Hash(buffer.Bytes())
 		verifiy, err := ownerPubkey.Verify(hash, decodedSignature)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		if !verifiy {
-			output[ERROR_INFO] = "Join Group failed, can not verify signature"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Join Group failed, can not verify signature")
 		}
 
 		var item *quorumpb.GroupItem
@@ -187,12 +178,12 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			if strings.HasPrefix(err.Error(), "key not exist") {
 				userEncryptKey, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 				if err != nil {
-					output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
-					return c.JSON(http.StatusBadRequest, output)
+					msg := "Create key pair failed with msg:" + err.Error()
+					return rumerrors.NewBadRequestError(msg)
 				}
 			} else {
-				output[ERROR_INFO] = "Create key pair failed with msg:" + err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				msg := "Create key pair failed with msg:" + err.Error()
+				return rumerrors.NewBadRequestError(msg)
 			}
 		}
 
@@ -218,15 +209,13 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			group.SetRumExchangeTestMode()
 		}
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		//start sync
 		err = group.StartSync()
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err.Error())
 		}
 
 		//add group to context
@@ -253,8 +242,8 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		// save group seed to appdata
 		pbGroupSeed := handlers.ToPbGroupSeed(*params)
 		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
-			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
-			return c.JSON(http.StatusBadRequest, output)
+			msg := fmt.Sprintf("save group seed failed: %s", err)
+			return rumerrors.NewBadRequestError(msg)
 		}
 
 		return c.JSON(http.StatusOK, joinGrpResult)

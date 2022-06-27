@@ -1,11 +1,11 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 )
 
 type SchemaListItem struct {
@@ -23,25 +23,20 @@ type SchemaListItem struct {
 // @Router /api/v1/group/{group_id}/app/schema [get]
 
 func (h *Handler) GetGroupAppSchema(c echo.Context) (err error) {
-
-	output := make(map[string]string)
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		output[ERROR_INFO] = "group_id can't be nil."
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[groupid]
 	if !ok {
-		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound.Error())
 	}
 
 	schemaList, err := group.GetSchemas()
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err.Error())
 	}
 
 	schemaResultList := []*SchemaListItem{}
