@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
@@ -49,13 +50,6 @@ func getToken(name string, role string, allowGroups []string, jwtKey string) (st
 	return utils.NewJWTToken(name, role, allowGroups, jwtKey, exp)
 }
 
-func isFromLocalhost(host string) bool {
-	if strings.HasPrefix(host, "localhost:") || host == "localhost" || strings.HasPrefix(host, "127.0.0.1") {
-		return true
-	}
-	return false
-}
-
 func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 	config := middleware.JWTConfig{
 		SigningMethod: "HS256",
@@ -66,13 +60,7 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
 			return utils.ParseJWTToken(auth, jwtKey)
 		},
-		Skipper: func(c echo.Context) bool {
-			if isFromLocalhost(c.Request().Host) {
-				return true
-			}
-
-			return false
-		},
+		Skipper: rummiddleware.LocalhostSkipper,
 	}
 
 	return config
@@ -146,7 +134,7 @@ func (h *Handler) CreateToken(c echo.Context) error {
 
 	var err error
 
-	if !isFromLocalhost(c.Request().Host) {
+	if !rummiddleware.LocalhostSkipper(c) {
 		return rumerrors.NewBadRequestError("only localhost can access this rest api")
 	}
 
