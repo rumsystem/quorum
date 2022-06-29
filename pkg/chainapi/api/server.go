@@ -10,6 +10,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
+	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
@@ -23,8 +24,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
-	e.Use(OpaWithConfig(OpaConfig{
-		Skipper:   localhostSkipper,
+	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
+		Skipper:   rummiddleware.LocalhostSkipper,
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
