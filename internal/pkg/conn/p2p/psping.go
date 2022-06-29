@@ -102,8 +102,12 @@ func (p *PSPing) PingReq(dstpeerid string) ([10]int64, error) {
 		pingobj := &quorumpb.PSPing{Seqnum: int32(i), IsResp: false, TimeStamp: time.Now().UnixNano(), Payload: payload[:]}
 		bytes, err := proto.Marshal(pingobj)
 		if err == nil {
-			p.Topic.Publish(p.ctx, bytes)
-			resultmap[payload] = &PingResult{Seqnum: pingobj.Seqnum, Req_at: pingobj.TimeStamp, Resp_at: 0}
+			err = p.Topic.Publish(p.ctx, bytes)
+			if err == nil {
+				resultmap[payload] = &PingResult{Seqnum: pingobj.Seqnum, Req_at: pingobj.TimeStamp, Resp_at: 0}
+			} else {
+				ping_log.Errorf("Ping packet error <%s>", err)
+			}
 		} else {
 			ping_log.Errorf("Ping packet error <%s>", err)
 		}
@@ -131,6 +135,7 @@ func (p *PSPing) handlePingRequest() error {
 	for {
 		pingreqmsg, err := p.Subscription.Next(p.ctx)
 		if err == nil {
+			ping_log.Debugf("Ping req from <%s>", pingreqmsg.ReceivedFrom)
 			if pingreqmsg.ReceivedFrom != p.PeerId { //not me
 				var pspingreq quorumpb.PSPing
 				if err := proto.Unmarshal(pingreqmsg.Data, &pspingreq); err != nil {
@@ -139,7 +144,10 @@ func (p *PSPing) handlePingRequest() error {
 				pingobj := &quorumpb.PSPing{Seqnum: pspingreq.Seqnum, IsResp: true, TimeStamp: pspingreq.TimeStamp, Payload: pspingreq.Payload}
 				bytes, err := proto.Marshal(pingobj)
 				if err == nil {
-					p.Topic.Publish(p.ctx, bytes)
+					err = p.Topic.Publish(p.ctx, bytes)
+					if err != nil {
+						ping_log.Errorf("Ping packet error <%s>", err)
+					}
 				} else {
 					ping_log.Errorf("Ping packet error <%s>", err)
 				}
@@ -156,7 +164,7 @@ func (p *PSPing) handlePingResponse(pingresult *map[[32]byte]*PingResult, errCh 
 	for {
 		pingrespmsg, err := p.Subscription.Next(p.ctx)
 		if err == nil {
-			ping_log.Debugf("Ping packet recv from <%s>", p.PeerId)
+			ping_log.Debugf("Ping packet recv from <%s>", pingrespmsg.ReceivedFrom)
 			if pingrespmsg.ReceivedFrom != p.PeerId { //not me
 				var pspingresp quorumpb.PSPing
 				if err := proto.Unmarshal(pingrespmsg.Data, &pspingresp); err != nil {

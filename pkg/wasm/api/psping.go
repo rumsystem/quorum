@@ -10,3 +10,9 @@ func Ping(peer string) (*handlers.PingResp, error) {
 
 	return handlers.Ping(wasmCtx.QNode.Pubsub, wasmCtx.QNode.Host.ID(), peer)
 }
+
+func P2PPing(peer string) (*handlers.P2PPingResp, error) {
+	wasmCtx := quorumContext.GetWASMContext()
+
+	return handlers.P2PPing(wasmCtx.QNode.Host, peer)
+}

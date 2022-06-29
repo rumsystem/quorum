@@ -120,6 +120,7 @@ func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 func mainRet(config cli.Config) int {
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
+
 	defer cancel()
 
 	mainlog.Infof("Version: %s", GitCommit)
@@ -168,8 +169,8 @@ func mainRet(config cli.Config) int {
 		mainlog.Fatalf(err.Error())
 	}
 
-	if config.IsBootstrap == true {
-		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
+	if config.IsBootstrap == true || config.EnableRelayService {
+		//bootstrop/relay node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
 		cm, err := connmgr.NewConnManager(1000, 50000, connmgr.WithGracePeriod(30*time.Second))
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -219,7 +220,6 @@ func mainRet(config cli.Config) int {
 		}
 		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil {
-			//node.SetRumExchange(ctx, dbManager)
 			node.SetRumExchange(ctx, newchainstorage)
 		}
 

@@ -30,6 +30,12 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
+var peerChan = make(chan peer.AddrInfo)
+
+func GetRelayPeerChan() chan peer.AddrInfo {
+	return peerChan
+}
+
 type PublicGater struct{}
 
 func (PublicGater) InterceptPeerDial(p peer.ID) (allow bool) {
@@ -127,17 +133,9 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	}
 
 	if nodeOpt.EnableRelay {
-		// TODO: use channel as relayServer source, thus we can modify relayServer dynamicaly
-		relayServerAddr := ma.StringCast("/ip4/139.155.182.182/tcp/33333/ws/p2p/16Uiu2HAmMfW8CJms2hgcp8wHMut2MhLgpBP4NQEbLhuaaeWnac7t")
-
-		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
-		if err != nil {
-			panic(err)
-		}
-		staticRelays := []peer.AddrInfo{*relayServer}
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
-				autorelay.WithStaticRelays(staticRelays),
+				autorelay.WithPeerSource(peerChan),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0),
@@ -189,9 +187,6 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
 	peerStatus := NewPeerStatus()
-	rexnotification := make(chan RexNotification, 1)
-	rexservice := NewRexService(host, peerStatus, nodeNetwork, ProtocolPrefix, rexnotification)
-	rexservice.SetDelegate()
 
 	nodeName := "default"
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodeName)

@@ -20,7 +20,7 @@ const PingSize = 32
 
 const PingID = "/quorum/ping/1.0.0"
 
-const pingTimeout = time.Second * 60
+const pingTimeout = time.Second * 5
 
 type PingService struct {
 	Host host.Host
@@ -78,6 +78,7 @@ type Result struct {
 }
 
 func (ps *PingService) Ping(ctx context.Context, p peer.ID) <-chan Result {
+	// we allow transient connection pingable
 	return Ping(ctx, ps.Host, p)
 }
 
@@ -92,12 +93,9 @@ func Ping(ctx context.Context, h host.Host, p peer.ID) <-chan Result {
 		return ch
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-
 	out := make(chan Result)
 	go func() {
 		defer close(out)
-		defer cancel()
 
 		for ctx.Err() == nil {
 			var res Result
