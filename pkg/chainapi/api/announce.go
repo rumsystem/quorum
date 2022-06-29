@@ -27,7 +27,7 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 	res, err := handlers.AnnounceHandler(params)
 
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

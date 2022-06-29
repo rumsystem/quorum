@@ -21,12 +21,12 @@ func (h *Handler) GetPubQueue(c echo.Context) (err error) {
 	trxId := c.QueryParam("trx")
 	status := c.QueryParam("status")
 	if groupId == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	info, err := handlers.GetPubQueue(groupId, status, trxId)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, info)
@@ -53,12 +53,12 @@ func (h *Handler) PubQueueAck(c echo.Context) (err error) {
 	}
 
 	if len(payload.TrxIds) == 0 {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxIDList.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxIDList)
 	}
 
 	res, err := handlers.PubQueueAck(payload.TrxIds)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

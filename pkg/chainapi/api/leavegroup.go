@@ -27,7 +27,7 @@ func (h *Handler) LeaveGroup(c echo.Context) (err error) {
 
 	res, err := handlers.LeaveGroup(params, h.Appdb)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

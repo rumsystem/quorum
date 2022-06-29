@@ -49,7 +49,7 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 		var groups []*GroupInfo
 		nodesdkGroupItems, err := nodesdkctx.GetCtx().GetChainStorage().GetAllGroupsV2()
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 		for _, groupItem := range nodesdkGroupItems {
 			var groupInfo *GroupInfo
@@ -61,7 +61,7 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 
 			ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			groupInfo.UserEthaddr = ethaddr
 			groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()

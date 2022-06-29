@@ -30,41 +30,41 @@ func (h *NodeSDKHandler) GetTrx() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		groupid := c.Param("group_id")
 		if groupid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 		}
 
 		trxid := c.Param("trx_id")
 		if trxid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxID.Error())
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		uri := GET_TRX_URI + "/" + groupid + "/" + trxid
 
 		resultInBytes, err := httpClient.Get(uri)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		trx := new(Trx)
 		err = json.Unmarshal(resultInBytes, trx)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, trx)

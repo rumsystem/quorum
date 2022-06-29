@@ -21,18 +21,18 @@ import (
 func (h *Handler) GetTrx(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	trxid := c.Param("trx_id")
 	if trxid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 	}
 
 	//should return nonce count to client?
 	trx, _, err := handlers.GetTrx(groupid, trxid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	m := protojson.MarshalOptions{

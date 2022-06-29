@@ -33,7 +33,7 @@ func (h *Handler) GetBlockById(c echo.Context) (err error) {
 	if group, ok := groupmgr.Groups[groupid]; ok {
 		block, err := group.GetBlock(blockid)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, block)

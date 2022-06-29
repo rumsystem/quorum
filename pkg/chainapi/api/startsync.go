@@ -25,7 +25,7 @@ func (h *Handler) StartSync(c echo.Context) (err error) {
 
 	res, err := handlers.StartSync(groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

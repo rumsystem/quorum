@@ -98,7 +98,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 	getDataNodeSDKItem := new(GetDataNodeSDKItem)
 
 	if err = c.Bind(getDataNodeSDKItem); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 	c.Logger().Debug("GetDataNSdk request payload: %+v", getDataNodeSDKItem)
 
@@ -130,7 +130,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, item.GroupId, item.TrxType)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case AUTH_ALLOWLIST:
@@ -144,7 +144,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetChainTrxAllowList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case AUTH_DENYLIST:
@@ -158,7 +158,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetChainTrxDenyList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case APPCONFIG_KEYLIST:
@@ -172,7 +172,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetAppConfigKeyList(item.GroupId)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case APPCONFIG_ITEM_BYKEY:
@@ -186,7 +186,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetAppConfigKey(item.Key, item.GroupId)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case ANNOUNCED_PRODUCER:
@@ -200,7 +200,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case ANNOUNCED_USER:
@@ -215,13 +215,13 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			if item.SignPubkey == "" {
 				res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, item.GroupId)
 				if err != nil {
-					return rumerrors.NewBadRequestError(err.Error())
+					return rumerrors.NewBadRequestError(err)
 				}
 				return c.JSON(http.StatusOK, res)
 			} else {
 				res, err := handlers.GetAnnouncedGroupUser(item.GroupId, item.SignPubkey)
 				if err != nil {
-					return rumerrors.NewBadRequestError(err.Error())
+					return rumerrors.NewBadRequestError(err)
 				}
 				return c.JSON(http.StatusOK, res)
 			}
@@ -236,7 +236,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			}
 			res, err := handlers.GetGroupProducers(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case GROUP_INFO:

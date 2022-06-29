@@ -20,7 +20,7 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
 
 	res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -40,7 +40,7 @@ func (h *Handler) GetAnnouncedGroupUser(c echo.Context) error {
 
 	res, err := handlers.GetAnnouncedGroupUser(groupid, sign_pubkey)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

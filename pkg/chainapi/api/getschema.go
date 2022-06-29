@@ -25,18 +25,18 @@ type SchemaListItem struct {
 func (h *Handler) GetGroupAppSchema(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[groupid]
 	if !ok {
-		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
 
 	schemaList, err := group.GetSchemas()
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	schemaResultList := []*SchemaListItem{}

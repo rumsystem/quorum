@@ -32,7 +32,7 @@ func (h *Handler) PSPingPeer(node *p2p.Node) echo.HandlerFunc {
 
 		result, err := handlers.Ping(node.Pubsub, node.Host.ID(), params.PeerId)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, result)

@@ -26,7 +26,7 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 
 	res, err := handlers.GroupProducer(h.ChainAPIdb, params)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

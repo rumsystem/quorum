@@ -16,7 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	"github.com/rumsystem/quorum/internal/pkg/errors"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -124,7 +124,7 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 			errs:  errs,
 			trans: *cv.trans,
 		}
-		return errors.NewBadRequestError(verr.Error())
+		return rumerrors.NewBadRequestError(verr.Error())
 	}
 	return nil
 }
@@ -197,7 +197,9 @@ func customHTTPErrorHandler(err error, c echo.Context) {
 }
 
 func getErrorMessage(he *echo.HTTPError, c echo.Context) string {
-	if m, ok := he.Message.(string); ok {
+	if m, ok := he.Message.(error); ok {
+		return m.Error()
+	} else if m, ok := he.Message.(string); ok {
 		return m
 	}
 

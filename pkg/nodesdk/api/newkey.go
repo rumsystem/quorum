@@ -59,20 +59,20 @@ func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 
 		newsignaddr, err := dirks.NewKey(keyname, keytype, password)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if err := nodeoptions.SetSignKeyMap(keyname, newsignaddr); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if err := dirks.NewAlias(params.Alias, keyname, password); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		pubkey, err := dirks.GetEncodedPubkey(keyname, keytype)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		result := &CreateNewKeyWithAliasResult{

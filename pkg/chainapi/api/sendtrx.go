@@ -49,49 +49,49 @@ func (h *Handler) SendTrx(c echo.Context) (err error) {
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[sendTrxItem.GroupId]
 	if !ok {
-		return rumerrors.NewBadRequestError("INVALID_GROUP")
+		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
 
 	//private group is NOT supported
 	if group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		return rumerrors.NewBadRequestError("FUNCTION_NOT_SUPPORTED")
+		return rumerrors.NewBadRequestError(rumerrors.ErrPrivateGroupNotSupported)
 	}
 
 	ciperKey, err := hex.DecodeString(group.Item.CipherKey)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	decryptData, err := localcrypto.AesDecode(sendTrxItem.TrxItem, ciperKey)
 	trxItem := new(NodeSDKTrxItem)
 
 	if err := json.Unmarshal(decryptData, trxItem); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	if trxItem.JwtToken != NodeSDKJwtToken {
-		return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidJWT)
 	}
 
 	trx := new(quorumpb.Trx)
 	err = proto.Unmarshal(trxItem.TrxBytes, trx)
 	if err != nil {
-		return rumerrors.NewBadRequestError("INVALID_DATA")
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxData)
 	}
 
 	//check if trx sender is in group block list
 	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, nodectx.GetNodeCtx().Name)
 	if err != nil {
-		return rumerrors.NewBadRequestError("CHECK_AUTH_FAILED")
+		return rumerrors.NewUnauthorizedError(err)
 	}
 
 	if !isAllow {
-		return rumerrors.NewBadRequestError("OPERATION_DENY")
+		return rumerrors.NewForbiddenError()
 	}
 
 	trxId, err := group.SendRawTrx(trx)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	sendTrxResult := &SendTrxResult{TrxId: trxId}

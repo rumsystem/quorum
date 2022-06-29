@@ -51,7 +51,7 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(params.GroupId)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		getGroupCtnItem := new(GetGroupCtnItem)
@@ -60,12 +60,12 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 
 		itemBytes, err := json.Marshal(getGroupCtnItem)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		encryptData, err := getEncryptData(itemBytes, nodesdkGroupItem.Group.CipherKey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		getGroupCtnReqItem := new(GetGroupCtnReqItem)
@@ -74,27 +74,27 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 
 		reqBytes, err := json.Marshal(getGroupCtnReqItem)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if err := httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		resultInBytes, err := httpClient.Post(GetGroupCtnURI(groupId), reqBytes)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		trxs := new([]*quorumpb.Trx)
 		if err := json.Unmarshal(resultInBytes, trxs); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		ctnobjList := []*GroupContentObjectItem{}

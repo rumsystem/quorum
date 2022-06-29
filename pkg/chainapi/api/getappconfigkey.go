@@ -19,7 +19,7 @@ func (h *Handler) GetAppConfigKey(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	res, err := handlers.GetAppConfigKeyList(groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)
