@@ -19,12 +19,12 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 
 		groupid := c.Param("group_id")
 		if groupid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 		}
 
 		groupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		groupInfo := &GroupInfo{}
@@ -35,7 +35,7 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 
 		ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		groupInfo.UserEthaddr = ethaddr

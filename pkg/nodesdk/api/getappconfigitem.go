@@ -21,7 +21,7 @@ type GetAppConfigResultItem struct {
 func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	key := c.Param("key")
@@ -31,7 +31,7 @@ func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 
 	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	reqItem := new(AppConfigItem)
@@ -41,12 +41,12 @@ func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 
 	itemBytes, err := json.Marshal(reqItem)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	encryptData, err := getEncryptData(itemBytes, nodesdkGroupItem.Group.CipherKey)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	getItem := new(NodeSDKGetChainDataItem)
@@ -55,28 +55,28 @@ func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 
 	reqBytes, err := json.Marshal(getItem)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	//just get the first one
 	httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	resultInBytes, err := httpClient.Post(GetChainDataURI(groupid), reqBytes)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	result := new(*GetAppConfigResultItem)
 	if err := json.Unmarshal(resultInBytes, result); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, result)

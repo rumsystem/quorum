@@ -16,12 +16,12 @@ func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		groupid := c.Param("group_id")
 		if groupid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 		}
 
 		groupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, groupItem.GroupSeed)

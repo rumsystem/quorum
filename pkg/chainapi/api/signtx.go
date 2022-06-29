@@ -103,7 +103,7 @@ func (h *Handler) SignTx(c echo.Context) (err error) {
 
 	param, err := loadSignTxParam(*input)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	if param.Keyalias == "" && param.Keyname == "" {
@@ -141,7 +141,7 @@ func (h *Handler) SignTx(c echo.Context) (err error) {
 		)
 	}
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	result := SignTxResult{Data: data}

@@ -42,7 +42,7 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 		}
 	default:
 		if err := cv.Validator.Struct(i); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return rumerrors.NewInternalServerError(err)
 		}
 	}
 	return nil
@@ -66,7 +66,7 @@ func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 
 	res, err := handlers.UpdateProfile(paramspb)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

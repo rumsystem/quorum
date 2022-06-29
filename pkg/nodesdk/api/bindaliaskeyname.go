@@ -36,12 +36,12 @@ func (h *NodeSDKHandler) BindAliasWithKeyName() echo.HandlerFunc {
 		keyname := dirks.AliasToKeyname(params.Alias)
 		if keyname != "" {
 			if err := dirks.UnAlias(params.Alias, password); err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 		}
 
 		if err := dirks.NewAlias(params.Alias, params.KeyName, password); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, "done")

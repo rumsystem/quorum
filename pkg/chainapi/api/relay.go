@@ -54,7 +54,7 @@ func (h *Handler) RequestRelay(c echo.Context) (err error) {
 		relayreq.SenderSign = input.SenderSign
 		err := SendRelayRequestByRex(&relayreq)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 		ret := RelayResult{true}
 		return c.JSON(http.StatusOK, ret)
@@ -67,17 +67,17 @@ func (h *Handler) RequestRelay(c echo.Context) (err error) {
 func (h *Handler) ListRelay(c echo.Context) (err error) {
 	reqresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayReq("")
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	approvedresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayApproved("")
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	activityresults, err := nodectx.GetNodeCtx().GetChainStorage().GetRelayActivity("")
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	ret := RelayList{ReqList: reqresults, ApprovedList: approvedresults, ActivityList: activityresults}
@@ -89,7 +89,7 @@ func (h *Handler) RemoveRelay(c echo.Context) (err error) {
 
 	succ, relayitem, err := nodectx.GetNodeCtx().GetChainStorage().DeleteRelay(relayid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	conn := conn.GetConn()
@@ -104,7 +104,7 @@ func (h *Handler) ApproveRelay(c echo.Context) (err error) {
 
 	succ, reqitem, err := nodectx.GetNodeCtx().GetChainStorage().ApproveRelayReq(reqid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	if succ == true {

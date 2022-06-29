@@ -35,7 +35,7 @@ func (h *Handler) PubkeyToEthaddr(c echo.Context) (err error) {
 
 	ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(input.EncodedPubkey)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	result := PubkeyToEthaddrResult{Addr: ethaddr}

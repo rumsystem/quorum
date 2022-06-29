@@ -18,12 +18,12 @@ import (
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
 	if groupId == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	seed, err := handlers.GetGroupSeed(groupId, h.Appdb)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, seed)

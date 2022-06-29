@@ -57,18 +57,18 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	}
 	senderlist := &SenderList{}
 	if err = c.Bind(&senderlist); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	trxids, err := h.Appdb.GetGroupContentBySenders(groupid, senderlist.Senders, starttrx, nonce, num, reverse, includestarttrx)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	groupitem, err := groupmgr.GetGroupItem(groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	ctnobjList := []*GroupContentObjectItem{}

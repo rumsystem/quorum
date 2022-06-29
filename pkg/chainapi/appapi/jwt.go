@@ -203,7 +203,7 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 	if utils.IsJWTTokenExpired(tokenStr, jwtKey) {
 		logger.Infof("token expires, return new token")
 	} else if valid, err := utils.IsJWTTokenValid(tokenStr, jwtKey); !valid || err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	name := GetJWTName(c)

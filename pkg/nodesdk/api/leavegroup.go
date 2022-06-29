@@ -28,7 +28,7 @@ func (h *NodeSDKHandler) LeaveGroup() echo.HandlerFunc {
 
 		// save nodesdkgroupitem to db
 		if err := nodesdkctx.GetCtx().GetChainStorage().RmGroup(params.GroupId); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		leaveGroupResult := &LeaveGroupResult{GroupId: params.GroupId}

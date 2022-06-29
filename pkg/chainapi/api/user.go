@@ -58,7 +58,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 	} else {
 		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if !isAnnounced {
@@ -67,7 +67,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 
 		user, err := group.GetAnnouncedUser(params.UserPubkey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if user.Action == quorumpb.ActionType_REMOVE && params.Action == "add" {
@@ -98,7 +98,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		ks := nodectx.GetNodeCtx().Keystore
 		signature, err := ks.SignByKeyName(item.GroupId, hash)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		item.GroupOwnerSign = hex.EncodeToString(signature)
@@ -114,7 +114,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		item.TimeStamp = time.Now().UnixNano()
 		trxId, err := group.UpdUser(item)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		blockGrpUserResult := &GrpUserResult{

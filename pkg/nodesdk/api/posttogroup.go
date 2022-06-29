@@ -66,21 +66,21 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		paramspb := new(quorumpb.Activity)
 
 		if err := c.Bind(paramspb); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		validate := &CustomValidatorPost{Validator: validator.New()}
 		if err := validate.Validate(paramspb); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(paramspb.Target.Id)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if nodesdkGroupItem.Group.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported.Error())
+			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported)
 		}
 
 		trxFactory := &rumchaindata.TrxFactory{}
@@ -93,12 +93,12 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 
 		trx, err := trxFactory.GetPostAnyTrxWithKeyAlias(nodesdkGroupItem.SignAlias, paramspb.Object)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		trxBytes, err := proto.Marshal(trx)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		trxItem := new(NodeSDKTrxItem)
@@ -107,12 +107,12 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 
 		trxItemBytes, err := json.Marshal(trxItem)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		encryptData, err := getEncryptData(trxItemBytes, nodesdkGroupItem.Group.CipherKey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		item := new(NodeSDKSendTrxItem)
@@ -121,31 +121,31 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 
 		itemBytes, err := json.Marshal(item)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		resultInBytes, err := httpClient.Post(GetPostTrxURI(groupId), itemBytes)
 		res := TrxResult{}
 		err = json.Unmarshal(resultInBytes, &res)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if res.TrxId == "" {
 			errres := APIErrorResult{}
 			err = json.Unmarshal(resultInBytes, &errres)
 			if err != nil {
-				return rumerrors.NewBadRequestError(err.Error())
+				return rumerrors.NewBadRequestError(err)
 			}
 			return rumerrors.NewBadRequestError(errres.Error)
 		}

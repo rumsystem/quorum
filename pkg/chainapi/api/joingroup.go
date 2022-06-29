@@ -108,19 +108,19 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 		ownerPubkey, err := p2pcrypto.UnmarshalPublicKey(ownerPubkeyBytes)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//decode signature
 		decodedSignature, err := hex.DecodeString(params.Signature)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//decode cipherkey
 		cipherKey, err := hex.DecodeString(params.CipherKey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		groupEncryptkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
@@ -153,7 +153,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		hash := localcrypto.Hash(buffer.Bytes())
 		verifiy, err := ownerPubkey.Verify(hash, decodedSignature)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if !verifiy {
@@ -209,13 +209,13 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			group.SetRumExchangeTestMode()
 		}
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//start sync
 		err = group.StartSync()
 		if err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		//add group to context

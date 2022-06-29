@@ -32,7 +32,7 @@ func (h *NodeSDKHandler) RmAlias() echo.HandlerFunc {
 		password := os.Getenv("RUM_KSPASSWD")
 
 		if err := dirks.UnAlias(params.Alias, password); err != nil {
-			return rumerrors.NewBadRequestError(err.Error())
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, "done")

@@ -21,7 +21,7 @@ func (h *Handler) GetChainTrxAuthMode(c echo.Context) (err error) {
 	trxType := c.Param("trx_type")
 	res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, groupid, trxType)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

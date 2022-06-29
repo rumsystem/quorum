@@ -12,12 +12,12 @@ import (
 func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyGroupID.Error())
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	reqItem := new(GrpInfo)
@@ -26,12 +26,12 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 
 	itemBytes, err := json.Marshal(reqItem)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	encryptData, err := getEncryptData(itemBytes, nodesdkGroupItem.Group.CipherKey)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	getItem := new(NodeSDKGetChainDataItem)
@@ -40,28 +40,28 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 
 	reqBytes, err := json.Marshal(getItem)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	//just get the first one
 	httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	resultInBytes, err := httpClient.Post(GetChainDataURI(groupid), reqBytes)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	result := new(GrpInfoNodeSDK)
 	if err := json.Unmarshal(resultInBytes, result); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	//verify groupInfo by check provider and signature
@@ -70,14 +70,14 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 	//save nodesdkgroupitem to db
 	grpInfo, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 	grpInfo.Group.HighestBlockId = result.HighestBlockId
 	grpInfo.Group.HighestHeight = result.HighestHeight
 	grpInfo.Group.LastUpdate = result.LatestUpdate
 
 	if err := nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(grpInfo); err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, result)

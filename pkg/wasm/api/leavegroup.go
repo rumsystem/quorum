@@ -8,7 +8,7 @@ import (
 
 func LeaveGroup(groupId string) (*handlers.LeaveGroupResult, error) {
 	if groupId == "" {
-		return nil, rumerrors.ErrEmptyGroupID
+		return nil, rumerrors.ErrInvalidGroupID
 	}
 	wasmCtx := quorumContext.GetWASMContext()
 	params := handlers.LeaveGroupParam{GroupId: groupId}

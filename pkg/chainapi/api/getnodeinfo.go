@@ -17,7 +17,7 @@ import (
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	info, err := handlers.GetNodeInfo(h.Node.NetworkName)
 	if err != nil {
-		return rumerrors.NewBadRequestError(err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, info)
