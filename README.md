@@ -82,8 +82,6 @@ Build the Docker image by running the command: `sudo docker build -t quorum .`
 Running:
 
 ```sh
-go install github.com/swaggo/swag/cmd/swag@latest
-# make sure the version as the same of swaggo/swag in god.mod,
 # only the first time you build need to run above.
 export PATH=$(go env GOPATH)/bin:$PATH
 # check GOPATH in PATH,
