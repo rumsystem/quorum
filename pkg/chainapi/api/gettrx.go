@@ -26,7 +26,7 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 
 	trxid := c.Param("trx_id")
 	if trxid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxID)
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 	}
 
 	//should return nonce count to client?

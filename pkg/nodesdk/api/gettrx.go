@@ -35,7 +35,7 @@ func (h *NodeSDKHandler) GetTrx() echo.HandlerFunc {
 
 		trxid := c.Param("trx_id")
 		if trxid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxID)
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)

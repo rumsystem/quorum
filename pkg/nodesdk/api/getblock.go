@@ -21,7 +21,7 @@ func (h *NodeSDKHandler) GetBlock() echo.HandlerFunc {
 
 		blockid := c.Param("block_id")
 		if blockid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEmptyBlockID)
+			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidBlockID)
 		}
 
 		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)

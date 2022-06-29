@@ -53,7 +53,7 @@ func (h *Handler) PubQueueAck(c echo.Context) (err error) {
 	}
 
 	if len(payload.TrxIds) == 0 {
-		return rumerrors.NewBadRequestError(rumerrors.ErrEmptyTrxIDList)
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxIDList)
 	}
 
 	res, err := handlers.PubQueueAck(payload.TrxIds)
