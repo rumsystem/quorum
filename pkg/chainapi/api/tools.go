@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"net/http"
@@ -28,7 +27,6 @@ func (h *Handler) PubkeyToEthaddr(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, output)
 	}
 
-	fmt.Println()
 	ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(input.EncodedPubkey)
 	if err != nil {
 		output[ERROR_INFO] = err.Error()

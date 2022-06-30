@@ -1,8 +1,8 @@
 package api
 
 import (
-	//"encoding/json"
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -246,7 +246,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		buffer.Write([]byte(item.CipherKey))
 		buffer.Write([]byte(item.AppKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
-		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
@@ -290,7 +290,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
-			hexkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+			base64key, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
@@ -300,20 +300,20 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 						output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
 						return c.JSON(http.StatusBadRequest, output)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					base64key, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				} else {
 					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(seed.GenesisBlock.GroupId))
 					if err != nil {
 						output[ERROR_INFO] = "create new group key err:" + err.Error()
 						return c.JSON(http.StatusBadRequest, output)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					base64key, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				}
 			}
 
-			pubkeybytes, err := hex.DecodeString(hexkey)
-			p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-			groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
+			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
+			//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+			//groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
 			if err != nil {
 				output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -323,7 +323,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+		//ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
 		if err != nil {
 			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -346,7 +347,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			}
 		}
 
-		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
+		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock, dirks)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
@@ -372,7 +373,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			item.ConsenseType = quorumpb.GroupConsenseType_POS
 		}
 
-		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+		//item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+		item.UserSignPubkey = base64.RawURLEncoding.EncodeToString(groupSignPubkey)
 
 		userEncryptKey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
 		if err != nil {
@@ -389,8 +391,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		item.UserEncryptPubkey = userEncryptKey
-		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
-
 		if seed.EncryptionType == "public" {
 			item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
 		} else {
@@ -434,7 +434,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		bufferResult.Write([]byte(groupEncryptkey))
 		bufferResult.Write([]byte(item.CipherKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
-		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: seed.ConsensusType, EncryptionType: seed.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}

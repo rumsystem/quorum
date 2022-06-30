@@ -57,7 +57,7 @@ func LeaveGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*LeaveGroupResul
 	buffer.Write(groupSignPubkey)
 	buffer.Write([]byte(params.GroupId))
 	hash := localcrypto.Hash(buffer.Bytes())
-	signature, err := ks.SignByKeyName(params.GroupId, hash)
+	signature, err := ks.EthSignByKeyName(params.GroupId, hash)
 	encodedString := hex.EncodeToString(signature)
 
 	// delete group seed from appdata

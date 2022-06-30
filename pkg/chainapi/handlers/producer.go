@@ -74,7 +74,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*G
 		hash := localcrypto.Hash(buffer.Bytes())
 
 		ks := nodectx.GetNodeCtx().Keystore
-		signature, err := ks.SignByKeyName(item.GroupId, hash)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hash)
 
 		if err != nil {
 			return nil, err

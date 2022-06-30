@@ -90,7 +90,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 		buffer.Write(groupSignPubkey)
 		hash := localcrypto.Hash(buffer.Bytes())
 
-		signature, err := ks.SignByKeyName(item.GroupId, hash)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hash)
 
 		if err != nil {
 			return nil, err

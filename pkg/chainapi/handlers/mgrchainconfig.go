@@ -155,7 +155,7 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 
 	hash := localcrypto.Hash(buffer.Bytes())
 
-	signature, err := ks.SignByKeyName(params.GroupId, hash)
+	signature, err := ks.EthSignByKeyName(params.GroupId, hash)
 
 	if err != nil {
 		return nil, err

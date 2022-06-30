@@ -18,7 +18,7 @@ replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0
 
 replace github.com/rumsystem/rumchaindata => ../rumchaindata
 
-//replace github.com/rumsystem/keystore => ../keystore
+replace github.com/rumsystem/keystore => ../keystore
 
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2

@@ -55,7 +55,7 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 	buffer.Write(groupSignPubkey)
 	buffer.Write([]byte(params.GroupId))
 	hash := localcrypto.Hash(buffer.Bytes())
-	signature, err := ks.SignByKeyName(params.GroupId, hash)
+	signature, err := ks.EthSignByKeyName(params.GroupId, hash)
 	encodedString := hex.EncodeToString(signature)
 
 	return &ClearGroupDataResult{GroupId: params.GroupId, Signature: encodedString}, nil

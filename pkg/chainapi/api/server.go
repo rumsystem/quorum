@@ -75,6 +75,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		a.POST("/v1/token/create", apph.CreateToken)
 
 		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
+		r.POST("/v1/tools/seedurlextend", h.SeedUrlextend())
 
 		r.POST("/v1/preview/relay/req", h.RequestRelay)
 		r.GET("/v1/preview/relay", h.ListRelay)

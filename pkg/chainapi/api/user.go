@@ -110,7 +110,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		hash := localcrypto.Hash(buffer.Bytes())
 
 		ks := nodectx.GetNodeCtx().Keystore
-		signature, err := ks.SignByKeyName(item.GroupId, hash)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hash)
 
 		if err != nil {
 			output[ERROR_INFO] = err.Error()

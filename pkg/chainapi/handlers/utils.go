@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	guuid "github.com/google/uuid"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	"github.com/rumsystem/rumchaindata/pkg/pb"
 	"math/big"
@@ -84,11 +84,24 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	b64cipher := base64.RawURLEncoding.EncodeToString(cipherkeybytes)
 	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
 
-	byteproducerpubkey, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
-	if err != nil {
-		return "", err
-	}
-	b64producerpubkey := base64.RawURLEncoding.EncodeToString(byteproducerpubkey)
+	//new eth key: is the compressed base64 RawURLEncoding
+	//old libp2p key: base64.StdEncoding
+	var b64producerpubkey string
+	b64producerpubkey = seed.GenesisBlock.ProducerPubKey
+	//if strings.HasPrefix(seed.GenesisBlock.ProducerPubKey, "0x") {
+	//	bethpubkey, err := hex.DecodeString(seed.GenesisBlock.ProducerPubKey[2:])
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//	b64producerpubkey = base64.RawURLEncoding.EncodeToString(bethpubkey)
+	//	//b64producerpubkey = seed.GenesisBlock.ProducerPubKey
+	//} else {
+	//	byteproducerpubkey, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//	b64producerpubkey = base64.RawURLEncoding.EncodeToString(byteproducerpubkey)
+	//}
 
 	values := url.Values{}
 	values.Add("b", b64bstr)
@@ -133,8 +146,6 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	}
 
 	b64producerpubkey := q.Get("k")
-	b64producerpubkeybyte, err := base64.RawURLEncoding.DecodeString(b64producerpubkey)
-	producerpubkey := p2pcrypto.ConfigEncodeKey(b64producerpubkeybyte)
 
 	b64timestampstr := q.Get("t")
 
@@ -167,7 +178,7 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		PrevBlockId:    "",
 		PreviousHash:   nil,
 		TimeStamp:      timestamp,
-		ProducerPubKey: producerpubkey,
+		ProducerPubKey: b64producerpubkey,
 		Trxs:           nil,
 		Signature:      b64signbyte,
 	}
@@ -200,7 +211,7 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		CipherKey:      cipherkeyhexstr,
 		GroupId:        genesisBlock.GroupId,
 		OwnerPubkey:    genesisBlock.ProducerPubKey,
-		Signature:      string(genesisBlock.Signature),
+		Signature:      hex.EncodeToString(genesisBlock.Signature),
 		AppKey:         appkey,
 	}
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"sort"
 
-	"encoding/hex"
+	"encoding/base64"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/labstack/echo/v4"
 	//localcrypto "github.com/rumsystem/keystore/pkg/crypto"
@@ -76,11 +76,12 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.HighestHeight = value.Item.HighestHeight
 		group.HighestBlockId = value.Item.HighestBlockId
 
-		b, err := hex.DecodeString(group.UserPubkey)
+		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
 		if err != nil {
 			//try libp2pkey
 		} else {
-			ethpubkey, err := ethcrypto.UnmarshalPubkey(b)
+			ethpubkey, err := ethcrypto.DecompressPubkey(b)
+			//ethpubkey, err := ethcrypto.UnmarshalPubkey(b)
 			if err == nil {
 				ethaddr := ethcrypto.PubkeyToAddress(*ethpubkey)
 				group.UserEthaddr = ethaddr.Hex()

@@ -99,7 +99,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	hash := localcrypto.Hash(buffer.Bytes())
 
 	ks := nodectx.GetNodeCtx().Keystore
-	signature, err := ks.SignByKeyName(item.GroupId, hash)
+	signature, err := ks.EthSignByKeyName(item.GroupId, hash)
 	if err != nil {
 		return err
 	}

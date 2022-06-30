@@ -198,7 +198,7 @@ func (sssender *MolassesSnapshotSender) sendSnapshot() error {
 			return err
 		}
 		hashed := localcrypto.Hash(bbytes)
-		signature, err := nodectx.GetNodeCtx().Keystore.SignByKeyName(sssender.groupId, hashed, sssender.nodename)
+		signature, err := nodectx.GetNodeCtx().Keystore.EthSignByKeyName(sssender.groupId, hashed, sssender.nodename)
 		if err != nil {
 			return err
 		}

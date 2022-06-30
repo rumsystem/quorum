@@ -1,16 +1,12 @@
 package handlers
 
 import (
-	//"bytes"
 	"encoding/hex"
-	//"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	guuid "github.com/google/uuid"
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
@@ -60,7 +56,7 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
 
-	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid.String(), fmt.Sprintf("0x%s", hexkey), ks, "")
+	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid.String(), hexkey, ks, "")
 	if err != nil {
 		return nil, err
 	}
@@ -142,47 +138,6 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	result["group_id"] = groupid.String()
 	return result, err
 }
-
-//func GenerateGroupSeedSignature(result *GroupSeed) error {
-//	genesisBlockBytes, err := json.Marshal(result.GenesisBlock)
-//	if err != nil {
-//		e := fmt.Errorf("Marshal genesis block failed with msg: %s", err)
-//		return e
-//	}
-//
-//	groupSignPubkey, err := p2pcrypto.ConfigDecodeKey(result.OwnerPubkey)
-//	if err != nil {
-//		e := fmt.Errorf("Decode group owner pubkey failed: %s", err)
-//		return e
-//	}
-//
-//	cipherKey, err := hex.DecodeString(result.CipherKey)
-//	if err != nil {
-//		e := fmt.Errorf("Decode cipher key failed: %s", err)
-//		return e
-//	}
-//
-//	var buffer bytes.Buffer
-//	buffer.Write(genesisBlockBytes)
-//	buffer.Write([]byte(result.GroupId))
-//	buffer.Write([]byte(result.GroupName))
-//	buffer.Write(groupSignPubkey) //group owner pubkey
-//	buffer.Write([]byte(result.ConsensusType))
-//	buffer.Write([]byte(result.EncryptionType))
-//	buffer.Write([]byte(result.AppKey))
-//	buffer.Write(cipherKey)
-//
-//	hash := localcrypto.Hash(buffer.Bytes())
-//	ks := nodectx.GetNodeCtx().Keystore
-//	signature, err := ks.SignByKeyName(result.GroupId, hash)
-//	if err != nil {
-//		e := fmt.Errorf("ks.SignByKeyName failed: %s", err)
-//		return e
-//	}
-//	result.Signature = hex.EncodeToString(signature)
-//
-//	return nil
-//}
 
 // ToPbGroupSeed convert `api.GroupSeed` to `pb.GroupSeed`
 func ToPbGroupSeed(s GroupSeed) pb.GroupSeed {

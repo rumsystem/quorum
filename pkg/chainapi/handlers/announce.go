@@ -81,7 +81,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 		buffer.Write([]byte(item.EncryptPubkey))
 		buffer.Write([]byte(item.Type.String()))
 		hash := localcrypto.Hash(buffer.Bytes())
-		signature, err := nodectx.GetNodeCtx().Keystore.SignByKeyName(item.GroupId, hash)
+		signature, err := nodectx.GetNodeCtx().Keystore.EthSignByKeyName(item.GroupId, hash)
 
 		if err != nil {
 			return nil, err
