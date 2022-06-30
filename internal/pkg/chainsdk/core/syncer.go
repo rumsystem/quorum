@@ -300,7 +300,7 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block forward msg out
-	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx(block)
+	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx("", block)
 	if err != nil {
 		return err
 	}
@@ -326,7 +326,7 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block backward msg out
-	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockBackwardTrx(block)
+	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockBackwardTrx("", block)
 	if err != nil {
 		return err
 	}
