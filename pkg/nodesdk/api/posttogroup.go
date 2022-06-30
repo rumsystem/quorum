@@ -97,7 +97,7 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			paramspb.Object.Type = paramspb.Type
 		}
 
-		trx, err := trxFactory.GetPostAnyTrxWithKeyAlias(nodesdkGroupItem.SignAlias, paramspb.Object)
+		trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, paramspb.Object)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)

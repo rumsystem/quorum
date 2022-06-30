@@ -347,7 +347,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			}
 		}
 
-		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock, dirks)
+		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
