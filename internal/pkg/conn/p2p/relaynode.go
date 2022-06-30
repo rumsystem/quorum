@@ -94,7 +94,10 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 			libp2p.Transport(ws.New),
 		),
 		libp2p.DisableRelay(),
-		libp2p.EnableRelayService(relay.WithLimit(nil)),
+		libp2p.EnableRelayService(
+			relay.WithResources(nodeOpt.RC),
+			relay.WithLimit(nil), /* double check, nodeOpt.RC.Limit should already be nil */
+		),
 		identity,
 	}
 
