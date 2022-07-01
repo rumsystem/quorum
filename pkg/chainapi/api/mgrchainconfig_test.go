@@ -50,7 +50,7 @@ func TestSetChainTrxAuthMode(t *testing.T) {
 			}
 
 			// wait 10 seconds
-			time.Sleep(10 * time.Second)
+			time.Sleep(15 * time.Second)
 			authItem, err := getChainTrxAuthMode(peerapi, handlers.TrxAuthParams{GroupId: group.GroupId, TrxType: trxType})
 			if err != nil {
 				t.Errorf("get chain trx auth mode failed: %s", err)
