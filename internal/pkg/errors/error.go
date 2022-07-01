@@ -7,6 +7,7 @@ var (
 	ErrGroupNotFound    = errors.New("Group not found")
 	ErrJoinGroup        = errors.New("Join group failed")
 	ErrInvalidGroupData = errors.New("Invalid group data")
+	ErrOnlyGroupOwner   = errors.New("Only group owner can do this")
 
 	ErrInvalidBlockID  = errors.New("Invalid block id")
 	ErrBlockIDNotFound = errors.New("Block id not found")
