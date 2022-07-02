@@ -11,6 +11,7 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -38,9 +39,9 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
-		return nil, errors.New("Can not find group")
+		return nil, rumerrors.ErrGroupNotFound
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		return nil, errors.New("Only group owner can add or remove config of it")
+		return nil, rumerrors.ErrOnlyGroupOwner
 	} else {
 
 		ks := nodectx.GetNodeCtx().Keystore

@@ -1,10 +1,8 @@
 package handlers
 
 import (
-	"errors"
-	"fmt"
-
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -15,12 +13,12 @@ type ChainSendTrxRuleListItem struct {
 	GroupOwnerPubkey string   `validate:"required"`
 	GroupOwnerSign   string   `validate:"required"`
 	TimeStamp        int64    `validate:"required"`
-	Memo             string   `validate:"required"`
+	Memo             string
 }
 
 func GetChainTrxAllowList(chainapidb def.APIHandlerIface, groupid string) ([]*ChainSendTrxRuleListItem, error) {
 	if groupid == "" {
-		return nil, errors.New("group_id can't be nil.")
+		return nil, rumerrors.ErrInvalidGroupID
 	}
 	var result []*ChainSendTrxRuleListItem
 
@@ -47,6 +45,6 @@ func GetChainTrxAllowList(chainapidb def.APIHandlerIface, groupid string) ([]*Ch
 		}
 		return result, nil
 	} else {
-		return nil, fmt.Errorf("Group %s not exist", groupid)
+		return nil, rumerrors.ErrGroupNotFound
 	}
 }

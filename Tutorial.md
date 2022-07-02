@@ -1898,7 +1898,7 @@ Params:
   - `config`, config content, includes the following items
     - `trx_type`, type of trx
     - `trx_auth_mode`, must be one of "follow_alw_list"/"follow_dny_list"
-    - `memo`, memo
+  - `memo`, memo
 
 **Example**:
 
@@ -1961,7 +1961,7 @@ Params:
     - `action`, type of operation, must be "add"/"remove"
     - `pubkey`, pubkey to add/remove
     - `trx_type`, type of trx (can be array)
-    - `memo`, memo
+  - `memo`, memo
 
 **Example**:
 

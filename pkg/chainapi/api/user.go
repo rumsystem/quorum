@@ -52,9 +52,9 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
-		return rumerrors.NewBadRequestError("Can not find group")
+		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		return rumerrors.NewBadRequestError("Only group owner can add or remove user")
+		return rumerrors.NewBadRequestError(rumerrors.ErrOnlyGroupOwner)
 	} else {
 		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey)
 		if err != nil {
