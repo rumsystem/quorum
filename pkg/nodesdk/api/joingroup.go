@@ -2,6 +2,7 @@ package nodesdkapi
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,13 +10,11 @@ import (
 	"net/url"
 
 	"github.com/labstack/echo/v4"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
 type JoinGroupParams struct {
@@ -136,47 +135,7 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		//check seed signature
-		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(seed.OwnerPubkey)
-		if err != nil {
-			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		//decode signature
-		//decodedSignature, err := hex.DecodeString(seed.Signature)
-		//if err != nil {
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
-
-		//decode cipherkey
-		//cipherKey, err := hex.DecodeString(seed.CipherKey)
-		//if err != nil {
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
-
-		//var buffer bytes.Buffer
-		//buffer.Write(genesisBlockBytes)
-		//buffer.Write([]byte(params.Seed.GroupId))
-		//buffer.Write([]byte(params.Seed.GroupName))
-		//buffer.Write(ownerPubkeyBytes)
-		//buffer.Write(groupSignPubkey)
-		////buffer.Write([]byte(params.Seed.ConsensusType))
-		//buffer.Write([]byte(params.Seed.EncryptionType))
-		//buffer.Write([]byte(params.Seed.AppKey))
-		//buffer.Write(cipherKey)
-
-		//hash := localcrypto.Hash(buffer.Bytes())
-		//verifiy, err := ownerPubkey.Verify(hash, decodedSignature)
-		//if err != nil {
-		//	output[ERROR_INFO] = err.Error()
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
-
-		//if !verifiy {
-		//	output[ERROR_INFO] = "Join Group failed, can not verify signature"
-		//	return c.JSON(http.StatusBadRequest, output)
-		//}
+		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
 
 		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
@@ -189,22 +148,17 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		//*huoju*
-		//API does not work???
-		//ConfigEncodeKey
-		signPubkey, err := dirks.GetEncodedPubkeyByAlias(SignAlias, localcrypto.Sign)
+		b64signPubkey, err := dirks.GetEncodedPubkeyByAlias(SignAlias, localcrypto.Sign)
 		if err != nil {
 			output[ERROR_INFO] = "Get Sign pubkey failed"
 			return c.JSON(http.StatusBadRequest, output)
 		}
-		pubkeybytes, err := hex.DecodeString(signPubkey)
+		signPubkey, err := base64.RawURLEncoding.DecodeString(b64signPubkey)
+
 		if err != nil {
 			output[ERROR_INFO] = "Decode Sign pubkey failed"
 			return c.JSON(http.StatusBadRequest, output)
 		}
-
-		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-		decodedsignpubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
 
 		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(EncryptAlias, localcrypto.Encrypt)
 		if err != nil {
@@ -222,7 +176,7 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 		group.GroupId = seed.GenesisBlock.GroupId
 		group.GroupName = seed.GroupName
 		group.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
-		group.UserSignPubkey = p2pcrypto.ConfigEncodeKey(decodedsignpubkey)
+		group.UserSignPubkey = base64.RawURLEncoding.EncodeToString(signPubkey)
 		group.UserEncryptPubkey = encryptPubkey
 		group.LastUpdate = 0 //update after getGroupInfo from ChainSDKAPI
 		group.HighestHeight = 0
@@ -273,7 +227,7 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 		bufferResult.Write([]byte(group.GroupId))
 		bufferResult.Write([]byte(group.GroupName))
 		bufferResult.Write(ownerPubkeyBytes)
-		bufferResult.Write(decodedsignpubkey)
+		bufferResult.Write(signPubkey)
 		bufferResult.Write([]byte(encryptPubkey))
 		bufferResult.Write([]byte(group.CipherKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
