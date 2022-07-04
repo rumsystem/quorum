@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -42,13 +43,13 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, errors.New("Only group owner can add or remove config of it")
 	} else {
-
 		ks := nodectx.GetNodeCtx().Keystore
 
-		hexkey, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
-		pubkeybytes, err := hex.DecodeString(hexkey)
-		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-		groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
+		base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+		groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
+		//pubkeybytes, err := hex.DecodeString(hexkey)
+		//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+		//groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
 		if err != nil {
 			return nil, errors.New("group key can't be decoded, err:" + err.Error())
 		}
