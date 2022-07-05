@@ -2,16 +2,17 @@ package p2p
 
 import (
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 
 	ma "github.com/multiformats/go-multiaddr"
 )
 
 type QuorumRelayFilter struct {
-	// TODO: read from db, db is synced from somewhere?
+	db storage.QuorumStorage
 }
 
-func NewQuorumRelayFilter() *QuorumRelayFilter {
-	rf := QuorumRelayFilter{}
+func NewQuorumRelayFilter(db storage.QuorumStorage) *QuorumRelayFilter {
+	rf := QuorumRelayFilter{db}
 	return &rf
 }
 

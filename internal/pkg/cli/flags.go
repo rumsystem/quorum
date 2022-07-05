@@ -50,6 +50,7 @@ type RelayNodeFlag struct {
 	ListenAddresses AddrList
 	PeerName        string
 	ConfigDir       string
+	DataDir         string
 	KeyStoreDir     string
 	KeyStoreName    string
 	KeyStorePwd     string

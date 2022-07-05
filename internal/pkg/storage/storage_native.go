@@ -249,3 +249,11 @@ func CreateDb(path string) (*DbMgr, error) {
 	}
 	return &manager, nil
 }
+
+func InitRelayDb(path string) (*QSBadger, error) {
+	db := QSBadger{}
+	if err := db.Init(path + "_relaydb"); err != nil {
+		return nil, err
+	}
+	return &db, nil
+}

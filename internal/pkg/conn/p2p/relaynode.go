@@ -26,6 +26,7 @@ import (
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 type RelayNode struct {
@@ -56,7 +57,7 @@ func (node *RelayNode) eventhandler(ctx context.Context) {
 	}
 }
 
-func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions, key *ethkeystore.Key, listenAddresses []maddr.Multiaddr) (*RelayNode, error) {
+func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions, key *ethkeystore.Key, listenAddresses []maddr.Multiaddr, db storage.QuorumStorage) (*RelayNode, error) {
 	routingProtocol := fmt.Sprintf("%s/%s", ProtocolPrefix, nodeOpt.NetworkName)
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
 		dhtOpts := dual.DHTOption(
@@ -95,7 +96,7 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 		),
 		libp2p.DisableRelay(),
 		libp2p.EnableRelayService(
-			relay.WithACL(NewQuorumRelayFilter()),
+			relay.WithACL(NewQuorumRelayFilter(db)),
 			relay.WithResources(nodeOpt.RC),
 			relay.WithLimit(nil), /* double check, nodeOpt.RC.Limit should already be nil */
 		),
