@@ -310,10 +310,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 					base64key, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				}
 			}
-
 			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
-			//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-			//groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
 			if err != nil {
 				output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -323,7 +320,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, output)
 		}
 
-		//ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
 		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
 		if err != nil {
 			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
@@ -373,7 +369,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			item.ConsenseType = quorumpb.GroupConsenseType_POS
 		}
 
-		//item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
 		item.UserSignPubkey = base64.RawURLEncoding.EncodeToString(groupSignPubkey)
 
 		userEncryptKey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)

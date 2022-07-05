@@ -167,12 +167,6 @@ func (producer *MolassesProducer) produceBlock() {
 	molaproducer_log.Debugf("<%s> package <%d> trxs, size <%d>", producer.groupId, totalTrx, totalSizeBytes)
 
 	//create block
-	//pubkeyBytes, err := p2pcrypto.ConfigDecodeKey(producer.grpItem.UserSignPubkey)
-	//if err != nil {
-	//	molaproducer_log.Debug(err.Error())
-	//	return
-	//}
-
 	ks := localcrypto.GetKeystore()
 	newBlock, err := rumchaindata.CreateBlockByEthKey(topBlock, trxs, producer.grpItem.UserSignPubkey, ks, "", producer.nodename)
 	if err != nil {
