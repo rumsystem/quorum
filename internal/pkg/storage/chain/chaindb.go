@@ -2,7 +2,6 @@ package chainstorage
 
 import (
 	"errors"
-	"fmt"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"

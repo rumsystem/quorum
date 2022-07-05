@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"

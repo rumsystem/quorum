@@ -225,9 +225,7 @@ func groupSeedKey(groupID string) []byte {
 }
 
 func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
-	fmt.Println(seed)
 	key := groupSeedKey(seed.GenesisBlock.GroupId)
-
 	value, err := proto.Marshal(seed)
 	if err != nil {
 		return err
