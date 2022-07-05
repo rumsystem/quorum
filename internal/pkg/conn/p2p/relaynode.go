@@ -95,6 +95,7 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 		),
 		libp2p.DisableRelay(),
 		libp2p.EnableRelayService(
+			relay.WithACL(NewQuorumRelayFilter()),
 			relay.WithResources(nodeOpt.RC),
 			relay.WithLimit(nil), /* double check, nodeOpt.RC.Limit should already be nil */
 		),
