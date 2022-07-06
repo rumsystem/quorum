@@ -64,7 +64,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		output[ERROR_INFO] = "Only group owner can add or remove user"
 		return c.JSON(http.StatusBadRequest, output)
 	} else {
-		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey)
+		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.ChainCtx.GetNodeName())
 		if err != nil {
 			output[ERROR_INFO] = err.Error()
 			return c.JSON(http.StatusBadRequest, output)
