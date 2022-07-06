@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -75,7 +77,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
-			hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+			base64key, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
@@ -85,20 +87,17 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 						output[ERROR_INFO] = fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
 						return c.JSON(http.StatusBadRequest, output)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+					base64key, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				} else {
 					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(params.GroupId))
 					if err != nil {
 						output[ERROR_INFO] = "create new group key err:" + err.Error()
 						return c.JSON(http.StatusBadRequest, output)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+					base64key, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				}
 			}
-
-			pubkeybytes, err := hex.DecodeString(hexkey)
-			p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-			groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
+			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
 			if err != nil {
 				output[ERROR_INFO] = "group key can't be decoded, err:" + err.Error()
 				return c.JSON(http.StatusBadRequest, output)
@@ -176,12 +175,18 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		item.OwnerPubKey = params.OwnerPubkey
 		item.GroupId = params.GroupId
 		item.GroupName = params.GroupName
-		item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(ownerPubkeyBytes)
+
+		secp256k1pubkey, ok := ownerPubkey.(*p2pcrypto.Secp256k1PublicKey)
+		if ok == true {
+			btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
+			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(btcecpubkey.ToECDSA()))
+		}
+
 		item.CipherKey = params.CipherKey
 		item.AppKey = params.AppKey
 
 		item.ConsenseType = quorumpb.GroupConsenseType_POA
-		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+		item.UserSignPubkey = base64.RawURLEncoding.EncodeToString(groupSignPubkey)
 
 		userEncryptKey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 		if err != nil {
@@ -198,7 +203,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		}
 
 		item.UserEncryptPubkey = userEncryptKey
-		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+		//item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
 
 		if params.EncryptionType == "public" {
 			item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
