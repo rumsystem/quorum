@@ -219,18 +219,24 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
 
 	var shouldAccept bool
+
+	bpk, err := localcrypto.Libp2pPubkeyToEthBase64(block.ProducerPubKey)
+	if err != nil {
+		bpk = block.ProducerPubKey
+	}
+
 	if chain.Consensus.Producer() != nil {
 		//if I am a producer, no need to addBlock since block just produced is already saved
 		chain_log.Debugf("<%s> Producer ignore incoming block", chain.groupId)
 		shouldAccept = false
-	} else if _, ok := chain.ProducerPool[block.ProducerPubKey]; ok {
+	} else if _, ok := chain.ProducerPool[bpk]; ok {
 		//from registed producer
 		chain_log.Debugf("<%s> User prepare to accept the block", chain.groupId)
 		shouldAccept = true
 	} else {
 		//from someone else
 		shouldAccept = false
-		chain_log.Warningf("<%s> received block <%s> from unregisted producer <%s>, reject it", chain.group.Item.GroupId, block.BlockId, block.ProducerPubKey)
+		chain_log.Warningf("<%s> received block <%s> from unregisted producer <%s>, reject it", chain.group.Item.GroupId, block.BlockId, bpk)
 	}
 
 	if shouldAccept {
@@ -453,16 +459,24 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 
 	var shouldAccept bool
 
-	chain_log.Debugf("<%s> REQ_BLOCK_RESP, block_id <%s>, block_producer <%s>", chain.groupId, newBlock.BlockId, newBlock.ProducerPubKey)
+	nbpk, err := localcrypto.Libp2pPubkeyToEthBase64(newBlock.ProducerPubKey)
+	if err != nil {
+		nbpk = newBlock.ProducerPubKey
+	}
 
-	if _, ok := chain.ProducerPool[newBlock.ProducerPubKey]; ok {
+	chain_log.Debugf("<%s> REQ_BLOCK_RESP, block_id <%s>, block_producer <%s>", chain.groupId, newBlock.BlockId, nbpk)
+
+	if _, ok := chain.ProducerPool[nbpk]; ok {
 		shouldAccept = true
 	} else {
 		shouldAccept = false
 	}
 
 	if !shouldAccept {
-		chain_log.Warnf(" <%s> Block producer <%s> not registed, reject", chain.groupId, newBlock.ProducerPubKey)
+		chain_log.Warnf(" <%s> Block producer <%s> not registed, reject", chain.groupId, nbpk)
+		for key, _ := range chain.ProducerPool {
+			chain_log.Warnf(" <%s> List Block producer %s", chain.groupId, key)
+		}
 		return nil
 	}
 
@@ -483,7 +497,12 @@ func (chain *Chain) UpdProducerList() {
 	chain.ProducerPool = make(map[string]*quorumpb.ProducerItem)
 	producers, _ := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range producers {
-		chain.ProducerPool[item.ProducerPubkey] = item
+		base64ethpkey, err := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
+		if err == nil {
+			chain.ProducerPool[base64ethpkey] = item
+		} else {
+			chain.ProducerPool[item.ProducerPubkey] = item
+		}
 		ownerPrefix := "(producer)"
 		if item.ProducerPubkey == chain.group.Item.OwnerPubKey {
 			ownerPrefix = "(owner)"
@@ -741,7 +760,7 @@ func (chain *Chain) ApplyUserTrxs(trxs []*quorumpb.Trx, nodename string) error {
 
 		if isExist {
 			chain_log.Debugf("<%s> trx <%s> existed, update trx only", chain.groupId, trx.TrxId)
-			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx)
+			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 			continue
 		}
 
@@ -843,7 +862,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 
 		if isExist {
 			chain_log.Debugf("<%s> trx <%s> existed, update trx", chain.groupId, trx.TrxId)
-			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx)
+			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 			continue
 		}
 
