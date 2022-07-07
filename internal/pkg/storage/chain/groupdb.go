@@ -256,22 +256,6 @@ func (cs *Storage) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
 	return &result, nil
 }
 
-//func (cs *Storage) AddGroupSeedV2(groupItem *quorumpb.NodeSDKGroupItem) error {
-//	//check if group exist
-//	key := s.GROUPITEM_PREFIX + "_" + groupItem.Group.GroupId
-//	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
-//	if exist {
-//		return errors.New("Group with same GroupId existed")
-//	}
-//
-//	//add group to db
-//	value, err := proto.Marshal(groupItem)
-//	if err != nil {
-//		return err
-//	}
-//	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
-//}
-
 func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	value, err := proto.Marshal(groupItem)
 	if err != nil {

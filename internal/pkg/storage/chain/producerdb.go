@@ -20,7 +20,12 @@ func (cs *Storage) UpdateProducer(data []byte, prefix ...string) (err error) {
 		return err
 	}
 
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + item.ProducerPubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
+	if pk == "" {
+		pk = item.ProducerPubkey
+	}
+
+	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
 
 	chaindb_log.Infof("upd producer with key %s", key)
 
@@ -64,7 +69,13 @@ func (cs *Storage) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]
 func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
 
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + item.ProducerPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
+	if pk == "" {
+		pk = item.ProducerPubkey
+	}
+
+	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
 	chaindb_log.Infof("Add Producer with key %s", key)
 
 	pbyte, err := proto.Marshal(item)
@@ -127,8 +138,12 @@ func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ..
 	return &ann, err
 }
 
-func (cs *Storage) IsProducerAnnounced(groupId, producerSignPubkey string, prefix ...string) (bool, error) {
+func (cs *Storage) IsProducerAnnounced(groupId, pubkey string, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + producerSignPubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pk
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
