@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -106,11 +105,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 	//update block produced count
 	for _, block := range blocks {
-		bpk, err := localcrypto.Libp2pPubkeyToEthBase64(block.ProducerPubKey)
-		if err != nil && bpk == "" {
-			molauser_log.Warnf("Pubkey err <%s>", err)
-		}
-		err = nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(user.groupId, bpk, user.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
 		if err != nil {
 			return err
 		}

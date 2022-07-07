@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -73,9 +74,15 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 	return cs.dbmgr.Db.Set([]byte(key), pbyte)
 }
 
-func (cs *Storage) AddProducedBlockCount(groupId, producerPubkey string, prefix ...string) error {
+func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + producerPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+
+	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
 	var pProducer *quorumpb.ProducerItem
 	pProducer = &quorumpb.ProducerItem{}
 
@@ -100,7 +107,11 @@ func (cs *Storage) AddProducedBlockCount(groupId, producerPubkey string, prefix 
 
 func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pk
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
