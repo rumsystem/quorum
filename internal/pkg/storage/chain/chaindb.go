@@ -39,7 +39,14 @@ func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, grou
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		return err
+		//patch for old keyformat
+		key = nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
+		value, err = cs.dbmgr.Db.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		//update to the new keyformat
+		key = nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + pk
 	}
 
 	err = proto.Unmarshal(value, pAnnounced)

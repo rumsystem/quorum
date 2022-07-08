@@ -99,7 +99,16 @@ func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...strin
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		return err
+		//patch for old keyformat
+
+		key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pubkey
+		value, err = cs.dbmgr.Db.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		//update to the new keyformat
+		key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
+
 	}
 
 	err = proto.Unmarshal(value, pProducer)

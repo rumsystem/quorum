@@ -63,7 +63,8 @@ func (cs *Storage) RmBlock(blockId string, cached bool, prefix ...string) error 
 		key = nodeprefix + s.BLK_PREFIX + "_" + blockId
 	}
 
-	return cs.dbmgr.Db.Delete([]byte(key))
+	err := cs.dbmgr.Db.Delete([]byte(key))
+	return err
 }
 
 //get block by block_id
