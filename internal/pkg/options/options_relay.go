@@ -100,15 +100,21 @@ func loadRelayNodeOptions(dir string, keyname string) (*RelayNodeOptions, error)
 	}
 
 	options := &RelayNodeOptions{}
+	options.NetworkName = v.GetString("NetworkName")
 	if options.NetworkName == "" {
 		options.NetworkName = defaultNetworkName
 	}
 	options.SignKeyMap = v.GetStringMapString("SignKeyMap")
 
-	err = v.UnmarshalKey("RC", &options.RC)
-	if err != nil {
-		return nil, err
+	rcIfc := v.Get("RC")
+	if rcIfc != nil {
+		err = v.UnmarshalKey("RC", &options.RC)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		options.RC = relay.DefaultResources()
+		options.RC.Limit = nil /* make it unlimit, so that it wont be a transient connection */
 	}
-
 	return options, nil
 }
