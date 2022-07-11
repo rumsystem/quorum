@@ -40,7 +40,7 @@ require (
 	github.com/go-playground/validator/v10 v10.5.0
 	github.com/golang-jwt/jwt/v4 v4.4.1
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
 	github.com/hack-pad/go-indexeddb v0.1.0
@@ -64,6 +64,7 @@ require (
 	github.com/open-policy-agent/opa v0.39.0
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
+	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
 	github.com/rumsystem/keystore v0.0.0-20220602192804-2943b530ca3c
 	github.com/rumsystem/rumchaindata v0.0.0-20220601172351-68d1b5f86577
 	github.com/spf13/viper v1.11.0
@@ -108,6 +109,7 @@ require (
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/spec v0.20.4 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
+	github.com/go-playground/form/v4 v4.2.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
@@ -118,6 +120,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v1.12.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect

@@ -17,8 +17,10 @@ type Config struct {
 	RendezvousString     string
 	BootstrapPeers       AddrList
 	ListenAddresses      AddrList
-	SSLCertIPAddresses   ipList
+	APIIPAddresses       ipList
 	APIListenAddresses   string
+	CertDir              string
+	ZeroAccessKey        string
 	NodeAPIListenAddress string
 	ProtocolID           string
 	IsBootstrap          bool
@@ -88,8 +90,10 @@ func ParseFlags() (Config, error) {
 		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.Var(&config.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: `-listen /ip4/127.0.0.1/tcp/4215 -listen /ip/127.0.0.1/tcp/5215/ws`")
-	flag.Var(&config.SSLCertIPAddresses, "ips", "IPAddresses field of x509 certificate")
-	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "Adds a multiaddress to the listen list for chainsdk")
+	flag.Var(&config.APIIPAddresses, "ips", "IPAddresses for api server")
+	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "api server listen port")
+	flag.StringVar(&config.CertDir, "certdir", "certs", "ssl certificate directory")
+	flag.StringVar(&config.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
 	flag.StringVar(&config.NodeAPIListenAddress, "nodeapilisten", ":5216", "Adds a multiaddress to the listen list for nodesdk")
 	flag.StringVar(&config.PeerName, "peername", "peer", "peername")
 	flag.StringVar(&config.ConfigDir, "configdir", "./config/", "config and keys dir")

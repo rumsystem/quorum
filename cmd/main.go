@@ -294,7 +294,7 @@ func mainRet(config cli.Config) int {
 			ChainAPIdb: newchainstorage,
 		}
 
-		apiaddress := "https://%s/api/v1"
+		apiaddress := "http://%s/api/v1"
 		if config.APIListenAddresses[:1] == ":" {
 			apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses)
 		} else {
@@ -498,11 +498,6 @@ func main() {
 		panic(err)
 	}
 
-	_, _, err = utils.NewTLSCert()
-	if err != nil {
-		panic(err)
-	}
-
 	os.Exit(mainRet(config))
 }
 
@@ -613,7 +608,7 @@ func restore(params handlers.RestoreParam, isRestoreFromWasm bool) {
 	)
 	defer utils.RemoveAll("certs") // NOTE: HARDCODE
 
-	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
+	peerBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", apiPort)
 	ctx := context.Background()
 	checkctx, _ := context.WithTimeout(ctx, 300*time.Second)
 	if ok := testnode.CheckApiServerRunning(checkctx, peerBaseUrl); !ok {

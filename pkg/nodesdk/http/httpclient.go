@@ -216,41 +216,6 @@ func (hc *HttpClient) getFullUrl(u2 string) (fullurl string, err error) {
 	return result, nil
 }
 
-/*
-func (hc *HttpClient) newHTTPClient() (*http.Client, error) {
-	certPath, err := filepath.Abs(config.RumConfig.Quorum.ServerSSLCertificate)
-	if err != nil {
-		return nil, err
-	}
-
-	if certPath != "" {
-		caCert, err := ioutil.ReadFile(certPath)
-		if err != nil {
-			return nil, err
-		}
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		if err != nil {
-			return nil, err
-		}
-		tlsConfig := &tls.Config{
-			RootCAs: caCertPool,
-		}
-		if config.RumConfig.Quorum.ServerSSLInsecure {
-			tlsConfig.InsecureSkipVerify = true
-		}
-
-		tlsConfig.BuildNameToCertificate()
-		transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
-		// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
-		return &http.Client{Transport: transport, Timeout: 5 * time.Second}, nil
-	}
-
-	return &http.Client{}, nil
-}
-*/
-
 func (hc *HttpClient) checkJWTError(body string) error {
 	if strings.Contains(body, "missing or malformed jwt") {
 		return errors.New("missing or malformed jwt")

@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rumsystem/ip-cert/pkg/zerossl"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
@@ -93,11 +94,18 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
 	}
 
-	certPath, keyPath, err := utils.GetTLSCerts()
-	if err != nil {
-		panic(err)
+	// get public ip
+	pubIps := utils.GetPublicIPs(config.APIIPAddresses)
+	if len(pubIps) >= 1 { // issue cert and start https server
+		// NOTE: choose the first public ip, and ignore others
+		privKeyPath, certPath, err := zerossl.IssueIPCert(config.CertDir, pubIps[0], config.ZeroAccessKey)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+		e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, privKeyPath))
+	} else { // start http server
+		e.Logger.Fatal(e.Start(config.APIListenAddresses))
 	}
-	e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, keyPath))
 }
 
 func quitapp(c echo.Context) (err error) {
