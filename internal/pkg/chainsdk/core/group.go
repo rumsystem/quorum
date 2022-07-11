@@ -33,7 +33,16 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.Init(grp)
+	grp.ChainCtx.ChainInit(grp)
+
+	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
+	if opk != "" {
+		item.OwnerPubKey = opk
+	}
+	upk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserSignPubkey)
+	if upk != "" {
+		item.UserSignPubkey = upk
+	}
 
 	//reload all announced user(if private)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
@@ -75,7 +84,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.Init(grp)
+	grp.ChainCtx.ChainInit(grp)
 
 	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
 	if err != nil {

@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -45,7 +46,7 @@ type Chain struct {
 	syncer *Syncer
 }
 
-func (chain *Chain) Init(group *Group) error {
+func (chain *Chain) ChainInit(group *Group) error {
 	chain_log.Debugf("<%s> Init called", group.Item.GroupId)
 	chain.group = group
 
@@ -601,7 +602,12 @@ func (chain *Chain) CreateConsensus() error {
 		user = chain.Consensus.User()
 	}
 
-	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.UserSignPubkey)
+	if pk == "" {
+		pk = chain.group.Item.UserSignPubkey
+	}
+
+	if _, ok := chain.ProducerPool[pk]; ok {
 		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
 			producer = &consensus.MolassesProducer{}
@@ -615,7 +621,12 @@ func (chain *Chain) CreateConsensus() error {
 		producer = nil
 	}
 
-	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+	ownerpk, _ := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.OwnerPubKey)
+	if ownerpk == "" {
+		ownerpk = chain.group.Item.OwnerPubKey
+	}
+
+	if ownerpk == pk {
 		if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
 			chain_log.Infof("<%s> Create and initial molasses SnapshotSender", chain.groupId)
 			snapshotsender = &MolassesSnapshotSender{}

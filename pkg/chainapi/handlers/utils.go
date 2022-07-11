@@ -19,7 +19,7 @@ import (
 )
 
 func initSignKey(groupId string, ks localcrypto.Keystore, nodeoptions *options.NodeOptions) (string, error) {
-	hexkey, err := ks.GetEncodedPubkey(groupId, localcrypto.Sign)
+	b64key, err := ks.GetEncodedPubkey(groupId, localcrypto.Sign)
 	if err != nil && strings.HasPrefix(err.Error(), "key not exist ") {
 		newsignaddr, err := ks.NewKeyWithDefaultPassword(groupId, localcrypto.Sign)
 		if err == nil && newsignaddr != "" {
@@ -27,12 +27,12 @@ func initSignKey(groupId string, ks localcrypto.Keystore, nodeoptions *options.N
 			if err != nil {
 				return "", errors.New(fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error()))
 			}
-			hexkey, err = ks.GetEncodedPubkey(groupId, localcrypto.Sign)
+			b64key, err = ks.GetEncodedPubkey(groupId, localcrypto.Sign)
 		} else {
 			return "", errors.New("create new group key err:" + err.Error())
 		}
 	}
-	return hexkey, nil
+	return b64key, nil
 }
 
 func initEncryptKey(groupId string, bks localcrypto.Keystore) (string, error) {

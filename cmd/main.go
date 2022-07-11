@@ -219,7 +219,6 @@ func mainRet(config cli.Config) int {
 		}
 		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil {
-			//node.SetRumExchange(ctx, dbManager)
 			node.SetRumExchange(ctx, newchainstorage)
 		}
 

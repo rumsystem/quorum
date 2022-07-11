@@ -254,6 +254,9 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					var trx *quorumpb.Trx
 					trx = &quorumpb.Trx{}
 					err := proto.Unmarshal(pkg.Data, trx)
+
+					fmt.Println("========handleGroupChannel msg trx")
+					fmt.Println(trx)
 					if err == nil {
 						psconn.chain.HandleTrxPsConn(trx)
 					} else {

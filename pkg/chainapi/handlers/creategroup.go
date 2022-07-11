@@ -51,12 +51,12 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	ks := nodectx.GetNodeCtx().Keystore
 
 	/* init sign key */
-	hexkey, err := initSignKey(groupid.String(), ks, nodeoptions)
+	b64key, err := initSignKey(groupid.String(), ks, nodeoptions)
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
 
-	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid.String(), hexkey, ks, "")
+	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid.String(), b64key, ks, "")
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	item = &pb.GroupItem{}
 	item.GroupId = groupid.String()
 	item.GroupName = params.GroupName
-	item.OwnerPubKey = hexkey
+	item.OwnerPubKey = b64key
 	item.UserSignPubkey = item.OwnerPubKey
 	item.UserEncryptPubkey = groupEncryptPubkey
 	item.ConsenseType = pb.GroupConsenseType_POA
