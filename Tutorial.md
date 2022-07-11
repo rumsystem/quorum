@@ -260,7 +260,7 @@ restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8003/api/v1/node
+curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8003/api/v1/node
 ```
 
 API return value:
@@ -310,7 +310,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' https://127.0.0.1:8002/api/v1/group
+curl -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' http://127.0.0.1:8002/api/v1/group
 ```
 
 ```json
@@ -376,7 +376,7 @@ other nodes can use the seed to [join the group](#api-join-group).
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"36ac6e22-80a1-4d54-abbb-8bd2c55ef8cf","GroupId":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","ProducerPubKey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","Hash":"fDGwAPJbHHG0GpKLQZnRolK9FUO5nSIod/iprwQQn8g=","Signature":"MEYCIQDo5uge+saujb0WR6ZreISDYWpRzY6PQ3f5ly7vtHHgkQIhAKcuwDT2fIpBDx/7lQU6mIBQKJuQeI0Zbw3W7kHfBO28","Timestamp":1631804384241781200},"group_id":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","group_name":"my_test_group","owner_pubkey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","owner_encryptpubkey":"age1lx3zh5sc5cureh484t5tm2036lhrzdnh96rfaft6echs9cqsefss4yn886","consensus_type":"poa","encryption_type":"public","cipher_key":"3994c4224da17ad50504c78458f37249149477c7bc643f3fe78e44033c17874a","signature":"30450220591361918948140c8ad1736cde3831f326470f2d3c5105a0b63867c7b216857c0221008921422c6e1974834d5610d4c6ad1a9dd0394ac464dfc12659cde41d75172d14"}' https://127.0.0.1:8003/api/v1/group/join
+curl -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"36ac6e22-80a1-4d54-abbb-8bd2c55ef8cf","GroupId":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","ProducerPubKey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","Hash":"fDGwAPJbHHG0GpKLQZnRolK9FUO5nSIod/iprwQQn8g=","Signature":"MEYCIQDo5uge+saujb0WR6ZreISDYWpRzY6PQ3f5ly7vtHHgkQIhAKcuwDT2fIpBDx/7lQU6mIBQKJuQeI0Zbw3W7kHfBO28","Timestamp":1631804384241781200},"group_id":"eae3f0db-a034-4c5f-a25f-b1177390ec4d","group_name":"my_test_group","owner_pubkey":"CAISIQMJIG4do9g8PBixH432YXVQmD7Ilqp7DzbGxgLJHbRoFA==","owner_encryptpubkey":"age1lx3zh5sc5cureh484t5tm2036lhrzdnh96rfaft6echs9cqsefss4yn886","consensus_type":"poa","encryption_type":"public","cipher_key":"3994c4224da17ad50504c78458f37249149477c7bc643f3fe78e44033c17874a","signature":"30450220591361918948140c8ad1736cde3831f326470f2d3c5105a0b63867c7b216857c0221008921422c6e1974834d5610d4c6ad1a9dd0394ac464dfc12659cde41d75172d14"}' http://127.0.0.1:8003/api/v1/group/join
 ```
 
 API return value:
@@ -422,7 +422,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/groups
+curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/groups
 ```
 
 - Method: GET
@@ -502,7 +502,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b791-4d17-a52f-f69266fc3f18"}' https://127.0.0.1:8002/api/v1/group/clear | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"13a25432-b791-4d17-a52f-f69266fc3f18"}' http://127.0.0.1:8002/api/v1/group/clear | jq
 ```
 
 API return value:
@@ -532,7 +532,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8002/api/v1/group/leave
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' http://127.0.0.1:8002/api/v1/group/leave
 ```
 
 **Params**:
@@ -572,7 +572,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X DELETE -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' https://127.0.0.1:8003/api/v1/group
+curl -X DELETE -H 'Content-Type: application/json' -d '{"group_id":"846011a8-1c58-4a35-b70f-83195c3bc2e8"}' http://127.0.0.1:8003/api/v1/group
 
 ```
 
@@ -602,7 +602,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/seed
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/seed
 ```
 
 [>>> Back to Top](#top)
@@ -624,7 +624,7 @@ curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/
 **Example**:
 
 ```bash
-curl -k http://localhost:8002/api/v1/network
+curl http://localhost:8002/api/v1/network
 ```
 
 API return value:
@@ -706,7 +706,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/content
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8003/api/v1/group/c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55/content
 ```
 
 <span id="api-group-content"></span>
@@ -850,7 +850,7 @@ nodeA can be `owner node` or `user node`.
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}'  https://127.0.0.1:8002/api/v1/group/content
+curl -X POST -H 'Content-Type: application/json'  -d '{"type":"Add","object":{"type":"Note","content":"simple note by aa","name":"A simple Node id1"},"target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}'  http://127.0.0.1:8002/api/v1/group/content
 ```
 
 ### Content with text only
@@ -944,7 +944,7 @@ when `object.image` is not null, `object.content` is optional.
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":{"id":"578e65d0-9b61-4937-8e7c-f00e2b262753"}, "target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}' https://127.0.0.1:8002/api/v1/group/content
+curl -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":{"id":"578e65d0-9b61-4937-8e7c-f00e2b262753"}, "target":{"id":"c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55","type":"Group"}}' http://127.0.0.1:8002/api/v1/group/content
 ```
 
 **Params**:
@@ -1032,7 +1032,7 @@ any group has its own profile to set.
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/block/<GROUP_ID>/<BLOCK_ID>
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8003/api/v1/block/<GROUP_ID>/<BLOCK_ID>
 ```
 
 API return value:
@@ -1140,7 +1140,7 @@ Trx 生命周期，加密和出块过程
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d https://127.0.0.1:8003/api/v1/trx/<GROUP_ID>/<TRX_ID>
+curl -X GET -H 'Content-Type: application/json' -d http://127.0.0.1:8003/api/v1/trx/<GROUP_ID>/<TRX_ID>
 ```
 
 API return value:
@@ -1220,7 +1220,7 @@ Owner 作为组内第一个 Producer 存在，有其它 Producer 存在时，如
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"producer", "memo":"producer p1, realiable and cheap, online 24hr"}' https://127.0.0.1:8005/api/v1/group/announce | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"producer", "memo":"producer p1, realiable and cheap, online 24hr"}' http://127.0.0.1:8005/api/v1/group/announce | jq
 ```
 
 **Params**:
@@ -1278,7 +1278,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/producers
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/producers
 ```
 
 API return value:
@@ -1337,7 +1337,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}' https://127.0.0.1:8002/api/v1/group/producer | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}' http://127.0.0.1:8002/api/v1/group/producer | jq
 ```
 
 **Params**:
@@ -1393,7 +1393,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8005/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/producers | jq
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8005/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/producers | jq
 ```
 
 API return value:
@@ -1445,7 +1445,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"remove"}' https://127.0.0.1:8002/api/v1/group/producer | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"remove"}' http://127.0.0.1:8002/api/v1/group/producer | jq
 ```
 
 ```json
@@ -1481,7 +1481,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":"CAIS
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"bool", "value":"false", "memo":"add test_bool to group"}' https://127.0.0.1:8002/api/v1/group/appconfig | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"action":"add", "group_id":"c8795b55-90bf-4b58-aaa0-86d11fe4e16a", "name":"test_bool", "type":"bool", "value":"false", "memo":"add test_bool to group"}' http://127.0.0.1:8002/api/v1/group/appconfig | jq
 ```
 
 **Params**:
@@ -1543,7 +1543,7 @@ group 的 key 是 owner 通过 [app config](#api-add-app-config) 自行添加的
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/appconfig/keylist
+curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/appconfig/keylist
 API：/v1/group/<GROUP_ID>/appconfig/keylist
 ```
 
@@ -1582,7 +1582,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/appconfig/test_string | jq
+curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8002/api/v1/group/c8795b55-90bf-4b58-aaa0-86d11fe4e16a/appconfig/test_string | jq
 ```
 
 API return value:
@@ -1648,7 +1648,7 @@ Private group 的用户管理，本质上是管理解密权限。
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"user", "memo":"invitation code:a423b3"}' https://127.0.0.1:8003/api/v1/group/announce | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add", "type":"user", "memo":"invitation code:a423b3"}' http://127.0.0.1:8003/api/v1/group/announce | jq
 ```
 
 **Params**:
@@ -1702,11 +1702,11 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/users
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/users
 ```
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/user/CAISIQMaZWI95T0kxDNcB3DxO0T/BraC1gEKxZRVihcxevtUgg==
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8002/api/v1/group/5ed3f9fe-81e2-450d-9146-7a329aac2b62/announced/user/CAISIQMaZWI95T0kxDNcB3DxO0T/BraC1gEKxZRVihcxevtUgg==
 ```
 
 API return value:
@@ -1748,7 +1748,7 @@ API return value:
 **Example**:
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"user_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}' https://127.0.0.1:8002/api/v1/group/user | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"user_pubkey":"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==","group_id":"5ed3f9fe-81e2-450d-9146-7a329aac2b62", "action":"add"}' http://127.0.0.1:8002/api/v1/group/user | jq
 ```
 
 **Params**:
@@ -1863,7 +1863,7 @@ Therefor the CLIENT APP should check the group authentication rules to give erro
 **Example**:
 
 ```sh
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/auth/post | jq
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/auth/post | jq
 ```
 
 Result:
@@ -1903,7 +1903,7 @@ Params:
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_dny_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_dny_list\"}", "Memo":"Memo"}' http://127.0.0.1:8003/api/v1/group/chainconfig | jq
 ```
 
 ```json
@@ -1966,7 +1966,7 @@ Params:
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' http://127.0.0.1:8003/api/v1/group/chainconfig | jq
 ```
 
 ```json
@@ -2016,7 +2016,7 @@ Params:
 Get group allow list
 
 ```sh
-curl -k -X GET -H 'Content-Type: application/json' -d '' https://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/allowlist
+curl -X GET -H 'Content-Type: application/json' -d '' http://127.0.0.1:8003/api/v1/group/b3e1800a-af6e-4c67-af89-4ddcf831b6f7/trx/allowlist
 ```
 
 Result:
@@ -2071,7 +2071,7 @@ params:
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}", "Memo":"Memo"}' http://127.0.0.1:8003/api/v1/group/chainconfig | jq
 ```
 
 ### How to "ALLOW a pubkey" again
@@ -2086,7 +2086,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_dny_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[]}", "Memo":"Memo"}' http://127.0.0.1:8003/api/v1/group/chainconfig | jq
 ```
 
 ### How to impelent "single" author mode
@@ -2096,7 +2096,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_alw_list\"}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq 
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"set_trx_auth_mode", "config":"{\"trx_type\":\"POST\", \"trx_auth_mode\":\"follow_alw_list\"}", "Memo":"Memo"}' http://127.0.0.1:8003/api/v1/group/chainconfig | jq 
 ```
 
 NOW ONLY PUBKEY IN ALLOW LIST CAN POST.
@@ -2106,7 +2106,7 @@ NOW ONLY PUBKEY IN ALLOW LIST CAN POST.
 **Example**:
 
 ```sh
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\"]}", "Memo":"Memo"}' https://127.0.0.1:8003/api/v1/group/chainconfig | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"b3e1800a-af6e-4c67-af89-4ddcf831b6f7", "type":"upd_alw_list", "config":"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\"]}", "Memo":"Memo"}' http://127.0.0.1:8003/api/v1/group/chainconfig | jq
 ```
 
 NOW owner can send POST, all other pubkeys are denied.
@@ -2134,7 +2134,7 @@ Client app should check snapshot "tag" by using getGroups API. A new section is 
 example:
 
 ```bash
-curl -k -X GET -H 'Content-Type: application/json' -d '{}' https://127.0.0.1:8004/api/v1/groups | jq
+curl -X GET -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:8004/api/v1/groups | jq
 ```
 
 ```
@@ -2201,7 +2201,7 @@ There are two interfaces involved here.
 example
 
 ```
-curl -k "https://localhost:8004/api/v1/group/6bd70de8-addc-4b03-8271-a5a5b02d1ebd/pubqueue" | jq
+curl "http://localhost:8004/api/v1/group/6bd70de8-addc-4b03-8271-a5a5b02d1ebd/pubqueue" | jq
 ```
 
 
@@ -2239,7 +2239,7 @@ It will return the TRXs that are succeefully acked.
 example
 
 ```
-curl -k -X POST -H 'Content-Type: application/json' -d '{"trx_ids": ["b5433111-f3a1-41e2-a03f-648e47a04dad"]}' "https://localhost:8004/api/v1/trx/ack"
+curl -X POST -H 'Content-Type: application/json' -d '{"trx_ids": ["b5433111-f3a1-41e2-a03f-648e47a04dad"]}' "http://localhost:8004/api/v1/trx/ack"
 ```
 
 ```

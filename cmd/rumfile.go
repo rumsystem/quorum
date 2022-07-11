@@ -8,14 +8,13 @@ import (
 	"crypto/tls"
 	"net/http"
 	"time"
+
 	//"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"io"
 	"io/ioutil"
 	"log"
@@ -23,6 +22,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var (
@@ -39,7 +41,7 @@ func Download() error {
 	fs := flag.NewFlagSet("download", flag.ContinueOnError)
 	fs.StringVar(&groupid, "groupid", "", "group_id of the SeedNetwork")
 	fs.StringVar(&trxid, "trxid", "", "trx_id of the fileinfo")
-	fs.StringVar(&ApiPrefix, "api", "https://localhost:8000", "api prefix of the rumservice")
+	fs.StringVar(&ApiPrefix, "api", "http://localhost:8000", "api prefix of the rumservice")
 	fs.StringVar(&destdir, "dir", ".", "the file segments dir.(the result of split cmd)")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
@@ -105,7 +107,7 @@ func Upload() error {
 	fs := flag.NewFlagSet("upload", flag.ContinueOnError)
 	fs.StringVar(&segmentsdir, "dir", "", "the file segments dir.(the result of split cmd)")
 	fs.StringVar(&groupid, "groupid", "", "the upload target groupid")
-	fs.StringVar(&ApiPrefix, "api", "https://localhost:8000", "api prefix of the rumservice")
+	fs.StringVar(&ApiPrefix, "api", "http://localhost:8000", "api prefix of the rumservice")
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		return err
 	}
@@ -631,7 +633,7 @@ func HttpGetFileFromGroup(ApiPrefix string, groupid string, trxid string) (*quor
 		return nil, trxid, fmt.Errorf("content item more than 1, error")
 	}
 
-	//curl --insecure -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "https://localhost:8004/app/api/v1/group/a6ceb724-02c3-4c7c-a50e-846389a6e887/content?num=1&starttrx=cac0fca3-6927-43f5-9e5d-3f8c1906ee2e&reverse=false&includestarttrx=true"
+	//curl -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "http://localhost:8004/app/api/v1/group/a6ceb724-02c3-4c7c-a50e-846389a6e887/content?num=1&starttrx=cac0fca3-6927-43f5-9e5d-3f8c1906ee2e&reverse=false&includestarttrx=true"
 
 }
 

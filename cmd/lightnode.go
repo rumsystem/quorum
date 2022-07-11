@@ -70,11 +70,6 @@ func main() {
 		panic(err)
 	}
 
-	_, _, err = utils.NewTLSCert()
-	if err != nil {
-		panic(err)
-	}
-
 	os.Exit(mainRet(config))
 }
 
@@ -132,7 +127,7 @@ func mainRet(config cli.Config) int {
 		Ctx:        ctx,
 	}
 
-	nodeApiAddress := "https://%s/api/v1"
+	nodeApiAddress := "http://%s/api/v1"
 	if config.NodeAPIListenAddress[:1] == ":" {
 		nodeApiAddress = fmt.Sprintf(nodeApiAddress, "localhost"+config.NodeAPIListenAddress)
 	} else {
