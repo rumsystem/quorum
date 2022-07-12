@@ -13,17 +13,17 @@ import (
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
-type JoinGroupParams struct {
-	Seed         handlers.GroupSeed `json:"seed"          validate:"required"`
-	ChainAPIUrl  []string           `json:"urls"          validate:"required"`
-	SignAlias    string             `json:"sign_alias"    validate:"required"`
-	EncryptAlias string             `json:"encrypt_alias" validate:"required"`
+type JoinGroupParamV2 struct {
+	Seed         string `json:"seed" validate:"required"` // seed url
+	SignAlias    string `json:"sign_alias" validate:"required"`
+	EncryptAlias string `json:"encrypt_alias" validate:"required"`
 }
 
 type JoinGroupResult struct {
@@ -56,52 +56,45 @@ func isValidUrl(toTest string) bool {
 
 func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var err error
-		output := make(map[string]string)
-		params := make(map[string]string)
+		cc := c.(*utils.CustomContext)
 
-		if err = c.Bind(&params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		var err error
+		payload := new(JoinGroupParamV2)
+		if err := cc.BindAndValidate(payload); err != nil {
+			return rumerrors.NewBadRequestError(err)
 		}
-		seed, serverurls, err := handlers.UrlToGroupSeed(params["seed"])
+		seed, chainapiUrls, err := handlers.UrlToGroupSeed(payload.Seed)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
-		SignAlias := params["sign_alias"]
-		EncryptAlias := params["encrypt_alias"]
+		signAlias := payload.SignAlias
+		encryptAlias := payload.EncryptAlias
 		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
 		if err != nil {
-			output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(fmt.Errorf("unmarshal genesis block failed with msg: %s", err))
 		}
 
 		ks := nodesdkctx.GetKeyStore()
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if !ok {
-			output[ERROR_INFO] = "Open keystore failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Open keystore failed")
 		}
 
-		signKeyName := dirks.AliasToKeyname(SignAlias)
+		signKeyName := dirks.AliasToKeyname(signAlias)
 		if signKeyName == "" {
-			output[ERROR_INFO] = "sign alias is not exist"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("sign alias is not exist")
 		}
 
-		encryptKeyName := dirks.AliasToKeyname(EncryptAlias)
+		encryptKeyName := dirks.AliasToKeyname(encryptAlias)
 		if encryptKeyName == "" {
-			output[ERROR_INFO] = "encrypt alias is not exist"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("encrypt alias is not exist")
 		}
 
 		//should check keytype
 
 		allKeys, err := dirks.ListAll()
 		if err != nil {
-			output[ERROR_INFO] = "ListAll failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("ListAll failed")
 		}
 
 		//expand and dump all alias to a map
@@ -115,26 +108,22 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 
 		//check if given alias exist
 		//check type
-		alias, ok := allAlias[EncryptAlias]
+		alias, ok := allAlias[encryptAlias]
 		if !ok {
-			output[ERROR_INFO] = "encrypt alias is not exist"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("encrypt alias is not exist")
 		}
 
 		if alias.Type != localcrypto.Encrypt {
-			output[ERROR_INFO] = "Type mismatch for given encrypt alias"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Type mismatch for given encrypt alias")
 		}
 
-		alias, ok = allAlias[SignAlias]
+		alias, ok = allAlias[signAlias]
 		if !ok {
-			output[ERROR_INFO] = "Sign alias is not exist"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Sign alias is not exist")
 		}
 
 		if alias.Type != localcrypto.Sign {
-			output[ERROR_INFO] = "Type mismatch for given sign alias"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Type mismatch for given sign alias")
 		}
 
 		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
@@ -149,31 +138,26 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 
 		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		if r == false {
-			output[ERROR_INFO] = "Join Group failed, can not verify signature"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Join Group failed, can not verify signature")
 		}
 
-		b64signPubkey, err := dirks.GetEncodedPubkeyByAlias(SignAlias, localcrypto.Sign)
+		b64signPubkey, err := dirks.GetEncodedPubkeyByAlias(signAlias, localcrypto.Sign)
 		if err != nil {
-			output[ERROR_INFO] = "Get Sign pubkey failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Get Sign pubkey failed")
 		}
+
 		signPubkey, err := base64.RawURLEncoding.DecodeString(b64signPubkey)
-
 		if err != nil {
-			output[ERROR_INFO] = "Decode Sign pubkey failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Decode Sign pubkey failed")
 		}
 
-		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(EncryptAlias, localcrypto.Encrypt)
+		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(encryptAlias, localcrypto.Encrypt)
 		if err != nil {
-			output[ERROR_INFO] = "Get encrypt pubkey failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Get encrypt pubkey failed")
 		}
 
 		//create nodesdkgroupitem
@@ -195,13 +179,11 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 
 		switch seed.EncryptionType {
 		case "private":
-			output[ERROR_INFO] = "Private group is not supported by NodeSDK, please use chainsdk to run a full node"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(rumerrors.ErrPrivateGroupNotSupported)
 		case "public":
 			group.EncryptType = quorumpb.GroupEncryptType_PUBLIC
 		default:
-			output[ERROR_INFO] = "Unsupported encryption type"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported)
 		}
 
 		switch seed.ConsensusType {
@@ -210,26 +192,16 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 		case "pos":
 			group.ConsenseType = quorumpb.GroupConsenseType_POS
 		default:
-			output[ERROR_INFO] = "Unsupported consensus type"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(rumerrors.ErrConsensusTypeNotSupported)
 		}
 
 		group.CipherKey = seed.CipherKey
 		group.AppKey = seed.AppKey
 
 		item.Group = group
-		item.EncryptAlias = EncryptAlias
-		item.SignAlias = SignAlias
-
-		if serverurls != nil {
-			for _, url := range serverurls {
-				if !isValidUrl(url) {
-					output[ERROR_INFO] = "invalid chainAPI url"
-					return c.JSON(http.StatusBadRequest, output)
-				}
-			}
-			item.ApiUrl = serverurls
-		}
+		item.EncryptAlias = encryptAlias
+		item.SignAlias = signAlias
+		item.ApiUrl = chainapiUrls
 
 		//create joingroup result
 		var bufferResult bytes.Buffer
@@ -246,17 +218,26 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 		pbGroupSeed := handlers.ToPbGroupSeed(*seed)
 		//save seed to db
 		if err := nodesdkctx.GetCtx().GetChainStorage().SetGroupSeed(&pbGroupSeed); err != nil {
-			output[ERROR_INFO] = fmt.Sprintf("save group seed failed: %s", err)
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(fmt.Errorf("save group seed failed: %s", err))
 		}
 		//save nodesdkgroupitem to db
 		err = nodesdkctx.GetCtx().GetChainStorage().AddGroupV2(item)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
 
-		joinGrpResult := &JoinGroupResult{GroupId: group.GroupId, GroupName: group.GroupName, OwnerPubkey: group.OwnerPubKey, ConsensusType: seed.ConsensusType, EncryptionType: seed.EncryptionType, SignAlias: SignAlias, EncryptAlias: EncryptAlias, CipherKey: group.CipherKey, AppKey: group.AppKey, Signature: encodedSign}
+		joinGrpResult := &JoinGroupResult{
+			GroupId:        group.GroupId,
+			GroupName:      group.GroupName,
+			OwnerPubkey:    group.OwnerPubKey,
+			ConsensusType:  seed.ConsensusType,
+			EncryptionType: seed.EncryptionType,
+			SignAlias:      signAlias,
+			EncryptAlias:   encryptAlias,
+			CipherKey:      group.CipherKey,
+			AppKey:         group.AppKey,
+			Signature:      encodedSign,
+		}
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}
 }

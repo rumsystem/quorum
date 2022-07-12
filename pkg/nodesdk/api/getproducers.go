@@ -22,7 +22,6 @@ func (h *NodeSDKHandler) GetProducers(c echo.Context) (err error) {
 
 	reqItem := new(GrpProducer)
 	reqItem.GroupId = groupid
-	reqItem.JwtToken = JwtToken
 
 	itemBytes, err := json.Marshal(reqItem)
 	if err != nil {

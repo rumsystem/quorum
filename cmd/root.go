@@ -10,9 +10,6 @@ import (
 )
 
 var (
-	ReleaseVersion string
-	GitCommit      string
-
 	logger = logging.Logger("cmd")
 
 	// flags
@@ -43,14 +40,6 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
-	if ReleaseVersion == "" {
-		ReleaseVersion = "v1.0.0"
-	}
-	if GitCommit == "" {
-		GitCommit = "devel"
-	}
-	utils.SetGitCommit(GitCommit)
-
 	// set default log level to info
 	lvl, err := logging.LevelFromString("info")
 	if err != nil {

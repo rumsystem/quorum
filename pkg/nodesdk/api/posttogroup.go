@@ -103,7 +103,6 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 
 		trxItem := new(NodeSDKTrxItem)
 		trxItem.TrxBytes = trxBytes
-		trxItem.JwtToken = JwtToken
 
 		trxItemBytes, err := json.Marshal(trxItem)
 		if err != nil {

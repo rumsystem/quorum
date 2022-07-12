@@ -94,7 +94,6 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 
 	trxItem := new(NodeSDKTrxItem)
 	trxItem.TrxBytes = trxBytes
-	trxItem.JwtToken = JwtToken
 
 	trxItemBytes, err := json.Marshal(trxItem)
 	if err != nil {

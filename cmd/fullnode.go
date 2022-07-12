@@ -91,7 +91,7 @@ func runFullnode(config cli.FullnodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
-	logger.Infof("Version: %s", GitCommit)
+	logger.Infof("Version: %s", utils.GitCommit)
 	configLogger(fnodeFlag.IsDebug)
 
 	signalch = make(chan os.Signal, 1)
@@ -173,7 +173,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 		dbManager.TryMigration(1)
 
-		nodectx.InitCtx(ctx, "", node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", GitCommit)
+		nodectx.InitCtx(ctx, "", node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit)
 		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -183,7 +183,11 @@ func runFullnode(config cli.FullnodeFlag) {
 		}
 
 		logger.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
-		h := &api.Handler{Node: node, NodeCtx: nodectx.GetNodeCtx(), GitCommit: GitCommit}
+		h := &api.Handler{
+			Node:      node,
+			NodeCtx:   nodectx.GetNodeCtx(),
+			GitCommit: utils.GitCommit,
+		}
 		startParam := api.StartAPIParam{
 			IsDebug:       config.IsDebug,
 			APIHost:       config.APIHost,
@@ -230,7 +234,7 @@ func runFullnode(config cli.FullnodeFlag) {
 
 		peerok := make(chan struct{})
 		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
-		nodectx.InitCtx(ctx, nodename, node, dbManager, newchainstorage, "pubsub", GitCommit)
+		nodectx.InitCtx(ctx, nodename, node, dbManager, newchainstorage, "pubsub", utils.GitCommit)
 		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
@@ -279,7 +283,7 @@ func runFullnode(config cli.FullnodeFlag) {
 			Node:       node,
 			NodeCtx:    nodectx.GetNodeCtx(),
 			Ctx:        ctx,
-			GitCommit:  GitCommit,
+			GitCommit:  utils.GitCommit,
 			Appdb:      appdb,
 			ChainAPIdb: newchainstorage,
 		}
@@ -290,7 +294,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		apph := &appapi.Handler{
 			Appdb:     appdb,
 			Trxdb:     newchainstorage,
-			GitCommit: GitCommit,
+			GitCommit: utils.GitCommit,
 			Apiroot:   apiaddress,
 			ConfigDir: config.ConfigDir,
 			PeerName:  config.PeerName,

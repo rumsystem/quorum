@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -12,6 +13,7 @@ import (
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -21,6 +23,10 @@ type CreateGroupParam struct {
 	ConsensusType  string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa"`
 	EncryptionType string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private"`
 	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4"`
+}
+
+type JoinGroupParamV2 struct {
+	Seed string `json:"seed" validate:"required"` // seed url
 }
 
 type GroupSeed struct {
@@ -35,8 +41,12 @@ type GroupSeed struct {
 	Signature      string    `json:"signature" validate:"required"`
 }
 
-func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (map[string]string, error) {
-	result := make(map[string]string)
+type CreateGroupResult struct {
+	Seed    string `json:"seed" validate:"required"`
+	GroupId string `json:"group_id" validate:"required"`
+}
+
+func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*CreateGroupResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -95,9 +105,7 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 
-	var group *chain.Group
-	group = &chain.Group{}
-
+	group := &chain.Group{}
 	err = group.CreateGrp(item)
 	if err != nil {
 		return nil, err
@@ -113,7 +121,8 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	encodedCipherKey := hex.EncodeToString(cipherKey)
 
 	createGrpResult := &GroupSeed{
-		GenesisBlock: genesisBlock, GroupId: groupid.String(),
+		GenesisBlock:   genesisBlock,
+		GroupId:        groupid.String(),
 		GroupName:      params.GroupName,
 		OwnerPubkey:    item.OwnerPubKey,
 		ConsensusType:  params.ConsensusType,
@@ -133,10 +142,33 @@ func CreateGroupUrl(params *CreateGroupParam, nodeoptions *options.NodeOptions, 
 	if err := appdb.SetGroupSeed(&pbGroupSeed); err != nil {
 		return nil, err
 	}
-	seedurl, err := GroupSeedToUrl(1, []string{"127.0.0.1:8080"}, createGrpResult)
-	result["seed"] = seedurl
-	result["group_id"] = groupid.String()
-	return result, err
+	// get chain api url
+	jwtName := fmt.Sprintf("allow-%s", groupid.String())
+	jwt, err := utils.NewJWTToken(
+		jwtName,
+		"node",
+		[]string{groupid.String()},
+		nodeoptions.JWTKey,
+		time.Now().Add(time.Hour*24*365*5), // 5 years
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := nodeoptions.SetJWTTokenMap(jwtName, jwt); err != nil {
+		return nil, err
+	}
+	chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert group seed to url
+	seedurl, err := GroupSeedToUrl(1, []string{chainapiUrl}, createGrpResult)
+	result := CreateGroupResult{
+		Seed:    seedurl,
+		GroupId: groupid.String(),
+	}
+	return &result, err
 }
 
 // ToPbGroupSeed convert `api.GroupSeed` to `pb.GroupSeed`

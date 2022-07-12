@@ -21,14 +21,14 @@ import (
 func (h *Handler) CreateGroupUrl() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
-		var err error
 
 		params := new(handlers.CreateGroupParam)
 		if err := cc.BindAndValidate(params); err != nil {
 			return err
 		}
 
-		res, err := handlers.CreateGroupUrl(params, options.GetNodeOptions(), h.Appdb)
+		baseUrl := cc.GetBaseURL()
+		res, err := handlers.CreateGroupUrl(baseUrl, params, options.GetNodeOptions(), h.Appdb)
 		if err != nil {
 			return err
 		}
