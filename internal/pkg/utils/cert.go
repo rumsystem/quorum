@@ -1,14 +1,24 @@
 package utils
 
-import "net"
+import (
+	"net"
+	"regexp"
+)
 
-func GetPublicIPs(ips []net.IP) []net.IP {
-	pubIps := []net.IP{}
-	for _, v := range ips {
-		if !v.IsPrivate() && !v.IsLoopback() {
-			pubIps = append(pubIps, v)
-		}
+func IsPublicIP(v string) bool {
+	ip := net.ParseIP(v)
+	if ip == nil {
+		return false
 	}
 
-	return pubIps
+	if !ip.IsPrivate() && !ip.IsLoopback() {
+		return true
+	}
+	return false
+}
+
+func IsDomainName(domain string) bool {
+	RegExp := regexp.MustCompile(`^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9]))\.([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}\.[a-zA-Z]{2,3})$`)
+
+	return RegExp.MatchString(domain)
 }
