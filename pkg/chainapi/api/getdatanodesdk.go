@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -94,31 +95,27 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 		return c.JSON(http.StatusForbidden, "")
 	}
 
-	output := make(map[string]string)
 	getDataNodeSDKItem := new(GetDataNodeSDKItem)
 
 	if err = c.Bind(getDataNodeSDKItem); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
+	c.Logger().Debug("GetDataNSdk request payload: %+v", getDataNodeSDKItem)
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[getDataNodeSDKItem.GroupId]; ok {
 		if group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			output[ERROR_INFO] = "FUNCTION_NOT_SUPPORTED"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("FUNCTION_NOT_SUPPORTED")
 		}
 
 		ciperKey, err := hex.DecodeString(group.Item.CipherKey)
 		if err != nil {
-			output[ERROR_INFO] = "CHAINSDK_INTERNAL_ERROR"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("CHAINSDK_INTERNAL_ERROR")
 		}
 
 		decryptData, err := localcrypto.AesDecode(getDataNodeSDKItem.Req, ciperKey)
 		if err != nil {
-			output[ERROR_INFO] = "DECRYPT_DATA_FAILED"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("DECRYPT_DATA_FAILED")
 		}
 
 		switch getDataNodeSDKItem.ReqType {
@@ -126,127 +123,105 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			item := new(AuthTypeItem)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, item.GroupId, item.TrxType)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case AUTH_ALLOWLIST:
 			item := new(AuthAllowListItem)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetChainTrxAllowList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case AUTH_DENYLIST:
 			item := new(AuthDenyListItem)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetChainTrxDenyList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case APPCONFIG_KEYLIST:
 			item := new(AppConfigKeyListItem)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetAppConfigKeyList(item.GroupId)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case APPCONFIG_ITEM_BYKEY:
 			item := new(AppConfigItem)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetAppConfigKey(item.Key, item.GroupId)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case ANNOUNCED_PRODUCER:
 			item := new(AnnGrpProducer)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case ANNOUNCED_USER:
 			item := new(AnnGrpUser)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			if item.SignPubkey == "" {
 				res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, item.GroupId)
 				if err != nil {
-					output[ERROR_INFO] = err.Error()
-					return c.JSON(http.StatusBadRequest, output)
+					return rumerrors.NewBadRequestError(err)
 				}
 				return c.JSON(http.StatusOK, res)
 			} else {
 				res, err := handlers.GetAnnouncedGroupUser(item.GroupId, item.SignPubkey)
 				if err != nil {
-					output[ERROR_INFO] = err.Error()
-					return c.JSON(http.StatusBadRequest, output)
+					return rumerrors.NewBadRequestError(err)
 				}
 				return c.JSON(http.StatusOK, res)
 			}
@@ -254,29 +229,24 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			item := new(GrpProducer)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetGroupProducers(h.ChainAPIdb, item.GroupId)
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		case GROUP_INFO:
 			item := new(GrpInfo)
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
-				output[ERROR_INFO] = "INVALID_DATA"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
 			if item.JwtToken != NodeSDKJwtToken {
-				output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 
 			if grp, ok := groupmgr.Groups[item.GroupId]; ok {
@@ -302,15 +272,12 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 
 				return c.JSON(http.StatusOK, grpInfo)
 			} else {
-				output[ERROR_INFO] = "INVALID_GROUP"
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError("INVALID_GROUP")
 			}
 		default:
-			output[ERROR_INFO] = "UNKNOWN_REQ_TYPE"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("UNKNOWN_REQ_TYPE")
 		}
 	} else {
-		output[ERROR_INFO] = "INVALID_GROUP"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("INVALID_GROUP")
 	}
 }

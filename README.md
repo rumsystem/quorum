@@ -82,8 +82,6 @@ Build the Docker image by running the command: `sudo docker build -t quorum .`
 Running:
 
 ```sh
-go install github.com/swaggo/swag/cmd/swag@latest
-# make sure the version as the same of swaggo/swag in god.mod,
 # only the first time you build need to run above.
 export PATH=$(go env GOPATH)/bin:$PATH
 # check GOPATH in PATH,
@@ -109,7 +107,7 @@ Read the [RUM Development Tutorial](./Tutorial.md).
 Run the [quorum binary](#build_quorum):
 
 ```sh
-./quorum -peername peer -listen /ip4/0.0.0.0/tcp/7000  -listen /ip4/0.0.0.0/tcp/9000/ws -apilisten 127.0.0.1:8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir rum/peerConfig -datadir rum/peerData -keystoredir rum/keystore -debug true
+./quorum -peername peer -listen /ip4/0.0.0.0/tcp/7000  -listen /ip4/0.0.0.0/tcp/9000/ws -apiport 8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir rum/peerConfig -datadir rum/peerData -keystoredir rum/keystore -debug true
 ```
 
 OPTIONS:
@@ -117,7 +115,8 @@ OPTIONS:
 ```sh
    -peername    default:`peer`, used in and same with configdir  and datadir
    -listen      a multiaddress for the peer service listening
-   -apilisten   http api  listening address
+   -apihost     http api listening host, a domain or a public ip address
+   -apiport     http api listening port
    -peer        a bootstrap peer multiaddress. Any online peer could be used for bootstrap, you can use the RUM testing bootstrap server for testing.
    -configdir   a directory for config files. The `peer` of `peerConfig` must same as peername `peer`, eg: if `mypeer2Config`, peername must be `mypeer2`.
    -datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
@@ -135,7 +134,7 @@ mkdir -p dockerdata/certs
 mkdir -p dockerdata/config
 mkdir -p dockerdata/keystore
 
-docker run --user 1001 -v $(pwd)/dockerdata/data:/data  -v $(pwd)/dockerdata/certs:/certs -v $(pwd)/dockerdata/config:/config -v $(pwd)/dockerdata/keystore:/keystore -p 127.0.0.1:8002:8002 -p 8000:8000 -p 8001:8001 -e RUM_KSPASSWD='myverysecretpassword' quorum -listen /ip4/0.0.0.0/tcp/8000 -listen /ip4/0.0.0.0/tcp/8001/ws  -apilisten 0.0.0.0:8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
+docker run --user 1001 -v $(pwd)/dockerdata/data:/data  -v $(pwd)/dockerdata/certs:/certs -v $(pwd)/dockerdata/config:/config -v $(pwd)/dockerdata/keystore:/keystore -p 127.0.0.1:8002:8002 -p 8000:8000 -p 8001:8001 -e RUM_KSPASSWD='myverysecretpassword' quorum -listen /ip4/0.0.0.0/tcp/8000 -listen /ip4/0.0.0.0/tcp/8001/ws  -apiport 8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
 
 ```
 
@@ -156,7 +155,7 @@ The following shows how to create/join group and post/view content with [quorum 
 2. PeerA will create the group, and A will become the owner of the group.
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"group_name":"ourforum","consensus_type":"poa","encryption_type":"public","app_key":"group_bbs"}' https://127.0.0.1:8000/api/v1/group
+curl -X POST -H 'Content-Type: application/json' -d '{"group_name":"ourforum","consensus_type":"poa","encryption_type":"public","app_key":"group_bbs"}' http://127.0.0.1:8000/api/v1/group
 ```
 
 The response is the group seed:
@@ -190,7 +189,7 @@ The response is the group seed:
 4. Join the group with Peer B, C...
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"989ffea1-083e-46b0-be02-3bad3de7d2e1","GroupId":"01014e95-303e-4955-b06e-bf185556a729","ProducerPubKey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","Hash":"gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=","Signature":"MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d","Timestamp":1633022374646518065},"group_id":"01014e95-303e-4955-b06e-bf185556a729","group_name":"ourforum","owner_pubkey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","owner_encryptpubkey":"age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu","consensus_type":"poa","encryption_type":"public","cipher_key":"accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda","app_key":"group_bbs","signature":"3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"}' https://127.0.0.1:8001/api/v1/group/join
+curl -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"989ffea1-083e-46b0-be02-3bad3de7d2e1","GroupId":"01014e95-303e-4955-b06e-bf185556a729","ProducerPubKey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","Hash":"gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=","Signature":"MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d","Timestamp":1633022374646518065},"group_id":"01014e95-303e-4955-b06e-bf185556a729","group_name":"ourforum","owner_pubkey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","owner_encryptpubkey":"age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu","consensus_type":"poa","encryption_type":"public","cipher_key":"accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda","app_key":"group_bbs","signature":"3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"}' http://127.0.0.1:8001/api/v1/group/join
 ```
 
 > [API: join group](./Tutorial.md#api-join-group)
@@ -198,7 +197,7 @@ curl -k -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"Block
 5. Check the group status
 
 ```bash
-curl -k https://127.0.0.1:8000/api/v1/groups
+curl http://127.0.0.1:8000/api/v1/groups
 ```
 
 Response:
@@ -235,7 +234,7 @@ Response:
 7. It's time to create your first forum post.
 
 ```bash
-curl --insecure -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"The Future Will Be Decentralized","name":"My First Post!"},"target":{"id":"01014e95-303e-4955-b06e-bf185556a729","type":"Group"}}' https://127.0.0.1:8000/api/v1/group/content
+curl -X POST -H 'Content-Type: application/json' -d '{"type":"Add","object":{"type":"Note","content":"The Future Will Be Decentralized","name":"My First Post!"},"target":{"id":"01014e95-303e-4955-b06e-bf185556a729","type":"Group"}}' http://127.0.0.1:8000/api/v1/group/content
 ```
 
 Response:
@@ -251,7 +250,7 @@ Response:
 8. Waiting about 10s to sync the blockchain, then check the groups status again.
 
 ```bash
-curl -k https://127.0.0.1:8000/api/v1/groups
+curl http://127.0.0.1:8000/api/v1/groups
 ```
 
 Response:
@@ -286,7 +285,7 @@ Check the group_status on PeerB, C ... , All peers should have the same highest_
 9. View the posts.
 
 ```bash
-curl -k -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "https://localhost:8000/app/api/v1/group/01014e95-303e-4955-b06e-bf185556a729/content?num=20&reverse=false"
+curl -X POST -H 'Content-Type: application/json' -d '{"senders":[]}' "http://localhost:8000/app/api/v1/group/01014e95-303e-4955-b06e-bf185556a729/content?num=20&reverse=false"
 ```
 
 Response:
@@ -323,7 +322,7 @@ Add more producers to prevent outages.
 2. Add a shell script to run the peer:
 
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002 -listen /ip4/0.0.0.0/tcp/7100/ws -apilisten :8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_nameConfig -datadir /var/data/your_peer_nameData -keystoredir /var/data/keystore -debug true
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002 -listen /ip4/0.0.0.0/tcp/7100/ws -apiport 8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_nameConfig -datadir /var/data/your_peer_nameData -keystoredir /var/data/keystore -debug true
 ```
 
 [view OPTIONS](#run_a_peer)

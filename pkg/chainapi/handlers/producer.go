@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -40,9 +41,9 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*G
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
-		return nil, errors.New("Can not find group")
+		return nil, rumerrors.ErrGroupNotFound
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		return nil, errors.New("Only group owner can add or remove producer")
+		return nil, rumerrors.ErrOnlyGroupOwner
 	} else {
 		isAnnounced, err := chainapidb.IsProducerAnnounced(group.Item.GroupId, params.ProducerPubkey, group.ChainCtx.GetNodeName())
 		if err != nil {

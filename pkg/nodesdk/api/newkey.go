@@ -1,16 +1,16 @@
 package nodesdkapi
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
 	guuid "github.com/google/uuid"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -28,20 +28,10 @@ type CreateNewKeyWithAliasResult struct {
 
 func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var err error
-		output := make(map[string]string)
-
-		validate := validator.New()
+		cc := c.(*utils.CustomContext)
 		params := new(CreateNewKeyWithAliasParams)
-
-		if err = c.Bind(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		if err = validate.Struct(params); err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
 		}
 
 		var keytype localcrypto.KeyType
@@ -56,14 +46,12 @@ func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 		ks := nodesdkctx.GetKeyStore()
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if !ok {
-			output[ERROR_INFO] = "Open keystore failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Open keystore failed")
 		}
 
 		keyname := dirks.AliasToKeyname(params.Alias)
 		if keyname != "" {
-			output[ERROR_INFO] = "Existed alias"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Existed alias")
 		}
 
 		password := os.Getenv("RUM_KSPASSWD")
@@ -71,30 +59,28 @@ func (h *NodeSDKHandler) CreateNewKeyWithAlias() echo.HandlerFunc {
 
 		newsignaddr, err := dirks.NewKey(keyname, keytype, password)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
 
-		err = nodeoptions.SetSignKeyMap(keyname, newsignaddr)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := nodeoptions.SetSignKeyMap(keyname, newsignaddr); err != nil {
+			return rumerrors.NewBadRequestError(err)
 		}
 
-		err = dirks.NewAlias(params.Alias, keyname, password)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+		if err := dirks.NewAlias(params.Alias, keyname, password); err != nil {
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		pubkey, err := dirks.GetEncodedPubkey(keyname, keytype)
 		if err != nil {
-			fmt.Println(err.Error())
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
 
-		result := &CreateNewKeyWithAliasResult{Alias: params.Alias, Keyname: keyname, KeyType: params.Type, Pubkey: pubkey}
+		result := &CreateNewKeyWithAliasResult{
+			Alias:   params.Alias,
+			Keyname: keyname,
+			KeyType: params.Type,
+			Pubkey:  pubkey,
+		}
 		return c.JSON(http.StatusOK, result)
 	}
 }

@@ -1,5 +1,4 @@
 [Quorum]
-  Server = "https://127.0.0.1:8002"
-  ServerSSLCertificate = "/path/to/certs/server.crt"
+  Server = "http://127.0.0.1:8002"
   JWT = ""
   Muted = []

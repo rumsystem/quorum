@@ -50,7 +50,10 @@ build: linux freebsd darwin windows wasm
 
 buildall: build buildcli
 
-gen-doc:
+install-swag:
+	go install github.com/swaggo/swag/cmd/swag@latest
+
+gen-doc: install-swag
 	$(shell which swag) init -g ./cmd/main.go -g ./cmd/utils.go --parseDependency --parseInternal --parseDepth 2 --parseGoList=false
 
 serve-doc: gen-doc

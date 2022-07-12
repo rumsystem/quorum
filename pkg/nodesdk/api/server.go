@@ -52,11 +52,7 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	//r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	//r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
-	certPath, keyPath, err := utils.GetTLSCerts()
-	if err != nil {
-		panic(err)
-	}
-	e.Logger.Fatal(e.StartTLS(config.NodeAPIListenAddress, certPath, keyPath))
+	e.Logger.Fatal(e.Start(config.NodeAPIListenAddress))
 }
 
 func quitapp(c echo.Context) (err error) {

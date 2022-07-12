@@ -18,6 +18,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -30,7 +31,7 @@ var blocksData = model.BlocksDataModel{
 	Pager:         make(map[string]model.BlockRangeOpt),
 	TickerRunning: false,
 	Counter:       0,
-	Cache:         make(map[string][]api.BlockStruct),
+	Cache:         make(map[string][]pb.Block),
 }
 
 func decodeTrxData(gType, key string, data []byte) ([]byte, error) {
@@ -225,7 +226,7 @@ func goBlocksGroups() {
 func goBlocksContent() {
 	curGroup := blocksData.GetCurrentGroup()
 	if curGroup != "" {
-		var blocks []api.BlockStruct = []api.BlockStruct{}
+		var blocks []pb.Block = []pb.Block{}
 		opt := blocksData.GetPager(curGroup)
 		if opt.Done {
 			return
@@ -303,7 +304,7 @@ func drawBlocksGroups() {
 		targetGroup := blocksData.GetGroups().GroupInfos[idx]
 		blocks, ok := blocksData.GetCache(targetGroup.GroupId)
 		if !ok {
-			blocks = []api.BlockStruct{}
+			blocks = []pb.Block{}
 		}
 		// cache current contents
 		curGroup := blocksData.GetCurrentGroup()
@@ -349,10 +350,8 @@ func drawBlocksContent() {
 	blocks := blocksData.GetBlocks()
 	for i, block := range blocks {
 		fmt.Fprintf(blocksPageRight, "[\"%d\"][::b]%s[-:-:-]\n", i, block.BlockId)
-		ts, err := strconv.Atoi(block.TimeStamp)
-		if err != nil {
-			fmt.Fprintf(blocksPageRight, "%s\n", time.Unix(0, int64(ts)))
-		}
+		fmt.Fprintf(blocksPageRight, "%s\n", time.Unix(0, block.TimeStamp))
+
 		fmt.Fprintf(blocksPageRight, "Hash: %s\n", hex.EncodeToString(block.Hash))
 		fmt.Fprintf(blocksPageRight, "Signature: %s\n", hex.EncodeToString(block.Signature))
 		fmt.Fprintf(blocksPageRight, "Trxs:\n")

@@ -27,14 +27,20 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
+
+var peerChan = make(chan peer.AddrInfo)
+
+func GetRelayPeerChan() chan peer.AddrInfo {
+	return peerChan
+}
 
 func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
@@ -86,17 +92,9 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	}
 
 	if nodeopt.EnableRelay && !nodeopt.EnableRelayService {
-		// TODO: use channel as relayServer source, thus we can modify relayServer dynamicaly
-		relayServerAddr := maddr.StringCast("/ip4/139.155.182.182/tcp/33333/ws/p2p/16Uiu2HAmMfW8CJms2hgcp8wHMut2MhLgpBP4NQEbLhuaaeWnac7t")
-
-		relayServer, err := peer.AddrInfoFromP2pAddr(relayServerAddr)
-		if err != nil {
-			panic(err)
-		}
-		staticRelays := []peer.AddrInfo{*relayServer}
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
-				autorelay.WithStaticRelays(staticRelays),
+				autorelay.WithPeerSource(peerChan),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0)),
@@ -105,7 +103,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	if nodeopt.EnableRelayService {
 		libp2poptions = append(libp2poptions,
 			libp2p.DisableRelay(),
-			libp2p.EnableRelayService(),
+			libp2p.EnableRelayService(relay.WithLimit(nil)),
 		)
 	}
 
@@ -131,12 +129,13 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
+
 	pubsubblocklist := pubsub.NewMapBlacklist()
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
-	if isBootstrap == true {
-		// turn off the mesh in bootstrapnode
+	if isBootstrap == true || nodeopt.EnableRelayService {
+		// turn off the mesh in bootstrapnode and relay node
 		pubsub.GossipSubD = 0
 		pubsub.GossipSubDscore = 0
 		pubsub.GossipSubDlo = 0
@@ -175,20 +174,17 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		return nil, err
 	}
 
-	psping := NewPSPingService(ctx, ps, host.ID())
-	psping.EnablePing()
+	// enable pubsub ping
+	psPing := NewPSPingService(ctx, ps, host.ID())
+	psPing.EnablePing()
+
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	if isBootstrap == false && nodeopt.EnableRumExchange == true {
-	}
-
 	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
-	//RumExchange: rexservice
 
 	//reconnect peers
-
 	storedpeers := []peer.AddrInfo{}
 	if ds != nil {
 		for _, peer := range pstore.Peers() {
@@ -196,7 +192,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 			storedpeers = append(storedpeers, peerinfo)
 		}
 	}
-	if len(storedpeers) > 0 {
+	if len(storedpeers) > 0 && !nodeopt.EnableRelayService {
 		//TODO: try connect every x minutes for x*y minutes?
 		go func() {
 			newnode.AddPeers(ctx, storedpeers)
@@ -206,35 +202,18 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	return newnode, nil
 }
 
-func (node *Node) SetRumExchange(ctx context.Context, cs csdef.ChainStorageIface) {
-	peerStatus := NewPeerStatus()
-	var rexnotification chan RexNotification
-	rexnotification = make(chan RexNotification, 1)
-	var rexservice *RexService
-	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
-	rexservice.SetDelegate()
-	rexchaindata := NewRexChainData(rexservice)
-	rexrelay := NewRexRelay(rexservice, cs)
-	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
-	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
-	networklog.Infof("Enable protocol RumExchange")
-
-	node.peerStatus = peerStatus
-	node.RumExchange = rexservice
-
-	if rexnotification != nil {
-		go node.rexhandler(ctx, rexnotification)
-	}
+func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
+	return bootstrap(ctx, node.Host, config.BootstrapPeers)
 }
 
-func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
+func bootstrap(ctx context.Context, h host.Host, addrs cli.AddrList) error {
 	var wg sync.WaitGroup
-	for _, peerAddr := range config.BootstrapPeers {
+	for _, peerAddr := range addrs {
 		peerinfo, _ := peer.AddrInfoFromP2pAddr(peerAddr)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := node.Host.Connect(ctx, *peerinfo); err != nil {
+			if err := h.Connect(ctx, *peerinfo); err != nil {
 				networklog.Warning(err)
 			} else {
 				networklog.Infof("Connection established with bootstrap node %s:", *peerinfo)

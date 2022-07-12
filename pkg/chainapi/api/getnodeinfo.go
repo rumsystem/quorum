@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -16,9 +17,7 @@ import (
 func (h *Handler) GetNodeInfo(c echo.Context) (err error) {
 	info, err := handlers.GetNodeInfo(h.Node.NetworkName)
 	if err != nil {
-		output := make(map[string]interface{})
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, info)

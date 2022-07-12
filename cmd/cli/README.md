@@ -9,7 +9,7 @@ The rumcli needs an API server running first, all operations will go through the
 Use following command to start a local api server with a remote peer.
 
 ```bash
-quorum -peername chux0519_peer -listen /ip4/0.0.0.0/tcp/7002  -apilisten :8002 -peer /ip4/167.114.61.179/tcp/10666/p2p/16Uiu2HAmE7TYnrYtC6tAsWvz4EUGQke1wsdrkw2kt8GFv6brfHFw  -debug true
+quorum -peername chux0519_peer -listen /ip4/0.0.0.0/tcp/7002  -apiport 8002 -peer /ip4/167.114.61.179/tcp/10666/p2p/16Uiu2HAmE7TYnrYtC6tAsWvz4EUGQke1wsdrkw2kt8GFv6brfHFw  -debug true
 ```
 
 [The quorum project](https://github.com/rumsystem/quorum)
@@ -87,10 +87,6 @@ rumcli will load your config on starting. Default paths are different on differe
 Linux: `~/.config/rumcli/config.toml`
 OSX: `~/Library/Application Support/rumcli/config.toml`
 Windows: `C:\Users\xxxx\AppData\Local\rumcli\config.toml`
-
-Fill the `ServerSSLCertificate` like `ServerSSLCertificate = "/home/xxx/quorum/certs/server.crt"` before using to avoid https error.
-
-Notice: On windows you have to use the escaped string, for example `C:\\Users\\xxxx\\repos\\quorum\\certs\\server.crt`
 
 Tips: Start rumcli then press "q" to shutdown, and it will generate an empty config for you.
 

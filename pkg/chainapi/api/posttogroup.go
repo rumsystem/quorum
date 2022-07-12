@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -17,18 +19,16 @@ import (
 // @Success 200 {object} handlers.TrxResult
 // @Router /api/v1/group/content [post]
 func (h *Handler) PostToGroup(c echo.Context) (err error) {
-
-	output := make(map[string]string)
+	cc := c.(*utils.CustomContext)
 	paramspb := new(quorumpb.Activity)
-	if err = c.Bind(paramspb); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := cc.BindAndValidate(paramspb); err != nil {
+		return err
 	}
 
 	res, err := handlers.PostToGroup(paramspb)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
+
 	return c.JSON(http.StatusOK, res)
 }

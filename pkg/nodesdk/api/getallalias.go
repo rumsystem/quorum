@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -20,19 +21,15 @@ type GetAllAliasResult struct {
 
 func (h *NodeSDKHandler) GetAllAlias() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var err error
-		output := make(map[string]string)
 		ks := nodesdkctx.GetKeyStore()
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if !ok {
-			output[ERROR_INFO] = "Open keystore failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("cast to DirKeyStore failed")
 		}
 
 		keys, err := dirks.ListAll()
 		if err != nil {
-			output[ERROR_INFO] = "Open keystore failed"
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError("Open keystore failed")
 		}
 
 		var keyitems []*KeyItem

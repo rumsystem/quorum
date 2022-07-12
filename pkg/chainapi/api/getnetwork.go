@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -21,7 +20,7 @@ func (h *Handler) GetNetwork(nodehost *host.Host, nodeinfo *p2p.NodeInfo, nodeop
 	return func(c echo.Context) error {
 		result, err := handlers.GetNetwork(nodehost, nodeinfo, nodeopt, ethaddr)
 		if err != nil {
-			fmt.Printf("json.Marshal failed: %s", err)
+			return err
 		}
 
 		return c.JSON(http.StatusOK, result)

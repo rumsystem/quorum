@@ -13,21 +13,22 @@ import (
 	"github.com/go-playground/validator/v10"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 type ChainConfigParams struct {
-	GroupId string `from:"group_id" json:"group_id"  validate:"required"`
-	Type    string `from:"type"     json:"type"      validate:"required"`
+	GroupId string `from:"group_id" json:"group_id"  validate:"required,uuid4"`
+	Type    string `from:"type"     json:"type"      validate:"required,oneof=set_trx_auth_mode upd_alw_list upd_dny_list"`
 	Config  string `from:"config"   json:"config"    validate:"required"`
 	Memo    string `from:"memo"     json:"memo"`
 }
 
 type TrxAuthModeParams struct {
-	TrxType     string `from:"trx_type"      json:"trx_type"     validate:"required"`
-	TrxAuthMode string `from:"trx_auth_mode" json:"trx_auth_mode" validate:"required"`
+	TrxType     string `from:"trx_type"      json:"trx_type"     validate:"required,oneof=POST ANNOUNCE REQ_BLOCK_FORWARD REQ_BLOCK_BACKWARD BLOCK_SYNCED BLOCK_PRODUCED ASK_PEERID"`
+	TrxAuthMode string `from:"trx_auth_mode" json:"trx_auth_mode" validate:"required,oneof=follow_alw_list follow_dny_list"`
 }
 type ChainSendTrxRuleListItemParams struct {
 	Action  string   `from:"action"   json:"action"   validate:"required,oneof=add remove"`
@@ -36,7 +37,7 @@ type ChainSendTrxRuleListItemParams struct {
 }
 
 type ChainConfigResult struct {
-	GroupId          string `json:"group_id"     validate:"required"`
+	GroupId          string `json:"group_id"     validate:"required,uuid4"`
 	GroupOwnerPubkey string `json:"owner_pubkey" validate:"required"`
 	Sign             string `json:"signature"    validate:"required"`
 	TrxId            string `json:"trx_id"       validate:"required"`
@@ -50,9 +51,9 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
-		return nil, errors.New("Can not find group")
+		return nil, rumerrors.ErrGroupNotFound
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		return nil, errors.New("Only group owner can change chain configuration")
+		return nil, rumerrors.ErrOnlyGroupOwner
 	}
 
 	group := groupmgr.Groups[params.GroupId]

@@ -2,20 +2,19 @@ package api
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var ApiServer string
@@ -479,17 +478,17 @@ func DelGroup(gid string) (*GroupDelRetStruct, error) {
 	return &ret, nil
 }
 
-func TrxInfo(groupId string, trxId string) (trx *TrxStruct, err error) {
+func TrxInfo(groupId string, trxId string) (trx *pb.Trx, err error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
 	url := fmt.Sprintf("%s/api/v1/trx/%s/%s", ApiServer, groupId, trxId)
-	ret := TrxStruct{}
+	ret := pb.Trx{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(body, &ret)
+	err = protojson.Unmarshal(body, &ret)
 	if err != nil {
 		return nil, errors.New(string(body))
 	}
@@ -510,17 +509,17 @@ func JoinGroup(seed string) (*JoinRespStruct, error) {
 	return &ret, nil
 }
 
-func GetBlockById(groupId string, id string) (*BlockStruct, error) {
+func GetBlockById(groupId string, id string) (*pb.Block, error) {
 	if !IsValidApiServer() {
 		return nil, errors.New("api server is invalid: " + ApiServer)
 	}
 	url := fmt.Sprintf("%s/api/v1/block/%s/%s", ApiServer, groupId, id)
-	ret := BlockStruct{}
+	ret := pb.Block{}
 	body, err := httpGet(url)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(body, &ret)
+	err = protojson.Unmarshal(body, &ret)
 	if err != nil {
 		return nil, errors.New(string(body))
 	}
@@ -624,36 +623,8 @@ func ApproveAnnouncedProducer(groupId string, user *handlers.AnnouncedProducerLi
 }
 
 func newHTTPClient() (*http.Client, error) {
-	certPath, err := filepath.Abs(config.RumConfig.Quorum.ServerSSLCertificate)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if certPath != "" {
-		caCert, err := ioutil.ReadFile(certPath)
-		if err != nil {
-			return nil, err
-		}
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		if err != nil {
-			return nil, err
-		}
-		tlsConfig := &tls.Config{
-			RootCAs: caCertPool,
-		}
-		if config.RumConfig.Quorum.ServerSSLInsecure {
-			tlsConfig.InsecureSkipVerify = true
-		}
-
-		tlsConfig.BuildNameToCertificate()
-		transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
-		// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
-		return &http.Client{Transport: transport, Timeout: 5 * time.Second}, nil
-	}
-	return &http.Client{}, nil
+	// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
+	return &http.Client{Timeout: 5 * time.Second}, nil
 }
 
 func checkJWTError(body string) error {

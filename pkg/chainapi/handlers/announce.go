@@ -9,12 +9,13 @@ import (
 	"github.com/go-playground/validator/v10"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 type AnnounceResult struct {
-	GroupId                string `json:"group_id" validate:"required"`
+	GroupId                string `json:"group_id" validate:"required,uuid4"`
 	AnnouncedSignPubkey    string `json:"sign_pubkey" validate:"required"`
 	AnnouncedEncryptPubkey string `json:"encrypt_pubkey"`
 	Type                   string `json:"type" validate:"required"`
@@ -24,7 +25,7 @@ type AnnounceResult struct {
 }
 
 type AnnounceParam struct {
-	GroupId string `from:"group_id"    json:"group_id"    validate:"required"`
+	GroupId string `from:"group_id"    json:"group_id"    validate:"required,uuid4"`
 	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove"`
 	Type    string `from:"type"        json:"type"        validate:"required,oneof=user producer"`
 	Memo    string `from:"memo"        json:"memo"        validate:"required"`
@@ -43,7 +44,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
-		return nil, errors.New("Can not find group")
+		return nil, rumerrors.ErrGroupNotFound
 	} else {
 		if params.Type == "user" {
 			item.Type = quorumpb.AnnounceType_AS_USER
@@ -58,7 +59,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 		} else if params.Action == "remove" {
 			item.Action = quorumpb.ActionType_REMOVE
 		} else {
-			return nil, errors.New("Unknown type")
+			return nil, errors.New("Unknown action")
 		}
 
 		item.SignPubkey = group.Item.UserSignPubkey

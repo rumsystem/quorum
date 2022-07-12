@@ -2,17 +2,21 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"syscall"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rumsystem/ip-cert/pkg/zerossl"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
+	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 var quitch chan os.Signal
@@ -23,8 +27,8 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
-	e.Use(OpaWithConfig(OpaConfig{
-		Skipper:   localhostSkipper,
+	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
+		Skipper:   rummiddleware.LocalhostSkipper,
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
@@ -42,6 +46,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.POST("/v1/group/content", h.PostToGroup)
 		r.POST("/v1/group/profile", h.UpdateProfile)
 		r.POST("/v1/network/peers", h.AddPeers)
+		r.POST("/v1/network/relay", h.AddRelayServers)
 		r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 		r.POST("/v1/group/producer", h.GroupProducer)
 		r.POST("/v1/group/user", h.GroupUser)
@@ -52,8 +57,9 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 		r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
-		r.GET("/v1/network/peers/ping", h.PingPeer(node))
+		r.GET("/v1/network/peers/ping", h.PingPeers(node))
 		r.POST("/v1/psping", h.PSPingPeer(node))
+		r.POST("/v1/ping", h.P2PPingPeer(node))
 		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.POST("/v1/trx/ack", h.PubQueueAck)
@@ -93,11 +99,23 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
 	}
 
-	certPath, keyPath, err := utils.GetTLSCerts()
-	if err != nil {
-		panic(err)
+	// start https or http server
+	host := config.APIHost
+	if utils.IsDomainName(host) { // domain
+		e.AutoTLSManager.Cache = autocert.DirCache(config.CertDir)
+		e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.APIHost)
+		e.AutoTLSManager.Prompt = autocert.AcceptTOS
+		e.Logger.Fatal(e.StartAutoTLS(":https"))
+	} else if utils.IsPublicIP(host) { // public ip
+		ip := net.ParseIP(host)
+		privKeyPath, certPath, err := zerossl.IssueIPCert(config.CertDir, ip, config.ZeroAccessKey)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+		e.Logger.Fatal(e.StartTLS(":https", certPath, privKeyPath))
+	} else { // start http server
+		e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, config.APIPort)))
 	}
-	e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, keyPath))
 }
 
 func quitapp(c echo.Context) (err error) {

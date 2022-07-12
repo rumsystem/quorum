@@ -3,8 +3,9 @@ package nodesdkapi
 import (
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	pkgutils "github.com/rumsystem/quorum/internal/pkg/utils"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -14,32 +15,21 @@ type UpdApiHostUrlParams struct {
 }
 
 func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
-	output := make(map[string]string)
-
-	validate := validator.New()
+	cc := c.(*pkgutils.CustomContext)
 	params := new(UpdApiHostUrlParams)
-	if err = c.Bind(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-
-	if err = validate.Struct(params); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := cc.BindAndValidate(params); err != nil {
+		return err
 	}
 
 	nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(params.GroupId)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	nodesdkGroupItem.ApiUrl = params.ChainAPIUrl
 
-	err = nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(nodesdkGroupItem)
-	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(nodesdkGroupItem); err != nil {
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, "")

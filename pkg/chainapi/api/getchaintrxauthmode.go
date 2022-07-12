@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -16,15 +18,16 @@ import (
 // @Success 200 {array} handlers.TrxAuthItem
 // @Router /api/v1/group/{group_id}/trx/auth/{trx_type} [get]
 func (h *Handler) GetChainTrxAuthMode(c echo.Context) (err error) {
-	output := make(map[string]string)
-	groupid := c.Param("group_id")
-	trxType := c.Param("trx_type")
-	res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, groupid, trxType)
+	cc := c.(*utils.CustomContext)
+	params := new(handlers.TrxAuthParams)
+	if err := cc.BindAndValidate(params); err != nil {
+		return err
+	}
+
+	res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, params.GroupId, params.TrxType)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)
-
 }

@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	_ "github.com/rumsystem/quorum/internal/pkg/stats" // for swag find stats.NetworkStatsSummary
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors" // for swag find stats.NetworkStatsSummary
+	_ "github.com/rumsystem/quorum/internal/pkg/stats"          // for swag find stats.NetworkStatsSummary
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -19,8 +20,6 @@ import (
 // @Success 200 {object} stats.NetworkStatsSummary
 // @Router /api/v1/network/stats [get]
 func (h *Handler) GetNetworkStatsSummary(c echo.Context) error {
-	output := make(map[string]string)
-
 	start := c.QueryParam("start")
 	end := c.QueryParam("end")
 	var startTime *time.Time
@@ -29,24 +28,21 @@ func (h *Handler) GetNetworkStatsSummary(c echo.Context) error {
 	if start != "" {
 		t, err := time.Parse(time.RFC3339, start)
 		if err != nil {
-			output[ERROR_INFO] = fmt.Sprintf("parse start query param failed: %s", err)
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(fmt.Sprintf("parse start query param failed: %s", err))
 		}
 		startTime = &t
 	}
 	if end != "" {
 		t, err := time.Parse(time.RFC3339, end)
 		if err != nil {
-			output[ERROR_INFO] = fmt.Sprintf("parse end query param failed: %s", err)
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(fmt.Sprintf("parse end query param failed: %s", err))
 		}
 		endTime = &t
 	}
 
 	result, err := handlers.GetNetworkStats(startTime, endTime)
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusInternalServerError, output)
+		return err
 	}
 
 	return c.JSON(http.StatusOK, result)

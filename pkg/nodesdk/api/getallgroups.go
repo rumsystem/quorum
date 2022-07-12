@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
@@ -46,11 +47,9 @@ func (s *GroupInfoList) Less(i, j int) bool {
 func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var groups []*GroupInfo
-		output := make(map[string]string)
 		nodesdkGroupItems, err := nodesdkctx.GetCtx().GetChainStorage().GetAllGroupsV2()
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
 		for _, groupItem := range nodesdkGroupItems {
 			var groupInfo *GroupInfo
@@ -61,10 +60,8 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 			groupInfo.EncryptAlias = groupItem.EncryptAlias
 
 			ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
-
 			if err != nil {
-				output[ERROR_INFO] = err.Error()
-				return c.JSON(http.StatusBadRequest, output)
+				return rumerrors.NewBadRequestError(err)
 			}
 			groupInfo.UserEthaddr = ethaddr
 			groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()

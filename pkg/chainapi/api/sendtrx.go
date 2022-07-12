@@ -8,7 +8,9 @@ import (
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -33,79 +35,65 @@ func is_user_blocked(c echo.Context) bool {
 }
 
 func (h *Handler) SendTrx(c echo.Context) (err error) {
-
-	output := make(map[string]string)
+	cc := c.(*utils.CustomContext)
 
 	if is_user_blocked(c) {
-		output[ERROR_INFO] = "BLOCKED_USER"
-		return c.JSON(http.StatusForbidden, output)
+		return rumerrors.NewBadRequestError("BLOCKED_USER")
 	}
 
 	sendTrxItem := new(NodeSDKSendTrxItem)
-	if err = c.Bind(sendTrxItem); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	if err := cc.BindAndValidate(sendTrxItem); err != nil {
+		return err
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[sendTrxItem.GroupId]; ok {
-		//private group is NOT supported
-		if group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			output[ERROR_INFO] = "FUNCTION_NOT_SUPPORTED"
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		ciperKey, err := hex.DecodeString(group.Item.CipherKey)
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		decryptData, err := localcrypto.AesDecode(sendTrxItem.TrxItem, ciperKey)
-		trxItem := new(NodeSDKTrxItem)
-
-		err = json.Unmarshal(decryptData, trxItem)
-		if err != nil {
-			output[ERROR_INFO] = "INVALID_DATA"
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		if trxItem.JwtToken != NodeSDKJwtToken {
-			output[ERROR_INFO] = "INVALID_JWT_TOKEN"
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		trx := new(quorumpb.Trx)
-		err = proto.Unmarshal(trxItem.TrxBytes, trx)
-		if err != nil {
-			output[ERROR_INFO] = "INVALID_DATA"
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		//check if trx sender is in group block list
-		isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, nodectx.GetNodeCtx().Name)
-		if err != nil {
-			output[ERROR_INFO] = "CHECK_AUTH_FAILED"
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		if !isAllow {
-			output[ERROR_INFO] = "OPERATION_DENY"
-			return c.JSON(http.StatusBadRequest, output)
-		}
-
-		trxId, err := group.SendRawTrx(trx)
-		var sendTrxResult *SendTrxResult
-		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
-		} else {
-			sendTrxResult = &SendTrxResult{TrxId: trxId}
-			return c.JSON(http.StatusOK, sendTrxResult)
-		}
-
-	} else {
-		output[ERROR_INFO] = "INVALID_GROUP"
-		return c.JSON(http.StatusBadRequest, output)
+	group, ok := groupmgr.Groups[sendTrxItem.GroupId]
+	if !ok {
+		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
+
+	//private group is NOT supported
+	if group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		return rumerrors.NewBadRequestError(rumerrors.ErrPrivateGroupNotSupported)
+	}
+
+	ciperKey, err := hex.DecodeString(group.Item.CipherKey)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	decryptData, err := localcrypto.AesDecode(sendTrxItem.TrxItem, ciperKey)
+	trxItem := new(NodeSDKTrxItem)
+
+	if err := json.Unmarshal(decryptData, trxItem); err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	if trxItem.JwtToken != NodeSDKJwtToken {
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidJWT)
+	}
+
+	trx := new(quorumpb.Trx)
+	err = proto.Unmarshal(trxItem.TrxBytes, trx)
+	if err != nil {
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxData)
+	}
+
+	//check if trx sender is in group block list
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, nodectx.GetNodeCtx().Name)
+	if err != nil {
+		return rumerrors.NewUnauthorizedError(err)
+	}
+
+	if !isAllow {
+		return rumerrors.NewForbiddenError()
+	}
+
+	trxId, err := group.SendRawTrx(trx)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	sendTrxResult := &SendTrxResult{TrxId: trxId}
+	return c.JSON(http.StatusOK, sendTrxResult)
 }

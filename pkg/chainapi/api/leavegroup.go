@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
@@ -16,15 +18,16 @@ import (
 // @success 200 {object} handlers.LeaveGroupResult "LeaveGroupResult"
 // @Router /api/v1/group/leave [post]
 func (h *Handler) LeaveGroup(c echo.Context) (err error) {
+	cc := c.(*utils.CustomContext)
 	params := new(handlers.LeaveGroupParam)
 
-	if err := c.Bind(params); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	if err := cc.BindAndValidate(params); err != nil {
+		return err
 	}
 
 	res, err := handlers.LeaveGroup(params, h.Appdb)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	return c.JSON(http.StatusOK, res)

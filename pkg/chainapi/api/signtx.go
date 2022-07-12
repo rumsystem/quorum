@@ -1,17 +1,17 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 type (
@@ -94,34 +94,26 @@ func loadSignTxParam(param SignTxParam) (*FmtSignTxParam, error) {
 // @Success 200 {object} SignTxResult
 // @Router /api/v1/keystore/signtx [post]
 func (h *Handler) SignTx(c echo.Context) (err error) {
-	output := make(map[string]string)
+	cc := c.(*utils.CustomContext)
 
-	validate := validator.New()
-	var input SignTxParam
-
-	if err = c.Bind(&input); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
-	}
-	if err = validate.Struct(input); err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+	input := new(SignTxParam)
+	if err := cc.BindAndValidate(input); err != nil {
+		return err
 	}
 
-	param, err := loadSignTxParam(input)
+	param, err := loadSignTxParam(*input)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	if param.Keyalias == "" && param.Keyname == "" {
-		return c.JSON(http.StatusBadRequest, errors.New("both key alias and key name are empty"))
+		return rumerrors.NewBadRequestError("both key alias and key name are empty")
 	}
 
 	ks := nodectx.GetNodeCtx().Keystore
 	dirks, ok := ks.(*localcrypto.DirKeyStore)
 	if !ok {
-		output[ERROR_INFO] = "Open keystore failed"
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("Open keystore failed")
 	}
 
 	var data string
@@ -149,8 +141,7 @@ func (h *Handler) SignTx(c echo.Context) (err error) {
 		)
 	}
 	if err != nil {
-		output[ERROR_INFO] = err.Error()
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(err)
 	}
 
 	result := SignTxResult{Data: data}

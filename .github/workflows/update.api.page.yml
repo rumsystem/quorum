@@ -20,7 +20,7 @@ jobs:
       - name: Swag Init
         run: |
           go install github.com/swaggo/swag/cmd/swag@v1.7.0
-          ./scripts/swag_init.sh
+          make gen-doc
 
       - name: Check swagger.json generated 
         id: check_files

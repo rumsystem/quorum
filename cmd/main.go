@@ -120,6 +120,7 @@ func saveLocalSeedsToAppdata(appdb *appdata.AppDb, dataDir string) {
 func mainRet(config cli.Config) int {
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
+
 	defer cancel()
 
 	mainlog.Infof("Version: %s", GitCommit)
@@ -168,8 +169,8 @@ func mainRet(config cli.Config) int {
 		mainlog.Fatalf(err.Error())
 	}
 
-	if config.IsBootstrap == true {
-		//bootstrop node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
+	if config.IsBootstrap == true || config.EnableRelayService {
+		//bootstrop/relay node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
 		cm, err := connmgr.NewConnManager(1000, 50000, connmgr.WithGracePeriod(30*time.Second))
 		if err != nil {
 			mainlog.Fatalf(err.Error())
@@ -293,12 +294,7 @@ func mainRet(config cli.Config) int {
 			ChainAPIdb: newchainstorage,
 		}
 
-		apiaddress := "https://%s/api/v1"
-		if config.APIListenAddresses[:1] == ":" {
-			apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses)
-		} else {
-			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
-		}
+		apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
 		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
 		appsync.Start(10)
 		apph := &appapi.Handler{
@@ -497,11 +493,6 @@ func main() {
 		panic(err)
 	}
 
-	_, _, err = utils.NewTLSCert()
-	if err != nil {
-		panic(err)
-	}
-
 	os.Exit(mainRet(config))
 }
 
@@ -605,14 +596,14 @@ func restore(params handlers.RestoreParam, isRestoreFromWasm bool) {
 	testnode.Fork(
 		pidch, params.Password, process,
 		"-peername", params.Peername,
-		"-apilisten", fmt.Sprintf(":%d", apiPort),
+		"-apiport", fmt.Sprintf("%d", apiPort),
 		"-configdir", params.ConfigDir,
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,
 	)
 	defer utils.RemoveAll("certs") // NOTE: HARDCODE
 
-	peerBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", apiPort)
+	peerBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", apiPort)
 	ctx := context.Background()
 	checkctx, _ := context.WithTimeout(ctx, 300*time.Second)
 	if ok := testnode.CheckApiServerRunning(checkctx, peerBaseUrl); !ok {

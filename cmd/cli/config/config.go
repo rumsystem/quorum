@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/adrg/xdg"
@@ -14,15 +15,13 @@ import (
 var signKeyMap = map[string]string{}
 
 type QuorumConfig struct {
-	Server               string
-	ServerSSLCertificate string
-	ServerSSLInsecure    bool
-	KeyStoreName         string
-	KeyStoreDir          string
-	KeyStorePass         string
-	JWT                  string
-	MaxContentSize       int
-	Muted                []string
+	Server         string
+	KeyStoreName   string
+	KeyStoreDir    string
+	KeyStorePass   string
+	JWT            string
+	MaxContentSize int
+	Muted          []string
 }
 
 type RumCliConfig struct {
@@ -31,13 +30,28 @@ type RumCliConfig struct {
 
 var RumConfig RumCliConfig
 var Logger *logging.ZapEventLogger
+var absConfigFilePath string
 
-func Init() {
+func Init(configPath string) {
+	var configFilePath string
+	var err error
+
 	initLogger()
-	configFilePath, err := xdg.ConfigFile("rumcli/config.toml")
-	if err != nil {
-		Logger.Fatal(err)
+
+	if configPath == "" {
+		configFilePath, err = xdg.ConfigFile("rumcli/config.toml")
+		if err != nil {
+			Logger.Fatal(err)
+		}
+	} else {
+		configFilePath, err = filepath.Abs(configPath)
+		if err != nil {
+			Logger.Fatal(err)
+		}
 	}
+
+	absConfigFilePath = configFilePath
+
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		// path/to/whatever does not exist
 		f, err := os.OpenFile(configFilePath, os.O_APPEND|os.O_CREATE, 0644)
@@ -51,6 +65,10 @@ func Init() {
 	}
 
 	initKeyStore()
+}
+
+func Reload() {
+	Init(absConfigFilePath)
 }
 
 func initLogger() {
@@ -106,6 +124,9 @@ func initKeyStore() {
 }
 
 func Save() string {
+	if absConfigFilePath == "" {
+		return ""
+	}
 
 	var configBuffer bytes.Buffer
 	e := toml.NewEncoder(&configBuffer)
@@ -118,12 +139,7 @@ func Save() string {
 		Logger.Fatal(err)
 	}
 
-	configFilePath, err := xdg.ConfigFile("rumcli/config.toml")
-	if err != nil {
-		Logger.Fatal(err)
-	}
-
-	f, err := os.OpenFile(configFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(absConfigFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		Logger.Fatal(err)
 	}
@@ -132,5 +148,5 @@ func Save() string {
 		Logger.Fatal(err)
 	}
 	f.Close()
-	return configFilePath
+	return absConfigFilePath
 }

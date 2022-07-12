@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	_ "github.com/rumsystem/rumchaindata/pkg/pb" //import for swaggo
 )
 
@@ -18,31 +19,25 @@ import (
 // @Success 200 {object} pb.Block
 // @Router /api/v1/block/{group_id}/{block_id} [get]
 func (h *Handler) GetBlockById(c echo.Context) (err error) {
-	output := make(map[string]string)
-
 	groupid := c.Param("group_id")
 	if groupid == "" {
-		output[ERROR_INFO] = "group_id can't be nil."
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("group_id can't be nil.")
 	}
 
 	blockid := c.Param("block_id")
 	if blockid == "" {
-		output[ERROR_INFO] = "block_id can't be nil."
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError("block_id can't be nil.")
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
 		block, err := group.GetBlock(blockid)
 		if err != nil {
-			output[ERROR_INFO] = err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			return rumerrors.NewBadRequestError(err)
 		}
 
 		return c.JSON(http.StatusOK, block)
 	} else {
-		output[ERROR_INFO] = fmt.Sprintf("Group %s not exist", groupid)
-		return c.JSON(http.StatusBadRequest, output)
+		return rumerrors.NewBadRequestError(fmt.Sprintf("Group %s not exist", groupid))
 	}
 }
