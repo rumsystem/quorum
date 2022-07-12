@@ -294,12 +294,7 @@ func mainRet(config cli.Config) int {
 			ChainAPIdb: newchainstorage,
 		}
 
-		apiaddress := "http://%s/api/v1"
-		if config.APIListenAddresses[:1] == ":" {
-			apiaddress = fmt.Sprintf(apiaddress, "localhost"+config.APIListenAddresses)
-		} else {
-			apiaddress = fmt.Sprintf(apiaddress, config.APIListenAddresses)
-		}
+		apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
 		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
 		appsync.Start(10)
 		apph := &appapi.Handler{
@@ -601,7 +596,7 @@ func restore(params handlers.RestoreParam, isRestoreFromWasm bool) {
 	testnode.Fork(
 		pidch, params.Password, process,
 		"-peername", params.Peername,
-		"-apilisten", fmt.Sprintf(":%d", apiPort),
+		"-apiport", fmt.Sprintf("%d", apiPort),
 		"-configdir", params.ConfigDir,
 		"-keystoredir", params.KeystoreDir,
 		"-datadir", params.DataDir,

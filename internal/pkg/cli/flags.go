@@ -3,7 +3,6 @@ package cli
 import (
 	"flag"
 	"log"
-	"net"
 	"path/filepath"
 	"strings"
 
@@ -11,14 +10,13 @@ import (
 )
 
 type AddrList []maddr.Multiaddr
-type ipList []net.IP
 
 type Config struct {
 	RendezvousString     string
 	BootstrapPeers       AddrList
 	ListenAddresses      AddrList
-	APIIPAddresses       ipList
-	APIListenAddresses   string
+	APIHost              string
+	APIPort              uint
 	CertDir              string
 	ZeroAccessKey        string
 	NodeAPIListenAddress string
@@ -59,25 +57,6 @@ func (al *AddrList) Set(value string) error {
 	return nil
 }
 
-func (ips *ipList) String() string {
-	strs := make([]string, len(*ips))
-	for i, addr := range *ips {
-		strs[i] = addr.String()
-	}
-	return strings.Join(strs, ",")
-
-}
-
-func (ips *ipList) Set(value string) error {
-	addrlist := strings.Split(value, ",")
-
-	for _, v := range addrlist {
-		addr := net.ParseIP(v)
-		*ips = append(*ips, addr)
-	}
-	return nil
-}
-
 var quorumConfig Config
 
 func GetConfig() Config {
@@ -90,8 +69,8 @@ func ParseFlags() (Config, error) {
 		"Unique string to identify group of nodes. Share this with your friends to let them connect with you")
 	flag.Var(&config.BootstrapPeers, "peer", "Adds a peer multiaddress to the bootstrap list")
 	flag.Var(&config.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: `-listen /ip4/127.0.0.1/tcp/4215 -listen /ip/127.0.0.1/tcp/5215/ws`")
-	flag.Var(&config.APIIPAddresses, "ips", "IPAddresses for api server")
-	flag.StringVar(&config.APIListenAddresses, "apilisten", ":5215", "api server listen port")
+	flag.StringVar(&config.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flag.UintVar(&config.APIPort, "apiport", 5215, "api server listen port")
 	flag.StringVar(&config.CertDir, "certdir", "certs", "ssl certificate directory")
 	flag.StringVar(&config.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
 	flag.StringVar(&config.NodeAPIListenAddress, "nodeapilisten", ":5216", "Adds a multiaddress to the listen list for nodesdk")
