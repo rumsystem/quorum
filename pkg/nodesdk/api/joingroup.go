@@ -10,7 +10,9 @@ import (
 	"net/url"
 
 	"github.com/labstack/echo/v4"
+	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
@@ -136,6 +138,14 @@ func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
+		if err != nil {
+			//the key maybe a libp2p key, try...
+			ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+			if err != nil {
+				msg := "Decode OwnerPubkey failed: " + err.Error()
+				return rumerrors.NewBadRequestError(msg)
+			}
+		}
 
 		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
