@@ -5,10 +5,6 @@ import (
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	"net/http"
-
-	"github.com/labstack/echo/v4"
-	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
 type GetGroupSeedParams struct {
@@ -17,14 +13,19 @@ type GetGroupSeedParams struct {
 
 func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		var err error
+		output := make(map[string]string)
 		groupid := c.Param("group_id")
+
 		if groupid == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
+			output[ERROR_INFO] = "group_id can not be empty"
+			return c.JSON(http.StatusBadRequest, output)
 		}
 
 		pbseed, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupSeed(groupid)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err)
+			output[ERROR_INFO] = err.Error()
+			return c.JSON(http.StatusBadRequest, output)
 		}
 		seed := handlers.FromPbGroupSeed(pbseed)
 
