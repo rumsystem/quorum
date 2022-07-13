@@ -89,7 +89,12 @@ func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...strin
 	nodeprefix := utils.GetPrefix(prefix...)
 
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
-	if pk == "" {
+
+	var err error
+	libp2ppk := ""
+	if pk == pubkey {
+		libp2ppk, err = localcrypto.EthBase64ToLibp2pPubkey(pubkey)
+	} else if pk == "" {
 		pk = pubkey
 	}
 
@@ -99,15 +104,23 @@ func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...strin
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		//patch for old keyformat
+		if pubkey != "" {
+			//patch for old keyformat
+			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
+			value, err = cs.dbmgr.Db.Get([]byte(key))
+			if err != nil {
+				key = s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
+				value, err = cs.dbmgr.Db.Get([]byte(key))
+				if err != nil {
+					return err
+				}
 
-		key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pubkey
-		value, err = cs.dbmgr.Db.Get([]byte(key))
-		if err != nil {
+			}
+			//update to the new keyformat
+			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
+		} else {
 			return err
 		}
-		//update to the new keyformat
-		key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
 
 	}
 
