@@ -1,11 +1,9 @@
 package p2p
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/pkg/relayapi/handlers"
 
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -25,32 +23,13 @@ func (rf *QuorumRelayFilter) AllowReserve(p peer.ID, a ma.Multiaddr) bool {
 }
 
 func (rf *QuorumRelayFilter) AllowConnect(src peer.ID, srcAddr ma.Multiaddr, dest peer.ID) bool {
-	destPermission := rf.getDestConnectPermission(dest)
+	// once traffic of a dest peer exceeds its limit, we dont allow connect to the peer anymore
+	permission, err := handlers.GetPermissions(rf.db, dest.String())
+	if err != nil {
+		networklog.Errorf("getDestConnectPermission failed: %s:", err.Error())
+		return false
+	}
 
 	// TODO: we could also add limitation for src peers
-	return destPermission
-}
-
-func (rf *QuorumRelayFilter) getDestConnectPermission(dest peer.ID) bool {
-	// once traffic of a dest peer exceeds its limit, we dont allow connect to the peer anymore
-	k := []byte(fmt.Sprintf("AllowConnectTo_%s", dest.String()))
-
-	isExist, err := rf.db.IsExist(k)
-	if err != nil {
-		networklog.Errorf("getDestConnectPermission failed: %s:", err.Error())
-		return false
-	}
-	if !isExist {
-		// allow by default
-		return true
-	}
-
-	v, err := rf.db.Get(k)
-	if err != nil {
-		networklog.Errorf("getDestConnectPermission failed: %s:", err.Error())
-		return false
-	}
-	ok, _ := strconv.ParseBool(string(v))
-
-	return ok
+	return permission.AllowConnect
 }

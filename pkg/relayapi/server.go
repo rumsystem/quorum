@@ -11,6 +11,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/relayapi/api"
 )
 
 type Handler struct {
@@ -25,7 +26,7 @@ type Handler struct {
 }
 
 //StartRelayServer : Start local web server
-func StartRelayServer(config cli.RelayNodeConfig, quitCh chan os.Signal, h *RelayServerHandler) {
+func StartRelayServer(config cli.RelayNodeFlag, quitCh chan os.Signal, h *api.RelayServerHandler) {
 	e := utils.NewEcho(config.IsDebug)
 	r := e.Group("/relay")
 
@@ -39,9 +40,5 @@ func StartRelayServer(config cli.RelayNodeConfig, quitCh chan os.Signal, h *Rela
 
 	r.GET("/v1/peer/permissions", h.GetPermissions)
 
-	certPath, keyPath, err := utils.GetTLSCerts()
-	if err != nil {
-		panic(err)
-	}
-	e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, keyPath))
+	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", config.APIHost, config.APIPort)))
 }

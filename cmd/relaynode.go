@@ -12,6 +12,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/relayapi"
+	"github.com/rumsystem/quorum/pkg/relayapi/api"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +37,8 @@ func init() {
 
 	flags.Var(&rnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
 	flags.Var(&rnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&rnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&rnodeFlag.APIPort, "apiport", 5215, "api server listen port")
 	flags.StringVar(&rnodeFlag.PeerName, "peername", "peer", "peername")
 	flags.StringVar(&rnodeFlag.DataDir, "datadir", "./data/", "data dir")
 	flags.StringVar(&rnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
@@ -100,6 +104,11 @@ func runRelaynode(config cli.RelayNodeFlag) {
 		cancel()
 		logger.Fatalf(err.Error())
 	}
+
+	// now start relay api server
+	handler := api.NewRelayServerHandler(rdb)
+
+	go relayapi.StartRelayServer(config, signalch, &handler)
 
 	//attach signal
 	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
