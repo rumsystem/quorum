@@ -274,8 +274,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
 		if err != nil {
-			output[ERROR_INFO] = "unmarshal genesis block failed with msg:" + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			msg := fmt.Sprintf("unmarshal genesis block failed with msg: %s" + err.Error())
+			return rumerrors.NewBadRequestError(msg)
 		}
 
 		nodeoptions := options.GetNodeOptions()
@@ -316,8 +316,12 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 
 		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
 		if err != nil {
-			output[ERROR_INFO] = "Decode OwnerPubkey failed " + err.Error()
-			return c.JSON(http.StatusBadRequest, output)
+			//the key maybe a libp2p key, try...
+			ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+			if err != nil {
+				msg := "Decode OwnerPubkey failed: " + err.Error()
+				return rumerrors.NewBadRequestError(msg)
+			}
 		}
 
 		groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
