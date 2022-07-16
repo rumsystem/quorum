@@ -179,7 +179,7 @@ mkdir -p config
 5. start `bootstrap node`
 
 ```bash
-go run cmd/main.go -bootstrap -listen /ip4/0.0.0.0/tcp/10666 -logtostderr=true
+go run main.go fullnode --bootstrap --listen /ip4/0.0.0.0/tcp/10666
 ```
 
 output:
@@ -195,7 +195,7 @@ Record `<HOST_ID>`, for example:
 5. Start `owner node`
 
 ```bash
-go run cmd/main.go -peername owner -listen /ip4/127.0.0.1/tcp/7002 -apiport 8002 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir ownerkeystore  -jsontracer ownertracer.json -debug=true
+go run main.go fullnode --peername owner --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> --configdir config --datadir data --keystoredir ownerkeystore  --jsontracer ownertracer.json --debug=true
 ```
 
 - For the first time, user will be asked to input a password for the node, if not given, a password will be created for the node
@@ -203,13 +203,13 @@ go run cmd/main.go -peername owner -listen /ip4/127.0.0.1/tcp/7002 -apiport 8002
 - env RUM_KSPASSWD can be used to input node password, like:
 
 ```bash
-RUM_KSPASSWD=<node_password> go run cmd/main.go...
+RUM_KSPASSWD=<node_password> go run main.go fullnode ...
 ```
 
 6. Start `user node`
 
 ```bash
-go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apiport 8003 -peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> -configdir config -datadir data -keystoredir userkeystore  -jsontracer usertracer.json -debug=true
+go run main.go fullnode --peername user --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> --configdir config --datadir data --keystoredir userkeystore  --jsontracer usertracer.json --debug=true
 ```
 
 6. Backup/Restore
@@ -217,7 +217,7 @@ go run cmd/main.go -peername user -listen /ip4/127.0.0.1/tcp/7003 -apiport 8003 
 > backup
 
 ```bash
-RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup -backup-file /tmp/quorum-backup
+RUM_KSPASSWD=secret go run main.go backup --peername mypeer --file /tmp/quorum-backup
 
 # note: backup file name ends with `.zip.enc`
 ```
@@ -225,19 +225,19 @@ RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup -backup-file /tm
 > restore
 
 ```bash
-restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -restore -backup-file /tmp/quorum-backup.zip.enc -configdir $restoreDir/config -datadir $restoreDir/data -keystoredir $restoreDir/keystore -seeddir $restoreDir/seeds
+restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run main.go restore --peername mypeer --file /tmp/quorum-backup.zip.enc --configdir $restoreDir/config --datadir $restoreDir/data --keystoredir $restoreDir/keystore --seeddir $restoreDir/seeds
 ```
 
 > backup for wasm
 
 ```bash
-RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -backup-to-wasm -backup-file /tmp/quorum-backup
+RUM_KSPASSWD=secret go run main.go backup --wasm --peername mypeer --file /tmp/quorum-backup
 ```
 
 > restore from wasm
 
 ```bash
-restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run cmd/main.go -peername mypeer -restore-from-wasm -backup-file /tmp/wasm.backup.json -configdir $restoreDir/config -datadir $restoreDir/data -keystoredir $restoreDir/keystore -seeddir $restoreDir/seeds
+restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run main.go restore --wasm --peername mypeer --file /tmp/wasm.backup.json --configdir $restoreDir/config --datadir $restoreDir/data --keystoredir $restoreDir/keystore --seeddir $restoreDir/seeds
 ```
 
 

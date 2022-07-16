@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"archive/zip"
@@ -6,57 +6,107 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
-	"net/http"
-	"time"
-
-	//"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-)
-
-var (
-	ReleaseVersion string
-	GitCommit      string
-	ApiPrefix      string
+	"github.com/spf13/cobra"
 )
 
 const ChunkSize int = 150 * 1024
 
-func Download() error {
-	var groupid, trxid string
-	var destdir string
-	fs := flag.NewFlagSet("download", flag.ContinueOnError)
-	fs.StringVar(&groupid, "groupid", "", "group_id of the SeedNetwork")
-	fs.StringVar(&trxid, "trxid", "", "trx_id of the fileinfo")
-	fs.StringVar(&ApiPrefix, "api", "http://localhost:8000", "api prefix of the rumservice")
-	fs.StringVar(&destdir, "dir", ".", "the file segments dir.(the result of split cmd)")
+var ( // flags
+	rumfileApiPrefix string
+	rumfilePath      string
+	rumfileDir       string
+	rumfileGroupId   string
+	rumfileTrxId     string
+)
 
-	if err := fs.Parse(os.Args[2:]); err != nil {
-		return err
-	}
+var rumfileCmd = &cobra.Command{
+	Use:   "rumfile",
+	Short: "A tool to upload and download files from rum network",
+}
 
-	if len(groupid) == 0 || len(trxid) == 0 {
-		fmt.Println("Download a file from the Rum SeedNetwork")
-		fmt.Println()
-		fmt.Println("Usage:...")
-		fs.PrintDefaults()
-	}
-	fmt.Printf("download...%s from group %s with  %s\n", trxid, groupid, ApiPrefix)
+var rumfileSplitCmd = &cobra.Command{
+	Use:   "split",
+	Short: "Split",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := Split(rumfilePath, rumfileDir); err != nil {
+			logger.Fatal(err)
+		}
+	},
+}
+
+var rumfileUploadCmd = &cobra.Command{
+	Use:   "upload",
+	Short: "Upload",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := Upload(rumfileDir, rumfileGroupId, rumfileApiPrefix); err != nil {
+			logger.Fatal(err)
+		}
+	},
+}
+
+var rumfileDownloadCmd = &cobra.Command{
+	Use:   "download",
+	Short: "Download",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := Download(rumfileDir, rumfileApiPrefix, rumfileGroupId, rumfileTrxId); err != nil {
+			logger.Fatal(err)
+		}
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(rumfileCmd)
+	rumfileCmd.AddCommand(rumfileSplitCmd)
+	rumfileCmd.AddCommand(rumfileUploadCmd)
+	rumfileCmd.AddCommand(rumfileDownloadCmd)
+	rumfileCmd.Flags().SortFlags = false
+
+	// split
+	splitFlags := rumfileSplitCmd.Flags()
+	splitFlags.SortFlags = false
+	splitFlags.StringVar(&rumfilePath, "file", "", "a file name")
+	splitFlags.StringVar(&rumfileDir, "tmpdir", "/tmp", "a dir name")
+	rumfileSplitCmd.MarkFlagRequired("file")
+
+	// upload
+	uploadFlags := rumfileUploadCmd.Flags()
+	uploadFlags.SortFlags = false
+	uploadFlags.StringVar(&rumfileApiPrefix, "api", "http://localhost:8000", "api prefix of the rumservice")
+	uploadFlags.StringVar(&rumfileDir, "dir", "", "the file segments dir.(the result of split cmd)")
+	uploadFlags.StringVar(&rumfileGroupId, "groupid", "", "the upload target groupid")
+	rumfileUploadCmd.MarkFlagRequired("dir")
+	rumfileUploadCmd.MarkFlagRequired("groupid")
+
+	// download
+	downloadFlags := rumfileDownloadCmd.Flags()
+	downloadFlags.SortFlags = false
+	downloadFlags.StringVar(&rumfileApiPrefix, "api", "http://localhost:8000", "api prefix of the rumservice")
+	downloadFlags.StringVar(&rumfileDir, "dir", ".", "the file segments dir.(the result of split cmd)")
+	downloadFlags.StringVar(&rumfileGroupId, "groupid", "", "group_id of the SeedNetwork")
+	downloadFlags.StringVar(&rumfileTrxId, "trxid", "", "trx_id of the fileinfo")
+	rumfileDownloadCmd.MarkFlagRequired("groupid")
+	rumfileDownloadCmd.MarkFlagRequired("trxid")
+}
+
+func Download(destdir, apiPrefix, groupid, trxid string) error {
+	logger.Infof("download...%s from group %s with  %s\n", trxid, groupid, apiPrefix)
 	//first, get the fileinfo file
-	fileobj, _, err := HttpGetFileFromGroup(ApiPrefix, groupid, trxid)
+	fileobj, _, err := HttpGetFileFromGroup(apiPrefix, groupid, trxid)
 	if err != nil {
 		return err
 	}
@@ -71,7 +121,7 @@ func Download() error {
 	if len(*fileinfo.Segments) == 0 {
 		return fmt.Errorf("no file segments in the fileinfo")
 	}
-	log.Printf("file %s has %d segments, downloading...", fileinfo.Name, len(*fileinfo.Segments))
+	logger.Infof("file %s has %d segments, downloading...", fileinfo.Name, len(*fileinfo.Segments))
 
 	f, err := os.Create(filepath.Join(destdir, fileinfo.Name))
 	if err != nil {
@@ -81,7 +131,7 @@ func Download() error {
 
 	readnexttrxid := trxid
 	for _, seg := range *fileinfo.Segments {
-		fileobj, trxid, err := HttpGetNextFileFromGroupByTrx(ApiPrefix, groupid, readnexttrxid)
+		fileobj, trxid, err := HttpGetNextFileFromGroupByTrx(apiPrefix, groupid, readnexttrxid)
 		if err != nil {
 			return err
 		}
@@ -102,28 +152,12 @@ func Download() error {
 	return nil
 }
 
-func Upload() error {
-	var segmentsdir, groupid string
-	fs := flag.NewFlagSet("upload", flag.ContinueOnError)
-	fs.StringVar(&segmentsdir, "dir", "", "the file segments dir.(the result of split cmd)")
-	fs.StringVar(&groupid, "groupid", "", "the upload target groupid")
-	fs.StringVar(&ApiPrefix, "api", "http://localhost:8000", "api prefix of the rumservice")
-	if err := fs.Parse(os.Args[2:]); err != nil {
-		return err
-	}
-	if len(segmentsdir) == 0 {
-		fmt.Println("Upload a splitted file segments to the Rum SeedNetwork")
-		fmt.Println()
-		fmt.Println("Usage:...")
-		fs.PrintDefaults()
-		return nil
-	}
-
+func Upload(segmentsdir, groupid, apiPrefix string) error {
 	fileinfo, err := VerifySegments(segmentsdir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("uploading to ..", ApiPrefix)
+	fmt.Println("uploading to ..", apiPrefix)
 	f, err := os.Open(filepath.Join(segmentsdir, "fileinfo"))
 	if err != nil {
 		return err
@@ -138,11 +172,11 @@ func Upload() error {
 	obj := &quorumpb.Object{Type: "File", Name: "fileinfo", File: file}
 	target := &quorumpb.Object{Id: groupid, Type: "Group"}
 	post := &quorumpb.Activity{Type: "Add", Object: obj, Target: target}
-	trxid, r := PostFileToGroupApi(ApiPrefix, groupid, post)
+	trxid, r := PostFileToGroupApi(apiPrefix, groupid, post)
 	if r != nil {
 		return fmt.Errorf("post %s failed, err %s", obj.Name, r)
 	} else {
-		log.Printf("post %s succeed at %s/%s", obj.Name, groupid, trxid)
+		logger.Infof("post %s succeed at %s/%s", obj.Name, groupid, trxid)
 	}
 
 	for _, seg := range *fileinfo.Segments {
@@ -160,11 +194,11 @@ func Upload() error {
 		obj := &quorumpb.Object{Type: "File", Name: seg.Id, File: file}
 		target := &quorumpb.Object{Id: groupid, Type: "Group"}
 		post := &quorumpb.Activity{Type: "Add", Object: obj, Target: target}
-		trxid, r = PostFileToGroupApi(ApiPrefix, groupid, post)
+		trxid, r = PostFileToGroupApi(apiPrefix, groupid, post)
 		if r != nil {
 			return fmt.Errorf("post %s failed, err: %s", obj.Name, r)
 		} else {
-			log.Printf("post %s succeed at %s/%s", obj.Name, groupid, trxid)
+			logger.Infof("post %s succeed at %s/%s", obj.Name, groupid, trxid)
 		}
 	}
 	return nil
@@ -177,7 +211,7 @@ func PostFileToGroupApi(apiPrefix, groupid string, post *quorumpb.Activity) (str
 		return "", err
 	}
 	for {
-		result, _ := HttpCheckTrxId(ApiPrefix, groupid, trxresult.TrxId)
+		result, _ := HttpCheckTrxId(apiPrefix, groupid, trxresult.TrxId)
 		if result == true {
 			break
 		}
@@ -186,22 +220,7 @@ func PostFileToGroupApi(apiPrefix, groupid string, post *quorumpb.Activity) (str
 	return trxresult.TrxId, nil
 }
 
-func Split() error {
-	var filename, tmpdir string
-	fs := flag.NewFlagSet("split", flag.ContinueOnError)
-	fs.StringVar(&filename, "file", "", "a file name")
-	fs.StringVar(&tmpdir, "tmpdir", "/tmp/", "a dir name")
-	if err := fs.Parse(os.Args[2:]); err != nil {
-		return err
-	}
-	if len(filename) == 0 {
-		fmt.Println("Split a file for the Rum SeedNetwork uploader")
-		fmt.Println()
-		fmt.Println("Usage:...")
-		fs.PrintDefaults()
-		return nil
-	}
-
+func Split(filename, tmpdir string) error {
 	fileinfo, err := VerifyFileFormat(filename)
 	if err != nil {
 		return err
@@ -261,7 +280,7 @@ func WriteFileinfo(segmentpath string, fileinfo *Fileinfo) {
 		log.Fatal(err)
 	}
 
-	log.Printf("Write fileinfo to %s/%s", segmentpath, "fileinfo")
+	logger.Infof("Write fileinfo to %s/%s", segmentpath, "fileinfo")
 }
 
 func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
@@ -274,8 +293,8 @@ func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
 	segfileinfolist := []Segmentinfo{}
 
 	segmentpath := filepath.Join(tmpdir, fmt.Sprintf("%s-segs", path.Base(filename)))
-	log.Printf("Splitting file: %s ...", filename)
-	log.Printf("Create a temp dir %s ...", segmentpath)
+	logger.Infof("Splitting file: %s ...", filename)
+	logger.Infof("Create a temp dir %s ...", segmentpath)
 	_, err = os.Stat(segmentpath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -317,8 +336,8 @@ func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
 		//data := base64.StdEncoding.EncodeToString(buf)
 
 		segname := fmt.Sprintf("seg-%d", nChunks)
-		//log.Printf("save base64 file segment size %d (base64ed size %d) to %s/%s", len(buf), len(data), segmentpath, segname)
-		log.Printf("save file segment size %d  to %s/%s", len(buf), segmentpath, segname)
+		//logger.Infof("save base64 file segment size %d (base64ed size %d) to %s/%s", len(buf), len(data), segmentpath, segname)
+		logger.Infof("save file segment size %d  to %s/%s", len(buf), segmentpath, segname)
 		err = WriteToFile(segmentpath, segname, buf)
 		if err == nil {
 			seginfo := &Segmentinfo{Id: segname, Sha256: bufhashhex}
@@ -327,14 +346,14 @@ func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
 			log.Fatal(err)
 		}
 	}
-	log.Printf("File bytes: %d, Write Segments:%d", nBytes, nChunks)
+	logger.Infof("File bytes: %d, Write Segments:%d", nBytes, nChunks)
 
 	filesha256 := filehash.Sum(nil)
 	fileinfo.Sha256 = hex.EncodeToString(filesha256[:])
 	fileinfo.Segments = &segfileinfolist
 
 	WriteFileinfo(segmentpath, fileinfo)
-	log.Printf("file segments done: %s", segmentpath)
+	logger.Infof("file segments done: %s", segmentpath)
 	return nil
 }
 
@@ -431,7 +450,7 @@ func VerifyFileFormat(filename string) (*Fileinfo, error) {
 }
 
 func VerifySegments(segmentpath string) (*Fileinfo, error) {
-	log.Printf("Verify Segments %s ...", segmentpath)
+	logger.Infof("Verify Segments %s ...", segmentpath)
 	fi, err := os.Stat(segmentpath)
 	if err != nil {
 		log.Fatal(err)
@@ -476,61 +495,13 @@ func VerifySegments(segmentpath string) (*Fileinfo, error) {
 	return &fileinfo, nil
 }
 
-func main() {
-	if ReleaseVersion == "" {
-		ReleaseVersion = "v1.0.0"
-	}
-	if GitCommit == "" {
-		GitCommit = "devel"
-	}
-	utils.SetGitCommit(GitCommit)
-	help := flag.Bool("h", false, "Display Help")
-	version := flag.Bool("version", false, "Show the version")
-
-	flag.Parse()
-
-	if len(os.Args) < 2 {
-		log.Fatalf("error: wrong number of arguments")
-	}
-
-	var err error
-	if os.Args[1][0] != '-' {
-		switch os.Args[1] {
-		case "split":
-			err = Split()
-		case "upload":
-			err = Upload()
-		case "download":
-			err = Download()
-		default:
-			err = fmt.Errorf("error: unknown command - %s", os.Args[1])
-		}
-		if err != nil {
-			log.Fatalf("error: %s", err)
-		}
-	}
-
-	if *help {
-		fmt.Println("Output a help ")
-		fmt.Println()
-		fmt.Println("Usage:...")
-		flag.PrintDefaults()
-		return
-	}
-
-	if *version {
-		fmt.Printf("%s - %s\n", ReleaseVersion, GitCommit)
-		return
-	}
-}
-
-func HttpCheckTrxId(ApiPrefix string, groupid string, trxid string) (bool, error) {
-	Url := fmt.Sprintf("%s/api/v1/trx/%s/%s", ApiPrefix, groupid, trxid)
+func HttpCheckTrxId(apiPrefix string, groupid string, trxid string) (bool, error) {
+	Url := fmt.Sprintf("%s/api/v1/trx/%s/%s", apiPrefix, groupid, trxid)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	resp, err := http.Get(Url)
 
 	if err != nil {
-		log.Printf("HttpCheckTrxId err: %s", err)
+		logger.Infof("HttpCheckTrxId err: %s", err)
 		return false, err
 	}
 	if resp.StatusCode != 200 {
@@ -550,17 +521,17 @@ func HttpCheckTrxId(ApiPrefix string, groupid string, trxid string) (bool, error
 	return false, nil
 }
 
-func HttpPostToGroup(ApiPrefix string, jsondata []byte) (*TrxResult, error) {
-	Url := fmt.Sprintf("%s/api/v1/group/content", ApiPrefix)
+func HttpPostToGroup(apiPrefix string, jsondata []byte) (*TrxResult, error) {
+	Url := fmt.Sprintf("%s/api/v1/group/content", apiPrefix)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err := http.NewRequest("POST", Url, bytes.NewBuffer(jsondata))
 	if err != nil {
-		log.Printf("new http request  err: %s", err)
+		logger.Infof("new http request  err: %s", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("post add tasks err: %s", err)
+		logger.Infof("post add tasks err: %s", err)
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
@@ -575,17 +546,17 @@ func HttpPostToGroup(ApiPrefix string, jsondata []byte) (*TrxResult, error) {
 	}
 }
 
-func HttpGetFromContentApi(ApiPrefix string, groupid string, trxid string, num int, includetrx bool) ([]byte, error) {
-	Url := fmt.Sprintf("%s/app/api/v1/group/%s/content?num=1&starttrx=%s&reverse=false&includestarttrx=%t", ApiPrefix, groupid, trxid, includetrx)
+func HttpGetFromContentApi(apiPrefix string, groupid string, trxid string, num int, includetrx bool) ([]byte, error) {
+	Url := fmt.Sprintf("%s/app/api/v1/group/%s/content?num=1&starttrx=%s&reverse=false&includestarttrx=%t", apiPrefix, groupid, trxid, includetrx)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err := http.NewRequest("POST", Url, bytes.NewBuffer([]byte(`{"senders":[]}`)))
 	if err != nil {
-		log.Printf("new http request  err: %s", err)
+		logger.Infof("new http request  err: %s", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("post add tasks err: %s", err)
+		logger.Infof("post add tasks err: %s", err)
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
@@ -597,8 +568,8 @@ func HttpGetFromContentApi(ApiPrefix string, groupid string, trxid string, num i
 	}
 }
 
-func HttpGetNextFileFromGroupByTrx(ApiPrefix string, groupid string, trxid string) (*quorumpb.Object, string, error) {
-	body, err := HttpGetFromContentApi(ApiPrefix, groupid, trxid, 1, false)
+func HttpGetNextFileFromGroupByTrx(apiPrefix string, groupid string, trxid string) (*quorumpb.Object, string, error) {
+	body, err := HttpGetFromContentApi(apiPrefix, groupid, trxid, 1, false)
 	if err != nil {
 		return nil, "", err
 	}
@@ -615,9 +586,9 @@ func HttpGetNextFileFromGroupByTrx(ApiPrefix string, groupid string, trxid strin
 	}
 }
 
-func HttpGetFileFromGroup(ApiPrefix string, groupid string, trxid string) (*quorumpb.Object, string, error) {
+func HttpGetFileFromGroup(apiPrefix string, groupid string, trxid string) (*quorumpb.Object, string, error) {
 
-	body, err := HttpGetFromContentApi(ApiPrefix, groupid, trxid, 1, true)
+	body, err := HttpGetFromContentApi(apiPrefix, groupid, trxid, 1, true)
 	if err != nil {
 		return nil, trxid, err
 	}

@@ -11,13 +11,14 @@
   https://github.com/rumsystem/quorum/tree/nodesdk
 
 ## Run full node (chainsdk)
- RUM_KSPASSWD=123 go run cmd/main.go cmd/utils.go -peername n1 -listen /ip4/127.0.0.1/tcp/7002 -apiport 8002 -peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAkwZ53wCxAecczHiypKFJhWXwfP1G87n8G5R4i5qhszy8v -keystoredir n1keystore -jsontracer n1tracer.json --debug true
+ RUM_KSPASSWD=123 go run main.go fullnode --peername n1 --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAkwZ53wCxAecczHiypKFJhWXwfP1G87n8G5R4i5qhszy8v --keystoredir n1keystore --jsontracer n1tracer.json --debug true
 
 ## Run light node (nodesdk)
-RUM_KSPASSWD=123 go run cmd/lightnode.go cmd/utils.go  -peername nodesdk  --nodeapilisten 127.0.0.1:6002  -keystoredir nodesdkkeystore --debug true
+RUM_KSPASSWD=123 go run main.go lightnode --peername nodesdk --apihost 127.0.0.1 --apiport 6002 --keystoredir nodesdkkeystore --debug true
 
 Params
-  - nodeapilisten : nodesdk listening port
+  - `--apihost`: nodesdk listening host
+  - `--apiport`: nodesdk listening port
 
 ## Full node create a group
 curl -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' http://127.0.0.1:8002/api/v1/group | jq

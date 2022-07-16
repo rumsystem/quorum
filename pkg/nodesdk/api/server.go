@@ -6,15 +6,20 @@ import (
 	"syscall"
 
 	"github.com/labstack/echo/v4"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 var quitch chan os.Signal
 
+type StartAPIParam struct {
+	IsDebug bool
+	APIHost string
+	APIPort uint
+}
+
 //StartAPIServer : Start local web server
-func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHandler, nodeopt *options.NodeOptions) {
+func StartNodeSDKServer(config StartAPIParam, signalch chan os.Signal, h *NodeSDKHandler, nodeopt *options.NodeOptions) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	r := e.Group("/nodesdk_api")
@@ -52,7 +57,7 @@ func StartNodeSDKServer(config cli.Config, signalch chan os.Signal, h *NodeSDKHa
 	//r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	//r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
-	e.Logger.Fatal(e.Start(config.NodeAPIListenAddress))
+	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", config.APIHost, config.APIPort)))
 }
 
 func quitapp(c echo.Context) (err error) {

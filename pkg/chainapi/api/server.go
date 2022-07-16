@@ -10,7 +10,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/ip-cert/pkg/zerossl"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -21,8 +20,16 @@ import (
 
 var quitch chan os.Signal
 
+type StartAPIParam struct {
+	IsDebug       bool
+	APIHost       string
+	APIPort       uint
+	CertDir       string
+	ZeroAccessKey string
+}
+
 //StartAPIServer : Start local web server
-func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
+func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
