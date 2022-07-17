@@ -30,7 +30,7 @@ jobs:
         qingcloud: TRUE
         qingcloud_config: ${{ secrets.QINGCLOUD_CONFIG }}
         qingcloud_bucket: ${{ secrets.QINGCLOUD_BUCKET }}
-        project_path: "./cmd"
+        project_path: "./"
         source_files: "main.go"
         ldflags: "-X main.GitCommit=${{ env.GIT_COMMIT }} -X main.ReleaseVersion=${{ env.RELEASE_TAG }}"
         binary_name: "quorum"

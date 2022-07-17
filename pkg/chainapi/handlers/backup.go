@@ -15,7 +15,6 @@ import (
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
@@ -24,6 +23,17 @@ import (
 	"github.com/rumsystem/keystore/pkg/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
+
+type BackupParam struct {
+	Peername     string `json:"peername" validate:"required"`
+	Password     string `json:"password" validate:"required"`
+	BackupFile   string `json:"backup_file" validate:"required"`
+	KeystoreDir  string `json:"keystore_dir" validate:"required"`
+	KeystoreName string `json:"keystore_name" validate:"required"`
+	ConfigDir    string `json:"config_dir" validate:"required"`
+	SeedDir      string `json:"seed_dir" validate:"required"`
+	DataDir      string `json:"data_dir" validate:"required"`
+}
 
 func GetDataPath(dataDir, peerName string) string {
 	return filepath.Join(dataDir, peerName)
@@ -60,18 +70,19 @@ func getBlockPrefixKey() string {
 }
 
 // BackupForWasm will backup keystore in wasm known format
-func BackupForWasm(config cli.Config, dstPath string, password string) {
+func BackupForWasm(param BackupParam) {
 	// get keystore password
-	password, err := GetKeystorePassword(password)
+	password, err := GetKeystorePassword(param.Password)
 	if err != nil {
 		logger.Fatalf("handlers.GetKeystorePassword failed: %s", err)
 	}
 
 	// check keystore signature and encrypt
-	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, config.KeyStoreDir, config.ConfigDir, config.PeerName, password); err != nil {
+	if err := CheckSignAndEncryptWithKeystore(param.KeystoreName, param.KeystoreDir, param.ConfigDir, param.Peername, password); err != nil {
 		logger.Fatalf("check keystore failed: %s", err)
 	}
 
+	dstPath := param.BackupFile
 	// check dst path
 	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
 		logger.Fatalf("backup directory %s is exists", dstPath)
@@ -86,7 +97,7 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 	*/
 	wasmDstPath := getWasmBackupPath(dstPath)
 	wasmKeystoreContent := []string{}
-	if err := filepath.Walk(config.KeyStoreDir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(param.KeystoreDir, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
@@ -141,7 +152,7 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 	backupObj.Keystore = wasmKeystoreContent
 
 	// ExportAllGroupSeeds
-	dataPath := GetDataPath(config.DataDir, config.PeerName)
+	dataPath := GetDataPath(param.DataDir, param.Peername)
 	appdb, err := appdata.CreateAppDb(dataPath)
 	if err != nil {
 		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
@@ -162,21 +173,24 @@ func BackupForWasm(config cli.Config, dstPath string, password string) {
 	backupBytes, err := json.Marshal(backupObj)
 
 	f.Write(backupBytes)
+
+	logger.Infof("success! backup file: %s", wasmDstPath)
 }
 
 // Backup backup block from data db and {config,keystore,seeds} directory
-func Backup(config cli.Config, dstPath string, password string) {
+func Backup(param BackupParam) {
 	// get keystore password
-	password, err := GetKeystorePassword(password)
+	password, err := GetKeystorePassword(param.Password)
 	if err != nil {
 		logger.Fatalf("handlers.GetKeystorePassword failed: %s", err)
 	}
 
 	// check keystore signature and encrypt
-	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, config.KeyStoreDir, config.ConfigDir, config.PeerName, password); err != nil {
+	if err := CheckSignAndEncryptWithKeystore(param.KeystoreName, param.KeystoreDir, param.ConfigDir, param.Peername, password); err != nil {
 		logger.Fatalf("check keystore failed: %s", err)
 	}
 
+	dstPath := param.BackupFile
 	// check dst path
 	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
 		logger.Fatalf("backup directory %s is exists", dstPath)
@@ -189,18 +203,18 @@ func Backup(config cli.Config, dstPath string, password string) {
 
 	// backup config directory
 	configDstPath := getConfigBackupPath(dstPath)
-	if err := utils.Copy(config.ConfigDir, configDstPath); err != nil {
-		logger.Fatalf("copy %s => %s failed: %s", config.ConfigDir, dstPath, err)
+	if err := utils.Copy(param.ConfigDir, configDstPath); err != nil {
+		logger.Fatalf("copy %s => %s failed: %s", param.ConfigDir, dstPath, err)
 	}
 
 	// backup keystore
 	keystoreDstPath := getKeystoreBackupPath(dstPath)
-	if err := utils.Copy(config.KeyStoreDir, keystoreDstPath); err != nil {
-		logger.Fatalf("copy %s => %s failed: %s", config.KeyStoreDir, dstPath, err)
+	if err := utils.Copy(param.KeystoreDir, keystoreDstPath); err != nil {
+		logger.Fatalf("copy %s => %s failed: %s", param.KeystoreDir, dstPath, err)
 	}
 
 	// SaveAllGroupSeeds
-	dataPath := GetDataPath(config.DataDir, config.PeerName)
+	dataPath := GetDataPath(param.DataDir, param.Peername)
 	appdb, err := appdata.CreateAppDb(dataPath)
 	if err != nil {
 		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
@@ -210,7 +224,7 @@ func Backup(config cli.Config, dstPath string, password string) {
 
 	// backup block
 	blockDstPath := getBlockBackupPath(dstPath)
-	BackupBlock(config.DataDir, config.PeerName, blockDstPath)
+	BackupBlock(param.DataDir, param.Peername, blockDstPath)
 
 	// zip backup directory
 	zipFilePath := fmt.Sprintf("%s.zip", dstPath)
@@ -221,7 +235,7 @@ func Backup(config cli.Config, dstPath string, password string) {
 	}
 
 	// check keystore signature and encrypt
-	if err := CheckSignAndEncryptWithKeystore(config.KeyStoreName, keystoreDstPath, configDstPath, config.PeerName, password); err != nil {
+	if err := CheckSignAndEncryptWithKeystore(param.KeystoreName, keystoreDstPath, configDstPath, param.Peername, password); err != nil {
 		logger.Fatalf("check keystore failed: %s", err)
 	}
 
@@ -249,6 +263,8 @@ func Backup(config cli.Config, dstPath string, password string) {
 	if err := localcrypto.AgeEncrypt([]age.Recipient{r}, zipFile, encZipFile); err != nil {
 		logger.Fatalf("AgeEncrypt failed", err)
 	}
+
+	logger.Infof("success! backup file: %s", encZipPath)
 }
 
 // GetKeystorePassword get password for keystore

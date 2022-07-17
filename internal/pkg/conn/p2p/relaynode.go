@@ -116,6 +116,6 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 	return node, nil
 }
 
-func (node *RelayNode) Bootstrap(ctx context.Context, config cli.RelayNodeConfig) error {
-	return bootstrap(ctx, node.Host, config.BootstrapPeers)
+func (node *RelayNode) Bootstrap(ctx context.Context, bootstrapPeers cli.AddrList) error {
+	return bootstrap(ctx, node.Host, bootstrapPeers)
 }

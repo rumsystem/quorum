@@ -9,6 +9,7 @@ import (
 var optionslog = logging.Logger("options")
 
 type NodeOptions struct {
+	Password           string
 	EnableRelay        bool
 	EnableRelayService bool /* this will force the node to be public */
 	EnableNat          bool

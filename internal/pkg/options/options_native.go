@@ -117,6 +117,8 @@ func initConfigfile(dir string, keyname string) (*viper.Viper, error) {
 	v.SetConfigName(keyname + "_options")
 	v.SetConfigType("toml")
 	v.AddConfigPath(dir)
+	v.SetEnvPrefix("RUM") // NOTE: hardcode
+	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

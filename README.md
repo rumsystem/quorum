@@ -107,21 +107,21 @@ Read the [RUM Development Tutorial](./Tutorial.md).
 Run the [quorum binary](#build_quorum):
 
 ```sh
-./quorum -peername peer -listen /ip4/0.0.0.0/tcp/7000  -listen /ip4/0.0.0.0/tcp/9000/ws -apiport 8000 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir rum/peerConfig -datadir rum/peerData -keystoredir rum/keystore -debug true
+./quorum fullnode --peername peer --listen /ip4/0.0.0.0/tcp/7000 --listen /ip4/0.0.0.0/tcp/9000/ws --apiport 8000 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir rum/peerConfig --datadir rum/peerData --keystoredir rum/keystore --debug true
 ```
 
 OPTIONS:
 
 ```sh
-   -peername    default:`peer`, used in and same with configdir  and datadir
-   -listen      a multiaddress for the peer service listening
-   -apihost     http api listening host, a domain or a public ip address
-   -apiport     http api listening port
-   -peer        a bootstrap peer multiaddress. Any online peer could be used for bootstrap, you can use the RUM testing bootstrap server for testing.
-   -configdir   a directory for config files. The `peer` of `peerConfig` must same as peername `peer`, eg: if `mypeer2Config`, peername must be `mypeer2`.
-   -datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
-   -keystoredir a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
-   -debug       enable logging level to debug or not
+   --peername    default:`peer`, used in and same with configdir  and datadir
+   --listen      a multiaddress for the peer service listening
+   --apihost     http api listening host, a domain or a public ip address
+   --apiport     http api listening port
+   --peer        a bootstrap peer multiaddress. Any online peer could be used for bootstrap, you can use the RUM testing bootstrap server for testing.
+   --configdir   a directory for config files. The `peer` of `peerConfig` must same as peername `peer`, eg: if `mypeer2Config`, peername must be `mypeer2`.
+   --datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
+   --keystoredir a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
+   --debug       enable logging level to debug or not
 ```
 
 *or*
@@ -134,8 +134,16 @@ mkdir -p dockerdata/certs
 mkdir -p dockerdata/config
 mkdir -p dockerdata/keystore
 
-docker run --user 1001 -v $(pwd)/dockerdata/data:/data  -v $(pwd)/dockerdata/certs:/certs -v $(pwd)/dockerdata/config:/config -v $(pwd)/dockerdata/keystore:/keystore -p 127.0.0.1:8002:8002 -p 8000:8000 -p 8001:8001 -e RUM_KSPASSWD='myverysecretpassword' quorum -listen /ip4/0.0.0.0/tcp/8000 -listen /ip4/0.0.0.0/tcp/8001/ws  -apiport 8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
-
+docker run --user 1001 \
+    -v $(pwd)/dockerdata/data:/data \
+    -v $(pwd)/dockerdata/certs:/certs \
+    -v $(pwd)/dockerdata/config:/config \
+    -v $(pwd)/dockerdata/keystore:/keystore \
+    -p 127.0.0.1:8002:8002 \
+    -p 8000:8000 \
+    -p 8001:8001 \
+    -e RUM_KSPASSWD='myverysecretpassword' \
+    quorum fullnode --listen /ip4/0.0.0.0/tcp/8000 --listen /ip4/0.0.0.0/tcp/8001/ws  --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
 ```
 
 *or*
@@ -322,7 +330,7 @@ Add more producers to prevent outages.
 2. Add a shell script to run the peer:
 
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum -peername your_peer_name -listen /ip4/0.0.0.0/tcp/7002 -listen /ip4/0.0.0.0/tcp/7100/ws -apiport 8002 -peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u -configdir /var/data/your_peer_nameConfig -datadir /var/data/your_peer_nameData -keystoredir /var/data/keystore -debug true
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum fullnode --peername your_peer_name --listen /ip4/0.0.0.0/tcp/7002 --listen /ip4/0.0.0.0/tcp/7100/ws --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir /var/data/your_peer_nameConfig --datadir /var/data/your_peer_nameData --keystoredir /var/data/keystore --debug true
 ```
 
 [view OPTIONS](#run_a_peer)

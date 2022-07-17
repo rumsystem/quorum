@@ -202,8 +202,8 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	return newnode, nil
 }
 
-func (node *Node) Bootstrap(ctx context.Context, config cli.Config) error {
-	return bootstrap(ctx, node.Host, config.BootstrapPeers)
+func (node *Node) Bootstrap(ctx context.Context, bootstrapPeers cli.AddrList) error {
+	return bootstrap(ctx, node.Host, bootstrapPeers)
 }
 
 func bootstrap(ctx context.Context, h host.Host, addrs cli.AddrList) error {
@@ -224,7 +224,7 @@ func bootstrap(ctx context.Context, h host.Host, addrs cli.AddrList) error {
 	return nil
 }
 
-func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpeers int, config cli.Config) error {
+func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpeers int, rendezvousStr string) error {
 	notify := false
 	ticker := time.NewTicker(time.Second * 30)
 	defer ticker.Stop()
@@ -237,7 +237,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 			//TODO: check peers status and max connect peers
 			connectedCount := 0
 			if notify == false {
-				peers, err := node.FindPeers(ctx, config.RendezvousString)
+				peers, err := node.FindPeers(ctx, rendezvousStr)
 				if err != nil {
 					return err
 				}
