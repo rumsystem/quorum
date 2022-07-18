@@ -36,9 +36,12 @@ func StartRelayServer(config cli.RelayNodeFlag, quitCh chan os.Signal, h *api.Re
 		return nil
 	})
 
-	r.POST("/v1/peer/forbid", h.ForbidPeer)
+	r.POST("/v1/forbid", h.ForbidPeer)
+	r.POST("/v1/blacklist", h.AddBlacklist)
+	r.DELETE("/v1/blacklist", h.DeleteBlacklist)
 
-	r.GET("/v1/peer/permissions", h.GetPermissions)
+	r.GET("/v1/permissions", h.GetPermissions)
+	r.GET("/v1/blacklist", h.GetBlacklist)
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", config.APIHost, config.APIPort)))
 }

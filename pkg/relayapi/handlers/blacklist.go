@@ -15,9 +15,13 @@ type AddBlacklistParam struct {
 	ToPeer   string `json:"to_peer"`
 }
 
+type DelBlacklistParam AddBlacklistParam
+
 type AddBlacklistResult struct {
 	Ok bool `json:"ok"`
 }
+
+type DelBlacklistResult AddBlacklistResult
 
 /* GetBlacklist to get blacklist for a server peer */
 func GetBlacklist(db storage.QuorumStorage, serverPeer string) (*GetBlacklistResult, error) {
@@ -49,4 +53,22 @@ func AddBlacklist(db storage.QuorumStorage, param AddBlacklistParam) (*AddBlackl
 	}
 
 	return res, nil
+}
+
+/* DeleteBlacklist to remove a peer from blacklist */
+func DeleteBlacklist(db storage.QuorumStorage, param DelBlacklistParam) (*DelBlacklistResult, error) {
+	res := &DelBlacklistResult{true}
+
+	k := []byte(GetBlackListKey(param.FromPeer, param.ToPeer))
+	if err := db.Delete(k); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func CheckBlacklist(db storage.QuorumStorage, from string, to string) (bool, error) {
+	k := []byte(GetBlackListKey(from, to))
+
+	return db.IsExist(k)
 }

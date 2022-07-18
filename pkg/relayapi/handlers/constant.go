@@ -29,5 +29,5 @@ func GetBlackListKey(serverPeer string, banPeer string) string {
 }
 
 func GetBlacklistPeerFromKeyByPrefix(key string, prefix string) string {
-	return strings.ReplaceAll(fmt.Sprintf("%s_", prefix), key, "")
+	return strings.ReplaceAll(key, fmt.Sprintf("%s_", prefix), "")
 }

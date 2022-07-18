@@ -23,13 +23,26 @@ func (rf *QuorumRelayFilter) AllowReserve(p peer.ID, a ma.Multiaddr) bool {
 }
 
 func (rf *QuorumRelayFilter) AllowConnect(src peer.ID, srcAddr ma.Multiaddr, dest peer.ID) bool {
+	// check wheter remote peer can connect to local peer
 	// once traffic of a dest peer exceeds its limit, we dont allow connect to the peer anymore
+	// ps: src peer is the remote peer, so dest peer is the server peer
 	permission, err := handlers.GetPermissions(rf.db, dest.String())
 	if err != nil {
 		networklog.Errorf("getDestConnectPermission failed: %s:", err.Error())
 		return false
 	}
 
-	// TODO: we could also add limitation for src peers
-	return permission.AllowConnect
+	if !permission.AllowConnect {
+		// maybe server peer is out of money/traffic
+		return false
+	}
+
+	// check whether the remote peer is in the blacklist of server peer
+	inBlacklist, err := handlers.CheckBlacklist(rf.db, dest.String(), src.String())
+	if err != nil {
+		// db error, we abort connect by now
+		return false
+	}
+
+	return inBlacklist
 }

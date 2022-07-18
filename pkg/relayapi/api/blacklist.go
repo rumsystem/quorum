@@ -35,3 +35,17 @@ func (h *RelayServerHandler) AddBlacklist(c echo.Context) (err error) {
 
 	return c.JSON(http.StatusOK, result)
 }
+
+func (h *RelayServerHandler) DeleteBlacklist(c echo.Context) (err error) {
+	param := handlers.DelBlacklistParam{}
+	if err := c.Bind(&param); err != nil {
+		rumerrors.NewBadRequestError(err.Error())
+	}
+
+	result, err := handlers.DeleteBlacklist(h.db, param)
+	if err != nil {
+		return rumerrors.NewInternalServerError(err)
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
