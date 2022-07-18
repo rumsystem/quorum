@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	handlers "github.com/rumsystem/quorum/pkg/relayapi/handlers"
+	handlers "github.com/rumsystem/quorum/pkg/autorelay/handlers"
 )
 
 func (h *RelayServerHandler) GetPermissions(c echo.Context) (err error) {

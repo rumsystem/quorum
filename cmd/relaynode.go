@@ -12,8 +12,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/autorelay/api"
 	"github.com/rumsystem/quorum/pkg/relayapi"
-	"github.com/rumsystem/quorum/pkg/relayapi/api"
 	"github.com/spf13/cobra"
 )
 
