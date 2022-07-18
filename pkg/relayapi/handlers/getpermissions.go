@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -15,7 +14,8 @@ type GetPermissionsResult struct {
 func GetPermissions(db storage.QuorumStorage, peer string) (*GetPermissionsResult, error) {
 	res := &GetPermissionsResult{true, true}
 
-	k := []byte(fmt.Sprintf("%s_%s", PREFIX_ALLOW_CONNECT, peer))
+	// only get `AllowConnect` permission here, we always allow reserve for now
+	k := []byte(GetAllowConnectKey(peer))
 
 	isExist, err := db.IsExist(k)
 	if err != nil {
