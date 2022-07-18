@@ -56,7 +56,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return rumerrors.NewBadRequestError(rumerrors.ErrOnlyGroupOwner)
 	} else {
-		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey)
+		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.ChainCtx.GetNodeName())
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
@@ -96,7 +96,8 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 		hash := localcrypto.Hash(buffer.Bytes())
 
 		ks := nodectx.GetNodeCtx().Keystore
-		signature, err := ks.SignByKeyName(item.GroupId, hash)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hash)
+
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

@@ -25,7 +25,7 @@ func StartNodeSDKServer(config StartAPIParam, signalch chan os.Signal, h *NodeSD
 	r := e.Group("/nodesdk_api")
 
 	r.GET("/quit", quitapp)
-	r.POST("/v1/group/join", h.JoinGroup())
+	r.POST("/v2/group/join", h.JoinGroupV2())
 	r.POST("/v1/group/leave", h.LeaveGroup())
 	r.POST("/v1/group/content", h.PostToGroup())
 	r.POST("/v1/group/getctn", h.GetGroupCtn())

@@ -44,8 +44,10 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 	if isbootstrapnode == false {
-		r.POST("/v1/group", h.CreateGroup())
+		//r.POST("/v1/group", h.CreateGroup())
+		r.POST("/v1/group", h.CreateGroupUrl())
 		r.POST("/v1/group/join", h.JoinGroup())
+		r.POST("/v2/group/join", h.JoinGroupV2())
 		r.POST("/v1/group/leave", h.LeaveGroup)
 		r.POST("/v1/group/clear", h.ClearGroupData)
 		r.POST("/v1/group/content", h.PostToGroup)
@@ -86,6 +88,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		a.POST("/v1/token/create", apph.CreateToken)
 
 		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
+		r.POST("/v1/tools/seedurlextend", h.SeedUrlextend())
 
 		r.POST("/v1/preview/relay/req", h.RequestRelay)
 		r.GET("/v1/preview/relay", h.ListRelay)

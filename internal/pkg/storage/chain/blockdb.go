@@ -16,7 +16,6 @@ func (cs *Storage) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...str
 	if err != nil {
 		return err
 	}
-
 	if isSaved {
 		chaindb_log.Debugf("Block <%s> already saved, ignore", newBlock.BlockId)
 		return nil
@@ -50,7 +49,8 @@ func (cs *Storage) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...str
 	}
 
 	//save chunk
-	return cs.dbmgr.SaveBlockChunk(chunk, cached, prefix...)
+	err = cs.dbmgr.SaveBlockChunk(chunk, cached, prefix...)
+	return err
 }
 
 //remove block
@@ -63,7 +63,8 @@ func (cs *Storage) RmBlock(blockId string, cached bool, prefix ...string) error 
 		key = nodeprefix + s.BLK_PREFIX + "_" + blockId
 	}
 
-	return cs.dbmgr.Db.Delete([]byte(key))
+	err := cs.dbmgr.Db.Delete([]byte(key))
+	return err
 }
 
 //get block by block_id
@@ -161,7 +162,8 @@ func (cs *Storage) IsBlockExist(blockId string, cached bool, prefix ...string) (
 		key = nodeprefix + s.BLK_PREFIX + "_" + blockId
 	}
 
-	return cs.dbmgr.Db.IsExist([]byte(key))
+	r, err := cs.dbmgr.Db.IsExist([]byte(key))
+	return r, err
 }
 
 //check if parent block existed

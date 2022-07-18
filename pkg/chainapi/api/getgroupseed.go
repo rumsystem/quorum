@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -25,6 +26,12 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
+	seedurl, err := handlers.GroupSeedToUrl(1, []string{}, seed)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("seedurl output failed: %s", err)})
+	}
 
-	return c.JSON(http.StatusOK, seed)
+	output := make(map[string]string)
+	output["seed"] = seedurl
+	return c.JSON(http.StatusOK, output)
 }

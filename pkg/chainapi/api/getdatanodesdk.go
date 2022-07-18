@@ -259,16 +259,17 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				grpInfo.HighestHeight = grp.Item.HighestHeight
 
 				/*
-					Sign hash with user pubkey
+					//Did we really need a sign from fullnode ?
+					Sign hash with fullnode pubkey
 					groInfoBytes, err := json.Marshal(grpInfo)
 					if err != nil {
 						output[ERROR_INFO] = "INTERNAL_ERROR"
 						return c.JSON(http.StatusBadRequest, output)
 					}
 					hash := localcrypto.Hash(groInfoBytes)
+					grpInfo.Singature = "FAKE_SIGN"
 				*/
 
-				grpInfo.Singature = "FAKE_SIGN"
 				return c.JSON(http.StatusOK, grpInfo)
 			} else {
 				return rumerrors.NewBadRequestError("INVALID_GROUP")

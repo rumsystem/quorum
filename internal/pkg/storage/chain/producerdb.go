@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -19,7 +20,12 @@ func (cs *Storage) UpdateProducer(data []byte, prefix ...string) (err error) {
 		return err
 	}
 
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + item.ProducerPubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
+	if pk == "" {
+		pk = item.ProducerPubkey
+	}
+
+	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
 
 	chaindb_log.Infof("upd producer with key %s", key)
 
@@ -63,7 +69,13 @@ func (cs *Storage) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]
 func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
 
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + item.ProducerPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
+	if pk == "" {
+		pk = item.ProducerPubkey
+	}
+
+	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
 	chaindb_log.Infof("Add Producer with key %s", key)
 
 	pbyte, err := proto.Marshal(item)
@@ -73,15 +85,43 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 	return cs.dbmgr.Db.Set([]byte(key), pbyte)
 }
 
-func (cs *Storage) AddProducedBlockCount(groupId, producerPubkey string, prefix ...string) error {
+func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + producerPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+
+	var err error
+	libp2ppk := ""
+	if pk == pubkey {
+		libp2ppk, err = localcrypto.EthBase64ToLibp2pPubkey(pubkey)
+	} else if pk == "" {
+		pk = pubkey
+	}
+
+	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
 	var pProducer *quorumpb.ProducerItem
 	pProducer = &quorumpb.ProducerItem{}
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		return err
+		if pubkey != "" {
+			//patch for old keyformat
+			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
+			value, err = cs.dbmgr.Db.Get([]byte(key))
+			if err != nil {
+				key = s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
+				value, err = cs.dbmgr.Db.Get([]byte(key))
+				if err != nil {
+					return err
+				}
+
+			}
+			//update to the new keyformat
+			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
+		} else {
+			return err
+		}
+
 	}
 
 	err = proto.Unmarshal(value, pProducer)
@@ -100,7 +140,11 @@ func (cs *Storage) AddProducedBlockCount(groupId, producerPubkey string, prefix 
 
 func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pk
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
@@ -116,8 +160,12 @@ func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ..
 	return &ann, err
 }
 
-func (cs *Storage) IsProducerAnnounced(groupId, producerSignPubkey string, prefix ...string) (bool, error) {
+func (cs *Storage) IsProducerAnnounced(groupId, pubkey string, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + producerSignPubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pk
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

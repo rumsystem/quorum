@@ -11,14 +11,14 @@ import (
 )
 
 // @Tags Groups
-// @Summary CreateGroup
+// @Summary CreateGroupUrl
 // @Description Create a new group
 // @Accept json
 // @Produce json
 // @Param data body handlers.CreateGroupParam true "GroupInfo"
 // @Success 200 {object} handlers.GroupSeed
 // @Router /api/v1/group [post]
-func (h *Handler) CreateGroup() echo.HandlerFunc {
+func (h *Handler) CreateGroupUrl() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
 		var err error
@@ -28,7 +28,7 @@ func (h *Handler) CreateGroup() echo.HandlerFunc {
 			return err
 		}
 
-		res, err := handlers.CreateGroup(params, options.GetNodeOptions(), h.Appdb)
+		res, err := handlers.CreateGroupUrl(params, options.GetNodeOptions(), h.Appdb)
 		if err != nil {
 			return err
 		}

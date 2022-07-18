@@ -33,7 +33,16 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.Init(grp)
+	grp.ChainCtx.ChainInit(grp)
+
+	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
+	if opk != "" {
+		item.OwnerPubKey = opk
+	}
+	upk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserSignPubkey)
+	if upk != "" {
+		item.UserSignPubkey = upk
+	}
 
 	//reload all announced user(if private)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
@@ -75,7 +84,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.Init(grp)
+	grp.ChainCtx.ChainInit(grp)
 
 	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
 	if err != nil {
@@ -99,7 +108,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	hash := localcrypto.Hash(buffer.Bytes())
 
 	ks := nodectx.GetNodeCtx().Keystore
-	signature, err := ks.SignByKeyName(item.GroupId, hash)
+	signature, err := ks.EthSignByKeyName(item.GroupId, hash)
 	if err != nil {
 		return err
 	}
@@ -206,7 +215,7 @@ func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, err
 
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetAnnounceTrx(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetAnnounceTrx("", item)
 	if err != nil {
 		return "", nil
 	}
@@ -221,13 +230,13 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 			return "", err
 		}
 
-		trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx(content, keys)
+		trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content, keys)
 		if err != nil {
 			return "", err
 		}
 		return grp.sendTrx(trx, conn.ProducerChannel)
 	}
-	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx(content)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content)
 	if err != nil {
 		return "", err
 	}
@@ -236,7 +245,7 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 
 func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerTrx(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerTrx("", item)
 	if err != nil {
 		return "", nil
 	}
@@ -245,7 +254,7 @@ func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
 	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx("", item)
 	if err != nil {
 		return "", nil
 	}
@@ -254,7 +263,7 @@ func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
 
 func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 	group_log.Debugf("<%s> UpdSchema called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdSchemaTrx(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdSchemaTrx("", item)
 	if err != nil {
 		return "", nil
 	}
@@ -263,7 +272,7 @@ func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
 
 func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
 	if err != nil {
 		return "", nil
 	}
@@ -294,7 +303,7 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 
 func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx(item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
 	if err != nil {
 		return "", nil
 	}

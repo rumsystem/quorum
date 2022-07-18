@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -21,7 +22,12 @@ func (cs *Storage) UpdateUser(data []byte, prefix ...string) (err error) {
 		return err
 	}
 
-	key := nodeprefix + s.USR_PREFIX + "_" + item.GroupId + "_" + item.UserPubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserPubkey)
+	if pk == "" {
+		pk = item.UserPubkey
+	}
+
+	key := nodeprefix + s.USR_PREFIX + "_" + item.GroupId + "_" + pk
 	chaindb_log.Infof("upd user with key %s", key)
 
 	if item.Action == quorumpb.ActionType_ADD {
@@ -84,7 +90,13 @@ func (cs *Storage) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]
 
 func (cs *Storage) GetAnnouncedUser(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pk
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
@@ -102,13 +114,23 @@ func (cs *Storage) GetAnnouncedUser(groupId string, pubkey string, prefix ...str
 
 func (cs *Storage) IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userSignPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(userSignPubkey)
+	if pk == "" {
+		pk = userSignPubkey
+	}
+
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pk
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
 
 func (cs *Storage) IsUser(groupId, userPubKey string, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + userPubKey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(userPubKey)
+	if pk == "" {
+		pk = userPubKey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pk
 
 	//check if group user (announced) exist
 	return cs.dbmgr.Db.IsExist([]byte(key))

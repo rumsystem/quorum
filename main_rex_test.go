@@ -77,15 +77,17 @@ func TestGroupsContentsRexSync(t *testing.T) {
 	for idx, peerapi := range peerapilist {
 		var seeds []string
 		for i := 0; i < groupspeernum; i++ {
-			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
+
+			groupName := fmt.Sprintf("testgroup_peer_%d_%d", idx+1, i+1)
+			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
 			if err == nil {
 				var objmap map[string]interface{}
 				if err := json.Unmarshal(resp, &objmap); err != nil {
 					t.Errorf("Data Unmarshal error %s", err)
 				} else {
 					seeds = append(seeds, string(resp))
-					groupName := objmap["group_name"]
-					groupId := objmap["group_id"].(string)
+					seedurl := objmap["seed"]
+					groupId := testnode.SeedUrlToGroupId(seedurl.(string))
 					groupIds = append(groupIds, groupId)
 					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
@@ -217,7 +219,7 @@ func TestGroupsContentsRexSync(t *testing.T) {
 					for i := 0; i < groupspeernum; i++ {
 						g := seedsFromOtherNode[i]
 						// join to other groups of other nodes
-						_, _, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
+						_, _, err := testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", g)
 						if err != nil {
 							t.Errorf("peer%d join group %s error %s", peerIdx+1, g, err)
 						} else {

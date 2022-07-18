@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -37,12 +38,16 @@ func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) 
 		if err := proto.Unmarshal(item.Data, ruleListItem); err != nil {
 			return err
 		}
+		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(ruleListItem.Pubkey)
+		if pk == "" {
+			pk = ruleListItem.Pubkey
+		}
 
 		var key string
 		if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST {
-			key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.ALLW_LIST_PREFIX + "_" + ruleListItem.Pubkey
+			key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.ALLW_LIST_PREFIX + "_" + pk
 		} else {
-			key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.DENY_LIST_PREFIX + "_" + ruleListItem.Pubkey
+			key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.DENY_LIST_PREFIX + "_" + pk
 		}
 
 		chaindb_log.Infof("key %s", key)
@@ -126,7 +131,11 @@ func (cs *Storage) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb
 		}
 		sendTrxRuleList = append(sendTrxRuleList, &sendTrxRuleListItem)
 
-		chaindb_log.Infof("sendTrx %s", sendTrxRuleListItem.Pubkey)
+		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(sendTrxRuleListItem.Pubkey)
+		if pk == "" {
+			pk = sendTrxRuleListItem.Pubkey
+		}
+		chaindb_log.Infof("sendTrx %s", pk)
 
 		return nil
 	})
@@ -141,8 +150,13 @@ func (cs *Storage) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb
 func (cs *Storage) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.TrxType, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 
-	keyAllow := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.ALLW_LIST_PREFIX + "_" + pubkey
-	keyDeny := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.DENY_LIST_PREFIX + "_" + pubkey
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if pk == "" {
+		pk = pubkey
+	}
+
+	keyAllow := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.ALLW_LIST_PREFIX + "_" + pk
+	keyDeny := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.DENY_LIST_PREFIX + "_" + pk
 
 	isInAllowList, err := cs.dbmgr.Db.IsExist([]byte(keyAllow))
 	if err != nil {
