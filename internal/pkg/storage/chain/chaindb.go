@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 	"fmt"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -26,14 +27,26 @@ func NewChainStorage(dbmgr *s.DbMgr) (storage *Storage) {
 
 func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(signPubkey)
+	if pk == "" {
+		pk = signPubkey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + pk
 
 	var pAnnounced *quorumpb.AnnounceItem
 	pAnnounced = &quorumpb.AnnounceItem{}
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		return err
+		//patch for old keyformat
+		key = nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
+		value, err = cs.dbmgr.Db.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		//update to the new keyformat
+		key = nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + pk
 	}
 
 	err = proto.Unmarshal(value, pAnnounced)
@@ -60,7 +73,12 @@ func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
 	}
-	key := nodeprefix + s.ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + item.SignPubkey
+
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.SignPubkey)
+	if pk == "" {
+		pk = item.SignPubkey
+	}
+	key := nodeprefix + s.ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + pk
 	return cs.dbmgr.Db.Set([]byte(key), data)
 }
 
@@ -228,29 +246,3 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 
 	return cs.dbmgr.Db.Set([]byte(key), ctnBytes)
 }
-
-//func (cs *Storage) IsProducer(groupId, producerPubKey string, prefix ...string) (bool, error) {
-//	nodeprefix := utils.GetPrefix(prefix...)
-//	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + producerPubKey
-//
-//	//check if group exist
-//	return cs.dbmgr.Db.IsExist([]byte(key))
-//}
-
-//func (cs *Storage) GetSchemaByGroup(groupId, schemaType string, prefix ...string) (*quorumpb.SchemaItem, error) {
-//	nodeprefix := utils.GetPrefix(prefix...)
-//	key := nodeprefix + s.SMA_PREFIX + "_" + groupId + "_" + schemaType
-//
-//	schema := quorumpb.SchemaItem{}
-//	value, err := cs.dbmgr.Db.Get([]byte(key))
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	err = proto.Unmarshal(value, &schema)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return &schema, err
-//}

@@ -16,9 +16,6 @@ replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
 
 replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3
 
-//replace github.com/rumsystem/rumchaindata => ../rumchaindata
-//replace github.com/rumsystem/keystore => ../keystore
-
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
 //replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
@@ -32,6 +29,7 @@ require (
 	github.com/Press-One/go-update v1.0.0
 	github.com/adrg/xdg v0.3.3
 	github.com/atotto/clipboard v0.1.4
+	github.com/btcsuite/btcd v0.22.1
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/ethereum/go-ethereum v1.10.17
 	github.com/gdamore/tcell/v2 v2.4.0
@@ -65,8 +63,8 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
-	github.com/rumsystem/keystore v0.0.0-20220602192804-2943b530ca3c
-	github.com/rumsystem/rumchaindata v0.0.0-20220601172351-68d1b5f86577
+	github.com/rumsystem/keystore v0.0.0-20220713151207-7a9eed02caa7
+	github.com/rumsystem/rumchaindata v0.0.0-20220707181343-2f9888e07242
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.11.0
 	github.com/swaggo/echo-swagger v1.1.0
@@ -83,7 +81,6 @@ require (
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.22.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -210,7 +211,12 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 
 func (syncer *Syncer) AddLocalBlock(block *quorumpb.Block) error {
 	syncer_log.Debugf("<%s> AddBlockSynced called", syncer.GroupId)
-	_, producer := syncer.Group.ChainCtx.ProducerPool[syncer.Group.Item.UserSignPubkey]
+	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(syncer.Group.Item.UserSignPubkey)
+	if err != nil && signpkey == "" {
+		syncer_log.Warnf("<%s> Pubkey err <%s>", syncer.GroupId, err)
+	}
+
+	_, producer := syncer.Group.ChainCtx.ProducerPool[signpkey]
 
 	if producer {
 		syncer_log.Debugf("<%s> PRODUCER ADD LOCAL BLOCK <%s>", syncer.GroupId, block.BlockId)
@@ -236,9 +242,14 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 		return nil
 	}
 
+	providerpkey, err := localcrypto.Libp2pPubkeyToEthBase64(resp.ProviderPubkey)
+	if err != nil && providerpkey == "" {
+		syncer_log.Warnf("<%s> Pubkey err <%s>", syncer.GroupId, err)
+	}
+
 	//block in trx
-	syncer_log.Debugf("<%s> synced block incoming, provider <%s>", syncer.GroupId, resp.ProviderPubkey)
-	syncer.responses[resp.ProviderPubkey] = resp
+	syncer_log.Debugf("<%s> synced block incoming, provider <%s>", syncer.GroupId, providerpkey)
+	syncer.responses[providerpkey] = resp
 
 	if resp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
 		syncer_log.Debugf("<%s> receive BLOCK_NOT_FOUND response, do nothing(wait for timeout)", syncer.GroupId)
@@ -249,8 +260,12 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 		syncer_log.Debugf("<%s> Block with Id <%s> already received", syncer.GroupId, resp.BlockId)
 		return nil
 	}
+	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(syncer.Group.Item.UserSignPubkey)
+	if err != nil && signpkey == "" {
+		syncer_log.Warnf("<%s> Pubkey err <%s>", syncer.GroupId, err)
+	}
 
-	_, producer := syncer.Group.ChainCtx.ProducerPool[syncer.Group.Item.UserSignPubkey]
+	_, producer := syncer.Group.ChainCtx.ProducerPool[signpkey]
 
 	if syncer.Status == SYNCING_FORWARD {
 		if producer {
@@ -268,7 +283,7 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 		}
 
 		syncer_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", syncer.GroupId)
-		syncer.blockReceived[resp.BlockId] = resp.ProviderPubkey
+		syncer.blockReceived[resp.BlockId] = providerpkey
 		syncer.ContinueSync(block)
 	} else { //sync backward
 		var err error
@@ -280,7 +295,7 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 			err = syncer.Group.ChainCtx.Consensus.User().AddBlock(block)
 		}
 
-		syncer.blockReceived[resp.BlockId] = resp.ProviderPubkey
+		syncer.blockReceived[resp.BlockId] = providerpkey
 		if err != nil {
 			syncer_log.Debugf(err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
@@ -300,7 +315,7 @@ func (syncer *Syncer) askNextBlock(block *quorumpb.Block) error {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block forward msg out
-	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx(block)
+	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx("", block)
 	if err != nil {
 		return err
 	}
@@ -326,7 +341,7 @@ func (syncer *Syncer) askPreviousBlock(block *quorumpb.Block) error {
 	//reset received response
 	syncer.responses = make(map[string]*quorumpb.ReqBlockResp)
 	//send ask block backward msg out
-	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockBackwardTrx(block)
+	trx, err := syncer.Group.ChainCtx.GetTrxFactory().GetReqBlockBackwardTrx("", block)
 	if err != nil {
 		return err
 	}

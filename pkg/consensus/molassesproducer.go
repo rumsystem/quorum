@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -167,14 +167,8 @@ func (producer *MolassesProducer) produceBlock() {
 	molaproducer_log.Debugf("<%s> package <%d> trxs, size <%d>", producer.groupId, totalTrx, totalSizeBytes)
 
 	//create block
-	pubkeyBytes, err := p2pcrypto.ConfigDecodeKey(producer.grpItem.UserSignPubkey)
-	if err != nil {
-		molaproducer_log.Debug(err.Error())
-		return
-	}
-
 	ks := localcrypto.GetKeystore()
-	newBlock, err := rumchaindata.CreateBlock(topBlock, trxs, pubkeyBytes, ks, producer.nodename)
+	newBlock, err := rumchaindata.CreateBlockByEthKey(topBlock, trxs, producer.grpItem.UserSignPubkey, ks, "", producer.nodename)
 	if err != nil {
 		molaproducer_log.Errorf("<%s> create block error", producer.groupId)
 		molaproducer_log.Errorf(err.Error())
@@ -187,7 +181,7 @@ func (producer *MolassesProducer) produceBlock() {
 	if err != nil {
 		return
 	}
-	trx, err := producer.cIface.GetTrxFactory().GetBlockProducedTrx(newBlock)
+	trx, err := producer.cIface.GetTrxFactory().GetBlockProducedTrx("", newBlock)
 
 	connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	molaproducer_log.Debugf("<%s> produce done, wait for merge", producer.groupId)

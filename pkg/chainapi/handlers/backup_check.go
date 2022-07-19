@@ -73,7 +73,7 @@ func checkSignature(ks *localcrypto.DirKeyStore, keyname string) error {
 	length := getRandLength(10, 100)
 	msg := utils.GetRandomStr(length)
 
-	signature, err := ks.SignByKeyName(keyname, []byte(msg))
+	signature, err := ks.EthSignByKeyName(keyname, []byte(msg))
 	if err != nil {
 		return err
 	}

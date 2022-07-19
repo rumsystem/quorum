@@ -225,7 +225,7 @@ func signJoinResult(ks localcrypto.Keystore, item *quorumpb.GroupItem, genesisBl
 	bufferResult.Write([]byte(userEncryptKey))
 
 	hashResult := localcrypto.Hash(bufferResult.Bytes())
-	signature, err := ks.SignByKeyName(item.GroupId, hashResult)
+	signature, err := ks.EthSignByKeyName(item.GroupId, hashResult)
 	if err != nil {
 		return "", err
 	}
