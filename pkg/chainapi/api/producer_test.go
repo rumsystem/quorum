@@ -169,16 +169,8 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// peer2 join group
-	joinGroupParam := handlers.GroupSeed{
-		GenesisBlock:   group.GenesisBlock,
-		GroupId:        group.GroupId,
-		GroupName:      group.GroupName,
-		OwnerPubkey:    group.OwnerPubkey,
-		ConsensusType:  group.ConsensusType,
-		EncryptionType: group.EncryptionType,
-		CipherKey:      group.CipherKey,
-		AppKey:         group.AppKey,
-		Signature:      group.Signature,
+	joinGroupParam := handlers.JoinGroupParamV2{
+		Seed: group.Seed,
 	}
 	if _, err := joinGroup(peerapi2, joinGroupParam); err != nil {
 		t.Fatalf("joinGroup failed: %s, payload: %+v", err, joinGroupParam)

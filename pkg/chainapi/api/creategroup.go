@@ -16,7 +16,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param data body handlers.CreateGroupParam true "GroupInfo"
-// @Success 200 {object} handlers.GroupSeed
+// @Success 200 {object} handlers.CreateGroupResult
 // @Router /api/v1/group [post]
 func (h *Handler) CreateGroupUrl() echo.HandlerFunc {
 	return func(c echo.Context) error {

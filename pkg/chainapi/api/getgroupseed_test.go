@@ -11,7 +11,7 @@ import (
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func getGroupSeed(api string, groupID string) (*handlers.GroupSeed, error) {
+func getGroupSeed(api string, groupID string) (*handlers.GetGroupSeedResult, error) {
 	path := fmt.Sprintf("/api/v1/group/%s/seed", groupID)
 	_, resp, err := testnode.RequestAPI(api, path, "GET", "")
 	if err != nil {
@@ -22,7 +22,7 @@ func getGroupSeed(api string, groupID string) (*handlers.GroupSeed, error) {
 		return nil, err
 	}
 
-	var seed handlers.GroupSeed
+	var seed handlers.GetGroupSeedResult
 	if err := json.Unmarshal(resp, &seed); err != nil {
 		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
 		return nil, e
@@ -33,8 +33,12 @@ func getGroupSeed(api string, groupID string) (*handlers.GroupSeed, error) {
 		return nil, err
 	}
 
-	if seed.GroupId != groupID {
-		return nil, fmt.Errorf("group id not match, expect: %s, actual: %s", groupID, seed.GroupId)
+	seedObj, _, err := handlers.UrlToGroupSeed(seed.Seed)
+	if err != nil {
+		return nil, err
+	}
+	if seedObj.GroupId != groupID {
+		return nil, fmt.Errorf("group id not match, expect: %s, actual: %s", groupID, seedObj.GroupId)
 	}
 
 	return &seed, nil

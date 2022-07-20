@@ -46,6 +46,10 @@ type CreateGroupResult struct {
 	GroupId string `json:"group_id" validate:"required"`
 }
 
+type GetGroupSeedResult struct {
+	Seed string `json:"seed" validate:"required"` // seed url
+}
+
 func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*CreateGroupResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {

@@ -106,8 +106,12 @@ func TestBlockByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create group failed: %s", err)
 	}
+	seed, _, err := handlers.UrlToGroupSeed(group.Seed)
+	if err != nil {
+		t.Fatalf("seed url to seed struct failed: %s", err)
+	}
 
-	blockID := group.GenesisBlock.BlockId
+	blockID := seed.GenesisBlock.BlockId
 	if _, err := getBlockByID(peerapi, group.GroupId, blockID); err != nil {
 		t.Errorf("getBlockByID failed: %s, groupID: %s blockID: %s", err, group.GroupId, blockID)
 	}
