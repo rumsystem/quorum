@@ -34,7 +34,6 @@ var jwtCreateNodeCmd = &cobra.Command{
 	Use:   "node",
 	Short: "Create jwt for node sdk and save to config file",
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Infof("xxx allow groups: %+v", jwtAllowGroups)
 		createNodeToken(configDir, peerName, jwtName, jwtDuration, jwtAllowGroups)
 	},
 }

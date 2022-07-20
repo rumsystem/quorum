@@ -37,7 +37,6 @@ func (h *NodeSDKHandler) GetAppConfigItem(c echo.Context) (err error) {
 	reqItem := new(AppConfigItem)
 	reqItem.GroupId = groupid
 	reqItem.Key = key
-	reqItem.JwtToken = JwtToken
 
 	itemBytes, err := json.Marshal(reqItem)
 	if err != nil {

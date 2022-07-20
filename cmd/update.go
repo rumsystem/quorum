@@ -16,9 +16,9 @@ var updateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := errors.New(fmt.Sprintf("invalid `-from`: %s", updateFrom))
 		if updateFrom == "qingcloud" {
-			err = utils.CheckUpdateQingCloud(ReleaseVersion, "quorum")
+			err = utils.CheckUpdateQingCloud(utils.ReleaseVersion, "quorum")
 		} else if updateFrom == "github" {
-			err = utils.CheckUpdate(ReleaseVersion, "quorum")
+			err = utils.CheckUpdate(utils.ReleaseVersion, "quorum")
 		} else {
 			err = errors.New("only support github or qingcloud")
 		}

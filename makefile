@@ -1,11 +1,10 @@
 PROTOC_GEN_GO = $(GOPATH)/bin/protoc-gen-go
 PROTOC = $(shell which protoc)
 QUORUM_BIN_NAME=quorum
-LIGHT_QUORUM_BIN_NAME=lightquorum
 QUORUM_WASMLIB_NAME=lib.wasm
 CLI_BIN_NAME=rumcli
 GIT_COMMIT=$(shell git rev-list -1 HEAD)
-LDFLAGS = -ldflags "-X cmd.GitCommit=${GIT_COMMIT}"
+LDFLAGS = -ldflags "-X main.GitCommit=${GIT_COMMIT}"
 GOARCH = amd64
 
 linux:

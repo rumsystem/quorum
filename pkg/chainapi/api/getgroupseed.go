@@ -14,7 +14,7 @@ import (
 // @Description get group seed from appdb
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Success 200 {object} handlers.GroupSeed
+// @Success 200 {object} handlers.GetGroupSeedResult
 // @Router /api/v1/group/{group_id}/seed [get]
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
@@ -28,10 +28,11 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	}
 	seedurl, err := handlers.GroupSeedToUrl(1, []string{}, seed)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: fmt.Sprintf("seedurl output failed: %s", err)})
+		return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
 	}
 
-	output := make(map[string]string)
-	output["seed"] = seedurl
-	return c.JSON(http.StatusOK, output)
+	result := handlers.GetGroupSeedResult{
+		Seed: seedurl,
+	}
+	return c.JSON(http.StatusOK, result)
 }

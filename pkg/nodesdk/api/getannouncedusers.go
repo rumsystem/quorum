@@ -26,7 +26,6 @@ func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 	reqItem := new(AnnGrpUser)
 	reqItem.GroupId = groupid
 	reqItem.SignPubkey = signPubkey
-	reqItem.JwtToken = JwtToken
 
 	itemBytes, err := json.Marshal(reqItem)
 	if err != nil {

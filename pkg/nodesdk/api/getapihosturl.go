@@ -9,14 +9,17 @@ import (
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
-type UpdApiHostUrlParams struct {
-	GroupId      string   `json:"group_id" validate:"required"`
-	ChainAPIUrls []string `json:"urls" validate:"required"`
+type GetApiHostParams struct {
+	GroupId string `param:"group_id" validate:"required"`
 }
 
-func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
+type GetApiHostResult struct {
+	URLs []string `json:"urls" validate:"required"`
+}
+
+func (h *NodeSDKHandler) GetApiHostUrl(c echo.Context) (err error) {
 	cc := c.(*pkgutils.CustomContext)
-	params := new(UpdApiHostUrlParams)
+	params := new(GetApiHostParams)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
 	}
@@ -25,12 +28,7 @@ func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
+	result := GetApiHostResult{URLs: nodesdkGroupItem.ApiUrl}
 
-	nodesdkGroupItem.ApiUrl = params.ChainAPIUrls
-
-	if err := nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(nodesdkGroupItem); err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
-	return c.JSON(http.StatusOK, "")
+	return c.JSON(http.StatusOK, result)
 }

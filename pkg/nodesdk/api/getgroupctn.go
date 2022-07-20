@@ -26,7 +26,6 @@ type GetGroupCtnPrarms struct {
 
 type GetGroupCtnItem struct {
 	Req      *GetGroupCtnPrarms
-	JwtToken string
 }
 
 type GetGroupCtnReqItem struct {
@@ -56,7 +55,6 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 
 		getGroupCtnItem := new(GetGroupCtnItem)
 		getGroupCtnItem.Req = params
-		getGroupCtnItem.JwtToken = JwtToken
 
 		itemBytes, err := json.Marshal(getGroupCtnItem)
 		if err != nil {

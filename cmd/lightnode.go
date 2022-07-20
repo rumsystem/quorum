@@ -52,7 +52,7 @@ func init() {
 }
 
 func runLightnode(config cli.LightnodeFlag) {
-	logger.Infof("Version: %s", GitCommit)
+	logger.Infof("Version: %s", utils.GitCommit)
 	const defaultKeyName = "nodesdk_default"
 
 	signalch = make(chan os.Signal, 1)
