@@ -4,8 +4,6 @@ go 1.18
 
 //replace github.com/libp2p/go-libp2p-autonat => github.com/huo-ju/go-libp2p-autonat v0.4.3
 
-replace github.com/rumsystem/rumchaindata => ../rumchaindata
-
 replace github.com/dgraph-io/badger/v3 => github.com/chux0519/badger/v3 v3.2103.3
 
 replace github.com/dgraph-io/ristretto => github.com/chux0519/ristretto v0.1.1
