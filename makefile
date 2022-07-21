@@ -4,36 +4,62 @@ QUORUM_BIN_NAME=quorum
 QUORUM_WASMLIB_NAME=lib.wasm
 CLI_BIN_NAME=rumcli
 GIT_COMMIT=$(shell git rev-list -1 HEAD)
-LDFLAGS = -ldflags "-X main.GitCommit=${GIT_COMMIT}"
-GOARCH = amd64
+LDFLAGS = -ldflags "-s -w -X main.GitCommit=${GIT_COMMIT}"
 
+export GOARCH = amd64
+export CGO_ENABLED = 0
+export GO111MODULE = on
+
+define build-quorum
+go build ${LDFLAGS} -o dist/${GOOS}_${GOARCH}/${QUORUM_BIN_NAME} main.go
+endef
+
+define build-wasm
+go build ${LDFLAGS} -o dist/${GOOS}_${GOARCH}/${QUORUM_WASMLIB_NAME} cmd/wasm/lib.go
+endef
+
+define build-cli
+go build ${LDFLAGS} -o dist/${GOOS}_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+endef
+
+linux: GOOS = linux
 linux:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${QUORUM_BIN_NAME} main.go
+	$(build-quorum)
 
+freebsd: export GOOS = freebsd
 freebsd:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${QUORUM_BIN_NAME} main.go
+	$(build-quorum)
 
+darwin: export GOOS = darwin
 darwin:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${QUORUM_BIN_NAME} main.go
+	$(build-quorum)
 
+windows: export GOOS = windows
+windows: QUORUM_BIN_NAME = quorum.exe
 windows:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${QUORUM_BIN_NAME}.exe main.go
+	$(build-quorum)
 
+wasm: export GOOS = js
+wasm: export GOARCH = wasm
 wasm:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=js GOARCH=wasm go build ${LDFLAGS} -o dist/js_wasm/${QUORUM_WASMLIB_NAME} cmd/wasm/lib.go
+	$(build-wasm)
 
-
+cli_linux: export GOOS = linux
 cli_linux:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/linux_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+	$(build-cli)
 
+cli_freebsd: export GOOS = freebsd
 cli_freebsd:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=freebsd GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/freebsd_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+	$(build-cli)
 
+cli_darwin: export GOOS = darwin
 cli_darwin:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=darwin GOARCH=${GOARCH} go build ${LDFLAGS}  -o dist/darwin_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+	$(build-cli)
 
+cli_windows: export GOOS = windows
+cli_windows: CLI_BIN_NAME = rumcli.exe
 cli_windows:
-	CGO_ENABLED=0 GO111MODULE=on GOOS=windows GOARCH=${GOARCH} go build ${LDFLAGS} -o dist/windows_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
+	$(build-cli)
 
 buildcli: cli_linux cli_freebsd cli_darwin cli_windows
 
