@@ -280,7 +280,6 @@ func (producer *MolassesProducer) startMergeBlock() error {
 
 	molaproducer_log.Debugf("<%s> winner <%s> (%s)", producer.groupId, producer.blockPool[candidateBlkid].ProducerPubKey, surfix)
 	err := producer.cIface.AddBlock(producer.blockPool[candidateBlkid])
-
 	if err != nil {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 		if err.Error() == "PARENT_NOT_EXIST" {
