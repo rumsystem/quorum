@@ -28,7 +28,7 @@ type AnnounceParam struct {
 	GroupId string `from:"group_id"    json:"group_id"    validate:"required,uuid4"`
 	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove"`
 	Type    string `from:"type"        json:"type"        validate:"required,oneof=user producer"`
-	Memo    string `from:"memo"        json:"memo"        validate:"required"`
+	Memo    string `from:"memo"        json:"memo"`
 }
 
 func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
