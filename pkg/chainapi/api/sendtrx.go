@@ -21,7 +21,6 @@ type SendTrxResult struct {
 
 type NodeSDKTrxItem struct {
 	TrxBytes []byte
-	JwtToken string
 }
 
 type NodeSDKSendTrxItem struct {
@@ -63,6 +62,9 @@ func (h *Handler) SendTrx(c echo.Context) (err error) {
 	}
 
 	decryptData, err := localcrypto.AesDecode(sendTrxItem.TrxItem, ciperKey)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
 	trxItem := new(NodeSDKTrxItem)
 
 	if err := json.Unmarshal(decryptData, trxItem); err != nil {

@@ -25,8 +25,7 @@ type GetGroupCtnPrarms struct {
 }
 
 type GetGroupCtnItem struct {
-	Req      GetGroupCtnPrarms
-	JwtToken string
+	Req GetGroupCtnPrarms
 }
 
 type GetGroupCtnReqItem struct {
