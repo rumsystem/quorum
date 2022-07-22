@@ -48,9 +48,11 @@ type MolassesProducer struct {
 	nodename          string
 	cIface            def.ChainMolassesIface
 	groupId           string
+
+	acsInst map[uint64]*ACS
 }
 
-func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface, hbnodes []string) {
 	molaproducer_log.Debug("Init called")
 	producer.grpItem = item
 	producer.cIface = iface

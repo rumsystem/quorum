@@ -77,23 +77,28 @@ type RBC struct {
 	messageCh chan rbcMessageT
 }
 
-func Init(config Config, proposerId string, consusNum int) (*RBC, error) {
-	canFailedNode := (consusNum - 1) / 3
-	parityShareds := 2 * canFailedNode
-	dataShards := consusNum - parityShareds
+//proposerId is uuid for other participated nodes
+func NewRBC(cfg Config, proposerId string) (*RBC, error) {
+	if cfg.F == 0 {
+		cfg.F = (cfg.N - 1) / 3
+	}
+	var (
+		parityShards = 2 * cfg.F
+		dataShards   = cfg.N - parityShards
+	)
 
-	enc, err := reedsolomon.New(dataShards, parityShareds)
+	enc, err := reedsolomon.New(dataShards, parityShards)
 	if err != nil {
 		return nil, err
 	}
 
 	rbc := &RBC{
-		config:          config,
+		config:          cfg,
 		proposerId:      proposerId,
 		enc:             enc,
 		recvEchos:       make(map[string]*EchoRequest),
 		recvReadys:      make(map[string][]byte),
-		numParityShards: parityShareds,
+		numParityShards: parityShards,
 		numDataShards:   dataShards,
 		messages:        []*BroadcastMessage{},
 		closeCh:         make(chan struct{}),
@@ -348,4 +353,20 @@ func (r *RBC) countReady(hash []byte) int {
 		}
 	}
 	return n
+}
+
+func (r *RBC) Output() []byte {
+	if r.output != nil {
+		output := r.output
+		r.output = nil
+		return output
+	}
+
+	return nil
+}
+
+func (r *RBC) Messages() []*BroadcastMessage {
+	msgs := r.messages
+	r.messages = []*BroadcastMessage{}
+	return msgs
 }
