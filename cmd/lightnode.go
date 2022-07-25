@@ -1,124 +1,108 @@
-package main
+package cmd
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
-	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	nodesdkapi "github.com/rumsystem/quorum/pkg/nodesdk/api"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
+	"github.com/spf13/cobra"
 )
-
-const DEFAUT_KEY_NAME string = "nodesdk_default"
 
 var (
-	ReleaseVersion string
-	GitCommit      string
-	signalch       chan os.Signal
-	mainlog        = logging.Logger("nodesdk")
+	lnodeFlag = cli.LightnodeFlag{}
 )
 
-func main() {
-	if ReleaseVersion == "" {
-		ReleaseVersion = "v1.0.0"
-	}
-
-	if GitCommit == "" {
-		GitCommit = "devel"
-	}
-
-	help := flag.Bool("h", false, "Display Help")
-	version := flag.Bool("version", false, "Show the version")
-
-	config, err := cli.ParseFlags()
-
-	lvl, err := logging.LevelFromString("info")
-	logging.SetAllLoggers(lvl)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if config.IsDebug == true {
-		logging.SetLogLevel("nodesdk", "debug")
-	}
-
-	if *help {
-		fmt.Println("Output a help ")
-		fmt.Println()
-		fmt.Println("Usage:...")
-		flag.PrintDefaults()
-		return
-	}
-
-	if *version {
-		fmt.Printf("%s - %s\n", ReleaseVersion, GitCommit)
-		return
-	}
-
-	if err := utils.EnsureDir(config.DataDir); err != nil {
-		panic(err)
-	}
-
-	_, _, err = utils.NewTLSCert()
-	if err != nil {
-		panic(err)
-	}
-
-	os.Exit(mainRet(config))
+// lightnodeCmd represents the lightnode command
+var lightnodeCmd = &cobra.Command{
+	Use:   "lightnode",
+	Short: "Run lightnode",
+	Run: func(cmd *cobra.Command, args []string) {
+		if lnodeFlag.KeyStorePwd == "" {
+			lnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
+		}
+		runLightnode(lnodeFlag)
+	},
 }
 
-func mainRet(config cli.Config) int {
+func init() {
+	rootCmd.AddCommand(lightnodeCmd)
+
+	flags := lightnodeCmd.Flags()
+	flags.SortFlags = false
+
+	flags.StringVar(&lnodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&lnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flags.StringVar(&lnodeFlag.DataDir, "datadir", "./data/", "config dir")
+	flags.StringVar(&lnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
+	flags.StringVar(&lnodeFlag.KeyStoreName, "keystorename", "defaultkeystore", "keystore name")
+	flags.StringVar(&lnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
+	flags.StringVar(&lnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&lnodeFlag.APIPort, "apiport", 5215, "api server listen port")
+	flags.StringVar(&lnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
+	flags.BoolVar(&lnodeFlag.IsDebug, "debug", false, "show debug log")
+}
+
+func runLightnode(config cli.LightnodeFlag) {
+	logger.Infof("Version: %s", utils.GitCommit)
+	const defaultKeyName = "nodesdk_default"
+
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mainlog.Infof("Version: %s", GitCommit)
 	peername := config.PeerName
+
+	utils.EnsureDir(config.DataDir)
 
 	//Load node options
 	nodeoptions, err := options.InitNodeOptions(config.ConfigDir, peername)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
 
-	ks, defaultkey, err := InitDefaultKeystore(config, nodeoptions)
+	keystoreParam := InitKeystoreParam{
+		KeystoreName:   config.KeyStoreName,
+		KeystoreDir:    config.KeyStoreDir,
+		KeystorePwd:    config.KeyStorePwd,
+		DefaultKeyName: defaultKeyName,
+		ConfigDir:      config.ConfigDir,
+		PeerName:       config.PeerName,
+	}
+	ks, defaultkey, err := InitDefaultKeystore(keystoreParam, nodeoptions)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
 	keys, err := localcrypto.SignKeytoPeerKeys(defaultkey)
 
 	if err != nil {
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 		cancel()
-		return 0
 	}
 
-	peerid, ethaddr, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
+	peerid, ethaddr, err := ks.GetPeerInfo(defaultKeyName)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
-	mainlog.Infof("eth addresss: <%s>", ethaddr)
+	logger.Infof("eth addresss: <%s>", ethaddr)
 
 	nodename := "nodesdk_default"
 
 	datapath := config.DataDir + "/" + config.PeerName
 	dbManager, err := storage.CreateDb(datapath)
 	if err != nil {
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
 
 	nodesdkctx.Init(ctx, nodename, dbManager, chainstorage.NewChainStorage(dbManager))
@@ -132,15 +116,13 @@ func mainRet(config cli.Config) int {
 		Ctx:        ctx,
 	}
 
-	nodeApiAddress := "https://%s/api/v1"
-	if config.NodeAPIListenAddress[:1] == ":" {
-		nodeApiAddress = fmt.Sprintf(nodeApiAddress, "localhost"+config.NodeAPIListenAddress)
-	} else {
-		nodeApiAddress = fmt.Sprintf(nodeApiAddress, config.NodeAPIListenAddress)
-	}
-
 	//start node sdk server
-	go nodesdkapi.StartNodeSDKServer(config, signalch, nodeHandler, nodeoptions)
+	startApiParam := nodesdkapi.StartAPIParam{
+		IsDebug: config.IsDebug,
+		APIHost: config.APIHost,
+		APIPort: config.APIPort,
+	}
+	go nodesdkapi.StartNodeSDKServer(startApiParam, signalch, nodeHandler, nodeoptions)
 
 	//attach signal
 	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
@@ -150,8 +132,6 @@ func mainRet(config cli.Config) int {
 	nodesdkctx.GetDbMgr().CloseDb()
 
 	//cleanup before exit
-	mainlog.Infof("On Signal <%s>", signalType)
-	mainlog.Infof("Exit command received. Exiting...")
-
-	return 0
+	logger.Infof("On Signal <%s>", signalType)
+	logger.Infof("Exit command received. Exiting...")
 }

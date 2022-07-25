@@ -3,8 +3,10 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -138,6 +140,52 @@ func (c *CustomContext) BindAndValidate(params interface{}) error {
 	}
 
 	return nil
+}
+
+// GetURL return https?://host:port
+func (c *CustomContext) GetBaseURL() string {
+	scheme := c.Context.Scheme()
+	addr := c.Echo().Server.Addr
+	if strings.HasPrefix(addr, ":") {
+		addr = fmt.Sprintf("%s%s", "127.0.0.1", addr)
+	}
+	return fmt.Sprintf("%s://%s", scheme, addr)
+}
+
+func (c *CustomContext) GetBaseURLFromRequest() string {
+	u := c.Request().URL
+	_url := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	return _url
+}
+
+const jwtQsKey = "jwt"
+
+func GetChainapiURL(baseUrl, jwt string) (string, error) {
+	u, err := url.Parse(baseUrl)
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	if len(q) == 0 {
+		q = url.Values{}
+	}
+	q.Add(jwtQsKey, jwt)
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
+// ParseChainapiURL return url and jwt
+func ParseChainapiURL(_url string) (baseUrl string, jwt string, err error) {
+	u, err := url.Parse(_url)
+	if err != nil {
+		return "", "", err
+	}
+	q := u.Query()
+	jwt = q.Get(jwtQsKey)
+	q.Del(jwtQsKey)
+	u.RawQuery = q.Encode()
+	baseUrl = u.String()
+	return baseUrl, jwt, nil
 }
 
 func NewCustomValidator() *CustomValidator {

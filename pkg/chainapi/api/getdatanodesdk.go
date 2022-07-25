@@ -9,6 +9,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -91,16 +92,17 @@ type GrpInfoNodeSDK struct {
 }
 
 func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
+	cc := c.(*utils.CustomContext)
+
 	if is_user_blocked(c) {
-		return c.JSON(http.StatusForbidden, "")
+		return rumerrors.NewForbiddenError("block user")
 	}
 
 	getDataNodeSDKItem := new(GetDataNodeSDKItem)
-
-	if err = c.Bind(getDataNodeSDKItem); err != nil {
+	if err := cc.BindAndValidate(getDataNodeSDKItem); err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
-	c.Logger().Debug("GetDataNSdk request payload: %+v", getDataNodeSDKItem)
+	c.Logger().Debug("GetDataNSdk request payload: %+v", *getDataNodeSDKItem)
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[getDataNodeSDKItem.GroupId]; ok {
@@ -125,9 +127,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
-			}
 			res, err := handlers.GetChainTrxAuthMode(h.ChainAPIdb, item.GroupId, item.TrxType)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
@@ -138,9 +137,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
-			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetChainTrxAllowList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
@@ -153,9 +149,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
-			}
 			res, err := handlers.GetChainTrxDenyList(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
@@ -166,9 +159,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
-			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			res, err := handlers.GetAppConfigKeyList(item.GroupId)
 			if err != nil {
@@ -181,9 +171,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
-			}
 			res, err := handlers.GetAppConfigKey(item.Key, item.GroupId)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
@@ -195,9 +182,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
-			}
 			res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
@@ -208,9 +192,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
-			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 			if item.SignPubkey == "" {
 				res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, item.GroupId)
@@ -231,9 +212,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
 			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
-			}
 			res, err := handlers.GetGroupProducers(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
@@ -244,9 +222,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			err = json.Unmarshal(decryptData, item)
 			if err != nil {
 				return rumerrors.NewBadRequestError("INVALID_DATA")
-			}
-			if item.JwtToken != NodeSDKJwtToken {
-				return rumerrors.NewBadRequestError("INVALID_JWT_TOKEN")
 			}
 
 			if grp, ok := groupmgr.Groups[item.GroupId]; ok {
@@ -259,16 +234,17 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				grpInfo.HighestHeight = grp.Item.HighestHeight
 
 				/*
-					Sign hash with user pubkey
+					//Did we really need a sign from fullnode ?
+					Sign hash with fullnode pubkey
 					groInfoBytes, err := json.Marshal(grpInfo)
 					if err != nil {
 						output[ERROR_INFO] = "INTERNAL_ERROR"
 						return c.JSON(http.StatusBadRequest, output)
 					}
 					hash := localcrypto.Hash(groInfoBytes)
+					grpInfo.Singature = "FAKE_SIGN"
 				*/
 
-				grpInfo.Singature = "FAKE_SIGN"
 				return c.JSON(http.StatusOK, grpInfo)
 			} else {
 				return rumerrors.NewBadRequestError("INVALID_GROUP")

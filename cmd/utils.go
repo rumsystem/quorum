@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -16,14 +16,23 @@ func CheckLockError(err error) {
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "Another process is using this Badger database.") {
-			mainlog.Errorf(errStr)
+			logger.Errorf(errStr)
 			os.Exit(16)
 		}
 	}
 }
 
-func InitDefaultKeystore(config cli.Config, nodeoptions *options.NodeOptions) (localcrypto.Keystore, *ethkeystore.Key, error) {
-	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
+type InitKeystoreParam struct {
+	KeystoreName   string
+	KeystoreDir    string
+	KeystorePwd    string
+	DefaultKeyName string
+	ConfigDir      string
+	PeerName       string
+}
+
+func InitDefaultKeystore(config InitKeystoreParam, nodeoptions *options.NodeOptions) (localcrypto.Keystore, *ethkeystore.Key, error) {
+	signkeycount, err := localcrypto.InitKeystore(config.KeystoreName, config.KeystoreDir)
 	ksi := localcrypto.GetKeystore()
 	if err != nil {
 		return nil, nil, err
@@ -36,7 +45,7 @@ func InitDefaultKeystore(config cli.Config, nodeoptions *options.NodeOptions) (l
 		return nil, nil, fmt.Errorf("unknown keystore type")
 	}
 
-	password := os.Getenv("RUM_KSPASSWD")
+	password := config.KeystorePwd
 
 	if signkeycount > 0 {
 		if password == "" {
@@ -63,9 +72,9 @@ func InitDefaultKeystore(config cli.Config, nodeoptions *options.NodeOptions) (l
 		}
 		var addr string
 		if signkeyhexstr != "" {
-			addr, err = ks.Import(DEFAUT_KEY_NAME, signkeyhexstr, localcrypto.Sign, password)
+			addr, err = ks.Import(config.DefaultKeyName, signkeyhexstr, localcrypto.Sign, password)
 		} else {
-			addr, err = ks.NewKey(DEFAUT_KEY_NAME, localcrypto.Sign, password)
+			addr, err = ks.NewKey(config.DefaultKeyName, localcrypto.Sign, password)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -74,7 +83,7 @@ func InitDefaultKeystore(config cli.Config, nodeoptions *options.NodeOptions) (l
 		if addr == "" {
 			return nil, nil, fmt.Errorf("Load or create new signkey failed")
 		}
-		err = nodeoptions.SetSignKeyMap(DEFAUT_KEY_NAME, addr)
+		err = nodeoptions.SetSignKeyMap(config.DefaultKeyName, addr)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -85,13 +94,17 @@ func InitDefaultKeystore(config cli.Config, nodeoptions *options.NodeOptions) (l
 
 		fmt.Printf("load signkey: %d press any key to continue...\n", signkeycount)
 
-		_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
+		_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(config.DefaultKeyName))
 		signkeycount = ks.UnlockedKeyCount(localcrypto.Sign)
 		if signkeycount == 0 {
 			return nil, nil, fmt.Errorf("load signkey error, exit... %s", err)
 		}
 	}
-	key, err := ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
+	key, err := ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(config.DefaultKeyName))
+	if err != nil {
+		return nil, nil, fmt.Errorf("ks.GetKeyFromUnlocked failed: %s", err)
+	}
+
 	defaultkey, ok := key.(*ethkeystore.Key)
 	if ok == false {
 		return nil, nil, fmt.Errorf("load default key error, exit...")
@@ -99,7 +112,7 @@ func InitDefaultKeystore(config cli.Config, nodeoptions *options.NodeOptions) (l
 	return ks, defaultkey, nil
 }
 
-func InitRelayNodeKeystore(config cli.RelayNodeConfig, relayNodeOpt *options.RelayNodeOptions) (localcrypto.Keystore, *ethkeystore.Key, error) {
+func InitRelayNodeKeystore(config cli.RelayNodeFlag, defaultKeyName string, relayNodeOpt *options.RelayNodeOptions) (localcrypto.Keystore, *ethkeystore.Key, error) {
 	signkeycount, err := localcrypto.InitKeystore(config.KeyStoreName, config.KeyStoreDir)
 	ksi := localcrypto.GetKeystore()
 	if err != nil {
@@ -111,7 +124,7 @@ func InitRelayNodeKeystore(config cli.RelayNodeConfig, relayNodeOpt *options.Rel
 		return nil, nil, fmt.Errorf("unknown keystore type")
 	}
 
-	password := os.Getenv("RUM_KSPASSWD")
+	password := config.KeyStorePwd
 
 	if signkeycount > 0 {
 		if password == "" {
@@ -138,9 +151,9 @@ func InitRelayNodeKeystore(config cli.RelayNodeConfig, relayNodeOpt *options.Rel
 		}
 		var addr string
 		if signkeyhexstr != "" {
-			addr, err = ks.Import(DEFAUT_KEY_NAME, signkeyhexstr, localcrypto.Sign, password)
+			addr, err = ks.Import(defaultKeyName, signkeyhexstr, localcrypto.Sign, password)
 		} else {
-			addr, err = ks.NewKey(DEFAUT_KEY_NAME, localcrypto.Sign, password)
+			addr, err = ks.NewKey(defaultKeyName, localcrypto.Sign, password)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -150,7 +163,7 @@ func InitRelayNodeKeystore(config cli.RelayNodeConfig, relayNodeOpt *options.Rel
 			return nil, nil, fmt.Errorf("Load or create new signkey failed")
 		}
 
-		relayNodeOpt.SetSignKeyMap(DEFAUT_KEY_NAME, addr)
+		relayNodeOpt.SetSignKeyMap(defaultKeyName, addr)
 
 		if err != nil {
 			return nil, nil, err
@@ -162,13 +175,13 @@ func InitRelayNodeKeystore(config cli.RelayNodeConfig, relayNodeOpt *options.Rel
 
 		fmt.Printf("load signkey: %d press any key to continue...\n", signkeycount)
 
-		_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
+		_, err = ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(defaultKeyName))
 		signkeycount = ks.UnlockedKeyCount(localcrypto.Sign)
 		if signkeycount == 0 {
 			return nil, nil, fmt.Errorf("load signkey error, exit... %s", err)
 		}
 	}
-	key, err := ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(DEFAUT_KEY_NAME))
+	key, err := ks.GetKeyFromUnlocked(localcrypto.Sign.NameString(defaultKeyName))
 	defaultkey, ok := key.(*ethkeystore.Key)
 	if ok == false {
 		return nil, nil, fmt.Errorf("load default key error, exit...")

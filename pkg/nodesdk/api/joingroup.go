@@ -2,38 +2,28 @@ package nodesdkapi
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/labstack/echo/v4"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
-type GroupSeed struct {
-	GenesisBlock   *quorumpb.Block `json:"genesis_block" validate:"required"`
-	GroupId        string          `json:"group_id" validate:"required"`
-	GroupName      string          `json:"group_name" validate:"required"`
-	OwnerPubkey    string          `json:"owner_pubkey" validate:"required"`
-	ConsensusType  string          `json:"consensus_type" validate:"required,oneof=pos poa"`
-	EncryptionType string          `json:"encryption_type" validate:"required,oneof=public private"`
-	CipherKey      string          `json:"cipher_key" validate:"required"`
-	AppKey         string          `json:"app_key" validate:"required"`
-	Signature      string          `json:"signature" validate:"required"`
-}
-
-type JoinGroupParams struct {
-	Seed         GroupSeed `json:"seed"          validate:"required"`
-	ChainAPIUrl  []string  `json:"urls"          validate:"required"`
-	SignAlias    string    `json:"sign_alias"    validate:"required"`
-	EncryptAlias string    `json:"encrypt_alias" validate:"required"`
+type JoinGroupParamV2 struct {
+	Seed         string `json:"seed" validate:"required"` // seed url
+	SignAlias    string `json:"sign_alias" validate:"required"`
+	EncryptAlias string `json:"encrypt_alias" validate:"required"`
 }
 
 type JoinGroupResult struct {
@@ -49,37 +39,59 @@ type JoinGroupResult struct {
 	Signature      string `json:"signature" validate:"required"`
 }
 
-func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
+// isValidUrl tests a string to determine if it is a well-structured url or not.
+func isValidUrl(toTest string) bool {
+	_, err := url.ParseRequestURI(toTest)
+	if err != nil {
+		return false
+	}
+
+	u, err := url.Parse(toTest)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+
+	return true
+}
+
+func (h *NodeSDKHandler) JoinGroupV2() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
 
-		params := new(JoinGroupParams)
-		if err := cc.BindAndValidate(params); err != nil {
-			return err
+		var err error
+		payload := new(JoinGroupParamV2)
+		if err := cc.BindAndValidate(payload); err != nil {
+			return rumerrors.NewBadRequestError(err)
 		}
-
-		genesisBlockBytes, err := json.Marshal(params.Seed.GenesisBlock)
+		seed, chainapiUrls, err := handlers.UrlToGroupSeed(payload.Seed)
 		if err != nil {
-			return rumerrors.NewBadRequestError("unmarshal genesis block failed with msg:" + err.Error())
+			return rumerrors.NewBadRequestError(err)
+		}
+		signAlias := payload.SignAlias
+		encryptAlias := payload.EncryptAlias
+		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
+		if err != nil {
+			return rumerrors.NewBadRequestError(fmt.Errorf("unmarshal genesis block failed with msg: %s", err))
 		}
 
 		ks := nodesdkctx.GetKeyStore()
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if !ok {
-			return rumerrors.NewBadRequestError(rumerrors.ErrOpenKeystore)
+			return rumerrors.NewBadRequestError("Open keystore failed")
 		}
 
-		signKeyName := dirks.AliasToKeyname(params.SignAlias)
+		signKeyName := dirks.AliasToKeyname(signAlias)
 		if signKeyName == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrSignAliasNotFound)
+			return rumerrors.NewBadRequestError("sign alias is not exist")
 		}
 
-		encryptKeyName := dirks.AliasToKeyname(params.EncryptAlias)
+		encryptKeyName := dirks.AliasToKeyname(encryptAlias)
 		if encryptKeyName == "" {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptAliasNotFound)
+			return rumerrors.NewBadRequestError("encrypt alias is not exist")
 		}
 
-		// should check keytype
+		//should check keytype
+
 		allKeys, err := dirks.ListAll()
 		if err != nil {
 			return rumerrors.NewBadRequestError("ListAll failed")
@@ -96,103 +108,76 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 
 		//check if given alias exist
 		//check type
-		alias, ok := allAlias[params.EncryptAlias]
+		alias, ok := allAlias[encryptAlias]
 		if !ok {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptAliasNotFound)
+			return rumerrors.NewBadRequestError("encrypt alias is not exist")
 		}
 
 		if alias.Type != localcrypto.Encrypt {
-			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidAliasType)
+			return rumerrors.NewBadRequestError("Type mismatch for given encrypt alias")
 		}
 
-		alias, ok = allAlias[params.SignAlias]
+		alias, ok = allAlias[signAlias]
 		if !ok {
-			return rumerrors.NewBadRequestError(rumerrors.ErrSignAliasNotFound)
+			return rumerrors.NewBadRequestError("Sign alias is not exist")
 		}
 
 		if alias.Type != localcrypto.Sign {
-			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidAliasType)
+			return rumerrors.NewBadRequestError("Type mismatch for given sign alias")
 		}
 
-		//check seed signature
-		ownerPubkeyBytes, err := p2pcrypto.ConfigDecodeKey(params.Seed.OwnerPubkey)
+		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
 		if err != nil {
-			return rumerrors.NewBadRequestError("Decode OwnerPubkey failed: " + err.Error())
+			//the key maybe a libp2p key, try...
+			ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+			if err != nil {
+				msg := "Decode OwnerPubkey failed: " + err.Error()
+				return rumerrors.NewBadRequestError(msg)
+			}
 		}
 
-		ownerPubkey, err := p2pcrypto.UnmarshalPublicKey(ownerPubkeyBytes)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		//decode signature
-		decodedSignature, err := hex.DecodeString(params.Seed.Signature)
+		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		//decode cipherkey
-		cipherKey, err := hex.DecodeString(params.Seed.CipherKey)
+		if r == false {
+			return rumerrors.NewBadRequestError("Join Group failed, can not verify signature")
+		}
+
+		b64signPubkey, err := dirks.GetEncodedPubkeyByAlias(signAlias, localcrypto.Sign)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err)
+			return rumerrors.NewBadRequestError("Get Sign pubkey failed")
 		}
 
-		var buffer bytes.Buffer
-		buffer.Write(genesisBlockBytes)
-		buffer.Write([]byte(params.Seed.GroupId))
-		buffer.Write([]byte(params.Seed.GroupName))
-		buffer.Write(ownerPubkeyBytes)
-		buffer.Write([]byte(params.Seed.ConsensusType))
-		buffer.Write([]byte(params.Seed.EncryptionType))
-		buffer.Write([]byte(params.Seed.AppKey))
-		buffer.Write(cipherKey)
-
-		hash := localcrypto.Hash(buffer.Bytes())
-		verifiy, err := ownerPubkey.Verify(hash, decodedSignature)
+		signPubkey, err := base64.RawURLEncoding.DecodeString(b64signPubkey)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err)
+			return rumerrors.NewBadRequestError("Decode Sign pubkey failed")
 		}
 
-		if !verifiy {
-			return rumerrors.NewBadRequestError(rumerrors.ErrJoinGroup)
-		}
-
-		//*huoju*
-		//API does not work???
-		//ConfigEncodeKey
-		signPubkey, err := dirks.GetEncodedPubkeyByAlias(params.SignAlias, localcrypto.Sign)
-		if err != nil {
-			return rumerrors.NewBadRequestError(rumerrors.ErrGetSignPubKey)
-		}
-
-		pubkeybytes, err := hex.DecodeString(signPubkey)
-		if err != nil {
-			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidSignPubKey)
-		}
-
-		p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-		decodedsignpubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
-
-		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(params.EncryptAlias, localcrypto.Encrypt)
+		encryptPubkey, err := dirks.GetEncodedPubkeyByAlias(encryptAlias, localcrypto.Encrypt)
 		if err != nil {
 			return rumerrors.NewBadRequestError("Get encrypt pubkey failed")
 		}
 
 		//create nodesdkgroupitem
-		item := &quorumpb.NodeSDKGroupItem{}
-		group := &quorumpb.GroupItem{}
+		var item *quorumpb.NodeSDKGroupItem
+		item = &quorumpb.NodeSDKGroupItem{}
 
-		group.GroupId = params.Seed.GroupId
-		group.GroupName = params.Seed.GroupName
-		group.OwnerPubKey = params.Seed.OwnerPubkey
-		group.UserSignPubkey = p2pcrypto.ConfigEncodeKey(decodedsignpubkey)
+		var group *quorumpb.GroupItem
+		group = &quorumpb.GroupItem{}
+
+		group.GroupId = seed.GenesisBlock.GroupId
+		group.GroupName = seed.GroupName
+		group.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
+		group.UserSignPubkey = base64.RawURLEncoding.EncodeToString(signPubkey)
 		group.UserEncryptPubkey = encryptPubkey
 		group.LastUpdate = 0 //update after getGroupInfo from ChainSDKAPI
 		group.HighestHeight = 0
 		group.HighestBlockId = ""
-		group.GenesisBlock = params.Seed.GenesisBlock
+		group.GenesisBlock = seed.GenesisBlock
 
-		switch params.Seed.EncryptionType {
+		switch seed.EncryptionType {
 		case "private":
 			return rumerrors.NewBadRequestError(rumerrors.ErrPrivateGroupNotSupported)
 		case "public":
@@ -201,7 +186,7 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported)
 		}
 
-		switch params.Seed.ConsensusType {
+		switch seed.ConsensusType {
 		case "poa":
 			group.ConsenseType = quorumpb.GroupConsenseType_POA
 		case "pos":
@@ -210,24 +195,13 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(rumerrors.ErrConsensusTypeNotSupported)
 		}
 
-		group.CipherKey = params.Seed.CipherKey
-		group.AppKey = params.Seed.AppKey
+		group.CipherKey = seed.CipherKey
+		group.AppKey = seed.AppKey
 
 		item.Group = group
-		item.EncryptAlias = params.EncryptAlias
-		item.SignAlias = params.SignAlias
-
-		for _, url := range params.ChainAPIUrl {
-			if !isValidUrl(url) {
-				return rumerrors.NewBadRequestError(rumerrors.ErrInvalidChainAPIURL)
-			}
-		}
-		item.ApiUrl = params.ChainAPIUrl
-		seed, err := json.Marshal(params.Seed)
-		if err != nil {
-			return rumerrors.NewBadRequestError(rumerrors.ErrInvalidChainAPIURL)
-		}
-		item.GroupSeed = string(seed) //save seed string for future use
+		item.EncryptAlias = encryptAlias
+		item.SignAlias = signAlias
+		item.ApiUrl = chainapiUrls
 
 		//create joingroup result
 		var bufferResult bytes.Buffer
@@ -235,16 +209,17 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 		bufferResult.Write([]byte(group.GroupId))
 		bufferResult.Write([]byte(group.GroupName))
 		bufferResult.Write(ownerPubkeyBytes)
-		bufferResult.Write([]byte(signPubkey))
+		bufferResult.Write(signPubkey)
 		bufferResult.Write([]byte(encryptPubkey))
-		buffer.Write([]byte(params.Seed.ConsensusType))
-		buffer.Write([]byte(params.Seed.EncryptionType))
-		buffer.Write([]byte(group.CipherKey))
-		buffer.Write([]byte(group.AppKey))
+		bufferResult.Write([]byte(group.CipherKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
 		signature, err := ks.SignByKeyAlias(item.SignAlias, hashResult)
 		encodedSign := hex.EncodeToString(signature)
-
+		pbGroupSeed := handlers.ToPbGroupSeed(*seed)
+		//save seed to db
+		if err := nodesdkctx.GetCtx().GetChainStorage().SetGroupSeed(&pbGroupSeed); err != nil {
+			return rumerrors.NewBadRequestError(fmt.Errorf("save group seed failed: %s", err))
+		}
 		//save nodesdkgroupitem to db
 		err = nodesdkctx.GetCtx().GetChainStorage().AddGroupV2(item)
 		if err != nil {
@@ -255,29 +230,14 @@ func (h *NodeSDKHandler) JoinGroup() echo.HandlerFunc {
 			GroupId:        group.GroupId,
 			GroupName:      group.GroupName,
 			OwnerPubkey:    group.OwnerPubKey,
-			ConsensusType:  params.Seed.ConsensusType,
-			EncryptionType: params.Seed.EncryptionType,
-			SignAlias:      params.SignAlias,
-			EncryptAlias:   params.EncryptAlias,
+			ConsensusType:  seed.ConsensusType,
+			EncryptionType: seed.EncryptionType,
+			SignAlias:      signAlias,
+			EncryptAlias:   encryptAlias,
 			CipherKey:      group.CipherKey,
 			AppKey:         group.AppKey,
 			Signature:      encodedSign,
 		}
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}
-}
-
-// isValidUrl tests a string to determine if it is a well-structured url or not.
-func isValidUrl(toTest string) bool {
-	_, err := url.ParseRequestURI(toTest)
-	if err != nil {
-		return false
-	}
-
-	u, err := url.Parse(toTest)
-	if err != nil || u.Scheme == "" || u.Host == "" {
-		return false
-	}
-
-	return true
 }

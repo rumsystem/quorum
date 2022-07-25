@@ -91,7 +91,7 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			paramspb.Object.Type = paramspb.Type
 		}
 
-		trx, err := trxFactory.GetPostAnyTrxWithKeyAlias(nodesdkGroupItem.SignAlias, paramspb.Object)
+		trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, paramspb.Object)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
@@ -103,7 +103,6 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 
 		trxItem := new(NodeSDKTrxItem)
 		trxItem.TrxBytes = trxBytes
-		trxItem.JwtToken = JwtToken
 
 		trxItemBytes, err := json.Marshal(trxItem)
 		if err != nil {

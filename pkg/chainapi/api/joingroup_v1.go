@@ -1,8 +1,8 @@
 package api
 
 import (
-	//"encoding/json"
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,12 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	"github.com/rumsystem/quorum/testnode"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"github.com/labstack/echo/v4"
@@ -23,19 +24,6 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 )
-
-type JoinGroupResult struct {
-	GroupId           string `json:"group_id" validate:"required"`
-	GroupName         string `json:"group_name" validate:"required"`
-	OwnerPubkey       string `json:"owner_pubkey" validate:"required"`
-	UserPubkey        string `json:"user_pubkey" validate:"required"`
-	UserEncryptPubkey string `json:"user_encryptpubkey" validate:"required"`
-	ConsensusType     string `json:"consensus_type" validate:"required"`
-	EncryptionType    string `json:"encryption_type" validate:"required"`
-	CipherKey         string `json:"cipher_key" validate:"required"`
-	AppKey            string `json:"app_key" validate:"required"`
-	Signature         string `json:"signature" validate:"required"`
-}
 
 // @Tags Groups
 // @Summary JoinGroup
@@ -67,7 +55,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
 		if ok == true {
-			hexkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+			base64key, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
@@ -77,20 +65,17 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 						msg := fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
 						return rumerrors.NewBadRequestError(msg)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+					base64key, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				} else {
 					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(params.GroupId))
 					if err != nil {
 						msg := "create new group key err:" + err.Error()
 						return rumerrors.NewBadRequestError(msg)
 					}
-					hexkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+					base64key, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				}
 			}
-
-			pubkeybytes, err := hex.DecodeString(hexkey)
-			p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-			groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
+			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
 			if err != nil {
 				msg := "group key can't be decoded, err: " + err.Error()
 				return rumerrors.NewBadRequestError(msg)
@@ -166,12 +151,18 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		item.OwnerPubKey = params.OwnerPubkey
 		item.GroupId = params.GroupId
 		item.GroupName = params.GroupName
-		item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(ownerPubkeyBytes)
+
+		secp256k1pubkey, ok := ownerPubkey.(*p2pcrypto.Secp256k1PublicKey)
+		if ok == true {
+			btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
+			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(btcecpubkey.ToECDSA()))
+		}
+
 		item.CipherKey = params.CipherKey
 		item.AppKey = params.AppKey
 
 		item.ConsenseType = quorumpb.GroupConsenseType_POA
-		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+		item.UserSignPubkey = base64.RawURLEncoding.EncodeToString(groupSignPubkey)
 
 		userEncryptKey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 		if err != nil {
@@ -188,7 +179,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		}
 
 		item.UserEncryptPubkey = userEncryptKey
-		item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+		//item.UserSignPubkey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
 
 		if params.EncryptionType == "public" {
 			item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
@@ -234,7 +225,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		buffer.Write([]byte(item.CipherKey))
 		buffer.Write([]byte(item.AppKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
-		signature, err := ks.SignByKeyName(item.GroupId, hashResult)
+		signature, err := ks.EthSignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}
@@ -248,29 +239,4 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 		return c.JSON(http.StatusOK, joinGrpResult)
 	}
-}
-
-// JoinGroupByHTTPRequest restore cli use it
-func JoinGroupByHTTPRequest(apiBaseUrl string, payload handlers.GroupSeed) (*JoinGroupResult, error) {
-	payloadByte, err := json.Marshal(payload)
-	if err != nil {
-		e := fmt.Errorf("json.Marshal failed: %s, joinGroupParam: %+v", err, payload)
-		return nil, e
-	}
-
-	payloadStr := string(payloadByte[:])
-	urlPath := "/api/v1/group/join"
-	_, resp, err := testnode.RequestAPI(apiBaseUrl, urlPath, "POST", payloadStr)
-	if err != nil {
-		e := fmt.Errorf("request %s failed: %s, payload: %s", urlPath, err, payloadStr)
-		return nil, e
-	}
-
-	var result JoinGroupResult
-	if err := json.Unmarshal(resp, &result); err != nil {
-		e := fmt.Errorf("json.Unmarshal failed: %s, response: %s", err, resp)
-		return nil, e
-	}
-
-	return &result, nil
 }

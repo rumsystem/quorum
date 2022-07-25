@@ -2,24 +2,34 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"syscall"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rumsystem/ip-cert/pkg/zerossl"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 var quitch chan os.Signal
 
+type StartAPIParam struct {
+	IsDebug       bool
+	APIHost       string
+	APIPort       uint
+	CertDir       string
+	ZeroAccessKey string
+}
+
 //StartAPIServer : Start local web server
-func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
+func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
@@ -34,8 +44,10 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 	if isbootstrapnode == false {
-		r.POST("/v1/group", h.CreateGroup())
+		//r.POST("/v1/group", h.CreateGroup())
+		r.POST("/v1/group", h.CreateGroupUrl())
 		r.POST("/v1/group/join", h.JoinGroup())
+		r.POST("/v2/group/join", h.JoinGroupV2())
 		r.POST("/v1/group/leave", h.LeaveGroup)
 		r.POST("/v1/group/clear", h.ClearGroupData)
 		r.POST("/v1/group/content", h.PostToGroup)
@@ -76,6 +88,7 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		a.POST("/v1/token/create", apph.CreateToken)
 
 		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
+		r.POST("/v1/tools/seedurlextend", h.SeedUrlextend())
 
 		r.POST("/v1/preview/relay/req", h.RequestRelay)
 		r.GET("/v1/preview/relay", h.ListRelay)
@@ -93,11 +106,23 @@ func StartAPIServer(config cli.Config, signalch chan os.Signal, h *Handler, apph
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
 	}
 
-	certPath, keyPath, err := utils.GetTLSCerts()
-	if err != nil {
-		panic(err)
+	// start https or http server
+	host := config.APIHost
+	if utils.IsDomainName(host) { // domain
+		e.AutoTLSManager.Cache = autocert.DirCache(config.CertDir)
+		e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.APIHost)
+		e.AutoTLSManager.Prompt = autocert.AcceptTOS
+		e.Logger.Fatal(e.StartAutoTLS(":https"))
+	} else if utils.IsPublicIP(host) { // public ip
+		ip := net.ParseIP(host)
+		privKeyPath, certPath, err := zerossl.IssueIPCert(config.CertDir, ip, config.ZeroAccessKey)
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+		e.Logger.Fatal(e.StartTLS(":https", certPath, privKeyPath))
+	} else { // start http server
+		e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, config.APIPort)))
 	}
-	e.Logger.Fatal(e.StartTLS(config.APIListenAddresses, certPath, keyPath))
 }
 
 func quitapp(c echo.Context) (err error) {

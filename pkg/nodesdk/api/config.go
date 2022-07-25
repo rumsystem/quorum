@@ -43,8 +43,6 @@ const ERROR_INFO string = "error"
 
 const BLACK_LIST_OP_PREFIX string = "blklistop_"
 
-const JwtToken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-
 const GROUP_INFO string = "group_info"
 
 const AUTH_TYPE string = "auth_type"
@@ -80,7 +78,6 @@ type NodeSDKSendTrxItem struct {
 
 type NodeSDKTrxItem struct {
 	TrxBytes []byte
-	JwtToken string
 }
 
 type NodeSDKGetChainDataItem struct {
@@ -89,30 +86,25 @@ type NodeSDKGetChainDataItem struct {
 }
 
 type AppConfigKeyListItem struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AppConfigItem struct {
-	GroupId  string
-	Key      string
-	JwtToken string
+	GroupId string
+	Key     string
 }
 
 type AnnGrpProducer struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type GrpProducer struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AnnGrpUser struct {
 	GroupId    string
 	SignPubkey string
-	JwtToken   string
 }
 
 type ProducerListItem struct {
@@ -124,24 +116,20 @@ type ProducerListItem struct {
 }
 
 type AuthTypeItem struct {
-	GroupId  string
-	TrxType  string
-	JwtToken string
+	GroupId string
+	TrxType string
 }
 
 type AuthAllowListItem struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AuthDenyListItem struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type GrpInfo struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type GrpInfoNodeSDK struct {

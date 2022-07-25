@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -13,7 +14,7 @@ import (
 // @Description get group seed from appdb
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Success 200 {object} handlers.GroupSeed
+// @Success 200 {object} handlers.GetGroupSeedResult
 // @Router /api/v1/group/{group_id}/seed [get]
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
@@ -25,6 +26,13 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
+	seedurl, err := handlers.GroupSeedToUrl(1, []string{}, seed)
+	if err != nil {
+		return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
+	}
 
-	return c.JSON(http.StatusOK, seed)
+	result := handlers.GetGroupSeedResult{
+		Seed: seedurl,
+	}
+	return c.JSON(http.StatusOK, result)
 }

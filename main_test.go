@@ -85,15 +85,16 @@ func TestJoinGroup(t *testing.T) {
 			log.Printf("_____________CREATE_GROUP_____________")
 			var groupseed string
 			var groupId string
-			status, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
+			groupName := fmt.Sprintf("testgroup_peer_%d_%d", idx+1, i+1)
+			status, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
 			if err == nil || status != 200 {
 				var objmap map[string]interface{}
 				if err := json.Unmarshal(resp, &objmap); err != nil {
 					t.Errorf("Data Unmarshal error %s", err)
 				} else {
 					groupseed = string(resp)
-					groupName := objmap["group_name"]
-					groupId = objmap["group_id"].(string)
+					seedurl := objmap["seed"]
+					groupId = testnode.SeedUrlToGroupId(seedurl.(string))
 					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
 			} else {
@@ -102,7 +103,7 @@ func TestJoinGroup(t *testing.T) {
 			time.Sleep(1 * time.Second)
 			// try join the same group just created
 			log.Printf("_____________TEST_JOIN_EXIST_GROUP_____________")
-			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", groupseed)
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", groupseed)
 
 			//check if failed
 			if status != 400 {
@@ -118,7 +119,7 @@ func TestJoinGroup(t *testing.T) {
 			time.Sleep(1 * time.Second)
 
 			log.Printf("_____________TEST_JOIN_LEAVED_GROUP_____________")
-			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", groupseed)
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", groupseed)
 			if status != 200 {
 				t.Errorf("join leaved group test failed with response code %d", status)
 			}
@@ -190,15 +191,16 @@ func TestGroupsPostContents(t *testing.T) {
 	for idx, peerapi := range peerapilist {
 		var seeds []string
 		for i := 0; i < groupspeernum; i++ {
-			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"testgroup_peer_%d_%d","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, idx+1, i+1))
+			groupName := fmt.Sprintf("testgroup_peer_%d_%d", idx+1, i+1)
+			_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
 			if err == nil {
 				var objmap map[string]interface{}
 				if err := json.Unmarshal(resp, &objmap); err != nil {
 					t.Errorf("Data Unmarshal error %s", err)
 				} else {
 					seeds = append(seeds, string(resp))
-					groupName := objmap["group_name"]
-					groupId := objmap["group_id"].(string)
+					seedurl := objmap["seed"]
+					groupId := testnode.SeedUrlToGroupId(seedurl.(string))
 					groupIds = append(groupIds, groupId)
 					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
@@ -225,7 +227,7 @@ func TestGroupsPostContents(t *testing.T) {
 					for i := 0; i < groupspeernum; i++ {
 						g := seedsFromOtherNode[i]
 						// join to other groups of other nodes
-						_, _, err := testnode.RequestAPI(peerapi, "/api/v1/group/join", "POST", g)
+						_, _, err := testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", g)
 						if err != nil {
 							t.Errorf("peer%d join group %s error %s", peerIdx+1, g, err)
 						} else {

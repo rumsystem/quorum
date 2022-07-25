@@ -10,8 +10,8 @@ import (
 )
 
 type UpdApiHostUrlParams struct {
-	GroupId     string   `json:"group_id" validate:"required"`
-	ChainAPIUrl []string `json:"urls"     validate:"required"`
+	GroupId      string   `json:"group_id" validate:"required"`
+	ChainAPIUrls []string `json:"urls" validate:"required"`
 }
 
 func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
@@ -26,7 +26,7 @@ func (h *NodeSDKHandler) UpdApiHostUrl(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	nodesdkGroupItem.ApiUrl = params.ChainAPIUrl
+	nodesdkGroupItem.ApiUrl = params.ChainAPIUrls
 
 	if err := nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(nodesdkGroupItem); err != nil {
 		return rumerrors.NewBadRequestError(err)

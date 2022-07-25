@@ -1,9 +1,11 @@
 package chain
 
 import (
+	"encoding/base64"
 	"errors"
 	"sync"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -104,6 +106,18 @@ func (ssreceiver *MolassesSnapshotReceiver) VerifySignature(s *quorumpb.Snapshot
 	}
 	hashed := localcrypto.Hash(bbytes)
 
+	s.Singature = sig
+
+	ks := localcrypto.GetKeystore()
+	pubkeyBytes, err := base64.RawURLEncoding.DecodeString(s.SenderPubkey)
+	if err == nil {
+		ethpubkey, err := ethcrypto.DecompressPubkey(pubkeyBytes)
+		if err == nil {
+			verify := ks.EthVerifySign(hashed, sig, ethpubkey)
+			return verify, nil
+		}
+
+	}
 	//create pubkey
 	serializedpub, err := p2pcrypto.ConfigDecodeKey(s.SenderPubkey)
 	if err != nil {
@@ -115,9 +129,9 @@ func (ssreceiver *MolassesSnapshotReceiver) VerifySignature(s *quorumpb.Snapshot
 		return false, err
 	}
 
-	verify, err := pubkey.Verify(hashed, sig)
-	s.Singature = sig
-	return verify, err
+	p2pkeyverify, err := pubkey.Verify(hashed, sig)
+
+	return p2pkeyverify, nil
 }
 
 func (ssreceiver *MolassesSnapshotReceiver) GetTag() *quorumpb.SnapShotTag {

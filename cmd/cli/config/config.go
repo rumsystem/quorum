@@ -15,15 +15,13 @@ import (
 var signKeyMap = map[string]string{}
 
 type QuorumConfig struct {
-	Server               string
-	ServerSSLCertificate string
-	ServerSSLInsecure    bool
-	KeyStoreName         string
-	KeyStoreDir          string
-	KeyStorePass         string
-	JWT                  string
-	MaxContentSize       int
-	Muted                []string
+	Server         string
+	KeyStoreName   string
+	KeyStoreDir    string
+	KeyStorePass   string
+	JWT            string
+	MaxContentSize int
+	Muted          []string
 }
 
 type RumCliConfig struct {

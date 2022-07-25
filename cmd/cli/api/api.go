@@ -2,14 +2,11 @@ package api
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -626,36 +623,8 @@ func ApproveAnnouncedProducer(groupId string, user *handlers.AnnouncedProducerLi
 }
 
 func newHTTPClient() (*http.Client, error) {
-	certPath, err := filepath.Abs(config.RumConfig.Quorum.ServerSSLCertificate)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if certPath != "" {
-		caCert, err := ioutil.ReadFile(certPath)
-		if err != nil {
-			return nil, err
-		}
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		if err != nil {
-			return nil, err
-		}
-		tlsConfig := &tls.Config{
-			RootCAs: caCertPool,
-		}
-		if config.RumConfig.Quorum.ServerSSLInsecure {
-			tlsConfig.InsecureSkipVerify = true
-		}
-
-		tlsConfig.BuildNameToCertificate()
-		transport := &http.Transport{TLSClientConfig: tlsConfig, DisableKeepAlives: true}
-		// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
-		return &http.Client{Transport: transport, Timeout: 5 * time.Second}, nil
-	}
-	return &http.Client{}, nil
+	// 5 seconds timeout, all timeout will be ignored, since we refresh all data every half second
+	return &http.Client{Timeout: 5 * time.Second}, nil
 }
 
 func checkJWTError(body string) error {

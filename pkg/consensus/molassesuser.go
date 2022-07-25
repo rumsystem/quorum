@@ -2,14 +2,12 @@ package consensus
 
 import (
 	"errors"
-
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	//"google.golang.org/protobuf/proto"
 )
 
 type MolassesUser struct {
@@ -105,7 +103,6 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			return err
 		}
 	}
-
 	//update block produced count
 	for _, block := range blocks {
 		err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)

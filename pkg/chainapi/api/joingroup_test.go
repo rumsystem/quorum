@@ -10,7 +10,7 @@ import (
 	"github.com/rumsystem/quorum/testnode"
 )
 
-func joinGroup(api string, payload handlers.GroupSeed) (*JoinGroupResult, error) {
+func joinGroup(api string, payload handlers.JoinGroupParamV2) (*JoinGroupResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed: %s, joinGroupParam: %+v", err, payload)
@@ -18,7 +18,7 @@ func joinGroup(api string, payload handlers.GroupSeed) (*JoinGroupResult, error)
 	}
 
 	payloadStr := string(payloadByte[:])
-	urlPath := "/api/v1/group/join"
+	urlPath := "/api/v2/group/join"
 	_, resp, err := testnode.RequestAPI(api, urlPath, "POST", payloadStr)
 	if err != nil {
 		e := fmt.Errorf("request %s failed: %s, payload: %s", urlPath, err, payloadStr)
@@ -58,16 +58,8 @@ func TestJoinGroup(t *testing.T) {
 	}
 
 	// join group
-	joinGroupParam := handlers.GroupSeed{
-		GenesisBlock:   group.GenesisBlock,
-		GroupId:        group.GroupId,
-		GroupName:      group.GroupName,
-		OwnerPubkey:    group.OwnerPubkey,
-		ConsensusType:  group.ConsensusType,
-		EncryptionType: group.EncryptionType,
-		CipherKey:      group.CipherKey,
-		AppKey:         group.AppKey,
-		Signature:      group.Signature,
+	joinGroupParam := handlers.JoinGroupParamV2{
+		Seed: group.Seed,
 	}
 
 	if _, err := joinGroup(peerapi2, joinGroupParam); err != nil {
@@ -75,7 +67,7 @@ func TestJoinGroup(t *testing.T) {
 	}
 
 	// check if it in group list
-	inGroup, err := isInGroup(peerapi2, joinGroupParam.GroupId)
+	inGroup, err := isInGroup(peerapi2, group.GroupId)
 	if err != nil {
 		t.Errorf("isInGroup failed: %s", err)
 	}

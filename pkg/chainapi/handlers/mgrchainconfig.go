@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
@@ -59,10 +59,11 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	group := groupmgr.Groups[params.GroupId]
 
 	ks := nodectx.GetNodeCtx().Keystore
-	hexkey, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
-	pubkeybytes, err := hex.DecodeString(hexkey)
-	p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
+	base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+	groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
+	//pubkeybytes, err := hex.DecodeString(hexkey)
+	//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
+	//groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
@@ -156,7 +157,7 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 
 	hash := localcrypto.Hash(buffer.Bytes())
 
-	signature, err := ks.SignByKeyName(params.GroupId, hash)
+	signature, err := ks.EthSignByKeyName(params.GroupId, hash)
 
 	if err != nil {
 		return nil, err
@@ -171,7 +172,7 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 		return nil, err
 	}
 
-	result := &ChainConfigResult{GroupId: configItem.GroupId, GroupOwnerPubkey: p2pcrypto.ConfigEncodeKey(groupSignPubkey), Sign: hex.EncodeToString(signature), TrxId: trxId}
+	result := &ChainConfigResult{GroupId: configItem.GroupId, GroupOwnerPubkey: base64key, Sign: hex.EncodeToString(signature), TrxId: trxId}
 	return result, nil
 
 }

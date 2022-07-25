@@ -17,7 +17,8 @@ func (cs *Storage) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
 	if err != nil {
 		return err
 	}
-	return cs.dbmgr.Db.Set([]byte(key), value)
+	err = cs.dbmgr.Db.Set([]byte(key), value)
+	return err
 }
 
 func (cs *Storage) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
@@ -83,6 +84,5 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 func (cs *Storage) IsTrxExist(trxId string, nonce int64, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + s.TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
-
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

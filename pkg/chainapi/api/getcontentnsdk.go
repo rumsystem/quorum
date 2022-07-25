@@ -68,10 +68,6 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupData)
 	}
 
-	if reqItem.JwtToken != NodeSDKJwtToken {
-		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidJWT)
-	}
-
 	num := reqItem.Req.Num
 	nonce, _ := strconv.ParseInt(reqItem.Req.Nonce, 10, 64)
 	starttrx := reqItem.Req.StartTrx

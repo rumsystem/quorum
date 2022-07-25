@@ -29,7 +29,7 @@ func getResponseError(resp []byte) error {
 	return nil
 }
 
-func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.GroupSeed, error) {
+func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.CreateGroupResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed, payload: %+v error: %s", payload, err)
@@ -47,7 +47,7 @@ func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.Group
 		return nil, err
 	}
 
-	var group handlers.GroupSeed
+	var group handlers.CreateGroupResult
 	if err := json.Unmarshal(resp, &group); err != nil {
 		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
 		return nil, e
@@ -63,30 +63,8 @@ func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.Group
 		return nil, e
 	}
 
-	if group.GroupName != payload.GroupName {
-		e := fmt.Errorf("request payload GroupName: %s != response GroupName: %s", payload.GroupName, group.GroupName)
-		return nil, e
-	}
-
-	if group.AppKey != payload.AppKey {
-		e := fmt.Errorf("request payload AppKey: %s != response AppKey: %s", payload.AppKey, group.AppKey)
-		return nil, e
-	}
-
-	if group.ConsensusType != payload.ConsensusType {
-		e := fmt.Errorf("request payload ConsensusType: %s != response ConsensusType: %s", payload.ConsensusType, group.ConsensusType)
-		return nil, e
-	}
-
-	if group.EncryptionType != payload.EncryptionType {
-		e := fmt.Errorf("request payload EncryptionType: %s != response EncryptionType: %s", payload.EncryptionType, group.EncryptionType)
-		return nil, e
-	}
-
-	// check group[genesis_block]
-	respGenesisBlock := group.GenesisBlock
-	if group.GroupId != respGenesisBlock.GroupId {
-		e := fmt.Errorf("response[group_id]: %s != response[genesis_block][GroupId]: %s", group.GroupId, respGenesisBlock.GroupId)
+	if group.Seed == "" {
+		e := fmt.Errorf("create group failed, `Seed` should not been empty")
 		return nil, e
 	}
 

@@ -1,12 +1,11 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/labstack/echo/v4"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"net/http"
 )
 
 type PubkeyParam struct {

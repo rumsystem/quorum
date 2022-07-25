@@ -3,14 +3,17 @@ package testnode
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -160,4 +163,23 @@ func GetAllGroupTrxIds(ctx context.Context, baseUrl string, group_id string, hei
 	}
 
 	return &trxids
+}
+
+func SeedUrlToGroupId(seedurl string) string {
+	if !strings.HasPrefix(seedurl, "rum://seed?") {
+		return ""
+	}
+	u, err := url.Parse(seedurl)
+	if err != nil {
+		return ""
+	}
+	q, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return ""
+	}
+	b64gstr := q.Get("g")
+
+	b64gbyte, err := base64.RawURLEncoding.DecodeString(b64gstr)
+	b64guuid, err := guuid.FromBytes(b64gbyte)
+	return b64guuid.String()
 }

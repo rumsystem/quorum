@@ -69,10 +69,6 @@ func (h *Handler) SendTrx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	if trxItem.JwtToken != NodeSDKJwtToken {
-		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidJWT)
-	}
-
 	trx := new(quorumpb.Trx)
 	err = proto.Unmarshal(trxItem.TrxBytes, trx)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
@@ -212,7 +213,12 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 		connMgr.ProducerPool[pubkey] = pubkey
 	}
 
-	if _, ok := connMgr.ProducerPool[connMgr.UserSignPubkey]; ok {
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(connMgr.UserSignPubkey)
+	if pk == "" {
+		pk = connMgr.UserSignPubkey
+	}
+
+	if _, ok := connMgr.ProducerPool[pk]; ok {
 		conn_log.Debugf("I am producer, create producer psconn, groupId <%s>", connMgr.GroupId)
 		connMgr.StableProdPsConn = true
 		connMgr.getProducerPsConn()
@@ -290,7 +296,6 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 
 func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnChanel, chanelId ...string) error {
 	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
-
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
 		return err

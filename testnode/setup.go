@@ -51,10 +51,10 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 		return "", []string{}, "", fmt.Errorf("os.Chdir(%s) failed: %s", basepath, err)
 	}
 
-	Fork(pidch, KeystorePassword, gocmd, "run", "cmd/main.go", "cmd/utils.go", "-bootstrap", "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "-apilisten", fmt.Sprintf(":%d", bootstrapapiport), "-configdir", testconfdir, "-keystoredir", testkeystoredir, "-datadir", testdatadir)
+	Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "fullnode", "--bootstrap", "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "--apiport", fmt.Sprintf("%d", bootstrapapiport), "--configdir", testconfdir, "--keystoredir", testkeystoredir, "--datadir", testdatadir)
 
 	// wait bootstrap node
-	bootstrapBaseUrl := fmt.Sprintf("https://127.0.0.1:%d", bootstrapapiport)
+	bootstrapBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport)
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
 	log.Printf("request: %s", bootstrapBaseUrl)
 	bootstrappeerid, result := CheckNodeRunning(checkctx, bootstrapBaseUrl)
@@ -75,15 +75,15 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 
 		testpeerkeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", peername)
 
-		Fork(pidch, KeystorePassword, gocmd, "run", "cmd/main.go", "cmd/utils.go", "-peername", peername, "-listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "-apilisten", fmt.Sprintf(":%d", peerapiport), "-peer", bootstrapaddr, "-configdir", testconfdir, "-keystoredir", testpeerkeystoredir, "-datadir", testdatadir, fmt.Sprintf("-rextest=%s", strconv.FormatBool(cli.Rextest)))
+		Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "fullnode", "--peername", peername, "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "--apiport", fmt.Sprintf("%d", peerapiport), "--peer", bootstrapaddr, "--configdir", testconfdir, "--keystoredir", testpeerkeystoredir, "--datadir", testdatadir, fmt.Sprintf("--rextest=%s", strconv.FormatBool(cli.Rextest)))
 
 		checkctx, _ = context.WithTimeout(ctx, 60*time.Second)
-		_, result := CheckNodeRunning(checkctx, fmt.Sprintf("https://127.0.0.1:%d", peerapiport))
+		_, result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", peerapiport))
 		if result == false {
 			return "", []string{}, "", fmt.Errorf("%s node start failed", peername)
 		}
 
-		peerapiurl := fmt.Sprintf("https://127.0.0.1:%d", peerapiport)
+		peerapiurl := fmt.Sprintf("http://127.0.0.1:%d", peerapiport)
 		peers = append(peers, peerapiurl)
 
 		i++
@@ -146,7 +146,7 @@ func Cleanup(dir string, peerapilist []string) {
 	log.Printf("Clean testdata path: %s ...", dir)
 	log.Println("peer api list", peerapilist)
 	//add bootstrap node
-	peerapilist = append(peerapilist, fmt.Sprintf("https://127.0.0.1:%d", 18010))
+	peerapilist = append(peerapilist, fmt.Sprintf("http://127.0.0.1:%d", 18010))
 	for _, peerapi := range peerapilist {
 		_, _, err := RequestAPI(peerapi, "/api/quit", "GET", "")
 		if err == nil {

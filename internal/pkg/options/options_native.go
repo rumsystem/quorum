@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
 	//"path/filepath"
 )
 
+var logger = logging.Logger("options")
 var nodeopts *NodeOptions
 var nodeconfigdir string
 var nodepeername string
@@ -58,13 +60,6 @@ func (opt *NodeOptions) writeToconfig() error {
 	return v.WriteConfig()
 }
 
-func (opt *NodeOptions) SetJWTKey(jwtKey string) error {
-	opt.mu.Lock()
-	defer opt.mu.Unlock()
-	opt.JWTKey = jwtKey
-	return opt.writeToconfig()
-}
-
 func (opt *NodeOptions) SetJWTTokenMap(name, jwtToken string) error {
 	opt.mu.Lock()
 	defer opt.mu.Unlock()
@@ -101,7 +96,6 @@ func writeDefaultToconfig(v *viper.Viper) error {
 	v.Set("MaxPeers", defaultMaxPeers)
 	v.Set("ConnsHi", defaultConnsHi)
 	v.Set("JWTKey", utils.GetRandomStr(JWTKeyLength))
-	v.Set("JWTToken", "")
 	v.Set("SignKeyMap", map[string]string{})
 	return v.SafeWriteConfig()
 }
@@ -117,6 +111,8 @@ func initConfigfile(dir string, keyname string) (*viper.Viper, error) {
 	v.SetConfigName(keyname + "_options")
 	v.SetConfigType("toml")
 	v.AddConfigPath(dir)
+	v.SetEnvPrefix("RUM") // NOTE: hardcode
+	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

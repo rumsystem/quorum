@@ -1,21 +1,19 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	guuid "github.com/google/uuid"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -25,6 +23,10 @@ type CreateGroupParam struct {
 	ConsensusType  string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa"`
 	EncryptionType string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private"`
 	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4"`
+}
+
+type JoinGroupParamV2 struct {
+	Seed string `json:"seed" validate:"required"` // seed url
 }
 
 type GroupSeed struct {
@@ -39,7 +41,16 @@ type GroupSeed struct {
 	Signature      string    `json:"signature" validate:"required"`
 }
 
-func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*GroupSeed, error) {
+type CreateGroupResult struct {
+	Seed    string `json:"seed" validate:"required"`
+	GroupId string `json:"group_id" validate:"required"`
+}
+
+type GetGroupSeedResult struct {
+	Seed string `json:"seed" validate:"required"` // seed url
+}
+
+func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*CreateGroupResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -54,24 +65,12 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	ks := nodectx.GetNodeCtx().Keystore
 
 	/* init sign key */
-	hexkey, err := initSignKey(groupid.String(), ks, nodeoptions)
-	if err != nil {
-		return nil, errors.New("group key can't be decoded, err:" + err.Error())
-	}
-	pubkeybytes, err := hex.DecodeString(hexkey)
-	if err != nil {
-		return nil, errors.New("group key can't be decoded, err:" + err.Error())
-	}
-	p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	if err != nil {
-		return nil, errors.New("UnmarshalSecp256k1PublicKey err:" + err.Error())
-	}
-	groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
+	b64key, err := initSignKey(groupid.String(), ks, nodeoptions)
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
 
-	genesisBlock, err := rumchaindata.CreateGenesisBlock(groupid.String(), p2ppubkey, ks)
+	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid.String(), b64key, ks, "")
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	}
 
 	/* init encode key */
-	groupEncryptPubkey, err := initEncodeKey(groupid.String(), ks)
+	groupEncryptPubkey, err := initEncryptKey(groupid.String(), ks)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	item = &pb.GroupItem{}
 	item.GroupId = groupid.String()
 	item.GroupName = params.GroupName
-	item.OwnerPubKey = p2pcrypto.ConfigEncodeKey(groupSignPubkey)
+	item.OwnerPubKey = b64key
 	item.UserSignPubkey = item.OwnerPubKey
 	item.UserEncryptPubkey = groupEncryptPubkey
 	item.ConsenseType = pb.GroupConsenseType_POA
@@ -110,9 +109,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 
-	var group *chain.Group
-	group = &chain.Group{}
-
+	group := &chain.Group{}
 	err = group.CreateGrp(item)
 	if err != nil {
 		return nil, err
@@ -136,62 +133,46 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 		EncryptionType: params.EncryptionType,
 		CipherKey:      encodedCipherKey,
 		AppKey:         params.AppKey,
-		Signature:      "", // updated by GenerateGroupSeedSignature
+		//Signature:      "", // updated by GenerateGroupSeedSignature
 	}
 
 	// generate signature
-	if err := GenerateGroupSeedSignature(createGrpResult); err != nil {
-		return nil, err
-	}
+	//if err := GenerateGroupSeedSignature(createGrpResult); err != nil {
+	//	return nil, err
+	//}
 
 	// save group seed to appdata
 	pbGroupSeed := ToPbGroupSeed(*createGrpResult)
 	if err := appdb.SetGroupSeed(&pbGroupSeed); err != nil {
 		return nil, err
 	}
-
-	return createGrpResult, nil
-}
-
-func GenerateGroupSeedSignature(result *GroupSeed) error {
-	genesisBlockBytes, err := json.Marshal(result.GenesisBlock)
+	// get chain api url
+	jwtName := fmt.Sprintf("allow-%s", groupid.String())
+	jwt, err := utils.NewJWTToken(
+		jwtName,
+		"node",
+		[]string{groupid.String()},
+		nodeoptions.JWTKey,
+		time.Now().Add(time.Hour*24*365*5), // 5 years
+	)
 	if err != nil {
-		e := fmt.Errorf("Marshal genesis block failed with msg: %s", err)
-		return e
+		return nil, err
+	}
+	if err := nodeoptions.SetJWTTokenMap(jwtName, jwt); err != nil {
+		return nil, err
+	}
+	chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
+	if err != nil {
+		return nil, err
 	}
 
-	groupSignPubkey, err := p2pcrypto.ConfigDecodeKey(result.OwnerPubkey)
-	if err != nil {
-		e := fmt.Errorf("Decode group owner pubkey failed: %s", err)
-		return e
+	// convert group seed to url
+	seedurl, err := GroupSeedToUrl(1, []string{chainapiUrl}, createGrpResult)
+	result := CreateGroupResult{
+		Seed:    seedurl,
+		GroupId: groupid.String(),
 	}
-
-	cipherKey, err := hex.DecodeString(result.CipherKey)
-	if err != nil {
-		e := fmt.Errorf("Decode cipher key failed: %s", err)
-		return e
-	}
-
-	var buffer bytes.Buffer
-	buffer.Write(genesisBlockBytes)
-	buffer.Write([]byte(result.GroupId))
-	buffer.Write([]byte(result.GroupName))
-	buffer.Write(groupSignPubkey) //group owner pubkey
-	buffer.Write([]byte(result.ConsensusType))
-	buffer.Write([]byte(result.EncryptionType))
-	buffer.Write([]byte(result.AppKey))
-	buffer.Write(cipherKey)
-
-	hash := localcrypto.Hash(buffer.Bytes())
-	ks := nodectx.GetNodeCtx().Keystore
-	signature, err := ks.SignByKeyName(result.GroupId, hash)
-	if err != nil {
-		e := fmt.Errorf("ks.SignByKeyName failed: %s", err)
-		return e
-	}
-	result.Signature = hex.EncodeToString(signature)
-
-	return nil
+	return &result, err
 }
 
 // ToPbGroupSeed convert `api.GroupSeed` to `pb.GroupSeed`

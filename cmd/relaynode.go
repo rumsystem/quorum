@@ -1,11 +1,7 @@
-/* for auto relay service node */
-
-package main
+package cmd
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,107 +9,89 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
-	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
-const DEFAUT_KEY_NAME string = "relaynode_default"
-
-var (
-	ReleaseVersion string
-	GitCommit      string
-	signalch       chan os.Signal
-	mainlog        = logging.Logger("relaynode")
-)
-
-func main() {
-	if ReleaseVersion == "" {
-		ReleaseVersion = "v1.0.0"
-	}
-
-	if GitCommit == "" {
-		GitCommit = "devel"
-	}
-
-	help := flag.Bool("h", false, "Display Help")
-	version := flag.Bool("version", false, "Show the version")
-
-	config, err := cli.ParseRelayNodeFlags()
-
-	lvl, err := logging.LevelFromString("info")
-	logging.SetAllLoggers(lvl)
-
-	if err != nil {
-		panic(err)
-	}
-
-	if config.IsDebug == true {
-		logging.SetLogLevel("nodesdk", "debug")
-	}
-
-	if *help {
-		fmt.Println("Output a help ")
-		fmt.Println()
-		fmt.Println("Usage:...")
-		flag.PrintDefaults()
-		return
-	}
-
-	if *version {
-		fmt.Printf("%s - %s\n", ReleaseVersion, GitCommit)
-		return
-	}
-
-	os.Exit(runRelayNodeRet(config))
+var rnodeFlag = cli.RelayNodeFlag{}
+var relaynodeCmd = &cobra.Command{
+	Use:   "relaynode",
+	Short: "Run relaynode",
+	Run: func(cmd *cobra.Command, args []string) {
+		if rnodeFlag.KeyStorePwd == "" {
+			rnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
+		}
+		runRelaynode(rnodeFlag)
+	},
 }
 
-func runRelayNodeRet(config cli.RelayNodeConfig) int {
-	signalch = make(chan os.Signal, 1)
+func init() {
+	rootCmd.AddCommand(relaynodeCmd)
+
+	flags := relaynodeCmd.Flags()
+	flags.SortFlags = false
+
+	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.Var(&fnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&rnodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&rnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flags.StringVar(&rnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
+	flags.StringVar(&rnodeFlag.KeyStoreName, "keystorename", "defaultkeystore", "keystore name")
+	flags.StringVar(&rnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
+	flags.BoolVar(&rnodeFlag.IsDebug, "debug", false, "show debug log")
+
+	relaynodeCmd.MarkFlagRequired("peer")
+}
+
+func runRelaynode(config cli.RelayNodeFlag) {
+	// NOTE: hardcode
+	const defaultKeyName = "relaynode_default"
+
+	signalch := make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mainlog.Infof("Version: %s", GitCommit)
+	logger.Infof("Version: %s", utils.GitCommit)
 	peername := config.PeerName
 
 	relayNodeOpt, err := options.InitRelayNodeOptions(config.ConfigDir, peername)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
 
-	ks, defaultkey, err := InitRelayNodeKeystore(config, relayNodeOpt)
-
+	ks, defaultkey, err := InitRelayNodeKeystore(config, defaultKeyName, relayNodeOpt)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
+
 	_, err = localcrypto.SignKeytoPeerKeys(defaultkey)
-
 	if err != nil {
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 		cancel()
-		return 0
 	}
 
-	peerid, ethaddr, err := ks.GetPeerInfo(DEFAUT_KEY_NAME)
-
+	peerid, ethaddr, err := ks.GetPeerInfo(defaultKeyName)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
-	mainlog.Infof("peer ID: <%s>", peerid)
-	mainlog.Infof("eth addresss: <%s>", ethaddr)
+
+	logger.Infof("peer ID: <%s>", peerid)
+	logger.Infof("eth addresss: <%s>", ethaddr)
 
 	relayNode, err := p2p.NewRelayServiceNode(ctx, relayNodeOpt, defaultkey, config.ListenAddresses)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
 
-	err = relayNode.Bootstrap(ctx, config)
+	err = relayNode.Bootstrap(ctx, config.BootstrapPeers)
 	if err != nil {
 		cancel()
-		mainlog.Fatalf(err.Error())
+		logger.Fatalf(err.Error())
 	}
 
 	//attach signal
@@ -122,8 +100,6 @@ func runRelayNodeRet(config cli.RelayNodeConfig) int {
 	signal.Stop(signalch)
 
 	//cleanup before exit
-	mainlog.Infof("On Signal <%s>", signalType)
-	mainlog.Infof("Exit command received. Exiting...")
-
-	return 0
+	logger.Infof("On Signal <%s>", signalType)
+	logger.Infof("Exit command received. Exiting...")
 }
