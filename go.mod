@@ -14,8 +14,6 @@ replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 
 replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
 
-replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3
-
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
 //replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
@@ -41,7 +39,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
-	github.com/hack-pad/go-indexeddb v0.1.0
+	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/huo-ju/quercus v0.0.0-20210909192534-3740345b9ab8
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.2
@@ -63,7 +61,7 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
-	github.com/rumsystem/keystore v0.0.0-20220713151207-7a9eed02caa7
+	github.com/rumsystem/keystore v0.0.0-20220721232644-5ef9a70563ba
 	github.com/rumsystem/rumchaindata v0.0.0-20220707181343-2f9888e07242
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0

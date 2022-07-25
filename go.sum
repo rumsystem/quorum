@@ -514,6 +514,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFb
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0/go.mod h1:hgWBS7lorOAVIJEQMi4ZsPv9hVvWI6+ch50m39Pf2Ks=
 github.com/gxed/hashland/keccakpg v0.0.1/go.mod h1:kRzw3HkwxFU1mpmPP8v1WyQzwdGfmKFJ6tItnhQ67kU=
 github.com/gxed/hashland/murmur3 v0.0.1/go.mod h1:KjXop02n4/ckmZSnY2+HKcLud/tcmvhST0bie/0lS48=
+github.com/hack-pad/go-indexeddb v0.2.0 h1:QHDM6gLrtCJvHdHUK8UdibJu4xWQlIDs4+l8L65AUdA=
+github.com/hack-pad/go-indexeddb v0.2.0/go.mod h1:NH8CaojufPNcKYDhy5JkjfyBXE/72oJPeiywlabN/lM=
 github.com/hashicorp/consul/api v1.3.0/go.mod h1:MmDNSzIMUjNpY/mQ398R4bk2FnqQLoPndWW5VkKPlCE=
 github.com/hashicorp/consul/sdk v0.3.0/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
@@ -1227,12 +1229,10 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBOAvL+k=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
-github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3 h1:SI/FQE0X8llYEWwNevs+T+rOtugJCrBGZfliukg55/I=
-github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3/go.mod h1:NRdRSwuEOR26cB+LuxNkcS5lQqcijPebQKBXXBhzD3M=
 github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c h1:7gFE0sWZeb0QChXJdpjmZZTQxEXlQRKPDjmim8wGDtk=
 github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c/go.mod h1:kKyQafGZXzEwsNPvbZQZiLo0+HhwU5BYrB3kQmmfAs4=
-github.com/rumsystem/keystore v0.0.0-20220713151207-7a9eed02caa7 h1:VRKsqVagr5EaKmn/nCd0oKUJMk+ltZ10ES+9CNcV9do=
-github.com/rumsystem/keystore v0.0.0-20220713151207-7a9eed02caa7/go.mod h1:sa0r9G8IpwKg0z8cBMTndBVUvjN0HsLJaG5pUBuKX5c=
+github.com/rumsystem/keystore v0.0.0-20220721232644-5ef9a70563ba h1:jvSbHY3hSFsJYkDtAHTv8k0LXxF75xl/NDLZ2DBlcOA=
+github.com/rumsystem/keystore v0.0.0-20220721232644-5ef9a70563ba/go.mod h1:nKn5yxGheL0r26G47N9ui50TFyCtKYtq0pUkP4BDfsM=
 github.com/rumsystem/rumchaindata v0.0.0-20220707181343-2f9888e07242 h1:1kUdA+Y4hHVoXz8h5HPpATcwbnoGhdLxSFxzYvnUGsI=
 github.com/rumsystem/rumchaindata v0.0.0-20220707181343-2f9888e07242/go.mod h1:NJ6sBZDZBj9xEKIqnp/FG/KBRVwUW0zMoX1AzR0aCeM=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
