@@ -61,8 +61,8 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
-	github.com/rumsystem/keystore v0.0.0-20220721232644-5ef9a70563ba
-	github.com/rumsystem/rumchaindata v0.0.0-20220707181343-2f9888e07242
+	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
+	github.com/rumsystem/rumchaindata v0.0.0-20220725155706-6c1c56da35eb
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/swaggo/echo-swagger v1.1.0
