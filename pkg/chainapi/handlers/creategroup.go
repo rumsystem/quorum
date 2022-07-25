@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -13,7 +12,6 @@ import (
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
@@ -50,7 +48,7 @@ type GetGroupSeedResult struct {
 	Seed string `json:"seed" validate:"required"` // seed url
 }
 
-func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*CreateGroupResult, error) {
+func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*GroupSeed, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -146,33 +144,8 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 	if err := appdb.SetGroupSeed(&pbGroupSeed); err != nil {
 		return nil, err
 	}
-	// get chain api url
-	jwtName := fmt.Sprintf("allow-%s", groupid.String())
-	jwt, err := utils.NewJWTToken(
-		jwtName,
-		"node",
-		[]string{groupid.String()},
-		nodeoptions.JWTKey,
-		time.Now().Add(time.Hour*24*365*5), // 5 years
-	)
-	if err != nil {
-		return nil, err
-	}
-	if err := nodeoptions.SetJWTTokenMap(jwtName, jwt); err != nil {
-		return nil, err
-	}
-	chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
-	if err != nil {
-		return nil, err
-	}
 
-	// convert group seed to url
-	seedurl, err := GroupSeedToUrl(1, []string{chainapiUrl}, createGrpResult)
-	result := CreateGroupResult{
-		Seed:    seedurl,
-		GroupId: groupid.String(),
-	}
-	return &result, err
+	return createGrpResult, err
 }
 
 // ToPbGroupSeed convert `api.GroupSeed` to `pb.GroupSeed`
