@@ -4,58 +4,26 @@ import (
 	"fmt"
 )
 
-// ACSMessage represents a message sent between nodes in the ACS protocol.
 type ACSMessage struct {
-	// Unique identifier of the "proposing" node.
 	ProposerID string
-	// Actual payload beeing sent.
-	Payload interface{}
+	Payload    interface{}
 }
 
-// ACS implements the Asynchronous Common Subset protocol.
-// ACS assumes a network of N nodes that send signed messages to each other.
-// There can be f faulty nodes where (3 * f < N).
-// Each participating node proposes an element for inlcusion. The protocol
-// guarantees that all of the good nodes output the same set, consisting of
-// at least (N -f) of the proposed values.
-//
-// Algorithm:
-// ACS creates a Broadcast algorithm for each of the participating nodes.
-// At least (N -f) of these will eventually output the element proposed by that
-// node. ACS will also create and BBA instance for each participating node, to
-// decide whether that node's proposed element should be inlcuded in common set.
-// Whenever an element is received via broadcast, we imput "true" into the
-// corresponding BBA instance. When (N-f) BBA instances have decided true we
-// input false into the remaining ones, where we haven't provided input yet.
-// Once all BBA instances have decided, ACS returns the set of all proposed
-// values for which the decision was truthy.
 type ACS struct {
-	// Config holds the ACS configuration.
 	Config
-	// Mapping of node ids and their rbc instance.
 	rbcInstances map[string]*RBC
-	// Mapping of node ids and their bba instance.
 	bbaInstances map[string]*BBA
-	// Results of the Reliable Broadcast.
-	rbcResults map[string][]byte
-	// Results of the Binary Byzantine Agreement.
-	bbaResults map[string]bool
-	// Final output of the ACS.
-	output map[string][]byte
-	// Que of ACSMessages that need to be broadcasted after each received
-	// and processed a message.
-	messageQue *messageQue
-	// Whether this ACS instance has already has decided output or not.
-	decided bool
+	rbcResults   map[string][]byte
+	bbaResults   map[string]bool
+	output       map[string][]byte
+	messageQue   *messageQue
+	decided      bool
 
-	// control flow tuples for internal channel communication.
 	closeCh   chan struct{}
 	inputCh   chan acsInputTuple
 	messageCh chan acsMessageTuple
 }
 
-// Control flow structure for internal channel communication. Allowing us to
-// avoid the use of mutexes and eliminates race conditions.
 type (
 	acsMessageTuple struct {
 		senderID string
@@ -75,8 +43,6 @@ type (
 	}
 )
 
-// NewACS returns a new ACS instance configured with the given Config and node
-// ids.
 func NewACS(cfg Config) *ACS {
 	if cfg.F == 0 {
 		cfg.F = (cfg.N - 1) / 3
@@ -92,7 +58,7 @@ func NewACS(cfg Config) *ACS {
 		inputCh:      make(chan acsInputTuple),
 		messageCh:    make(chan acsMessageTuple),
 	}
-	// Create all the instances for the participating nodes
+
 	for _, id := range cfg.Nodes {
 		acs.rbcInstances[id], _ = NewRBC(cfg, id)
 		acs.bbaInstances[id] = NewBBA(cfg)
@@ -101,8 +67,6 @@ func NewACS(cfg Config) *ACS {
 	return acs
 }
 
-// InputValue sets the input value for broadcast and returns an initial set of
-// Broadcast and ACS Messages to be broadcasted in the network.
 func (a *ACS) InputValue(val []byte) error {
 	t := acsInputTuple{
 		value:    val,
@@ -113,8 +77,6 @@ func (a *ACS) InputValue(val []byte) error {
 	return resp.err
 }
 
-// HandleMessage handles incoming messages to ACS and redirects them to the
-// appropriate sub(protocol) instance.
 func (a *ACS) HandleMessage(senderID string, msg *ACSMessage) error {
 	t := acsMessageTuple{
 		senderID: senderID,
@@ -125,8 +87,6 @@ func (a *ACS) HandleMessage(senderID string, msg *ACSMessage) error {
 	return <-t.err
 }
 
-// handleMessage handles incoming messages to ACS and redirects them to the
-// appropriate sub(protocol) instance.
 func (a *ACS) handleMessage(senderID string, msg *ACSMessage) error {
 	switch t := msg.Payload.(type) {
 	case *AgreementMessage:
@@ -138,9 +98,6 @@ func (a *ACS) handleMessage(senderID string, msg *ACSMessage) error {
 	}
 }
 
-// Output will return the output of the ACS instance. If the output was not nil
-// then it will return the output else nil. Note that after consuming the output
-// its will be set to nil forever.
 func (a *ACS) Output() map[string][]byte {
 	if a.output != nil {
 		out := a.output
@@ -150,8 +107,6 @@ func (a *ACS) Output() map[string][]byte {
 	return nil
 }
 
-// Done returns true whether ACS has completed its agreements and cleared its
-// messageQue.
 func (a *ACS) Done() bool {
 	agreementsDone := true
 	for _, bba := range a.bbaInstances {
@@ -162,8 +117,6 @@ func (a *ACS) Done() bool {
 	return agreementsDone && a.messageQue.len() == 0
 }
 
-// inputValue sets the input value for broadcast and returns an initial set of
-// Broadcast and ACS Messages to be broadcasted in the network.
 func (a *ACS) inputValue(data []byte) error {
 	rbc, ok := a.rbcInstances[a.MyNodeId]
 	if !ok {
@@ -212,15 +165,12 @@ func (a *ACS) run() {
 	}
 }
 
-// handleAgreement processes the received AgreementMessage from sender (sid)
-// for a value proposed by the proposing node (pid).
 func (a *ACS) handleAgreement(senderId, proposerId string, msg *AgreementMessage) error {
 	return a.processAgreement(proposerId, func(bba *BBA) error {
 		return bba.HandleMessage(senderId, msg)
 	})
 }
 
-// handleBroadcast processes the received BroadcastMessage.
 func (a *ACS) handleBroadcast(senderId, proposerId string, msg *BroadcastMessage) error {
 	return a.processBroadcast(proposerId, func(rbc *RBC) error {
 		return rbc.HandleMessage(senderId, msg)

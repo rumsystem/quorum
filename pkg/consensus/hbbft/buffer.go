@@ -17,20 +17,20 @@ type buffer struct {
 	initialized bool
 }
 
-func New() *buffer {
-	return &buffer{
+func NewBuffer() *buffer {
+	b := &buffer{
 		length:      0,
 		trxIdIdx:    make(map[string]uint),
 		data:        make(map[string]*quorumpb.Trx),
 		initialized: false,
 	}
-}
 
-func (b *buffer) Init() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	rand.Seed(time.Now().UnixNano())
 	b.initialized = true
+
+	return b
 }
 
 func (b *buffer) Push(trx *quorumpb.Trx) error {
