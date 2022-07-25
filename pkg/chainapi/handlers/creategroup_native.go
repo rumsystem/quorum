@@ -4,21 +4,12 @@
 package handlers
 
 import (
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-	guuid "github.com/google/uuid"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
-	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*CreateGroupResult, error) {
@@ -28,11 +19,11 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 	}
 
 	// get chain api url
-	jwtName := fmt.Sprintf("allow-%s", groupid.String())
+	jwtName := fmt.Sprintf("allow-%s", createGrpResult.GroupId)
 	jwt, err := utils.NewJWTToken(
 		jwtName,
 		"node",
-		[]string{groupid.String()},
+		[]string{createGrpResult.GroupId},
 		nodeoptions.JWTKey,
 		time.Now().Add(time.Hour*24*365*5), // 5 years
 	)
@@ -51,7 +42,7 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 	seedurl, err := GroupSeedToUrl(1, []string{chainapiUrl}, createGrpResult)
 	result := CreateGroupResult{
 		Seed:    seedurl,
-		GroupId: groupid.String(),
+		GroupId: createGrpResult.GroupId,
 	}
 	return &result, err
 }
