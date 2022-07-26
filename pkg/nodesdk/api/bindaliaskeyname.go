@@ -1,7 +1,6 @@
 package nodesdkapi
 
 import (
-	"net/http"
 	"os"
 
 	"github.com/labstack/echo/v4"
@@ -44,6 +43,6 @@ func (h *NodeSDKHandler) BindAliasWithKeyName() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		return c.JSON(http.StatusOK, "done")
+		return cc.Success()
 	}
 }

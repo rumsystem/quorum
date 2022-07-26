@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 	"fmt"
+
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -196,7 +197,6 @@ func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, e
 		return nil, err
 	}
 
-	//delete group
 	return groupInfo, nil
 }
 
