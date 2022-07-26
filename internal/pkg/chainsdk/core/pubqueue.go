@@ -224,12 +224,13 @@ func doRefresh() {
 		// use goroutine to avoid thread blocking in browser(indexeddb doesn't support nested cursors)
 		go func() {
 			item, err := ParsePublishQueueItem(k, v)
-			chain_log.Debugf("<pubqueue>: got item %v", item.Trx.TrxId)
-
 			if err != nil {
-				chain_log.Warnf("<pubqueue>: %s", err.Error())
+				chain_log.Warnf("<pubqueue>: %s", err)
 				return
 			}
+
+			chain_log.Debugf("<pubqueue>: got item %v", item.Trx.TrxId)
+
 			switch item.State {
 			case PublishQueueItemStatePending:
 				// check trx state, update, so it will be removed or retied in next poll
