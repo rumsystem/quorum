@@ -55,6 +55,7 @@ func (hc *HttpClient) UpdApiServer(urls []string) error {
 		}
 		apis = append(apis, urlItem)
 	}
+
 	//set group API
 	hc.APIs = apis
 
@@ -69,7 +70,7 @@ func (hc *HttpClient) Get(url string) ([]byte, error) {
 		return nil, err
 	}
 
-	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
+	client, err := u2.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func (hc *HttpClient) GetWithBody(url string, reqData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
+	client, err := u2.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func (hc *HttpClient) Post(url string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
+	client, err := u2.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func (hc *HttpClient) Delete(url string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	client, err := u2.NewHTTPClient() //hc.newHTTPClient()
+	client, err := u2.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}

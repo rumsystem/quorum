@@ -158,6 +158,15 @@ func (c *CustomContext) GetBaseURLFromRequest() string {
 	return _url
 }
 
+type SuccessResponse struct {
+	Success bool `json:"success"`
+}
+
+func (c *CustomContext) Success() error {
+	res := SuccessResponse{Success: true}
+	return c.JSON(http.StatusOK, res)
+}
+
 const jwtQsKey = "jwt"
 
 func GetChainapiURL(baseUrl, jwt string) (string, error) {

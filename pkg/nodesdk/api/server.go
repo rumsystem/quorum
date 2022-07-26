@@ -49,6 +49,8 @@ func StartNodeSDKServer(config StartAPIParam, signalch chan os.Signal, h *NodeSD
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 
+	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
+
 	//not support, chainSdk should give something else to the nodesdk
 	//r.GET("/v1/node", h.GetNodeInfo)
 

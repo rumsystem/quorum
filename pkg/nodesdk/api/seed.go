@@ -1,4 +1,4 @@
-package api
+package nodesdkapi
 
 import (
 	"net/http"
@@ -18,7 +18,7 @@ type SeedUrlextendResult struct {
 	ChainapiUrls []string           `json:"urls" validate:"required,gte=1,dive,required,url"`
 }
 
-func (h *Handler) SeedUrlextend(c echo.Context) error {
+func (h *NodeSDKHandler) SeedUrlextend(c echo.Context) error {
 	cc := c.(*utils.CustomContext)
 
 	param := new(SeedUrlextendParam)

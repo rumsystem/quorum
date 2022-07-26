@@ -60,6 +60,14 @@ func (opt *NodeOptions) writeToconfig() error {
 	return v.WriteConfig()
 }
 
+func (opt *NodeOptions) GetJWTTokenMap(name string) string {
+	token, ok := opt.JWTTokenMap[name]
+	if !ok {
+		return ""
+	}
+	return token
+}
+
 func (opt *NodeOptions) SetJWTTokenMap(name, jwtToken string) error {
 	opt.mu.Lock()
 	defer opt.mu.Unlock()
