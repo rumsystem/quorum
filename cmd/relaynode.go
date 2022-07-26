@@ -12,8 +12,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/autorelay"
 	"github.com/rumsystem/quorum/pkg/autorelay/api"
-	"github.com/rumsystem/quorum/pkg/relayapi"
 	"github.com/spf13/cobra"
 )
 
@@ -108,7 +108,7 @@ func runRelaynode(config cli.RelayNodeFlag) {
 	// now start relay api server
 	handler := api.NewRelayServerHandler(rdb)
 
-	go relayapi.StartRelayServer(config, signalch, &handler)
+	go autorelay.StartRelayServer(config, signalch, &handler)
 
 	//attach signal
 	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
