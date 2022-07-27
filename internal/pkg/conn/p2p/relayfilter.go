@@ -44,5 +44,5 @@ func (rf *QuorumRelayFilter) AllowConnect(src peer.ID, srcAddr ma.Multiaddr, des
 		return false
 	}
 
-	return inBlacklist
+	return !inBlacklist
 }
