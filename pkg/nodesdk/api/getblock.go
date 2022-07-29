@@ -1,7 +1,6 @@
 package nodesdkapi
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -39,18 +38,14 @@ func (h *NodeSDKHandler) GetBlock() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		uri := GET_BLOCK_URI + "/" + groupid + "/" + blockid
+		path := GET_BLOCK_URI + "/" + groupid + "/" + blockid
 
-		resultInBytes, err := httpClient.Get(uri)
+		result := new(quorumpb.Block)
+		err = httpClient.RequestChainAPI(path, http.MethodGet, nil, nil, result)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		block := new(quorumpb.Block)
-		if err := json.Unmarshal(resultInBytes, block); err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		return c.JSON(http.StatusOK, block)
+		return c.JSON(http.StatusOK, result)
 	}
 }

@@ -158,6 +158,8 @@ func (c *CustomContext) GetBaseURLFromRequest() string {
 	return _url
 }
 
+type ErrorResponse echo.HTTPError
+
 type SuccessResponse struct {
 	Success bool `json:"success"`
 }

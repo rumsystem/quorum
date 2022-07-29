@@ -25,7 +25,7 @@ type GetGroupCtnPrarms struct {
 }
 
 type GetGroupCtnItem struct {
-	Req      *GetGroupCtnPrarms
+	Req *GetGroupCtnPrarms
 }
 
 type GetGroupCtnReqItem struct {
@@ -70,11 +70,6 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 		groupId := params.GroupId
 		getGroupCtnReqItem.Req = encryptData
 
-		reqBytes, err := json.Marshal(getGroupCtnReqItem)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
@@ -85,13 +80,9 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		resultInBytes, err := httpClient.Post(GetGroupCtnURI(groupId), reqBytes)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
 		trxs := new([]*quorumpb.Trx)
-		if err := json.Unmarshal(resultInBytes, trxs); err != nil {
+		err = httpClient.RequestChainAPI(GetGroupCtnURI(groupId), http.MethodPost, getGroupCtnReqItem, nil, trxs)
+		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 

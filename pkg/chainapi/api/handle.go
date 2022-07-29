@@ -19,7 +19,3 @@ type (
 		ChainAPIdb def.APIHandlerIface
 	}
 )
-
-type ErrorResponse struct {
-	Error string `json:"error" validate:"required"`
-}

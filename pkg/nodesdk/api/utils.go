@@ -6,10 +6,6 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 )
 
-type APIErrorResult struct {
-	Error string `json:"error" validate:"required"`
-}
-
 func getEncryptData(data []byte, cipherKey string) ([]byte, error) {
 
 	ciperKey, err := hex.DecodeString(cipherKey)

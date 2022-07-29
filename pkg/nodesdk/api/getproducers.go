@@ -37,10 +37,6 @@ func (h *NodeSDKHandler) GetProducers(c echo.Context) (err error) {
 	getItem.Req = encryptData
 	getItem.ReqType = GROUP_PRODUCER
 
-	reqBytes, err := json.Marshal(getItem)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
 	//just get the first one
 	httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 	if err != nil {
@@ -52,13 +48,8 @@ func (h *NodeSDKHandler) GetProducers(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	resultInBytes, err := httpClient.Post(GetChainDataURI(groupid), reqBytes)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
 	result := new([]*ProducerListItem)
-	err = json.Unmarshal(resultInBytes, result)
+	err = httpClient.RequestChainAPI(GetChainDataURI(groupid), http.MethodPost, getItem, nil, result)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

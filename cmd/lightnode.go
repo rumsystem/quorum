@@ -52,6 +52,8 @@ func init() {
 }
 
 func runLightnode(config cli.LightnodeFlag) {
+	configLogger(config.IsDebug)
+
 	logger.Infof("Version: %s", utils.GitCommit)
 	const defaultKeyName = "nodesdk_default"
 

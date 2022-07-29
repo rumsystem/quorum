@@ -42,10 +42,6 @@ func (h *NodeSDKHandler) GetAppConfigKey(c echo.Context) (err error) {
 	getItem.Req = encryptData
 	getItem.ReqType = APPCONFIG_KEYLIST
 
-	reqBytes, err := json.Marshal(getItem)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
 	//just get the first one
 	httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 	if err != nil {
@@ -56,13 +52,9 @@ func (h *NodeSDKHandler) GetAppConfigKey(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	resultInBytes, err := httpClient.Post(GetChainDataURI(groupid), reqBytes)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
 	result := new([]*AppConfigKeyListResultItem)
-	if err := json.Unmarshal(resultInBytes, result); err != nil {
+	err = httpClient.RequestChainAPI(GetChainDataURI(groupid), http.MethodPost, getItem, nil, result)
+	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
 

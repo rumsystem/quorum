@@ -118,11 +118,6 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		groupId := nodesdkGroupItem.Group.GroupId
 		item.TrxItem = encryptData
 
-		itemBytes, err := json.Marshal(item)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
 		//just get the first one
 		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
 		if err != nil {
@@ -133,20 +128,10 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		resultInBytes, err := httpClient.Post(GetPostTrxURI(groupId), itemBytes)
-		res := TrxResult{}
-		err = json.Unmarshal(resultInBytes, &res)
+		res := new(TrxResult)
+		err = httpClient.RequestChainAPI(GetPostTrxURI(groupId), http.MethodPost, item, nil, res)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
-		}
-
-		if res.TrxId == "" {
-			errres := APIErrorResult{}
-			err = json.Unmarshal(resultInBytes, &errres)
-			if err != nil {
-				return rumerrors.NewBadRequestError(err)
-			}
-			return rumerrors.NewBadRequestError(errres.Error)
 		}
 
 		return c.JSON(http.StatusOK, res)
