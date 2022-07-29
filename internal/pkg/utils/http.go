@@ -40,10 +40,16 @@ func RequestAPI(url string, method string, payload interface{}, headers http.Hea
 
 	var payloadBytes []byte
 	if payload != nil {
-		var err error
-		payloadBytes, err = json.Marshal(payload)
-		if err != nil {
-			return 0, nil, err
+		if data, ok := payload.([]byte); ok { // use []byte payload
+			payloadBytes = data
+		} else if data, ok := payload.(string); ok { // string => []byte
+			payloadBytes = []byte(data)
+		} else { // convert go struct to json
+			var err error
+			payloadBytes, err = json.Marshal(payload)
+			if err != nil {
+				return 0, nil, err
+			}
 		}
 	}
 

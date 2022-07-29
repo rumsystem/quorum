@@ -1,12 +1,10 @@
 package testnode
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,53 +16,17 @@ import (
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
-func RequestAPI(apiurl string, endpoint string, method string, data string) (int, []byte, error) {
-	upperMethod := strings.ToUpper(method)
-	methods := map[string]string{
-		"HEAD":    http.MethodHead,
-		"GET":     http.MethodGet,
-		"POST":    http.MethodPost,
-		"PUT":     http.MethodPut,
-		"DELETE":  http.MethodDelete,
-		"PATCH":   http.MethodPatch,
-		"OPTIONS": http.MethodOptions,
-	}
-
-	if _, found := methods[upperMethod]; !found {
-		panic(fmt.Sprintf("not support http method: %s", method))
-	}
-
-	method = methods[upperMethod]
-
-	url := fmt.Sprintf("%s%s", apiurl, endpoint)
-	if len(data) > 0 {
-		log.Printf("request %s %s with body: %s", method, url, data)
-	} else {
-		log.Printf("request %s %s", method, url)
-
-	}
-	client, err := utils.NewHTTPClient()
+func RequestAPI(baseUrl string, endpoint string, method string, data string) (int, []byte, error) {
+	_url := fmt.Sprintf("%s%s", baseUrl, endpoint)
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/json; charset=utf-8")
+	statusCode, content, err := utils.RequestAPI(_url, method, []byte(data), headers, nil)
 	if err != nil {
 		return 0, []byte(""), err
 	}
 
-	req, err := http.NewRequest(method, url, bytes.NewBufferString(data))
-	if err != nil {
-		return 0, []byte(""), err
-	}
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, []byte(""), err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return 0, []byte(""), err
-	}
-	log.Printf("response status: %d body: %s", resp.StatusCode, body)
-	return resp.StatusCode, body, nil
+	log.Printf("response status: %d body: %s", statusCode, content)
+	return statusCode, content, nil
 }
 
 func CheckNodeRunning(ctx context.Context, url string) (string, bool) {
