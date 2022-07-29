@@ -13,7 +13,3 @@ type (
 		GitCommit  string
 	}
 )
-
-type ErrorResponse struct {
-	Error string `json:"error" validate:"required"`
-}
