@@ -121,7 +121,7 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 	}
 
 	result := new(TrxResult)
-	err = httpClient.RequestChainAPI(GetPostTrxURI(groupId), http.MethodGet, item, nil, result)
+	err = httpClient.RequestChainAPI(GetPostTrxURI(groupId), http.MethodPost, item, nil, result)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

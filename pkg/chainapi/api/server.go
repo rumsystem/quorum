@@ -112,14 +112,14 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		e.AutoTLSManager.Cache = autocert.DirCache(config.CertDir)
 		e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.APIHost)
 		e.AutoTLSManager.Prompt = autocert.AcceptTOS
-		e.Logger.Fatal(e.StartAutoTLS(":https"))
+		e.Logger.Fatal(e.StartAutoTLS(fmt.Sprintf(":%d", config.APIPort)))
 	} else if utils.IsPublicIP(host) { // public ip
 		ip := net.ParseIP(host)
 		privKeyPath, certPath, err := zerossl.IssueIPCert(config.CertDir, ip, config.ZeroAccessKey)
 		if err != nil {
 			e.Logger.Fatal(err)
 		}
-		e.Logger.Fatal(e.StartTLS(":https", certPath, privKeyPath))
+		e.Logger.Fatal(e.StartTLS(fmt.Sprintf(":%d", config.APIPort), certPath, privKeyPath))
 	} else { // start http server
 		e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, config.APIPort)))
 	}

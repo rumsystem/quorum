@@ -27,7 +27,7 @@ func (h *Handler) CreateGroupUrl() echo.HandlerFunc {
 			return err
 		}
 
-		baseUrl := cc.GetBaseURL()
+		baseUrl := cc.GetBaseURLFromRequest()
 		res, err := handlers.CreateGroupUrl(baseUrl, params, options.GetNodeOptions(), h.Appdb)
 		if err != nil {
 			return err
