@@ -142,19 +142,15 @@ func (c *CustomContext) BindAndValidate(params interface{}) error {
 	return nil
 }
 
-// GetURL return https?://host:port
-func (c *CustomContext) GetBaseURL() string {
-	scheme := c.Context.Scheme()
-	addr := c.Echo().Server.Addr
-	if strings.HasPrefix(addr, ":") {
-		addr = fmt.Sprintf("%s%s", "127.0.0.1", addr)
-	}
-	return fmt.Sprintf("%s://%s", scheme, addr)
-}
-
 func (c *CustomContext) GetBaseURLFromRequest() string {
-	u := c.Request().URL
-	_url := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	scheme := "http"
+	if c.Context.IsTLS() {
+		scheme = "https"
+	}
+
+	host := c.Context.Request().Host
+
+	_url := fmt.Sprintf("%s://%s", scheme, host)
 	return _url
 }
 
