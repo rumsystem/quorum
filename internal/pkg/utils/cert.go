@@ -11,7 +11,7 @@ func IsPublicIP(v string) bool {
 		return false
 	}
 
-	if !ip.IsPrivate() && !ip.IsLoopback() {
+	if !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsUnspecified() {
 		return true
 	}
 	return false
