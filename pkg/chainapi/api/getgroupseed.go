@@ -36,7 +36,7 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	}
 
 	// get chain api url
-	baseUrl := cc.GetBaseURL()
+	baseUrl := cc.GetBaseURLFromRequest()
 	chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
