@@ -17,10 +17,11 @@ type HBMessage struct {
 }
 
 type HoneyBadger struct {
+	groupId string
 	Config
-	acsInsts map[uint64]*ACS //epoch
-	txBuffer *buffer
-	epoch    uint64
+	acsInsts map[uint64]*ACS //map key is epoch
+	txBuffer *TrxBuffer
+	epoch    uint64	//current epoch
 
 	lock    sync.RWMutex
 	outputs map[uint64][]HBTrx
@@ -29,11 +30,12 @@ type HoneyBadger struct {
 	msgCount   int
 }
 
-func NewHB(cfg Config) *HoneyBadger {
+func NewHB(cfg Config, groupId string) *HoneyBadger {
 	return &HoneyBadger{
 		Config:     cfg,
+		groupId:  
 		acsInsts:   make(map[uint64]*ACS),
-		txBuffer:   NewBuffer(),
+		txBuffer:   NewTrxBuffer(),
 		outputs:    make(map[uint64][]HBTrx),
 		messageQue: newMessageQue(),
 	}

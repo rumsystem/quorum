@@ -4,19 +4,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/labstack/gommon/log"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
+
+var bba_log = logging.Logger("bba")
 
 type AgreementMessage struct {
 	Epoch   int
 	Message interface{}
-}
-
-func NewAgreementMsg(epoch int, msg interface{}) *AgreementMessage {
-	return &AgreementMessage{
-		Epoch:   epoch,
-		Message: msg,
-	}
 }
 
 type BValRequest struct {
@@ -68,6 +63,13 @@ type BBA struct {
 	messageCh chan bbaMessageT
 
 	msgCount int
+}
+
+func NewAgreementMsg(epoch int, msg interface{}) *AgreementMessage {
+	return &AgreementMessage{
+		Epoch:   epoch,
+		Message: msg,
+	}
 }
 
 func NewBBA(cfg Config) *BBA {
@@ -251,7 +253,7 @@ func (b *BBA) tryOutputAgreement() {
 
 	for _, que := range b.delayedMessages {
 		if err := b.handleMessage(que.senderId, que.msg); err != nil {
-			log.Warn(err)
+			bba_log.Warn(err)
 		}
 	}
 

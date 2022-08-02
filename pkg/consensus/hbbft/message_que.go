@@ -4,6 +4,9 @@ import (
 	"sync"
 )
 
+// from cuicat
+// keep interface but use Badger to keep all msg
+
 // MessageTuple holds the payload of the message along with the identifier of
 // the receiver node.
 type MessageTuple struct {

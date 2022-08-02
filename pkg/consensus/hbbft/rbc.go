@@ -8,7 +8,11 @@ import (
 
 	"github.com/NebulousLabs/merkletree"
 	"github.com/klauspost/reedsolomon"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
+
+var rbc_log = logging.Logger("rbc")
 
 type BroadcastMessage struct {
 	Payload interface{}
@@ -56,8 +60,6 @@ type (
 type RBC struct {
 	config     Config
 	proposerId string
-
-	enc reedsolomon.Encoder
 
 	recvReadys map[string][]byte
 	recvEchos  map[string]*EchoRequest
@@ -110,6 +112,10 @@ func NewRBC(cfg Config, proposerId string) (*RBC, error) {
 	return rbc, nil
 }
 
+func (r *RBC) HandleMessage(msg *quorumpb.BroadcastMsg) {
+
+}
+
 func (r *RBC) InputValue(data []byte) ([]*BroadcastMessage, error) {
 	t := rbcInputT{
 		value:    data,
@@ -119,16 +125,6 @@ func (r *RBC) InputValue(data []byte) ([]*BroadcastMessage, error) {
 	r.inputCh <- t
 	resp := <-t.response
 	return resp.message, resp.err
-}
-
-func (r *RBC) HandleMessage(senderId string, msg *BroadcastMessage) error {
-	t := rbcMessageT{
-		senderId: senderId,
-		msg:      msg,
-		err:      make(chan error),
-	}
-	r.messageCh <- t
-	return <-t.err
 }
 
 func (r *RBC) stop() {

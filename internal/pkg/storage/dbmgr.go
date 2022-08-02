@@ -1,13 +1,14 @@
 package storage
 
 import (
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 var dbmgr_log = logging.Logger("dbmgr")
@@ -33,6 +34,10 @@ const SNAPSHOT_PREFIX string = "snapshot"      //group snapshot
 const GROUPITEM_PREFIX string = "grpitem"
 const GROUPSEED_PREFIX string = "grpseed"
 const RELAY_PREFIX string = "rly" //relay
+
+//consensus db
+const CNS_BUFD_TRX string = "cns_bf_trx" //buffered trx (used by acs)
+const CNS_BUFD_MSG string = "cns_bf_msg" //buffered message (used by bba & rbc)
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
