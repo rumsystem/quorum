@@ -22,7 +22,7 @@ define build-cli
 go build ${LDFLAGS} -o dist/${GOOS}_${GOARCH}/${CLI_BIN_NAME} cmd/cli/main.go
 endef
 
-linux: GOOS = linux
+linux: export GOOS = linux
 linux:
 	$(build-quorum)
 
