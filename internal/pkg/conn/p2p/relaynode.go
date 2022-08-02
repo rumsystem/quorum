@@ -20,7 +20,9 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -34,6 +36,7 @@ type RelayNode struct {
 	PeerID peer.ID
 	Host   host.Host
 	Info   *NodeInfo
+	Relay  *relayv2.Relay
 }
 
 func (node *RelayNode) eventhandler(ctx context.Context) {
@@ -111,13 +114,17 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 	if err != nil {
 		return nil, err
 	}
+
+	bhost := host.(*basichost.BasicHost)
+	relayManager := bhost.RelayManager()
+
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	node := &RelayNode{Host: host, Info: info}
+	node := &RelayNode{Host: host, Info: info, Relay: relayManager.Relay()}
 
 	go node.eventhandler(ctx)
 	return node, nil

@@ -32,7 +32,6 @@ func (h *RelayServerHandler) AddBlacklist(c echo.Context) (err error) {
 	if err != nil {
 		return rumerrors.NewInternalServerError(err)
 	}
-	// TODO: shoud clean connected peers
 
 	return c.JSON(http.StatusOK, result)
 }
