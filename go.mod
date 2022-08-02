@@ -60,7 +60,7 @@ require (
 	github.com/open-policy-agent/opa v0.39.0
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/rumsystem/ip-cert v0.0.0-20220801065403-d7a5a338ad75
+	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
 	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
 	github.com/rumsystem/rumchaindata v0.0.0-20220725155706-6c1c56da35eb
 	github.com/spf13/cobra v1.5.0
@@ -118,6 +118,7 @@ require (
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
