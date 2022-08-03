@@ -49,7 +49,7 @@ type MolassesProducer struct {
 	cIface            def.ChainMolassesIface
 	groupId           string
 
-	acsInst map[uint64]*ACS
+	//acsInst map[uint64]*ACS
 }
 
 func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface, hbnodes []string) {

@@ -7,15 +7,18 @@ import (
 	"sort"
 
 	"github.com/NebulousLabs/merkletree"
+	"github.com/golang/protobuf/proto"
 	"github.com/klauspost/reedsolomon"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var rbc_log = logging.Logger("rbc")
 
 type BroadcastMessage struct {
-	Payload interface{}
+	SenderId string
+	Payload  interface{}
 }
 
 type ProofRequest struct {
@@ -33,7 +36,7 @@ type ReadyRequest struct {
 	RootHash []byte
 }
 
-type proofs []ProofRequest
+type proofs []*quorumpb.ProofReq
 
 func (p proofs) Len() int           { return len(p) }
 func (p proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
@@ -58,184 +61,258 @@ type (
 )
 
 type RBC struct {
-	config     Config
+	Config
 	proposerId string
-
-	recvReadys map[string][]byte
-	recvEchos  map[string]*EchoRequest
 
 	numParityShards int
 	numDataShards   int
 
-	messages []*BroadcastMessage
+	enc reedsolomon.Encoder
+
+	recvReadys map[string]*quorumpb.ReadyReq
+	recvEchos  map[string]*quorumpb.EchoReq
+
+	messages []*quorumpb.BroadcastMsg
 
 	echoSent      bool
 	readySent     bool
 	outputDecoded bool
 
-	output    []byte
-	closeCh   chan struct{}
-	inputCh   chan rbcInputT
-	messageCh chan rbcMessageT
+	output []byte
 }
 
 //proposerId is uuid for other participated nodes
 func NewRBC(cfg Config, proposerId string) (*RBC, error) {
+
+	// calculate failer node
 	if cfg.F == 0 {
 		cfg.F = (cfg.N - 1) / 3
 	}
+	// calculate how to make data shards (with enc codec)
 	var (
 		parityShards = 2 * cfg.F
 		dataShards   = cfg.N - parityShards
 	)
 
+	// initial reed solomon codec
 	enc, err := reedsolomon.New(dataShards, parityShards)
 	if err != nil {
 		return nil, err
 	}
 
 	rbc := &RBC{
-		config:          cfg,
+		Config:          cfg,
 		proposerId:      proposerId,
 		enc:             enc,
-		recvEchos:       make(map[string]*EchoRequest),
-		recvReadys:      make(map[string][]byte),
+		recvEchos:       make(map[string]*quorumpb.EchoReq),
+		recvReadys:      make(map[string]*quorumpb.ReadyReq),
 		numParityShards: parityShards,
 		numDataShards:   dataShards,
-		messages:        []*BroadcastMessage{},
-		closeCh:         make(chan struct{}),
-		inputCh:         make(chan rbcInputT),
-		messageCh:       make(chan rbcMessageT),
+		messages:        []*quorumpb.BroadcastMsg{},
 	}
 
-	go rbc.run()
 	return rbc, nil
 }
 
-func (r *RBC) HandleMessage(msg *quorumpb.BroadcastMsg) {
-
-}
-
-func (r *RBC) InputValue(data []byte) ([]*BroadcastMessage, error) {
-	t := rbcInputT{
-		value:    data,
-		response: make(chan rbcInputResp),
+func (r *RBC) HandleMessage(msg *quorumpb.BroadcastMsg) error {
+	var err error
+	switch msg.Type {
+	case quorumpb.BroadcastMsgType_PROOF_REQ:
+		err = r.handleProofRequest(msg)
+	case quorumpb.BroadcastMsgType_ECHO_REQ:
+		err = r.handleEchoRequest(msg)
+	case quorumpb.BroadcastMsgType_READY_REQ:
+		err = r.handleEchoRequest(msg)
+	default:
+		err = fmt.Errorf("Invalid RBC protocol %+v", msg)
 	}
 
-	r.inputCh <- t
-	resp := <-t.response
-	return resp.message, resp.err
+	return err
 }
 
-func (r *RBC) stop() {
-	close(r.closeCh)
-}
-
-func (r *RBC) run() {
-	for {
-		select {
-		case <-r.closeCh:
-			return
-		case t := <-r.inputCh:
-			msgs, err := r.inputValue(t.value)
-			t.response <- rbcInputResp{
-				message: msgs,
-				err:     err,
-			}
-		case t := <-r.messageCh:
-			t.err <- r.handleMessage(t.senderId, t.msg)
-		}
-	}
-}
-
-func (r *RBC) inputValue(data []byte) ([]*BroadcastMessage, error) {
+func (r *RBC) InputValue(data []byte) ([]*quorumpb.BroadcastMsg, error) {
 	shards, err := makeShards(r.enc, data)
 	if err != nil {
 		return nil, err
 	}
 
-	reqs, err := makeBroadcastMessage(shards)
+	//create RBC msg for each shards
+	reqs, err := r.makeRBCProofMessage(shards)
 	if err != nil {
 		return nil, err
 	}
 
-	proof := reqs[0].Payload.(*ProofRequest)
-	if err := r.handleProofRequest(r.config.MyNodeId, proof); err != nil {
+	// first rbc msg is mine
+	if err := r.handleProofRequest(reqs[0]); err != nil {
 		return nil, err
 	}
 
 	return reqs[1:], nil
 }
 
-func (r *RBC) handleMessage(senderId string, msg *BroadcastMessage) error {
-	switch t := msg.Payload.(type) {
-	case *ProofRequest:
-		return r.handleProofRequest(senderId, t)
-	case *EchoRequest:
-		return r.handleEchoRequest(senderId, t)
-	case *ReadyRequest:
-		return r.handleReadyRequest(senderId, t)
-	default:
-		return fmt.Errorf("Invalid RBC protocol %+v", msg)
+func (r *RBC) makeRBCProofMessage(shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
+	msgs := make([]*quorumpb.BroadcastMsg, len(shards))
+
+	for i := 0; i < len(msgs); i++ {
+		tree := merkletree.New(sha256.New())
+		tree.SetIndex(uint64(i))
+		for j := 0; j < len(shards); j++ {
+			tree.Push(shards[i])
+		}
+		root, proof, proofIndex, n := tree.Prove()
+		payload := &quorumpb.ProofReq{
+			RootHash: root,
+			Proof:    proof,
+			Index:    int64(proofIndex),
+			Leaves:   int64(n),
+		}
+
+		payloadb, err := proto.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+
+		msgs[i] = &quorumpb.BroadcastMsg{
+			Type:     quorumpb.BroadcastMsgType_PROOF_REQ,
+			SenderId: r.MyNodeId,
+			Payload:  payloadb,
+		}
 	}
+
+	return msgs, nil
 }
 
-func (r *RBC) handleProofRequest(senderId string, req *ProofRequest) error {
-	if senderId != r.proposerId {
-		return fmt.Errorf("Receiving proof from (%s) that is not from the proposing node (%s)", senderId, r.proposerId)
+func (r *RBC) makeRBCEchoMessage(proof *quorumpb.ProofReq) (*quorumpb.BroadcastMsg, error) {
+
+	echoReq := &quorumpb.EchoReq{
+		Req: proof,
+	}
+
+	echoReqb, err := proto.Marshal(echoReq)
+	if err != nil {
+		return nil, err
+	}
+
+	echoMsg := &quorumpb.BroadcastMsg{
+		Type:     quorumpb.BroadcastMsgType_ECHO_REQ,
+		SenderId: r.MyNodeId,
+		Payload:  echoReqb,
+	}
+
+	return echoMsg, nil
+}
+
+func (r *RBC) makeRBCReadyMessage(echo *quorumpb.EchoReq) (*quorumpb.BroadcastMsg, error) {
+	readyReq := &quorumpb.ReadyReq{
+		RootHash: echo.Req.RootHash,
+	}
+
+	readyB, err := proto.Marshal(readyReq)
+	if err != nil {
+		return nil, err
+	}
+
+	readyMsg := &quorumpb.BroadcastMsg{
+		Type:     quorumpb.BroadcastMsgType_READY_REQ,
+		SenderId: r.MyNodeId,
+		Payload:  readyB,
+	}
+
+	return readyMsg, nil
+}
+
+func (r *RBC) handleProofRequest(msg *quorumpb.BroadcastMsg) error {
+	proofReq := &quorumpb.ProofReq{}
+	err := proto.Unmarshal(msg.Payload, proofReq)
+	if err != nil {
+		return err
+	}
+
+	if msg.SenderId != r.proposerId {
+		return fmt.Errorf("Receiving proof from (%s) that is not from the proposing node (%s)", msg.SenderId, r.proposerId)
 	}
 
 	if r.echoSent {
-		return fmt.Errorf("Received proof from (%s) more than once", senderId)
+		return fmt.Errorf("Received proof from (%s) more than once", msg.SenderId)
 	}
 
-	if !validateProof(req) {
-		return fmt.Errorf("Received invalid proof from (%s)", senderId)
+	if !validateProof(proofReq) {
+		return fmt.Errorf("Received invalid proof from (%s)", msg.SenderId)
 	}
 
 	r.echoSent = true
-	echo := &EchoRequest{*req}
-	r.messages = append(r.messages, &BroadcastMessage{echo})
-	return r.handleEchoRequest(r.config.MyNodeId, echo)
+
+	echoMsg, err := r.makeRBCEchoMessage(proofReq)
+	if err != nil {
+		return err
+	}
+
+	//add message to msg queue
+	r.messages = append(r.messages, echoMsg)
+
+	return r.handleEchoRequest(echoMsg)
 }
 
-func (r *RBC) handleEchoRequest(senderId string, req *EchoRequest) error {
-	if _, ok := r.recvEchos[senderId]; ok {
-		return fmt.Errorf("Received multiple echos from (%s)", senderId)
+func (r *RBC) handleEchoRequest(msg *quorumpb.BroadcastMsg) error {
+	echoReq := &quorumpb.EchoReq{}
+	err := proto.Unmarshal(msg.Payload, echoReq)
+	if err != nil {
+		return err
 	}
 
-	if !validateProof(&req.ProofRequest) {
-		return fmt.Errorf("Received invalid proof from (%s)", senderId)
+	if _, ok := r.recvEchos[msg.SenderId]; ok {
+		return fmt.Errorf("Received multiple echos from (%s)", msg.SenderId)
 	}
 
-	r.recvEchos[senderId] = req
-	if r.readySent || r.countEcho(req.RootHash) < r.config.N-r.config.F {
-		return r.tryDecodeValue(req.RootHash)
+	if !validateProof(echoReq.Req) {
+		return fmt.Errorf("Received invalid proof from (%s)", msg.SenderId)
+	}
+
+	r.recvEchos[msg.SenderId] = echoReq
+	if r.readySent || r.countEcho(echoReq.Req.RootHash) < r.N-r.F {
+		return r.tryDecodeValue(echoReq.Req.RootHash)
 	}
 
 	r.readySent = true
-	ready := &ReadyRequest{req.RootHash}
-	r.messages = append(r.messages, &BroadcastMessage{ready})
-	return r.handleReadyRequest(r.config.MyNodeId, ready)
+
+	readyMsg, err := r.makeRBCReadyMessage(echoReq)
+	r.messages = append(r.messages, readyMsg)
+
+	return r.handleReadyRequest(readyMsg)
 }
 
-func (r *RBC) handleReadyRequest(senderId string, req *ReadyRequest) error {
-	if _, ok := r.recvReadys[senderId]; ok {
-		return fmt.Errorf("Received multiple readys from %s", senderId)
+func (r *RBC) handleReadyRequest(msg *quorumpb.BroadcastMsg) error {
+	if _, ok := r.recvReadys[msg.SenderId]; ok {
+		return fmt.Errorf("Received multiple readys from %s", msg.SenderId)
 	}
-	r.recvReadys[senderId] = req.RootHash
 
-	if r.countReady(req.RootHash) == r.config.F+1 && !r.readySent {
+	readyReq := &quorumpb.ReadyReq{}
+	err := proto.Unmarshal(msg.Payload, readyReq)
+	if err != nil {
+		return err
+	}
+
+	r.recvReadys[msg.SenderId] = readyReq
+
+	if r.countReady(readyReq.RootHash) == r.F+1 && !r.readySent {
 		r.readySent = true
-		ready := &ReadyRequest{req.RootHash}
-		r.messages = append(r.messages, &BroadcastMessage{ready})
+		r.messages = append(r.messages, msg)
 	}
 
-	return r.tryDecodeValue(req.RootHash)
+	return r.tryDecodeValue(readyReq.RootHash)
+}
+
+func validateProof(req *quorumpb.ProofReq) bool {
+	return merkletree.VerifyProof(
+		sha256.New(),
+		req.RootHash,
+		req.Proof,
+		uint64(req.Index),
+		uint64(req.Leaves))
 }
 
 func (r *RBC) tryDecodeValue(hash []byte) error {
-	if r.outputDecoded || r.countReady(hash) <= 2*r.config.F || r.countEcho(hash) <= r.config.F {
+	if r.outputDecoded || r.countReady(hash) <= 2*r.F || r.countEcho(hash) <= r.F {
 		return nil
 	}
 
@@ -243,7 +320,7 @@ func (r *RBC) tryDecodeValue(hash []byte) error {
 	var prfs proofs
 
 	for _, echo := range r.recvEchos {
-		prfs = append(prfs, echo.ProofRequest)
+		prfs = append(prfs, echo.Req)
 	}
 
 	sort.Sort(prfs)
@@ -266,58 +343,6 @@ func (r *RBC) tryDecodeValue(hash []byte) error {
 	return nil
 }
 
-func makeProofRequests(shards [][]byte) ([]*ProofRequest, error) {
-	reqs := make([]*ProofRequest, len(shards))
-	for i := 0; i < len(reqs); i++ {
-		tree := merkletree.New(sha256.New())
-		tree.SetIndex(uint64(i))
-		for j := 0; j < len(shards); j++ {
-			tree.Push(shards[i])
-		}
-
-		root, proof, proofIndex, n := tree.Prove()
-		reqs[i] = &ProofRequest{
-			RootHash: root,
-			Proof:    proof,
-			Index:    int(proofIndex),
-			Leaves:   int(n),
-		}
-	}
-
-	return reqs, nil
-}
-
-func makeBroadcastMessage(shards [][]byte) ([]*BroadcastMessage, error) {
-	msgs := make([]*BroadcastMessage, len(shards))
-
-	for i := 0; i < len(msgs); i++ {
-		tree := merkletree.New(sha256.New())
-		tree.SetIndex(uint64(i))
-		for j := 0; j < len(shards); j++ {
-			tree.Push(shards[i])
-		}
-		root, proof, proofIndex, n := tree.Prove()
-		msgs[i] = &BroadcastMessage{
-			Payload: &ProofRequest{
-				RootHash: root,
-				Proof:    proof,
-				Index:    int(proofIndex),
-				Leaves:   int(n),
-			},
-		}
-	}
-	return msgs, nil
-}
-
-func validateProof(req *ProofRequest) bool {
-	return merkletree.VerifyProof(
-		sha256.New(),
-		req.RootHash,
-		req.Proof,
-		uint64(req.Index),
-		uint64(req.Leaves))
-}
-
 func makeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
 	shards, err := enc.Split(data)
 	if err != nil {
@@ -334,7 +359,7 @@ func makeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
 func (r *RBC) countEcho(hash []byte) int {
 	n := 0
 	for _, e := range r.recvEchos {
-		if bytes.Compare(hash, e.RootHash) == 0 {
+		if bytes.Compare(hash, e.Req.RootHash) == 0 {
 			n++
 		}
 	}
@@ -344,7 +369,7 @@ func (r *RBC) countEcho(hash []byte) int {
 func (r *RBC) countReady(hash []byte) int {
 	n := 0
 	for _, e := range r.recvReadys {
-		if bytes.Compare(hash, e) == 0 {
+		if bytes.Compare(hash, e.RootHash) == 0 {
 			n++
 		}
 	}
@@ -361,8 +386,8 @@ func (r *RBC) Output() []byte {
 	return nil
 }
 
-func (r *RBC) Messages() []*BroadcastMessage {
+func (r *RBC) Messages() []*quorumpb.BroadcastMsg {
 	msgs := r.messages
-	r.messages = []*BroadcastMessage{}
+	r.messages = []*quorumpb.BroadcastMsg{}
 	return msgs
 }
