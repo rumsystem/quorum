@@ -16,52 +16,16 @@ import (
 
 var rbc_log = logging.Logger("rbc")
 
-type BroadcastMessage struct {
-	SenderId string
-	Payload  interface{}
-}
-
-type ProofRequest struct {
-	RootHash []byte
-	// Proof[0] will containt the actual data.
-	Proof         [][]byte
-	Index, Leaves int
-}
-
-type EchoRequest struct {
-	ProofRequest
-}
-
-type ReadyRequest struct {
-	RootHash []byte
-}
-
 type proofs []*quorumpb.ProofReq
 
 func (p proofs) Len() int           { return len(p) }
 func (p proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p proofs) Less(i, j int) bool { return p[i].Index < p[j].Index }
 
-type (
-	rbcMessageT struct {
-		senderId string
-		msg      *BroadcastMessage
-		err      chan error
-	}
-
-	rbcInputResp struct {
-		message []*BroadcastMessage
-		err     error
-	}
-
-	rbcInputT struct {
-		value    []byte
-		response chan rbcInputResp
-	}
-)
-
 type RBC struct {
 	Config
+
+	groupId    string
 	proposerId string
 
 	numParityShards int
@@ -72,8 +36,6 @@ type RBC struct {
 	recvReadys map[string]*quorumpb.ReadyReq
 	recvEchos  map[string]*quorumpb.EchoReq
 
-	messages []*quorumpb.BroadcastMsg
-
 	echoSent      bool
 	readySent     bool
 	outputDecoded bool
@@ -82,7 +44,7 @@ type RBC struct {
 }
 
 //proposerId is uuid for other participated nodes
-func NewRBC(cfg Config, proposerId string) (*RBC, error) {
+func NewRBC(cfg Config, groupId, proposerId string) (*RBC, error) {
 
 	// calculate failer node
 	if cfg.F == 0 {
@@ -102,13 +64,13 @@ func NewRBC(cfg Config, proposerId string) (*RBC, error) {
 
 	rbc := &RBC{
 		Config:          cfg,
+		groupId:         groupId,
 		proposerId:      proposerId,
 		enc:             enc,
 		recvEchos:       make(map[string]*quorumpb.EchoReq),
 		recvReadys:      make(map[string]*quorumpb.ReadyReq),
 		numParityShards: parityShards,
 		numDataShards:   dataShards,
-		messages:        []*quorumpb.BroadcastMsg{},
 	}
 
 	return rbc, nil
@@ -248,7 +210,8 @@ func (r *RBC) handleProofRequest(msg *quorumpb.BroadcastMsg) error {
 	}
 
 	//add message to msg queue
-	r.messages = append(r.messages, echoMsg)
+	// r.messages = append(r.messages, echoMsg)
+	SendHbbRBC(r.groupId, echoMsg)
 
 	return r.handleEchoRequest(echoMsg)
 }
@@ -276,7 +239,8 @@ func (r *RBC) handleEchoRequest(msg *quorumpb.BroadcastMsg) error {
 	r.readySent = true
 
 	readyMsg, err := r.makeRBCReadyMessage(echoReq)
-	r.messages = append(r.messages, readyMsg)
+	//r.messages = append(r.messages, readyMsg)
+	SendHbbRBC(r.groupId, readyMsg)
 
 	return r.handleReadyRequest(readyMsg)
 }
@@ -296,7 +260,8 @@ func (r *RBC) handleReadyRequest(msg *quorumpb.BroadcastMsg) error {
 
 	if r.countReady(readyReq.RootHash) == r.F+1 && !r.readySent {
 		r.readySent = true
-		r.messages = append(r.messages, msg)
+		//r.messages = append(r.messages, msg)
+		SendHbbRBC(r.groupId, msg)
 	}
 
 	return r.tryDecodeValue(readyReq.RootHash)
@@ -384,10 +349,4 @@ func (r *RBC) Output() []byte {
 	}
 
 	return nil
-}
-
-func (r *RBC) Messages() []*quorumpb.BroadcastMsg {
-	msgs := r.messages
-	r.messages = []*quorumpb.BroadcastMsg{}
-	return msgs
 }

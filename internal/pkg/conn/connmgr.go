@@ -443,6 +443,44 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	}
 }
 
+func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsg, psChannel PsConnChanel, channelId ...string) error {
+	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
+	var pkg *quorumpb.Package
+	pkg = &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(hbb)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_HBB
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	if psChannel == ProducerChannel {
+		conn_log.Debugf("<%s> Send trx via Producer_Channel", connMgr.GroupId)
+		psconn := connMgr.getProducerPsConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == UserChannel {
+		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
+		psconn, err := connMgr.getSyncConn(channelId[0])
+		if err != nil {
+			return err
+		}
+		return psconn.Publish(pkgBytes)
+	}
+
+	return fmt.Errorf("Can not find psChannel")
+}
+
 func (connMgr *ConnMgr) InitialPsConn() {
 	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
 
