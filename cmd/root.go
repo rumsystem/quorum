@@ -54,7 +54,24 @@ func Execute() {
 
 func configLogger(isDebug bool) {
 	if isDebug == true {
-		logging.SetLogLevel("*", "debug")
+		logging.SetLogLevel("cmd", "debug")
+		logging.SetLogLevel("nodesdk", "debug")
+		logging.SetLogLevel("handlers", "debug")
+		logging.SetLogLevel("crypto", "debug")
+		logging.SetLogLevel("network", "debug")
+		logging.SetLogLevel("autonat", "debug")
+		logging.SetLogLevel("chain", "debug")
+		logging.SetLogLevel("dbmgr", "debug")
+		logging.SetLogLevel("chainctx", "debug")
+		logging.SetLogLevel("syncer", "debug")
+		logging.SetLogLevel("producer", "debug")
+		logging.SetLogLevel("trxmgr", "debug")
+		logging.SetLogLevel("conn", "debug")
+		logging.SetLogLevel("rumexchange", "debug")
+		logging.SetLogLevel("ssreceiver", "debug")
+		logging.SetLogLevel("sssender", "debug")
+		logging.SetLogLevel("ping", "debug")
+		logging.SetLogLevel("chan", "debug")
 	} else {
 		logging.SetLogLevel("*", "info")
 	}

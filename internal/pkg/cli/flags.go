@@ -48,8 +48,11 @@ type LightnodeFlag struct {
 type RelayNodeFlag struct {
 	BootstrapPeers  AddrList
 	ListenAddresses AddrList
+	APIHost         string
+	APIPort         uint
 	PeerName        string
 	ConfigDir       string
+	DataDir         string
 	KeyStoreDir     string
 	KeyStoreName    string
 	KeyStorePwd     string
