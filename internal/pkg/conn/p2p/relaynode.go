@@ -21,6 +21,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
@@ -115,7 +116,7 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 		return nil, err
 	}
 
-	bhost := host.(*basichost.BasicHost)
+	bhost := host.(*routedhost.RoutedHost).Unwrap().(*basichost.BasicHost)
 	relayManager := bhost.RelayManager()
 
 	// configure our own ping protocol
