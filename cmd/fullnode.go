@@ -72,8 +72,7 @@ func init() {
 	flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flags.BoolVar(&fnodeFlag.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
-	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", false, "enable relay")
-	flags.BoolVar(&fnodeFlag.EnableRelayService, "relayservice", false, "provide relay service")
+	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 
 func createPubQueueDb(path string) (*storage.QSBadger, error) {
@@ -117,7 +116,6 @@ func runFullnode(config cli.FullnodeFlag) {
 	// overwrite by cli flags
 	nodeoptions.IsRexTestMode = config.IsRexTestMode
 	nodeoptions.EnableRelay = config.EnableRelay
-	nodeoptions.EnableRelayService = config.EnableRelayService
 
 	keystoreParam := InitKeystoreParam{
 		KeystoreName:   config.KeyStoreName,
@@ -153,7 +151,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	if config.IsBootstrap == true || config.EnableRelayService {
+	if config.IsBootstrap {
 		//bootstrop/relay node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
 		cm, err := connmgr.NewConnManager(1000, 50000, connmgr.WithGracePeriod(30*time.Second))
 		if err != nil {

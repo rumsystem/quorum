@@ -9,27 +9,26 @@ import (
 type AddrList []maddr.Multiaddr
 
 type FullnodeFlag struct {
-	RendezvousString   string
-	BootstrapPeers     AddrList
-	ListenAddresses    AddrList
-	APIHost            string
-	APIPort            uint
-	CertDir            string
-	ZeroAccessKey      string
-	ProtocolID         string
-	IsBootstrap        bool
-	IsRexTestMode      bool
-	PeerName           string
-	JsonTracer         string
-	IsDebug            bool
-	ConfigDir          string
-	DataDir            string
-	KeyStoreDir        string
-	KeyStoreName       string
-	KeyStorePwd        string
-	AutoAck            bool
-	EnableRelay        bool
-	EnableRelayService bool
+	RendezvousString string
+	BootstrapPeers   AddrList
+	ListenAddresses  AddrList
+	APIHost          string
+	APIPort          uint
+	CertDir          string
+	ZeroAccessKey    string
+	ProtocolID       string
+	IsBootstrap      bool
+	IsRexTestMode    bool
+	PeerName         string
+	JsonTracer       string
+	IsDebug          bool
+	ConfigDir        string
+	DataDir          string
+	KeyStoreDir      string
+	KeyStoreName     string
+	KeyStorePwd      string
+	AutoAck          bool
+	EnableRelay      bool
 }
 
 type LightnodeFlag struct {
