@@ -2,9 +2,10 @@ package hbbft
 
 import (
 	"fmt"
-	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var bba_log = logging.Logger("bba")
@@ -42,6 +43,8 @@ type (
 
 type BBA struct {
 	Config
+	acs       *ACS
+	groupId   string
 	epoch     uint32
 	binValues []bool
 	sentBvals []bool
@@ -53,56 +56,84 @@ type BBA struct {
 	estimated interface{}
 	decision  interface{}
 
-	delayedMessages []delayedMessage
-
-	lock     sync.RWMutex
-	messages []*AgreementMessage
-
-	closeCh   chan struct{}
-	inputCh   chan bbaInputT
-	messageCh chan bbaMessageT
-
-	msgCount int
+	delayedMessages []*quorumpb.AgreementMsg
+	msgCount        int
 }
 
-func NewAgreementMsg(epoch int, msg interface{}) *AgreementMessage {
-	return &AgreementMessage{
-		Epoch:   epoch,
-		Message: msg,
-	}
-}
-
-func NewBBA(cfg Config) *BBA {
+func NewBBA(cfg Config, acs *ACS, groupId string) *BBA {
 	if cfg.F == 0 {
 		cfg.F = (cfg.N - 1) / 3
 	}
 
 	bba := &BBA{
 		Config:          cfg,
+		acs:             acs,
+		groupId:         groupId,
 		recvBval:        make(map[string]bool),
 		recvAux:         make(map[string]bool),
 		sentBvals:       []bool{},
 		binValues:       []bool{},
-		closeCh:         make(chan struct{}),
-		inputCh:         make(chan bbaInputT),
-		messageCh:       make(chan bbaMessageT),
-		messages:        []*AgreementMessage{},
-		delayedMessages: []delayedMessage{},
+		delayedMessages: []*quorumpb.AgreementMsg{},
 	}
 
-	go bba.run()
 	return bba
 }
 
-//send input value to inputCh
 func (b *BBA) InputValue(val bool) error {
-	t := bbaInputT{
-		value: val,
-		err:   make(chan error),
+	if b.epoch != 0 || b.estimated != nil {
+		return nil
 	}
 
-	b.inputCh <- t
-	return <-t.err
+	b.estimated = val
+	b.sentBvals = append(b.sentBvals, val)
+
+	msg, err := b.makeBValMsg(val)
+	if err != nil {
+		return err
+	}
+
+	SendHbbAgreement(b.groupId, msg)
+	return b.handleBvalRequest(msg)
+}
+
+func (b *BBA) makeBValMsg(val bool) (*quorumpb.AgreementMsg, error) {
+	bval := &quorumpb.BvalReq{
+		Value: val,
+	}
+
+	bvalb, err := proto.Marshal(bval)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &quorumpb.AgreementMsg{
+		Type:     quorumpb.AgreementMsgType_BVAL_REQ,
+		SenderId: b.MyNodeId,
+		Epoch:    int64(b.epoch),
+		Payload:  bvalb,
+	}
+
+	return msg, nil
+}
+
+func (b *BBA) makeAuxMsg(val bool) (*quorumpb.AgreementMsg, error) {
+	aux := &quorumpb.AuxReq{
+		Value: val,
+	}
+
+	auxb, err := proto.Marshal(aux)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &quorumpb.AgreementMsg{
+		Type:     quorumpb.AgreementMsgType_AUX_REQ,
+		SenderId: b.MyNodeId,
+		Epoch:    int64(b.epoch),
+		Payload:  auxb,
+	}
+
+	return msg, nil
 }
 
 func (b *BBA) AcceptInput() bool {
@@ -110,129 +141,103 @@ func (b *BBA) AcceptInput() bool {
 }
 
 //send message to messageCh
-func (b *BBA) HandleMessage(senderId string, msg *AgreementMessage) error {
+func (b *BBA) HandleMessage(msg *quorumpb.AgreementMsg) error {
 	b.msgCount++
-	t := bbaMessageT{
-		senderId: senderId,
-		msg:      msg,
-		err:      make(chan error),
-	}
-
-	b.messageCh <- t
-	return <-t.err
-}
-
-func (b *BBA) run() {
-	for {
-		select {
-		case <-b.closeCh:
-			return
-		case t := <-b.inputCh:
-			t.err <- b.inputValue(t.value)
-		case t := <-b.messageCh:
-			t.err <- b.handleMessage(t.senderId, t.msg)
-		}
-	}
-}
-
-func (b *BBA) addMessage(msg *AgreementMessage) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	b.messages = append(b.messages, msg)
-}
-
-func (b *BBA) stop() {
-	close(b.closeCh)
-}
-
-func (b *BBA) inputValue(val bool) error {
-	if b.epoch != 0 || b.estimated != nil {
-		return nil
-	}
-
-	b.estimated = val
-	b.sentBvals = append(b.sentBvals, val)
-	b.addMessage(NewAgreementMsg(int(b.epoch), &BValRequest{val}))
-	return b.handleBvalRequest(b.MyNodeId, val)
-}
-
-func (b *BBA) handleMessage(senderId string, msg *AgreementMessage) error {
 	if b.done {
 		return nil
 	}
 
-	if msg.Epoch < int(b.epoch) {
+	if msg.Epoch < int64(b.epoch) {
 		return nil
 	}
 
-	if msg.Epoch > int(b.epoch) {
-		b.delayedMessages = append(b.delayedMessages, delayedMessage{senderId, msg})
+	if msg.Epoch > int64(b.epoch) {
+		b.delayedMessages = append(b.delayedMessages, msg)
 	}
 
-	switch t := msg.Message.(type) {
-	case *BValRequest:
-		return b.handleBvalRequest(senderId, t.Value)
-	case *AuxRequest:
-		return b.handleAuxRequest(senderId, t.Value)
+	switch msg.Type {
+	case quorumpb.AgreementMsgType_BVAL_REQ:
+		return b.handleBvalRequest(msg)
+	case quorumpb.AgreementMsgType_AUX_REQ:
+		return b.handleAuxRequest(msg)
 	default:
-		return fmt.Errorf("Unkonwn BBA message %v", t)
+		return fmt.Errorf("Unkonwn BBA message")
 	}
+
 }
 
-func (b *BBA) handleBvalRequest(senderId string, val bool) error {
-	b.lock.Lock()
-	b.recvBval[senderId] = val
-	b.lock.Unlock()
-	lenBval := b.countBvals(val)
+func (b *BBA) handleBvalRequest(msg *quorumpb.AgreementMsg) error {
+
+	bvalreq := &quorumpb.BvalReq{}
+	err := proto.Unmarshal(msg.Payload, bvalreq)
+	if err != nil {
+		return err
+	}
+	b.recvBval[msg.SenderId] = bvalreq.Value
+	lenBval := b.countBvals(bvalreq.Value)
 
 	//2f + 1node
 	if lenBval == 2*b.F+1 {
 		wasEmptyBinValues := len(b.binValues) == 0
-		b.binValues = append(b.binValues, val)
+		b.binValues = append(b.binValues, bvalreq.Value)
 
 		if wasEmptyBinValues {
-			b.addMessage(NewAgreementMsg(int(b.epoch), &AuxRequest{val}))
-			b.handleAuxRequest(b.MyNodeId, val)
+			//b.addMessage(NewAgreementMsg(int(b.epoch), &AuxRequest{val}))
+			auxMsg, err := b.makeAuxMsg(bvalreq.Value)
+			if err != nil {
+				return err
+			}
+			SendHbbAgreement(b.groupId, auxMsg)
+			b.handleAuxRequest(auxMsg)
+
 		}
 
 		return nil
 	}
 
-	if lenBval == b.F+1 && !b.hasSentBval(val) {
-		b.sentBvals = append(b.sentBvals, val)
-		b.addMessage(NewAgreementMsg(int(b.epoch), &BValRequest{val}))
-		return b.handleBvalRequest(b.MyNodeId, val)
+	if lenBval == b.F+1 && !b.hasSentBval(bvalreq.Value) {
+		b.sentBvals = append(b.sentBvals, bvalreq.Value)
+
+		bvalMsg, err := b.makeBValMsg(bvalreq.Value)
+		if err != nil {
+			return err
+		}
+		SendHbbAgreement(b.groupId, bvalMsg)
+		//b.addMessage(NewAgreementMsg(int(b.epoch), &BValRequest{val}))
+		return b.handleBvalRequest(bvalMsg)
 	}
 
 	return nil
 }
 
-func (b *BBA) handleAuxRequest(senderId string, val bool) error {
-	b.lock.Lock()
-	b.recvAux[senderId] = val
-	b.lock.Unlock()
-	b.tryOutputAgreement()
-	return nil
+func (b *BBA) handleAuxRequest(msg *quorumpb.AgreementMsg) error {
+	auxReq := &quorumpb.AuxReq{}
+	err := proto.Unmarshal(msg.Payload, auxReq)
+	if err != nil {
+		return err
+	}
+	b.recvAux[msg.SenderId] = auxReq.Value
+	return b.tryOutputAgreement()
 }
 
-func (b *BBA) tryOutputAgreement() {
+func (b *BBA) tryOutputAgreement() error {
 	if len(b.binValues) == 0 {
-		return
+		return nil
 	}
 
 	lenOutputs, values := b.countOutputs()
 	if lenOutputs < b.N-b.F {
-		return
+		return nil
 	}
 
 	coin := b.epoch%2 == 0
 
 	if b.done || b.decision != nil && b.decision.(bool) == coin {
 		b.done = true
-		return
+		return nil
 	}
 
-	//fmt.Printf("Node (%s) is advancing to next epoch (%d)，received %d aux messages", b.MyNodeId, b.epoch + 1, lenlenOutputs)
+	bba_log.Infof("Node (%s) is advancing to next epoch (%d)，received %d aux messages", b.MyNodeId, b.epoch+1, lenOutputs)
 	b.advanceEpoch()
 
 	if len(values) != 1 {
@@ -249,15 +254,25 @@ func (b *BBA) tryOutputAgreement() {
 
 	estimated := b.estimated.(bool)
 	b.sentBvals = append(b.sentBvals, estimated)
-	b.addMessage(NewAgreementMsg(int(b.epoch), &BValRequest{estimated}))
+
+	//b.addMessage(NewAgreementMsg(int(b.epoch), &BValRequest{estimated}))
+
+	bvalMsg, err := b.makeBValMsg(estimated)
+	if err != nil {
+		return err
+	}
+
+	SendHbbAgreement(b.groupId, bvalMsg)
 
 	for _, que := range b.delayedMessages {
-		if err := b.handleMessage(que.senderId, que.msg); err != nil {
+		if err := b.HandleMessage(que); err != nil {
 			bba_log.Warn(err)
 		}
 	}
 
-	b.delayedMessages = []delayedMessage{}
+	b.delayedMessages = []*quorumpb.AgreementMsg{}
+
+	return nil
 }
 
 // clear all and advance epoch
@@ -285,9 +300,6 @@ func (b *BBA) countOutputs() (int, []bool) {
 }
 
 func (b *BBA) countBvals(ok bool) int {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-
 	n := 0
 	for _, val := range b.recvBval {
 		if val == ok {
@@ -304,17 +316,6 @@ func (b *BBA) hasSentBval(val bool) bool {
 		}
 	}
 	return false
-}
-
-func (b *BBA) Messages() []*AgreementMessage {
-	b.lock.RLock()
-	msgs := b.messages
-	b.lock.RUnlock()
-
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	b.messages = []*AgreementMessage{}
-	return msgs
 }
 
 func (b *BBA) Output() interface{} {

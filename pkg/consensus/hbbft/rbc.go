@@ -1,7 +1,6 @@
 package hbbft
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -16,44 +15,42 @@ import (
 
 var rbc_log = logging.Logger("rbc")
 
-type proofs []*quorumpb.ProofReq
+type Proofs []*quorumpb.Proof
 
-func (p proofs) Len() int           { return len(p) }
-func (p proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p proofs) Less(i, j int) bool { return p[i].Index < p[j].Index }
+func (p Proofs) Len() int           { return len(p) }
+func (p Proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Proofs) Less(i, j int) bool { return p[i].Index < p[j].Index }
 
 type RBC struct {
 	Config
 
 	groupId    string
-	proposerId string
+	proposerId string //proposerId is pubkey for participated producers node
+
+	acs *ACS //for callback when finished
 
 	numParityShards int
 	numDataShards   int
 
 	enc reedsolomon.Encoder
 
-	recvReadys map[string]*quorumpb.ReadyReq
-	recvEchos  map[string]*quorumpb.EchoReq
+	recvProofs Proofs
+	recvReadys map[string]*quorumpb.Ready
 
-	echoSent      bool
-	readySent     bool
-	outputDecoded bool
-
-	output []byte
+	output         []byte
+	dataDecodeDone bool
+	consusDond     bool
 }
 
-//proposerId is uuid for other participated nodes
-func NewRBC(cfg Config, groupId, proposerId string) (*RBC, error) {
+// at least 2F + 1 producers are needed
+func NewRBC(cfg Config, acs *ACS, groupId, proposerId string) (*RBC, error) {
 
-	// calculate failer node
-	if cfg.F == 0 {
-		cfg.F = (cfg.N - 1) / 3
-	}
-	// calculate how to make data shards (with enc codec)
+	// for example F = 1, N = 2 * 1 + 1, 3 producers are needed
+	// ecc will encode data bytes into 3 pieces
+	// a producer need at least 3 - 1 = 2 pieces to recover data
 	var (
-		parityShards = 2 * cfg.F
-		dataShards   = cfg.N - parityShards
+		parityShards = cfg.F
+		dataShards   = cfg.N - cfg.F
 	)
 
 	// initial reed solomon codec
@@ -64,11 +61,12 @@ func NewRBC(cfg Config, groupId, proposerId string) (*RBC, error) {
 
 	rbc := &RBC{
 		Config:          cfg,
+		acs:             acs,
 		groupId:         groupId,
 		proposerId:      proposerId,
 		enc:             enc,
-		recvEchos:       make(map[string]*quorumpb.EchoReq),
-		recvReadys:      make(map[string]*quorumpb.ReadyReq),
+		recvProofs:      Proofs{},
+		recvReadys:      make(map[string]*quorumpb.Ready),
 		numParityShards: parityShards,
 		numDataShards:   dataShards,
 	}
@@ -79,12 +77,10 @@ func NewRBC(cfg Config, groupId, proposerId string) (*RBC, error) {
 func (r *RBC) HandleMessage(msg *quorumpb.BroadcastMsg) error {
 	var err error
 	switch msg.Type {
-	case quorumpb.BroadcastMsgType_PROOF_REQ:
-		err = r.handleProofRequest(msg)
-	case quorumpb.BroadcastMsgType_ECHO_REQ:
-		err = r.handleEchoRequest(msg)
-	case quorumpb.BroadcastMsgType_READY_REQ:
-		err = r.handleEchoRequest(msg)
+	case quorumpb.BroadcastMsgType_PROOF:
+		err = r.handleProofMsg(msg)
+	case quorumpb.BroadcastMsgType_READY:
+		err = r.handleReadyMsg(msg)
 	default:
 		err = fmt.Errorf("Invalid RBC protocol %+v", msg)
 	}
@@ -92,27 +88,34 @@ func (r *RBC) HandleMessage(msg *quorumpb.BroadcastMsg) error {
 	return err
 }
 
-func (r *RBC) InputValue(data []byte) ([]*quorumpb.BroadcastMsg, error) {
+// when input val in bytes to the rbc instance for myself, the instance will
+// 1. seperate bytes to [][]bytes by using reed solomon codec
+// 2. make proofReq for each pieces
+// 3. broadcast all proofReq via pubsub
+func (r *RBC) InputValue(data []byte) error {
 	shards, err := makeShards(r.enc, data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	//create RBC msg for each shards
-	reqs, err := r.makeRBCProofMessage(shards)
+	reqs, err := r.makeRBCProofMessages(shards)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// first rbc msg is mine
-	if err := r.handleProofRequest(reqs[0]); err != nil {
-		return nil, err
+	// broadcast RBC msg out via pubsub
+	for _, req := range reqs {
+		err := SendHbbRBC(r.groupId, req)
+		if err != nil {
+			return err
+		}
 	}
 
-	return reqs[1:], nil
+	return nil
 }
 
-func (r *RBC) makeRBCProofMessage(shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
+func (r *RBC) makeRBCProofMessages(shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
 	msgs := make([]*quorumpb.BroadcastMsg, len(shards))
 
 	for i := 0; i < len(msgs); i++ {
@@ -122,11 +125,19 @@ func (r *RBC) makeRBCProofMessage(shards [][]byte) ([]*quorumpb.BroadcastMsg, er
 			tree.Push(shards[i])
 		}
 		root, proof, proofIndex, n := tree.Prove()
-		payload := &quorumpb.ProofReq{
-			RootHash: root,
-			Proof:    proof,
-			Index:    int64(proofIndex),
-			Leaves:   int64(n),
+
+		//convert group user pubkey to byte
+		proposerPubkey := []byte(r.SignPubkey)
+		//sign root(hash) with pubkey
+		signature := []byte("FAKE_SIGN")
+
+		payload := &quorumpb.Proof{
+			RootHash:       root,
+			Proof:          proof,
+			Index:          int64(proofIndex),
+			Leaves:         int64(n),
+			ProposerPubkey: proposerPubkey,
+			ProposerSign:   signature,
 		}
 
 		payloadb, err := proto.Marshal(payload)
@@ -135,139 +146,143 @@ func (r *RBC) makeRBCProofMessage(shards [][]byte) ([]*quorumpb.BroadcastMsg, er
 		}
 
 		msgs[i] = &quorumpb.BroadcastMsg{
-			Type:     quorumpb.BroadcastMsgType_PROOF_REQ,
-			SenderId: r.MyNodeId,
-			Payload:  payloadb,
+			Type:    quorumpb.BroadcastMsgType_PROOF,
+			Payload: payloadb,
 		}
 	}
 
 	return msgs, nil
 }
 
-func (r *RBC) makeRBCEchoMessage(proof *quorumpb.ProofReq) (*quorumpb.BroadcastMsg, error) {
+func (r *RBC) makeRBCReadyMessage(proof *quorumpb.Proof) (*quorumpb.BroadcastMsg, error) {
+	//convert group user pubkey to byte
+	proposerPubkey := []byte(r.SignPubkey)
+	//sign root(hash) with pubkey
+	signature := []byte("FAKE_SIGN")
 
-	echoReq := &quorumpb.EchoReq{
-		Req: proof,
+	ready := &quorumpb.Ready{
+		RootHash:       proof.RootHash,
+		ProposerPubkey: proposerPubkey,
+		ProposerSign:   signature,
 	}
 
-	echoReqb, err := proto.Marshal(echoReq)
-	if err != nil {
-		return nil, err
-	}
-
-	echoMsg := &quorumpb.BroadcastMsg{
-		Type:     quorumpb.BroadcastMsgType_ECHO_REQ,
-		SenderId: r.MyNodeId,
-		Payload:  echoReqb,
-	}
-
-	return echoMsg, nil
-}
-
-func (r *RBC) makeRBCReadyMessage(echo *quorumpb.EchoReq) (*quorumpb.BroadcastMsg, error) {
-	readyReq := &quorumpb.ReadyReq{
-		RootHash: echo.Req.RootHash,
-	}
-
-	readyB, err := proto.Marshal(readyReq)
+	payloadb, err := proto.Marshal(ready)
 	if err != nil {
 		return nil, err
 	}
 
 	readyMsg := &quorumpb.BroadcastMsg{
-		Type:     quorumpb.BroadcastMsgType_READY_REQ,
-		SenderId: r.MyNodeId,
-		Payload:  readyB,
+		Type:    quorumpb.BroadcastMsgType_READY,
+		Payload: payloadb,
 	}
 
 	return readyMsg, nil
 }
 
-func (r *RBC) handleProofRequest(msg *quorumpb.BroadcastMsg) error {
-	proofReq := &quorumpb.ProofReq{}
-	err := proto.Unmarshal(msg.Payload, proofReq)
+func (r *RBC) handleProofMsg(msg *quorumpb.BroadcastMsg) error {
+	proof := &quorumpb.Proof{}
+	err := proto.Unmarshal(msg.Payload, proof)
 	if err != nil {
 		return err
 	}
 
-	if msg.SenderId != r.proposerId {
-		return fmt.Errorf("Receiving proof from (%s) that is not from the proposing node (%s)", msg.SenderId, r.proposerId)
+	//check proposer in producer list
+	isInProducerList := false
+	for _, nodePubkey := range r.Nodes {
+		if nodePubkey == string(proof.ProposerPubkey) {
+			isInProducerList = true
+			break
+		}
+	}
+	if !isInProducerList {
+		return fmt.Errorf("receive proof from non producer %s", proof.ProposerPubkey)
 	}
 
-	if r.echoSent {
-		return fmt.Errorf("Received proof from (%s) more than once", msg.SenderId)
+	//check signature
+	signOk := true
+	if !signOk {
+		return fmt.Errorf("invalid proof signature")
 	}
 
-	if !validateProof(proofReq) {
-		return fmt.Errorf("Received invalid proof from (%s)", msg.SenderId)
+	if !validateProof(proof) {
+		return fmt.Errorf("Received invalid proof from (%s)", proof.ProposerPubkey)
 	}
 
-	r.echoSent = true
+	//save proof
+	r.recvProofs = append(r.recvProofs, proof)
 
-	echoMsg, err := r.makeRBCEchoMessage(proofReq)
-	if err != nil {
-		return err
+	//if got enough proof, try decode it
+	if r.recvProofs.Len() == r.N-r.F {
+		err := r.tryDecodeValue()
+		if err != nil {
+			return err
+		}
+
+		//data is ready
+		r.dataDecodeDone = true
+
+		//broadcast ready msg
+		readyMsg, err := r.makeRBCReadyMessage(proof)
+		if err != nil {
+			return err
+		}
+
+		err = SendHbbRBC(r.groupId, readyMsg)
+		if err != nil {
+			return err
+		}
+
+		//check if we already receive enough readyMsg (N - F -1)
+		if len(r.recvReadys) == r.N-r.F-1 {
+			r.acs.RbcDone(r.proposerId)
+		}
 	}
 
-	//add message to msg queue
-	// r.messages = append(r.messages, echoMsg)
-	SendHbbRBC(r.groupId, echoMsg)
-
-	return r.handleEchoRequest(echoMsg)
+	return nil
 }
 
-func (r *RBC) handleEchoRequest(msg *quorumpb.BroadcastMsg) error {
-	echoReq := &quorumpb.EchoReq{}
-	err := proto.Unmarshal(msg.Payload, echoReq)
+func (r *RBC) handleReadyMsg(msg *quorumpb.BroadcastMsg) error {
+	ready := &quorumpb.Ready{}
+	err := proto.Unmarshal(msg.Payload, ready)
 	if err != nil {
 		return err
 	}
 
-	if _, ok := r.recvEchos[msg.SenderId]; ok {
-		return fmt.Errorf("Received multiple echos from (%s)", msg.SenderId)
+	//check if msg sent from producer in list
+	isInProducerList := false
+	for _, nodePubkey := range r.Nodes {
+		if nodePubkey == string(ready.ProposerPubkey) {
+			isInProducerList = true
+			break
+		}
+	}
+	if !isInProducerList {
+		return fmt.Errorf("receive proof from non producer %s", ready.ProposerPubkey)
 	}
 
-	if !validateProof(echoReq.Req) {
-		return fmt.Errorf("Received invalid proof from (%s)", msg.SenderId)
+	//check signature
+	signOk := true
+	if !signOk {
+		return fmt.Errorf("invalid ready signature")
 	}
 
-	r.recvEchos[msg.SenderId] = echoReq
-	if r.readySent || r.countEcho(echoReq.Req.RootHash) < r.N-r.F {
-		return r.tryDecodeValue(echoReq.Req.RootHash)
+	if _, ok := r.recvReadys[string(ready.ProposerPubkey)]; ok {
+		return fmt.Errorf("Received multiple readys from %s", ready.ProposerPubkey)
 	}
 
-	r.readySent = true
+	r.recvReadys[string(ready.ProposerPubkey)] = ready
 
-	readyMsg, err := r.makeRBCReadyMessage(echoReq)
-	//r.messages = append(r.messages, readyMsg)
-	SendHbbRBC(r.groupId, readyMsg)
+	//check if get enough ready
+	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
+		r.acs.RbcDone(r.proposerId)
+	} else {
+		//wait till enough
+	}
 
-	return r.handleReadyRequest(readyMsg)
+	return nil
 }
 
-func (r *RBC) handleReadyRequest(msg *quorumpb.BroadcastMsg) error {
-	if _, ok := r.recvReadys[msg.SenderId]; ok {
-		return fmt.Errorf("Received multiple readys from %s", msg.SenderId)
-	}
-
-	readyReq := &quorumpb.ReadyReq{}
-	err := proto.Unmarshal(msg.Payload, readyReq)
-	if err != nil {
-		return err
-	}
-
-	r.recvReadys[msg.SenderId] = readyReq
-
-	if r.countReady(readyReq.RootHash) == r.F+1 && !r.readySent {
-		r.readySent = true
-		//r.messages = append(r.messages, msg)
-		SendHbbRBC(r.groupId, msg)
-	}
-
-	return r.tryDecodeValue(readyReq.RootHash)
-}
-
-func validateProof(req *quorumpb.ProofReq) bool {
+func validateProof(req *quorumpb.Proof) bool {
 	return merkletree.VerifyProof(
 		sha256.New(),
 		req.RootHash,
@@ -276,22 +291,12 @@ func validateProof(req *quorumpb.ProofReq) bool {
 		uint64(req.Leaves))
 }
 
-func (r *RBC) tryDecodeValue(hash []byte) error {
-	if r.outputDecoded || r.countReady(hash) <= 2*r.F || r.countEcho(hash) <= r.F {
-		return nil
-	}
-
-	r.outputDecoded = true
-	var prfs proofs
-
-	for _, echo := range r.recvEchos {
-		prfs = append(prfs, echo.Req)
-	}
-
-	sort.Sort(prfs)
+func (r *RBC) tryDecodeValue() error {
+	//sort proof by indexId
+	sort.Sort(r.recvProofs)
 
 	shards := make([][]byte, r.numParityShards+r.numDataShards)
-	for _, p := range prfs {
+	for _, p := range r.recvProofs {
 		shards[p.Index] = p.Proof[0]
 	}
 
@@ -319,26 +324,6 @@ func makeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
 	}
 
 	return shards, nil
-}
-
-func (r *RBC) countEcho(hash []byte) int {
-	n := 0
-	for _, e := range r.recvEchos {
-		if bytes.Compare(hash, e.Req.RootHash) == 0 {
-			n++
-		}
-	}
-	return n
-}
-
-func (r *RBC) countReady(hash []byte) int {
-	n := 0
-	for _, e := range r.recvReadys {
-		if bytes.Compare(hash, e.RootHash) == 0 {
-			n++
-		}
-	}
-	return n
 }
 
 func (r *RBC) Output() []byte {
