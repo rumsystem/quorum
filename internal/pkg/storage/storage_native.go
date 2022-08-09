@@ -40,9 +40,10 @@ func dbGC(db *badger.DB, path string) {
 	for range ticker.C {
 	again:
 		err := db.RunValueLogGC(0.5)
-		dbmgr_log.Debugf("badger db %s GC finished, err: %s", path, err.Error())
 		if err == nil {
 			goto again
+		} else {
+			dbmgr_log.Debugf("badger db %s GC finished, err: %s", path, err.Error())
 		}
 	}
 }
