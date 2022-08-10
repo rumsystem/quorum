@@ -175,8 +175,10 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 			return nil
 		}
 		chain.handleReqBlockResp(trx)
+
+	// should be removed, bu cuicat
 	case quorumpb.TrxType_BLOCK_PRODUCED:
-		chain.handleBlockProduced(trx)
+		//chain.handleBlockProduced(trx)
 		return nil
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
@@ -483,6 +485,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 	return chain.syncer.AddBlockSynced(reqBlockResp, newBlock)
 }
 
+/*
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
 	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
@@ -490,6 +493,7 @@ func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> handleBlockProduced called", chain.groupId)
 	return chain.Consensus.Producer().AddProducedBlock(trx)
 }
+*/
 
 func (chain *Chain) UpdProducerList() {
 	chain_log.Debugf("<%s> UpdProducerList called", chain.groupId)

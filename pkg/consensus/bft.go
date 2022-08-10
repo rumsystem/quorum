@@ -1,4 +1,4 @@
-package hbbft
+package consensus
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -6,14 +6,9 @@ import (
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
-var hbbft_log = logging.Logger("hbbft")
+var bft_log = logging.Logger("bft")
 
-type Consus struct {
-	Epoch   uint64
-	Payload interface{}
-}
-
-type HoneyBadger struct {
+type Bft struct {
 	Config
 	groupId  string
 	acsInsts map[uint64]*ACS //map key is epoch
@@ -22,8 +17,8 @@ type HoneyBadger struct {
 	outputs  map[uint64][]*quorumpb.Trx
 }
 
-func NewHB(cfg Config, groupId string) *HoneyBadger {
-	return &HoneyBadger{
+func NewBft(cfg Config, groupId string) *Bft {
+	return &Bft{
 		Config:   cfg,
 		groupId:  groupId,
 		acsInsts: make(map[uint64]*ACS),
@@ -32,31 +27,31 @@ func NewHB(cfg Config, groupId string) *HoneyBadger {
 	}
 }
 
-func (hb *HoneyBadger) AddTrx(tx *quorumpb.Trx) error {
-	hb.txBuffer.Push(tx)
-	len, err := hb.txBuffer.GetBufferLen()
+func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
+	bft.txBuffer.Push(tx)
+	len, err := bft.txBuffer.GetBufferLen()
 	if err != nil {
 		return err
 	}
 
 	//start produce
 	if len == 1 {
-		hb.propose()
+		bft.propose()
 	}
 
 	return nil
 }
 
-func (hb *HoneyBadger) HandleMessage(senderId string, epoch uint64, msg *quorumpb.HBMsg) error {
-	acs, ok := hb.acsInsts[epoch]
+func (bft *Bft) HandleMessage(senderId string, epoch uint64, msg *quorumpb.HBMsg) error {
+	acs, ok := bft.acsInsts[epoch]
 	if !ok {
-		if epoch < hb.epoch {
-			hbbft_log.Warnf("message from old epoch, ignore")
+		if epoch < bft.epoch {
+			bft_log.Warnf("message from old epoch, ignore")
 			return nil
 		}
 
-		acs = NewACS(hb.Config, hb, epoch)
-		hb.acsInsts[epoch] = acs
+		acs = NewACS(bft.Config, bft, epoch)
+		bft.acsInsts[epoch] = acs
 	}
 
 	if err := acs.HandleMessage(msg); err != nil {
@@ -66,7 +61,7 @@ func (hb *HoneyBadger) HandleMessage(senderId string, epoch uint64, msg *quorump
 	return nil
 }
 
-func (hb *HoneyBadger) AcsDone(epoch uint64, result map[string][]byte) {
+func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {
 	var trxs map[string]*quorumpb.Trx
 	trxs = make(map[string]*quorumpb.Trx) //trx_id
 
@@ -75,7 +70,7 @@ func (hb *HoneyBadger) AcsDone(epoch uint64, result map[string][]byte) {
 		trxBundle := &quorumpb.HBTrxBundle{}
 		err := proto.Unmarshal(value, trxBundle)
 		if err != nil {
-			hbbft_log.Warningf("decode trxs failed for rbc inst %s", key)
+			bft_log.Warningf("decode trxs failed for rbc inst %s", key)
 		} else {
 			for _, trx := range trxBundle.Trxs {
 				if _, ok := trxs[trx.TrxId]; !ok {
@@ -116,7 +111,7 @@ func (hb *HoneyBadger) AcsDone(epoch uint64, result map[string][]byte) {
 	}
 }
 
-func (hb *HoneyBadger) buildBlock(trxs map[string]*quorumpb.Trx) error {
+func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	//try build block by using trxs
 	acs_log.Infof("------------------------------------------")
 	acs_log.Infof("acs result for epoch %d", hb.epoch)
@@ -128,7 +123,7 @@ func (hb *HoneyBadger) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	return nil
 }
 
-func (hb *HoneyBadger) propose() error {
+func (hb *Bft) propose() error {
 	trxs, err := hb.txBuffer.GetNRandTrx(hb.BatchSize)
 	if err != nil {
 		return err

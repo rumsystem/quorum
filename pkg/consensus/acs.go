@@ -1,4 +1,4 @@
-package hbbft
+package consensus
 
 import (
 	"fmt"
@@ -13,18 +13,18 @@ var acs_log = logging.Logger("acs")
 type ACS struct {
 	Config
 	groupId      string
-	hbb          *HoneyBadger
+	bft          *Bft
 	epoch        uint64
 	rbcInstances map[string]*RBC
 	rbcOutput    map[string]bool
 	rbcResults   map[string][]byte
 }
 
-func NewACS(cfg Config, hbb *HoneyBadger, epoch uint64) *ACS {
+func NewACS(cfg Config, bft *Bft, epoch uint64) *ACS {
 	acs := &ACS{
 		Config:       cfg,
-		groupId:      hbb.groupId,
-		hbb:          hbb,
+		groupId:      bft.groupId,
+		bft:          bft,
 		epoch:        epoch,
 		rbcInstances: make(map[string]*RBC),
 		rbcOutput:    make(map[string]bool),
@@ -32,7 +32,7 @@ func NewACS(cfg Config, hbb *HoneyBadger, epoch uint64) *ACS {
 	}
 
 	for _, id := range cfg.Nodes {
-		acs.rbcInstances[id], _ = NewRBC(cfg, acs, hbb.groupId, id)
+		acs.rbcInstances[id], _ = NewRBC(cfg, acs, bft.groupId, id)
 	}
 
 	return acs
@@ -42,7 +42,7 @@ func NewACS(cfg Config, hbb *HoneyBadger, epoch uint64) *ACS {
 func (a *ACS) InputValue(val []byte) error {
 	rbc, ok := a.rbcInstances[a.MyNodePubkey]
 	if !ok {
-		return fmt.Errorf("could not find rbc instance (%d)", a.MyNodePubkey)
+		return fmt.Errorf("could not find rbc instance (%s)", a.MyNodePubkey)
 	}
 
 	return rbc.InputValue(val)
@@ -61,7 +61,7 @@ func (a *ACS) RbcDone(proposerId string) {
 		}
 
 		//call hbb to get result
-		a.hbb.AcsDone(a.epoch, a.rbcResults)
+		a.bft.AcsDone(a.epoch, a.rbcResults)
 	} else {
 		//continue waiting
 		return
@@ -85,7 +85,7 @@ func (a *ACS) processBroadcast(msg *quorumpb.HBMsg) error {
 
 	rbc, ok := a.rbcInstances[broadcastMsg.SenderPubkey]
 	if !ok {
-		return fmt.Errorf("could not find rbc instance for (%d)", broadcastMsg.SenderPubkey)
+		return fmt.Errorf("could not find rbc instance for (%s)", broadcastMsg.SenderPubkey)
 	}
 
 	return rbc.HandleMessage(broadcastMsg)

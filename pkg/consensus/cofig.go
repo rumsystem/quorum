@@ -1,4 +1,4 @@
-package hbbft
+package consensus
 
 type Config struct {
 	N            int      // participating nodes

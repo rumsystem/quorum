@@ -1,4 +1,4 @@
-package hbbft
+package consensus
 
 import (
 	"crypto/sha256"
@@ -12,6 +12,8 @@ import (
 
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
+
+const TRXS_TOTAL_SIZE int = 900 * 1024
 
 var rbc_log = logging.Logger("rbc")
 

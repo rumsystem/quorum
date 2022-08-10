@@ -1,4 +1,4 @@
-package hbbft
+package consensus
 
 import (
 	guuid "github.com/google/uuid"
