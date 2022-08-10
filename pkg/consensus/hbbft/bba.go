@@ -1,5 +1,7 @@
 package hbbft
 
+/*
+
 import (
 	"fmt"
 
@@ -326,3 +328,4 @@ func (b *BBA) Output() interface{} {
 	}
 	return nil
 }
+*/

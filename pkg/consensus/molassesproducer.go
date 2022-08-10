@@ -49,7 +49,7 @@ type MolassesProducer struct {
 	cIface            def.ChainMolassesIface
 	groupId           string
 
-	//acsInst map[uint64]*ACS
+	//hbbft
 }
 
 func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface, hbnodes []string) {
@@ -62,6 +62,8 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	producer.status = StatusIdle
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
+
+	//create hbbft here
 
 	molaproducer_log.Infof("<%s> producer created", producer.groupId)
 }

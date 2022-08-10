@@ -127,7 +127,7 @@ func (r *RBC) makeRBCProofMessages(shards [][]byte) ([]*quorumpb.BroadcastMsg, e
 		root, proof, proofIndex, n := tree.Prove()
 
 		//convert group user pubkey to byte
-		proposerPubkey := []byte(r.SignPubkey)
+		proposerPubkey := []byte(r.MySignPubkey)
 		//sign root(hash) with pubkey
 		signature := []byte("FAKE_SIGN")
 
@@ -146,8 +146,9 @@ func (r *RBC) makeRBCProofMessages(shards [][]byte) ([]*quorumpb.BroadcastMsg, e
 		}
 
 		msgs[i] = &quorumpb.BroadcastMsg{
-			Type:    quorumpb.BroadcastMsgType_PROOF,
-			Payload: payloadb,
+			SenderPubkey: r.MyNodePubkey,
+			Type:         quorumpb.BroadcastMsgType_PROOF,
+			Payload:      payloadb,
 		}
 	}
 
@@ -156,7 +157,7 @@ func (r *RBC) makeRBCProofMessages(shards [][]byte) ([]*quorumpb.BroadcastMsg, e
 
 func (r *RBC) makeRBCReadyMessage(proof *quorumpb.Proof) (*quorumpb.BroadcastMsg, error) {
 	//convert group user pubkey to byte
-	proposerPubkey := []byte(r.SignPubkey)
+	proposerPubkey := []byte(r.MySignPubkey)
 	//sign root(hash) with pubkey
 	signature := []byte("FAKE_SIGN")
 
@@ -172,8 +173,9 @@ func (r *RBC) makeRBCReadyMessage(proof *quorumpb.Proof) (*quorumpb.BroadcastMsg
 	}
 
 	readyMsg := &quorumpb.BroadcastMsg{
-		Type:    quorumpb.BroadcastMsgType_READY,
-		Payload: payloadb,
+		SenderPubkey: r.MyNodePubkey,
+		Type:         quorumpb.BroadcastMsgType_READY,
+		Payload:      payloadb,
 	}
 
 	return readyMsg, nil

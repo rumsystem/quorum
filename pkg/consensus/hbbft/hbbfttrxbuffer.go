@@ -44,7 +44,7 @@ func (b *TrxBuffer) GetTrxById(trxId string) (*quorumpb.Trx, error) {
 // since trx is buffered in *random" way, no sequence is created
 // just return the first n items in the slice is enough
 // caller should check the length of return trx slice
-func (b *TrxBuffer) GetNRandTrx(n uint) ([]*quorumpb.Trx, error) {
+func (b *TrxBuffer) GetNRandTrx(n int) ([]*quorumpb.Trx, error) {
 	//get len
 	len, err := nodectx.GetNodeCtx().GetChainStorage().GeBufferedTrxLenHBB(b.queueId)
 	if err != nil {
@@ -52,7 +52,7 @@ func (b *TrxBuffer) GetNRandTrx(n uint) ([]*quorumpb.Trx, error) {
 	}
 	trxs, err := nodectx.GetNodeCtx().GetChainStorage().GetAllTrxHBB(b.queueId)
 
-	if n >= uint(len) {
+	if n >= len {
 		//return all trxs in buffer
 		return trxs, err
 	} else {

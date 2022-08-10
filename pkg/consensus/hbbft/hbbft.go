@@ -1,57 +1,53 @@
 package hbbft
 
 import (
-	"math"
-	"sync"
-	"time"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 var hbbft_log = logging.Logger("hbbft")
 
-type HBMessage struct {
+type Consus struct {
 	Epoch   uint64
 	Payload interface{}
 }
 
 type HoneyBadger struct {
-	groupId string
 	Config
+	groupId  string
 	acsInsts map[uint64]*ACS //map key is epoch
 	txBuffer *TrxBuffer
-	epoch    uint64	//current epoch
-
-	lock    sync.RWMutex
-	outputs map[uint64][]HBTrx
-
-	messageQue *messageQue
-	msgCount   int
+	epoch    uint64 //current epoch
+	outputs  map[uint64][]*quorumpb.Trx
 }
 
 func NewHB(cfg Config, groupId string) *HoneyBadger {
 	return &HoneyBadger{
-		Config:     cfg,
-		groupId:  
-		acsInsts:   make(map[uint64]*ACS),
-		txBuffer:   NewTrxBuffer(),
-		outputs:    make(map[uint64][]HBTrx),
-		messageQue: newMessageQue(),
+		Config:   cfg,
+		groupId:  groupId,
+		acsInsts: make(map[uint64]*ACS),
+		txBuffer: NewTrxBuffer(groupId),
+		outputs:  make(map[uint64][]*quorumpb.Trx),
 	}
-}
-
-func (hb *HoneyBadger) Messages() []MessageTuple {
-	return hb.messageQue.messages()
 }
 
 func (hb *HoneyBadger) AddTrx(tx *quorumpb.Trx) error {
 	hb.txBuffer.Push(tx)
+	len, err := hb.txBuffer.GetBufferLen()
+	if err != nil {
+		return err
+	}
+
+	//start produce
+	if len == 1 {
+		hb.propose()
+	}
+
 	return nil
 }
 
-func (hb *HoneyBadger) HandleMessage(senderId string, epoch uint64, msg *ACSMessage) error {
-	hb.msgCount++
+func (hb *HoneyBadger) HandleMessage(senderId string, epoch uint64, msg *quorumpb.HBMsg) error {
 	acs, ok := hb.acsInsts[epoch]
 	if !ok {
 		if epoch < hb.epoch {
@@ -59,60 +55,95 @@ func (hb *HoneyBadger) HandleMessage(senderId string, epoch uint64, msg *ACSMess
 			return nil
 		}
 
-		acs = NewACS(hb.Config)
+		acs = NewACS(hb.Config, hb, epoch)
 		hb.acsInsts[epoch] = acs
 	}
 
-	if err := acs.handleMessage(senderId, msg); err != nil {
+	if err := acs.HandleMessage(msg); err != nil {
 		return err
 	}
 
-	hb.addMessage(acs.messageQue.messages())
-	if hb.epoch == epoch {
-		return hb.maybeProcessOutput()
+	return nil
+}
+
+func (hb *HoneyBadger) AcsDone(epoch uint64, result map[string][]byte) {
+	var trxs map[string]*quorumpb.Trx
+	trxs = make(map[string]*quorumpb.Trx) //trx_id
+
+	//decode trxs
+	for key, value := range result {
+		trxBundle := &quorumpb.HBTrxBundle{}
+		err := proto.Unmarshal(value, trxBundle)
+		if err != nil {
+			hbbft_log.Warningf("decode trxs failed for rbc inst %s", key)
+		} else {
+			for _, trx := range trxBundle.Trxs {
+				if _, ok := trxs[trx.TrxId]; !ok {
+					trxs[trx.TrxId] = trx
+				}
+			}
+		}
+	}
+	//order trx
+
+	err := hb.buildBlock(trxs)
+	if err != nil {
+		acs_log.Warnf(err.Error())
 	}
 
-	hb.removeOldEpochs(epoch)
+	//remove outputed trxs from buffer
+	for trxId, _ := range trxs {
+		err := hb.txBuffer.Delete(trxId)
+		if err != nil {
+			acs_log.Warnf(err.Error())
+		}
+	}
+
+	//clear acs for finished epoch
+	hb.acsInsts[epoch] = nil
+
+	//advanced to next epoch
+	hb.epoch++
+
+	trxBufLen, err := hb.txBuffer.GetBufferLen()
+	if err != nil {
+		acs_log.Warnf(err.Error())
+	}
+
+	//start next round
+	if trxBufLen != 0 {
+		hb.propose()
+	}
 }
 
-func (hb *HoneyBadger) Start() error {
-	return hb.propose()
-}
+func (hb *HoneyBadger) buildBlock(trxs map[string]*quorumpb.Trx) error {
+	//try build block by using trxs
+	acs_log.Infof("------------------------------------------")
+	acs_log.Infof("acs result for epoch %d", hb.epoch)
 
-func (hb *HoneyBadger) lenMempool() int {
-	return int(hb.txBuffer.length)
+	for trxId, _ := range trxs {
+		acs_log.Infof("%s", trxId)
+	}
+
+	return nil
 }
 
 func (hb *HoneyBadger) propose() error {
-	if hb.txBuffer.length == 0 {
-		time.Sleep(2 * time.Second)
-		return hb.propose()
+	trxs, err := hb.txBuffer.GetNRandTrx(hb.BatchSize)
+	if err != nil {
+		return err
+	}
+	trxBundle := &quorumpb.HBTrxBundle{}
+	for _, trx := range trxs {
+		trxBundle.Trxs = append(trxBundle.Trxs, trx)
 	}
 
-	batchSize := hb.BatchSize
-	if batchSize == 0 {
-		scalar := 20
-		batchSize
+	datab, err := proto.Marshal(trxBundle)
+	acs, ok := hb.acsInsts[hb.epoch]
+	if !ok {
+		acs = NewACS(hb.Config, hb, hb.epoch)
+		hb.acsInsts[hb.epoch] = acs
 	}
 
-	batchSize = int(math.Min(float64(batchSize), float64(hb.txBuffer.length)))
-	n := int(math.Max(float64(1), float64(batchSize/len(hb.Nodes))))
-	batch := sample(hb.txBuffer.data[:batchSize], n)
-
-}
-
-func (hb *HoneyBadger) getOrNewAcsInst(epoch uint64) *ACS {
-	if acs, ok := hb.acsInsts[epoch]; ok {
-		return acs
-	}
-
-	acs := NewACS(hb.Config)
-	hb.acsInsts[epoch] = acs
-	return acs
-}
-
-func (hb *HoneyBadger) addMessage(msgs []MessageTuple) {
-	for _, msg := range msgs {
-		hb.messageQue.addMessage(HBMessage{hb.epoch, msg.Payload}, msg.To)
-	}
+	return hb.acsInsts[hb.epoch].InputValue(datab)
 }
