@@ -41,7 +41,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
-	github.com/hack-pad/go-indexeddb v0.1.0
+	github.com/hack-pad/go-indexeddb v0.2.0
 	github.com/huo-ju/quercus v0.0.0-20210909192534-3740345b9ab8
 	github.com/ipfs/go-ds-badger2 v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.2
@@ -63,8 +63,8 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
-	github.com/rumsystem/keystore v0.0.0-20220713151207-7a9eed02caa7
-	github.com/rumsystem/rumchaindata v0.0.0-20220809174629-d5d6a47630c2
+	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
+	github.com/rumsystem/rumchaindata v0.0.0-20220812004607-2343d7601479
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/swaggo/echo-swagger v1.1.0
@@ -212,7 +212,7 @@ require (
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.2.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rivo/uniseg v0.3.4 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect

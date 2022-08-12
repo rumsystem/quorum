@@ -254,6 +254,21 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	return nil
 }
 
+func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
+	chain_log.Debugf("<%s> HandleHB called", chain.groupId)
+	// user node should not handle hb msg
+	if chain.Consensus.Producer() == nil {
+		return nil
+	}
+
+	return chain.Consensus.Producer().HandleHBMsg(hb)
+}
+
+func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsg) error {
+	chain_log.Debugf("<%s> HandleBlockRex called", chain.groupId)
+	return nil
+}
+
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil

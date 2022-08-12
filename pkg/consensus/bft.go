@@ -42,23 +42,38 @@ func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	return nil
 }
 
-func (bft *Bft) HandleMessage(senderId string, epoch uint64, msg *quorumpb.HBMsg) error {
-	acs, ok := bft.acsInsts[epoch]
-	if !ok {
-		if epoch < bft.epoch {
-			bft_log.Warnf("message from old epoch, ignore")
-			return nil
+func (bft *Bft) HandleMessage(msg *quorumpb.HBMsg) error {
+
+	switch msg.MsgType {
+	case quorumpb.HBBMsgType_BROADCAST:
+		broadcast := &quorumpb.BroadcastMsg{}
+		err := proto.Unmarshal(msg.Payload, broadcast)
+		if err != nil {
+			return err
 		}
 
-		acs = NewACS(bft.Config, bft, epoch)
-		bft.acsInsts[epoch] = acs
-	}
+		acs, ok := bft.acsInsts[uint64(broadcast.Epoch)]
+		if !ok {
+			if uint64(broadcast.Epoch) < bft.epoch {
+				bft_log.Warnf("message from old epoch, ignore")
+				return nil
+			}
 
-	if err := acs.HandleMessage(msg); err != nil {
-		return err
+			acs = NewACS(bft.Config, bft, uint64(broadcast.Epoch))
+			bft.acsInsts[uint64(broadcast.Epoch)] = acs
+		}
+
+		if err := acs.HandleMessage(msg); err != nil {
+			return err
+		}
+
+		return nil
+	default:
+		//do nothing
 	}
 
 	return nil
+
 }
 
 func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {

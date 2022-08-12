@@ -50,10 +50,16 @@ func NewRBC(cfg Config, acs *ACS, groupId, proposerId string) (*RBC, error) {
 	// for example F = 1, N = 2 * 1 + 1, 3 producers are needed
 	// ecc will encode data bytes into 3 pieces
 	// a producer need at least 3 - 1 = 2 pieces to recover data
-	var (
+	var parityShards, dataShards int
+	if cfg.N == 1 {
+		parityShards = 1
+		dataShards = 1
+	} else {
 		parityShards = cfg.F
-		dataShards   = cfg.N - cfg.F
-	)
+		dataShards = cfg.N - cfg.F
+	}
+
+	rbc_log.Infof("dataShards %d, parityShards %d", dataShards, parityShards)
 
 	// initial reed solomon codec
 	enc, err := reedsolomon.New(dataShards, parityShards)
@@ -150,6 +156,7 @@ func (r *RBC) makeRBCProofMessages(shards [][]byte) ([]*quorumpb.BroadcastMsg, e
 		msgs[i] = &quorumpb.BroadcastMsg{
 			SenderPubkey: r.MyNodePubkey,
 			Type:         quorumpb.BroadcastMsgType_PROOF,
+			Epoch:        int64(r.acs.epoch),
 			Payload:      payloadb,
 		}
 	}
@@ -318,6 +325,9 @@ func (r *RBC) tryDecodeValue() error {
 }
 
 func makeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
+
+	rbc_log.Infof("len %d", len(data))
+
 	shards, err := enc.Split(data)
 	if err != nil {
 		return nil, err

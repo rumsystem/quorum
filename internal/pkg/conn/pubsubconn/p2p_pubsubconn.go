@@ -269,7 +269,14 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					} else {
 						channel_log.Warningf(err.Error())
 					}
+				} else if pkg.Type == quorumpb.PackageType_HBB {
+					hb := &quorumpb.HBMsg{}
+					err := proto.Unmarshal(pkg.Data, hb)
+					if err != nil {
+						channel_log.Warningf(err.Error())
+					}
 				}
+
 			} else {
 				channel_log.Warningf(err.Error())
 				channel_log.Warningf("%s", msg.Data)

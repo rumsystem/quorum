@@ -96,6 +96,10 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	}
 }
 
+func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsg) error {
+	return producer.bft.HandleMessage(hbmsg)
+}
+
 /*
 
 func (producer *MolassesProducer) startMergeBlock() error {

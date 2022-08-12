@@ -3,6 +3,8 @@ package chain
 import (
 	"bytes"
 	"encoding/hex"
+	"time"
+
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -10,7 +12,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 const (
@@ -293,10 +294,12 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 		return "", err
 	}
 
-	err = grp.ChainCtx.GetPubqueueIface().TrxEnqueue(grp.Item.GroupId, trx)
-	if err != nil {
-		return "", err
-	}
+	/*
+		err = grp.ChainCtx.GetPubqueueIface().TrxEnqueue(grp.Item.GroupId, trx)
+		if err != nil {
+			return "", err
+		}
+	*/
 
 	return trx.TrxId, nil
 }

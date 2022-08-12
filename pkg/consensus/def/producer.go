@@ -7,4 +7,5 @@ import (
 type Producer interface {
 	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	AddTrx(trx *quorumpb.Trx)
+	HandleHBMsg(hb *quorumpb.HBMsg) error
 }
