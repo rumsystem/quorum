@@ -44,7 +44,7 @@ func (rf *QuorumRelayFilter) AllowConnect(src peer.ID, srcAddr ma.Multiaddr, des
 		// db error, we abort connect by now
 		return false
 	}
-	inBlacklistRev, err := handlers.CheckBlacklist(rf.db, dest.String(), src.String())
+	inBlacklistRev, err := handlers.CheckBlacklist(rf.db, src.String(), dest.String())
 	if err != nil {
 		// db error, we abort connect by now
 		return false
