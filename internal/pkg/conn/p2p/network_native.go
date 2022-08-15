@@ -175,7 +175,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, Nodeopt: nodeopt}
 
 	//reconnect peers
 	storedpeers := []peer.AddrInfo{}

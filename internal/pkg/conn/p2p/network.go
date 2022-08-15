@@ -13,6 +13,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/stats"
 	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
@@ -36,6 +37,7 @@ type Node struct {
 	RoutingDiscovery *discovery.RoutingDiscovery
 	PubSubConnMgr    *pubsubconn.PubSubConnMgr
 	peerStatus       *PeerStatus
+	Nodeopt          *options.NodeOptions
 }
 
 func (node *Node) eventhandler(ctx context.Context) {

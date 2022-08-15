@@ -3,6 +3,8 @@ package chain
 import (
 	"bytes"
 	"encoding/hex"
+	"time"
+
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -10,7 +12,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 const (

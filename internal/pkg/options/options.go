@@ -14,6 +14,7 @@ type NodeOptions struct {
 	EnableNat         bool
 	EnableRumExchange bool
 	EnableDevNetwork  bool
+	EnableSnapshot    bool
 	IsRexTestMode     bool
 	MaxPeers          int
 	ConnsHi           int

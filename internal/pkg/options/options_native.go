@@ -139,6 +139,7 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = v.ReadInConfig()
 	if err != nil {
 		return nil, err
@@ -150,6 +151,11 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	options.EnableRumExchange = v.GetBool("EnableRumExchange")
 	options.EnableDevNetwork = v.GetBool("EnableDevNetwork")
 	options.NetworkName = v.GetString("NetworkName")
+	if v.Get("EnableSnapshot") == nil {
+		options.EnableSnapshot = true
+	} else {
+		options.EnableSnapshot = v.GetBool("EnableSnapshot")
+	}
 	if options.NetworkName == "" {
 		options.NetworkName = defaultNetworkName
 	}
