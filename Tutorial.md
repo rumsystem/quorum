@@ -96,7 +96,7 @@ Common params:
 
 1. 安装 RUM
 
-[下载安装包](https://rumsystem.github.io/rum-docs/#/rum-app/test)
+[下载安装包](https://rumsystem.net/apps)
 
 [自行编译最新包](https://github.com/rumsystem/quorum)
 
@@ -871,7 +871,7 @@ when `object.content` is not null, `object.image` is optional.
 }
 ```
 
-[rum app](https://github.com/rumsystem/rum-app) bbs use `object.name`  as title which should not be `""`:
+[rum app](https://rumsystem.net/apps) bbs use `object.name`  as title which should not be `""`:
 
 ```json
 {
