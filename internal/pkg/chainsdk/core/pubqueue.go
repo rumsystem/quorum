@@ -229,7 +229,7 @@ func doRefresh() {
 				return
 			}
 
-			chain_log.Debugf("<pubqueue>: got item %v", item.Trx.TrxId)
+			chain_log.Debugf("<pubqueue>: got item %v group_id %s", item.Trx.TrxId, item.GroupId)
 
 			switch item.State {
 			case PublishQueueItemStatePending:
