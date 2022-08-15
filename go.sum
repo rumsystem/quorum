@@ -179,8 +179,8 @@ github.com/cheekybits/genny v1.0.0 h1:uGGa4nei+j20rOSeDeP5Of12XVm7TGUd4dJA9RDitf
 github.com/cheekybits/genny v1.0.0/go.mod h1:+tQajlRqAUrPI7DOSpB0XAqZYtQakVtB7wXkRAgjxjQ=
 github.com/chux0519/badger/v3 v3.2103.3 h1:ZUOQ4PoPmEuloYPuII/VvwtExLPl23Qi2XJfV+T8VoI=
 github.com/chux0519/badger/v3 v3.2103.3/go.mod h1:bp8LpW+XFgf6aXrBOmJCoOJUfNIfKkJI6clHr9hc+do=
-github.com/chux0519/go-libp2p v0.19.1-0.20220804012132-8683d568efc9 h1:x80DT7NMZDjk2XBCZmeby4c+aaDaQK4fzxapnIQGIIw=
-github.com/chux0519/go-libp2p v0.19.1-0.20220804012132-8683d568efc9/go.mod h1:Ki9jJXLO2YqrTIFxofV7Twyd3INWPT97+r8hGt7XPjI=
+github.com/chux0519/go-libp2p v0.19.1-0.20220814133711-afcc91c7c730 h1:TL4pdIChr1NVWLXjWxAwwL+uxjc9Kh/dXRngOzNU6I0=
+github.com/chux0519/go-libp2p v0.19.1-0.20220814133711-afcc91c7c730/go.mod h1:Ki9jJXLO2YqrTIFxofV7Twyd3INWPT97+r8hGt7XPjI=
 github.com/chux0519/ristretto v0.1.1 h1:2qG1fLeoNfnOifo71z+96//ZPglIc+JDSm+OCmdbrVI=
 github.com/chux0519/ristretto v0.1.1/go.mod h1:fux0lOrBhrVCJd3lcTHsIJhq1T2rokOu6v9Vcb3Q9ug=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=

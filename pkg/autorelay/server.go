@@ -39,6 +39,7 @@ func StartRelayServer(config cli.RelayNodeFlag, quitCh chan os.Signal, h *api.Re
 	r.POST("/v1/forbid", h.ForbidPeer)
 	r.POST("/v1/blacklist", h.AddBlacklist)
 	r.DELETE("/v1/blacklist", h.DeleteBlacklist)
+	r.POST("/v1/disconnect", h.Disconnect)
 
 	r.GET("/v1/permissions", h.GetPermissions)
 	r.GET("/v1/blacklist", h.GetBlacklist)

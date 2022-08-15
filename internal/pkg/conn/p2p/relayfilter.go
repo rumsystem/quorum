@@ -38,11 +38,17 @@ func (rf *QuorumRelayFilter) AllowConnect(src peer.ID, srcAddr ma.Multiaddr, des
 	}
 
 	// check whether the remote peer is in the blacklist of server peer
+	// should check both side, cause connection could be bio connection
 	inBlacklist, err := handlers.CheckBlacklist(rf.db, dest.String(), src.String())
 	if err != nil {
 		// db error, we abort connect by now
 		return false
 	}
+	inBlacklistRev, err := handlers.CheckBlacklist(rf.db, src.String(), dest.String())
+	if err != nil {
+		// db error, we abort connect by now
+		return false
+	}
 
-	return !inBlacklist
+	return !inBlacklist && !inBlacklistRev
 }

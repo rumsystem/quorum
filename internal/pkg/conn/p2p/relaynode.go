@@ -37,7 +37,12 @@ type RelayNode struct {
 	PeerID peer.ID
 	Host   host.Host
 	Info   *NodeInfo
-	Relay  *relayv2.Relay
+}
+
+func (node *RelayNode) GetRelay() *relayv2.Relay {
+	bhost := node.Host.(*routedhost.RoutedHost).Unwrap().(*basichost.BasicHost)
+	relayManager := bhost.RelayManager()
+	return relayManager.Relay()
 }
 
 func (node *RelayNode) eventhandler(ctx context.Context) {
@@ -116,16 +121,13 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 		return nil, err
 	}
 
-	bhost := host.(*routedhost.RoutedHost).Unwrap().(*basichost.BasicHost)
-	relayManager := bhost.RelayManager()
-
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	node := &RelayNode{Host: host, Info: info, Relay: relayManager.Relay()}
+	node := &RelayNode{Host: host, Info: info}
 
 	go node.eventhandler(ctx)
 	return node, nil

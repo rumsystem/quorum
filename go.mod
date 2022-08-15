@@ -18,7 +18,9 @@ replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
 //replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
 //replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
-replace github.com/libp2p/go-libp2p => github.com/chux0519/go-libp2p v0.19.1-0.20220804012132-8683d568efc9
+replace github.com/libp2p/go-libp2p => github.com/chux0519/go-libp2p v0.19.1-0.20220814133711-afcc91c7c730
+
+// replace github.com/libp2p/go-libp2p => ../go-libp2p
 
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5

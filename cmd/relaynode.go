@@ -106,7 +106,7 @@ func runRelaynode(config cli.RelayNodeFlag) {
 	}
 
 	// now start relay api server
-	handler := api.NewRelayServerHandler(rdb, relayNode.Relay)
+	handler := api.NewRelayServerHandler(rdb, relayNode)
 
 	go autorelay.StartRelayServer(config, signalch, &handler)
 
