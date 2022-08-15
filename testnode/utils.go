@@ -140,9 +140,9 @@ func GetAllGroupTrxIds(ctx context.Context, baseUrl string, group_id string, hei
 	}
 	block := &quorumpb.Block{}
 	if err := json.Unmarshal(resp, &block); err == nil {
-		prevBlockId := block.PrevBlockId
+		prevEpoch := block.Epoch - 1
 		for {
-			_, resp, err := RequestAPI(baseUrl, fmt.Sprintf("/api/v1/block/%s/%s", group_id, prevBlockId), "GET", "")
+			_, resp, err := RequestAPI(baseUrl, fmt.Sprintf("/api/v1/block/%s/%d", group_id, prevEpoch), "GET", "")
 			if err != nil {
 				break
 			}
@@ -150,14 +150,14 @@ func GetAllGroupTrxIds(ctx context.Context, baseUrl string, group_id string, hei
 			if err != nil {
 				break
 			}
-			if prevBlockId == "" || prevBlockId == block.PrevBlockId {
+			if prevEpoch == 0 || prevEpoch == block.Epoch-1 {
 				break
 			}
 
 			for _, trx := range block.Trxs {
 				trxids = append(trxids, trx.TrxId)
 			}
-			prevBlockId = block.PrevBlockId
+			prevEpoch = block.Epoch - 1
 		}
 
 	}

@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 	"fmt"
+
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -112,13 +113,13 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 				return false, err
 			}
 
-			blockChunk := quorumpb.BlockDbChunk{}
-			perr := proto.Unmarshal(v, &blockChunk)
+			block := quorumpb.Block{}
+			perr := proto.Unmarshal(v, &block)
 			if perr != nil {
 				return false, perr
 			}
 
-			if blockChunk.BlockItem.GroupId == item.GroupId {
+			if block.GroupId == item.GroupId {
 				return true, nil
 			}
 			return false, nil

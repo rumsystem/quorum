@@ -444,7 +444,7 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 }
 
 func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsg, psChannel PsConnChanel, channelId ...string) error {
-	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
+	conn_log.Debugf("<%s> SendHBMsg called", connMgr.GroupId)
 	var pkg *quorumpb.Package
 	pkg = &quorumpb.Package{}
 
@@ -462,15 +462,15 @@ func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsg, psChannel PsConnChanel, c
 	}
 
 	if psChannel == ProducerChannel {
-		conn_log.Debugf("<%s> Send trx via Producer_Channel", connMgr.GroupId)
+		conn_log.Debugf("<%s> Send hbmsg via Producer_Channel", connMgr.GroupId)
 		psconn := connMgr.getProducerPsConn()
 		return psconn.Publish(pkgBytes)
 	} else if psChannel == UserChannel {
-		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+		conn_log.Debugf("<%s> Send hbmsg via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
 		return psconn.Publish(pkgBytes)
 	} else if psChannel == SyncerChannel {
-		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
+		conn_log.Debugf("<%s> Send hbmsg via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
 		psconn, err := connMgr.getSyncConn(channelId[0])
 		if err != nil {
 			return err

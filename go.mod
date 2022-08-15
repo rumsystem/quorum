@@ -64,7 +64,7 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
 	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
-	github.com/rumsystem/rumchaindata v0.0.0-20220812004607-2343d7601479
+	github.com/rumsystem/rumchaindata v0.0.0-20220815181003-e0561dd5cc6d
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/swaggo/echo-swagger v1.1.0

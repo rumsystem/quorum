@@ -99,6 +99,13 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 					} else {
 						quercus_log.Warningf(err.Error())
 					}
+				} else if pkg.Type == quorumpb.PackageType_HBB {
+					hb := &quorumpb.HBMsg{}
+					err := proto.Unmarshal(pkg.Data, hb)
+					if err != nil {
+						channel_log.Warningf(err.Error())
+					}
+					qconn.chain.HandleHBPsConn(hb)
 				}
 			}
 			//fmt.Printf("Node:(%s) [%s] got pubsub msg\n", channel.Subscription.Id, channel.Cid)

@@ -275,8 +275,8 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					if err != nil {
 						channel_log.Warningf(err.Error())
 					}
+					psconn.chain.HandleHBPsConn(hb)
 				}
-
 			} else {
 				channel_log.Warningf(err.Error())
 				channel_log.Warningf("%s", msg.Data)

@@ -35,6 +35,8 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 	}
 
 	producer.bft = NewBft(*config, producer.groupId)
+	producer.bft.propose()
+
 	molaproducer_log.Infof("<%s> producer created", producer.groupId)
 }
 
@@ -97,6 +99,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsg) error {
+	molaproducer_log.Debugf("<%s> HandleHBMsg %s", producer.groupId, hbmsg.MsgType.String())
 	return producer.bft.HandleMessage(hbmsg)
 }
 

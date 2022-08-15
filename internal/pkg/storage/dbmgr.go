@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,8 +69,8 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 					proto.Unmarshal(b, itemv0)
 					if itemv0.CipherKey != "" { //ok
 						item.LastUpdate = itemv0.LastUpdate
-						item.HighestHeight = itemv0.HighestHeight
-						item.HighestBlockId = itemv0.HighestBlockId
+						item.Epoch = itemv0.HighestHeight
+						//item.HighestBlockId = itemv0.HighestBlockId
 						item.GenesisBlock = itemv0.GenesisBlock
 						item.EncryptType = itemv0.EncryptType
 						item.ConsenseType = itemv0.ConsenseType
@@ -109,45 +110,53 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 	}
 }
 
-//get block chunk
-func (dbMgr *DbMgr) GetBlockChunk(blockId string, cached bool, prefix ...string) (*quorumpb.BlockDbChunk, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var key string
-	if cached {
-		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + blockId
-	} else {
-		key = nodeprefix + BLK_PREFIX + "_" + blockId
-	}
-
-	pChunk := quorumpb.BlockDbChunk{}
+//get block
+func (dbMgr *DbMgr) GetBlock(groupId string, epoch int64, cached bool, prefix ...string) (*quorumpb.Block, error) {
+	key := getBlockKey(groupId, epoch, cached, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
 	}
-
-	err = proto.Unmarshal(value, &pChunk)
+	block := quorumpb.Block{}
+	err = proto.Unmarshal(value, &block)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pChunk, err
+	return &block, err
 }
 
 //save block chunk
-func (dbMgr *DbMgr) SaveBlockChunk(chunk *quorumpb.BlockDbChunk, cached bool, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var key string
-	if cached {
-		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + chunk.BlockId
-	} else {
-		key = nodeprefix + BLK_PREFIX + "_" + chunk.BlockId
+func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
+	key := getBlockKey(block.GroupId, block.Epoch, cached, prefix...)
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
 	}
 
-	value, err := proto.Marshal(chunk)
+	if isExist {
+		return errors.New("block aleady exist")
+	}
+
+	value, err := proto.Marshal(block)
 	if err != nil {
 		return err
 	}
 	return dbMgr.Db.Set([]byte(key), value)
+}
+
+func (dbMgr *DbMgr) RmBlock(groupId string, epoch int64, cached bool, prefix ...string) error {
+	key := getBlockKey(groupId, epoch, cached, prefix...)
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	if !isExist {
+		return errors.New("block not exist")
+	}
+
+	return dbMgr.Db.Delete([]byte(key))
 }
 
 //Get group list
@@ -258,6 +267,18 @@ func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, erro
 	} else {
 		return nonceseq.(Sequence).Next()
 	}
+}
+
+func getBlockKey(groupId string, epoch int64, cached bool, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	epochSD := strconv.FormatInt(epoch, 10)
+	var key string
+	if cached {
+		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + groupId + "_" + epochSD
+	} else {
+		key = nodeprefix + BLK_PREFIX + "_" + groupId + "_" + epochSD
+	}
+	return key
 }
 
 //func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string) ([]*quorumpb.PostItem, error) {

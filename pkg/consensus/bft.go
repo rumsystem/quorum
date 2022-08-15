@@ -18,6 +18,7 @@ type Bft struct {
 }
 
 func NewBft(cfg Config, groupId string) *Bft {
+	bft_log.Debugf("NewBft called")
 	return &Bft{
 		Config:   cfg,
 		groupId:  groupId,
@@ -28,22 +29,24 @@ func NewBft(cfg Config, groupId string) *Bft {
 }
 
 func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
+	bft_log.Debugf("AddTrx called")
 	bft.txBuffer.Push(tx)
 	len, err := bft.txBuffer.GetBufferLen()
 	if err != nil {
 		return err
 	}
 
+	bft_log.Infof("trx buffer len %d", len)
 	//start produce
-	if len == 1 {
-		bft.propose()
-	}
+	//if len == 1 {
+	bft.propose()
+	//}
 
 	return nil
 }
 
 func (bft *Bft) HandleMessage(msg *quorumpb.HBMsg) error {
-
+	bft_log.Debugf("HandleMessage called")
 	switch msg.MsgType {
 	case quorumpb.HBBMsgType_BROADCAST:
 		broadcast := &quorumpb.BroadcastMsg{}
@@ -77,6 +80,7 @@ func (bft *Bft) HandleMessage(msg *quorumpb.HBMsg) error {
 }
 
 func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {
+	bft_log.Debugf("AcsDone called %d", epoch)
 	var trxs map[string]*quorumpb.Trx
 	trxs = make(map[string]*quorumpb.Trx) //trx_id
 
@@ -111,6 +115,7 @@ func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {
 
 	//clear acs for finished epoch
 	hb.acsInsts[epoch] = nil
+	delete(hb.acsInsts, epoch)
 
 	//advanced to next epoch
 	hb.epoch++
@@ -128,12 +133,15 @@ func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {
 
 func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	//try build block by using trxs
-	acs_log.Infof("------------------------------------------")
-	acs_log.Infof("acs result for epoch %d", hb.epoch)
+	acs_log.Infof("---------------acs result for epoch %d-------------------", hb.epoch)
 
 	for trxId, _ := range trxs {
-		acs_log.Infof("%s", trxId)
+		acs_log.Infof(">>>>>>>> trxId : %s", trxId)
 	}
+
+	acs_log.Infof("-----------------------------------------------------")
+
+	//update db here
 
 	return nil
 }
@@ -143,6 +151,13 @@ func (hb *Bft) propose() error {
 	if err != nil {
 		return err
 	}
+
+	//nothing to propose
+	if len(trxs) == 0 {
+		acs_log.Infof("trx queue empty, nothing to propose")
+		return nil
+	}
+
 	trxBundle := &quorumpb.HBTrxBundle{}
 	for _, trx := range trxs {
 		trxBundle.Trxs = append(trxBundle.Trxs, trx)

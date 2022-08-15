@@ -87,7 +87,7 @@ func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
 	return GetPubQueueWatcher()
 }
 
-func (chain *Chain) UpdChainInfo(height int64, blockId string) error {
+func (chain *Chain) UpdChainInfo(Epoch int64, blockId string) error {
 	chain_log.Debugf("<%s> UpdChainInfo called", chain.groupId)
 	chain.group.Item.HighestHeight = height
 	chain.group.Item.HighestBlockId = blockId

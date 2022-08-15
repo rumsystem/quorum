@@ -59,8 +59,6 @@ func NewRBC(cfg Config, acs *ACS, groupId, proposerId string) (*RBC, error) {
 		dataShards = cfg.N - cfg.F
 	}
 
-	rbc_log.Infof("dataShards %d, parityShards %d", dataShards, parityShards)
-
 	// initial reed solomon codec
 	enc, err := reedsolomon.New(dataShards, parityShards)
 	if err != nil {
@@ -325,9 +323,6 @@ func (r *RBC) tryDecodeValue() error {
 }
 
 func makeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
-
-	rbc_log.Infof("len %d", len(data))
-
 	shards, err := enc.Split(data)
 	if err != nil {
 		return nil, err

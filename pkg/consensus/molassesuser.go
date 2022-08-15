@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -31,7 +32,7 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 	//check if block is in cache
-	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, user.nodename)
+	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.Epoch, true, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -47,18 +48,18 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//check if parent of block exist
-	parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, user.nodename)
+	parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.Epoch-1, false, user.nodename)
 	if err != nil {
 		return err
 	}
 
 	if !parentExist {
-		molauser_log.Debugf("<%s> parent of block <%s> is not exist", user.groupId, block.BlockId)
+		molauser_log.Debugf("<%s> parent of block <%d> is not exist", user.groupId, block.Epoch-1)
 		return errors.New("PARENT_NOT_EXIST")
 	}
 
 	//get parent block
-	parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.PrevBlockId, false, user.nodename)
+	parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.Epoch-1, false, user.nodename)
 	if err != nil {
 		return err
 	}
@@ -66,9 +67,9 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	//valid block with parent block
 	valid, err := rumchaindata.IsBlockValid(block, parentBlock)
 	if !valid {
-		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", user.groupId, block.BlockId)
+		molauser_log.Debugf("<%s> remove invalid block <%s> from cache", user.groupId, block.Epoch)
 		molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
-		return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, user.nodename)
+		return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.Epoch, true, user.nodename)
 	}
 
 	//search cache, gather all blocks can be connected with this block
@@ -103,6 +104,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			return err
 		}
 	}
+
 	//update block produced count
 	for _, block := range blocks {
 		err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(user.groupId, block.ProducerPubKey, user.nodename)
@@ -112,7 +114,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//calculate new height
-	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.HighestHeight)
+	molauser_log.Debugf("<%s> height before recal <%d>", user.groupId, user.grpItem.Epoch)
 	topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(user.grpItem.HighestBlockId, false, user.nodename)
 	if err != nil {
 		return err

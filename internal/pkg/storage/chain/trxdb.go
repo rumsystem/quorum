@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"fmt"
+
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -52,13 +53,13 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 			if err != nil {
 				return err
 			}
-			chunk := quorumpb.BlockDbChunk{}
-			perr := proto.Unmarshal(v, &chunk)
+			block := quorumpb.Block{}
+			perr := proto.Unmarshal(v, &block)
 			if perr != nil {
 				return perr
 			}
-			if chunk.BlockItem != nil && chunk.BlockItem.Trxs != nil {
-				for _, blocktrx := range chunk.BlockItem.Trxs {
+			if block.Trxs != nil {
+				for _, blocktrx := range block.Trxs {
 					if blocktrx.TrxId == trxId {
 						nonces = append(nonces, blocktrx.Nonce)
 
