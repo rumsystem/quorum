@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -87,24 +88,30 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 
 func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
-
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
-
 	var err error
 	libp2ppk := ""
-	if pk == pubkey {
+	ethpk := ""
+	pk, err := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
+	if err == nil {
+		ethpk = pk
+		libp2ppk = pubkey
+		//the pubkey is libp2pkey, convert succ, pk is eth base64key
+	} else {
+		//if pubkey is a ethkey
 		libp2ppk, err = localcrypto.EthBase64ToLibp2pPubkey(pubkey)
-	} else if pk == "" {
-		pk = pubkey
+		if err == nil {
+			//the pubkey is ethkey
+			ethpk = pubkey
+		}
 	}
 
-	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
+	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + ethpk
 	var pProducer *quorumpb.ProducerItem
 	pProducer = &quorumpb.ProducerItem{}
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		if pubkey != "" {
+		if libp2ppk != "" {
 			//patch for old keyformat
 			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
 			value, err = cs.dbmgr.Db.Get([]byte(key))
@@ -117,7 +124,7 @@ func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...strin
 
 			}
 			//update to the new keyformat
-			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + pk
+			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + ethpk
 		} else {
 			return err
 		}
