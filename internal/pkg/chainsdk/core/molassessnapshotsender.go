@@ -1,5 +1,6 @@
 package chain
 
+/*
 import (
 	"encoding/binary"
 	"sync"
@@ -25,10 +26,6 @@ const (
 	SENDER_RUNNING SnapshotSenderStatus = iota
 	SENDER_IDLE
 )
-
-/*
-	ADD DESCRIPTION for SNAPSHOTPACKAGE HERE
-*/
 
 type MolassesSnapshotSender struct {
 	grpItem *quorumpb.GroupItem
@@ -288,3 +285,5 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 
 	return result, nil
 }
+
+*/

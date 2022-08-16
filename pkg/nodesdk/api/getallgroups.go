@@ -21,8 +21,7 @@ type GroupInfo struct {
 	CipherKey      string   `json:"cipher_key" validate:"required"`
 	AppKey         string   `json:"app_key" validate:"required"`
 	LastUpdated    int64    `json:"last_updated" validate:"required"`
-	HighestHeight  int64    `json:"highest_height" validate:"required"`
-	HighestBlockId string   `json:"highest_block_id" validate:"required,uuid4"`
+	Epoch          int64    `json:"epoch" validate:"required"`
 	ChainApis      []string `json:"chain_apis" validate:"required,uuid4"`
 }
 
@@ -69,8 +68,7 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 			groupInfo.CipherKey = groupItem.Group.CipherKey
 			groupInfo.AppKey = groupItem.Group.AppKey
 			groupInfo.LastUpdated = groupItem.Group.LastUpdate
-			groupInfo.HighestHeight = groupItem.Group.HighestHeight
-			groupInfo.HighestBlockId = groupItem.Group.HighestBlockId
+			groupInfo.Epoch = groupItem.Group.Epoch
 			groupInfo.ChainApis = groupItem.ApiUrl
 			groups = append(groups, groupInfo)
 		}

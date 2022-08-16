@@ -236,9 +236,12 @@ func doRefresh() {
 				group, err := publishQueueWatcher.groupMgrIface.GetGroup(item.GroupId)
 				if err == nil {
 					// make sure data is updated to the latest change
-					if group.GetSyncerStatus() != IDLE {
-						chain_log.Debugf("<pubqueue>: group is not up to date yet.")
-					}
+					// commented by cuicat
+					/*
+						if group.GetSyncerStatus() != IDLE {
+							chain_log.Debugf("<pubqueue>: group is not up to date yet.")
+						}
+					*/
 					// try to find it from chain
 					trx, _, err := group.GetTrx(item.Trx.TrxId)
 					if err != nil {

@@ -57,7 +57,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 	//start send snapshot
-	grp.ChainCtx.StartSnapshot()
+	//grp.ChainCtx.StartSnapshot()
 
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
@@ -74,7 +74,7 @@ func (grp *Group) Teardown() {
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
 
 	//stop snapshot
-	grp.ChainCtx.StopSnapshot()
+	//grp.ChainCtx.StopSnapshot()
 
 	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
 }
@@ -136,7 +136,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
 	//start send snapshot
-	grp.ChainCtx.StartSnapshot()
+	//grp.ChainCtx.StartSnapshot()
 
 	return nil
 }
@@ -151,6 +151,7 @@ func (grp *Group) ClearGroup() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
+/*
 func (grp *Group) StartSync() error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
 	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
@@ -169,9 +170,11 @@ func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
 	return grp.ChainCtx.GetSnapshotTag()
 }
 
-func (grp *Group) GetBlock(blockId string) (*quorumpb.Block, error) {
+*/
+
+func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(blockId, false, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {

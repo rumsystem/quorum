@@ -1,5 +1,6 @@
 package chain
 
+/*
 import (
 	"encoding/base64"
 	"errors"
@@ -201,3 +202,4 @@ func (ssreceiver *MolassesSnapshotReceiver) doApply(snapshots map[string]*quorum
 
 	return nil
 }
+*/

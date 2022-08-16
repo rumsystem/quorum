@@ -265,7 +265,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					snapshot = &quorumpb.Snapshot{}
 					err := proto.Unmarshal(pkg.Data, snapshot)
 					if err == nil {
-						psconn.chain.HandleSnapshotPsConn(snapshot)
+						//psconn.chain.HandleSnapshotPsConn(snapshot)
 					} else {
 						channel_log.Warningf(err.Error())
 					}

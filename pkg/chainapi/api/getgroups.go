@@ -5,27 +5,30 @@ import (
 	"sort"
 
 	"encoding/base64"
+
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/labstack/echo/v4"
+
 	//localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 )
 
 type groupInfo struct {
-	GroupId        string        `json:"group_id" validate:"required,uuid4"`
-	GroupName      string        `json:"group_name" validate:"required"`
-	OwnerPubKey    string        `json:"owner_pubkey" validate:"required"`
-	UserPubkey     string        `json:"user_pubkey" validate:"required"`
-	UserEthaddr    string        `json:"user_eth_addr" validate:"required"`
-	ConsensusType  string        `json:"consensus_type" validate:"required"`
-	EncryptionType string        `json:"encryption_type" validate:"required"`
-	CipherKey      string        `json:"cipher_key" validate:"required"`
-	AppKey         string        `json:"app_key" validate:"required"`
-	LastUpdated    int64         `json:"last_updated" validate:"required"`
-	HighestHeight  int64         `json:"highest_height" validate:"required"`
-	HighestBlockId string        `json:"highest_block_id" validate:"required,uuid4"`
-	GroupStatus    string        `json:"group_status" validate:"required"`
-	SnapshotInfo   *snapshotInfo `json:"snapshot_info"`
+	GroupId        string `json:"group_id" validate:"required,uuid4"`
+	GroupName      string `json:"group_name" validate:"required"`
+	OwnerPubKey    string `json:"owner_pubkey" validate:"required"`
+	UserPubkey     string `json:"user_pubkey" validate:"required"`
+	UserEthaddr    string `json:"user_eth_addr" validate:"required"`
+	ConsensusType  string `json:"consensus_type" validate:"required"`
+	EncryptionType string `json:"encryption_type" validate:"required"`
+	CipherKey      string `json:"cipher_key" validate:"required"`
+	AppKey         string `json:"app_key" validate:"required"`
+	Epoch          int64  `json:"epoch" validate:"required"`
+	LastUpdated    int64  `json:"last_updated" validate:"required"`
+	//HighestHeight  int64         `json:"highest_height" validate:"required"`
+	//HighestBlockId string        `json:"highest_block_id" validate:"required,uuid4"`
+	GroupStatus string `json:"group_status" validate:"required"`
+	//SnapshotInfo *snapshotInfo `json:"snapshot_info"`
 }
 
 type snapshotInfo struct {
@@ -73,8 +76,9 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.CipherKey = value.Item.CipherKey
 		group.AppKey = value.Item.AppKey
 		group.LastUpdated = value.Item.LastUpdate
-		group.HighestHeight = value.Item.HighestHeight
-		group.HighestBlockId = value.Item.HighestBlockId
+		group.Epoch = value.Item.Epoch
+		//group.HighestHeight = value.Item.HighestHeight
+		//group.HighestBlockId = value.Item.HighestBlockId
 
 		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
 		if err != nil {
@@ -88,6 +92,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			}
 		}
 
+		/* commented by cuicat
 		switch value.GetSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
 			group.GroupStatus = "SYNCING"
@@ -112,6 +117,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			snapshot.SnapshotPackageId = snapshottag.SnapshotPackageId
 			group.SnapshotInfo = snapshot
 		}
+		*/
 
 		groups = append(groups, group)
 	}

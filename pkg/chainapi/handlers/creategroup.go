@@ -104,8 +104,9 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 
 	item.CipherKey = hex.EncodeToString(cipherKey)
 	item.AppKey = params.AppKey
-	item.HighestHeight = 0
-	item.HighestBlockId = genesisBlock.BlockId
+	//	item.HighestHeight = 0
+	//	item.HighestBlockId = genesisBlock.BlockId
+	item.Epoch = 0
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 

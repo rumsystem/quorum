@@ -4,20 +4,16 @@
 package handlers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"path/filepath"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 func CheckSignAndEncryptWithKeystore(keystoreName, keystoreDir, configDir, peerName, password string) error {
@@ -130,6 +126,7 @@ func loadAndDecryptTrx(blockDbDir, seedDir string) error {
 	}
 	defer db.Close()
 
+	/* commented by cuicat
 	count := 0
 	key := getBlockPrefixKey()
 	err := db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -178,6 +175,7 @@ func loadAndDecryptTrx(blockDbDir, seedDir string) error {
 	if err != nil {
 		logger.Fatalf("dbManager.Db.PrefixForeach failed: %s", err)
 	}
+	*/
 	return nil
 }
 

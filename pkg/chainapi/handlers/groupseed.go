@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -24,9 +25,12 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 		urllist = append(urllist, url.QueryEscape(u))
 	}
 
-	b64buuid, _ := guuid.Parse(seed.GenesisBlock.BlockId)
+	//b64buuid, _ := guuid.Parse(seed.GenesisBlock.Epoch)
+	b64epoch := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b64epoch, uint64(seed.GenesisBlock.Epoch))
 	b64guuid, _ := guuid.Parse(seed.GenesisBlock.GroupId)
-	b64bstr := base64.RawURLEncoding.EncodeToString(b64buuid[:])
+	//b64bstr := base64.RawURLEncoding.EncodeToString(b64buuid[:])
+	b64estr := base64.RawURLEncoding.EncodeToString(b64epoch)
 	b64gstr := base64.RawURLEncoding.EncodeToString(b64guuid[:])
 
 	b64timestampstr := base64.RawURLEncoding.EncodeToString(big.NewInt(seed.GenesisBlock.TimeStamp).Bytes())
@@ -50,12 +54,16 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 		return "", err
 	}
 	b64cipher := base64.RawURLEncoding.EncodeToString(cipherkeybytes)
-	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
+
+	//b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
+	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.BookkeepingSignature)
 
 	//new eth key: is the compressed base64 RawURLEncoding
 	//old libp2p key: base64.StdEncoding
 	var b64producerpubkey string
-	b64producerpubkey = seed.GenesisBlock.ProducerPubKey
+	//b64producerpubkey = seed.GenesisBlock.ProducerPubKey
+	b64producerpubkey = seed.GenesisBlock.BookkeepingPubkey
+
 	//if strings.HasPrefix(seed.GenesisBlock.ProducerPubKey, "0x") {
 	//	bethpubkey, err := hex.DecodeString(seed.GenesisBlock.ProducerPubKey[2:])
 	//	if err != nil {
@@ -72,7 +80,8 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	//}
 
 	values := url.Values{}
-	values.Add("b", b64bstr)
+	//values.Add("e", b64bstr)
+	values.Add("e", b64estr)
 	values.Add("g", b64gstr)
 	values.Add("k", b64producerpubkey)
 	values.Add("t", b64timestampstr)
@@ -99,12 +108,15 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	if version != "1" {
 		return nil, nil, errors.New("unsupport seed url version")
 	}
-	b64bstr := q.Get("b")
+	//b64bstr := q.Get("b")
+	b64estr := q.Get("e")
 	b64gstr := q.Get("g")
 
-	b64bbyte, err := base64.RawURLEncoding.DecodeString(b64bstr)
+	//b64bbyte, err := base64.RawURLEncoding.DecodeString(b64bstr)
+	b64ebyte, err := base64.RawURLEncoding.DecodeString(b64estr)
 	b64gbyte, err := base64.RawURLEncoding.DecodeString(b64gstr)
-	b64buuid, err := guuid.FromBytes(b64bbyte)
+
+	//b64buuid, err := guuid.FromBytes(b64bbyte)
 	if err != nil {
 		return nil, nil, fmt.Errorf("uuid decode err: %s", err)
 	}
@@ -141,14 +153,19 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	}
 
 	genesisBlock := &pb.Block{
-		BlockId:        b64buuid.String(),
-		GroupId:        b64guuid.String(),
-		PrevBlockId:    "",
-		PreviousHash:   nil,
-		TimeStamp:      timestamp,
-		ProducerPubKey: b64producerpubkey,
-		Trxs:           nil,
-		Signature:      b64signbyte,
+		//BlockId:        b64buuid.String(),
+		Epoch:   int64(binary.LittleEndian.Uint64(b64ebyte)),
+		GroupId: b64guuid.String(),
+		//PrevBlockId:    "",
+		//PreviousHash:   nil,
+		PrevHash:  nil,
+		TimeStamp: timestamp,
+		Witesses:  nil,
+		Trxs:      nil,
+		//ProducerPubKey: b64producerpubkey,
+		//Signature:      b64signbyte,
+		BookkeepingPubkey:    b64producerpubkey,
+		BookkeepingSignature: b64signbyte,
 	}
 
 	hash, err := rumchaindata.BlockHash(genesisBlock)
@@ -178,9 +195,11 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		EncryptionType: encryptiontype,
 		CipherKey:      cipherkeyhexstr,
 		GroupId:        genesisBlock.GroupId,
-		OwnerPubkey:    genesisBlock.ProducerPubKey,
-		Signature:      hex.EncodeToString(genesisBlock.Signature),
-		AppKey:         appkey,
+		//OwnerPubkey:    genesisBlock.ProducerPubKey,
+		//Signature:      hex.EncodeToString(genesisBlock.Signature),
+		OwnerPubkey: genesisBlock.BookkeepingPubkey,
+		Signature:   hex.EncodeToString(genesisBlock.BookkeepingSignature),
+		AppKey:      appkey,
 	}
 
 	urlstr := q.Get("u")

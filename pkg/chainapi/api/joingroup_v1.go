@@ -187,8 +187,9 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
 		}
 
-		item.HighestBlockId = params.GenesisBlock.BlockId
-		item.HighestHeight = 0
+		//item.HighestBlockId = params.GenesisBlock.BlockId
+		//item.HighestHeight = 0
+		item.Epoch = 0
 		item.LastUpdate = time.Now().UnixNano()
 		item.GenesisBlock = params.GenesisBlock
 
@@ -204,10 +205,12 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		}
 
 		//start sync
-		err = group.StartSync()
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+		/*
+			err = group.StartSync()
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
+		*/
 
 		//add group to context
 		groupmgr := chain.GetGroupMgr()

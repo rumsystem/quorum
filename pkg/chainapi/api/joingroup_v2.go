@@ -91,10 +91,12 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(msg)
 		}
 
-		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubKey)
+		//ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.)
+		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.BookkeepingPubkey)
 		if err != nil {
 			//the key maybe a libp2p key, try...
-			ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+			//ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
+			ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.BookkeepingPubkey)
 			if err != nil {
 				msg := "Decode OwnerPubkey failed: " + err.Error()
 				return rumerrors.NewBadRequestError(msg)
@@ -131,7 +133,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		var item *quorumpb.GroupItem
 		item = &quorumpb.GroupItem{}
 
-		item.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
+		//item.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
+		item.OwnerPubKey = seed.OwnerPubkey
 		item.GroupId = seed.GenesisBlock.GroupId
 		item.GroupName = seed.GroupName
 		item.CipherKey = seed.CipherKey
@@ -166,8 +169,9 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
 		}
 
-		item.HighestBlockId = seed.GenesisBlock.BlockId
-		item.HighestHeight = 0
+		//item.HighestBlockId = seed.GenesisBlock.BlockId
+		//item.HighestHeight = 0
+		item.Epoch = 0
 		item.LastUpdate = seed.GenesisBlock.TimeStamp
 		item.GenesisBlock = seed.GenesisBlock
 
@@ -183,10 +187,12 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		//start sync
-		err = group.StartSync()
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+		/*
+			err = group.StartSync()
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
+		*/
 
 		//add group to context
 		groupmgr := chain.GetGroupMgr()

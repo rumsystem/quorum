@@ -1,5 +1,6 @@
 package chain
 
+/*
 import (
 	"bytes"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -87,3 +88,5 @@ func dfs(blocks []*quorumpb.Block, cache map[string]bool, result []string, noden
 	}
 	return nil
 }
+
+*/

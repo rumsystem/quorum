@@ -82,13 +82,12 @@ type AnnGrpUser struct {
 }
 
 type GrpInfoNodeSDK struct {
-	GroupId        string
-	Owner          string
-	HighestBlockId string
-	HighestHeight  int64
-	LatestUpdate   int64
-	Provider       string
-	Singature      string
+	GroupId      string
+	Owner        string
+	Epoch        int64
+	LatestUpdate int64
+	Provider     string
+	Singature    string
 }
 
 func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
@@ -230,8 +229,9 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				grpInfo.Owner = grp.Item.OwnerPubKey
 				grpInfo.Provider = grp.Item.UserSignPubkey
 				grpInfo.LatestUpdate = grp.Item.LastUpdate
-				grpInfo.HighestBlockId = grp.Item.HighestBlockId
-				grpInfo.HighestHeight = grp.Item.HighestHeight
+				grpInfo.Epoch = grp.Item.Epoch
+				//grpInfo.HighestBlockId = grp.Item.HighestBlockId
+				//grpInfo.HighestHeight = grp.Item.HighestHeight
 
 				/*
 					//Did we really need a sign from fullnode ?

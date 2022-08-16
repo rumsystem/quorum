@@ -159,6 +159,11 @@ func (dbMgr *DbMgr) RmBlock(groupId string, epoch int64, cached bool, prefix ...
 	return dbMgr.Db.Delete([]byte(key))
 }
 
+func (dbMgr *DbMgr) IsBlockExist(groupId string, epoch int64, cached bool, prefix ...string) (bool, error) {
+	key := getBlockKey(groupId, epoch, cached, prefix...)
+	return dbMgr.Db.IsExist([]byte(key))
+}
+
 //Get group list
 func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	var groupItemList [][]byte

@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -85,6 +86,9 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 	return cs.dbmgr.Db.Set([]byte(key), pbyte)
 }
 
+// commented by cuicat
+// all producer change to witenesses, no need to count block produced
+/*
 func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
 
@@ -137,7 +141,7 @@ func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...strin
 	}
 	return cs.dbmgr.Db.Set([]byte(key), value)
 }
-
+*/
 func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)

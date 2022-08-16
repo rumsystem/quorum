@@ -1,9 +1,11 @@
 package chain
 
+/*
 import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
@@ -37,16 +39,6 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
 		return nil, err
 	}
-
-	//commented by cuicat
-	/*
-		//check if requester is in group block list
-		isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
-		if isBlocked {
-			molaproducer_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
-			return nil, nil
-		}
-	*/
 
 	//added by cuicat
 	//check if trx sender is in group block list
@@ -83,16 +75,6 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
 		return nil, err
 	}
-
-	//commented by cuicat
-	/*
-		//check if requester is in group block list
-		isBlocked, _ := d.dbmgr.IsUserBlocked(trx.GroupId, trx.SenderPubkey, prefix...)
-		if isBlocked {
-			molaproducer_log.Debugf("<%s> user <%s> is blocked", trx.GroupId, trx.SenderPubkey)
-			return nil, nil
-		}
-	*/
 
 	//added by cuicat
 	//check if trx sender is in group block list
@@ -271,3 +253,4 @@ func (d *ChainData) GetBlockBackward(trx *quorumpb.Trx) (requester string, block
 		return reqBlockItem.UserId, emptyBlock, true, nil
 	}
 }
+*/

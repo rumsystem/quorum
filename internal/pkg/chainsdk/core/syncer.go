@@ -1,5 +1,6 @@
 package chain
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -63,10 +64,10 @@ func (syncer *Syncer) SetRumExchangeTestMode() {
 	syncer.rumExchangeTestMode = true
 }
 
-func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
+func (syncer *Syncer) SyncLocalBlock(epoch int64, nodename string) error {
 	syncer_log.Debugf("<%s> SyncLocalBlock called", syncer.GroupId)
 	syncer.rwMutex.Lock()
-	startFrom := blockId
+	startFrom := epoch
 	syncer.Status = LOCAL_SYNCING
 	syncer.localSyncFinished = false
 	syncer.rwMutex.Unlock()
@@ -451,3 +452,4 @@ func (syncer *Syncer) ShowChainStruct() {
 		syncer_log.Debugf("<%s> ChainStruct genesis <%s> struct: <%s>", syncer.GroupId, genesisblkid, chainstruct)
 	}
 }
+*/
