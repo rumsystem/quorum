@@ -11,10 +11,10 @@ var bft_log = logging.Logger("bft")
 type Bft struct {
 	Config
 	groupId  string
-	acsInsts map[uint64]*ACS //map key is epoch
+	acsInsts map[int64]*ACS //map key is epoch
 	txBuffer *TrxBuffer
-	epoch    uint64 //current epoch
-	outputs  map[uint64][]*quorumpb.Trx
+	epoch    int64 //current epoch
+	outputs  map[int64][]*quorumpb.Trx
 }
 
 func NewBft(cfg Config, groupId string) *Bft {
@@ -22,9 +22,9 @@ func NewBft(cfg Config, groupId string) *Bft {
 	return &Bft{
 		Config:   cfg,
 		groupId:  groupId,
-		acsInsts: make(map[uint64]*ACS),
+		acsInsts: make(map[int64]*ACS),
 		txBuffer: NewTrxBuffer(groupId),
-		outputs:  make(map[uint64][]*quorumpb.Trx),
+		outputs:  make(map[int64][]*quorumpb.Trx),
 	}
 }
 
@@ -37,49 +37,29 @@ func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	}
 
 	bft_log.Infof("trx buffer len %d", len)
-	//start produce
-	//if len == 1 {
 	bft.propose()
-	//}
 
 	return nil
 }
 
-func (bft *Bft) HandleMessage(msg *quorumpb.HBMsg) error {
+func (bft *Bft) HandleMessage(hbmsg *quorumpb.HBMsg) error {
 	bft_log.Debugf("HandleMessage called")
-	switch msg.MsgType {
-	case quorumpb.HBBMsgType_BROADCAST:
-		broadcast := &quorumpb.BroadcastMsg{}
-		err := proto.Unmarshal(msg.Payload, broadcast)
-		if err != nil {
-			return err
+	acs, ok := bft.acsInsts[hbmsg.Epoch]
+
+	if !ok {
+		if hbmsg.Epoch < bft.epoch {
+			bft_log.Warnf("message from old epoch, ignore")
+			return nil
 		}
 
-		acs, ok := bft.acsInsts[uint64(broadcast.Epoch)]
-		if !ok {
-			if uint64(broadcast.Epoch) < bft.epoch {
-				bft_log.Warnf("message from old epoch, ignore")
-				return nil
-			}
-
-			acs = NewACS(bft.Config, bft, uint64(broadcast.Epoch))
-			bft.acsInsts[uint64(broadcast.Epoch)] = acs
-		}
-
-		if err := acs.HandleMessage(msg); err != nil {
-			return err
-		}
-
-		return nil
-	default:
-		//do nothing
+		acs = NewACS(bft.Config, bft, hbmsg.Epoch)
+		bft.acsInsts[hbmsg.Epoch] = acs
 	}
 
-	return nil
-
+	return acs.HandleMessage(hbmsg)
 }
 
-func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {
+func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	bft_log.Debugf("AcsDone called %d", epoch)
 	var trxs map[string]*quorumpb.Trx
 	trxs = make(map[string]*quorumpb.Trx) //trx_id
@@ -117,13 +97,20 @@ func (hb *Bft) AcsDone(epoch uint64, result map[string][]byte) {
 	hb.acsInsts[epoch] = nil
 	delete(hb.acsInsts, epoch)
 
+	acs_log.Debugf("Remove acs %d", epoch)
+
 	//advanced to next epoch
 	hb.epoch++
+	acs_log.Debugf("advance to epoch  %d", hb.epoch)
+
+	//update
 
 	trxBufLen, err := hb.txBuffer.GetBufferLen()
 	if err != nil {
 		acs_log.Warnf(err.Error())
 	}
+
+	acs_log.Debugf("After propose, trx buffer length %d", trxBufLen)
 
 	//start next round
 	if trxBufLen != 0 {

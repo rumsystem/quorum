@@ -52,7 +52,7 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	}
 
 	n := len(nodes)
-	f := (n - 1) / 3
+	f := (n - 1) / 2
 
 	scalar := 20
 	batchSize := (len(nodes) * 2) * scalar
@@ -62,7 +62,6 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 		F:            f,
 		Nodes:        nodes,
 		BatchSize:    batchSize,
-		MyNodePubkey: producer.grpItem.UserSignPubkey,
 		MySignPubkey: producer.grpItem.UserSignPubkey,
 	}
 

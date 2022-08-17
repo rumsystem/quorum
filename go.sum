@@ -1281,6 +1281,14 @@ github.com/rumsystem/rumchaindata v0.0.0-20220815173209-1c72b12d5c78 h1:g66xS1Ka
 github.com/rumsystem/rumchaindata v0.0.0-20220815173209-1c72b12d5c78/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
 github.com/rumsystem/rumchaindata v0.0.0-20220815181003-e0561dd5cc6d h1:eanYGahup8EzT4xzPYJhL5zrG+wgWww8JW9rdLhRSuU=
 github.com/rumsystem/rumchaindata v0.0.0-20220815181003-e0561dd5cc6d/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
+github.com/rumsystem/rumchaindata v0.0.0-20220817192404-144e1b15c3a1 h1:LjOAcetzupTopaN03lwI8j71+XUYZsnBX36Y1XohbHQ=
+github.com/rumsystem/rumchaindata v0.0.0-20220817192404-144e1b15c3a1/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
+github.com/rumsystem/rumchaindata v0.0.0-20220817194219-9af140e4ec61 h1:wACUM8NVys7MYchnKuIaOhXVxn2DwWfStsL68aIzu6w=
+github.com/rumsystem/rumchaindata v0.0.0-20220817194219-9af140e4ec61/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
+github.com/rumsystem/rumchaindata v0.0.0-20220817201204-3631329d30ee h1:adQrOZ50KSlXqvYl/nBHlMxpt1ybw/XIGtIRjH5BuJs=
+github.com/rumsystem/rumchaindata v0.0.0-20220817201204-3631329d30ee/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
+github.com/rumsystem/rumchaindata v0.0.0-20220817202816-bc2fccd72f92 h1:A746JMaoS2mpFenT7t4yT2SK1LojovorUzGJ9MIeODQ=
+github.com/rumsystem/rumchaindata v0.0.0-20220817202816-bc2fccd72f92/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
