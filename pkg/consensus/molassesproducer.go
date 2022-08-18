@@ -34,7 +34,7 @@ func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string
 		return
 	}
 
-	producer.bft = NewBft(*config, producer.groupId)
+	producer.bft = NewBft(*config, producer)
 	producer.bft.propose()
 
 	molaproducer_log.Infof("<%s> producer created", producer.groupId)

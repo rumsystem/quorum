@@ -1,8 +1,13 @@
 package consensus
 
 import (
+	"time"
+
 	"github.com/golang/protobuf/proto"
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -10,20 +15,21 @@ var bft_log = logging.Logger("bft")
 
 type Bft struct {
 	Config
-	groupId  string
+	producer *MolassesProducer
+	epoch    int64          //current epoch
 	acsInsts map[int64]*ACS //map key is epoch
 	txBuffer *TrxBuffer
-	epoch    int64 //current epoch
 	outputs  map[int64][]*quorumpb.Trx
 }
 
-func NewBft(cfg Config, groupId string) *Bft {
+func NewBft(cfg Config, producer *MolassesProducer) *Bft {
 	bft_log.Debugf("NewBft called")
 	return &Bft{
 		Config:   cfg,
-		groupId:  groupId,
+		producer: producer,
+		epoch:    producer.grpItem.Epoch,
 		acsInsts: make(map[int64]*ACS),
-		txBuffer: NewTrxBuffer(groupId),
+		txBuffer: NewTrxBuffer(producer.groupId),
 		outputs:  make(map[int64][]*quorumpb.Trx),
 	}
 }
@@ -103,7 +109,12 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	hb.epoch++
 	acs_log.Debugf("advance to epoch  %d", hb.epoch)
 
-	//update
+	//update chain Info
+	bft_log.Debugf("<%s> UpdChainInfo called", hb.producer.groupId)
+	hb.producer.grpItem.Epoch = hb.epoch
+	hb.producer.grpItem.LastUpdate = time.Now().Unix()
+	bft_log.Infof("<%s> Chain Info updated, epoch %d", hb.producer.groupId, hb.epoch)
+	nodectx.GetNodeCtx().GetChainStorage().UpdGroup(hb.producer.grpItem)
 
 	trxBufLen, err := hb.txBuffer.GetBufferLen()
 	if err != nil {
@@ -120,15 +131,35 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 
 func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	//try build block by using trxs
+
+	var trxToPackage []*quorumpb.Trx
 	acs_log.Infof("---------------acs result for epoch %d-------------------", hb.epoch)
 
-	for trxId, _ := range trxs {
+	for trxId, trx := range trxs {
 		acs_log.Infof(">>>>>>>> trxId : %s", trxId)
+		trxToPackage = append(trxToPackage, trx)
 	}
 
-	acs_log.Infof("-----------------------------------------------------")
-
 	//update db here
+
+	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(hb.producer.groupId, hb.epoch-1, false, hb.producer.nodename)
+	if err != nil {
+		return err
+	}
+
+	//TBD fill withnesses
+	var witnesses []*quorumpb.Witnesses
+
+	//create block
+	ks := localcrypto.GetKeystore()
+	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, hb.epoch, trxToPackage, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
+	if err != nil {
+		return err
+	}
+
+	acs_log.Debugf("%v", newBlock)
+
+	//return nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
 
 	return nil
 }

@@ -25,7 +25,6 @@ func NewACS(cfg Config, bft *Bft, epoch int64) *ACS {
 
 	acs := &ACS{
 		Config:       cfg,
-		groupId:      bft.groupId,
 		bft:          bft,
 		epoch:        epoch,
 		rbcInstances: make(map[string]*RBC),
@@ -34,7 +33,7 @@ func NewACS(cfg Config, bft *Bft, epoch int64) *ACS {
 	}
 
 	for _, id := range cfg.Nodes {
-		acs.rbcInstances[id], _ = NewRBC(cfg, acs, bft.groupId, id)
+		acs.rbcInstances[id], _ = NewRBC(cfg, acs, bft.producer.groupId, id)
 	}
 
 	return acs
