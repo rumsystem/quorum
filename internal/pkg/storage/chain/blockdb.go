@@ -2,12 +2,13 @@ package chainstorage
 
 import (
 	"fmt"
+	"log"
+	"os"
+
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"log"
-	"os"
 )
 
 //add block
@@ -145,6 +146,7 @@ func (cs *Storage) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string)
 }
 
 func (cs *Storage) GetBlockHeight(blockId string, prefix ...string) (int64, error) {
+
 	pChunk, err := cs.dbmgr.GetBlockChunk(blockId, false, prefix...)
 	if err != nil {
 		return -1, err
@@ -224,7 +226,7 @@ func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...stri
 	defer logfile.Close()
 	if err != nil {
 	}
-	dblogger = log.New(logfile, "blockdb ", log.LstdFlags)
+	dblogger = log.New(logfile, "blockdb", log.LstdFlags)
 
 	dblogger.Printf("verify block: %s", blockid)
 	var verifyblockChunk *quorumpb.BlockDbChunk

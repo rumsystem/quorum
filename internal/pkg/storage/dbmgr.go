@@ -1,13 +1,14 @@
 package storage
 
 import (
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"google.golang.org/protobuf/proto"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 var dbmgr_log = logging.Logger("dbmgr")

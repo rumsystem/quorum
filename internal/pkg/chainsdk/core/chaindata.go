@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
@@ -200,7 +201,7 @@ func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks
 	} else {
 		var emptyBlock *quorumpb.Block
 		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
+		emptyBlock.PrevBlockId = reqBlockItem.BlockId
 		emptyBlock.ProducerPubKey = d.userSignPubkey
 		subBlocks = append(subBlocks, emptyBlock)
 		return reqBlockItem.UserId, subBlocks, true, nil

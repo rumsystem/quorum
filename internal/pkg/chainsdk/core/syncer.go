@@ -108,7 +108,13 @@ func (syncer *Syncer) SyncLocalBlock(blockId, nodename string) error {
 			syncer.localSyncFinished = true
 			syncer.rwMutex.Unlock()
 		} else {
-			startFrom = topBlock.BlockId
+			if topBlock.BlockId == startFrom {
+				syncer.rwMutex.Lock()
+				syncer.localSyncFinished = true
+				syncer.rwMutex.Unlock()
+			} else {
+				startFrom = topBlock.BlockId
+			}
 		}
 	}
 
@@ -192,7 +198,6 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 			syncer_log.Debugf("<%s> askNextBlock <%s> return err: %s", syncer.GroupId, block.BlockId, err)
 		}
 		syncer.waitBlock(block)
-
 	} else if syncer.Status == SYNCING_BACKWARD {
 		err := syncer.askPreviousBlock(block)
 		if err != nil {
@@ -210,7 +215,7 @@ func (syncer *Syncer) ContinueSync(block *quorumpb.Block) error {
 }
 
 func (syncer *Syncer) AddLocalBlock(block *quorumpb.Block) error {
-	syncer_log.Debugf("<%s> AddBlockSynced called", syncer.GroupId)
+	syncer_log.Debugf("<%s> AddLocalBlock called", syncer.GroupId)
 	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(syncer.Group.Item.UserSignPubkey)
 	if err != nil && signpkey == "" {
 		syncer_log.Warnf("<%s> Pubkey err <%s>", syncer.GroupId, err)
@@ -249,9 +254,9 @@ func (syncer *Syncer) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorump
 
 	//block in trx
 	syncer_log.Debugf("<%s> synced block incoming, provider <%s>", syncer.GroupId, providerpkey)
-	syncer.responses[providerpkey] = resp
 
 	if resp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
+		syncer.responses[providerpkey] = resp
 		syncer_log.Debugf("<%s> receive BLOCK_NOT_FOUND response, do nothing(wait for timeout)", syncer.GroupId)
 		return nil
 	}
@@ -398,17 +403,24 @@ func (syncer *Syncer) waitBlock(block *quorumpb.Block) {
 					}
 					if syncer.Status == SYNCING_FORWARD {
 						err := syncer.askNextBlock(block)
+						syncer.waitBlock(block)
 						if err != nil {
 							syncer_log.Debugf("<%s> askNextBlock <%s> return err: %s", syncer.GroupId, block.BlockId, err)
 						}
-						syncer.waitBlock(block)
 					} else if syncer.Status == SYNCING_BACKWARD {
 						syncer.askPreviousBlock(block)
 						syncer.waitBlock(block)
 					}
 				} else { // all BLOCK_NOT_FOUND
-					syncer_log.Debugf("<%s> received <%d> BLOCK_NOT_FOUND resp, sync done, set to IDLE", syncer.GroupId, len(syncer.responses))
-					syncer.Status = IDLE
+					syncer_log.Debugf("<%s> received <%d> resp", syncer.GroupId, len(syncer.responses))
+					for _, v := range syncer.responses {
+						if v != nil {
+							if v.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
+								syncer_log.Debugf("<%s> received BLOCK_NOT_FOUND resp, sync done, set to IDLE", syncer.GroupId)
+								syncer.Status = IDLE
+							}
+						}
+					}
 				}
 			}
 		}
