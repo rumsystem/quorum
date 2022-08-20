@@ -2,9 +2,9 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -23,93 +23,159 @@ type BlockSyncTask struct {
 	BlockId   string
 	Direction Syncdirection
 }
+
 type SyncTask struct {
 	Meta interface{}
 	Id   string
 }
 
-type Gsyncer struct {
-	nodeName   string
-	GroupId    string
-	Status     int8
-	retryCount int8
-	taskwg     sync.WaitGroup
-	taskq      chan *SyncTask
-	//syncNetworkType     conn.P2pNetworkType
+type BlockSyncResult struct {
+	BlockId string
 }
 
-func NewGsyncer(groupid string) *Gsyncer {
+type SyncResult struct {
+	Data   interface{}
+	Id     string
+	TaskId string
+}
+
+type Gsyncer struct {
+	nodeName       string
+	GroupId        string
+	Status         int8
+	retryCount     int8
+	taskq          chan *SyncTask
+	resultq        chan *SyncResult
+	nextTask       func(taskid string) (*SyncTask, error)
+	resultreceiver func(result *SyncResult) error
+}
+
+func NewGsyncer(groupid string, nextTask func(string) (*SyncTask, error), resultreceiver func(result *SyncResult) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
 	s.Status = IDLE
 	s.GroupId = groupid
+	s.nextTask = nextTask
+	s.resultreceiver = resultreceiver
 	s.retryCount = 0
 	s.taskq = make(chan *SyncTask)
+	s.resultq = make(chan *SyncResult, 3)
 	return s
+}
+func (s *Gsyncer) Stop() {
+	close(s.taskq)
+	close(s.resultq)
 }
 
 func (s *Gsyncer) Start() {
 	gsyncer_log.Infof("<%s> Gsyncer Start", s.GroupId)
 	go func() {
-		defer close(s.taskq)
 		for task := range s.taskq {
-			s.taskwg.Add(1)
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-
-			blocktask, ok := task.Meta.(BlockSyncTask)
-			if ok == true {
-				go s.doBlockTask(ctx, &blocktask)
-				s.taskwg.Wait()
+			defer cancel()
+			err := s.processTask(ctx, task)
+			if err == nil {
+				gsyncer_log.Infof("<%s> process task done %s", s.GroupId, task.Id)
+				//fake result send to the result queue
+				data := BlockSyncResult{BlockId: fmt.Sprintf("test_block_id_%s", task.Id)}
+				sr := &SyncResult{Id: task.Id, TaskId: task.Id, Data: data}
+				s.AddResultTest(sr)
 			} else {
-				gsyncer_log.Warnf("<%s> Unsupported task", s.GroupId)
+				//test try to retry this task
+				taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%s", task.Id), Direction: Next}
+				s.AddTask(&SyncTask{Meta: taskmeta, Id: task.Id})
+				gsyncer_log.Errorf("<%s> task process %s error: %s", s.GroupId, task.Id, err)
 			}
-			cancel()
 		}
 	}()
-	gsyncer_log.Infof("<%s> Gsyncer end", s.GroupId)
+
+	go func() {
+		for result := range s.resultq {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			err := s.processResult(ctx, result)
+			if err == nil {
+				//test try to add next task
+				gsyncer_log.Infof("<%s> process result done %s", s.GroupId, result.Id)
+				nexttask, err := s.nextTask(result.TaskId)
+				if err != nil {
+					gsyncer_log.Errorf("nextTask error:%s", err)
+					continue
+				}
+				s.AddTask(nexttask)
+			} else {
+				//test try to retry this task
+				taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%s", result.Id), Direction: Next}
+				s.AddTask(&SyncTask{Meta: taskmeta, Id: result.TaskId})
+				gsyncer_log.Errorf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
+			}
+		}
+	}()
+}
+func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) error {
+	resultdone := make(chan struct{})
+	var err error
+	go func() {
+		blocktaskresult, ok := result.Data.(BlockSyncResult)
+		if ok == true {
+			v := rand.Intn(2)
+			time.Sleep(time.Duration(v) * time.Second) // fake workload
+			err = s.resultreceiver(result)
+			//try to save the result to db
+		} else {
+			gsyncer_log.Warnf("<%s> Unsupported result", result.Id)
+		}
+		select {
+		case resultdone <- struct{}{}:
+			gsyncer_log.Warnf("<%s> done %s result", s.GroupId, blocktaskresult.BlockId)
+		default:
+			return
+		}
+	}()
+
+	select {
+	case <-resultdone:
+		return err
+	case <-ctx.Done():
+		return errors.New("Result Timeout")
+	}
 
 }
 
-func (s *Gsyncer) processBlockTask(ctx context.Context, task *BlockSyncTask, fn func(r string)) {
-loop:
+func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
+	taskdone := make(chan struct{})
+	go func() {
+		blocktask, ok := task.Meta.(BlockSyncTask)
+		if ok == true {
+			v := rand.Intn(5) + 1
+			time.Sleep(time.Duration(v) * time.Second) // fake workload
+		} else {
+			fmt.Println("===task.Meta")
+			fmt.Println(task.Meta)
+			gsyncer_log.Warnf("<%s> Unsupported task", s.GroupId, task.Id)
+		}
+		select {
+		case taskdone <- struct{}{}:
+			gsyncer_log.Warnf("<%s> done %s task", s.GroupId, blocktask.BlockId)
+		default:
+			return
+		}
+	}()
+
 	select {
+	case <-taskdone:
+		return nil
 	case <-ctx.Done():
-		{
-			gsyncer_log.Infof("<%s> processTask %s end", task.BlockId)
-			gsyncer_log.Infof("<%s> processTask break loop", task.BlockId)
-
-			break loop
-		}
-	default:
-		{
-			v := rand.Intn(10) + 1
-			gsyncer_log.Infof("test...sleep: %ds", v)
-			time.Sleep(time.Duration(v) * time.Second)
-			fn("done " + task.BlockId)
-			gsyncer_log.Infof("process blocktask done %s ", task.BlockId)
-		}
+		return errors.New("Task Timeout")
 	}
-	gsyncer_log.Infof("END: process blocktask exit %s ", task.BlockId)
-
-}
-
-func (s *Gsyncer) doBlockTask(ctx context.Context, task *BlockSyncTask) {
-	ctx, cancel := context.WithCancel(ctx)
-	go s.processBlockTask(ctx, task, func(result string) {
-		fmt.Println("********received result ", result)
-	})
-	select {
-	case <-ctx.Done():
-		{
-			gsyncer_log.Infof("blockTask %s timeout", task.BlockId)
-			cancel()
-		}
-
-	}
-	gsyncer_log.Infof("blockTask %s end", task.BlockId)
-	defer s.taskwg.Done()
 }
 
 func (s *Gsyncer) AddTask(task *SyncTask) {
-	s.taskq <- task
+	go func() {
+		s.taskq <- task
+	}()
+}
+
+func (s *Gsyncer) AddResultTest(result *SyncResult) {
+	s.resultq <- result
 }

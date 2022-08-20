@@ -1,21 +1,53 @@
 package chain
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
-func TestInit(t *testing.T) {
-	logging.SetLogLevel("gsyncer", "debug")
-	gs := NewGsyncer("3bb7a3be-d145-44af-94cf-e64b992ff8f0") //test groupid
-	gs.Start()
-	for i := 0; i < 500; i++ {
-		taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%d", i), Direction: Next}
-		go gs.AddTask(&SyncTask{Meta: taskmeta, Id: fmt.Sprintf("%d", i)})
-		time.Sleep(1 * time.Second)
+var MaxTaskId int = 12
+
+var taskresultcache map[string]*SyncResult
+
+//define how to get next task, for example, taskid+1
+func GetNextTask(taskid string) (*SyncTask, error) {
+	nextid, _ := strconv.Atoi(taskid)
+	if nextid >= MaxTaskId {
+		return nil, errors.New("reach the max task id")
 	}
-	select {}
+	nextid++
+	taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%d", nextid), Direction: Next}
+	return &SyncTask{Meta: taskmeta, Id: fmt.Sprintf("%d", nextid)}, nil
+}
+
+func ResultReceiver(result *SyncResult) error {
+	taskresultcache[result.Id] = result
+	return nil
+}
+
+func TestTaskResult(t *testing.T) {
+	taskresultcache = make(map[string]*SyncResult)
+	logging.SetLogLevel("gsyncer", "debug")
+
+	gs := NewGsyncer("3bb7a3be-d145-44af-94cf-e64b992ff8f0", GetNextTask, ResultReceiver) //test groupid
+	gs.Start()
+	i := 0
+	taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%d", i), Direction: Next}
+	gs.AddTask(&SyncTask{Meta: taskmeta, Id: fmt.Sprintf("%d", i)})
+
+	for {
+		time.Sleep(2 * time.Second)
+		if len(taskresultcache) == MaxTaskId { //success
+			gsyncer_log.Info("all %d result received", MaxTaskId)
+
+			break
+
+		}
+	}
+	gs.Stop() //cleanup
 }
