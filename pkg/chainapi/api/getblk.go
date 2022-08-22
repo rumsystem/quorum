@@ -16,10 +16,10 @@ import (
 // @Description Get a block from a group
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Param block_id path string  true "Block Id"
+// @Param block_id path string  true "Epoch"
 // @Success 200 {object} pb.Block
-// @Router /api/v1/block/{group_id}/{block_id} [get]
-func (h *Handler) GetBlockById(c echo.Context) (err error) {
+// @Router /api/v1/block/{group_id}/{epoch} [get]
+func (h *Handler) GetBlock(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {
 		return rumerrors.NewBadRequestError("group_id can't be nil.")

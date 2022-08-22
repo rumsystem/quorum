@@ -67,7 +67,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		r.GET("/v1/network/peers/ping", h.PingPeers(node))
 		r.POST("/v1/psping", h.PSPingPeer(node))
 		r.POST("/v1/ping", h.P2PPingPeer(node))
-		r.GET("/v1/block/:group_id/:block_id", h.GetBlockById)
+		r.GET("/v1/block/:group_id/:epoch", h.GetBlock)
 		r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 		r.POST("/v1/trx/ack", h.PubQueueAck)
 		r.GET("/v1/groups", h.GetGroups)

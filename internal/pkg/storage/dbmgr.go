@@ -128,14 +128,17 @@ func (dbMgr *DbMgr) GetBlock(groupId string, epoch int64, cached bool, prefix ..
 
 //save block chunk
 func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
+	dbmgr_log.Debug("SaveBlock called")
 	key := getBlockKey(block.GroupId, block.Epoch, cached, prefix...)
+	dbmgr_log.Debugf("KEY %s", key)
+
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
 	if err != nil {
 		return err
 	}
 
 	if isExist {
-		return errors.New("block aleady exist")
+		return errors.New("block aleady exist, ignore")
 	}
 
 	value, err := proto.Marshal(block)

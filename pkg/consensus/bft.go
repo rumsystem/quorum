@@ -5,6 +5,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
@@ -148,7 +149,7 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	}
 
 	//TBD fill withnesses
-	var witnesses []*quorumpb.Witnesses
+	witnesses := []*quorumpb.Witnesses{}
 
 	//create block
 	ks := localcrypto.GetKeystore()
@@ -157,11 +158,17 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 		return err
 	}
 
-	acs_log.Debugf("%v", newBlock)
+	//broadcast new block
+	connMgr, err := conn.GetConn().GetConnMgr(hb.producer.groupId)
+	if err != nil {
+		return err
+	}
+	err = connMgr.SendBlockPsconn(newBlock, conn.UserChannel)
+	if err != nil {
+		acs_log.Warnf("<%s> <%s>", hb.producer.groupId, err.Error())
+	}
 
-	//return nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
-
-	return nil
+	return nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
 }
 
 func (hb *Bft) propose() error {

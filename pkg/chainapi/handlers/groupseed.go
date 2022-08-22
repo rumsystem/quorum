@@ -152,27 +152,31 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		return nil, nil, fmt.Errorf("seed decode err: %s", err)
 	}
 
+	//recreate genesis block
 	genesisBlock := &pb.Block{
-		//BlockId:        b64buuid.String(),
-		Epoch:   int64(binary.LittleEndian.Uint64(b64ebyte)),
-		GroupId: b64guuid.String(),
-		//PrevBlockId:    "",
-		//PreviousHash:   nil,
-		PrevHash:  nil,
-		TimeStamp: timestamp,
-		Witesses:  nil,
-		Trxs:      nil,
-		//ProducerPubKey: b64producerpubkey,
-		//Signature:      b64signbyte,
-		BookkeepingPubkey:    b64producerpubkey,
-		BookkeepingSignature: b64signbyte,
+		Epoch:       int64(binary.LittleEndian.Uint64(b64ebyte)),
+		GroupId:     b64guuid.String(),
+		PrevTrxHash: nil,
+		Trxs:        nil,
 	}
 
-	hash, err := rumchaindata.BlockHash(genesisBlock)
+	trxHash, err := rumchaindata.BlockTrxHash(genesisBlock)
 	if err != nil {
 		return nil, nil, err
 	}
-	genesisBlock.Hash = hash
+	genesisBlock.TrxHash = trxHash
+
+	genesisBlock.Witesses = nil
+	genesisBlock.BookkeepingPubkey = b64producerpubkey
+	genesisBlock.TimeStamp = timestamp
+
+	bookkeepingHash, err := rumchaindata.BlockBookKeepingHash(genesisBlock)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	genesisBlock.BookkeepingHash = bookkeepingHash
+	genesisBlock.BookkeepingSignature = b64signbyte
 
 	consensustype := "poa"
 	if q.Get("n") == "1" {

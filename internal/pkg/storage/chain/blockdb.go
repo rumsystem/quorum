@@ -2,7 +2,6 @@ package chainstorage
 
 import (
 	"errors"
-	"strconv"
 
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -62,28 +61,6 @@ func (cs *Storage) GatherBlocksFromCache(block *quorumpb.Block, prefix ...string
 	}
 
 	return nil, err
-}
-
-func (cs *Storage) AddGensisBlock(gensisBlock *quorumpb.Block, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	epochSD := strconv.FormatInt(gensisBlock.Epoch, 10)
-	key := nodeprefix + s.BLK_PREFIX + "_" + epochSD
-
-	isExist, err := cs.dbmgr.Db.IsExist([]byte(key))
-	if err != nil {
-		return err
-	}
-	if isExist {
-		chaindb_log.Debugf("Genesis block exist, do nothing")
-		return nil
-	}
-
-	value, err := proto.Marshal(gensisBlock)
-	if err != nil {
-		return err
-	}
-
-	return cs.dbmgr.Db.Set([]byte(key), value)
 }
 
 // by cuicat

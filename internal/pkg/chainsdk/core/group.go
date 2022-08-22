@@ -87,12 +87,10 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.ChainInit(grp)
 
-	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, grp.ChainCtx.nodename)
+	err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(item.GenesisBlock, false, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}
-
-	group_log.Debugf("<%s> Update nonce called, with nodename <%s>", item.GroupId, grp.ChainCtx.nodename)
 
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer

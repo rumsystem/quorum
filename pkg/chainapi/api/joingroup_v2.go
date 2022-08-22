@@ -120,7 +120,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			}
 		}
 
-		r, err := rumchaindata.VerifyBlockSign(seed.GenesisBlock)
+		r, err := rumchaindata.VerifyBookkeepingSign(seed.GenesisBlock)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
