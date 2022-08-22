@@ -60,6 +60,14 @@ func (opt *NodeOptions) writeToconfig() error {
 	return v.WriteConfig()
 }
 
+func (opt *NodeOptions) GetJWTTokenMap(name string) string {
+	token, ok := opt.JWTTokenMap[name]
+	if !ok {
+		return ""
+	}
+	return token
+}
+
 func (opt *NodeOptions) SetJWTTokenMap(name, jwtToken string) error {
 	opt.mu.Lock()
 	defer opt.mu.Unlock()
@@ -131,6 +139,7 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = v.ReadInConfig()
 	if err != nil {
 		return nil, err
@@ -138,11 +147,15 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 
 	options := &NodeOptions{}
 	options.EnableRelay = v.GetBool("EnableRelay")
-	options.EnableRelayService = v.GetBool("EnableRelayService")
 	options.EnableNat = v.GetBool("EnableNat")
 	options.EnableRumExchange = v.GetBool("EnableRumExchange")
 	options.EnableDevNetwork = v.GetBool("EnableDevNetwork")
 	options.NetworkName = v.GetString("NetworkName")
+	if v.Get("EnableSnapshot") == nil {
+		options.EnableSnapshot = true
+	} else {
+		options.EnableSnapshot = v.GetBool("EnableSnapshot")
+	}
 	if options.NetworkName == "" {
 		options.NetworkName = defaultNetworkName
 	}

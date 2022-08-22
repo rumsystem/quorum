@@ -20,18 +20,29 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/pkg/autorelay/audit"
 )
 
 type RelayNode struct {
 	PeerID peer.ID
 	Host   host.Host
 	Info   *NodeInfo
+}
+
+func (node *RelayNode) GetRelay() *relayv2.Relay {
+	bhost := node.Host.(*routedhost.RoutedHost).Unwrap().(*basichost.BasicHost)
+	relayManager := bhost.RelayManager()
+	return relayManager.Relay()
 }
 
 func (node *RelayNode) eventhandler(ctx context.Context) {
@@ -56,7 +67,7 @@ func (node *RelayNode) eventhandler(ctx context.Context) {
 	}
 }
 
-func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions, key *ethkeystore.Key, listenAddresses []maddr.Multiaddr) (*RelayNode, error) {
+func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions, key *ethkeystore.Key, listenAddresses []maddr.Multiaddr, db storage.QuorumStorage) (*RelayNode, error) {
 	routingProtocol := fmt.Sprintf("%s/%s", ProtocolPrefix, nodeOpt.NetworkName)
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
 		dhtOpts := dual.DHTOption(
@@ -94,7 +105,12 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 			libp2p.Transport(ws.New),
 		),
 		libp2p.DisableRelay(),
-		libp2p.EnableRelayService(relay.WithLimit(nil)),
+		libp2p.EnableRelayService(
+			relay.WithAudit(audit.NewQuorumTrafficAudit(db)),
+			relay.WithACL(NewQuorumRelayFilter(db)),
+			relay.WithResources(nodeOpt.RC),
+			relay.WithLimit(nil), /* double check, nodeOpt.RC.Limit should already be nil */
+		),
 		identity,
 	}
 
@@ -104,6 +120,7 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 	if err != nil {
 		return nil, err
 	}
+
 	// configure our own ping protocol
 	pingService := &PingService{Host: host}
 	host.SetStreamHandler(PingID, pingService.PingHandler)

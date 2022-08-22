@@ -196,6 +196,12 @@ func (chain *Chain) HandleBlockRex(block *quorumpb.Block, s network.Stream) erro
 /*
 func (chain *Chain) HandleSnapshotPsConn(snapshot *quorumpb.Snapshot) error {
 	chain_log.Debugf("<%s> HandleSnapshotPsConn called", chain.groupId)
+
+	if nodectx.GetNodeCtx().Node.Nodeopt.EnableSnapshot == false {
+		chain_log.Debugf("<%s> Snapshot has been disabled on this node, skip", chain.groupId)
+		return nil
+	}
+
 	if snapshot.SenderPubkey == chain.group.Item.OwnerPubKey {
 		if chain.Consensus.SnapshotReceiver() != nil {
 			//check signature

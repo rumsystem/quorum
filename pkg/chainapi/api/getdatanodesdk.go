@@ -34,51 +34,42 @@ type GetDataNodeSDKItem struct {
 }
 
 type GrpInfo struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AuthTypeItem struct {
-	GroupId  string
-	TrxType  string
-	JwtToken string
+	GroupId string
+	TrxType string
 }
 
 type AuthAllowListItem struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AuthDenyListItem struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AppConfigKeyListItem struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AppConfigItem struct {
-	GroupId  string
-	Key      string
-	JwtToken string
+	GroupId string
+	Key     string
 }
 
 type AnnGrpProducer struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type GrpProducer struct {
-	GroupId  string
-	JwtToken string
+	GroupId string
 }
 
 type AnnGrpUser struct {
 	GroupId    string
 	SignPubkey string
-	JwtToken   string
 }
 
 type GrpInfoNodeSDK struct {

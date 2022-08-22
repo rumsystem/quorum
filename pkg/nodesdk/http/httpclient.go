@@ -1,17 +1,15 @@
 package nodesdkhttpclient
 
 import (
-	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	u2 "github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 var http_log = logging.Logger("http")
@@ -55,145 +53,39 @@ func (hc *HttpClient) UpdApiServer(urls []string) error {
 		}
 		apis = append(apis, urlItem)
 	}
+
 	//set group API
 	hc.APIs = apis
 
 	return nil
 }
 
-func (hc *HttpClient) Get(url string) ([]byte, error) {
-	http_log.Infof("Get called, groupId <%s>", url)
-
-	fullUrl, jwt, err := hc.getFullUrl(url)
+func (hc *HttpClient) RequestChainAPI(path string, method string, payload interface{}, headers http.Header, result interface{}) error {
+	fullUrl, jwt, err := hc.getFullUrl(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
-	if err != nil {
-		return nil, err
+	if headers == nil {
+		headers = http.Header{}
 	}
-	req, err := http.NewRequest(http.MethodGet, fullUrl, bytes.NewBuffer([]byte("")))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	if jwt != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
-	}
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	jwtErr := hc.checkJWTError(string(body))
-	if jwtErr != nil {
-		return nil, jwtErr
-	}
-	return body, err
-}
+	headers.Set("Content-Type", "application/json; charset=utf-8")
+	headers.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
 
-func (hc *HttpClient) GetWithBody(url string, reqData []byte) ([]byte, error) {
-	http_log.Infof("Get called, groupId <%s>", url)
-
-	fullUrl, jwt, err := hc.getFullUrl(url)
+	statusCode, content, err := utils.RequestAPI(fullUrl, method, payload, headers, result)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest(http.MethodGet, fullUrl, bytes.NewBuffer(reqData))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	if jwt != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
-	}
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	jwtErr := hc.checkJWTError(string(body))
-	if jwtErr != nil {
-		return nil, jwtErr
-	}
-	return body, err
-}
-
-func (hc *HttpClient) Post(url string, data []byte) ([]byte, error) {
-	http_log.Infof("Post called, <%s>", url)
-
-	fullUrl, jwt, err := hc.getFullUrl(url)
-	if err != nil {
-		return nil, err
+	if statusCode >= 400 {
+		errResult := utils.ErrorResponse{}
+		if err := json.Unmarshal(content, &errResult); err != nil {
+			return fmt.Errorf("request chain api failed: %s", errResult.Message)
+		}
+		return fmt.Errorf("request chain api failed: %s", content)
 	}
 
-	client, err := u2.NewHTTPClient() // hc.newHTTPClient()
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest(http.MethodPost, fullUrl, bytes.NewBuffer(data))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	if jwt != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	jwtErr := hc.checkJWTError(string(body))
-	if jwtErr != nil {
-		return nil, jwtErr
-	}
-
-	return body, err
-}
-
-func (hc *HttpClient) Delete(url string, data []byte) ([]byte, error) {
-	http_log.Infof("Delete called %s", url)
-
-	fullUrl, jwt, err := hc.getFullUrl(url)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := u2.NewHTTPClient() //hc.newHTTPClient()
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest(http.MethodDelete, fullUrl, bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	if jwt != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
-	}
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	jwtErr := hc.checkJWTError(string(body))
-	if jwtErr != nil {
-		return nil, jwtErr
-	}
-	return body, err
+	return nil
 }
 
 func (hc *HttpClient) getFullUrl(path string) (fullurl string, jwt string, err error) {

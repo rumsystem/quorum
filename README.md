@@ -66,7 +66,7 @@ A peer-to-peer system must provide economic incentive to minimize the Free-rider
 
 ## Getting Started
 
-**TL;DR**:  Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application.
+**TL;DR**:  Try [rum-app](https://rumsystem.net/apps), a cross platform RUM GUI application.
 
 ### Build:
 
@@ -79,7 +79,16 @@ Build the quorum binary by running the command: `make linux` or  `make buildall`
 Build the Docker image by running the command: `sudo docker build -t quorum .`
 
 ### Build API Document:
-Running:
+
+Read deploy version [https://rumsystem.github.io/quorum-api/](https://rumsystem.github.io/quorum-api/)
+
+*or*
+
+Read the [RUM Development Tutorial](./Tutorial.md).
+
+*or*
+
+Running and then open browser with <http://localhost:1323/index.html>.
 
 ```sh
 # only the first time you build need to run above.
@@ -92,17 +101,13 @@ make gen-doc
 make serve-doc
 ```
 
-and then open browser with <http://localhost:1323/index.html>.
-
-or you can read deploy version [https://rumsystem.github.io/quorum-api/](https://rumsystem.github.io/quorum-api/)
-
-*or*
-
-Read the [RUM Development Tutorial](./Tutorial.md).
-
 ### Run a RUM peer
 
 <span id="run_a_peer"></span>
+
+Try [rum-app](https://rumsystem.net/apps), a cross platform RUM GUI application.
+
+*or*
 
 Run the [quorum binary](#build_quorum):
 
@@ -113,7 +118,7 @@ Run the [quorum binary](#build_quorum):
 OPTIONS:
 
 ```sh
-   --peername    default:`peer`, used in and same with configdir  and datadir
+   --peername    default:`peer`, used in and same with `configdir` and `datadir`
    --listen      a multiaddress for the peer service listening
    --apihost     http api listening host, a domain or a public ip address
    --apiport     http api listening port
@@ -146,17 +151,13 @@ docker run --user 1001 \
     quorum fullnode --listen /ip4/0.0.0.0/tcp/8000 --listen /ip4/0.0.0.0/tcp/8001/ws  --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
 ```
 
-*or*
-
-Try [rum-app](https://github.com/rumsystem/rum-app), a cross platform RUM GUI application.
-
 ### Example: a private decentralized forum
 
 The main purpose of RUM is to connect groups of people without any centralized server. We start from a simple scenario of a private decentralized forum for a group of friends.
 
-The [rum-app](https://github.com/rumsystem/rum-app) will help you create/join/post/view with a nice GUI.
+The [rum-app](https://rumsystem.net/apps) will help you create/join/post/view with a nice GUI.
 
-The following shows how to create/join group and post/view content with [quorum binary](build_quorum) and command line.
+The following shows how to create/join group and post/view content with [quorum binary](#build_quorum) and command line.
 
 1. [Run RUM peer](#run_a_peer) on each friend’s computer, so we have peerA, peerB, peerC...
 
@@ -166,27 +167,12 @@ The following shows how to create/join group and post/view content with [quorum 
 curl -X POST -H 'Content-Type: application/json' -d '{"group_name":"ourforum","consensus_type":"poa","encryption_type":"public","app_key":"group_bbs"}' http://127.0.0.1:8000/api/v1/group
 ```
 
-The response is the group seed:
+The response is the group info with group_id and seed-url-string.
 
 ```json
 {
-    "genesis_block": {
-        "BlockId": "989ffea1-083e-46b0-be02-3bad3de7d2e1",
-        "GroupId": "01014e95-303e-4955-b06e-bf185556a729",
-        "ProducerPubKey": "CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==",
-        "Hash": "gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=",
-        "Signature": "MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d",
-        "Timestamp": 1633022374646518065
-    },
-    "group_id": "01014e95-303e-4955-b06e-bf185556a729",
-    "group_name": "ourforum",
-    "owner_pubkey": "CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==",
-    "owner_encryptpubkey": "age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu",
-    "consensus_type": "poa",
-    "encryption_type": "public",
-    "cipher_key": "accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda",
-    "app_key": "group_bbs",
-    "signature": "3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"
+ "seed": "rum://seed?v=1&e=0&n=0&b=0FzDZxaTRGaMm2h8ojtCAw&c=B10xEenG4-fsa-SRVHHRR-aoBNUQdvkGRHvDVjGXo5Q&g=YznMyEplTMGp6NpP8KMwUw&k=Apot4fO05OsKpEsfzwPlmZTIqsR6QKntRUpCXiEi16rx&s=7cbjKQlDnTzjTAL6YrVMW269B7NC3BE9RiwaZ3GOS_kVHn9SBfPq3KhdxO7_ieretm78tO96-USC9P1LmR1hFgE&t=FwmcaM33XGg&a=ourforum&y=group_bbs&u=http%3A%2F%2F127.0.0.1%3A8000%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI2MzM5Y2NjOC00YTY1LTRjYzEtYTllOC1kYTRmZjBhMzMwNTMiXSwiZXhwIjoxODE3NzA5OTEzLCJuYW1lIjoiYWxsb3ctNjMzOWNjYzgtNGE2NS00Y2MxLWE5ZTgtZGE0ZmYwYTMzMDUzIiwicm9sZSI6Im5vZGUifQ.o1AvtOnkpSIDOJ_tI4By2yU3dCC6tOdW7znurzyFLSg",
+ "group_id": "6339ccc8-4a65-4cc1-a9e8-da4ff0a33053"
 }
 ```
 
@@ -197,7 +183,7 @@ The response is the group seed:
 4. Join the group with Peer B, C...
 
 ```bash
-curl -X POST -H 'Content-Type: application/json' -d '{"genesis_block":{"BlockId":"989ffea1-083e-46b0-be02-3bad3de7d2e1","GroupId":"01014e95-303e-4955-b06e-bf185556a729","ProducerPubKey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","Hash":"gg6/EpEfafZKigjXKiSSu4oFb86ko7cbk1c7AayASiQ=","Signature":"MEYCIQC2n2lHD2Whe5m3Rn0FzlkwMN+7l2iuVMWsMqQPi4uroQIhAMFFd8kDcibptGzAhb7Pmh2CjvXzOGo0uQd55TDtNZ9d","Timestamp":1633022374646518065},"group_id":"01014e95-303e-4955-b06e-bf185556a729","group_name":"ourforum","owner_pubkey":"CAISIQPAeFZ8rgsENE12HgYwH+3N/aKsRN4fnPEUzEIY7ZyiAQ==","owner_encryptpubkey":"age19732hyts2cs4s0xfm2js5fdd5zlrg7wtzaztcnsf7kcy0acgydksd6q3mu","consensus_type":"poa","encryption_type":"public","cipher_key":"accb6a4faf34734c418683a9c62bb61209dc79380b69dab20b5042694009dfda","app_key":"group_bbs","signature":"3046022100b0676faad185a8af627ea98549688e1d0b15164c3b95dd45c756b27194671287022100f0f32dfb4bb8729d0b63fdc3f068e54ff22b3c6c2fc092ab3c8a2c382df22683"}' http://127.0.0.1:8001/api/v1/group/join
+curl -X POST -H 'Content-Type: application/json' -d '{"seed": "rum://seed?v=1&e=0&n=0&b=0FzDZxaTRGaMm2h8ojtCAw&c=B10xEenG4-fsa-SRVHHRR-aoBNUQdvkGRHvDVjGXo5Q&g=YznMyEplTMGp6NpP8KMwUw&k=Apot4fO05OsKpEsfzwPlmZTIqsR6QKntRUpCXiEi16rx&s=7cbjKQlDnTzjTAL6YrVMW269B7NC3BE9RiwaZ3GOS_kVHn9SBfPq3KhdxO7_ieretm78tO96-USC9P1LmR1hFgE&t=FwmcaM33XGg&a=ourforum&y=group_bbs&u=http%3A%2F%2F127.0.0.1%3A8000%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI2MzM5Y2NjOC00YTY1LTRjYzEtYTllOC1kYTRmZjBhMzMwNTMiXSwiZXhwIjoxODE3NzA5OTEzLCJuYW1lIjoiYWxsb3ctNjMzOWNjYzgtNGE2NS00Y2MxLWE5ZTgtZGE0ZmYwYTMzMDUzIiwicm9sZSI6Im5vZGUifQ.o1AvtOnkpSIDOJ_tI4By2yU3dCC6tOdW7znurzyFLSg"}' http://127.0.0.1:8001/api/v2/group/join
 ```
 
 > [API: join group](./Tutorial.md#api-join-group)

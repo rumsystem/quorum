@@ -10,7 +10,10 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/autorelay"
+	"github.com/rumsystem/quorum/pkg/autorelay/api"
 	"github.com/spf13/cobra"
 )
 
@@ -32,9 +35,12 @@ func init() {
 	flags := relaynodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.Var(&fnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.Var(&rnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.Var(&rnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&rnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&rnodeFlag.APIPort, "apiport", 5215, "api server listen port")
 	flags.StringVar(&rnodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&rnodeFlag.DataDir, "datadir", "./data/", "data dir")
 	flags.StringVar(&rnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
 	flags.StringVar(&rnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
 	flags.StringVar(&rnodeFlag.KeyStoreName, "keystorename", "defaultkeystore", "keystore name")
@@ -82,7 +88,12 @@ func runRelaynode(config cli.RelayNodeFlag) {
 	logger.Infof("peer ID: <%s>", peerid)
 	logger.Infof("eth addresss: <%s>", ethaddr)
 
-	relayNode, err := p2p.NewRelayServiceNode(ctx, relayNodeOpt, defaultkey, config.ListenAddresses)
+	rdb, err := storage.InitRelayDb(config.DataDir + "/" + config.PeerName)
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
+	relayNode, err := p2p.NewRelayServiceNode(ctx, relayNodeOpt, defaultkey, config.ListenAddresses, rdb)
 	if err != nil {
 		cancel()
 		logger.Fatalf(err.Error())
@@ -93,6 +104,11 @@ func runRelaynode(config cli.RelayNodeFlag) {
 		cancel()
 		logger.Fatalf(err.Error())
 	}
+
+	// now start relay api server
+	handler := api.NewRelayServerHandler(rdb, relayNode)
+
+	go autorelay.StartRelayServer(config, signalch, &handler)
 
 	//attach signal
 	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)

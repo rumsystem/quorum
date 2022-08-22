@@ -8,6 +8,7 @@ import (
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
+
 	//nodesdkdb "github.com/rumsystem/quorum/pkg/nodesdk/db"
 	http_client "github.com/rumsystem/quorum/pkg/nodesdk/http"
 )
@@ -60,8 +61,7 @@ func (ctx *NodeSdkCtx) GetNextNouce(groupId string, prefix ...string) (nonce uin
 
 func (ctx *NodeSdkCtx) GetHttpClient(groupId string) (*http_client.HttpClient, error) {
 	if _, ok := ctx.HttpClients[groupId]; !ok {
-		var client *http_client.HttpClient
-		client = &http_client.HttpClient{}
+		client := &http_client.HttpClient{}
 		err := client.Init()
 		if err != nil {
 			return nil, err

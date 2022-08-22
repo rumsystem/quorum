@@ -142,20 +142,27 @@ func (c *CustomContext) BindAndValidate(params interface{}) error {
 	return nil
 }
 
-// GetURL return https?://host:port
-func (c *CustomContext) GetBaseURL() string {
-	scheme := c.Context.Scheme()
-	addr := c.Echo().Server.Addr
-	if strings.HasPrefix(addr, ":") {
-		addr = fmt.Sprintf("%s%s", "127.0.0.1", addr)
+func (c *CustomContext) GetBaseURLFromRequest() string {
+	scheme := "http"
+	if c.Context.IsTLS() {
+		scheme = "https"
 	}
-	return fmt.Sprintf("%s://%s", scheme, addr)
+
+	host := c.Context.Request().Host
+
+	_url := fmt.Sprintf("%s://%s", scheme, host)
+	return _url
 }
 
-func (c *CustomContext) GetBaseURLFromRequest() string {
-	u := c.Request().URL
-	_url := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
-	return _url
+type ErrorResponse echo.HTTPError
+
+type SuccessResponse struct {
+	Success bool `json:"success"`
+}
+
+func (c *CustomContext) Success() error {
+	res := SuccessResponse{Success: true}
+	return c.JSON(http.StatusOK, res)
 }
 
 const jwtQsKey = "jwt"

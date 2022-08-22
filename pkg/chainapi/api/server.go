@@ -28,7 +28,7 @@ type StartAPIParam struct {
 	ZeroAccessKey string
 }
 
-//StartAPIServer : Start local web server
+// StartAPIServer : Start local web server
 func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
@@ -39,6 +39,10 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
+	}))
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Skipper: rummiddleware.ChainGzipSkipper,
+		Level:   5, // hardcode
 	}))
 	r := e.Group("/api")
 	a := e.Group("/app/api")
@@ -53,7 +57,9 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		r.POST("/v1/group/content", h.PostToGroup)
 		r.POST("/v1/group/profile", h.UpdateProfile)
 		r.POST("/v1/network/peers", h.AddPeers)
-		r.POST("/v1/network/relay", h.AddRelayServers)
+		if nodeopt.EnableRelay {
+			r.POST("/v1/network/relay", h.AddRelayServers)
+		}
 		r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 		r.POST("/v1/group/producer", h.GroupProducer)
 		r.POST("/v1/group/user", h.GroupUser)
@@ -88,7 +94,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		a.POST("/v1/token/create", apph.CreateToken)
 
 		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
-		r.POST("/v1/tools/seedurlextend", h.SeedUrlextend())
+		r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
 
 		r.POST("/v1/preview/relay/req", h.RequestRelay)
 		r.GET("/v1/preview/relay", h.ListRelay)
@@ -112,14 +118,14 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		e.AutoTLSManager.Cache = autocert.DirCache(config.CertDir)
 		e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.APIHost)
 		e.AutoTLSManager.Prompt = autocert.AcceptTOS
-		e.Logger.Fatal(e.StartAutoTLS(":https"))
+		e.Logger.Fatal(e.StartAutoTLS(fmt.Sprintf(":%d", config.APIPort)))
 	} else if utils.IsPublicIP(host) { // public ip
 		ip := net.ParseIP(host)
 		privKeyPath, certPath, err := zerossl.IssueIPCert(config.CertDir, ip, config.ZeroAccessKey)
 		if err != nil {
 			e.Logger.Fatal(err)
 		}
-		e.Logger.Fatal(e.StartTLS(":https", certPath, privKeyPath))
+		e.Logger.Fatal(e.StartTLS(fmt.Sprintf(":%d", config.APIPort), certPath, privKeyPath))
 	} else { // start http server
 		e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, config.APIPort)))
 	}

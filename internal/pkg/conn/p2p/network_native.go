@@ -27,7 +27,6 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
-	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -91,19 +90,13 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		identity,
 	}
 
-	if nodeopt.EnableRelay && !nodeopt.EnableRelayService {
+	if nodeopt.EnableRelay {
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
 				autorelay.WithPeerSource(peerChan),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0)),
-		)
-	}
-	if nodeopt.EnableRelayService {
-		libp2poptions = append(libp2poptions,
-			libp2p.DisableRelay(),
-			libp2p.EnableRelayService(relay.WithLimit(nil)),
 		)
 	}
 
@@ -134,7 +127,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
-	if isBootstrap == true || nodeopt.EnableRelayService {
+	if isBootstrap {
 		// turn off the mesh in bootstrapnode and relay node
 		pubsub.GossipSubD = 0
 		pubsub.GossipSubDscore = 0
@@ -182,7 +175,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr}
+	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, Nodeopt: nodeopt}
 
 	//reconnect peers
 	storedpeers := []peer.AddrInfo{}
@@ -192,7 +185,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 			storedpeers = append(storedpeers, peerinfo)
 		}
 	}
-	if len(storedpeers) > 0 && !nodeopt.EnableRelayService {
+	if len(storedpeers) > 0 {
 		//TODO: try connect every x minutes for x*y minutes?
 		go func() {
 			newnode.AddPeers(ctx, storedpeers)

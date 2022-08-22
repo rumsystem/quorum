@@ -1,7 +1,6 @@
 package nodesdkapi
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -54,19 +53,14 @@ func (h *NodeSDKHandler) GetTrx() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		uri := GET_TRX_URI + "/" + groupid + "/" + trxid
+		path := GET_TRX_URI + "/" + groupid + "/" + trxid
 
-		resultInBytes, err := httpClient.Get(uri)
+		result := new(Trx)
+		err = httpClient.RequestChainAPI(path, http.MethodGet, nil, nil, result)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		trx := new(Trx)
-		err = json.Unmarshal(resultInBytes, trx)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		return c.JSON(http.StatusOK, trx)
+		return c.JSON(http.StatusOK, result)
 	}
 }

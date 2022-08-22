@@ -10,23 +10,31 @@ import (
 )
 
 type SeedUrlextendParam struct {
-	SeedURL string `json:"seed" validate:"required"`
+	SeedURL string `json:"seed" validate:"required,url"`
 }
 
-func (h *Handler) SeedUrlextend() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		cc := c.(*utils.CustomContext)
+type SeedUrlextendResult struct {
+	Seed         handlers.GroupSeed `json:"seed" validate:"required"`
+	ChainapiUrls []string           `json:"urls" validate:"required,gte=1,dive,required,url"`
+}
 
-		param := new(SeedUrlextendParam)
-		if err := cc.BindAndValidate(param); err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+func (h *Handler) SeedUrlextend(c echo.Context) error {
+	cc := c.(*utils.CustomContext)
 
-		seed, _, err := handlers.UrlToGroupSeed(param.SeedURL)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		return c.JSON(http.StatusOK, seed)
+	param := new(SeedUrlextendParam)
+	if err := cc.BindAndValidate(param); err != nil {
+		return rumerrors.NewBadRequestError(err)
 	}
+
+	seed, urls, err := handlers.UrlToGroupSeed(param.SeedURL)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	res := SeedUrlextendResult{
+		Seed:         *seed,
+		ChainapiUrls: urls,
+	}
+
+	return c.JSON(http.StatusOK, res)
 }

@@ -53,9 +53,6 @@ func Execute() {
 }
 
 func configLogger(isDebug bool) {
-	logging.SetLogLevel("appsync", "error")
-	logging.SetLogLevel("appdata", "error")
-
 	if isDebug == true {
 		logging.SetLogLevel("cmd", "debug")
 		logging.SetLogLevel("nodesdk", "debug")
@@ -73,9 +70,6 @@ func configLogger(isDebug bool) {
 		logging.SetLogLevel("rumexchange", "debug")
 		logging.SetLogLevel("ssreceiver", "debug")
 		logging.SetLogLevel("sssender", "debug")
-		//logging.SetLogLevel("group", "debug")
-		//logging.SetLogLevel("user", "debug")
-		//logging.SetLogLevel("groupmgr", "debug")
 		logging.SetLogLevel("ping", "debug")
 		logging.SetLogLevel("chan", "debug")
 		//logging.SetLogLevel("pubsub", "debug")
@@ -83,5 +77,10 @@ func configLogger(isDebug bool) {
 		logging.SetLogLevel("rbc", "debug")
 		logging.SetLogLevel("acs", "debug")
 		logging.SetLogLevel("bft", "debug")
+	} else {
+		logging.SetLogLevel("*", "info")
 	}
+
+	logging.SetLogLevel("appsync", "error")
+	logging.SetLogLevel("appdata", "error")
 }

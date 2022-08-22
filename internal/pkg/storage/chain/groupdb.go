@@ -197,7 +197,6 @@ func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, e
 		return nil, err
 	}
 
-	//delete group
 	return groupInfo, nil
 }
 

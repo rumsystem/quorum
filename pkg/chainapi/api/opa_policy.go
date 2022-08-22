@@ -29,6 +29,15 @@ allow {
 	input.path[2] == "node"
 }
 
+# Allow access GET /api/v1/trx/:group_id/:trx_id
+allow {
+  some group_id
+  some trx_id
+  input.method == "GET"
+  input.path = ["api", "v1", "trx", group_id, trx_id]
+  input.allow_groups[_] == group_id
+}
+
 # Allow access /api/v1/node/trx/:group_id
 allow {
   some group_id

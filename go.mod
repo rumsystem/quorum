@@ -12,14 +12,15 @@ replace github.com/libp2p/go-libp2p-noise => github.com/libp2p/go-libp2p-noise v
 
 replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 
-replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
-
-replace github.com/hack-pad/go-indexeddb => github.com/rumsystem/go-indexeddb v0.1.1-0.20220427050516-d85a80a1bdd3
+// replace github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.19.0
 
 //replace github.com/libp2p/go-libp2p-autonat => ../go-libp2p-autonat
 //replace github.com/ipfs/go-ds-badger2 => ../go-ds-badger2
 //replace github.com/libp2p/go-libp2p-peerstore => ../go-libp2p-peerstore
 //replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
+replace github.com/libp2p/go-libp2p => github.com/chux0519/go-libp2p v0.19.1-0.20220814133711-afcc91c7c730
+
+// replace github.com/libp2p/go-libp2p => ../go-libp2p
 
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5
@@ -62,9 +63,10 @@ require (
 	github.com/open-policy-agent/opa v0.39.0
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/rumsystem/ip-cert v0.0.0-20220711094257-120c7918c85c
-	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
 	github.com/rumsystem/rumchaindata v0.0.0-20220819195851-1f6129604ef6
+	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
+	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
+
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/swaggo/echo-swagger v1.1.0
