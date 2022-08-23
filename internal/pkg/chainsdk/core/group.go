@@ -153,16 +153,20 @@ func (grp *Group) ClearGroup() error {
 
 func (grp *Group) StartSync() error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
+	return grp.ChainCtx.StartSync()
+	//return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StopSync() error {
 	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-	return grp.ChainCtx.StopSync()
+	grp.ChainCtx.StopSync()
+	return nil
 }
 
 func (grp *Group) GetSyncerStatus() int8 {
-	return grp.ChainCtx.syncer.Status
+	//TOFIX: get syncer runner status
+	return 0
+	//return grp.ChainCtx.syncer.Status
 }
 
 func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {

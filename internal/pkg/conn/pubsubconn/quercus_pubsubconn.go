@@ -86,7 +86,8 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 					blk = &quorumpb.Block{}
 					err := proto.Unmarshal(pkg.Data, blk)
 					if err == nil {
-						qconn.chain.HandleBlockPsConn(blk)
+						//TOFIX
+						//qconn.chain.HandleBlockPsConn(blk)
 					} else {
 						channel_log.Warning(err.Error())
 					}

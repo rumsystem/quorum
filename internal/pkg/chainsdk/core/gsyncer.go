@@ -10,7 +10,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
-var gsyncer_log = logging.Logger("gsyncer")
+var gsyncer_log = logging.Logger("syncer")
 
 type Syncdirection uint
 
@@ -48,15 +48,17 @@ type Gsyncer struct {
 	resultq        chan *SyncResult
 	nextTask       func(taskid string) (*SyncTask, error)
 	resultreceiver func(result *SyncResult) error
+	tasksender     func(task *SyncTask) error
 }
 
-func NewGsyncer(groupid string, nextTask func(string) (*SyncTask, error), resultreceiver func(result *SyncResult) error) *Gsyncer {
+func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) error, tasksender func(task *SyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
 	s.Status = IDLE
 	s.GroupId = groupid
-	s.nextTask = nextTask
+	s.nextTask = getTask
 	s.resultreceiver = resultreceiver
+	s.tasksender = tasksender
 	s.retryCount = 0
 	s.taskq = make(chan *SyncTask)
 	s.resultq = make(chan *SyncResult, 3)
@@ -77,9 +79,10 @@ func (s *Gsyncer) Start() {
 			if err == nil {
 				gsyncer_log.Infof("<%s> process task done %s", s.GroupId, task.Id)
 				//fake result send to the result queue
-				data := BlockSyncResult{BlockId: fmt.Sprintf("test_block_id_%s", task.Id)}
-				sr := &SyncResult{Id: task.Id, TaskId: task.Id, Data: data}
-				s.AddResultTest(sr)
+				//data := BlockSyncResult{BlockId: fmt.Sprintf("test_block_id_%s", task.Id)}
+				//sr := &SyncResult{Id: task.Id, TaskId: task.Id, Data: data}
+				//s.AddResult(sr)
+				//will be replaced by real task result
 			} else {
 				//test try to retry this task
 				taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%s", task.Id), Direction: Next}
@@ -145,18 +148,20 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) error {
 func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	taskdone := make(chan struct{})
 	go func() {
-		blocktask, ok := task.Meta.(BlockSyncTask)
-		if ok == true {
-			v := rand.Intn(5) + 1
-			time.Sleep(time.Duration(v) * time.Second) // fake workload
-		} else {
-			fmt.Println("===task.Meta")
-			fmt.Println(task.Meta)
-			gsyncer_log.Warnf("<%s> Unsupported task", s.GroupId, task.Id)
-		}
+		s.tasksender(task)
+		//blocktask, ok := task.Meta.(BlockSyncTask)
+		//if ok == true {
+		//	//replace with  real workload
+		//	//v := rand.Intn(5) + 1
+		//	//time.Sleep(time.Duration(v) * time.Second) // fake workload
+		//} else {
+		//	fmt.Println("===task.Meta")
+		//	fmt.Println(task.Meta)
+		//	gsyncer_log.Warnf("<%s> Unsupported task", s.GroupId, task.Id)
+		//}
 		select {
 		case taskdone <- struct{}{}:
-			gsyncer_log.Warnf("<%s> done %s task", s.GroupId, blocktask.BlockId)
+			gsyncer_log.Warnf("<%s> done %s task", s.GroupId, task.Id)
 		default:
 			return
 		}
@@ -176,6 +181,6 @@ func (s *Gsyncer) AddTask(task *SyncTask) {
 	}()
 }
 
-func (s *Gsyncer) AddResultTest(result *SyncResult) {
+func (s *Gsyncer) AddResult(result *SyncResult) {
 	s.resultq <- result
 }
