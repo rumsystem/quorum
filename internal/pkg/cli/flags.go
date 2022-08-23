@@ -58,6 +58,25 @@ type RelayNodeFlag struct {
 	IsDebug         bool
 }
 
+type ProducerNodeFlag struct {
+	RendezvousString string
+	BootstrapPeers   AddrList
+	ListenAddresses  AddrList
+	APIHost          string
+	APIPort          uint
+	CertDir          string
+	ZeroAccessKey    string
+	ProtocolID       string
+	PeerName         string
+	JsonTracer       string
+	IsDebug          bool
+	ConfigDir        string
+	DataDir          string
+	KeyStoreDir      string
+	KeyStoreName     string
+	KeyStorePwd      string
+}
+
 func (al *AddrList) String() string {
 	strs := make([]string, len(*al))
 	for i, addr := range *al {

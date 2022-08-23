@@ -34,7 +34,7 @@ import (
 
 var (
 	fnodeFlag = cli.FullnodeFlag{ProtocolID: "/quorum/1.0.0"}
-	node      *p2p.Node
+	fullnode  *p2p.Node
 	signalch  chan os.Signal
 )
 
@@ -157,7 +157,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		node, err = p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+		fullnode, err = p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 
 		if err != nil {
 			logger.Fatalf(err.Error())
@@ -171,18 +171,18 @@ func runFullnode(config cli.FullnodeFlag) {
 		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
 		dbManager.TryMigration(1)
 
-		nodectx.InitCtx(ctx, "", node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit)
+		nodectx.InitCtx(ctx, "", fullnode, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit)
 		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
-		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
+		if err := stats.InitDB(datapath, fullnode.Host.ID()); err != nil {
 			logger.Fatalf("init stats db failed: %s", err)
 		}
 
-		logger.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
+		logger.Infof("Host created, ID:<%s>, Address:<%s>", fullnode.Host.ID(), fullnode.Host.Addrs())
 		h := &api.Handler{
-			Node:      node,
+			Node:      fullnode,
 			NodeCtx:   nodectx.GetNodeCtx(),
 			GitCommit: utils.GitCommit,
 		}
@@ -193,7 +193,7 @@ func runFullnode(config cli.FullnodeFlag) {
 			CertDir:       config.CertDir,
 			ZeroAccessKey: config.ZeroAccessKey,
 		}
-		go api.StartAPIServer(startParam, signalch, h, nil, node, nodeoptions, ks, ethaddr, true)
+		go api.StartFullNodeServer(startParam, signalch, h, nil, fullnode, nodeoptions, ks, ethaddr, true)
 	} else {
 		nodename := "default"
 
@@ -211,33 +211,33 @@ func runFullnode(config cli.FullnodeFlag) {
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+		fullnode, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil {
-			node.SetRumExchange(ctx, newchainstorage)
+			fullnode.SetRumExchange(ctx, newchainstorage)
 		}
 
-		if err := node.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+		if err := fullnode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
 			logger.Fatal(err)
 		}
 
-		for _, addr := range node.Host.Addrs() {
-			p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), node.Host.ID())
-			logger.Infof("Peer ID:<%s>, Peer Address:<%s>", node.Host.ID(), p2paddr)
+		for _, addr := range fullnode.Host.Addrs() {
+			p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), fullnode.Host.ID())
+			logger.Infof("Peer ID:<%s>, Peer Address:<%s>", fullnode.Host.ID(), p2paddr)
 		}
 
 		//Discovery and Advertise had been replaced by PeerExchange
 		logger.Infof("Announcing ourselves...")
-		discovery.Advertise(ctx, node.RoutingDiscovery, config.RendezvousString)
+		discovery.Advertise(ctx, fullnode.RoutingDiscovery, config.RendezvousString)
 		logger.Infof("Successfully announced!")
 
 		peerok := make(chan struct{})
-		go node.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
-		nodectx.InitCtx(ctx, nodename, node, dbManager, newchainstorage, "pubsub", utils.GitCommit)
+		go fullnode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
+		nodectx.InitCtx(ctx, nodename, fullnode, dbManager, newchainstorage, "pubsub", utils.GitCommit)
 		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
-		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
+		if err := stats.InitDB(datapath, fullnode.Host.ID()); err != nil {
 			logger.Fatalf("init stats db failed: %s", err)
 		}
 
@@ -278,7 +278,7 @@ func runFullnode(config cli.FullnodeFlag) {
 
 		//run local http api service
 		h := &api.Handler{
-			Node:       node,
+			Node:       fullnode,
 			NodeCtx:    nodectx.GetNodeCtx(),
 			Ctx:        ctx,
 			GitCommit:  utils.GitCommit,
@@ -305,7 +305,7 @@ func runFullnode(config cli.FullnodeFlag) {
 			CertDir:       config.CertDir,
 			ZeroAccessKey: config.ZeroAccessKey,
 		}
-		go api.StartAPIServer(startParam, signalch, h, apph, node, nodeoptions, ks, ethaddr, false)
+		go api.StartFullNodeServer(startParam, signalch, h, apph, fullnode, nodeoptions, ks, ethaddr, false)
 	}
 
 	//attach signal
