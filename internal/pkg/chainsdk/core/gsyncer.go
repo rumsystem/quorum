@@ -10,6 +10,10 @@ import (
 
 var gsyncer_log = logging.Logger("syncer")
 
+var (
+	ErrSyncDone = errors.New("Error Signal Sync Done")
+)
+
 type Syncdirection uint
 
 const (
@@ -94,6 +98,7 @@ func (s *Gsyncer) Start() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 			nexttaskid, err := s.processResult(ctx, result)
+			//TODO: err with STOP signal, set to IDLE and pause
 			if err == nil {
 				//test try to add next task
 				gsyncer_log.Debugf("<%s> process result done %s", s.GroupId, result.Id)
@@ -108,6 +113,9 @@ func (s *Gsyncer) Start() {
 					continue
 				}
 				s.AddTask(nexttask)
+			} else if err == ErrSyncDone {
+				gsyncer_log.Infof("<%s> result %s is Sync Pause Signal", s.GroupId, result.Id)
+				//SyncPause, stop add next task, pause
 			} else {
 				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
 				if terr != nil {
@@ -141,7 +149,6 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string
 	case <-ctx.Done():
 		return "", errors.New("Result Timeout")
 	}
-
 }
 
 func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {

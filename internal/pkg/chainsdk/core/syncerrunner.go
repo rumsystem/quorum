@@ -81,6 +81,7 @@ func (sr *SyncerRunner) Start(blockid string) error {
 		return err
 	}
 	sr.gsyncer.Start()
+	sr.Status = SYNCING_FORWARD
 	//add the first task
 	sr.gsyncer.AddTask(task)
 	return nil
@@ -88,6 +89,7 @@ func (sr *SyncerRunner) Start(blockid string) error {
 
 func (sr *SyncerRunner) Stop() {
 	sr.gsyncer.Stop()
+	sr.Status = IDLE
 }
 
 func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
@@ -129,7 +131,11 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 		//v := rand.Intn(5) + 1
 		//time.Sleep(time.Duration(v) * time.Second) // fake workload
 		//try to save the result to db
-		return sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult)
+		nexttaskid, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult)
+		if err == ErrSyncDone {
+			sr.Status = IDLE
+		}
+		return nexttaskid, err
 	} else {
 		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
 		return "", fmt.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)

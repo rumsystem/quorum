@@ -458,13 +458,6 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 	//chain_log.Debugf("<%s> synced block incoming, provider <%s>", chain.groupId, providerpkey)
 
 	//TOFIX: move into the syncerrunner
-	//if resp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
-	//	syncer.responses[providerpkey] = resp
-	//	syncer_log.Debugf("<%s> receive BLOCK_NOT_FOUND response, do nothing(wait for timeout)", syncer.GroupId)
-	//	return nil
-	//}
-
-	//TOFIX: move into the syncerrunner
 	//if _, blockReceived := chain.blockReceived[resp.BlockId]; blockReceived {
 	//	syncer_log.Debugf("<%s> Block with Id <%s> already received", syncer.GroupId, resp.BlockId)
 	//	return nil
@@ -559,6 +552,12 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
 	//if not asked by myself, ignore it
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
 		return "", errors.New("not ask by myself")
+	}
+
+	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND { //sync done, set to IDLE
+		//	syncer.responses[providerpkey] = resp
+		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
+		return reqBlockResp.BlockId, ErrSyncDone
 	}
 
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
