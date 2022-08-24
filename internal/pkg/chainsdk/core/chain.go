@@ -121,7 +121,8 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockResp(trx)
+		//TOFIX: use gsyncer
+		//chain.handleReqBlockResp(trx)
 	default:
 		//do nothing
 	}
@@ -176,7 +177,10 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockResp(trx)
+		//TOFIX: send to task result queue
+		//use current blockid as taskid
+		chain.syncerrunner.AddTrxToSyncerQueue(trx)
+		//chain.handleReqBlockResp(trx)
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
 		return nil
@@ -399,7 +403,9 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 		}
 
 	} else if networktype == conn.RumExchange {
-		block, err := chain.chaindata.GetBlockBackwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
+		reqblockid, block, err := chain.chaindata.GetBlockBackwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
+		//TOFIX use gsyncer
+		_ = reqblockid
 		if err == nil && block != nil {
 			ks := nodectx.GetNodeCtx().Keystore
 			mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
@@ -533,25 +539,26 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 
 }
 
-func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
+//TOFIX: send to the task result channel
+func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	reqBlockResp := &quorumpb.ReqBlockResp{}
 	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
-		return err
+		return "", err
 	}
 
 	//if not asked by myself, ignore it
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
-		return nil
+		return "", errors.New("not ask by myself")
 	}
 
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
@@ -559,7 +566,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 	newBlock := &quorumpb.Block{}
 
 	if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
-		return err
+		return "", err
 	}
 
 	var shouldAccept bool
@@ -582,10 +589,10 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
 		for key, _ := range chain.ProducerPool {
 			chain_log.Warnf(" <%s> List Block producer %s", chain.groupId, key)
 		}
-		return nil
+		return "", errors.New("Block producer not registed")
 	}
 
-	return chain.AddBlockSynced(reqBlockResp, newBlock)
+	return newBlock.BlockId, chain.AddBlockSynced(reqBlockResp, newBlock)
 }
 
 func (chain *Chain) handleBlockProduced(trx *quorumpb.Trx) error {

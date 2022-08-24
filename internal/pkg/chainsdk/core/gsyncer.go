@@ -3,8 +3,6 @@ package chain
 import (
 	"context"
 	"errors"
-	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -46,12 +44,12 @@ type Gsyncer struct {
 	retryCount     int8
 	taskq          chan *SyncTask
 	resultq        chan *SyncResult
-	nextTask       func(taskid string) (*SyncTask, error)
-	resultreceiver func(result *SyncResult) error
-	tasksender     func(task *SyncTask) error
+	nextTask       func(taskid string) (*SyncTask, error)   //request the next task
+	resultreceiver func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
+	tasksender     func(task *SyncTask) error               //send task via network or others
 }
 
-func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) error, tasksender func(task *SyncTask) error) *Gsyncer {
+func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) (string, error), tasksender func(task *SyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
 	s.Status = IDLE
@@ -70,14 +68,14 @@ func (s *Gsyncer) Stop() {
 }
 
 func (s *Gsyncer) Start() {
-	gsyncer_log.Infof("<%s> Gsyncer Start", s.GroupId)
+	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
 	go func() {
 		for task := range s.taskq {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 			err := s.processTask(ctx, task)
 			if err == nil {
-				gsyncer_log.Infof("<%s> process task done %s", s.GroupId, task.Id)
+				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Id)
 				//fake result send to the result queue
 				//data := BlockSyncResult{BlockId: fmt.Sprintf("test_block_id_%s", task.Id)}
 				//sr := &SyncResult{Id: task.Id, TaskId: task.Id, Data: data}
@@ -85,8 +83,7 @@ func (s *Gsyncer) Start() {
 				//will be replaced by real task result
 			} else {
 				//test try to retry this task
-				taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%s", task.Id), Direction: Next}
-				s.AddTask(&SyncTask{Meta: taskmeta, Id: task.Id})
+				s.AddTask(task)
 				gsyncer_log.Errorf("<%s> task process %s error: %s", s.GroupId, task.Id, err)
 			}
 		}
@@ -96,41 +93,43 @@ func (s *Gsyncer) Start() {
 		for result := range s.resultq {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
-			err := s.processResult(ctx, result)
+			nexttaskid, err := s.processResult(ctx, result)
 			if err == nil {
 				//test try to add next task
-				gsyncer_log.Infof("<%s> process result done %s", s.GroupId, result.Id)
-				nexttask, err := s.nextTask(result.TaskId)
+				gsyncer_log.Debugf("<%s> process result done %s", s.GroupId, result.Id)
+				if nexttaskid == "" {
+					gsyncer_log.Errorf("nextTask can't be null, skip")
+					continue
+				}
+
+				nexttask, err := s.nextTask(nexttaskid)
 				if err != nil {
 					gsyncer_log.Errorf("nextTask error:%s", err)
 					continue
 				}
 				s.AddTask(nexttask)
 			} else {
+				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
+				if terr != nil {
+					gsyncer_log.Errorf("nextTask error:%s", terr)
+					continue
+				}
 				//test try to retry this task
-				taskmeta := BlockSyncTask{BlockId: fmt.Sprintf("00000000-0000-0000-0000-000000000001_%s", result.Id), Direction: Next}
-				s.AddTask(&SyncTask{Meta: taskmeta, Id: result.TaskId})
+				s.AddTask(nexttask)
 				gsyncer_log.Errorf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
 			}
 		}
 	}()
 }
-func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) error {
+func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string, error) {
 	resultdone := make(chan struct{})
 	var err error
+	var nexttaskid string
 	go func() {
-		blocktaskresult, ok := result.Data.(BlockSyncResult)
-		if ok == true {
-			v := rand.Intn(2)
-			time.Sleep(time.Duration(v) * time.Second) // fake workload
-			err = s.resultreceiver(result)
-			//try to save the result to db
-		} else {
-			gsyncer_log.Warnf("<%s> Unsupported result", result.Id)
-		}
+		nexttaskid, err = s.resultreceiver(result)
 		select {
 		case resultdone <- struct{}{}:
-			gsyncer_log.Warnf("<%s> done %s result", s.GroupId, blocktaskresult.BlockId)
+			gsyncer_log.Warnf("<%s> done result: %s", s.GroupId, result.Id)
 		default:
 			return
 		}
@@ -138,9 +137,9 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) error {
 
 	select {
 	case <-resultdone:
-		return err
+		return nexttaskid, err
 	case <-ctx.Done():
-		return errors.New("Result Timeout")
+		return "", errors.New("Result Timeout")
 	}
 
 }
@@ -161,7 +160,7 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 		//}
 		select {
 		case taskdone <- struct{}{}:
-			gsyncer_log.Warnf("<%s> done %s task", s.GroupId, task.Id)
+			gsyncer_log.Debugf("<%s> done %s task", s.GroupId, task.Id)
 		default:
 			return
 		}
