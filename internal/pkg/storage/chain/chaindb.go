@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 	"fmt"
+
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
@@ -116,6 +117,7 @@ func (cs *Storage) GetSnapshotTag(groupId string, prefix ...string) (*quorumpb.S
 	return &snapshotTag, err
 }
 
+/*
 func (cs *Storage) UpdateSchema(trx *quorumpb.Trx, prefix ...string) (err error) {
 	item := &quorumpb.SchemaItem{}
 	if err := proto.Unmarshal(trx.Data, item); err != nil {
@@ -165,6 +167,7 @@ func (cs *Storage) GetAllSchemasByGroup(groupId string, prefix ...string) ([]*qu
 
 	return scmList, err
 }
+*/
 
 func (cs *Storage) GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserItem, error) {
 	var pList []*quorumpb.UserItem

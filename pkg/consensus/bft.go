@@ -89,14 +89,14 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 
 	err := hb.buildBlock(trxs)
 	if err != nil {
-		acs_log.Warnf(err.Error())
+		bft_log.Warnf(err.Error())
 	}
 
 	//remove outputed trxs from buffer
 	for trxId, _ := range trxs {
 		err := hb.txBuffer.Delete(trxId)
 		if err != nil {
-			acs_log.Warnf(err.Error())
+			bft_log.Warnf(err.Error())
 		}
 	}
 
@@ -104,11 +104,11 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	hb.acsInsts[epoch] = nil
 	delete(hb.acsInsts, epoch)
 
-	acs_log.Debugf("Remove acs %d", epoch)
+	bft_log.Debugf("Remove acs %d", epoch)
 
 	//advanced to next epoch
 	hb.epoch++
-	acs_log.Debugf("advance to epoch  %d", hb.epoch)
+	bft_log.Debugf("advance to epoch  %d", hb.epoch)
 
 	//update chain Info
 	bft_log.Debugf("<%s> UpdChainInfo called", hb.producer.groupId)
@@ -119,10 +119,10 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 
 	trxBufLen, err := hb.txBuffer.GetBufferLen()
 	if err != nil {
-		acs_log.Warnf(err.Error())
+		bft_log.Warnf(err.Error())
 	}
 
-	acs_log.Debugf("After propose, trx buffer length %d", trxBufLen)
+	bft_log.Debugf("After propose, trx buffer length %d", trxBufLen)
 
 	//start next round
 	if trxBufLen != 0 {
@@ -134,15 +134,14 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	//try build block by using trxs
 
 	var trxToPackage []*quorumpb.Trx
-	acs_log.Infof("---------------acs result for epoch %d-------------------", hb.epoch)
+	bft_log.Infof("---------------acs result for epoch %d-------------------", hb.epoch)
 
 	for trxId, trx := range trxs {
-		acs_log.Infof(">>>>>>>> trxId : %s", trxId)
+		bft_log.Infof(">>>>>>>> trxId : %s", trxId)
 		trxToPackage = append(trxToPackage, trx)
 	}
 
 	//update db here
-
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(hb.producer.groupId, hb.epoch-1, false, hb.producer.nodename)
 	if err != nil {
 		return err
@@ -168,7 +167,21 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 		acs_log.Warnf("<%s> <%s>", hb.producer.groupId, err.Error())
 	}
 
-	return nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
+	//if run as producer node
+	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+		bft_log.Info("PRODUCER_NODE handle block")
+		hb.producer.cIface.ApplyTrxsProducerNode(trxToPackage, hb.producer.nodename)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
+		if err != nil {
+			return err
+		}
+	} else {
+		// if run in FULL_NODE, no need to handle this block here
+		// local user will receive this block via producer channel, local user will handle it
+		bft_log.Info("FULL_NODE handle block, do nothing, wait for local user to handle it")
+	}
+
+	return nil
 }
 
 func (hb *Bft) propose() error {

@@ -85,7 +85,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r := e.Group("/api")
 	r.GET("/quit", quitapp)
 
-	r.POST("/v1/group", h.CreateGroupUrl())
+	//r.POST("/v1/group", h.CreateGroupUrl())
 	//r.POST("/v1/group/join", h.JoinGroup())
 	r.POST("/v2/group/join", h.JoinGroupV2())
 	r.POST("/v1/group/leave", h.LeaveGroup)

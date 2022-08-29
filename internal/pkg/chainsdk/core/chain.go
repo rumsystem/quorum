@@ -164,7 +164,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		bpk = block.BookkeepingPubkey
 	}
 
-	if chain.Consensus.Producer() != nil {
+	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		//if I am a producer, no need to addBlock since block just produced is already saved
 		chain_log.Debugf("<%s> Producer ignore incoming block", chain.groupId)
 		shouldAccept = false
@@ -197,7 +197,6 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
-
 	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
 
@@ -688,7 +687,7 @@ func (chain *Chain) CreateConsensus() error {
 	*/
 
 	if chain.Consensus == nil {
-		chain_log.Infof("<%s> created consensus", chain.groupId)
+		chain_log.Infof("<%s> create new consensus", chain.groupId)
 		chain.Consensus = consensus.NewMolasses(producer, user /*, snapshotsender, snapshotreceiver */)
 	} else {
 		chain_log.Infof("<%s> reuse consensus", chain.groupId)
@@ -797,8 +796,8 @@ func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64
 	return n, err
 }
 
-func (chain *Chain) ApplyTrxsUserNode(trxs []*quorumpb.Trx, nodename string) error {
-	chain_log.Debugf("<%s> applyTrxs called", chain.groupId)
+func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error {
+	chain_log.Debugf("<%s> ApplyTrxsFullNode called", chain.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
 		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
@@ -883,9 +882,6 @@ func (chain *Chain) ApplyTrxsUserNode(trxs []*quorumpb.Trx, nodename string) err
 			if err != nil {
 				chain_log.Errorf("<%s> handle CHAIN_CONFIG trx", chain.groupId)
 			}
-		case quorumpb.TrxType_SCHEMA:
-			chain_log.Debugf("<%s> apply SCHEMA trx", chain.groupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateSchema(trx, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
 		}
@@ -900,7 +896,7 @@ func (chain *Chain) ApplyTrxsUserNode(trxs []*quorumpb.Trx, nodename string) err
 }
 
 func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error {
-	chain_log.Debugf("<%s> applyTrxs called", chain.groupId)
+	chain_log.Debugf("<%s> ApplyTrxsProducerNode called", chain.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
 		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
@@ -913,37 +909,6 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 			chain_log.Debugf("<%s> trx <%s> existed, update trx", chain.groupId, trx.TrxId)
 			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 			continue
-		}
-
-		originalData := trx.Data
-
-		if trx.Type == quorumpb.TrxType_POST && chain.group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by pgp for all announced group user
-			//just try decrypt it, if failed, save the original encrypted data
-			//the reason for that is, for private group, before owner add producer, owner is the only producer,
-			//since owner also needs to show POST data, and all announced user will encrypt for owner pubkey
-			//owner can actually decrypt POST
-			//for other producer, they can not decrpyt POST
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(chain.group.Item.GroupId, trx.Data)
-			if err == nil {
-				//set trx.Data to decrypted []byte
-				trx.Data = decryptData
-			}
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-
-			//set trx.Data to decrypted []byte
-			trx.Data = decryptData
 		}
 
 		chain_log.Debugf("<%s> apply trx <%s>", chain.groupId, trx.TrxId)
@@ -972,15 +937,9 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 			if err != nil {
 				chain_log.Errorf("<%s> handle CHAIN_CONFIG trx", chain.groupId)
 			}
-		case quorumpb.TrxType_SCHEMA:
-			chain_log.Debugf("<%s> apply SCHEMA trx", chain.groupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateSchema(trx, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
 		}
-
-		//set trx data to original (encrypted)
-		trx.Data = originalData
 
 		//save trx to db
 		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
@@ -989,7 +948,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 	return nil
 }
 
-func (chain *Chain) AddBlock(block *quorumpb.Block) error {
+func (chain *Chain) AddSyncedBlock(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> AddBlock called", chain.groupId)
 
 	/*

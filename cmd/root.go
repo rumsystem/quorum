@@ -74,9 +74,11 @@ func configLogger(isDebug bool) {
 		logging.SetLogLevel("chan", "debug")
 		//logging.SetLogLevel("pubsub", "debug")
 
+		logging.SetLogLevel("user", "debug")
 		logging.SetLogLevel("rbc", "debug")
 		logging.SetLogLevel("acs", "debug")
 		logging.SetLogLevel("bft", "debug")
+		logging.SetLogLevel("user", "debug")
 	} else {
 		logging.SetLogLevel("*", "info")
 	}

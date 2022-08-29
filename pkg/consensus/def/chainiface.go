@@ -10,7 +10,7 @@ type ChainMolassesIface interface {
 	GetPubqueueIface() chaindef.PublishQueueIface
 	GetTrxFactory() chaindef.TrxFactoryIface
 	UpdChainInfo(epoch int64) error
-	ApplyTrxsUserNode(trxs []*quorumpb.Trx, nodename string) error
+	ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error
 	ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error
-	AddBlock(block *quorumpb.Block) error
+	AddSyncedBlock(block *quorumpb.Block) error
 }

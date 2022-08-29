@@ -177,19 +177,6 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		chain.GetGroupMgr().SetRumExchangeTestMode()
 	}
 
-	// commented by cuicat
-	// no publish queue for producer node
-	/*
-		// init the publish queue watcher
-		doneCh := make(chan bool)
-
-		pubqueueDb, err := createPubQueueDb(datapath)
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
-	*/
-
 	//load all groups
 	err = chain.GetGroupMgr().LoadAllGroups()
 	if err != nil {
