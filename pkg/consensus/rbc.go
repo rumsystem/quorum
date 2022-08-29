@@ -48,7 +48,6 @@ type RBC struct {
 // for example F = 1, N = 2 * 1 + 1, 3 witnesses are needed
 // ecc will encode data bytes into 3 pieces
 // a witnesses need at least 3 - 1 = 2 pieces to recover data
-
 func NewRBC(cfg Config, acs *ACS, groupId, proposerPubkey string) (*RBC, error) {
 	rbc_log.Infof("NewRBC called, witnesses pubkey %s, epoch %d", proposerPubkey, acs.epoch)
 

@@ -34,7 +34,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.ChainInit(grp)
+	grp.ChainCtx.NewChain(grp)
 
 	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
 	if opk != "" {
@@ -56,14 +56,11 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.CreateConsensus()
+
 	//start send snapshot
 	//grp.ChainCtx.StartSnapshot()
 
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
-}
-
-func (grp *Group) SetRumExchangeTestMode() {
-	grp.ChainCtx.SetRumExchangeTestMode()
 }
 
 //teardown group
@@ -85,7 +82,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.ChainInit(grp)
+	grp.ChainCtx.NewChain(grp)
 
 	err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(item.GenesisBlock, false, grp.ChainCtx.nodename)
 	if err != nil {
@@ -185,14 +182,9 @@ func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) 
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(trxId, def.Cache, grp.ChainCtx.nodename)
 }
 
-//func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
-//	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
-//	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
-//}
-
-func (grp *Group) GetSchemas() ([]*quorumpb.SchemaItem, error) {
-	group_log.Debugf("<%s> GetSchema called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAllSchemasByGroup(grp.Item.GroupId, grp.ChainCtx.nodename)
+func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
+	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
+	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
@@ -312,4 +304,8 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 		return "", nil
 	}
 	return grp.sendTrx(trx, conn.ProducerChannel)
+}
+
+func (grp *Group) SetRumExchangeTestMode() {
+	grp.ChainCtx.SetRumExchangeTestMode()
 }

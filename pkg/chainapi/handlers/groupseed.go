@@ -154,28 +154,28 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 
 	//recreate genesis block
 	genesisBlock := &pb.Block{
-		Epoch:       int64(binary.LittleEndian.Uint64(b64ebyte)),
-		GroupId:     b64guuid.String(),
-		PrevTrxHash: nil,
-		Trxs:        nil,
+		Epoch:         int64(binary.LittleEndian.Uint64(b64ebyte)),
+		GroupId:       b64guuid.String(),
+		PrevEpochHash: nil,
+		Trxs:          nil,
 	}
 
-	trxHash, err := rumchaindata.BlockTrxHash(genesisBlock)
+	trxHash, err := rumchaindata.BlockEpochHash(genesisBlock)
 	if err != nil {
 		return nil, nil, err
 	}
-	genesisBlock.TrxHash = trxHash
+	genesisBlock.EpochHash = trxHash
 
 	genesisBlock.Witesses = nil
 	genesisBlock.BookkeepingPubkey = b64producerpubkey
 	genesisBlock.TimeStamp = timestamp
 
-	bookkeepingHash, err := rumchaindata.BlockBookKeepingHash(genesisBlock)
+	bookkeepingHash, err := rumchaindata.BlockHash(genesisBlock)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	genesisBlock.BookkeepingHash = bookkeepingHash
+	genesisBlock.BlockHash = bookkeepingHash
 	genesisBlock.BookkeepingSignature = b64signbyte
 
 	consensustype := "poa"

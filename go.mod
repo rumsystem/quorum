@@ -63,10 +63,9 @@ require (
 	github.com/open-policy-agent/opa v0.39.0
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/rumsystem/rumchaindata v0.0.0-20220819195851-1f6129604ef6
 	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
 	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
-
+	github.com/rumsystem/rumchaindata v0.0.0-20220829172500-e07eac4dc3b0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/swaggo/echo-swagger v1.1.0

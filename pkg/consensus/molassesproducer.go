@@ -20,8 +20,8 @@ type MolassesProducer struct {
 	bft      *Bft
 }
 
-func (producer *MolassesProducer) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
-	molaproducer_log.Debug("Init called")
+func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+	molaproducer_log.Debug("NewProducer called")
 	producer.grpItem = item
 	producer.cIface = iface
 	producer.nodename = nodename
@@ -68,7 +68,6 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	return config, nil
 }
 
-// Add trx to trx pool
 func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	molaproducer_log.Debugf("<%s> AddTrx called", producer.groupId)
 

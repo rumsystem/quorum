@@ -28,19 +28,19 @@ import (
 )
 
 var (
-	pNodeFlag = cli.ProducerNodeFlag{ProtocolID: "/quorum/1.0.0"}
-	pNode     *p2p.Node
-	pSignalCh chan os.Signal
+	producerNodeFlag = cli.ProducerNodeFlag{ProtocolID: "/quorum/1.0.0"}
+	producerNode     *p2p.Node
+	producerSignalCh chan os.Signal
 )
 
 var producerNodeCmd = &cobra.Command{
 	Use:   "producernode",
-	Short: " Run producernode",
+	Short: "Run producernode",
 	Run: func(cmd *cobra.Command, args []string) {
-		if pNodeFlag.KeyStorePwd == "" {
-			pNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
+		if producerNodeFlag.KeyStorePwd == "" {
+			producerNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
-		runProducerNode(pNodeFlag)
+		runProducerNode(producerNodeFlag)
 	},
 }
 
@@ -49,28 +49,28 @@ func init() {
 	flags := producerNodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&pNodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&pNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&pNodeFlag.DataDir, "datadir", "./data/", "config dir")
-	flags.StringVar(&pNodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&pNodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&pNodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.Var(&pNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&pNodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&pNodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&pNodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
-	flags.StringVar(&pNodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
-	flags.Var(&pNodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.StringVar(&pNodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&pNodeFlag.IsDebug, "debug", false, "show debug log")
+	flags.StringVar(&producerNodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&producerNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flags.StringVar(&producerNodeFlag.DataDir, "datadir", "./data/", "config dir")
+	flags.StringVar(&producerNodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
+	flags.StringVar(&producerNodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
+	flags.StringVar(&producerNodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
+	flags.Var(&producerNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&producerNodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&producerNodeFlag.APIPort, "apiport", 5215, "api server listen port")
+	flags.StringVar(&producerNodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
+	flags.StringVar(&producerNodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
+	flags.Var(&producerNodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.StringVar(&producerNodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
+	flags.BoolVar(&producerNodeFlag.IsDebug, "debug", false, "show debug log")
 }
 
 func runProducerNode(config cli.ProducerNodeFlag) {
-	configLogger(pNodeFlag.IsDebug)
+	configLogger(producerNodeFlag.IsDebug)
 	logger.Infof("Version:%s", utils.GitCommit)
 	const defaultKeyName = "default"
 
-	pSignalCh = make(chan os.Signal, 1)
+	producerSignalCh = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -122,7 +122,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	nodename := "pnode_default"
+	nodename := "producernode_default"
 
 	datapath := config.DataDir + "/" + config.PeerName
 	dbManager, err := storage.CreateDb(datapath)
@@ -138,33 +138,33 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	pNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	producerNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 	if err == nil {
-		pNode.SetRumExchange(ctx, newchainstorage)
+		producerNode.SetRumExchange(ctx, newchainstorage)
 	}
 
-	if err := pNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+	if err := producerNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
 		logger.Fatal(err)
 	}
 
-	for _, addr := range pNode.Host.Addrs() {
-		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), pNode.Host.ID())
-		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", pNode.Host.ID(), p2paddr)
+	for _, addr := range producerNode.Host.Addrs() {
+		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), producerNode.Host.ID())
+		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", producerNode.Host.ID(), p2paddr)
 	}
 
 	//Discovery and Advertise had been replaced by PeerExchange
 	logger.Infof("Announcing ourselves...")
-	discovery.Advertise(ctx, pNode.RoutingDiscovery, config.RendezvousString)
+	discovery.Advertise(ctx, producerNode.RoutingDiscovery, config.RendezvousString)
 	logger.Infof("Successfully announced!")
 
 	peerok := make(chan struct{})
-	go pNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
-	nodectx.InitCtx(ctx, nodename, pNode, dbManager, newchainstorage, "pubsub", utils.GitCommit)
+	go producerNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
+	nodectx.InitCtx(ctx, nodename, producerNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.PRODUCER_NODE)
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
 
-	if err := stats.InitDB(datapath, pNode.Host.ID()); err != nil {
+	if err := stats.InitDB(datapath, producerNode.Host.ID()); err != nil {
 		logger.Fatalf("init stats db failed: %s", err)
 	}
 
@@ -177,22 +177,21 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		chain.GetGroupMgr().SetRumExchangeTestMode()
 	}
 
-	// init the publish queue watcher
-	doneCh := make(chan bool)
-	pubqueueDb, err := createPubQueueDb(datapath)
-	if err != nil {
-		logger.Fatalf(err.Error())
-	}
-	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
+	// commented by cuicat
+	// no publish queue for producer node
+	/*
+		// init the publish queue watcher
+		doneCh := make(chan bool)
+
+		pubqueueDb, err := createPubQueueDb(datapath)
+		if err != nil {
+			logger.Fatalf(err.Error())
+		}
+		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
+	*/
 
 	//load all groups
 	err = chain.GetGroupMgr().LoadAllGroups()
-	if err != nil {
-		logger.Fatalf(err.Error())
-	}
-
-	//start sync all groups
-	err = chain.GetGroupMgr().StartSyncAllGroups()
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
@@ -201,7 +200,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 
 	//run local http api service
 	h := &api.Handler{
-		Node:       pNode,
+		Node:       producerNode,
 		NodeCtx:    nodectx.GetNodeCtx(),
 		Ctx:        ctx,
 		GitCommit:  utils.GitCommit,
@@ -209,7 +208,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		ChainAPIdb: newchainstorage,
 	}
 
-	startParam := api.StartProducerServerParam{
+	startParam := api.StartServerParam{
 		IsDebug:       config.IsDebug,
 		APIHost:       config.APIHost,
 		APIPort:       config.APIPort,
@@ -217,12 +216,12 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		ZeroAccessKey: config.ZeroAccessKey,
 	}
 
-	go api.StartProducerServer(startParam, pSignalCh, h, pNode, nodeoptions, ks, ethaddr)
+	go api.StartProducerServer(startParam, producerSignalCh, h, producerNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
-	signal.Notify(pSignalCh, os.Interrupt, os.Kill, syscall.SIGTERM)
-	signalType := <-pSignalCh
-	signal.Stop(pSignalCh)
+	signal.Notify(producerSignalCh, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signalType := <-producerSignalCh
+	signal.Stop(producerSignalCh)
 
 	//Stop sync all groups
 	chain.GetGroupMgr().StopSyncAllGroups()

@@ -5,6 +5,6 @@ import (
 )
 
 type User interface {
-	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
+	NewUser(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	AddBlock(block *quorumpb.Block) error
 }

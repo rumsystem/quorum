@@ -33,46 +33,20 @@ import (
 )
 
 var (
-	fnodeFlag = cli.FullnodeFlag{ProtocolID: "/quorum/1.0.0"}
-	fullnode  *p2p.Node
-	signalch  chan os.Signal
+	fullNodeFlag     = cli.FullNodeFlag{ProtocolID: "/quorum/1.0.0"}
+	fullNode         *p2p.Node
+	fullNodeSignalch chan os.Signal
 )
 
-var fullnodeCmd = &cobra.Command{
+var userNodeCmd = &cobra.Command{
 	Use:   "fullnode",
 	Short: "Run fullnode",
 	Run: func(cmd *cobra.Command, args []string) {
-		if fnodeFlag.KeyStorePwd == "" {
-			fnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
+		if fullNodeFlag.KeyStorePwd == "" {
+			fullNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
-		runFullnode(fnodeFlag)
+		runFullNode(fullNodeFlag)
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(fullnodeCmd)
-
-	flags := fullnodeCmd.Flags()
-	flags.SortFlags = false
-
-	flags.StringVar(&fnodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&fnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "config dir")
-	flags.StringVar(&fnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&fnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&fnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.Var(&fnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&fnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&fnodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&fnodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
-	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
-	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&fnodeFlag.IsDebug, "debug", false, "show debug log")
-	flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
-	flags.BoolVar(&fnodeFlag.IsBootstrap, "bootstrap", false, "run a bootstrap node")
-	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
-	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 
 func createPubQueueDb(path string) (*storage.QSBadger, error) {
@@ -86,24 +60,45 @@ func createPubQueueDb(path string) (*storage.QSBadger, error) {
 	return &pubQueueDb, nil
 }
 
-func runFullnode(config cli.FullnodeFlag) {
+func init() {
+	rootCmd.AddCommand(userNodeCmd)
+
+	flags := userNodeCmd.Flags()
+	flags.SortFlags = false
+
+	flags.StringVar(&fullNodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&fullNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flags.StringVar(&fullNodeFlag.DataDir, "datadir", "./data/", "config dir")
+	flags.StringVar(&fullNodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
+	flags.StringVar(&fullNodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
+	flags.StringVar(&fullNodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
+	flags.Var(&fullNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&fullNodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&fullNodeFlag.APIPort, "apiport", 5215, "api server listen port")
+	flags.StringVar(&fullNodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
+	flags.StringVar(&fullNodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
+	flags.Var(&fullNodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.StringVar(&fullNodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
+	flags.BoolVar(&fullNodeFlag.IsDebug, "debug", false, "show debug log")
+	flags.BoolVar(&fullNodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
+	flags.BoolVar(&fullNodeFlag.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
+	flags.BoolVar(&fullNodeFlag.EnableRelay, "autorelay", true, "enable relay")
+}
+
+func runFullNode(config cli.FullNodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
 	logger.Infof("Version: %s", utils.GitCommit)
-	configLogger(fnodeFlag.IsDebug)
+	configLogger(fullNodeFlag.IsDebug)
 
-	signalch = make(chan os.Signal, 1)
+	fullNodeSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	chain.SetAutoAck(config.AutoAck)
 
 	peername := config.PeerName
-	if config.IsBootstrap == true {
-		peername = "bootstrap"
-	}
-
 	utils.EnsureDir(config.DataDir)
 
 	//Load node options from config
@@ -125,6 +120,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		PeerName:       config.PeerName,
 		DefaultKeyName: defaultKeyName,
 	}
+
 	ks, defaultkey, err := InitDefaultKeystore(keystoreParam, nodeoptions)
 	if err != nil {
 		cancel()
@@ -151,176 +147,128 @@ func runFullnode(config cli.FullnodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	if config.IsBootstrap {
-		//bootstrop/relay node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
-		cm, err := connmgr.NewConnManager(1000, 50000, connmgr.WithGracePeriod(30*time.Second))
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		fullnode, err = p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	nodename := "fullnode_default"
 
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-
-		datapath := config.DataDir + "/" + config.PeerName
-		dbManager, err := storage.CreateDb(datapath)
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		dbManager.TryMigration(1)
-
-		nodectx.InitCtx(ctx, "", fullnode, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit)
-		nodectx.GetNodeCtx().Keystore = ks
-		nodectx.GetNodeCtx().PublicKey = keys.PubKey
-		nodectx.GetNodeCtx().PeerId = peerid
-
-		if err := stats.InitDB(datapath, fullnode.Host.ID()); err != nil {
-			logger.Fatalf("init stats db failed: %s", err)
-		}
-
-		logger.Infof("Host created, ID:<%s>, Address:<%s>", fullnode.Host.ID(), fullnode.Host.Addrs())
-		h := &api.Handler{
-			Node:      fullnode,
-			NodeCtx:   nodectx.GetNodeCtx(),
-			GitCommit: utils.GitCommit,
-		}
-		startParam := api.StartAPIParam{
-			IsDebug:       config.IsDebug,
-			APIHost:       config.APIHost,
-			APIPort:       config.APIPort,
-			CertDir:       config.CertDir,
-			ZeroAccessKey: config.ZeroAccessKey,
-		}
-		go api.StartFullNodeServer(startParam, signalch, h, nil, fullnode, nodeoptions, ks, ethaddr, true)
-	} else {
-		nodename := "default"
-
-		datapath := config.DataDir + "/" + config.PeerName
-		dbManager, err := storage.CreateDb(datapath)
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		dbManager.TryMigration(1)
-		newchainstorage := chainstorage.NewChainStorage(dbManager)
-
-		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
-		cm, err := connmgr.NewConnManager(10, nodeoptions.ConnsHi, connmgr.WithGracePeriod(60*time.Second))
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		fullnode, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
-		if err == nil {
-			fullnode.SetRumExchange(ctx, newchainstorage)
-		}
-
-		if err := fullnode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
-			logger.Fatal(err)
-		}
-
-		for _, addr := range fullnode.Host.Addrs() {
-			p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), fullnode.Host.ID())
-			logger.Infof("Peer ID:<%s>, Peer Address:<%s>", fullnode.Host.ID(), p2paddr)
-		}
-
-		//Discovery and Advertise had been replaced by PeerExchange
-		logger.Infof("Announcing ourselves...")
-		discovery.Advertise(ctx, fullnode.RoutingDiscovery, config.RendezvousString)
-		logger.Infof("Successfully announced!")
-
-		peerok := make(chan struct{})
-		go fullnode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
-		nodectx.InitCtx(ctx, nodename, fullnode, dbManager, newchainstorage, "pubsub", utils.GitCommit)
-		nodectx.GetNodeCtx().Keystore = ks
-		nodectx.GetNodeCtx().PublicKey = keys.PubKey
-		nodectx.GetNodeCtx().PeerId = peerid
-
-		if err := stats.InitDB(datapath, fullnode.Host.ID()); err != nil {
-			logger.Fatalf("init stats db failed: %s", err)
-		}
-
-		//initial conn
-		conn.InitConn()
-
-		//initial group manager
-		chain.InitGroupMgr()
-		if nodeoptions.IsRexTestMode == true {
-			chain.GetGroupMgr().SetRumExchangeTestMode()
-		}
-
-		// init the publish queue watcher
-		doneCh := make(chan bool)
-		pubqueueDb, err := createPubQueueDb(datapath)
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
-
-		//load all groups
-		err = chain.GetGroupMgr().LoadAllGroups()
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-
-		//start sync all groups
-		err = chain.GetGroupMgr().StartSyncAllGroups()
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-
-		appdb, err := appdata.CreateAppDb(datapath)
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		CheckLockError(err)
-
-		//run local http api service
-		h := &api.Handler{
-			Node:       fullnode,
-			NodeCtx:    nodectx.GetNodeCtx(),
-			Ctx:        ctx,
-			GitCommit:  utils.GitCommit,
-			Appdb:      appdb,
-			ChainAPIdb: newchainstorage,
-		}
-
-		apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
-		appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
-		appsync.Start(10)
-		apph := &appapi.Handler{
-			Appdb:     appdb,
-			Trxdb:     newchainstorage,
-			GitCommit: utils.GitCommit,
-			Apiroot:   apiaddress,
-			ConfigDir: config.ConfigDir,
-			PeerName:  config.PeerName,
-			NodeName:  nodectx.GetNodeCtx().Name,
-		}
-		startParam := api.StartAPIParam{
-			IsDebug:       config.IsDebug,
-			APIHost:       config.APIHost,
-			APIPort:       config.APIPort,
-			CertDir:       config.CertDir,
-			ZeroAccessKey: config.ZeroAccessKey,
-		}
-		go api.StartFullNodeServer(startParam, signalch, h, apph, fullnode, nodeoptions, ks, ethaddr, false)
+	datapath := config.DataDir + "/" + config.PeerName
+	dbManager, err := storage.CreateDb(datapath)
+	if err != nil {
+		logger.Fatalf(err.Error())
 	}
+	dbManager.TryMigration(0) //TOFIX: pass the node data_ver
+	dbManager.TryMigration(1)
+	newchainstorage := chainstorage.NewChainStorage(dbManager)
+
+	//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s
+	cm, err := connmgr.NewConnManager(10, nodeoptions.ConnsHi, connmgr.WithGracePeriod(60*time.Second))
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	if err == nil {
+		fullNode.SetRumExchange(ctx, newchainstorage)
+	}
+
+	if err := fullNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+		logger.Fatal(err)
+	}
+
+	for _, addr := range fullNode.Host.Addrs() {
+		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), fullNode.Host.ID())
+		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", fullNode.Host.ID(), p2paddr)
+	}
+
+	//Discovery and Advertise had been replaced by PeerExchange
+	logger.Infof("Announcing ourselves...")
+	discovery.Advertise(ctx, fullNode.RoutingDiscovery, config.RendezvousString)
+	logger.Infof("Successfully announced!")
+
+	peerok := make(chan struct{})
+	go fullNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
+	nodectx.InitCtx(ctx, nodename, fullNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.FULL_NODE)
+	nodectx.GetNodeCtx().Keystore = ks
+	nodectx.GetNodeCtx().PublicKey = keys.PubKey
+	nodectx.GetNodeCtx().PeerId = peerid
+
+	if err := stats.InitDB(datapath, fullNode.Host.ID()); err != nil {
+		logger.Fatalf("init stats db failed: %s", err)
+	}
+
+	//initial conn
+	conn.InitConn()
+
+	//initial group manager
+	chain.InitGroupMgr()
+	if nodeoptions.IsRexTestMode == true {
+		chain.GetGroupMgr().SetRumExchangeTestMode()
+	}
+
+	// init the publish queue watcher
+	doneCh := make(chan bool)
+	pubqueueDb, err := createPubQueueDb(datapath)
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
+
+	//load all groups
+	err = chain.GetGroupMgr().LoadAllGroups()
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
+	//start sync all groups
+	err = chain.GetGroupMgr().StartSyncAllGroups()
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
+	appdb, err := appdata.CreateAppDb(datapath)
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+	CheckLockError(err)
+
+	//run local http api service
+	h := &api.Handler{
+		Node:       fullNode,
+		NodeCtx:    nodectx.GetNodeCtx(),
+		Ctx:        ctx,
+		GitCommit:  utils.GitCommit,
+		Appdb:      appdb,
+		ChainAPIdb: newchainstorage,
+	}
+
+	apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
+	appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
+	appsync.Start(10)
+	apph := &appapi.Handler{
+		Appdb:     appdb,
+		Trxdb:     newchainstorage,
+		GitCommit: utils.GitCommit,
+		Apiroot:   apiaddress,
+		ConfigDir: config.ConfigDir,
+		PeerName:  config.PeerName,
+		NodeName:  nodectx.GetNodeCtx().Name,
+	}
+	startParam := api.StartServerParam{
+		IsDebug:       config.IsDebug,
+		APIHost:       config.APIHost,
+		APIPort:       config.APIPort,
+		CertDir:       config.CertDir,
+		ZeroAccessKey: config.ZeroAccessKey,
+	}
+	go api.StartFullNodeServer(startParam, fullNodeSignalch, h, apph, fullNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
-	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
-	signalType := <-signalch
-	signal.Stop(signalch)
+	signal.Notify(fullNodeSignalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signalType := <-fullNodeSignalch
+	signal.Stop(fullNodeSignalch)
 
-	if config.IsBootstrap != true {
-		//Stop sync all groups
-		chain.GetGroupMgr().StopSyncAllGroups()
-		//teardown all groups
-		chain.GetGroupMgr().TeardownAllGroups()
-		//close ctx db
-		nodectx.GetDbMgr().CloseDb()
-	}
+	chain.GetGroupMgr().StopSyncAllGroups()
+	//teardown all groups
+	chain.GetGroupMgr().TeardownAllGroups()
+	//close ctx db
+	nodectx.GetDbMgr().CloseDb()
 
 	//cleanup before exit
 	logger.Infof("On Signal <%s>", signalType)

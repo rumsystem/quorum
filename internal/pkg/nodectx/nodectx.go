@@ -24,8 +24,17 @@ const (
 	SYNC_CHANNEL_PREFIX     = "sync_channel_"
 )
 
+type NODE_TYPE int
+
+const (
+	BOOTSTRAP_NODE NODE_TYPE = iota
+	PRODUCER_NODE
+	FULL_NODE
+)
+
 type NodeCtx struct {
 	Node      *p2p.Node
+	NodeType  NODE_TYPE
 	PeerId    peer.ID
 	Keystore  localcrypto.Keystore
 	PublicKey p2pcrypto.PubKey
@@ -54,11 +63,12 @@ func (nodeCtx *NodeCtx) GetChainStorage() *chainstorage.Storage {
 	return nodeCtx.chaindb
 }
 
-func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, chaindb *chainstorage.Storage, channeltype string, gitcommit string) {
+func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, chaindb *chainstorage.Storage, channeltype string, gitcommit string, nodetype NODE_TYPE) {
 	nodeCtx = &NodeCtx{}
 	nodeCtx.Name = name
 	nodeCtx.Node = node
 	nodeCtx.chaindb = chaindb
+	nodeCtx.NodeType = nodetype
 
 	dbMgr = db
 

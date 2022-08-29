@@ -19,13 +19,12 @@ type MolassesUser struct {
 
 var molauser_log = logging.Logger("user")
 
-func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
-	molauser_log.Debugf("Init called")
+func (user *MolassesUser) NewUser(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+	molauser_log.Debugf("NewUser called")
 	user.grpItem = item
 	user.nodename = nodename
 	user.cIface = iface
 	user.groupId = item.GroupId
-	molauser_log.Infof("<%s> User created", user.groupId)
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
@@ -86,12 +85,12 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply trxs
-	err = user.cIface.ApplyUserTrxs(trxs, user.nodename)
+	err = user.cIface.ApplyTrxsUserNode(trxs, user.nodename)
 	if err != nil {
 		return err
 	}
 
-	//move gathered blocks from cache to chain
+	//move collected blocks from cache to chain
 	for _, block := range blocks {
 		molauser_log.Debugf("<%s> move block <%d> from cache to chain", user.groupId, block.Epoch)
 		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, user.nodename)
