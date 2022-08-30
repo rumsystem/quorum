@@ -28,7 +28,7 @@ type StartAPIParam struct {
 	ZeroAccessKey string
 }
 
-//StartAPIServer : Start local web server
+// StartAPIServer : Start local web server
 func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string, isbootstrapnode bool) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
@@ -39,6 +39,10 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
+	}))
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Skipper: rummiddleware.ChainGzipSkipper,
+		Level:   5, // hardcode
 	}))
 	r := e.Group("/api")
 	a := e.Group("/app/api")
