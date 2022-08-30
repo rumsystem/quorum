@@ -69,18 +69,30 @@ func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, grou
 }
 
 func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
+	chaindb_log.Debugf("1")
 	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.AnnounceItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
+		chaindb_log.Debugf(err.Error())
 		return err
 	}
+
+	chaindb_log.Debugf("2")
 
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.SignPubkey)
 	if pk == "" {
 		pk = item.SignPubkey
 	}
 	key := nodeprefix + s.ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + pk
-	return cs.dbmgr.Db.Set([]byte(key), data)
+
+	chaindb_log.Debugf("key %s", key)
+
+	err = cs.dbmgr.Db.Set([]byte(key), data)
+	if err != nil {
+		chaindb_log.Debugf("error %s", err.Error())
+	}
+
+	return err
 }
 
 //update group snapshot
@@ -214,6 +226,8 @@ func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string)
 
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String()
+
+	chaindb_log.Debugf("get Announced producer with key %s", key)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -226,6 +240,12 @@ func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string)
 		aList = append(aList, &item)
 		return nil
 	})
+
+	if err != nil {
+		chaindb_log.Debugf("error %s", err.Error())
+	}
+
+	chaindb_log.Debugf("len %d", len(aList))
 
 	return aList, err
 }

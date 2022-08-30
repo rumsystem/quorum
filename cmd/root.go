@@ -79,6 +79,7 @@ func configLogger(isDebug bool) {
 		logging.SetLogLevel("acs", "debug")
 		logging.SetLogLevel("bft", "debug")
 		logging.SetLogLevel("user", "debug")
+		logging.SetLogLevel("chaindb", "debug")
 	} else {
 		logging.SetLogLevel("*", "info")
 	}

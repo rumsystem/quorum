@@ -137,7 +137,7 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	bft_log.Infof("---------------acs result for epoch %d-------------------", hb.epoch)
 
 	for trxId, trx := range trxs {
-		bft_log.Infof(">>>>>>>> trxId : %s", trxId)
+		bft_log.Infof(">>> trxId : %s", trxId)
 		trxToPackage = append(trxToPackage, trx)
 	}
 
