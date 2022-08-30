@@ -204,9 +204,12 @@ func (cs *Storage) GetParentBlock(blockId string, prefix ...string) (*quorumpb.B
 	if err != nil {
 		return nil, err
 	}
-
 	parentChunk, err := cs.dbmgr.GetBlockChunk(chunk.ParentBlockId, false, prefix...)
-	return parentChunk.BlockItem, err
+	if err == nil {
+		return parentChunk.BlockItem, err
+	} else {
+		return nil, err
+	}
 }
 
 //try to find the subblocks of one block. search from the block to the to blockid
