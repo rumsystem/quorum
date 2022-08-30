@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -494,7 +493,6 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 			err = chain.group.ChainCtx.AddBlock(block)
 		} else {
 			chain_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", chain.groupId)
-			fmt.Println("=================add backward block id:", block.BlockId)
 			err = chain.group.ChainCtx.Consensus.User().AddBlock(block)
 			if err != nil {
 				chain_log.Infof(err.Error())
@@ -547,7 +545,6 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 }
 
 func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
-	fmt.Println("=========HandleReqBlockResp")
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
 		return "", err

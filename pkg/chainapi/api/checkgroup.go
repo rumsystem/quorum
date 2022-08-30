@@ -26,7 +26,6 @@ func (h *Handler) CheckGroup(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError("group not exist")
 	}
 
-	logger.Debug("======== check group:", params.GroupId, " start ========")
 	blocknum := group.Item.HighestHeight
 	genesisBlockId := group.Item.GenesisBlock.BlockId
 	nodename := group.ChainCtx.GetNodeName()
