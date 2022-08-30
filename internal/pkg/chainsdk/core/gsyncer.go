@@ -80,13 +80,8 @@ func (s *Gsyncer) Start() {
 			err := s.processTask(ctx, task)
 			if err == nil {
 				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Id)
-				//fake result send to the result queue
-				//data := BlockSyncResult{BlockId: fmt.Sprintf("test_block_id_%s", task.Id)}
-				//sr := &SyncResult{Id: task.Id, TaskId: task.Id, Data: data}
-				//s.AddResult(sr)
-				//will be replaced by real task result
 			} else {
-				//test try to retry this task
+				//retry this task
 				s.AddTask(task)
 				gsyncer_log.Errorf("<%s> task process %s error: %s", s.GroupId, task.Id, err)
 			}
@@ -98,7 +93,6 @@ func (s *Gsyncer) Start() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 			nexttaskid, err := s.processResult(ctx, result)
-			//TODO: err with STOP signal, set to IDLE and pause
 			if err == nil {
 				//test try to add next task
 				gsyncer_log.Debugf("<%s> process result done %s", s.GroupId, result.Id)
@@ -155,16 +149,6 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	taskdone := make(chan struct{})
 	go func() {
 		s.tasksender(task)
-		//blocktask, ok := task.Meta.(BlockSyncTask)
-		//if ok == true {
-		//	//replace with  real workload
-		//	//v := rand.Intn(5) + 1
-		//	//time.Sleep(time.Duration(v) * time.Second) // fake workload
-		//} else {
-		//	fmt.Println("===task.Meta")
-		//	fmt.Println(task.Meta)
-		//	gsyncer_log.Warnf("<%s> Unsupported task", s.GroupId, task.Id)
-		//}
 		select {
 		case taskdone <- struct{}{}:
 			gsyncer_log.Debugf("<%s> done %s task", s.GroupId, task.Id)

@@ -2,7 +2,9 @@ package chain
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -73,15 +75,29 @@ func (sr *SyncerRunner) GetBlockTask(blockid string) (*SyncTask, error) {
 	return &SyncTask{Meta: taskmeta, Id: taskid}, nil
 }
 
-func (sr *SyncerRunner) Start(blockid string) error {
-	fmt.Println("=========start...syncer with...", blockid)
-	//default forward sync
+func (sr *SyncerRunner) StartBackward(blockid string) error {
+	//backward sync
+	sr.Status = SYNCING_BACKWARD
+	sr.direction = Previous
 	task, err := sr.GetBlockTask(blockid)
 	if err != nil {
 		return err
 	}
 	sr.gsyncer.Start()
+	//add the first task
+	sr.gsyncer.AddTask(task)
+	return nil
+}
+
+func (sr *SyncerRunner) Start(blockid string) error {
+	//default forward sync
 	sr.Status = SYNCING_FORWARD
+	sr.direction = Next
+	task, err := sr.GetBlockTask(blockid)
+	if err != nil {
+		return err
+	}
+	sr.gsyncer.Start()
 	//add the first task
 	sr.gsyncer.AddTask(task)
 	return nil
@@ -96,13 +112,30 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 	gsyncer_log.Debugf("<%s> call TaskSender...", sr.group.Item.GroupId)
 	blocktask, ok := task.Meta.(BlockSyncTask)
 	if ok == true {
+		v := rand.Intn(500)
+		time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
+
 		block, err := sr.group.GetBlock(blocktask.BlockId)
+		if sr.Status == SYNCING_BACKWARD && block == nil {
+			gsyncer_log.Debugf("<%s> backward sync, can't get block form db, make new block.", sr.group.Item.GroupId)
+			err = nil
+			block = &quorumpb.Block{GroupId: sr.group.Item.GroupId, BlockId: blocktask.BlockId}
+		}
 		if err != nil {
 			return err
 		}
-		trx, err := sr.group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx("", block)
-		if err != nil {
-			return err
+
+		var trx *quorumpb.Trx
+		var trxerr error
+
+		if blocktask.Direction == Next {
+			trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx("", block)
+		} else {
+			trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockBackwardTrx("", block)
+		}
+
+		if trxerr != nil {
+			return trxerr
 		}
 
 		connMgr, err := conn.GetConn().GetConnMgr(sr.group.Item.GroupId)
@@ -132,9 +165,21 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 		//time.Sleep(time.Duration(v) * time.Second) // fake workload
 		//try to save the result to db
 		nexttaskid, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult)
-		if err == ErrSyncDone {
-			sr.Status = IDLE
+		if err != nil {
+			if err == ErrSyncDone {
+				sr.Status = IDLE
+			}
+			if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
+				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST and SYNCING_BACKWARD, continue. %s", sr.group.Item.GroupId, result.Id)
+				err = nil
+			}
+		} else {
+			fmt.Printf("===============no error, nextblockid %s genesisblockid %s \n", nexttaskid, sr.group.Item.GenesisBlock.BlockId)
+			if sr.Status == SYNCING_BACKWARD && nexttaskid == sr.group.Item.GenesisBlock.BlockId {
+				fmt.Printf("===============ok to stop sync ,set forward add a forward task to try")
+			}
 		}
+
 		return nexttaskid, err
 	} else {
 		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
@@ -143,11 +188,6 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 }
 
 func (sr *SyncerRunner) AddTrxToSyncerQueue(trx *quorumpb.Trx) {
-	//type SyncResult struct {
-	//Data   interface{}
-	//Id     string
-	//TaskId string
-	//data := BlockSyncResult{BlockId: fmt.Sprintf("test_block_id_%s", task.Id)}
 	sr.resultserialid++
 	resultid := strconv.FormatUint(uint64(sr.resultserialid), 10)
 	result := &SyncResult{Id: resultid, Data: trx}

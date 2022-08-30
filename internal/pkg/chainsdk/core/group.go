@@ -164,9 +164,8 @@ func (grp *Group) StopSync() error {
 }
 
 func (grp *Group) GetSyncerStatus() int8 {
-	//TOFIX: get syncer runner status
+	return grp.ChainCtx.GetSyncStatus()
 	return 0
-	//return grp.ChainCtx.syncer.Status
 }
 
 func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {

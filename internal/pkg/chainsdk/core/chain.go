@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -177,10 +178,8 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		//TOFIX: send to task result queue
 		//use current blockid as taskid
 		chain.syncerrunner.AddTrxToSyncerQueue(trx)
-		//chain.handleReqBlockResp(trx)
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
 		return nil
@@ -227,42 +226,44 @@ func (chain *Chain) HandleSnapshotPsConn(snapshot *quorumpb.Snapshot) error {
 	return nil
 }
 
-//func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
-//	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
-//
-//	var shouldAccept bool
-//
-//	bpk, err := localcrypto.Libp2pPubkeyToEthBase64(block.ProducerPubKey)
-//	if err != nil {
-//		bpk = block.ProducerPubKey
-//	}
-//
-//	if chain.Consensus.Producer() != nil {
-//		//if I am a producer, no need to addBlock since block just produced is already saved
-//		chain_log.Debugf("<%s> Producer ignore incoming block", chain.groupId)
-//		shouldAccept = false
-//	} else if _, ok := chain.ProducerPool[bpk]; ok {
-//		//from registed producer
-//		chain_log.Debugf("<%s> User prepare to accept the block", chain.groupId)
-//		shouldAccept = true
-//	} else {
-//		//from someone else
-//		shouldAccept = false
-//		chain_log.Warningf("<%s> received block <%s> from unregisted producer <%s>, reject it", chain.group.Item.GroupId, block.BlockId, bpk)
-//	}
-//
-//	if shouldAccept {
-//		err := chain.Consensus.User().AddBlock(block)
-//		if err != nil {
-//			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
-//			if err.Error() == "PARENT_NOT_EXIST" {
-//				chain_log.Infof("<%s>, parent not exist, sync backward from block <%s>", chain.groupId, block.BlockId)
-//				return chain.syncer.SyncBackward(block)
-//			}
-//		}
-//	}
-//	return nil
-//}
+func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
+	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
+
+	var shouldAccept bool
+
+	bpk, err := localcrypto.Libp2pPubkeyToEthBase64(block.ProducerPubKey)
+	if err != nil {
+		bpk = block.ProducerPubKey
+	}
+
+	if chain.Consensus.Producer() != nil {
+		//if I am a producer, no need to addBlock since block just produced is already saved
+		chain_log.Debugf("<%s> Producer ignore incoming block", chain.groupId)
+		shouldAccept = false
+	} else if _, ok := chain.ProducerPool[bpk]; ok {
+		//from registed producer
+		chain_log.Debugf("<%s> User prepare to accept the block", chain.groupId)
+		shouldAccept = true
+	} else {
+		//from someone else
+		shouldAccept = false
+		chain_log.Warningf("<%s> received block <%s> from unregisted producer <%s>, reject it", chain.group.Item.GroupId, block.BlockId, bpk)
+	}
+
+	if shouldAccept {
+		err := chain.Consensus.User().AddBlock(block)
+		if err != nil {
+			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
+			if err.Error() == "PARENT_NOT_EXIST" {
+				chain_log.Infof("<%s>, parent not exist, sync backward from block <%s>", chain.groupId, block.BlockId)
+				//TOFIX: if syncrunner is IDLE, try to backward sync
+				//else save the block to cache?
+				//return chain.syncer.SyncBackward(block)
+			}
+		}
+	}
+	return nil
+}
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
@@ -471,23 +472,36 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 
 	_, producer := chain.group.ChainCtx.ProducerPool[signpkey]
 
-	if producer {
-		chain_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", chain.groupId)
-		err := chain.group.ChainCtx.AddBlock(block)
-		if err != nil {
-			chain_log.Infof(err.Error())
+	if chain.syncerrunner.Status == SYNCING_FORWARD {
+		if producer {
+			chain_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", chain.groupId)
+			err := chain.group.ChainCtx.AddBlock(block)
+			if err != nil {
+				chain_log.Infof(err.Error())
+			}
+		} else {
+			chain_log.Debugf("<%s> SYNCING_FORWARD, USER ADD BLOCK", chain.groupId)
+			err := chain.group.ChainCtx.Consensus.User().AddBlock(block)
+			if err != nil {
+				chain_log.Infof(err.Error())
+			}
 		}
-	} else {
-		chain_log.Debugf("<%s> SYNCING_FORWARD, USER ADD BLOCK", chain.groupId)
-		err := chain.group.ChainCtx.Consensus.User().AddBlock(block)
-		if err != nil {
-			chain_log.Infof(err.Error())
+		chain_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", chain.groupId)
+	} else { //sync backward
+		var err error
+		if producer {
+			chain_log.Debugf("<%s> SYNCING_BACKWARD, PRODUCER ADD BLOCK", chain.groupId)
+			err = chain.group.ChainCtx.AddBlock(block)
+		} else {
+			chain_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", chain.groupId)
+			fmt.Println("=================add backward block id:", block.BlockId)
+			err = chain.group.ChainCtx.Consensus.User().AddBlock(block)
+			if err != nil {
+				chain_log.Infof(err.Error())
+			}
 		}
+		chain_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", chain.groupId)
 	}
-
-	chain_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", chain.groupId)
-	//chain.blockReceived[resp.BlockId] = providerpkey
-
 	return nil
 
 	//if syncer.Status == SYNCING_FORWARD {
@@ -532,8 +546,8 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 
 }
 
-//TOFIX: send to the task result channel
 func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
+	fmt.Println("=========HandleReqBlockResp")
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
 		return "", err
@@ -555,11 +569,9 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
 	}
 
 	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND { //sync done, set to IDLE
-		//	syncer.responses[providerpkey] = resp
 		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
 		return reqBlockResp.BlockId, ErrSyncDone
 	}
-
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
 
 	newBlock := &quorumpb.Block{}
@@ -590,7 +602,6 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
 		}
 		return "", errors.New("Block producer not registed")
 	}
-
 	return newBlock.BlockId, chain.AddBlockSynced(reqBlockResp, newBlock)
 }
 
@@ -817,7 +828,9 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
-	chain.syncerrunner.Start(chain.group.Item.HighestBlockId)
+	//chain.syncerrunner.Start(chain.group.Item.HighestBlockId)
+	//TOFIX: test backward
+	chain.syncerrunner.StartBackward("a7ef3b4a-1972-487a-b1f1-7125afabce7f")
 	return nil
 }
 func (chain *Chain) StopSync() {
@@ -829,15 +842,13 @@ func (chain *Chain) StopSync() {
 
 func (chain *Chain) IsSyncerIdle() bool {
 	chain_log.Debugf("IsSyncerIdle called, groupId <%s>", chain.groupId)
-
-	//TOFIX ask syncerrunner status
-	//if chain.syncer.Status == SYNCING_BACKWARD ||
-	//	chain.syncer.Status == SYNCING_FORWARD ||
-	//	chain.syncer.Status == LOCAL_SYNCING ||
-	//	chain.syncer.Status == SYNC_FAILED {
-	//	chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncer.Status)
-	//	return true
-	//}
+	if chain.syncerrunner.Status == SYNCING_BACKWARD ||
+		chain.syncerrunner.Status == SYNCING_FORWARD ||
+		chain.syncerrunner.Status == LOCAL_SYNCING ||
+		chain.syncerrunner.Status == SYNC_FAILED {
+		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncerrunner.Status)
+		return true
+	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
 }
@@ -1173,4 +1184,8 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> new height <%d>, new highest blockId %v", chain.groupId, newHeight, newHighestBlockId)
 
 	return chain.UpdChainInfo(newHeight, newHighestBlockId)
+}
+
+func (chain *Chain) GetSyncStatus() int8 {
+	return chain.syncerrunner.Status
 }

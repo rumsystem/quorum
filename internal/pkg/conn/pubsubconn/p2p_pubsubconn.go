@@ -246,8 +246,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					blk = &quorumpb.Block{}
 					err := proto.Unmarshal(pkg.Data, blk)
 					if err == nil {
-						//TOFIX add syncer result
-						//psconn.chain.HandleBlockPsConn(blk)
+						psconn.chain.HandleBlockPsConn(blk)
 					} else {
 						channel_log.Warning(err.Error())
 					}
