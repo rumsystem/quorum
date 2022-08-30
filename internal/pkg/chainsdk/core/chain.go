@@ -157,46 +157,54 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
 
-	var shouldAccept bool
-
 	bpk, err := localcrypto.Libp2pPubkeyToEthBase64(block.BookkeepingPubkey)
 	if err != nil {
 		bpk = block.BookkeepingPubkey
 	}
 
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		//if I am a producer, no need to addBlock since block just produced is already saved
-		chain_log.Debugf("<%s> Producer ignore incoming block", chain.groupId)
-		shouldAccept = false
-	} else if _, ok := chain.ProducerPool[bpk]; ok {
-		//from registed producer
-		chain_log.Debugf("<%s> User prepare to accept the block", chain.groupId)
-		shouldAccept = true
-	} else {
-		//from someone else
-		shouldAccept = false
+	//from registed producer
+	if _, ok := chain.ProducerPool[bpk]; !ok {
 		chain_log.Warningf("<%s> received block <%s> from unregisted producer <%s>, reject it", chain.group.Item.GroupId, block.Epoch, bpk)
-	}
-
-	if shouldAccept {
-		err := chain.Consensus.User().AddBlock(block)
-		if err != nil {
-			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
-			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Infof("<%s>, parent not exist, sync backward from block <%d>", chain.groupId, block.Epoch)
-				//return chain.syncer.SyncBackward(block)
+		return nil
+	} else {
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+			//I am a producer but not in promoted producer list
+			if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
+				err := chain.Consensus.Producer().AddBlock(block)
+				if err != nil {
+					chain_log.Debugf("<%s> producer add block error <%s>", chain.groupId, err.Error())
+					if err.Error() == "PARENT_NOT_EXIST" {
+						chain_log.Infof("<%s>, parent not exist, sync backward from block <%d>", chain.groupId, block.Epoch)
+						//return chain.syncer.SyncBackward(block)
+					}
+				}
+			}
+		} else {
+			err := chain.Consensus.User().AddBlock(block)
+			if err != nil {
+				chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
+				if err.Error() == "PARENT_NOT_EXIST" {
+					chain_log.Infof("<%s>, parent not exist, sync backward from block <%d>", chain.groupId, block.Epoch)
+					//return chain.syncer.SyncBackward(block)
+				}
 			}
 		}
 	}
+
 	return nil
 }
 
 func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
 	chain_log.Debugf("<%s> HandleHB called", chain.groupId)
-	// user node should not handle hb msg
+	//non producer node should not handle hb msg
+	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
+		return nil
+	}
+
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
+
 	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
 
@@ -626,8 +634,38 @@ func (chain *Chain) CreateConsensus() error {
 	var user def.User
 	var producer def.Producer
 
+	shouldCreateUser := false
+	shouldCreateProducer := false
+
 	//create user when run as FULL_NODE, skip when run as PRODUCER_NODE
-	if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+		shouldCreateProducer = true
+		shouldCreateUser = false
+	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+		if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+			shouldCreateProducer = true
+		} else {
+			shouldCreateProducer = false
+		}
+		shouldCreateUser = true
+	} else {
+		return errors.New("Unknow nodetype")
+	}
+
+	if shouldCreateProducer {
+		//create producer anyway
+		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
+			producer = &consensus.MolassesProducer{}
+			producer.NewProducer(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+		} else {
+			chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
+			producer = chain.Consensus.Producer()
+		}
+	}
+
+	if shouldCreateUser {
+		//full node
 		if chain.Consensus == nil || chain.Consensus.User() == nil {
 			chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
 			user = &consensus.MolassesUser{}
@@ -636,16 +674,6 @@ func (chain *Chain) CreateConsensus() error {
 			chain_log.Infof("<%s> reuse molasses user", chain.groupId)
 			user = chain.Consensus.User()
 		}
-	}
-
-	//create producer anyway
-	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
-		producer = &consensus.MolassesProducer{}
-		producer.NewProducer(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-	} else {
-		chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
-		producer = chain.Consensus.Producer()
 	}
 
 	/*
@@ -925,12 +953,14 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(trx.Data, nodename)
-		case quorumpb.TrxType_APP_CONFIG:
-			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfigTrx(trx, nodename)
-		case quorumpb.TrxType_POST:
-			chain_log.Debugf("<%s> apply POST trx", chain.groupId)
-			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
+			/*
+				case quorumpb.TrxType_APP_CONFIG:
+					chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
+					nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfigTrx(trx, nodename)
+				case quorumpb.TrxType_POST:
+					chain_log.Debugf("<%s> apply POST trx", chain.groupId)
+					nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
+			*/
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupId)
 			err := nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfigTrx(trx, nodename)

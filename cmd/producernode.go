@@ -13,6 +13,7 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -183,6 +184,11 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
+	appdb, err := appdata.CreateAppDb(datapath)
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
 	CheckLockError(err)
 
 	//run local http api service
@@ -191,7 +197,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		NodeCtx:    nodectx.GetNodeCtx(),
 		Ctx:        ctx,
 		GitCommit:  utils.GitCommit,
-		Appdb:      nil,
+		Appdb:      appdb,
 		ChainAPIdb: newchainstorage,
 	}
 

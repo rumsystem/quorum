@@ -4,9 +4,12 @@ import (
 
 	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 
+	"errors"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
+	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
@@ -66,6 +69,107 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
+	molaproducer_log.Debugf("<%s> AddBlock called", producer.groupId)
+	var blocks []*quorumpb.Block
+
+	//check if block exist
+	blockExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, false, producer.nodename)
+	if blockExist { // check if we need to apply trxs again
+		// block already saved
+		// maybe saved by local producer or during sync, receive this block from someone else
+		molaproducer_log.Debugf("Block exist")
+		blocks = append(blocks, block)
+	} else { //block not exist, we don't have local producer
+		//check if parent of block exist
+		molaproducer_log.Debugf("Block not exist")
+		parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch-1, false, producer.nodename)
+		if err != nil {
+			return err
+		}
+
+		if !parentExist {
+			molaproducer_log.Debugf("<%s> parent of block <%d> is not exist", producer.groupId, block.Epoch-1)
+
+			//check if block is in cache
+			isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, true, producer.nodename)
+			if err != nil {
+				return err
+			}
+
+			if !isCached {
+				molaproducer_log.Debugf("<%s> add block to catch", producer.groupId)
+				//Save block to cache
+				err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, producer.nodename)
+				if err != nil {
+					return err
+				}
+			}
+
+			return errors.New("PARENT_NOT_EXIST")
+		}
+
+		//get parent block
+		parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.GroupId, block.Epoch-1, false, producer.nodename)
+		if err != nil {
+			return err
+		}
+
+		//valid block with parent block
+		valid, err := rumchaindata.IsBlockValid(block, parentBlock)
+		if !valid {
+			molaproducer_log.Warningf("<%s> invalid block <%s>", producer.groupId, err.Error())
+			molaproducer_log.Debugf("<%s> remove invalid block <%d> from cache", producer.groupId, block.Epoch)
+			return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.Epoch, true, producer.nodename)
+		} else {
+			molaproducer_log.Debugf("block is validated")
+		}
+
+		//add this block to cache
+		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, producer.nodename)
+		if err != nil {
+			return err
+		}
+
+		//search cache, gather all blocks can be connected with this block
+		blockfromcache, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, producer.nodename)
+		if err != nil {
+			return err
+		}
+
+		blocks = append(blocks, blockfromcache...)
+
+		//move collected blocks from cache to chain
+		for _, block := range blocks {
+			molaproducer_log.Debugf("<%s> move block <%d> from cache to chain", producer.groupId, block.Epoch)
+			err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, producer.nodename)
+			if err != nil {
+				return err
+			}
+
+			err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.Epoch, true, producer.nodename)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	//get all trxs from blocks
+	var trxs []*quorumpb.Trx
+	trxs, err = rumchaindata.GetAllTrxs(blocks)
+	if err != nil {
+		return err
+	}
+
+	//apply trxs
+	err = producer.cIface.ApplyTrxsProducerNode(trxs, producer.nodename)
+	if err != nil {
+		return err
+	}
+
+	return producer.cIface.UpdChainInfo(block.Epoch)
 }
 
 func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {

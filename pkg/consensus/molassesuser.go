@@ -112,8 +112,6 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
-	molauser_log.Debugf("Blocks %v", blocks)
-
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
 	trxs, err = rumchaindata.GetAllTrxs(blocks)

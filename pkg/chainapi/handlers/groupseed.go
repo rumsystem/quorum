@@ -29,8 +29,6 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	b64epoch := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b64epoch, uint64(seed.GenesisBlock.Epoch))
 	b64guuid, _ := guuid.Parse(seed.GenesisBlock.GroupId)
-	//b64bstr := base64.RawURLEncoding.EncodeToString(b64buuid[:])
-	b64estr := base64.RawURLEncoding.EncodeToString(b64epoch)
 	b64gstr := base64.RawURLEncoding.EncodeToString(b64guuid[:])
 
 	b64timestampstr := base64.RawURLEncoding.EncodeToString(big.NewInt(seed.GenesisBlock.TimeStamp).Bytes())
@@ -81,7 +79,6 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 
 	values := url.Values{}
 	//values.Add("e", b64bstr)
-	values.Add("e", b64estr)
 	values.Add("g", b64gstr)
 	values.Add("k", b64producerpubkey)
 	values.Add("t", b64timestampstr)
@@ -108,12 +105,8 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	if version != "1" {
 		return nil, nil, errors.New("unsupport seed url version")
 	}
-	//b64bstr := q.Get("b")
-	b64estr := q.Get("e")
-	b64gstr := q.Get("g")
 
-	//b64bbyte, err := base64.RawURLEncoding.DecodeString(b64bstr)
-	b64ebyte, err := base64.RawURLEncoding.DecodeString(b64estr)
+	b64gstr := q.Get("g")
 	b64gbyte, err := base64.RawURLEncoding.DecodeString(b64gstr)
 
 	//b64buuid, err := guuid.FromBytes(b64bbyte)
@@ -154,7 +147,7 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 
 	//recreate genesis block
 	genesisBlock := &pb.Block{
-		Epoch:         int64(binary.LittleEndian.Uint64(b64ebyte)),
+		Epoch:         0,
 		GroupId:       b64guuid.String(),
 		PrevEpochHash: nil,
 		Trxs:          nil,
