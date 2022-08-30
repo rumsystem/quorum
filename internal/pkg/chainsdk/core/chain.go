@@ -828,9 +828,7 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
-	//chain.syncerrunner.Start(chain.group.Item.HighestBlockId)
-	//TOFIX: test backward
-	chain.syncerrunner.StartBackward("a7ef3b4a-1972-487a-b1f1-7125afabce7f")
+	chain.syncerrunner.Start(chain.group.Item.HighestBlockId)
 	return nil
 }
 func (chain *Chain) StopSync() {

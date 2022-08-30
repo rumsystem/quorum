@@ -174,9 +174,15 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 				err = nil
 			}
 		} else {
-			fmt.Printf("===============no error, nextblockid %s genesisblockid %s \n", nexttaskid, sr.group.Item.GenesisBlock.BlockId)
 			if sr.Status == SYNCING_BACKWARD && nexttaskid == sr.group.Item.GenesisBlock.BlockId {
-				fmt.Printf("===============ok to stop sync ,set forward add a forward task to try")
+				gsyncer_log.Debugf("<%s> meet the genesis block %s backward stop. start forward sync.", sr.group.Item.GroupId, sr.group.Item.HighestBlockId)
+				sr.Status = SYNCING_FORWARD
+				sr.direction = Next
+				task, err := sr.GetBlockTask(sr.group.Item.HighestBlockId)
+				if err != nil {
+					gsyncer_log.Debugf("<%s> forward sync started from block %s", sr.group.Item.GroupId, sr.group.Item.HighestBlockId)
+					sr.gsyncer.AddTask(task)
+				}
 			}
 		}
 
