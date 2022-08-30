@@ -254,10 +254,8 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		if err != nil {
 			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Infof("<%s>, parent not exist, sync backward from block <%s>", chain.groupId, block.BlockId)
-				//TOFIX: if syncrunner is IDLE, try to backward sync
-				//else save the block to cache?
-				//return chain.syncer.SyncBackward(block)
+				chain_log.Infof("<%s>, parent not exist, try sync backward from block <%s>", chain.groupId, block.BlockId)
+				return chain.syncerrunner.StartBackward(block.BlockId)
 			}
 		}
 	}
@@ -443,19 +441,10 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 }
 
 func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.Block) error {
-	//syncer_log.Debugf("<%s> AddBlockSynced called", syncer.GroupId)
-	//if !(syncer.Status == SYNCING_FORWARD || syncer.Status == SYNCING_BACKWARD) {
-	//	syncer_log.Warningf("<%s> Not in syncing, ignore block", syncer.GroupId)
-	//	return nil
-	//}
-
 	providerpkey, err := localcrypto.Libp2pPubkeyToEthBase64(resp.ProviderPubkey)
 	if err != nil && providerpkey == "" {
 		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)
 	}
-
-	//block in trx
-	//chain_log.Debugf("<%s> synced block incoming, provider <%s>", chain.groupId, providerpkey)
 
 	//TOFIX: move into the syncerrunner
 	//if _, blockReceived := chain.blockReceived[resp.BlockId]; blockReceived {
@@ -501,46 +490,6 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 		chain_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", chain.groupId)
 	}
 	return nil
-
-	//if syncer.Status == SYNCING_FORWARD {
-	//	if producer {
-	//		syncer_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", syncer.GroupId)
-	//		err := syncer.Group.ChainCtx.AddBlock(block)
-	//		if err != nil {
-	//			syncer_log.Infof(err.Error())
-	//		}
-	//	} else {
-	//		syncer_log.Debugf("<%s> SYNCING_FORWARD, USER ADD BLOCK", syncer.GroupId)
-	//		err := syncer.Group.ChainCtx.Consensus.User().AddBlock(block)
-	//		if err != nil {
-	//			syncer_log.Infof(err.Error())
-	//		}
-	//	}
-
-	//	syncer_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", syncer.GroupId)
-	//	syncer.blockReceived[resp.BlockId] = providerpkey
-	//	syncer.ContinueSync(block)
-	//} else { //sync backward
-	//	var err error
-	//	if producer {
-	//		syncer_log.Debugf("<%s> SYNCING_BACKWARD, PRODUCER ADD BLOCK", syncer.GroupId)
-	//		err = syncer.Group.ChainCtx.AddBlock(block)
-	//	} else {
-	//		syncer_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", syncer.GroupId)
-	//		err = syncer.Group.ChainCtx.Consensus.User().AddBlock(block)
-	//	}
-
-	//	syncer.blockReceived[resp.BlockId] = providerpkey
-	//	if err != nil {
-	//		syncer_log.Debugf(err.Error())
-	//		if err.Error() == "PARENT_NOT_EXIST" {
-	//			syncer_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", syncer.GroupId)
-	//			syncer.ContinueSync(block)
-	//		}
-	//	} else {
-	//		syncer_log.Debugf("<%s> SYNCING_BACKWARD err is nil", syncer.GroupId)
-	//	}
-	//}
 
 }
 
