@@ -21,7 +21,7 @@ var ApiServer string
 
 func SetApiServer(apiServer string) {
 	if len(apiServer) > 0 {
-		if strings.HasPrefix(apiServer, "https") {
+		if strings.HasPrefix(apiServer, "https") || strings.HasPrefix(apiServer, "http") {
 			ApiServer = apiServer
 		} else {
 			ApiServer = "https://" + apiServer
