@@ -926,6 +926,12 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error {
 	chain_log.Debugf("<%s> ApplyTrxsProducerNode called", chain.groupId)
 	for _, trx := range trxs {
+		if trx.Type == quorumpb.TrxType_APP_CONFIG || trx.Type == quorumpb.TrxType_POST {
+			//producer node does not handle APP_CONFIG and POST
+			chain_log.Infof("Skip TRX %s with type %s", trx.TrxId, trx.Type.Descriptor().FullName())
+			continue
+		}
+
 		//check if trx already applied
 		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
 		if err != nil {
@@ -938,6 +944,21 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 			nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 			continue
 		}
+
+		originalData := trx.Data
+		//decode trx data
+		ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+		if err != nil {
+			return err
+		}
+
+		decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+		if err != nil {
+			return err
+		}
+
+		//set trx.Data to decrypted []byte
+		trx.Data = decryptData
 
 		chain_log.Debugf("<%s> apply trx <%s>", chain.groupId, trx.TrxId)
 		//apply trx content
@@ -953,14 +974,6 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		case quorumpb.TrxType_ANNOUNCE:
 			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(trx.Data, nodename)
-			/*
-				case quorumpb.TrxType_APP_CONFIG:
-					chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupId)
-					nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfigTrx(trx, nodename)
-				case quorumpb.TrxType_POST:
-					chain_log.Debugf("<%s> apply POST trx", chain.groupId)
-					nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
-			*/
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupId)
 			err := nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfigTrx(trx, nodename)
@@ -970,6 +983,8 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupId, trx.Type)
 		}
+
+		trx.Data = originalData
 
 		//save trx to db
 		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)

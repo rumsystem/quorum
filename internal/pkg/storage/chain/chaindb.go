@@ -227,7 +227,6 @@ func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string)
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String()
 
-	chaindb_log.Debugf("get Announced producer with key %s", key)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -244,8 +243,6 @@ func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string)
 	if err != nil {
 		chaindb_log.Debugf("error %s", err.Error())
 	}
-
-	chaindb_log.Debugf("len %d", len(aList))
 
 	return aList, err
 }

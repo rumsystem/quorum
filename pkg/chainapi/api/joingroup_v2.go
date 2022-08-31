@@ -171,7 +171,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 
 		//item.HighestBlockId = seed.GenesisBlock.BlockId
 		//item.HighestHeight = 0
-		item.Epoch = 0
+		item.Epoch = 1 //epoch start from 1, genesis block is epoch 0
 		item.LastUpdate = seed.GenesisBlock.TimeStamp
 		item.GenesisBlock = seed.GenesisBlock
 
