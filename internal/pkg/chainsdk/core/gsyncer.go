@@ -11,8 +11,11 @@ import (
 var gsyncer_log = logging.Logger("syncer")
 
 var (
-	ErrSyncDone = errors.New("Error Signal Sync Done")
+	ErrSyncDone   = errors.New("Error Signal Sync Done")
+	ErrNoTaskWait = errors.New("Error No Task Waiting Result")
 )
+
+const RESULT_TIMEOUT = 2 //seconds
 
 type Syncdirection uint
 
@@ -31,8 +34,12 @@ type SyncTask struct {
 	Id   string
 }
 
-type BlockSyncResult struct {
-	BlockId string
+//type BlockSyncResult struct {
+//	BlockId string
+//}
+
+type TimeoutNoResult struct {
+	TaskId string
 }
 
 type SyncResult struct {
@@ -42,15 +49,18 @@ type SyncResult struct {
 }
 
 type Gsyncer struct {
-	nodeName       string
-	GroupId        string
-	Status         int8
-	retryCount     int8
-	taskq          chan *SyncTask
-	resultq        chan *SyncResult
-	nextTask       func(taskid string) (*SyncTask, error)   //request the next task
-	resultreceiver func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
-	tasksender     func(task *SyncTask) error               //send task via network or others
+	nodeName         string
+	GroupId          string
+	Status           int8
+	waitResultTaskId string //waiting the result for taskid
+	retryCount       int8
+	taskq            chan *SyncTask
+	resultq          chan *SyncResult
+	currentTask      *SyncTask
+	taskdone         chan struct{}
+	nextTask         func(taskid string) (*SyncTask, error)   //request the next task
+	resultreceiver   func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
+	tasksender       func(task *SyncTask) error               //send task via network or others
 }
 
 func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) (string, error), tasksender func(task *SyncTask) error) *Gsyncer {
@@ -64,33 +74,35 @@ func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), 
 	s.retryCount = 0
 	s.taskq = make(chan *SyncTask)
 	s.resultq = make(chan *SyncResult, 3)
+	s.taskdone = make(chan struct{})
 	return s
 }
 func (s *Gsyncer) Stop() {
 	close(s.taskq)
 	close(s.resultq)
+	close(s.taskdone)
 }
 
 func (s *Gsyncer) Start() {
 	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
 	go func() {
 		for task := range s.taskq {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*RESULT_TIMEOUT*time.Second)
 			defer cancel()
 			err := s.processTask(ctx, task)
 			if err == nil {
 				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Id)
 			} else {
 				//retry this task
+				gsyncer_log.Errorf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
 				s.AddTask(task)
-				gsyncer_log.Errorf("<%s> task process %s error: %s", s.GroupId, task.Id, err)
 			}
 		}
 	}()
 
 	go func() {
 		for result := range s.resultq {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), RESULT_TIMEOUT*time.Second)
 			defer cancel()
 			nexttaskid, err := s.processResult(ctx, result)
 			if err == nil {
@@ -110,6 +122,8 @@ func (s *Gsyncer) Start() {
 			} else if err == ErrSyncDone {
 				gsyncer_log.Infof("<%s> result %s is Sync Pause Signal", s.GroupId, result.Id)
 				//SyncPause, stop add next task, pause
+			} else if err == ErrNoTaskWait {
+				//no task waiting, skip don't add new task
 			} else {
 				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
 				if terr != nil {
@@ -139,28 +153,33 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string
 
 	select {
 	case <-resultdone:
-		return nexttaskid, err
+		if s.waitResultTaskId != "" {
+			//for TEST fake workload
+			//time.Sleep(10 * time.Second)
+			s.taskdone <- struct{}{}
+			return nexttaskid, err
+		} else {
+			return nexttaskid, ErrNoTaskWait
+		}
 	case <-ctx.Done():
 		return "", errors.New("Result Timeout")
 	}
 }
 
 func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
-	taskdone := make(chan struct{})
+	//TODO: close this goroutine when the processTask func return. add some defer signal?
 	go func() {
 		s.tasksender(task)
-		select {
-		case taskdone <- struct{}{}:
-			gsyncer_log.Debugf("<%s> done %s task", s.GroupId, task.Id)
-		default:
-			return
-		}
+		//TODO: lock
+		s.waitResultTaskId = task.Id //set waiting task
 	}()
 
 	select {
-	case <-taskdone:
+	case <-s.taskdone:
+		s.waitResultTaskId = ""
 		return nil
 	case <-ctx.Done():
+		s.waitResultTaskId = ""
 		return errors.New("Task Timeout")
 	}
 }

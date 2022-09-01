@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -41,7 +42,8 @@ type Chain struct {
 	producerChannTimer *time.Timer
 	ProviderPeerIdPool map[string]string
 	trxFactory         *rumchaindata.TrxFactory
-
+	//request add
+	//rexresultmap       utils.TTLMap
 	syncerrunner *SyncerRunner
 }
 
@@ -56,8 +58,8 @@ func (chain *Chain) ChainInit(group *Group) error {
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, group.Item, chain.nodename, chain)
 
-	//chain.syncer = &Syncer{}
-	//chain.syncer.Init(group, chain)
+	//set rex result map TTL to 30 second. (may not need this map, just check received block will be good?)
+	//chain.rexresultmap = NewTTLMap(time.Duration(30) * time.Second)
 	chain.syncerrunner = NewSyncerRunner(group, chain, chain.nodename)
 
 	chain_log.Infof("<%s> chainctx initialed", chain.groupId)
@@ -69,8 +71,7 @@ func (chain *Chain) GetNodeName() string {
 }
 
 func (chain *Chain) SetRumExchangeTestMode() {
-	//TOFIX
-	//chain.syncer.SetRumExchangeTestMode()
+	chain.syncerrunner.SetRumExchangeTestMode()
 }
 
 func (chain *Chain) GetChainSyncIface() chaindef.ChainDataSyncIface {
@@ -121,8 +122,14 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		//TOFIX: use gsyncer
-		//chain.handleReqBlockResp(trx)
+		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+			return nil
+		}
+		//use gsyncer, current blockid as taskid
+		//!!! don't add repeat trx result to the gsyncer
+		fmt.Println("=======rex received trx")
+		fmt.Println(trx)
+		//chain.syncerrunner.AddTrxToSyncerQueue(trx)
 	default:
 		//do nothing
 	}
@@ -401,41 +408,44 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 		}
 
 	} else if networktype == conn.RumExchange {
-		reqblockid, block, err := chain.chaindata.GetBlockBackwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
+		//TOFIX: backward by RumExchange
+		chain_log.Debugf("<%s> Backward by Rumexchange is not implemented", chain.groupId)
+		return nil
+		//reqblockid, block, err := chain.chaindata.GetBlockBackwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
 		//TOFIX use gsyncer
-		_ = reqblockid
-		if err == nil && block != nil {
-			ks := nodectx.GetNodeCtx().Keystore
-			mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
-			if err != nil {
-				return err
-			}
-			reqBlockRespItem, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-			chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
-			if err != nil {
-				return err
-			}
+		//_ = reqblockid
+		//if err == nil && block != nil {
+		//	ks := nodectx.GetNodeCtx().Keystore
+		//	mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
+		//	if err != nil {
+		//		return err
+		//	}
+		//	reqBlockRespItem, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+		//	chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
+		//	if err != nil {
+		//		return err
+		//	}
 
-			bItemBytes, err := proto.Marshal(reqBlockRespItem)
-			if err != nil {
-				return err
-			}
+		//	bItemBytes, err := proto.Marshal(reqBlockRespItem)
+		//	if err != nil {
+		//		return err
+		//	}
 
-			trx, err := chain.trxFactory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, "")
-			if err != nil {
-				return err
-			}
+		//	trx, err := chain.trxFactory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, "")
+		//	if err != nil {
+		//		return err
+		//	}
 
-			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-				return err
-			} else {
-				//reply to the source net stream
-				return cmgr.SendTrxRex(trx, s)
-			}
+		//	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
+		//		return err
+		//	} else {
+		//		//reply to the source net stream
+		//		return cmgr.SendTrxRex(trx, s)
+		//	}
 
-		} else {
-			chain_log.Debugf("GetBlockBackwordByReqTrx err %s", err)
-		}
+		//} else {
+		//	chain_log.Debugf("GetBlockBackwordByReqTrx err %s", err)
+		//}
 	}
 	return nil
 }
@@ -445,14 +455,6 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 	if err != nil && providerpkey == "" {
 		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)
 	}
-
-	//TOFIX: move into the syncerrunner
-	//if _, blockReceived := chain.blockReceived[resp.BlockId]; blockReceived {
-	//	syncer_log.Debugf("<%s> Block with Id <%s> already received", syncer.GroupId, resp.BlockId)
-	//	return nil
-	//}
-
-	//TODO: check blockdb, verify if the block has been received. (then I can remove the blockReceived)
 	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.UserSignPubkey)
 	if err != nil && signpkey == "" {
 		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)

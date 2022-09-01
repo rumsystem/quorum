@@ -25,9 +25,7 @@ const (
 type SyncerRunner struct {
 	nodeName string
 	group    *Group
-	//AskNextTimer        *time.Timer
-	//AskNextTimerDone    chan bool
-	Status int8
+	Status   int8
 	//retryCount int8
 	//statusBeforeFail    int8
 	//responses           map[string]*quorumpb.ReqBlockResp
@@ -41,7 +39,7 @@ type SyncerRunner struct {
 	gsyncer         *Gsyncer
 	//rwMutex         sync.RWMutex
 	//localSyncFinished   bool
-	//rumExchangeTestMode bool
+	rumExchangeTestMode bool
 }
 
 func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename string) *SyncerRunner {
@@ -55,11 +53,16 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 	sr.Status = IDLE
 	sr.cdnIface = cdnIface
 	sr.syncNetworkType = conn.PubSub
+	sr.rumExchangeTestMode = false
 	gs := NewGsyncer(group.Item.GroupId, sr.GetBlockTask, sr.ResultReceiver, sr.TaskSender)
 	sr.gsyncer = gs
 	gsyncer_log.Debugf("<%s> NewSyncerRunner initialed", group.Item.GroupId)
 	return sr
 
+}
+
+func (sr *SyncerRunner) SetRumExchangeTestMode() {
+	sr.rumExchangeTestMode = true
 }
 
 //define how to get next task, for example, taskid+1
@@ -142,16 +145,12 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		if err != nil {
 			return err
 		}
-		//TOFIX: rumExchange
-		//if syncer.rumExchangeTestMode == true {
-		//	return connMgr.SendTrxRex(trx, nil)
-		//}
 
-		//if syncer.syncNetworkType == conn.PubSub {
-		return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
-		//} else {
-		//	return connMgr.SendTrxRex(trx, nil)
-		//}
+		if sr.rumExchangeTestMode == false && sr.syncNetworkType == conn.PubSub {
+			return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
+		} else {
+			return connMgr.SendTrxRex(trx, nil)
+		}
 	} else {
 		gsyncer_log.Errorf("<%s> Unsupported task %s", sr.group.Item.GroupId, task.Id)
 		return fmt.Errorf("<%s> Unsupported task %s", sr.group.Item.GroupId, task.Id)
