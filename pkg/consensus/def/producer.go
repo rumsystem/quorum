@@ -6,6 +6,7 @@ import (
 
 type Producer interface {
 	NewProducer(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
+	RecreateBft()
 	AddBlock(block *quorumpb.Block) error
 	AddTrx(trx *quorumpb.Trx)
 	HandleHBMsg(hb *quorumpb.HBMsg) error

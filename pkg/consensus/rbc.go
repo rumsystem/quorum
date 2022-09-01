@@ -41,7 +41,7 @@ type RBC struct {
 
 	output         []byte
 	dataDecodeDone bool
-	consusDond     bool
+	consenusDone   bool
 }
 
 // At least 2F + 1 witnesses are needed
@@ -56,8 +56,6 @@ func NewRBC(cfg Config, acs *ACS, groupId, proposerPubkey string) (*RBC, error) 
 		parityShards = 1
 	}
 	dataShards := cfg.N - cfg.F
-
-	rbc_log.Infof("parityShards %d, dataShards %d", parityShards, dataShards)
 
 	// initial reed solomon codec
 	enc, err := reedsolomon.New(dataShards, parityShards)
@@ -75,6 +73,7 @@ func NewRBC(cfg Config, acs *ACS, groupId, proposerPubkey string) (*RBC, error) 
 		recvReadys:      make(map[string]*quorumpb.Ready),
 		numParityShards: parityShards,
 		numDataShards:   dataShards,
+		consenusDone:    false,
 	}
 
 	return rbc, nil
@@ -177,6 +176,10 @@ func (r *RBC) makeRBCReadyMessage(proof *quorumpb.Proof) (*quorumpb.BroadcastMsg
 }
 
 func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
+	if r.consenusDone {
+		//rbc done, do nothing, ignore the msg
+		return nil
+	}
 	rbc_log.Infof("handleProofMsg called")
 
 	//check proposerPubkey in producer list
@@ -228,6 +231,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 
 		//check if we already receive enough readyMsg (N - F)
 		if len(r.recvReadys) == r.N-r.F {
+			r.consenusDone = true
 			r.acs.RbcDone(r.proposerPubkey)
 		}
 	}
@@ -236,6 +240,12 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 }
 
 func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
+
+	if r.consenusDone {
+		//rbc done, do nothing, ignore the msg
+		return nil
+	}
+
 	rbc_log.Infof("handleReadyMsg called")
 
 	//check if msg sent from producer in list
@@ -265,6 +275,7 @@ func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
 
 	//check if get enough ready
 	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
+		r.consenusDone = true
 		r.acs.RbcDone(r.proposerPubkey)
 	} else {
 		//wait till enough

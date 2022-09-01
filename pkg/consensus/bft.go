@@ -1,8 +1,6 @@
 package consensus
 
 import (
-	"time"
-
 	"github.com/golang/protobuf/proto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -110,13 +108,14 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	hb.epoch++
 	bft_log.Debugf("advance to epoch  %d", hb.epoch)
 
-	//update chain Info
-	bft_log.Debugf("<%s> UpdChainInfo called", hb.producer.groupId)
-	hb.producer.grpItem.Epoch = hb.epoch
-	hb.producer.grpItem.LastUpdate = time.Now().Unix()
-	bft_log.Infof("<%s> Chain Info updated, epoch %d", hb.producer.groupId, hb.epoch)
-	nodectx.GetNodeCtx().GetChainStorage().UpdGroup(hb.producer.grpItem)
-
+	//Don't update chain Info here
+	/*
+		bft_log.Debugf("<%s> UpdChainInfo called", hb.producer.groupId)
+		hb.producer.grpItem.Epoch = hb.epoch
+		hb.producer.grpItem.LastUpdate = time.Now().Unix()
+		bft_log.Infof("<%s> Chain Info updated, epoch %d", hb.producer.groupId, hb.epoch)
+		nodectx.GetNodeCtx().GetChainStorage().UpdGroup(hb.producer.grpItem)
+	*/
 	trxBufLen, err := hb.txBuffer.GetBufferLen()
 	if err != nil {
 		bft_log.Warnf(err.Error())

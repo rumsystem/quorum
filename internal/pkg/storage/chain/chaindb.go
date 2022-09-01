@@ -69,24 +69,17 @@ func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, grou
 }
 
 func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
-	chaindb_log.Debugf("1")
 	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.AnnounceItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		chaindb_log.Debugf(err.Error())
 		return err
 	}
-
-	chaindb_log.Debugf("2")
-
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.SignPubkey)
 	if pk == "" {
 		pk = item.SignPubkey
 	}
 	key := nodeprefix + s.ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + pk
-
-	chaindb_log.Debugf("key %s", key)
-
 	err = cs.dbmgr.Db.Set([]byte(key), data)
 	if err != nil {
 		chaindb_log.Debugf("error %s", err.Error())
@@ -218,6 +211,7 @@ func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.P
 		pList = append(pList, &item)
 		return nil
 	})
+
 	return pList, err
 }
 

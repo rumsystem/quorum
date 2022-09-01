@@ -112,6 +112,9 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
+	//update latest group epoch
+	user.cIface.UpdChainInfo(block.Epoch)
+
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
 	trxs, err = rumchaindata.GetAllTrxs(blocks)
@@ -120,10 +123,11 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply trxs
-	err = user.cIface.ApplyTrxsFullNode(trxs, user.nodename)
-	if err != nil {
-		return err
-	}
+	return user.cIface.ApplyTrxsFullNode(trxs, user.nodename)
 
-	return user.cIface.UpdChainInfo(block.Epoch)
+	/*
+		if err != nil {
+			return err
+		}
+	*/
 }

@@ -16,39 +16,49 @@ func (cs *Storage) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) (err e
 
 func (cs *Storage) UpdateProducer(data []byte, prefix ...string) (err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	item := &quorumpb.ProducerItem{}
+	item := &quorumpb.BFTProducerBundleItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
 	}
 
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
-	if pk == "" {
-		pk = item.ProducerPubkey
-	}
+	// TBD need modify
+	for _, producerItem := range item.Producers {
+		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(producerItem.ProducerPubkey)
+		if pk == "" {
+			pk = producerItem.ProducerPubkey
+		}
 
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
+		pdata, err := proto.Marshal(producerItem)
+		if err != nil {
+			return err
+		}
 
-	chaindb_log.Infof("upd producer with key %s", key)
-
-	if item.Action == quorumpb.ActionType_ADD {
-		chaindb_log.Infof("Add producer")
-		return cs.dbmgr.Db.Set([]byte(key), data)
-	} else if item.Action == quorumpb.ActionType_REMOVE {
-		//check if group exist
-		chaindb_log.Infof("Remove producer")
-		exist, err := cs.dbmgr.Db.IsExist([]byte(key))
-		if !exist {
+		key := nodeprefix + s.PRD_PREFIX + "_" + producerItem.GroupId + "_" + pk
+		if producerItem.Action == quorumpb.ActionType_ADD {
+			err := cs.dbmgr.Db.Set([]byte(key), pdata)
 			if err != nil {
 				return err
 			}
-			return errors.New("Producer Not Found")
+		} else if producerItem.Action == quorumpb.ActionType_REMOVE {
+			//check if group exist
+			chaindb_log.Infof("Remove producer")
+			exist, err := cs.dbmgr.Db.IsExist([]byte(key))
+			if !exist {
+				if err != nil {
+					return err
+				}
+				return errors.New("Producer Not Found")
+			}
+			err = cs.dbmgr.Db.Delete([]byte(key))
+			if err != nil {
+				return nil
+			}
+		} else {
+			return errors.New("unknow msgType")
 		}
-
-		return cs.dbmgr.Db.Delete([]byte(key))
-	} else {
-		chaindb_log.Infof("Remove producer")
-		return errors.New("unknow msgType")
 	}
+
+	return nil
 }
 
 func (cs *Storage) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]byte, error) {

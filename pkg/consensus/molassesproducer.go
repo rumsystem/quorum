@@ -43,7 +43,19 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 	molaproducer_log.Infof("<%s> producer created", producer.groupId)
 }
 
+func (producer *MolassesProducer) RecreateBft() {
+	molaproducer_log.Debug("RecreateBft called")
+	config, err := producer.createBftConfig()
+	if err != nil {
+		molaproducer_log.Errorf("recreate bft failed")
+		molauser_log.Error(err.Error())
+		return
+	}
+
+	producer.bft = NewBft(*config, producer)
+}
 func (producer *MolassesProducer) createBftConfig() (*Config, error) {
+	molaproducer_log.Debugf("<%s> createBftConfig called", producer.groupId)
 	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
 	if err != nil {
 		return nil, err
@@ -156,6 +168,9 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
+	//update latest epoch
+	producer.cIface.UpdChainInfo(block.Epoch)
+
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
 	trxs, err = rumchaindata.GetAllTrxs(blocks)
@@ -164,12 +179,17 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//apply trxs
-	err = producer.cIface.ApplyTrxsProducerNode(trxs, producer.nodename)
-	if err != nil {
-		return err
-	}
+	return producer.cIface.ApplyTrxsProducerNode(trxs, producer.nodename)
 
-	return producer.cIface.UpdChainInfo(block.Epoch)
+	/*
+		if err != nil {
+			return err
+		}
+	*/
+
+	//return nil
+	// TBD don't update chain info here
+
 }
 
 func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {

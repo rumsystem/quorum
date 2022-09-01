@@ -13,7 +13,7 @@ type ProducerListItem struct {
 	OwnerPubkey    string
 	OwnerSign      string
 	TimeStamp      int64
-	BlockProduced  int64
+	BlockWithness  int64
 }
 
 func GetGroupProducers(chainapidb def.APIHandlerIface, groupid string) ([]*ProducerListItem, error) {
@@ -36,7 +36,7 @@ func GetGroupProducers(chainapidb def.APIHandlerIface, groupid string) ([]*Produ
 			item.OwnerPubkey = prd.GroupOwnerPubkey
 			item.OwnerSign = prd.GroupOwnerSign
 			item.TimeStamp = prd.TimeStamp
-			item.BlockProduced = prd.BlockProduced
+			item.BlockWithness = prd.WithnessBlockNum
 			prdResultList = append(prdResultList, item)
 		}
 

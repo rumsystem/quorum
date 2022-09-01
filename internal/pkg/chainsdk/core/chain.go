@@ -195,7 +195,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
-	chain_log.Debugf("<%s> HandleHB called", chain.groupId)
+
 	//non producer node should not handle hb msg
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
 		return nil
@@ -204,6 +204,8 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
 	if chain.Consensus.Producer() == nil {
 		return nil
 	}
+
+	chain_log.Debugf("<%s> HandleHB called", chain.groupId)
 
 	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
@@ -289,6 +291,12 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	if chain.Consensus != nil && chain.Consensus.Producer() == nil {
 		return nil
 	}
+
+	//not in group producer list, do nothing
+	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
+		return nil
+	}
+
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupId)
 	chain.Consensus.Producer().AddTrx(trx)
 	return nil
@@ -535,7 +543,12 @@ func (chain *Chain) UpdProducerList() {
 	chain_log.Debugf("<%s> UpdProducerList called", chain.groupId)
 	//create and load group producer pool
 	chain.ProducerPool = make(map[string]*quorumpb.ProducerItem)
-	producers, _ := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.group.Item.GroupId, chain.nodename)
+	producers, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.group.Item.GroupId, chain.nodename)
+
+	if err != nil {
+		chain_log.Infof("Get producer failed with err %s", err.Error())
+	}
+
 	for _, item := range producers {
 		base64ethpkey, err := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
 		if err == nil {
@@ -549,6 +562,9 @@ func (chain *Chain) UpdProducerList() {
 		}
 		chain_log.Infof("<%s> Load producer <%s%s>", chain.groupId, item.ProducerPubkey, ownerPrefix)
 	}
+
+	//recreate all consensus
+	chain.CreateConsensus()
 
 	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupId)
 
@@ -661,6 +677,7 @@ func (chain *Chain) CreateConsensus() error {
 		} else {
 			chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
 			producer = chain.Consensus.Producer()
+			producer.RecreateBft()
 		}
 	}
 

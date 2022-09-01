@@ -237,9 +237,9 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) UpdProducer(item *quorumpb.ProducerItem) (string, error) {
+func (grp *Group) UpdProducerBundle(item *quorumpb.BFTProducerBundleItem) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerTrx("", item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
 	if err != nil {
 		return "", nil
 	}
