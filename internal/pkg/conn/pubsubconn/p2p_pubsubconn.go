@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -198,14 +199,16 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainData
 }
 
 func (psconn *P2pPubSubConn) Publish(data []byte) error {
+	publishctx, cancel := context.WithTimeout(psconn.Ctx, 2*time.Second)
 	psconn.mu.Lock()
 	defer psconn.mu.Unlock()
+	defer cancel()
 	if psconn.Topic == nil {
 		return fmt.Errorf("Topic has been closed.")
 	}
 
-	err := psconn.Topic.Publish(psconn.Ctx, data)
-
+	//set a 2 Second timeout for pubsub Publish
+	err := psconn.Topic.Publish(publishctx, data)
 	success := err == nil
 	log := stats.NetworkStats{
 		From:      stats.GetLocalPeerID(),
