@@ -130,6 +130,7 @@ func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataSyncIfa
 }
 
 func (r *RexService) PublishToStream(msg *quorumpb.RumMsg, s network.Stream) error {
+
 	remotePeer := s.Conn().RemotePeer()
 	log := stats.NetworkStats{
 		From:      r.Host.ID(),
@@ -215,24 +216,40 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 	return nil
 }
 
-//Publish to 5 random connected peers
+//Publish to 3 random connected peers
 func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	//TODO: select peers
 	succ := 0
 	peers := r.Host.Network().Peers()
-	maxnum := 5
+	maxnum := 3
 
-	randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
+	//set timeout  and succ counter
+	publishctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-	for _, p := range randompeerlist {
-		if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
-			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-		} else {
-			succ++
-			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+	ch := make(chan struct{})
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				ch <- struct{}{}
+				return
+			default:
+				randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
+				for _, p := range randompeerlist {
+					if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
+						rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+					} else {
+						succ++
+						rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+					}
+				}
+			}
+
 		}
-	}
+	}(publishctx)
 
+	<-ch
 	return nil
 }
 

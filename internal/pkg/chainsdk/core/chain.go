@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -127,9 +126,7 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		}
 		//use gsyncer, current blockid as taskid
 		//!!! don't add repeat trx result to the gsyncer
-		fmt.Println("=======rex received trx")
-		fmt.Println(trx)
-		//chain.syncerrunner.AddTrxToSyncerQueue(trx)
+		chain.syncerrunner.AddTrxToSyncerQueue(trx)
 	default:
 		//do nothing
 	}

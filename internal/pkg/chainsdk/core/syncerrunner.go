@@ -167,10 +167,13 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 		if err != nil {
 			if err == ErrSyncDone {
 				sr.Status = IDLE
-			}
-			if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
+			} else if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
 				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST and SYNCING_BACKWARD, continue. %s", sr.group.Item.GroupId, result.Id)
 				err = nil
+			} else {
+				fmt.Println("======err before set to notaccpet")
+				fmt.Println(err)
+				err = ErrNotAccept
 			}
 		} else {
 			if sr.Status == SYNCING_BACKWARD && nexttaskid == sr.group.Item.GenesisBlock.BlockId {
@@ -184,7 +187,6 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 				}
 			}
 		}
-
 		return nexttaskid, err
 	} else {
 		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)

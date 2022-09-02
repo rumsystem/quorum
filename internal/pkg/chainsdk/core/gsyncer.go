@@ -13,9 +13,10 @@ var gsyncer_log = logging.Logger("syncer")
 var (
 	ErrSyncDone   = errors.New("Error Signal Sync Done")
 	ErrNoTaskWait = errors.New("Error No Task Waiting Result")
+	ErrNotAccept  = errors.New("Error The Result had been rejected")
 )
 
-const RESULT_TIMEOUT = 2 //seconds
+const RESULT_TIMEOUT = 4 //seconds
 
 type Syncdirection uint
 
@@ -124,6 +125,8 @@ func (s *Gsyncer) Start() {
 				//SyncPause, stop add next task, pause
 			} else if err == ErrNoTaskWait {
 				//no task waiting, skip don't add new task
+			} else if err == ErrNotAccept {
+				//not accept, do nothing and waiting for other reponses until timeout
 			} else {
 				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
 				if terr != nil {
