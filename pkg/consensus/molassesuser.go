@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -30,6 +31,17 @@ func (user *MolassesUser) Init(item *quorumpb.GroupItem, nodename string, iface 
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
+
+	//check if block is in storage
+	isSaved, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, false, user.nodename)
+	if err != nil {
+		return err
+	}
+
+	if isSaved {
+		return errors.New("Block already saved, ignore")
+	}
+
 	//check if block is in cache
 	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, user.nodename)
 	if err != nil {

@@ -448,48 +448,51 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 }
 
 func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.Block) error {
+	var err error
 	providerpkey, err := localcrypto.Libp2pPubkeyToEthBase64(resp.ProviderPubkey)
 	if err != nil && providerpkey == "" {
 		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)
+		return err
 	}
 	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.UserSignPubkey)
 	if err != nil && signpkey == "" {
 		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)
+		return err
 	}
 
 	_, producer := chain.group.ChainCtx.ProducerPool[signpkey]
 
 	if chain.syncerrunner.Status == SYNCING_FORWARD {
 		if producer {
-			chain_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", chain.groupId)
-			err := chain.group.ChainCtx.AddBlock(block)
-			if err != nil {
-				chain_log.Infof(err.Error())
-			}
-		} else {
-			chain_log.Debugf("<%s> SYNCING_FORWARD, USER ADD BLOCK", chain.groupId)
-			err := chain.group.ChainCtx.Consensus.User().AddBlock(block)
-			if err != nil {
-				chain_log.Infof(err.Error())
-			}
-		}
-		chain_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", chain.groupId)
-	} else { //sync backward
-		var err error
-		if producer {
-			chain_log.Debugf("<%s> SYNCING_BACKWARD, PRODUCER ADD BLOCK", chain.groupId)
 			err = chain.group.ChainCtx.AddBlock(block)
+			if err == nil {
+				chain_log.Debugf("<%s> SYNCING_FORWARD, PRODUCER ADD BLOCK", chain.groupId)
+			}
 		} else {
-			chain_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", chain.groupId)
 			err = chain.group.ChainCtx.Consensus.User().AddBlock(block)
-			if err != nil {
-				chain_log.Infof(err.Error())
+			if err == nil {
+				chain_log.Debugf("<%s> SYNCING_FORWARD, USER ADD BLOCK", chain.groupId)
+			}
+			//if err != nil {
+			//	chain_log.Infof(err.Error())
+			//}
+		}
+		//chain_log.Debugf("<%s> SYNCING_FORWARD, CONTINUE", chain.groupId)
+	} else { //sync backward
+		if producer {
+			err = chain.group.ChainCtx.AddBlock(block)
+			if err == nil {
+				chain_log.Debugf("<%s> SYNCING_BACKWARD, PRODUCER ADD BLOCK", chain.groupId)
+			}
+		} else {
+			err = chain.group.ChainCtx.Consensus.User().AddBlock(block)
+			if err == nil {
+				chain_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", chain.groupId)
 			}
 		}
-		chain_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", chain.groupId)
+		//chain_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", chain.groupId)
 	}
-	return nil
-
+	return err
 }
 
 func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
@@ -1024,16 +1027,15 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 //addBlock for producer
 func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> AddBlock called", chain.groupId)
-	/*
-		//check if block is already in chain
-		isSaved, err := nodectx.GetDbMgr().IsBlockExist(block.BlockId, false, producer.nodename)
-		if err != nil {
-			return err
-		}
-		if isSaved {
-			return errors.New("Block already saved, ignore")
-		}
-	*/
+
+	//check if block is in storage
+	isSaved, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, false, chain.nodename)
+	if err != nil {
+		return err
+	}
+	if isSaved {
+		return errors.New("Block already saved, ignore")
+	}
 
 	//check if block is in cache
 	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, chain.nodename)

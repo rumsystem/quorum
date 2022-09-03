@@ -14,6 +14,7 @@ var (
 	ErrSyncDone   = errors.New("Error Signal Sync Done")
 	ErrNoTaskWait = errors.New("Error No Task Waiting Result")
 	ErrNotAccept  = errors.New("Error The Result had been rejected")
+	ErrIgnore     = errors.New("Ignore and wait for time out")
 )
 
 const RESULT_TIMEOUT = 4 //seconds
@@ -58,6 +59,7 @@ type Gsyncer struct {
 	taskq            chan *SyncTask
 	resultq          chan *SyncResult
 	currentTask      *SyncTask
+	retrynext        bool //workaround for rumexchange
 	taskdone         chan struct{}
 	nextTask         func(taskid string) (*SyncTask, error)   //request the next task
 	resultreceiver   func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
@@ -76,8 +78,14 @@ func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), 
 	s.taskq = make(chan *SyncTask)
 	s.resultq = make(chan *SyncResult, 3)
 	s.taskdone = make(chan struct{})
+
 	return s
 }
+
+func (s *Gsyncer) SetRetryWithNext(retrynext bool) {
+	s.retrynext = retrynext
+}
+
 func (s *Gsyncer) Stop() {
 	close(s.taskq)
 	close(s.resultq)
@@ -95,8 +103,16 @@ func (s *Gsyncer) Start() {
 				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Id)
 			} else {
 				//retry this task
-				gsyncer_log.Errorf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
-				s.AddTask(task)
+				if s.retrynext == true {
+					gsyncer_log.Errorf("<%s> task process %s error: %s, retry with next...", s.GroupId, task.Id, err)
+					nexttask, err := s.nextTask("0")
+					if err == nil {
+						s.AddTask(nexttask)
+					}
+				} else {
+					gsyncer_log.Errorf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
+					s.AddTask(task)
+				}
 			}
 		}
 	}()
@@ -127,6 +143,8 @@ func (s *Gsyncer) Start() {
 				//no task waiting, skip don't add new task
 			} else if err == ErrNotAccept {
 				//not accept, do nothing and waiting for other reponses until timeout
+			} else if err == ErrIgnore {
+				//ignore, don't add next task, and waiting for timeout and process next
 			} else {
 				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
 				if terr != nil {
@@ -159,7 +177,9 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string
 		if s.waitResultTaskId != "" {
 			//for TEST fake workload
 			//time.Sleep(10 * time.Second)
-			s.taskdone <- struct{}{}
+			if err != ErrIgnore { // ErrIgnore will let the task wait for timeout, instead of be terminated
+				s.taskdone <- struct{}{}
+			}
 			return nexttaskid, err
 		} else {
 			return nexttaskid, ErrNoTaskWait
@@ -172,13 +192,14 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string
 func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
 	go func() {
+		s.waitResultTaskId = task.Id //set waiting task
 		s.tasksender(task)
 		//TODO: lock
-		s.waitResultTaskId = task.Id //set waiting task
 	}()
 
 	select {
 	case <-s.taskdone:
+		gsyncer_log.Warnf("<%s> receive taskdone event, clean waitResultTaskId", s.GroupId)
 		s.waitResultTaskId = ""
 		return nil
 	case <-ctx.Done():

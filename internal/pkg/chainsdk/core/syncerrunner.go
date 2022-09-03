@@ -54,7 +54,9 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 	sr.cdnIface = cdnIface
 	sr.syncNetworkType = conn.PubSub
 	sr.rumExchangeTestMode = false
+
 	gs := NewGsyncer(group.Item.GroupId, sr.GetBlockTask, sr.ResultReceiver, sr.TaskSender)
+	gs.SetRetryWithNext(false)
 	sr.gsyncer = gs
 	gsyncer_log.Debugf("<%s> NewSyncerRunner initialed", group.Item.GroupId)
 	return sr
@@ -69,9 +71,14 @@ func (sr *SyncerRunner) SetRumExchangeTestMode() {
 func (sr *SyncerRunner) GetBlockTask(blockid string) (*SyncTask, error) {
 	if blockid == "" { //workaround, return current task id to retry
 		blockid = sr.currenttaskid
+	} else if blockid == "0" { // warkaround for Rex sync, forward only
+		taskmeta := BlockSyncTask{BlockId: sr.group.Item.HighestBlockId, Direction: Next}
+		taskid := strconv.FormatUint(uint64(sr.taskserialid), 10)
+		return &SyncTask{Meta: taskmeta, Id: taskid}, nil
 	} else {
 		sr.currenttaskid = blockid
 	}
+
 	sr.taskserialid++
 	taskmeta := BlockSyncTask{BlockId: blockid, Direction: sr.direction}
 	taskid := strconv.FormatUint(uint64(sr.taskserialid), 10)
@@ -113,6 +120,10 @@ func (sr *SyncerRunner) Stop() {
 
 func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 	gsyncer_log.Debugf("<%s> call TaskSender...", sr.group.Item.GroupId)
+
+	if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
+		sr.gsyncer.SetRetryWithNext(true) //workaround for rumexchange
+	}
 	blocktask, ok := task.Meta.(BlockSyncTask)
 	if ok == true {
 		v := rand.Intn(500)
@@ -171,8 +182,6 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST and SYNCING_BACKWARD, continue. %s", sr.group.Item.GroupId, result.Id)
 				err = nil
 			} else {
-				fmt.Println("======err before set to notaccpet")
-				fmt.Println(err)
 				err = ErrNotAccept
 			}
 		} else {
@@ -184,8 +193,15 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 				if err != nil {
 					gsyncer_log.Debugf("<%s> forward sync started from block %s", sr.group.Item.GroupId, sr.group.Item.HighestBlockId)
 					sr.gsyncer.AddTask(task)
+				} else {
+					gsyncer_log.Errorf("<%s> get next task err %s", sr.group.Item.GroupId, err)
 				}
 			}
+		}
+
+		//workaround change the return of rumexchage result to ErrIgnore
+		if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
+			return "", ErrIgnore
 		}
 		return nexttaskid, err
 	} else {
