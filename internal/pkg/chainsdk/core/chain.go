@@ -151,6 +151,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender %s", chain.groupId, trx.SenderPubkey)
 		return errors.New("Invalid Trx")
 	}
+	chain_log.Debugf("<%s> HandleTrxPsConn this trx type: %s trxid: %s", chain.groupId, trx.Type, trx.TrxId)
 
 	switch trx.Type {
 	case quorumpb.TrxType_POST:
@@ -259,7 +260,11 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 			chain_log.Debugf("<%s> user add block error <%s>", chain.groupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
 				chain_log.Infof("<%s>, parent not exist, try sync backward from block <%s>", chain.groupId, block.BlockId)
-				return chain.syncerrunner.StartBackward(block.BlockId)
+				if chain.syncerrunner.Status == IDLE {
+					return chain.syncerrunner.StartBackward(block.BlockId)
+				} else {
+					chain_log.Infof("<%s>, syncerrunner status is <%s>, so keep the new block, dont' sync backward", chain.groupId, chain.syncerrunner.Status)
+				}
 			}
 		}
 	}
@@ -490,12 +495,18 @@ func (chain *Chain) AddBlockSynced(resp *quorumpb.ReqBlockResp, block *quorumpb.
 				chain_log.Debugf("<%s> SYNCING_BACKWARD, USER ADD BLOCK", chain.groupId)
 			}
 		}
+
+		if err == nil { //BACKWARD succ and block has been added, so switch to the FORWARD sync
+			chain_log.Debugf("<%s> SYNCING_BACKWARD ADD BLOCK SUCC, CHANGE TO FORWARD", chain.groupId)
+			chain.syncerrunner.SwapSyncDirection()
+
+		}
 		//chain_log.Debugf("<%s> SYNCING_BACKWARD, CONTINUE", chain.groupId)
 	}
 	return err
 }
 
-func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
+func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx, waittask *BlockSyncTask) (string, error) {
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
 		return "", err
@@ -528,6 +539,11 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
 		return "", err
 	}
 
+	//check if the current wait task
+	if waittask.Direction == Next && newBlock.PrevBlockId != waittask.BlockId { //err
+		return "", errors.New("ignore this block")
+	}
+
 	var shouldAccept bool
 
 	nbpk, err := localcrypto.Libp2pPubkeyToEthBase64(newBlock.ProducerPubKey)
@@ -550,6 +566,7 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) {
 		}
 		return "", errors.New("Block producer not registed")
 	}
+
 	return newBlock.BlockId, chain.AddBlockSynced(reqBlockResp, newBlock)
 }
 

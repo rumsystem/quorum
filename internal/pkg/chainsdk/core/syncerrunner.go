@@ -32,6 +32,7 @@ type SyncerRunner struct {
 	//blockReceived       map[string]string
 	direction       Syncdirection
 	currenttaskid   string
+	currentWaitTask *BlockSyncTask
 	taskserialid    uint32
 	resultserialid  uint32
 	cdnIface        def.ChainDataSyncIface
@@ -112,22 +113,34 @@ func (sr *SyncerRunner) Start(blockid string) error {
 	sr.gsyncer.AddTask(task)
 	return nil
 }
+func (sr *SyncerRunner) SwapSyncDirection() {
+	if sr.Status == SYNCING_FORWARD {
+		sr.Status = SYNCING_BACKWARD
+		sr.direction = Previous
+	} else if sr.Status == SYNCING_BACKWARD {
+		sr.Status = SYNCING_FORWARD
+		sr.direction = Next
+	}
+}
 
 func (sr *SyncerRunner) Stop() {
 	sr.gsyncer.Stop()
 	sr.Status = IDLE
 }
 
-func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
-	gsyncer_log.Debugf("<%s> call TaskSender...", sr.group.Item.GroupId)
+func (sr *SyncerRunner) SetCurrentWaitTask(task *BlockSyncTask) {
+	sr.currentWaitTask = task
+}
 
+func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 	if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
 		sr.gsyncer.SetRetryWithNext(true) //workaround for rumexchange
 	}
 	blocktask, ok := task.Meta.(BlockSyncTask)
+
 	if ok == true {
-		v := rand.Intn(500)
-		time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
+		gsyncer_log.Debugf("<%s> call TaskSender... with BlockId: %s", sr.group.Item.GroupId, blocktask.BlockId)
+		//TODO: keep a block task lock
 
 		block, err := sr.group.GetBlock(blocktask.BlockId)
 		if sr.Status == SYNCING_BACKWARD && block == nil {
@@ -156,7 +169,9 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		if err != nil {
 			return err
 		}
-
+		sr.SetCurrentWaitTask(&blocktask)
+		v := rand.Intn(500)
+		time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
 		if sr.rumExchangeTestMode == false && sr.syncNetworkType == conn.PubSub {
 			return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 		} else {
@@ -174,7 +189,7 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 		//v := rand.Intn(5) + 1
 		//time.Sleep(time.Duration(v) * time.Second) // fake workload
 		//try to save the result to db
-		nexttaskid, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult)
+		nexttaskid, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult, sr.currentWaitTask)
 		if err != nil {
 			if err == ErrSyncDone {
 				sr.Status = IDLE

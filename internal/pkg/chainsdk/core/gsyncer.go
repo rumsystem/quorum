@@ -36,10 +36,6 @@ type SyncTask struct {
 	Id   string
 }
 
-//type BlockSyncResult struct {
-//	BlockId string
-//}
-
 type TimeoutNoResult struct {
 	TaskId string
 }
@@ -58,7 +54,6 @@ type Gsyncer struct {
 	retryCount       int8
 	taskq            chan *SyncTask
 	resultq          chan *SyncResult
-	currentTask      *SyncTask
 	retrynext        bool //workaround for rumexchange
 	taskdone         chan struct{}
 	nextTask         func(taskid string) (*SyncTask, error)   //request the next task
