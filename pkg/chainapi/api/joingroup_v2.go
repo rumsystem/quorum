@@ -55,6 +55,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(msg)
 		}
 
+		//TBD check if group already exist
+
 		nodeoptions := options.GetNodeOptions()
 
 		var groupSignPubkey []byte
@@ -91,7 +93,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(msg)
 		}
 
-		//ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.)
 		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.BookkeepingPubkey)
 		if err != nil {
 			//the key maybe a libp2p key, try...
@@ -169,9 +170,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
 		}
 
-		//item.HighestBlockId = seed.GenesisBlock.BlockId
-		//item.HighestHeight = 0
-		item.Epoch = 1 //epoch start from 1, genesis block is epoch 0
+		item.Epoch = 0 // Epoch means the highest epoch from block
 		item.LastUpdate = seed.GenesisBlock.TimeStamp
 		item.GenesisBlock = seed.GenesisBlock
 

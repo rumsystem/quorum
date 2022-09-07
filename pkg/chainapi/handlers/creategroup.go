@@ -102,7 +102,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 
 	item.CipherKey = hex.EncodeToString(cipherKey)
 	item.AppKey = params.AppKey
-	item.Epoch = 1 //start from 1, genesis block is epoch 0
+	item.Epoch = 0 //Epoch means the current highest block epoch
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 

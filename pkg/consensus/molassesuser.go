@@ -112,8 +112,13 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
-	//update latest group epoch
-	user.cIface.UpdChainInfo(block.Epoch)
+	if block.Epoch > user.grpItem.Epoch {
+		//update latest group epoch
+		molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.grpItem.Epoch, block.Epoch)
+		user.cIface.UpdChainInfo(block.Epoch)
+	} else {
+		molauser_log.Debugf("<%s> No need to update highest Epoch", user.groupId)
+	}
 
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
@@ -124,10 +129,4 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 
 	//apply trxs
 	return user.cIface.ApplyTrxsFullNode(trxs, user.nodename)
-
-	/*
-		if err != nil {
-			return err
-		}
-	*/
 }

@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -15,10 +17,8 @@ var bft_log = logging.Logger("bft")
 type Bft struct {
 	Config
 	producer *MolassesProducer
-	epoch    int64          //current epoch
 	acsInsts map[int64]*ACS //map key is epoch
 	txBuffer *TrxBuffer
-	outputs  map[int64][]*quorumpb.Trx
 }
 
 func NewBft(cfg Config, producer *MolassesProducer) *Bft {
@@ -26,46 +26,42 @@ func NewBft(cfg Config, producer *MolassesProducer) *Bft {
 	return &Bft{
 		Config:   cfg,
 		producer: producer,
-		epoch:    producer.grpItem.Epoch,
 		acsInsts: make(map[int64]*ACS),
 		txBuffer: NewTrxBuffer(producer.groupId),
-		outputs:  make(map[int64][]*quorumpb.Trx),
 	}
 }
 
 func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	bft_log.Debugf("AddTrx called")
 	bft.txBuffer.Push(tx)
-	len, err := bft.txBuffer.GetBufferLen()
-	if err != nil {
-		return err
-	}
 
-	bft_log.Infof("trx buffer len %d", len)
-	bft.propose()
+	newEpoch := bft.producer.grpItem.Epoch + 1
+
+	bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
+	bft.propose(newEpoch)
 
 	return nil
 }
 
 func (bft *Bft) HandleMessage(hbmsg *quorumpb.HBMsg) error {
-	bft_log.Debugf("HandleMessage called")
+	bft_log.Debugf("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
 	acs, ok := bft.acsInsts[hbmsg.Epoch]
 
 	if !ok {
-		if hbmsg.Epoch < bft.epoch {
+		if hbmsg.Epoch < bft.producer.grpItem.Epoch {
 			bft_log.Warnf("message from old epoch, ignore")
 			return nil
 		}
-
 		acs = NewACS(bft.Config, bft, hbmsg.Epoch)
 		bft.acsInsts[hbmsg.Epoch] = acs
+		bft_log.Debugf("Create new ACS %d", hbmsg.Epoch)
 	}
 
 	return acs.HandleMessage(hbmsg)
 }
 
 func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
-	bft_log.Debugf("AcsDone called %d", epoch)
+	bft_log.Debugf("AcsDone called, Epoch <%d>", epoch)
 	var trxs map[string]*quorumpb.Trx
 	trxs = make(map[string]*quorumpb.Trx) //trx_id
 
@@ -85,7 +81,7 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	}
 	//order trx
 
-	err := hb.buildBlock(trxs)
+	err := hb.buildBlock(epoch, trxs)
 	if err != nil {
 		bft_log.Warnf(err.Error())
 	}
@@ -104,18 +100,12 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 
 	bft_log.Debugf("Remove acs %d", epoch)
 
-	//advanced to next epoch
-	hb.epoch++
-	bft_log.Debugf("advance to epoch  %d", hb.epoch)
+	bft_log.Debugf("<%s> UpdChainInfo called", hb.producer.groupId)
+	hb.producer.grpItem.Epoch = epoch
+	hb.producer.grpItem.LastUpdate = time.Now().Unix()
+	bft_log.Infof("<%s> Chain Info updated, epoch %d", hb.producer.groupId, epoch)
+	nodectx.GetNodeCtx().GetChainStorage().UpdGroup(hb.producer.grpItem)
 
-	//Don't update chain Info here
-	/*
-		bft_log.Debugf("<%s> UpdChainInfo called", hb.producer.groupId)
-		hb.producer.grpItem.Epoch = hb.epoch
-		hb.producer.grpItem.LastUpdate = time.Now().Unix()
-		bft_log.Infof("<%s> Chain Info updated, epoch %d", hb.producer.groupId, hb.epoch)
-		nodectx.GetNodeCtx().GetChainStorage().UpdGroup(hb.producer.grpItem)
-	*/
 	trxBufLen, err := hb.txBuffer.GetBufferLen()
 	if err != nil {
 		bft_log.Warnf(err.Error())
@@ -125,15 +115,17 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 
 	//start next round
 	if trxBufLen != 0 {
-		hb.propose()
+		newEpoch := hb.producer.grpItem.Epoch + 1
+		bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
+		hb.propose(newEpoch)
 	}
 }
 
-func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
+func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 	//try build block by using trxs
 
 	var trxToPackage []*quorumpb.Trx
-	bft_log.Infof("---------------acs result for epoch %d-------------------", hb.epoch)
+	bft_log.Infof("---------------acs result for epoch %d-------------------", epoch)
 
 	for trxId, trx := range trxs {
 		bft_log.Infof(">>> trxId : %s", trxId)
@@ -141,7 +133,8 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	}
 
 	//update db here
-	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(hb.producer.groupId, hb.epoch-1, false, hb.producer.nodename)
+	parentEpoch := epoch - 1
+	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(hb.producer.groupId, parentEpoch, false, hb.producer.nodename)
 	if err != nil {
 		return err
 	}
@@ -151,7 +144,7 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 
 	//create block
 	ks := localcrypto.GetKeystore()
-	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, hb.epoch, trxToPackage, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
+	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
 	if err != nil {
 		return err
 	}
@@ -183,7 +176,7 @@ func (hb *Bft) buildBlock(trxs map[string]*quorumpb.Trx) error {
 	return nil
 }
 
-func (hb *Bft) propose() error {
+func (hb *Bft) propose(epoch int64) error {
 	trxs, err := hb.txBuffer.GetNRandTrx(hb.BatchSize)
 	if err != nil {
 		return err
@@ -201,11 +194,11 @@ func (hb *Bft) propose() error {
 	}
 
 	datab, err := proto.Marshal(trxBundle)
-	acs, ok := hb.acsInsts[hb.epoch]
+	acs, ok := hb.acsInsts[epoch]
 	if !ok {
-		acs = NewACS(hb.Config, hb, hb.epoch)
-		hb.acsInsts[hb.epoch] = acs
+		acs = NewACS(hb.Config, hb, epoch)
+		hb.acsInsts[epoch] = acs
 	}
 
-	return hb.acsInsts[hb.epoch].InputValue(datab)
+	return hb.acsInsts[epoch].InputValue(datab)
 }

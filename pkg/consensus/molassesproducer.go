@@ -38,9 +38,8 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 	}
 
 	producer.bft = NewBft(*config, producer)
-	producer.bft.propose()
-
-	molaproducer_log.Infof("<%s> producer created", producer.groupId)
+	newEpoch := producer.grpItem.Epoch + 1
+	producer.bft.propose(newEpoch)
 }
 
 func (producer *MolassesProducer) RecreateBft() {
@@ -54,6 +53,7 @@ func (producer *MolassesProducer) RecreateBft() {
 
 	producer.bft = NewBft(*config, producer)
 }
+
 func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	molaproducer_log.Debugf("<%s> createBftConfig called", producer.groupId)
 	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
@@ -66,11 +66,20 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 		nodes = append(nodes, producer.ProducerPubkey)
 	}
 
+	molaproducer_log.Debugf("Get <%d> producers", len(nodes))
+	for _, producerId := range nodes {
+		molaproducer_log.Debugf(">>> producer_id %s", producerId)
+	}
+
 	n := len(nodes)
 	f := (n - 1) / 2
 
+	molaproducer_log.Debugf("Failable node %d", f)
+
 	scalar := 20
 	batchSize := (len(nodes) * 2) * scalar
+
+	molaproducer_log.Debugf("batchSize %d", batchSize)
 
 	config := &Config{
 		N:            n,
@@ -180,16 +189,6 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 
 	//apply trxs
 	return producer.cIface.ApplyTrxsProducerNode(trxs, producer.nodename)
-
-	/*
-		if err != nil {
-			return err
-		}
-	*/
-
-	//return nil
-	// TBD don't update chain info here
-
 }
 
 func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
@@ -221,6 +220,6 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsg) error {
-	molaproducer_log.Debugf("<%s> HandleHBMsg %s", producer.groupId, hbmsg.MsgType.String())
+	molaproducer_log.Debugf("<%s> HandleHBMsg %s, %d", producer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
 	return producer.bft.HandleMessage(hbmsg)
 }

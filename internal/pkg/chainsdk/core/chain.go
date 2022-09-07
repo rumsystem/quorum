@@ -205,8 +205,6 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
 		return nil
 	}
 
-	chain_log.Debugf("<%s> HandleHB called", chain.groupId)
-
 	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
 
@@ -563,9 +561,6 @@ func (chain *Chain) UpdProducerList() {
 		chain_log.Infof("<%s> Load producer <%s%s>", chain.groupId, item.ProducerPubkey, ownerPrefix)
 	}
 
-	//recreate all consensus
-	chain.CreateConsensus()
-
 	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupId)
 
 	var producerspubkey []string
@@ -574,7 +569,9 @@ func (chain *Chain) UpdProducerList() {
 	}
 
 	connMgr.UpdProducers(producerspubkey)
+}
 
+func (chain *Chain) UpdateAnnouncedProducer() {
 	//update announced producer result
 	announcedProducers, _ := nodectx.GetNodeCtx().GetChainStorage().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
@@ -650,15 +647,16 @@ func (chain *Chain) CreateConsensus() error {
 	var user def.User
 	var producer def.Producer
 
-	shouldCreateUser := false
-	shouldCreateProducer := false
+	var shouldCreateUser, shouldCreateProducer bool
 
-	//create user when run as FULL_NODE, skip when run as PRODUCER_NODE
+	//create user/producer when run as FULL_NODE
+	//only create producer when run PRODUCER_NODE
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		shouldCreateProducer = true
 		shouldCreateUser = false
 	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-		if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+		//check if I am owner of the group
+		if chain.group.Item.UserSignPubkey == chain.group.Item.OwnerPubKey {
 			shouldCreateProducer = true
 		} else {
 			shouldCreateProducer = false
@@ -670,27 +668,32 @@ func (chain *Chain) CreateConsensus() error {
 
 	if shouldCreateProducer {
 		//create producer anyway
-		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
-			producer = &consensus.MolassesProducer{}
-			producer.NewProducer(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		} else {
-			chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
-			producer = chain.Consensus.Producer()
-			producer.RecreateBft()
-		}
+		//if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
+		producer = &consensus.MolassesProducer{}
+		producer.NewProducer(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+
+		/*
+			} else {
+				chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
+				producer = chain.Consensus.Producer()
+				producer.RecreateBft()
+			}
+		*/
 	}
 
 	if shouldCreateUser {
-		//full node
-		if chain.Consensus == nil || chain.Consensus.User() == nil {
-			chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
-			user = &consensus.MolassesUser{}
-			user.NewUser(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		} else {
-			chain_log.Infof("<%s> reuse molasses user", chain.groupId)
-			user = chain.Consensus.User()
-		}
+
+		//if chain.Consensus == nil || chain.Consensus.User() == nil {
+		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
+		user = &consensus.MolassesUser{}
+		user.NewUser(chain.group.Item, chain.group.ChainCtx.nodename, chain)
+		/*
+				} else {
+				chain_log.Infof("<%s> reuse molasses user", chain.groupId)
+				user = chain.Consensus.User()
+			}
+		*/
 	}
 
 	/*
@@ -731,16 +734,20 @@ func (chain *Chain) CreateConsensus() error {
 			}
 	*/
 
-	if chain.Consensus == nil {
-		chain_log.Infof("<%s> create new consensus", chain.groupId)
-		chain.Consensus = consensus.NewMolasses(producer, user /*, snapshotsender, snapshotreceiver */)
-	} else {
-		chain_log.Infof("<%s> reuse consensus", chain.groupId)
-		chain.Consensus.SetProducer(producer)
-		chain.Consensus.SetUser(user)
-		//chain.Consensus.SetSnapshotSender(snapshotsender)
-		//chain.Consensus.SetSnapshotReceiver(snapshotreceiver)
-	}
+	//if chain.Consensus == nil {
+	chain_log.Infof("<%s> create new consensus", chain.groupId)
+	chain.Consensus = consensus.NewMolasses(producer, user /*, snapshotsender, snapshotreceiver */)
+
+	/*
+
+		} else {
+			chain_log.Infof("<%s> reuse consensus", chain.groupId)
+			chain.Consensus.SetProducer(producer)
+			chain.Consensus.SetUser(user)
+			//chain.Consensus.SetSnapshotSender(snapshotsender)
+			//chain.Consensus.SetSnapshotReceiver(snapshotreceiver)
+		}
+	*/
 
 	return nil
 }

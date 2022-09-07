@@ -51,7 +51,7 @@ func (a *ACS) InputValue(val []byte) error {
 
 //rbc for proposerIs finished
 func (a *ACS) RbcDone(proposerPubkey string) {
-	acs_log.Infof("RbcDone called %d", a.epoch)
+	acs_log.Infof("RbcDone called, Epoch <%d>", a.epoch)
 	a.rbcOutput[proposerPubkey] = true
 
 	//check if all rbc instance output
@@ -71,7 +71,7 @@ func (a *ACS) RbcDone(proposerPubkey string) {
 }
 
 func (a *ACS) HandleMessage(hbmsg *quorumpb.HBMsg) error {
-	acs_log.Infof("HandleMessage called")
+	acs_log.Infof("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
 	switch hbmsg.MsgType {
 	case quorumpb.HBBMsgType_BROADCAST:
 		broadcastMsg := &quorumpb.BroadcastMsg{}

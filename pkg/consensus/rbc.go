@@ -176,11 +176,17 @@ func (r *RBC) makeRBCReadyMessage(proof *quorumpb.Proof) (*quorumpb.BroadcastMsg
 }
 
 func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
+	rbc_log.Infof("PROOF_MSG:ProofProviderPubkey <%s>, epoch %d", proof.ProposerPubkey, r.acs.epoch)
 	if r.consenusDone {
 		//rbc done, do nothing, ignore the msg
+		rbc_log.Infof("rbc is done, do nothing")
 		return nil
 	}
-	rbc_log.Infof("handleProofMsg called")
+
+	if r.dataDecodeDone {
+		rbc_log.Infof("Data decode done, do nothing")
+		return nil
+	}
 
 	//check proposerPubkey in producer list
 	isInProducerList := false
@@ -195,7 +201,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 		return fmt.Errorf("receive proof from non producer %s", proof.ProposerPubkey)
 	}
 
-	//check signature
+	//TBD check signature
 	signOk := true
 	if !signOk {
 		return fmt.Errorf("invalid proof signature")
@@ -206,19 +212,21 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	//save proof
+	rbc_log.Infof("Save proof")
 	r.recvProofs = append(r.recvProofs, proof)
 
 	//if got enough proof, try decode it
 	if r.recvProofs.Len() == r.N-r.F {
+		rbc_log.Infof("Try decode")
 		err := r.tryDecodeValue()
 		if err != nil {
 			return err
 		}
 
-		//data is ready
+		rbc_log.Infof("data is ready")
 		r.dataDecodeDone = true
 
-		//broadcast ready msg
+		rbc_log.Infof("broadcast ready msg")
 		readyMsg, err := r.makeRBCReadyMessage(proof)
 		if err != nil {
 			return err
@@ -231,8 +239,11 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 
 		//check if we already receive enough readyMsg (N - F)
 		if len(r.recvReadys) == r.N-r.F {
+			rbc_log.Infof("rbc done")
 			r.consenusDone = true
 			r.acs.RbcDone(r.proposerPubkey)
+		} else {
+			rbc_log.Infof("wait more ready")
 		}
 	}
 
@@ -240,13 +251,11 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 }
 
 func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
-
+	rbc_log.Infof("READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>, epoch %d", ready.ProofProviderPubkey, ready.ProposerPubkey, r.acs.epoch)
 	if r.consenusDone {
-		//rbc done, do nothing, ignore the msg
+		rbc_log.Infof("rbc is done, do nothing")
 		return nil
 	}
-
-	rbc_log.Infof("handleReadyMsg called")
 
 	//check if msg sent from producer in list
 	isInProducerList := false
@@ -275,10 +284,12 @@ func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
 
 	//check if get enough ready
 	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
+		rbc_log.Infof("rbc done")
 		r.consenusDone = true
 		r.acs.RbcDone(r.proposerPubkey)
 	} else {
 		//wait till enough
+		rbc_log.Infof("wait for more READY")
 	}
 
 	return nil
