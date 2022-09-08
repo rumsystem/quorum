@@ -84,7 +84,8 @@ func NewRBC(cfg Config, acs *ACS, groupId, proposerPubkey string) (*RBC, error) 
 // 2. make proofReq for each pieces
 // 3. broadcast all proofReq via pubsub
 func (r *RBC) InputValue(data []byte) error {
-	rbc_log.Infof("Input value called")
+	rbc_log.Infof("Input value called, data length %d", len(data))
+	//rbc_log.Infof("raw trxBundle %v", data)
 	shards, err := makeShards(r.enc, data)
 	if err != nil {
 		return err
@@ -198,7 +199,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	if !isInProducerList {
-		return fmt.Errorf("receive proof from non producer %s", proof.ProposerPubkey)
+		return fmt.Errorf("receive proof from non producer node <%s>", proof.ProposerPubkey)
 	}
 
 	//TBD check signature
@@ -208,7 +209,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	if !validateProof(proof) {
-		return fmt.Errorf("Received invalid proof from (%s)", proof.ProposerPubkey)
+		return fmt.Errorf("Received invalid proof from producer node <%s>", proof.ProposerPubkey)
 	}
 
 	//save proof
@@ -223,7 +224,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 			return err
 		}
 
-		rbc_log.Infof("data is ready")
+		rbc_log.Infof("Data is ready")
 		r.dataDecodeDone = true
 
 		rbc_log.Infof("broadcast ready msg")
@@ -239,7 +240,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 
 		//check if we already receive enough readyMsg (N - F)
 		if len(r.recvReadys) == r.N-r.F {
-			rbc_log.Infof("rbc done")
+			rbc_log.Infof("RBC done")
 			r.consenusDone = true
 			r.acs.RbcDone(r.proposerPubkey)
 		} else {
@@ -253,7 +254,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	rbc_log.Infof("READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>, epoch %d", ready.ProofProviderPubkey, ready.ProposerPubkey, r.acs.epoch)
 	if r.consenusDone {
-		rbc_log.Infof("rbc is done, do nothing")
+		rbc_log.Infof("Rbc is already done, do nothing")
 		return nil
 	}
 
@@ -267,7 +268,7 @@ func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	}
 
 	if !isInProducerList {
-		return fmt.Errorf("receive READY from non producer %s", ready.ProposerPubkey)
+		return fmt.Errorf("receive READY from non producer <%s>", ready.ProposerPubkey)
 	}
 
 	//check signature with ready.root_hash , ready.Proposer.Pubkey, ready.proposer.Sign
@@ -277,14 +278,14 @@ func (r *RBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	}
 
 	if _, ok := r.recvReadys[string(ready.ProposerPubkey)]; ok {
-		return fmt.Errorf("Received multiple readys from %s", ready.ProposerPubkey)
+		return fmt.Errorf("Received multiple readys from <%s>", ready.ProposerPubkey)
 	}
 
 	r.recvReadys[string(ready.ProposerPubkey)] = ready
 
 	//check if get enough ready
 	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
-		rbc_log.Infof("rbc done")
+		rbc_log.Infof("RBC done")
 		r.consenusDone = true
 		r.acs.RbcDone(r.proposerPubkey)
 	} else {
@@ -312,6 +313,7 @@ func (r *RBC) tryDecodeValue() error {
 
 	shards := make([][]byte, r.numParityShards+r.numDataShards)
 	for _, p := range r.recvProofs {
+		rbc_log.Infof("index %d", p.Index)
 		shards[p.Index] = p.Proof[0]
 	}
 
@@ -321,10 +323,14 @@ func (r *RBC) tryDecodeValue() error {
 
 	var value []byte
 	for _, data := range shards[:r.numDataShards] {
+
+		rbc_log.Infof("tryDecodeValue called")
 		value = append(value, data...)
 	}
 
 	r.output = value
+
+	rbc_log.Infof("Decode done")
 	return nil
 }
 

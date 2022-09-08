@@ -560,6 +560,9 @@ func (chain *Chain) UpdProducerList() {
 		}
 		chain_log.Infof("<%s> Load producer <%s%s>", chain.groupId, item.ProducerPubkey, ownerPrefix)
 	}
+}
+
+func (chain *Chain) UpdConnMgrProducer() {
 
 	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupId)
 
@@ -571,7 +574,8 @@ func (chain *Chain) UpdProducerList() {
 	connMgr.UpdProducers(producerspubkey)
 }
 
-func (chain *Chain) UpdateAnnouncedProducer() {
+func (chain *Chain) UpdAnnouncedProducerStatus() {
+	chain_log.Debugf("<%s> UpdAnnouncedProducerStatus called", chain.groupId)
 	//update announced producer result
 	announcedProducers, _ := nodectx.GetNodeCtx().GetChainStorage().GetAnnounceProducersByGroup(chain.group.Item.GroupId, chain.nodename)
 	for _, item := range announcedProducers {
@@ -581,6 +585,16 @@ func (chain *Chain) UpdateAnnouncedProducer() {
 			chain_log.Warningf("<%s> UpdAnnounceResult failed with error <%s>", chain.groupId, err.Error())
 		}
 	}
+}
+
+func (chain *Chain) UpdProducerConfig() {
+	chain_log.Debugf("<%s> UpdProducerConfig called", chain.groupId)
+	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+		return
+	}
+
+	//recreate producer BFT config
+	chain.Consensus.Producer().RecreateBft()
 }
 
 func (chain *Chain) GetUserPool() map[string]*quorumpb.UserItem {
@@ -918,6 +932,9 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateProducerTrx(trx, nodename)
 			chain.UpdProducerList()
+			chain.UpdAnnouncedProducerStatus()
+			chain.UpdProducerConfig()
+			//chain.UpdConnMgrProducer()
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateUserTrx(trx, nodename)
@@ -952,7 +969,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 	for _, trx := range trxs {
 		if trx.Type == quorumpb.TrxType_APP_CONFIG || trx.Type == quorumpb.TrxType_POST {
 			//producer node does not handle APP_CONFIG and POST
-			chain_log.Infof("Skip TRX %s with type %s", trx.TrxId, trx.Type.Descriptor().FullName())
+			chain_log.Infof("Skip TRX %s with type %s", trx.TrxId, trx.Type.String())
 			continue
 		}
 
@@ -991,6 +1008,9 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateProducerTrx(trx, nodename)
 			chain.UpdProducerList()
+			chain.UpdAnnouncedProducerStatus()
+			chain.UpdProducerConfig()
+			chain.UpdConnMgrProducer()
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateUserTrx(trx, nodename)

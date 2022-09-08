@@ -46,6 +46,17 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		return nil, rumerrors.ErrGroupNotFound
 	} else {
+		//check announce type according to node type, see document for more details
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+			if params.Type != "producer" {
+				return nil, errors.New("Producer node can only announced as \"producer\"")
+			}
+		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+			if params.Type == "producer" {
+				return nil, errors.New("Full node can not announce as producer")
+			}
+		}
+
 		if params.Type == "user" {
 			item.Type = quorumpb.AnnounceType_AS_USER
 		} else if params.Type == "producer" {

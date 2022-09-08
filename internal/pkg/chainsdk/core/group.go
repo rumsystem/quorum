@@ -55,6 +55,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
+	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 
 	//start send snapshot
@@ -129,6 +130,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
 	//reload producers
 	grp.ChainCtx.UpdProducerList()
+	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 	//start send snapshot
 	//grp.ChainCtx.StartSnapshot()

@@ -92,6 +92,7 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	return config, nil
 }
 
+// Add Block will be called when producer sync with other producer node
 func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	molaproducer_log.Debugf("<%s> AddBlock called", producer.groupId)
 	var blocks []*quorumpb.Block
@@ -177,8 +178,10 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
-	//update latest epoch
-	producer.cIface.UpdChainInfo(block.Epoch)
+	//update latest epoch only if epoch of block is larger than current group epoch
+	if block.Epoch > producer.grpItem.Epoch {
+		producer.cIface.UpdChainInfo(block.Epoch)
+	}
 
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx

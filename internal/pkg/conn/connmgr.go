@@ -246,6 +246,11 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 			conn_log.Debugf("<%s> reset connection timer for producer psconn <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 			connMgr.producerChannTimer.Stop()
 			connMgr.producerChannTimer.Reset(CLOSE_PRD_CHANN_TIMER)
+		} else {
+			if connMgr.producerChannTimer != nil {
+				conn_log.Debugf("<%s> stop producer psconn timer <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
+				connMgr.producerChannTimer.Stop()
+			}
 		}
 		return psconn
 	} else {

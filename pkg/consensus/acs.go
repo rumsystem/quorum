@@ -56,6 +56,7 @@ func (a *ACS) RbcDone(proposerPubkey string) {
 
 	//check if all rbc instance output
 	if len(a.rbcOutput) == a.N {
+		acs_log.Debugf("all RBC done, call acs")
 		// all rbc done, get all rbc results, send them back to BFT
 		for _, rbcInst := range a.rbcInstances {
 			//load all rbc results
@@ -65,7 +66,7 @@ func (a *ACS) RbcDone(proposerPubkey string) {
 		//call hbb to get result
 		a.bft.AcsDone(a.epoch, a.rbcResults)
 	} else {
-		//continue waiting
+		acs_log.Debugf("Wait for all RBC done")
 		return
 	}
 }

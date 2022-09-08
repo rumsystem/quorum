@@ -48,7 +48,7 @@ func (bft *Bft) HandleMessage(hbmsg *quorumpb.HBMsg) error {
 	acs, ok := bft.acsInsts[hbmsg.Epoch]
 
 	if !ok {
-		if hbmsg.Epoch < bft.producer.grpItem.Epoch {
+		if hbmsg.Epoch <= bft.producer.grpItem.Epoch {
 			bft_log.Warnf("message from old epoch, ignore")
 			return nil
 		}
@@ -62,24 +62,33 @@ func (bft *Bft) HandleMessage(hbmsg *quorumpb.HBMsg) error {
 
 func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	bft_log.Debugf("AcsDone called, Epoch <%d>", epoch)
-	var trxs map[string]*quorumpb.Trx
-	trxs = make(map[string]*quorumpb.Trx) //trx_id
+	trxs := make(map[string]*quorumpb.Trx) //trx_id
+	//bft_log.Infof("result %v", result)
 
 	//decode trxs
 	for key, value := range result {
 		trxBundle := &quorumpb.HBTrxBundle{}
+		bft_log.Infof("raw TrxBundle %v", value)
 		err := proto.Unmarshal(value, trxBundle)
 		if err != nil {
-			bft_log.Warningf("decode trxs failed for rbc inst %s", key)
-		} else {
-			for _, trx := range trxBundle.Trxs {
-				if _, ok := trxs[trx.TrxId]; !ok {
-					trxs[trx.TrxId] = trx
-				}
+			bft_log.Warningf("decode trxs failed for rbc inst %s, err %s", key, err.Error())
+			value = value[:len(value)-1]
+			err := proto.Unmarshal(value, trxBundle)
+			if err != nil {
+				bft_log.Warningf("decode trxs still failed for rbc inst %s, err %s", key, err.Error())
+			}
+		}
+
+		for _, trx := range trxBundle.Trxs {
+			if _, ok := trxs[trx.TrxId]; !ok {
+				trxs[trx.TrxId] = trx
 			}
 		}
 	}
-	//order trx
+
+	//TBD order trx
+
+	//bft_log.Infof("trx[] %v", trxs)
 
 	err := hb.buildBlock(epoch, trxs)
 	if err != nil {
@@ -119,6 +128,7 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 		bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
 		hb.propose(newEpoch)
 	}
+
 }
 
 func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
