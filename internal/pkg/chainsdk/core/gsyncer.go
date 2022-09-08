@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -52,6 +53,7 @@ type Gsyncer struct {
 	Status           int8
 	waitResultTaskId string //waiting the result for taskid
 	retryCount       int8
+	retrycountmu     sync.Mutex
 	taskq            chan *SyncTask
 	resultq          chan *SyncResult
 	retrynext        bool //workaround for rumexchange
@@ -80,16 +82,62 @@ func (s *Gsyncer) SetRetryWithNext(retrynext bool) {
 	s.retrynext = retrynext
 }
 
+func (s *Gsyncer) RetryCounterInc() {
+	s.retrycountmu.Lock()
+	s.retryCount++
+	s.retrycountmu.Unlock()
+}
+func (s *Gsyncer) RetryCounterClear() {
+	s.retrycountmu.Lock()
+	s.retryCount = 0
+	s.retrycountmu.Unlock()
+}
+
+func (s *Gsyncer) RetryCounter() int8 {
+	return s.retryCount
+}
+
+func safeClose(ch chan struct{}) (recovered bool) {
+	defer func() {
+		if recover() != nil {
+			recovered = true
+		}
+	}()
+	if ch == nil {
+		return false
+	}
+	close(ch)
+	return false
+}
+func safeCloseTask(ch chan *SyncTask) (recovered bool) {
+	defer func() {
+		if recover() != nil {
+			recovered = true
+		}
+	}()
+	if ch == nil {
+		return false
+	}
+	close(ch)
+	return false
+}
+func safeCloseResult(ch chan *SyncResult) (recovered bool) {
+	defer func() {
+		if recover() != nil {
+			recovered = true
+		}
+	}()
+	if ch == nil {
+		return false
+	}
+	close(ch)
+	return false
+}
+
 func (s *Gsyncer) Stop() {
-	if s.taskq != nil {
-		close(s.taskq)
-	}
-	if s.resultq != nil {
-		close(s.resultq)
-	}
-	if s.taskdone != nil {
-		close(s.taskdone)
-	}
+	safeClose(s.taskdone)
+	safeCloseTask(s.taskq)
+	safeCloseResult(s.resultq)
 	if s.stopnotify != nil {
 		signcount := 0
 		for _ = range s.stopnotify {
@@ -126,6 +174,7 @@ func (s *Gsyncer) Start() {
 					}
 				} else {
 					gsyncer_log.Errorf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
+					s.RetryCounterInc()
 					s.AddTask(task)
 				}
 			}

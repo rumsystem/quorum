@@ -151,9 +151,11 @@ func (grp *Group) ClearGroup() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) StartSync() error {
+func (grp *Group) StartSync(restart bool) error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	grp.ChainCtx.StopSync()
+	if restart == true {
+		grp.ChainCtx.StopSync()
+	}
 	//time.Sleep(10 * time.Second)
 	return grp.ChainCtx.StartSync()
 	//return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)

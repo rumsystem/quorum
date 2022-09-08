@@ -183,7 +183,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		//start sync
-		err = group.StartSync()
+		err = group.StartSync(false)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

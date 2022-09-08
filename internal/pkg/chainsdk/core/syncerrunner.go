@@ -26,7 +26,6 @@ type SyncerRunner struct {
 	nodeName string
 	group    *Group
 	Status   int8
-	//retryCount int8
 	//statusBeforeFail    int8
 	//responses           map[string]*quorumpb.ReqBlockResp
 	//blockReceived       map[string]string
@@ -170,6 +169,21 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 			return err
 		}
 		sr.SetCurrentWaitTask(&blocktask)
+
+		if sr.gsyncer.RetryCounter() >= 30 { //max retry count
+			//change networktype and clear counter
+			if sr.rumExchangeTestMode != true {
+
+				if sr.syncNetworkType == conn.PubSub {
+					sr.syncNetworkType = conn.RumExchange
+				} else {
+					sr.syncNetworkType = conn.PubSub
+				}
+				gsyncer_log.Debugf("<%s> retry counter %d, change the network type to %s", sr.gsyncer.RetryCounter(), sr.syncNetworkType)
+			}
+			sr.gsyncer.RetryCounterClear()
+		}
+
 		v := rand.Intn(500)
 		time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
 		if sr.rumExchangeTestMode == false && sr.syncNetworkType == conn.PubSub {
