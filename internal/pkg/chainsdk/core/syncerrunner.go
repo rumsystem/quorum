@@ -124,8 +124,8 @@ func (sr *SyncerRunner) SwapSyncDirection() {
 }
 
 func (sr *SyncerRunner) Stop() {
-	sr.gsyncer.Stop()
 	sr.Status = IDLE
+	sr.gsyncer.Stop()
 }
 
 func (sr *SyncerRunner) SetCurrentWaitTask(task *BlockSyncTask) {
@@ -229,5 +229,7 @@ func (sr *SyncerRunner) AddTrxToSyncerQueue(trx *quorumpb.Trx) {
 	sr.resultserialid++
 	resultid := strconv.FormatUint(uint64(sr.resultserialid), 10)
 	result := &SyncResult{Id: resultid, Data: trx}
-	sr.gsyncer.AddResult(result)
+	if sr.Status == SYNCING_FORWARD || sr.Status == SYNCING_BACKWARD {
+		sr.gsyncer.AddResult(result)
+	}
 }

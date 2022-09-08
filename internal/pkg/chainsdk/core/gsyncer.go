@@ -56,9 +56,11 @@ type Gsyncer struct {
 	resultq          chan *SyncResult
 	retrynext        bool //workaround for rumexchange
 	taskdone         chan struct{}
-	nextTask         func(taskid string) (*SyncTask, error)   //request the next task
-	resultreceiver   func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
-	tasksender       func(task *SyncTask) error               //send task via network or others
+	stopnotify       chan struct{}
+
+	nextTask       func(taskid string) (*SyncTask, error)   //request the next task
+	resultreceiver func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
+	tasksender     func(task *SyncTask) error               //send task via network or others
 }
 
 func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) (string, error), tasksender func(task *SyncTask) error) *Gsyncer {
@@ -70,9 +72,6 @@ func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), 
 	s.resultreceiver = resultreceiver
 	s.tasksender = tasksender
 	s.retryCount = 0
-	s.taskq = make(chan *SyncTask)
-	s.resultq = make(chan *SyncResult, 3)
-	s.taskdone = make(chan struct{})
 
 	return s
 }
@@ -82,12 +81,33 @@ func (s *Gsyncer) SetRetryWithNext(retrynext bool) {
 }
 
 func (s *Gsyncer) Stop() {
-	close(s.taskq)
-	close(s.resultq)
-	close(s.taskdone)
+	if s.taskq != nil {
+		close(s.taskq)
+	}
+	if s.resultq != nil {
+		close(s.resultq)
+	}
+	if s.taskdone != nil {
+		close(s.taskdone)
+	}
+	if s.stopnotify != nil {
+		signcount := 0
+		for _ = range s.stopnotify {
+			signcount++
+			//wait stop sign and set idle
+			if signcount == 2 { // taskq and resultq stopped
+				s.Status = IDLE
+				close(s.stopnotify)
+			}
+		}
+	}
 }
 
 func (s *Gsyncer) Start() {
+	s.taskq = make(chan *SyncTask)
+	s.resultq = make(chan *SyncResult, 3)
+	s.taskdone = make(chan struct{})
+	s.stopnotify = make(chan struct{})
 	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
 	go func() {
 		for task := range s.taskq {
@@ -110,6 +130,7 @@ func (s *Gsyncer) Start() {
 				}
 			}
 		}
+		s.stopnotify <- struct{}{}
 	}()
 
 	go func() {
@@ -151,8 +172,10 @@ func (s *Gsyncer) Start() {
 				gsyncer_log.Errorf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
 			}
 		}
+		s.stopnotify <- struct{}{}
 	}()
 }
+
 func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string, error) {
 	resultdone := make(chan struct{})
 	var err error
@@ -210,5 +233,7 @@ func (s *Gsyncer) AddTask(task *SyncTask) {
 }
 
 func (s *Gsyncer) AddResult(result *SyncResult) {
-	s.resultq <- result
+	go func() {
+		s.resultq <- result
+	}()
 }
