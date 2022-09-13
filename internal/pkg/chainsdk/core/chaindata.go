@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
@@ -66,22 +67,22 @@ func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string,
 	return subBlocks, err
 }
 
-func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string, prefix ...string) (*quorumpb.Block, error) {
+func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string, prefix ...string) (string, *quorumpb.Block, error) {
 	chain_log.Debugf("<%s> GetBlockBackwardcalled", trx.GroupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 	bytecipherKey, err := hex.DecodeString(cipherKey)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, bytecipherKey)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	//commented by cuicat
@@ -98,35 +99,35 @@ func (d *ChainData) GetBlockBackwardByReqTrx(trx *quorumpb.Trx, cipherKey string
 	//check if trx sender is in group block list
 	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, prefix...)
 	if err != nil {
-		return nil, nil
+		return reqBlockItem.BlockId, nil, nil
 	}
 
 	if !isAllow {
 		chain_log.Debugf("<%s> user <%s> don't has permission on trx type <%s>", trx.GroupId, trx.SenderPubkey, trx.Type.String())
-		return nil, nil
+		return reqBlockItem.BlockId, nil, nil
 	}
 
 	isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(reqBlockItem.BlockId, false, prefix...)
 	if err != nil {
-		return nil, err
+		return reqBlockItem.BlockId, nil, err
 	} else if !isExist {
-		return nil, errors.New("Block not exist")
+		return reqBlockItem.BlockId, nil, errors.New("Block not exist")
 	}
 
 	block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.BlockId, false, prefix...)
 	if err != nil {
-		return nil, err
+		return reqBlockItem.BlockId, nil, err
 	}
 
 	isParentExit, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, prefix...)
 	if err != nil {
-		return nil, err
+		return reqBlockItem.BlockId, nil, err
 	}
 	if isParentExit {
 		parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetParentBlock(reqBlockItem.BlockId, prefix...)
-		return parentBlock, err
+		return reqBlockItem.BlockId, parentBlock, err
 	}
-	return nil, errors.New("Parent Block not exist")
+	return reqBlockItem.BlockId, nil, errors.New("Parent Block not exist")
 }
 
 func (d *ChainData) CreateReqBlockResp(cipherKey string, trx *quorumpb.Trx, block *quorumpb.Block, userSignPubkey string, result quorumpb.ReqBlkResult) (*quorumpb.ReqBlockResp, error) {
@@ -200,7 +201,7 @@ func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks
 	} else {
 		var emptyBlock *quorumpb.Block
 		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
+		emptyBlock.PrevBlockId = reqBlockItem.BlockId
 		emptyBlock.ProducerPubKey = d.userSignPubkey
 		subBlocks = append(subBlocks, emptyBlock)
 		return reqBlockItem.UserId, subBlocks, true, nil

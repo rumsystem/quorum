@@ -284,7 +284,9 @@ func (producer *MolassesProducer) startMergeBlock() error {
 		molaproducer_log.Errorf("<%s> save block <%s> error <%s>", producer.groupId, candidateBlkid, err)
 		if err.Error() == "PARENT_NOT_EXIST" {
 			molaproducer_log.Debugf("<%s> parent not found, sync backward for missing blocks from <%s>", producer.groupId, candidateBlkid, err)
-			return producer.cIface.GetChainSyncIface().SyncBackward(candidateBlkid, producer.nodename)
+			//TOFIX: backward sync, add backward task go gsyncer
+			//return producer.cIface.GetChainSyncIface().SyncBackward(candidateBlkid, producer.nodename)
+			return nil
 		}
 	} else {
 		molaproducer_log.Debugf("<%s> block saved", producer.groupId)
