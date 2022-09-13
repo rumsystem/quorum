@@ -167,13 +167,13 @@ func (s *Gsyncer) Start() {
 			} else {
 				//retry this task
 				if s.retrynext == true {
-					gsyncer_log.Errorf("<%s> task process %s error: %s, retry with next...", s.GroupId, task.Id, err)
+					gsyncer_log.Debugf("<%s> task process %s error: %s, retry with next...", s.GroupId, task.Id, err)
 					nexttask, err := s.nextTask("0")
 					if err == nil {
 						s.AddTask(nexttask)
 					}
 				} else {
-					gsyncer_log.Errorf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
+					gsyncer_log.Debugf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
 					s.RetryCounterInc()
 					s.AddTask(task)
 				}
@@ -191,13 +191,13 @@ func (s *Gsyncer) Start() {
 				//test try to add next task
 				gsyncer_log.Debugf("<%s> process result done %s", s.GroupId, result.Id)
 				if nexttaskid == "" {
-					gsyncer_log.Errorf("nextTask can't be null, skip")
+					gsyncer_log.Debugf("nextTask can't be null, skip")
 					continue
 				}
 
 				nexttask, err := s.nextTask(nexttaskid)
 				if err != nil {
-					gsyncer_log.Errorf("nextTask error:%s", err)
+					gsyncer_log.Debugf("nextTask error:%s", err)
 					continue
 				}
 				s.AddTask(nexttask)
@@ -213,12 +213,12 @@ func (s *Gsyncer) Start() {
 			} else {
 				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
 				if terr != nil {
-					gsyncer_log.Errorf("nextTask error:%s", terr)
+					gsyncer_log.Debugf("nextTask error:%s", terr)
 					continue
 				}
 				//test try to retry this task
 				s.AddTask(nexttask)
-				gsyncer_log.Errorf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
+				gsyncer_log.Debugf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
 			}
 		}
 		s.stopnotify <- struct{}{}
