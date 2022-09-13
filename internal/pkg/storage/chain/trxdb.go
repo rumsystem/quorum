@@ -2,6 +2,8 @@ package chainstorage
 
 import (
 	"fmt"
+
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -78,6 +80,8 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 
 	}
 
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
+	trx.SenderPubkey = pk
 	return &trx, nonces, err
 }
 

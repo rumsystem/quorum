@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
@@ -73,6 +74,12 @@ func (cs *Storage) GetBlock(blockId string, cached bool, prefix ...string) (*quo
 	pChunk, err := cs.dbmgr.GetBlockChunk(blockId, cached, prefix...)
 	if err != nil {
 		return nil, err
+	}
+	for i := 0; i < len(pChunk.BlockItem.Trxs); i++ {
+		pk, err := localcrypto.Libp2pPubkeyToEthBase64(pChunk.BlockItem.Trxs[i].SenderPubkey)
+		if err == nil {
+			pChunk.BlockItem.Trxs[i].SenderPubkey = pk
+		}
 	}
 	return pChunk.BlockItem, nil
 }
