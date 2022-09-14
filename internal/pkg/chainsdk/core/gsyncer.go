@@ -233,7 +233,7 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string
 		nexttaskid, err = s.resultreceiver(result)
 		select {
 		case resultdone <- struct{}{}:
-			gsyncer_log.Warnf("<%s> done result: %s", s.GroupId, result.Id)
+			gsyncer_log.Debugf("<%s> done result: %s", s.GroupId, result.Id)
 		default:
 			return
 		}
@@ -266,7 +266,7 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 
 	select {
 	case <-s.taskdone:
-		gsyncer_log.Warnf("<%s> receive taskdone event, clean waitResultTaskId", s.GroupId)
+		gsyncer_log.Debugf("<%s> receive taskdone event, clean waitResultTaskId", s.GroupId)
 		s.waitResultTaskId = ""
 		return nil
 	case <-ctx.Done():
