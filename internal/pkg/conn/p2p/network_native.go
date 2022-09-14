@@ -47,7 +47,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	var pstore peerstore.Peerstore
 	var err error
 
-	//privKey p2pcrypto.PrivKey
 	ethprivkey := key.PrivateKey
 	privkeybytes := ethcrypto.FromECDSA(ethprivkey)
 	priv, err := p2pcrypto.UnmarshalSecp256k1PrivateKey(privkeybytes)

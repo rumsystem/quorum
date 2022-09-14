@@ -46,6 +46,12 @@ func (m *Molasses) SetUser(u def.User) {
 	m.user = u
 }
 
+func (m *Molasses) TryPropose() {
+	if m.producer != nil {
+		m.producer.TryPropose()
+	}
+}
+
 /*
 func (m *Molasses) SetSnapshotSender(sss chaindef.SnapshotSender) {
 	m.sssender = sss

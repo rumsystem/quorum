@@ -55,7 +55,7 @@ func (a *ACS) RbcDone(proposerPubkey string) {
 	a.rbcOutput[proposerPubkey] = true
 
 	//check if all rbc instance output
-	if len(a.rbcOutput) == a.N {
+	if len(a.rbcOutput) == a.N-a.F {
 		acs_log.Debugf("all RBC done, call acs")
 		// all rbc done, get all rbc results, send them back to BFT
 		for _, rbcInst := range a.rbcInstances {

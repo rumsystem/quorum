@@ -36,10 +36,13 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 		molauser_log.Error(err.Error())
 		return
 	}
-
 	producer.bft = NewBft(*config, producer)
+}
+
+func (producer *MolassesProducer) TryPropose() {
 	newEpoch := producer.grpItem.Epoch + 1
 	producer.bft.propose(newEpoch)
+	molaproducer_log.Debugf("new: Epoch <%d> proposed", newEpoch)
 }
 
 func (producer *MolassesProducer) RecreateBft() {

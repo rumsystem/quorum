@@ -168,22 +168,11 @@ func runFullNode(config cli.FullNodeFlag) {
 		fullNode.SetRumExchange(ctx, newchainstorage)
 	}
 
-	if err := fullNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
-		logger.Fatal(err)
-	}
-
 	for _, addr := range fullNode.Host.Addrs() {
 		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), fullNode.Host.ID())
 		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", fullNode.Host.ID(), p2paddr)
 	}
 
-	//Discovery and Advertise had been replaced by PeerExchange
-	logger.Infof("Announcing ourselves...")
-	discovery.Advertise(ctx, fullNode.RoutingDiscovery, config.RendezvousString)
-	logger.Infof("Successfully announced!")
-
-	peerok := make(chan struct{})
-	go fullNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 	nodectx.InitCtx(ctx, nodename, fullNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.FULL_NODE)
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
@@ -202,6 +191,22 @@ func runFullNode(config cli.FullNodeFlag) {
 		chain.GetGroupMgr().SetRumExchangeTestMode()
 	}
 
+	//load all groups
+	err = chain.GetGroupMgr().LoadAllGroups()
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
+	if err := fullNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+		logger.Fatal(err)
+	}
+	//Discovery and Advertise had been replaced by PeerExchange
+	logger.Infof("Announcing ourselves...")
+	discovery.Advertise(ctx, fullNode.RoutingDiscovery, config.RendezvousString)
+	logger.Infof("Successfully announced!")
+	peerok := make(chan struct{})
+	go fullNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
+
 	// init the publish queue watcher
 	doneCh := make(chan bool)
 	pubqueueDb, err := createPubQueueDb(datapath)
@@ -209,13 +214,6 @@ func runFullNode(config cli.FullNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
-
-	//load all groups
-	err = chain.GetGroupMgr().LoadAllGroups()
-	if err != nil {
-		logger.Fatalf(err.Error())
-	}
-
 	//start sync all groups
 	err = chain.GetGroupMgr().StartSyncAllGroups()
 	if err != nil {

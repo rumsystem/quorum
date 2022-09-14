@@ -6,6 +6,7 @@ type Consensus interface {
 	User() User
 	SetProducer(p Producer)
 	SetUser(u User)
+	TryPropose()
 	//SnapshotSender() chaindef.SnapshotSender
 	//SnapshotReceiver() chaindef.SnapshotReceiver
 	//SetSnapshotSender(sss chaindef.SnapshotSender)
