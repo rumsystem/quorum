@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -27,8 +28,8 @@ const RESULT_TIMEOUT = 4 //seconds
 //	Previous
 //)
 
-type BlockSyncTask struct {
-	BlockId string
+type EpochSyncTask struct {
+	Epoch int64
 	//Direction Syncdirection
 }
 
@@ -48,24 +49,25 @@ type SyncResult struct {
 }
 
 type Gsyncer struct {
-	nodeName         string
-	GroupId          string
-	Status           int8
-	waitResultTaskId string //waiting the result for taskid
-	retryCount       int8
-	retrycountmu     sync.Mutex
-	taskq            chan *SyncTask
-	resultq          chan *SyncResult
-	retrynext        bool //workaround for rumexchange
-	taskdone         chan struct{}
-	stopnotify       chan struct{}
+	nodeName string
+	GroupId  string
+	Status   int8
+	//waitResultTaskId string //waiting the result for taskid
+	waitEpoch    int64 //waiting the task response for epoch
+	retryCount   int8
+	retrycountmu sync.Mutex
+	taskq        chan *EpochSyncTask
+	resultq      chan *SyncResult
+	retrynext    bool //workaround for rumexchange
+	taskdone     chan struct{}
+	stopnotify   chan struct{}
 
-	nextTask       func(taskid string) (*SyncTask, error)   //request the next task
-	resultreceiver func(result *SyncResult) (string, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
-	tasksender     func(task *SyncTask) error               //send task via network or others
+	nextTask       func(epoch int64) (*EpochSyncTask, error) //request the next task
+	resultreceiver func(result *SyncResult) (int64, error)   //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
+	tasksender     func(task *EpochSyncTask) error           //send task via network or others
 }
 
-func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) (string, error), tasksender func(task *SyncTask) error) *Gsyncer {
+func NewGsyncer(groupid string, getTask func(epoch int64) (*EpochSyncTask, error), resultreceiver func(result *SyncResult) (int64, error), tasksender func(task *EpochSyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
 	s.Status = IDLE
@@ -105,7 +107,7 @@ func safeClose(ch chan struct{}) (recovered bool) {
 	close(ch)
 	return false
 }
-func safeCloseTask(ch chan *SyncTask) (recovered bool) {
+func safeCloseTask(ch chan *EpochSyncTask) (recovered bool) {
 	defer func() {
 		if recover() != nil {
 			recovered = true
@@ -148,7 +150,7 @@ func (s *Gsyncer) Stop() {
 }
 
 func (s *Gsyncer) Start() {
-	s.taskq = make(chan *SyncTask)
+	s.taskq = make(chan *EpochSyncTask)
 	s.resultq = make(chan *SyncResult, 3)
 	s.taskdone = make(chan struct{})
 	s.stopnotify = make(chan struct{})
@@ -159,10 +161,10 @@ func (s *Gsyncer) Start() {
 			defer cancel()
 			err := s.processTask(ctx, task)
 			if err == nil {
-				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Id)
+				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Epoch)
 			} else {
 				//retry this task
-				gsyncer_log.Debugf("<%s> task process %s error: %s, retry...", s.GroupId, task.Id, err)
+				gsyncer_log.Debugf("<%s> task process %s error: %s, retry...", s.GroupId, task.Epoch, err)
 				s.RetryCounterInc()
 				s.AddTask(task)
 			}
@@ -174,16 +176,16 @@ func (s *Gsyncer) Start() {
 		for result := range s.resultq {
 			ctx, cancel := context.WithTimeout(context.Background(), RESULT_TIMEOUT*time.Second)
 			defer cancel()
-			nexttaskid, err := s.processResult(ctx, result)
+			nextepoch, err := s.processResult(ctx, result)
 			if err == nil {
 				//test try to add next task
 				gsyncer_log.Debugf("<%s> process result done %s", s.GroupId, result.Id)
-				if nexttaskid == "" {
+				if nextepoch == 0 {
 					gsyncer_log.Debugf("nextTask can't be null, skip")
 					continue
 				}
 
-				nexttask, err := s.nextTask(nexttaskid)
+				nexttask, err := s.nextTask(nextepoch)
 				if err != nil {
 					gsyncer_log.Debugf("nextTask error:%s", err)
 					continue
@@ -199,13 +201,14 @@ func (s *Gsyncer) Start() {
 			} else if err == ErrIgnore {
 				//ignore, don't add next task, and waiting for timeout and process next
 			} else {
-				nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
-				if terr != nil {
-					gsyncer_log.Debugf("nextTask error:%s", terr)
-					continue
-				}
+				fmt.Println("===========TODO: add next epoch task. current will stop.")
+				//nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
+				//if terr != nil {
+				//	gsyncer_log.Debugf("nextTask error:%s", terr)
+				//	continue
+				//}
 				//test try to retry this task
-				s.AddTask(nexttask)
+				//s.AddTask(nexttask)
 				gsyncer_log.Debugf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
 			}
 		}
@@ -213,12 +216,12 @@ func (s *Gsyncer) Start() {
 	}()
 }
 
-func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string, error) {
+func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (int64, error) {
 	resultdone := make(chan struct{})
 	var err error
-	var nexttaskid string
+	var nextepoch int64
 	go func() {
-		nexttaskid, err = s.resultreceiver(result)
+		nextepoch, err = s.resultreceiver(result)
 		select {
 		case resultdone <- struct{}{}:
 			gsyncer_log.Debugf("<%s> done result: %s", s.GroupId, result.Id)
@@ -229,25 +232,28 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (string
 
 	select {
 	case <-resultdone:
-		if s.waitResultTaskId != "" {
+		if s.waitEpoch == 0 {
 			//for TEST fake workload
 			//time.Sleep(10 * time.Second)
 			if err != ErrIgnore { // ErrIgnore will let the task wait for timeout, instead of be terminated
 				s.taskdone <- struct{}{}
 			}
-			return nexttaskid, err
+			return nextepoch, err
 		} else {
-			return nexttaskid, ErrNoTaskWait
+			return nextepoch, ErrNoTaskWait
 		}
 	case <-ctx.Done():
-		return "", errors.New("Result Timeout")
+		fmt.Println("========TODO: return the time epoch. current: return 0")
+		return 0, errors.New("Result Timeout")
+
+		//return "", errors.New("Result Timeout")
 	}
 }
 
-func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
+func (s *Gsyncer) processTask(ctx context.Context, task *EpochSyncTask) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
 	go func() {
-		s.waitResultTaskId = task.Id //set waiting task
+		s.waitEpoch = task.Epoch //set waiting task
 		s.tasksender(task)
 		//TODO: lock
 	}()
@@ -255,15 +261,15 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	select {
 	case <-s.taskdone:
 		gsyncer_log.Debugf("<%s> receive taskdone event, clean waitResultTaskId", s.GroupId)
-		s.waitResultTaskId = ""
+		s.waitEpoch = 0
 		return nil
 	case <-ctx.Done():
-		s.waitResultTaskId = ""
+		s.waitEpoch = 0
 		return errors.New("Task Timeout")
 	}
 }
 
-func (s *Gsyncer) AddTask(task *SyncTask) {
+func (s *Gsyncer) AddTask(task *EpochSyncTask) {
 	go func() {
 		s.taskq <- task
 	}()

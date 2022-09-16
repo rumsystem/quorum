@@ -151,14 +151,19 @@ func (grp *Group) ClearGroup() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) StartSync() error {
+func (grp *Group) StartSync(restart bool) error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.Epoch, grp.ChainCtx.nodename)
+	if restart == true {
+		grp.ChainCtx.StopSync()
+	}
+	//time.Sleep(10 * time.Second)
+	return grp.ChainCtx.StartSync()
 }
 
 func (grp *Group) StopSync() error {
 	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-	return grp.ChainCtx.StopSync()
+	grp.ChainCtx.StopSync()
+	return nil
 }
 
 //func (grp *Group) GetSyncerStatus() int8 {

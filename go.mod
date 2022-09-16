@@ -20,6 +20,8 @@ replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 //replace github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub
 replace github.com/libp2p/go-libp2p => github.com/chux0519/go-libp2p v0.19.1-0.20220814133711-afcc91c7c730
 
+replace github.com/rumsystem/rumchaindata => ../rumchaindata
+
 // replace github.com/libp2p/go-libp2p => ../go-libp2p
 
 require (

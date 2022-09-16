@@ -39,9 +39,9 @@ type Chain struct {
 	Consensus          def.Consensus
 	ProviderPeerIdPool map[string]string
 	trxFactory         *rumchaindata.TrxFactory
+	syncerrunner       *SyncerRunner
 
 	//chaindata          *ChainData
-	//syncer *Syncer
 }
 
 func (chain *Chain) NewChain(group *Group) error {
@@ -54,8 +54,7 @@ func (chain *Chain) NewChain(group *Group) error {
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, group.Item, chain.nodename, chain)
 
-	//chain.syncer = &Syncer{}
-	//chain.syncer.Init(group, chain)
+	chain.syncerrunner = NewSyncerRunner(group, chain, chain.nodename)
 	//chain.chaindata = &ChainData{nodename: chain.nodename, groupId: group.Item.GroupId, groupCipherKey: group.Item.CipherKey, userSignPubkey: group.Item.UserSignPubkey, dbmgr: nodectx.GetDbMgr()}
 	return nil
 }
@@ -771,25 +770,41 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	return TrxEnqueue(groupId, trx)
 }
 
-func (chain *Chain) SyncForward(epoch int64, nodename string) error {
-	chain_log.Debugf("<%s> SyncForward called", chain.groupId)
-	go func() {
-		fmt.Println("=========call syncerrunner to sync")
-		//before start sync from other node, gather all local block and re-apply all trxs
-		//chain_log.Debugf("<%s> Try find and chain all local blocks", chain.groupId)
-		//chain.syncer.SyncLocalBlock(epoch, nodename)
-		//topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.GroupId, chain.group.Item.Epoch, false, nodename)
-		//if err != nil {
-		//	chain_log.Warningf("Get top block error, epoch <%d>, <%s>", epoch, err.Error())
-		//	return
-		//}
-		//if chain.syncer != nil {
-		//	chain.syncer.SyncForward(topBlock)
-		//}
-	}()
-
+func (chain *Chain) StartSync() error {
+	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
+	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+		if len(chain.ProducerPool) == 1 {
+			chain_log.Debugf("<%s> group owner, no registed producer, no need to sync", chain.group.Item.GroupId)
+			return nil
+		} else {
+			chain_log.Debugf("<%s> owner, has registed producer, start sync missing block", chain.group.Item.GroupId)
+		}
+	} else if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+		chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
+		return nil
+	}
+	chain.syncerrunner.Start(chain.group.Item.Epoch)
 	return nil
 }
+
+//func (chain *Chain) SyncForward(epoch int64, nodename string) error {
+//	chain_log.Debugf("<%s> SyncForward called", chain.groupId)
+//	go func() {
+//		//before start sync from other node, gather all local block and re-apply all trxs
+//		//chain_log.Debugf("<%s> Try find and chain all local blocks", chain.groupId)
+//		//chain.syncer.SyncLocalBlock(epoch, nodename)
+//		//topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.GroupId, chain.group.Item.Epoch, false, nodename)
+//		//if err != nil {
+//		//	chain_log.Warningf("Get top block error, epoch <%d>, <%s>", epoch, err.Error())
+//		//	return
+//		//}
+//		//if chain.syncer != nil {
+//		//	chain.syncer.SyncForward(topBlock)
+//		//}
+//	}()
+//
+//	return nil
+//}
 
 func (chain *Chain) StopSync() error {
 	chain_log.Debugf("<%s> StopSync called", chain.groupId)
