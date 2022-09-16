@@ -151,10 +151,9 @@ func (grp *Group) ClearGroup() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
-/*
 func (grp *Group) StartSync() error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
+	return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.Epoch, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StopSync() error {
@@ -162,15 +161,13 @@ func (grp *Group) StopSync() error {
 	return grp.ChainCtx.StopSync()
 }
 
-func (grp *Group) GetSyncerStatus() int8 {
-	return grp.ChainCtx.syncer.Status
-}
+//func (grp *Group) GetSyncerStatus() int8 {
+//	return grp.ChainCtx.syncer.Status
+//}
 
-func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
-	return grp.ChainCtx.GetSnapshotTag()
-}
-
-*/
+//func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
+//	return grp.ChainCtx.GetSnapshotTag()
+//}
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
