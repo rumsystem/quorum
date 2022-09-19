@@ -21,7 +21,7 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error 
 	pkg := rummsg.DataPackage
 
 	if pkg.Type == quorumpb.PackageType_TRX {
-		rumexchangelog.Infof("receive a trx, from %s", frompeerid)
+		rumexchangelog.Debugf("receive a trx, from %s", frompeerid)
 		trx := &quorumpb.Trx{}
 		err := proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
