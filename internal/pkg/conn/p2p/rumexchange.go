@@ -221,7 +221,7 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	//TODO: select peers
 	succ := 0
 	peers := r.Host.Network().Peers()
-	maxnum := 3
+	maxnum := 1
 
 	//set timeout  and succ counter
 	publishctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
