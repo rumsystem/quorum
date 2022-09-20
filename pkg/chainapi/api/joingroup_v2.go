@@ -186,12 +186,11 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		//start sync
-		/*
-			err = group.StartSync()
-			if err != nil {
-				return rumerrors.NewBadRequestError(err)
-			}
-		*/
+
+		err = group.StartSync()
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
 
 		//add group to context
 		groupmgr := chain.GetGroupMgr()
