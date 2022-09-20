@@ -192,6 +192,12 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	peerok := make(chan struct{})
 	go producerNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 
+	//start sync all groups
+	err = chain.GetGroupMgr().StartSyncAllGroups()
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+
 	//run local http api service
 	h := &api.Handler{
 		Node:       producerNode,

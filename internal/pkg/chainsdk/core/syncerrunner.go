@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
@@ -64,6 +65,10 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 
 func (sr *SyncerRunner) SetRumExchangeTestMode() {
 	sr.rumExchangeTestMode = true
+}
+
+func (sr *SyncerRunner) GetWaitEpoch() int64 {
+	return sr.gsyncer.GetWaitEpoch()
 }
 
 //define how to get next task, for example, taskid+1
@@ -138,37 +143,12 @@ func (sr *SyncerRunner) Stop() {
 //}
 
 func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
-	fmt.Println("=========TODO: TaskSender:", task)
-	//if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
-	//	sr.gsyncer.SetRetryWithNext(true) //workaround for rumexchange
-	//}
-	//blocktask, ok := task.Meta.(BlockSyncTask)
-
-	//if ok == true {
 	gsyncer_log.Debugf("<%s> call TaskSender... with epoch: %d", sr.group.Item.GroupId, task.Epoch)
-	//	//TODO: keep a block task lock
-
-	//block, err := sr.group.GetBlock(task.Epoch)
-	//	if sr.Status == SYNCING_BACKWARD && block == nil {
-	//		gsyncer_log.Debugf("<%s> backward sync, can't get block form db, make new block.", sr.group.Item.GroupId)
-	//		err = nil
-	//		block = &quorumpb.Block{GroupId: sr.group.Item.GroupId, BlockId: blocktask.BlockId}
-	//	}
-	//if err != nil {
-	//	return err
-	//}
 
 	var trx *quorumpb.Trx
 	var trxerr error
 
 	trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrxWithEpoch("", task.Epoch, sr.group.Item.GroupId)
-	//trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx("", block)
-	//if blocktask.Direction == Next {
-	//	trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrx("", block)
-	//} else {
-	//	trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockBackwardTrx("", block)
-	//}
-
 	if trxerr != nil {
 		return trxerr
 	}
@@ -177,10 +157,10 @@ func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("======TODO: set current wait task")
+	gsyncer_log.Debugf("<%s> ======TODO: set current wait task", sr.group.Item.GroupId)
 	//sr.SetCurrentWaitTask(&blocktask)
 
-	fmt.Println("======TODO: check RetryCounter")
+	gsyncer_log.Debugf("<%s> ======TODO: check RetryCounter", sr.group.Item.GroupId)
 
 	//	if sr.gsyncer.RetryCounter() >= 30 { //max retry count
 	//		//change networktype and clear counter
@@ -197,9 +177,8 @@ func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
 	//	}
 	v := rand.Intn(500)
 	time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
-	fmt.Println("=======TODO: send trx by pubsub or rex")
+	gsyncer_log.Debugf("<%s> ======TODO: send trx by pubsub or rex", sr.group.Item.GroupId)
 	//if sr.rumExchangeTestMode == false && sr.syncNetworkType == conn.PubSub {
-	fmt.Println(trx)
 	return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 	//} else {
 	//	return connMgr.SendTrxRex(trx, nil)
@@ -207,55 +186,37 @@ func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
 	return nil
 }
 func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (int64, error) {
-	fmt.Println("=========ResultReceiver, receive", result)
-	fmt.Println("=========TODO: replace with real code")
-	return 0, nil
-	//trxtaskresult, ok := result.Data.(*quorumpb.Trx)
-	//if ok == true {
-	//	//v := rand.Intn(5) + 1
-	//	//time.Sleep(time.Duration(v) * time.Second) // fake workload
-	//	//try to save the result to db
-	//	nexttaskid, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult, sr.currentWaitTask)
-	//	if err != nil {
-	//		if err == ErrSyncDone {
-	//			sr.Status = IDLE
-	//		} else if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
-	//			gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST and SYNCING_BACKWARD, continue. %s", sr.group.Item.GroupId, result.Id)
-	//			err = nil
-	//		} else {
-	//			err = ErrNotAccept
-	//		}
-	//	} else {
-	//		if sr.Status == SYNCING_BACKWARD && nexttaskid == sr.group.Item.GenesisBlock.BlockId {
-	//			gsyncer_log.Debugf("<%s> meet the genesis block %s backward stop. start forward sync.", sr.group.Item.GroupId, sr.group.Item.HighestBlockId)
-	//			sr.Status = SYNCING_FORWARD
-	//			sr.direction = Next
-	//			task, err := sr.GetBlockTask(sr.group.Item.HighestBlockId)
-	//			if err != nil {
-	//				gsyncer_log.Debugf("<%s> forward sync started from block %s", sr.group.Item.GroupId, sr.group.Item.HighestBlockId)
-	//				sr.gsyncer.AddTask(task)
-	//			} else {
-	//				gsyncer_log.Errorf("<%s> get next task err %s", sr.group.Item.GroupId, err)
-	//			}
-	//		}
-	//	}
+	trxtaskresult, ok := result.Data.(*quorumpb.Trx)
+	if ok == true {
+		//v := rand.Intn(5) + 1
+		//time.Sleep(time.Duration(v) * time.Second) // fake workload
+		//try to save the result to db
+		nextepoch, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult)
+		if err != nil {
+			if err == ErrSyncDone {
+				sr.Status = IDLE
+			} else if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
+				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST, continue. %s", sr.group.Item.GroupId, result.Id)
+				//err = nil
+			} else {
+				err = ErrNotAccept
+			}
+		}
 
-	//	//workaround change the return of rumexchage result to ErrIgnore
-	//	if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
-	//		return "", ErrIgnore
-	//	}
-	//	return nexttaskid, err
-	//} else {
-	//	gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
-	//	return "", fmt.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
-	//}
+		//	//workaround change the return of rumexchage result to ErrIgnore
+		//	if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
+		//		return "", ErrIgnore
+		//	}
+		return nextepoch, err
+	} else {
+		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
+		return 0, fmt.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
+	}
 }
 
-//func (sr *SyncerRunner) AddTrxToSyncerQueue(trx *quorumpb.Trx) {
-//	sr.resultserialid++
-//	resultid := strconv.FormatUint(uint64(sr.resultserialid), 10)
-//	result := &SyncResult{Id: resultid, Data: trx}
-//	if sr.Status == SYNCING_FORWARD || sr.Status == SYNCING_BACKWARD {
-//		sr.gsyncer.AddResult(result)
-//	}
-//}
+func (sr *SyncerRunner) AddTrxToSyncerQueue(trx *quorumpb.Trx) {
+	sr.resultserialid++
+	resultid := strconv.FormatUint(uint64(sr.resultserialid), 10)
+	result := &SyncResult{Id: resultid, Data: trx}
+	sr.gsyncer.AddResult(result)
+}

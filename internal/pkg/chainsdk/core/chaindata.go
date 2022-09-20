@@ -1,12 +1,9 @@
 package chain
 
-/*
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 
-	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
@@ -23,6 +20,72 @@ type ChainData struct {
 	dbmgr          *storage.DbMgr
 }
 
+func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, block *quorumpb.Block, isEmptyBlock bool, erer error) {
+	chain_log.Debugf("<%s> GetBlockForward called", d.groupId)
+
+	var reqBlockItem quorumpb.ReqBlock
+	ciperKey, err := hex.DecodeString(d.groupCipherKey)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
+		return "", nil, false, err
+	}
+
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
+	if err != nil {
+		return "", nil, false, err
+	}
+
+	if !isAllow {
+		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", d.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
+		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
+	}
+
+	exist := false
+	exist, err = nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(trx.GroupId, reqBlockItem.Epoch, false, d.nodename)
+	if err != nil {
+		return "", nil, false, err
+	}
+	if exist == false {
+		var emptyBlock *quorumpb.Block
+		emptyBlock = &quorumpb.Block{}
+		emptyBlock.Epoch = reqBlockItem.Epoch
+		return reqBlockItem.UserId, emptyBlock, true, nil
+	}
+
+	block, err = nodectx.GetNodeCtx().GetChainStorage().GetBlock(trx.GroupId, reqBlockItem.Epoch, false, d.nodename)
+	if err == nil {
+		return reqBlockItem.UserId, block, false, err
+	} else {
+		return "", nil, false, err
+	}
+
+	//var subBlocks []*quorumpb.Block
+	//subBlocks, err = nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(reqBlockItem.BlockId, d.nodename)
+	//if err != nil {
+	//	return "", nil, false, err
+	//}
+
+	//if len(subBlocks) != 0 {
+	//	return reqBlockItem.UserId, subBlocks, false, nil
+	//} else {
+	//	var emptyBlock *quorumpb.Block
+	//	emptyBlock = &quorumpb.Block{}
+	//	emptyBlock.BlockId = guuid.New().String()
+	//	emptyBlock.ProducerPubKey = d.userSignPubkey
+	//	subBlocks = append(subBlocks, emptyBlock)
+	//	return reqBlockItem.UserId, subBlocks, true, nil
+	//}
+}
+
+/*
 func (d *ChainData) GetBlockForwardByReqTrx(trx *quorumpb.Trx, cipherKey string, prefix ...string) ([]*quorumpb.Block, error) {
 	chain_log.Debugf("<%s> GetBlockForward called", trx.GroupId)
 	var reqBlockItem quorumpb.ReqBlock
@@ -143,51 +206,6 @@ func (d *ChainData) CreateReqBlockResp(cipherKey string, trx *quorumpb.Trx, bloc
 	return &reqBlockRespItem, nil
 }
 
-func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, blocks []*quorumpb.Block, isEmptyBlock bool, erer error) {
-	chain_log.Debugf("<%s> GetBlockForward called", d.groupId)
-
-	var reqBlockItem quorumpb.ReqBlock
-	ciperKey, err := hex.DecodeString(d.groupCipherKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return "", nil, false, err
-	}
-
-	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if !isAllow {
-		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", d.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
-		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
-	}
-
-	var subBlocks []*quorumpb.Block
-	subBlocks, err = nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(reqBlockItem.BlockId, d.nodename)
-	if err != nil {
-		return "", nil, false, err
-	}
-
-	if len(subBlocks) != 0 {
-		return reqBlockItem.UserId, subBlocks, false, nil
-	} else {
-		var emptyBlock *quorumpb.Block
-		emptyBlock = &quorumpb.Block{}
-		emptyBlock.BlockId = guuid.New().String()
-		emptyBlock.ProducerPubKey = d.userSignPubkey
-		subBlocks = append(subBlocks, emptyBlock)
-		return reqBlockItem.UserId, subBlocks, true, nil
-	}
-}
 
 func (d *ChainData) GetBlockBackward(trx *quorumpb.Trx) (requester string, block *quorumpb.Block, isEmptyBlock bool, err error) {
 	chain_log.Debugf("<%s> GetBlockBackward called", d.groupId)

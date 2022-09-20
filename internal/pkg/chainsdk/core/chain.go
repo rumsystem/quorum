@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
@@ -17,6 +16,7 @@ import (
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 var chain_log = logging.Logger("chain")
@@ -41,7 +41,7 @@ type Chain struct {
 	trxFactory         *rumchaindata.TrxFactory
 	syncerrunner       *SyncerRunner
 
-	//chaindata          *ChainData
+	chaindata *ChainData
 }
 
 func (chain *Chain) NewChain(group *Group) error {
@@ -55,7 +55,7 @@ func (chain *Chain) NewChain(group *Group) error {
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, group.Item, chain.nodename, chain)
 
 	chain.syncerrunner = NewSyncerRunner(group, chain, chain.nodename)
-	//chain.chaindata = &ChainData{nodename: chain.nodename, groupId: group.Item.GroupId, groupCipherKey: group.Item.CipherKey, userSignPubkey: group.Item.UserSignPubkey, dbmgr: nodectx.GetDbMgr()}
+	chain.chaindata = &ChainData{nodename: chain.nodename, groupId: group.Item.GroupId, groupCipherKey: group.Item.CipherKey, userSignPubkey: group.Item.UserSignPubkey, dbmgr: nodectx.GetDbMgr()}
 	return nil
 }
 
@@ -144,7 +144,9 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockResp(trx)
+		chain.syncerrunner.AddTrxToSyncerQueue(trx)
+		//err := chain.handleReqBlockResp(trx)
+		//return err
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -267,7 +269,7 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockResp(trx)
+		chain.HandleReqBlockResp(trx)
 	default:
 		//do nothing
 	}
@@ -303,47 +305,45 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
 
+	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+		return nil
+	}
+	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
+	clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
+	requester, block, isEmpty, err := chain.chaindata.GetBlockForward(trx)
+	if err != nil {
+		return err
+	}
+	//no block found
+	if isEmpty {
+		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
+		trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
+		if err != nil {
+			return err
+		}
+
+		if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
+			return err
+		} else {
+			return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
+		}
+	}
+
+	//send requested blocks out
+	//for _, block := range blocks {
+	chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
+	blockresptrx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+	if err != nil {
+		return err
+	}
+	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
+		return err
+	} else {
+		return cmgr.SendTrxPubsub(blockresptrx, conn.SyncerChannel, clientSyncerChannelId)
+	}
+	//}
 	/*
 		if networktype == conn.PubSub {
-			if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-				return nil
-			}
-			chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-			clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
-
-			requester, blocks, isEmpty, err := chain.chaindata.GetBlockForward(trx)
-			if err != nil {
-				return err
-			}
-
-			//no block found
-			if isEmpty {
-				chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
-				trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, blocks[0], quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
-				if err != nil {
-					return err
-				}
-
-				if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-					return err
-				} else {
-					return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
-				}
-			}
-
-			//send requested blocks out
-			for _, block := range blocks {
-				chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
-				trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-				if err != nil {
-					return err
-				}
-				if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-					return err
-				} else {
-					return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
-				}
-			}
 		} else if networktype == conn.RumExchange {
 			subBlocks, err := chain.chaindata.GetBlockForwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
 			if err == nil {
@@ -475,66 +475,72 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 	return nil
 }
 
-func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) error {
+func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (int64, error) {
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
-	/*
+	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
+	if err != nil {
+		return 0, err
+	}
 
-		ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
-		if err != nil {
-			return err
-		}
+	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		return 0, err
+	}
 
-		decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-		if err != nil {
-			return err
-		}
+	reqBlockResp := &quorumpb.ReqBlockResp{}
+	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
+		return 0, err
+	}
+	//TODO: Verify response and block
+	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp Verify response and block ", chain.groupId)
 
-		reqBlockResp := &quorumpb.ReqBlockResp{}
-		if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
-			return err
-		}
+	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND { //sync done, set to IDLE
+		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
+		return reqBlockResp.Epoch, ErrSyncDone
+	}
 
-		//if not asked by myself, ignore it
-		if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
-			return nil
-		}
+	//if not asked by myself, ignore it
+	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
+		return 0, nil
+	}
 
-		chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
+	newBlock := &quorumpb.Block{}
 
-		newBlock := &quorumpb.Block{}
+	if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
+		return 0, err
+	}
 
-		if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
-			return err
-		}
+	chain_log.Debugf("<%s> newBlock.Epoch is %d  waitepoch is %d .", chain.groupId, newBlock.Epoch, chain.syncerrunner.GetWaitEpoch())
+	if newBlock.Epoch != chain.syncerrunner.GetWaitEpoch() {
+		chain_log.Debugf("<%s> Ingore newBlock, return", chain.groupId)
+		return 0, nil
 
-		var shouldAccept bool
+	}
 
-		nbpk, err := localcrypto.Libp2pPubkeyToEthBase64(newBlock.BookkeepingPubkey)
-		if err != nil {
-			nbpk = newBlock.BookkeepingPubkey
-		}
+	//TODO: if block epoch < waiting epoch, ignore it.
+	var shouldAccept bool
+	shouldAccept = true
+	//TODO: verify the block
+	//if run as producer node
+	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp set shouldAccept", chain.groupId)
 
-		chain_log.Debugf("<%s> REQ_BLOCK_RESP, block_id <%d>, block_producer <%s>", chain.groupId, newBlock.Epoch, nbpk)
-
-		if _, ok := chain.ProducerPool[nbpk]; ok {
-			shouldAccept = true
-		} else {
-			shouldAccept = false
-		}
-
-		if !shouldAccept {
-			chain_log.Warnf(" <%s> bookkeeping <%s> not registed, reject", chain.groupId, nbpk)
-			for key, _ := range chain.ProducerPool {
-				chain_log.Warnf(" <%s> List Block producer %s", chain.groupId, key)
-			}
-			return nil
-		}
-
-		return chain.syncer.AddBlockSynced(reqBlockResp, newBlock)
-
-	*/
-
-	return nil
+	if !shouldAccept {
+		chain_log.Debugf("The block can't be accepted, reason:...")
+		return 0, nil
+	}
+	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+		chain_log.Info("PRODUCER_NODE handle block")
+		chain_log.Debugf("<%s> ======TODO: handleReqBlockResp producer add block", chain.groupId)
+		return 0, nil
+		//hb.producer.cIface.ApplyTrxsProducerNode(trxToPackage, hb.producer.nodename)
+		//err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
+		//if err != nil {
+		//	return err
+		//}
+	} else {
+		//user sync
+		return newBlock.Epoch + 1, chain.Consensus.User().AddBlock(newBlock)
+	}
 }
 
 func (chain *Chain) UpdProducerList() {
@@ -783,7 +789,8 @@ func (chain *Chain) StartSync() error {
 		chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
 		return nil
 	}
-	chain.syncerrunner.Start(chain.group.Item.Epoch)
+	chain_log.Debugf("<%s> StartSync from %d", chain.groupId, chain.group.Item.Epoch)
+	chain.syncerrunner.Start(chain.group.Item.Epoch + 1)
 	return nil
 }
 
@@ -808,7 +815,7 @@ func (chain *Chain) StartSync() error {
 
 func (chain *Chain) StopSync() error {
 	chain_log.Debugf("<%s> StopSync called", chain.groupId)
-	fmt.Println("==========cal syncerrunner to stop")
+	chain_log.Debugf("<%s> ======TODO: cal syncerrunner to stop", chain.groupId)
 	//before start sync from other node, gather all
 	//if chain.syncer != nil {
 	//	return chain.syncer.StopSync()

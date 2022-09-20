@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -80,6 +79,9 @@ func NewGsyncer(groupid string, getTask func(epoch int64) (*EpochSyncTask, error
 	return s
 }
 
+func (s *Gsyncer) GetWaitEpoch() int64 {
+	return s.waitEpoch
+}
 func (s *Gsyncer) RetryCounterInc() {
 	s.retrycountmu.Lock()
 	s.retryCount++
@@ -161,10 +163,10 @@ func (s *Gsyncer) Start() {
 			defer cancel()
 			err := s.processTask(ctx, task)
 			if err == nil {
-				gsyncer_log.Debugf("<%s> process task done %s", s.GroupId, task.Epoch)
+				gsyncer_log.Debugf("<%s> process task done epoch %d", s.GroupId, task.Epoch)
 			} else {
 				//retry this task
-				gsyncer_log.Debugf("<%s> task process %s error: %s, retry...", s.GroupId, task.Epoch, err)
+				gsyncer_log.Debugf("<%s> task process epoch %d error: %s, retry...", s.GroupId, task.Epoch, err)
 				s.RetryCounterInc()
 				s.AddTask(task)
 			}
@@ -201,7 +203,7 @@ func (s *Gsyncer) Start() {
 			} else if err == ErrIgnore {
 				//ignore, don't add next task, and waiting for timeout and process next
 			} else {
-				fmt.Println("===========TODO: add next epoch task. current will stop.")
+				gsyncer_log.Debugf("<%s> =======TODO: add next epoch task. current will stop.", s.GroupId)
 				//nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
 				//if terr != nil {
 				//	gsyncer_log.Debugf("nextTask error:%s", terr)
@@ -232,21 +234,21 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (int64,
 
 	select {
 	case <-resultdone:
-		if s.waitEpoch == 0 {
-			//for TEST fake workload
-			//time.Sleep(10 * time.Second)
-			if err != ErrIgnore { // ErrIgnore will let the task wait for timeout, instead of be terminated
+		gsyncer_log.Debugf("<%s> processResult done, waitEpoch %d nextepoch %d", s.GroupId, s.waitEpoch, nextepoch)
+		if err == nil { //success
+			if s.waitEpoch > 0 && s.waitEpoch == nextepoch-1 {
+				//clean the wait epoch
+				s.waitEpoch = 0
 				s.taskdone <- struct{}{}
+				return nextepoch, err
 			}
-			return nextepoch, err
-		} else {
-			return nextepoch, ErrNoTaskWait
+			gsyncer_log.Debugf("<%s> processResult done, ignore.", s.GroupId)
+			return 0, ErrIgnore // ignore
 		}
+		gsyncer_log.Debugf("<%s> processResult done, ignore.", s.GroupId)
+		return 0, err // ignore
 	case <-ctx.Done():
-		fmt.Println("========TODO: return the time epoch. current: return 0")
 		return 0, errors.New("Result Timeout")
-
-		//return "", errors.New("Result Timeout")
 	}
 }
 
