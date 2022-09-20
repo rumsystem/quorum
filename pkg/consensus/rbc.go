@@ -239,6 +239,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 		}
 
 		//check if we already receive enough readyMsg (N - F)
+		rbc_log.Infof("r.recvReadys: %d, r.N-r.F: %d .", len(r.recvReadys), r.N-r.F)
 		if len(r.recvReadys) == r.N-r.F {
 			rbc_log.Infof("RBC done")
 			r.consenusDone = true

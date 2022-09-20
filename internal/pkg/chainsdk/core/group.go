@@ -58,6 +58,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 
+	grp.ChainCtx.Consensus.TryPropose()
 	//start send snapshot
 	//grp.ChainCtx.StartSnapshot()
 
@@ -132,6 +133,8 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
+
+	grp.ChainCtx.Consensus.TryPropose()
 	//start send snapshot
 	//grp.ChainCtx.StartSnapshot()
 

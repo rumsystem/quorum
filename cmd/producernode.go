@@ -144,22 +144,6 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		producerNode.SetRumExchange(ctx, newchainstorage)
 	}
 
-	if err := producerNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
-		logger.Fatal(err)
-	}
-
-	for _, addr := range producerNode.Host.Addrs() {
-		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), producerNode.Host.ID())
-		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", producerNode.Host.ID(), p2paddr)
-	}
-
-	//Discovery and Advertise had been replaced by PeerExchange
-	logger.Infof("Announcing ourselves...")
-	discovery.Advertise(ctx, producerNode.RoutingDiscovery, config.RendezvousString)
-	logger.Infof("Successfully announced!")
-
-	peerok := make(chan struct{})
-	go producerNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 	nodectx.InitCtx(ctx, nodename, producerNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.PRODUCER_NODE)
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
@@ -190,6 +174,23 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	}
 
 	CheckLockError(err)
+
+	if err := producerNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+		logger.Fatal(err)
+	}
+
+	for _, addr := range producerNode.Host.Addrs() {
+		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), producerNode.Host.ID())
+		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", producerNode.Host.ID(), p2paddr)
+	}
+
+	//Discovery and Advertise had been replaced by PeerExchange
+	logger.Infof("Announcing ourselves...")
+	discovery.Advertise(ctx, producerNode.RoutingDiscovery, config.RendezvousString)
+	logger.Infof("Successfully announced!")
+
+	peerok := make(chan struct{})
+	go producerNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 
 	//run local http api service
 	h := &api.Handler{
