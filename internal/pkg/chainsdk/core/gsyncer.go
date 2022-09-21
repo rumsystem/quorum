@@ -50,7 +50,7 @@ type SyncResult struct {
 type Gsyncer struct {
 	nodeName string
 	GroupId  string
-	Status   int8
+	//Status   int8
 	//waitResultTaskId string //waiting the result for taskid
 	waitEpoch    int64 //waiting the task response for epoch
 	retryCount   int8
@@ -69,7 +69,7 @@ type Gsyncer struct {
 func NewGsyncer(groupid string, getTask func(epoch int64) (*EpochSyncTask, error), resultreceiver func(result *SyncResult) (int64, error), tasksender func(task *EpochSyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
-	s.Status = IDLE
+	//s.Status = IDLE
 	s.GroupId = groupid
 	s.nextTask = getTask
 	s.resultreceiver = resultreceiver
@@ -144,7 +144,7 @@ func (s *Gsyncer) Stop() {
 			signcount++
 			//wait stop sign and set idle
 			if signcount == 2 { // taskq and resultq stopped
-				s.Status = IDLE
+				//s.Status = IDLE
 				close(s.stopnotify)
 			}
 		}

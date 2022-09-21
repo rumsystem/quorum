@@ -92,7 +92,6 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			}
 		}
 
-		/* commented by cuicat
 		switch value.GetSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
 			group.GroupStatus = "SYNCING"
@@ -104,6 +103,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			group.GroupStatus = "IDLE"
 		}
 
+		/* commented by cuicat
 		snapshottag, err := value.GetSnapshotInfo()
 		if err != nil {
 			group.SnapshotInfo = nil

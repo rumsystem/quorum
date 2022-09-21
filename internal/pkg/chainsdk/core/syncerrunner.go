@@ -123,16 +123,6 @@ func (sr *SyncerRunner) Start(epoch int64) error {
 	return nil
 }
 
-//func (sr *SyncerRunner) SwapSyncDirection() {
-//	if sr.Status == SYNCING_FORWARD {
-//		sr.Status = SYNCING_BACKWARD
-//		sr.direction = Previous
-//	} else if sr.Status == SYNCING_BACKWARD {
-//		sr.Status = SYNCING_FORWARD
-//		sr.direction = Next
-//	}
-//}
-
 func (sr *SyncerRunner) Stop() {
 	sr.Status = IDLE
 	sr.gsyncer.Stop()

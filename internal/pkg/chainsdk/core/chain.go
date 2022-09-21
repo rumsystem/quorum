@@ -822,6 +822,9 @@ func (chain *Chain) StopSync() error {
 	//}
 	return nil
 }
+func (chain *Chain) GetSyncerStatus() int8 {
+	return chain.syncerrunner.Status
+}
 
 /*
 
