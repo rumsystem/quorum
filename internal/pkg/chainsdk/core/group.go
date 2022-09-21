@@ -166,9 +166,9 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
-//func (grp *Group) GetSyncerStatus() int8 {
-//	return grp.ChainCtx.syncer.Status
-//}
+func (grp *Group) GetSyncerStatus() int8 {
+	return grp.ChainCtx.GetSyncerStatus()
+}
 
 //func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
 //	return grp.ChainCtx.GetSnapshotTag()
