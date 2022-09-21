@@ -72,7 +72,7 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 		if groupMgr.rumExchangeTestMode == true {
 			grp.SetRumExchangeTestMode()
 		}
-		//grp.StartSync()
+		grp.StartSync(false)
 	}
 	return nil
 }

@@ -15,5 +15,6 @@ type TrxFactoryIface interface {
 	GetRegUserTrx(keyalias string, item *quorumpb.UserItem) (*quorumpb.Trx, error)
 	GetPostAnyTrx(keyalias string, content proto.Message, encryptto ...[]string) (*quorumpb.Trx, error)
 	GetReqBlockForwardTrx(keyalias string, block *quorumpb.Block) (*quorumpb.Trx, error)
+	GetReqBlockForwardTrxWithEpoch(keyalias string, epoch int64, groupId string) (*quorumpb.Trx, error)
 	GetReqBlockBackwardTrx(keyalias string, block *quorumpb.Block) (*quorumpb.Trx, error)
 }
