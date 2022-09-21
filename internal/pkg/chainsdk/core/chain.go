@@ -135,11 +135,12 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 			return nil
 		}
 		chain.handleReqBlockForward(trx, conn.PubSub, nil)
-	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
-		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-			return nil
-		}
-		chain.handleReqBlockBackward(trx, conn.PubSub, nil)
+	//backward sync removed
+	//case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
+	//	if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+	//		return nil
+	//	}
+	//	chain.handleReqBlockBackward(trx, conn.PubSub, nil)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -308,6 +309,11 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 		return nil
 	}
+
+	//TODO: check my sync status, only response when the status is IDLE
+	//if chain.GetSyncerStatus() != IDLE {
+	//	return nil
+	//}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
 	clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 	requester, block, isEmpty, err := chain.chaindata.GetBlockForward(trx)
@@ -530,13 +536,7 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (int64, error) {
 	}
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		chain_log.Info("PRODUCER_NODE handle block")
-		chain_log.Debugf("<%s> ======TODO: handleReqBlockResp producer add block", chain.groupId)
-		return 0, nil
-		//hb.producer.cIface.ApplyTrxsProducerNode(trxToPackage, hb.producer.nodename)
-		//err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, hb.producer.nodename)
-		//if err != nil {
-		//	return err
-		//}
+		return newBlock.Epoch + 1, chain.Consensus.Producer().AddBlock(newBlock)
 	} else {
 		//user sync
 		return newBlock.Epoch + 1, chain.Consensus.User().AddBlock(newBlock)
@@ -778,17 +778,18 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
-	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
-		if len(chain.ProducerPool) == 1 {
-			chain_log.Debugf("<%s> group owner, no registed producer, no need to sync", chain.group.Item.GroupId)
-			return nil
-		} else {
-			chain_log.Debugf("<%s> owner, has registed producer, start sync missing block", chain.group.Item.GroupId)
-		}
-	} else if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
-		chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
-		return nil
-	}
+	//all producers and owner must do sync after service start.
+	//if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+	//	if len(chain.ProducerPool) == 1 {
+	//		chain_log.Debugf("<%s> group owner, no registed producer, no need to sync", chain.group.Item.GroupId)
+	//		return nil
+	//	} else {
+	//		chain_log.Debugf("<%s> owner, has registed producer, start sync missing block", chain.group.Item.GroupId)
+	//	}
+	//} else if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+	//	chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
+	//	return nil
+	//}
 	chain_log.Debugf("<%s> StartSync from %d", chain.groupId, chain.group.Item.Epoch)
 	chain.syncerrunner.Start(chain.group.Item.Epoch + 1)
 	return nil
