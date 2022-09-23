@@ -135,12 +135,6 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 			return nil
 		}
 		chain.handleReqBlockForward(trx, conn.PubSub, nil)
-	//backward sync removed
-	//case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
-	//	if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-	//		return nil
-	//	}
-	//	chain.handleReqBlockBackward(trx, conn.PubSub, nil)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -261,11 +255,6 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 			return nil
 		}
 		chain.handleReqBlockForward(trx, conn.RumExchange, s)
-	case quorumpb.TrxType_REQ_BLOCK_BACKWARD:
-		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-			return nil
-		}
-		chain.handleReqBlockBackward(trx, conn.RumExchange, s)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -336,7 +325,6 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	}
 
 	//send requested blocks out
-	//for _, block := range blocks {
 	chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
 	blockresptrx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 	if err != nil {
@@ -347,7 +335,6 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	} else {
 		return cmgr.SendTrxPubsub(blockresptrx, conn.SyncerChannel, clientSyncerChannelId)
 	}
-	//}
 	/*
 		if networktype == conn.PubSub {
 		} else if networktype == conn.RumExchange {
@@ -389,91 +376,6 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 
 			} else {
 				chain_log.Debugf("GetBlockForwardByReqTrx err %s", err)
-			}
-		}
-
-	*/
-	return nil
-}
-
-func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
-	chain_log.Debugf("<%s> handleReqBlockBackward called", chain.groupId)
-	/*
-		if networktype == conn.PubSub {
-			if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-				return nil
-			}
-
-			chain_log.Debugf("<%s> producer handleReqBlockBackward called", chain.groupId)
-			clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
-
-			requester, block, isEmpty, err := chain.chaindata.GetBlockBackward(trx)
-			if err != nil {
-				return err
-			}
-
-			//no block found
-			if isEmpty {
-				chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
-				trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
-				if err != nil {
-					return err
-				}
-
-				if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-					return err
-				} else {
-					return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
-				}
-			}
-
-			//send requested blocks out
-			chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
-			trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-
-			if err != nil {
-				return err
-			}
-
-			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-				return err
-			} else {
-				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
-			}
-
-		} else if networktype == conn.RumExchange {
-			block, err := chain.chaindata.GetBlockBackwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
-			if err == nil && block != nil {
-				ks := nodectx.GetNodeCtx().Keystore
-				mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
-				if err != nil {
-					return err
-				}
-				reqBlockRespItem, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-				chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
-				if err != nil {
-					return err
-				}
-
-				bItemBytes, err := proto.Marshal(reqBlockRespItem)
-				if err != nil {
-					return err
-				}
-
-				trx, err := chain.trxFactory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, "")
-				if err != nil {
-					return err
-				}
-
-				if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-					return err
-				} else {
-					//reply to the source net stream
-					return cmgr.SendTrxRex(trx, s)
-				}
-
-			} else {
-				chain_log.Debugf("GetBlockBackwordByReqTrx err %s", err)
 			}
 		}
 
@@ -829,24 +731,6 @@ func (chain *Chain) GetSyncerStatus() int8 {
 
 /*
 
-func (chain *Chain) SyncBackward(epoch int64, nodename string) error {
-	chain_log.Debugf("<%s> SyncBackward called", chain.groupId)
-	go func() {
-		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.GroupId, epoch, false, nodename)
-		if err != nil {
-			chain_log.Warningf("Get block error, epoch <%s>, <%s>", epoch, err.Error())
-			return
-		}
-
-		if chain.syncer != nil {
-			chain.syncer.SyncBackward(block)
-		}
-	}()
-
-	return nil
-}
-
-
 func (chain *Chain) IsSyncerIdle() bool {
 	chain_log.Debugf("IsSyncerIdle called, groupId <%s>", chain.groupId)
 
@@ -1065,108 +949,6 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		//save trx to db
 		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 	}
-
-	return nil
-}
-
-func (chain *Chain) AddSyncedBlock(block *quorumpb.Block) error {
-	chain_log.Debugf("<%s> AddBlock called", chain.groupId)
-
-	/*
-		//check if block is in cache
-		isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		if isCached {
-			chain_log.Debugf("<%s> Block cached, update block", chain.groupId)
-		}
-
-		//Save block to cache
-		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsParentExist(block.PrevBlockId, false, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		if !parentExist {
-			chain_log.Debugf("<%s> parent of block <%s> is not exist", chain.groupId, block.BlockId)
-			return errors.New("PARENT_NOT_EXIST")
-		}
-
-		//get parent block
-		parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.PrevBlockId, false, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		//valid block with parent block
-		valid, err := rumchaindata.IsBlockValid(block, parentBlock)
-		if !valid {
-			chain_log.Debugf("<%s> remove invalid block <%s> from cache", chain.groupId, block.BlockId)
-			chain_log.Warningf("<%s> invalid block <%s>", chain.groupId, err.Error())
-			return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, chain.nodename)
-		}
-
-		//search cache, gather all blocks can be connected with this block
-		blocks, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, true, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		//get all trxs in those new blocks
-		var trxs []*quorumpb.Trx
-		trxs, err = rumchaindata.GetAllTrxs(blocks)
-		if err != nil {
-			return err
-		}
-
-		//apply those trxs
-		err = chain.ApplyProducerTrxs(trxs, chain.nodename)
-		if err != nil {
-			return err
-		}
-
-		//move blocks from cache to normal
-		for _, block := range blocks {
-			chain_log.Debugf("<%s> move block <%s> from cache to chain", chain.groupId, block.BlockId)
-			err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, chain.nodename)
-			if err != nil {
-				return err
-			}
-
-			err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.BlockId, true, chain.nodename)
-			if err != nil {
-				return err
-			}
-		}
-
-		for _, block := range blocks {
-			err := nodectx.GetNodeCtx().GetChainStorage().AddProducedBlockCount(chain.groupId, block.ProducerPubKey, chain.nodename)
-			if err != nil {
-				return err
-			}
-		}
-
-		chain_log.Debugf("<%s> chain height before recal: <%d>", chain.groupId, chain.group.Item.HighestHeight)
-		topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.HighestBlockId, false, chain.nodename)
-		if err != nil {
-			return err
-		}
-		newHeight, newHighestBlockId, err := chain.RecalChainHeight(blocks, chain.group.Item.HighestHeight, topBlock, chain.nodename)
-		if err != nil {
-			return err
-		}
-		chain_log.Debugf("<%s> new height <%d>, new highest blockId %v", chain.groupId, newHeight, newHighestBlockId)
-
-		return chain.UpdChainInfo(newHeight, newHighestBlockId)
-
-	*/
 
 	return nil
 }

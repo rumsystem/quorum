@@ -12,5 +12,4 @@ type ChainMolassesIface interface {
 	UpdChainInfo(epoch int64) error
 	ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error
 	ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error
-	AddSyncedBlock(block *quorumpb.Block) error
 }

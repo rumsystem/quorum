@@ -12,24 +12,14 @@ import (
 var gsyncer_log = logging.Logger("syncer")
 
 var (
-	ErrSyncDone   = errors.New("Error Signal Sync Done")
-	ErrNoTaskWait = errors.New("Error No Task Waiting Result")
-	ErrNotAccept  = errors.New("Error The Result had been rejected")
-	ErrIgnore     = errors.New("Ignore and wait for time out")
+	ErrSyncDone = errors.New("Error Signal Sync Done")
+	ErrIgnore   = errors.New("Ignore and wait for time out")
 )
 
 const RESULT_TIMEOUT = 4 //seconds
 
-//type Syncdirection uint
-
-//const (
-//	Next Syncdirection = iota
-//	Previous
-//)
-
 type EpochSyncTask struct {
 	Epoch int64
-	//Direction Syncdirection
 }
 
 type SyncTask struct {
@@ -48,10 +38,8 @@ type SyncResult struct {
 }
 
 type Gsyncer struct {
-	nodeName string
-	GroupId  string
-	//Status   int8
-	//waitResultTaskId string //waiting the result for taskid
+	nodeName     string
+	GroupId      string
 	waitEpoch    int64 //waiting the task response for epoch
 	retryCount   int8
 	retrycountmu sync.Mutex
@@ -69,7 +57,6 @@ type Gsyncer struct {
 func NewGsyncer(groupid string, getTask func(epoch int64) (*EpochSyncTask, error), resultreceiver func(result *SyncResult) (int64, error), tasksender func(task *EpochSyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
-	//s.Status = IDLE
 	s.GroupId = groupid
 	s.nextTask = getTask
 	s.resultreceiver = resultreceiver
@@ -196,22 +183,6 @@ func (s *Gsyncer) Start() {
 			} else if err == ErrSyncDone {
 				gsyncer_log.Infof("<%s> result %s is Sync Pause Signal", s.GroupId, result.Id)
 				//SyncPause, stop add next task, pause
-			} else if err == ErrNoTaskWait {
-				//no task waiting, skip don't add new task
-			} else if err == ErrNotAccept {
-				//not accept, do nothing and waiting for other reponses until timeout
-			} else if err == ErrIgnore {
-				//ignore, don't add next task, and waiting for timeout and process next
-			} else {
-				gsyncer_log.Debugf("<%s> =======TODO: add next epoch task. current will stop.", s.GroupId)
-				//nexttask, terr := s.nextTask("") //the taskid shoule be inclued in the result, which need to upgrade all publicnode. so a workaround, pass a "" to get a retry task. (runner will try to maintain a taskid)
-				//if terr != nil {
-				//	gsyncer_log.Debugf("nextTask error:%s", terr)
-				//	continue
-				//}
-				//test try to retry this task
-				//s.AddTask(nexttask)
-				gsyncer_log.Debugf("<%s> result process %s error: %s", s.GroupId, result.Id, err)
 			}
 		}
 		s.stopnotify <- struct{}{}

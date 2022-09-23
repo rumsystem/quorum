@@ -27,19 +27,13 @@ type SyncerRunner struct {
 	nodeName string
 	group    *Group
 	Status   int8
-	//statusBeforeFail    int8
 	//responses           map[string]*quorumpb.ReqBlockResp
-	//blockReceived       map[string]string
-	//direction       Syncdirection
-	currenttaskid   string
-	currentWaitTask *EpochSyncTask
-	taskserialid    uint32
-	resultserialid  uint32
-	cdnIface        def.ChainDataSyncIface
-	syncNetworkType conn.P2pNetworkType
-	gsyncer         *Gsyncer
-	//rwMutex         sync.RWMutex
-	//localSyncFinished   bool
+	currenttaskid       string
+	taskserialid        uint32
+	resultserialid      uint32
+	cdnIface            def.ChainDataSyncIface
+	syncNetworkType     conn.P2pNetworkType
+	gsyncer             *Gsyncer
 	rumExchangeTestMode bool
 }
 
@@ -50,7 +44,6 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 	sr.cdnIface = cdnIface
 	sr.taskserialid = 0
 	sr.resultserialid = 0
-	//sr.direction = Next
 	sr.Status = IDLE
 	sr.cdnIface = cdnIface
 	sr.syncNetworkType = conn.PubSub
@@ -95,24 +88,9 @@ func (sr *SyncerRunner) GetEpochTask(epoch int64) (*EpochSyncTask, error) {
 	//return &SyncTask{Meta: taskmeta, Id: taskid}, nil
 }
 
-//func (sr *SyncerRunner) StartBackward(blockid string) error {
-//	//backward sync
-//	sr.Status = SYNCING_BACKWARD
-//	sr.direction = Previous
-//	task, err := sr.GetBlockTask(blockid)
-//	if err != nil {
-//		return err
-//	}
-//	sr.gsyncer.Start()
-//	//add the first task
-//	sr.gsyncer.AddTask(task)
-//	return nil
-//}
-
 func (sr *SyncerRunner) Start(epoch int64) error {
 	//default forward sync
 	sr.Status = SYNCING_FORWARD
-	//sr.direction = Next
 	task, err := sr.GetEpochTask(epoch)
 	if err != nil {
 		return err
@@ -123,24 +101,10 @@ func (sr *SyncerRunner) Start(epoch int64) error {
 	return nil
 }
 
-//func (sr *SyncerRunner) SwapSyncDirection() {
-//	if sr.Status == SYNCING_FORWARD {
-//		sr.Status = SYNCING_BACKWARD
-//		sr.direction = Previous
-//	} else if sr.Status == SYNCING_BACKWARD {
-//		sr.Status = SYNCING_FORWARD
-//		sr.direction = Next
-//	}
-//}
-
 func (sr *SyncerRunner) Stop() {
 	sr.Status = IDLE
 	sr.gsyncer.Stop()
 }
-
-//func (sr *SyncerRunner) SetCurrentWaitTask(task *BlockSyncTask) {
-//	sr.currentWaitTask = task
-//}
 
 func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
 	gsyncer_log.Debugf("<%s> call TaskSender... with epoch: %d", sr.group.Item.GroupId, task.Epoch)
@@ -157,9 +121,6 @@ func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
 	if err != nil {
 		return err
 	}
-	gsyncer_log.Debugf("<%s> ======TODO: set current wait task", sr.group.Item.GroupId)
-	//sr.SetCurrentWaitTask(&blocktask)
-
 	gsyncer_log.Debugf("<%s> ======TODO: check RetryCounter", sr.group.Item.GroupId)
 
 	//	if sr.gsyncer.RetryCounter() >= 30 { //max retry count
@@ -196,17 +157,10 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (int64, error) {
 			if err == ErrSyncDone {
 				sr.Status = IDLE
 			} else if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
-				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST, continue. %s", sr.group.Item.GroupId, result.Id)
+				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST %s", sr.group.Item.GroupId, result.Id)
 				//err = nil
-			} else {
-				err = ErrNotAccept
 			}
 		}
-
-		//	//workaround change the return of rumexchage result to ErrIgnore
-		//	if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
-		//		return "", ErrIgnore
-		//	}
 		return nextepoch, err
 	} else {
 		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.Id)
