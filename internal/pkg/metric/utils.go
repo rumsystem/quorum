@@ -1,10 +1,13 @@
-package stats
+package metric
 
 import (
 	"encoding/binary"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"google.golang.org/protobuf/proto"
 )
+
+var logger = logging.Logger("metric")
 
 func GetBinarySize(v interface{}) uint {
 	size := binary.Size(v)

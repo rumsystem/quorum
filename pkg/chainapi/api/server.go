@@ -44,6 +44,10 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		Skipper: rummiddleware.ChainGzipSkipper,
 		Level:   5, // hardcode
 	}))
+
+	// prometheus metric
+	e.GET("/metrics", h.Metrics)
+
 	r := e.Group("/api")
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
@@ -69,7 +73,6 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		r.POST("/v1/group/appconfig", h.MgrAppConfig)
 		r.GET("/v1/node", h.GetNodeInfo)
 		r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
-		r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
 		r.GET("/v1/network/peers/ping", h.PingPeers(node))
 		r.POST("/v1/psping", h.PSPingPeer(node))
 		r.POST("/v1/ping", h.P2PPingPeer(node))
