@@ -15,6 +15,7 @@ import (
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
@@ -239,7 +240,17 @@ func Backup(param BackupParam) {
 		logger.Fatalf("check keystore failed: %s", err)
 	}
 
-	if err := loadAndDecryptTrx(blockDstPath, seedDstPath); err != nil {
+	// load keystore and try to decrypt trx data
+	nodeoptions, err := options.InitNodeOptions(configDstPath, param.Peername)
+	if err != nil {
+		logger.Fatalf("load restored config failed: %s", err)
+	}
+	ks, _, err := localcrypto.InitDirKeyStore(param.KeystoreName, keystoreDstPath)
+	if err != nil {
+		logger.Fatalf("init restored keystore failed: %s", err)
+	}
+	ks.Unlock(nodeoptions.SignKeyMap, password)
+	if err := loadAndDecryptTrx(blockDstPath, seedDstPath, ks); err != nil {
 		logger.Fatalf("check backuped block data failed: %s", err)
 	}
 

@@ -64,7 +64,7 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
-	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
+	github.com/rumsystem/keystore v0.0.0-20220923055943-abf10cc8cc5c
 	github.com/rumsystem/rumchaindata v0.0.0-20220725155706-6c1c56da35eb
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0

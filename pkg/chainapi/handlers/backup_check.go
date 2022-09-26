@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"path/filepath"
 
+	"github.com/rumsystem/keystore/pkg/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -72,20 +73,21 @@ func getRandLength(a, b int) int {
 func checkSignature(ks *localcrypto.DirKeyStore, keyname string) error {
 	length := getRandLength(10, 100)
 	msg := utils.GetRandomStr(length)
-
-	signature, err := ks.EthSignByKeyName(keyname, []byte(msg))
+	hash := crypto.Hash([]byte(msg))
+	signature, err := ks.EthSignByKeyName(keyname, hash)
 	if err != nil {
 		return err
 	}
 
 	// should success
-	if ok, err := ks.VerifySignByKeyName(keyname, []byte(msg), signature); err != nil || !ok {
+	if ok, err := ks.EthVerifyByKeyName(keyname, hash, signature); err != nil || !ok {
 		return errors.New("signature verify should success")
 	}
 
 	// should fail
 	msg = utils.GetRandomStr(length)
-	if ok, err := ks.VerifySignByKeyName(keyname, []byte(msg), signature); err != nil || ok {
+	hash = crypto.Hash([]byte(msg))
+	if ok, err := ks.EthVerifyByKeyName(keyname, hash, signature); err != nil || ok {
 		return errors.New("signature verify should fail")
 	}
 	return nil
@@ -119,7 +121,7 @@ func checkEncrypt(ks *localcrypto.DirKeyStore, keyname, password string) error {
 	return nil
 }
 
-func loadAndDecryptTrx(blockDbDir, seedDir string) error {
+func loadAndDecryptTrx(blockDbDir, seedDir string, ks *localcrypto.DirKeyStore) error {
 	if !utils.DirExist(blockDbDir) {
 		return fmt.Errorf("%s not exist", blockDbDir)
 	}
@@ -130,14 +132,14 @@ func loadAndDecryptTrx(blockDbDir, seedDir string) error {
 	}
 	defer db.Close()
 
-	count := 0
+	pubCount, privCount := 0, 0
 	key := getBlockPrefixKey()
 	err := db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if count > 10 { // just decrypt trx data in 10 blocks
+		if pubCount > 10 && privCount > 10 { // just decrypt trx data in 10 blocks
 			return nil
 		}
 
@@ -160,18 +162,32 @@ func loadAndDecryptTrx(blockDbDir, seedDir string) error {
 					logger.Warningf("load group seed from backuped file failed: %s", err)
 					continue
 				}
-				ciperKey, err := hex.DecodeString(seed.CipherKey)
-				if err != nil {
-					return fmt.Errorf("get ciperKey failed: %s", err)
+
+				if trx.Type != quorumpb.TrxType_POST {
+					continue
 				}
 
-				if _, err := localcrypto.AesDecode(trx.Data, ciperKey); err != nil {
-					return fmt.Errorf("decrypt trx data failed: %s", err)
+				if seed.EncryptionType == "public" { // FIXME: hardcode
+					ciperKey, err := hex.DecodeString(seed.CipherKey)
+					if err != nil {
+						return fmt.Errorf("get ciperKey failed: %s", err)
+					}
+
+					if _, err := localcrypto.AesDecode(trx.Data, ciperKey); err != nil {
+						return fmt.Errorf("decrypt trx data for public group %s failed: %s", groupId, err)
+					}
+
+					pubCount += 1
+				} else if seed.EncryptionType == "private" { // hardcode
+					if _, err := ks.Decrypt(groupId, trx.Data); err != nil {
+						return fmt.Errorf("decrypt trx data for private group %s failed: %s", groupId, err)
+					}
+
+					privCount += 1
 				}
 			}
 		}
 
-		count++
 		return nil
 	})
 
