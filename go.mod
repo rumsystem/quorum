@@ -63,6 +63,9 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/client_model v0.2.0
+	github.com/prometheus/common v0.37.0
+	github.com/prometheus/prom2json v1.3.1
 	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
 	github.com/rumsystem/keystore v0.0.0-20220923055943-abf10cc8cc5c
 	github.com/rumsystem/rumchaindata v0.0.0-20220725155706-6c1c56da35eb
@@ -205,8 +208,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1 // indirect
-	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.2.0 // indirect

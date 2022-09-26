@@ -8,7 +8,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rumsystem/ip-cert/pkg/zerossl"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
@@ -47,11 +46,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 	}))
 
 	// prometheus metric
-	e.GET("/metrics", func(c echo.Context) error {
-		h := promhttp.Handler()
-		h.ServeHTTP(c.Response(), c.Request())
-		return nil
-	})
+	e.GET("/metrics", h.Metrics)
 
 	r := e.Group("/api")
 	a := e.Group("/app/api")
