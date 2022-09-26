@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -154,8 +154,9 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 		secp256k1pubkey, ok := ownerPubkey.(*p2pcrypto.Secp256k1PublicKey)
 		if ok == true {
-			btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
-			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(btcecpubkey.ToECDSA()))
+			//btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
+			pubkey := (*secp256k1.PublicKey)(secp256k1pubkey)
+			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(pubkey.ToECDSA()))
 		}
 
 		item.CipherKey = params.CipherKey
