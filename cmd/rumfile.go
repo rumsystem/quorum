@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/spf13/cobra"
 )
 

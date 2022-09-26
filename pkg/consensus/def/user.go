@@ -1,7 +1,7 @@
 package def
 
 import (
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type User interface {

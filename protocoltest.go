@@ -18,10 +18,10 @@ import (
 
 	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 var mainlog = logging.Logger("main")

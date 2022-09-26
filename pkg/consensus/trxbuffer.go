@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 // just a simple wrap of HBB Trx Buffer DB

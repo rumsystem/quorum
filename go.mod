@@ -21,7 +21,7 @@ replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 
 replace github.com/rumsystem/rumchaindata => ../rumchaindata
 
-replace github.com/rumsystem/keystore => ../keystore
+//replace github.com/rumsystem/keystore => ../keystore
 
 // replace github.com/libp2p/go-libp2p => ../go-libp2p
 
@@ -61,7 +61,6 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
-	github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4
 	github.com/rumsystem/rumchaindata v0.0.0-20220831174445-fbca59442322
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0

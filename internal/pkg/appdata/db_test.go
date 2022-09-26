@@ -2,11 +2,12 @@ package appdata
 
 import (
 	"fmt"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 	"log"
 	"testing"
 	"time"
+
+	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 func ifTrxWithNonceSliceEqual(left []TrxIdNonce, right []TrxIdNonce) bool {
