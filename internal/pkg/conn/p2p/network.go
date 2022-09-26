@@ -13,8 +13,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/metric"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
 	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
@@ -110,24 +110,14 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 		defer cancel()
 		err := node.Host.Connect(pctx, peer)
 		if err != nil {
+			metric.FailedCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
 			networklog.Warningf("connect peer failure: %s \n", peer)
 			cancel()
 			continue
 		} else {
+			metric.SuccessCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
 			connectedCount++
 			networklog.Infof("connect: %s", peer)
-
-			log := stats.NetworkStats{
-				From:      node.Host.ID(),
-				To:        peer.ID,
-				Action:    stats.ConnectPeer,
-				Direction: network.DirOutbound,
-				Size:      0,
-				Success:   true,
-			}
-			if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
-				networklog.Warningf("add network log to db failed: %s", err)
-			}
 		}
 	}
 	return connectedCount

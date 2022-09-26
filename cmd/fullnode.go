@@ -9,11 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
@@ -22,14 +20,12 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	"github.com/spf13/cobra"
-	_ "google.golang.org/protobuf/proto" //import for swaggo
 )
 
 var (
@@ -176,10 +172,6 @@ func runFullnode(config cli.FullnodeFlag) {
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
 
-		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
-			logger.Fatalf("init stats db failed: %s", err)
-		}
-
 		logger.Infof("Host created, ID:<%s>, Address:<%s>", node.Host.ID(), node.Host.Addrs())
 		h := &api.Handler{
 			Node:      node,
@@ -236,10 +228,6 @@ func runFullnode(config cli.FullnodeFlag) {
 		nodectx.GetNodeCtx().Keystore = ks
 		nodectx.GetNodeCtx().PublicKey = keys.PubKey
 		nodectx.GetNodeCtx().PeerId = peerid
-
-		if err := stats.InitDB(datapath, node.Host.ID()); err != nil {
-			logger.Fatalf("init stats db failed: %s", err)
-		}
 
 		//initial conn
 		conn.InitConn()

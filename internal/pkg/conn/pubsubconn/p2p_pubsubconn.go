@@ -6,11 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
+	"github.com/rumsystem/quorum/internal/pkg/metric"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"google.golang.org/protobuf/proto"
@@ -144,54 +143,26 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainData
 		psconn.chain = cdhIface
 	}
 
-	log := stats.NetworkStats{
-		From:      stats.GetLocalPeerID(),
-		Topic:     cId,
-		Action:    stats.JoinTopic,
-		Direction: network.DirOutbound,
-		Size:      0,
-		Success:   false,
-	}
-
 	var err error
 	//TODO: share the ps
 	psconn.Topic, err = psconn.ps.Join(cId)
 	if err != nil {
 		channel_log.Infof("Join <%s> failed", cId)
-		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
-			channel_log.Warningf("add network log to db failed: %s", e)
-		}
+		metric.FailedCount.WithLabelValues(metric.ActionType.JoinTopic).Inc()
 		return err
 	} else {
 		channel_log.Infof("Join <%s> done", cId)
-		log.Success = true
-		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
-			channel_log.Warningf("add network log to db failed: %s", e)
-		}
-	}
-
-	log = stats.NetworkStats{
-		From:      stats.GetLocalPeerID(),
-		Topic:     cId,
-		Action:    stats.SubscribeTopic,
-		Direction: network.DirOutbound,
-		Size:      0,
-		Success:   false,
+		metric.SuccessCount.WithLabelValues(metric.ActionType.JoinTopic).Inc()
 	}
 
 	psconn.Subscription, err = psconn.Topic.Subscribe()
 	if err != nil {
-		channel_log.Fatalf("Subscribe <%s> failed: %s", cId, err)
-		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
-			channel_log.Warningf("add network log to db failed: %s", e)
-		}
+		channel_log.Errorf("Subscribe <%s> failed: %s", cId, err)
+		metric.FailedCount.WithLabelValues(metric.ActionType.SubscribeTopic).Inc()
 		return err
 	} else {
 		channel_log.Infof("Subscribe <%s> done", cId)
-		log.Success = true
-		if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
-			channel_log.Warningf("add network log to db failed: %s", e)
-		}
+		metric.SuccessCount.WithLabelValues(metric.ActionType.SubscribeTopic).Inc()
 	}
 
 	go psconn.handleGroupChannel(psconn.Ctx)
@@ -209,17 +180,12 @@ func (psconn *P2pPubSubConn) Publish(data []byte) error {
 
 	//set a 2 Second timeout for pubsub Publish
 	err := psconn.Topic.Publish(publishctx, data)
-	success := err == nil
-	log := stats.NetworkStats{
-		From:      stats.GetLocalPeerID(),
-		Topic:     psconn.Topic.String(),
-		Action:    stats.PublishToTopic,
-		Direction: network.DirOutbound,
-		Size:      stats.GetBinarySize(data),
-		Success:   success,
-	}
-	if e := stats.GetStatsDB().AddNetworkLog(&log); e != nil {
-		channel_log.Warningf("add network log to db failed: %s", err)
+	if err != nil {
+		metric.FailedCount.WithLabelValues(metric.ActionType.PublishToTopic).Inc()
+	} else {
+		size := float64(metric.GetBinarySize(data))
+		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToTopic).Inc()
+		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToTopic).Set(size)
 	}
 
 	return err
@@ -231,17 +197,9 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 		if err == nil {
 			var pkg quorumpb.Package
 			if err := proto.Unmarshal(msg.Data, &pkg); err == nil {
-				log := stats.NetworkStats{
-					To:        stats.GetLocalPeerID(),
-					Topic:     *msg.Topic,
-					Action:    stats.ReceiveFromTopic,
-					Direction: network.DirInbound,
-					Size:      stats.GetProtoSize(&pkg),
-					Success:   true,
-				}
-				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
-					channel_log.Warningf("add network log to db failed: %s", err)
-				}
+				size := float64(metric.GetProtoSize(&pkg))
+				metric.SuccessCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
+				metric.InBytes.WithLabelValues(metric.ActionType.ReceiveFromTopic).Set(size)
 
 				if pkg.Type == quorumpb.PackageType_BLOCK {
 					//is block
@@ -274,6 +232,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 					}
 				}
 			} else {
+				metric.FailedCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
 				channel_log.Warningf(err.Error())
 				channel_log.Warningf("%s", msg.Data)
 			}
