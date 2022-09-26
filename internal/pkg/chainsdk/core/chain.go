@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/network"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"

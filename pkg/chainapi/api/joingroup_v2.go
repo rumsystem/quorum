@@ -19,7 +19,7 @@ import (
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"github.com/labstack/echo/v4"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 )

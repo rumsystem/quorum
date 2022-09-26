@@ -3,8 +3,8 @@ package nodesdk
 import (
 	"context"
 
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"

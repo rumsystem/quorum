@@ -11,8 +11,8 @@ import (
 
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	discovery "github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
+	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"

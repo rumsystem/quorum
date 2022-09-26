@@ -9,7 +9,6 @@ import (
 
 	guuid "github.com/google/uuid"
 
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"math/big"
 	"net/url"
 	"strconv"

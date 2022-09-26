@@ -16,7 +16,7 @@ import (
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )

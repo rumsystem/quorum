@@ -9,7 +9,7 @@ import (
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	pubsub "github.com/huo-ju/quercus/pkg/pubsub"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"

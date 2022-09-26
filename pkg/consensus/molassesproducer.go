@@ -1,9 +1,6 @@
 package consensus
 
 import (
-
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-
 	"errors"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"

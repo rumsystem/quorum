@@ -123,19 +123,22 @@ func (sr *SyncerRunner) TaskSender(task *EpochSyncTask) error {
 	}
 	gsyncer_log.Debugf("<%s> ======TODO: check RetryCounter", sr.group.Item.GroupId)
 
-	//	if sr.gsyncer.RetryCounter() >= 30 { //max retry count
-	//		//change networktype and clear counter
-	//		if sr.rumExchangeTestMode != true {
+	if sr.gsyncer.RetryCounter() >= 30 { //max retry count
+		//TODO: change networktype and clear counter
+		//if sr.rumExchangeTestMode != true {
 
-	//			if sr.syncNetworkType == conn.PubSub {
-	//				sr.syncNetworkType = conn.RumExchange
-	//			} else {
-	//				sr.syncNetworkType = conn.PubSub
-	//			}
-	//			gsyncer_log.Debugf("<%s> retry counter %d, change the network type to %s", sr.gsyncer.RetryCounter(), sr.syncNetworkType)
-	//		}
-	//		sr.gsyncer.RetryCounterClear()
-	//	}
+		//	if sr.syncNetworkType == conn.PubSub {
+		//		sr.syncNetworkType = conn.RumExchange
+		//	} else {
+		//		sr.syncNetworkType = conn.PubSub
+		//	}
+		//	gsyncer_log.Debugf("<%s> retry counter %d, change the network type to %s", sr.gsyncer.RetryCounter(), sr.syncNetworkType)
+		//}
+		//sr.gsyncer.RetryCounterClear()
+
+		sr.Status = SYNC_FAILED
+		sr.gsyncer.Stop()
+	}
 	v := rand.Intn(500)
 	time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
 	gsyncer_log.Debugf("<%s> ======TODO: send trx by pubsub or rex", sr.group.Item.GroupId)

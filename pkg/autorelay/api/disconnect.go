@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	handlers "github.com/rumsystem/quorum/pkg/autorelay/handlers"
 )

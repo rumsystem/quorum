@@ -10,7 +10,7 @@ import (
 	"time"
 
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
@@ -54,7 +54,9 @@ func init() {
 	flags.StringVar(&bootstrapNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
 	flags.StringVar(&bootstrapNodeFlag.DataDir, "datadir", "./data/", "config dir")
 	flags.Var(&bootstrapNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.BoolVar(&bootstrapNodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
+
+	flags.StringVar(&bootstrapNodeFlag.APIHost, "apihost", "127.0.0.1", "Domain or public ip addresses for api server")
+	flags.UintVar(&bootstrapNodeFlag.APIPort, "apiport", 4216, "api server listen port")
 	flags.BoolVar(&bootstrapNodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 

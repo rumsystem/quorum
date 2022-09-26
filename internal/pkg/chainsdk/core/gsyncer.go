@@ -210,6 +210,7 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (int64,
 			if s.waitEpoch > 0 && s.waitEpoch == nextepoch-1 {
 				//clean the wait epoch
 				s.waitEpoch = 0
+				s.retryCount = 0
 				s.taskdone <- struct{}{}
 				return nextepoch, err
 			}
@@ -238,6 +239,7 @@ func (s *Gsyncer) processTask(ctx context.Context, task *EpochSyncTask) error {
 		return nil
 	case <-ctx.Done():
 		s.waitEpoch = 0
+		s.retryCount++
 		return errors.New("Task Timeout")
 	}
 }

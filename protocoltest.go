@@ -9,14 +9,15 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-core/routing"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/routing"
+
+	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -49,7 +50,7 @@ func main() {
 	ctx := context.Background()
 
 	var ddht *dual.DHT
-	var routingDiscovery *discovery.RoutingDiscovery
+	var routingDiscovery *discoveryrouting.RoutingDiscovery
 	routing := libp2p.Routing(func(host host.Host) (routing.PeerRouting, error) {
 		dhtOpts := dual.DHTOption(
 			dht.Mode(dht.ModeServer),
@@ -58,7 +59,7 @@ func main() {
 
 		var err error
 		ddht, err = dual.New(ctx, host, dhtOpts)
-		routingDiscovery = discovery.NewRoutingDiscovery(ddht)
+		routingDiscovery = discoveryrouting.NewRoutingDiscovery(ddht)
 		return ddht, err
 	})
 
