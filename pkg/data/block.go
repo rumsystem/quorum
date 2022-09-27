@@ -30,7 +30,7 @@ import (
 // get hash again, this is bookkeepingHash
 // bookkeeping node will sigh this hash with to guarantee everything in this block is bookkeeping correctly.
 
-func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb.Trx, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	var newBlock quorumpb.Block
 
 	newBlock.Epoch = epoch
@@ -60,6 +60,7 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 	newBlock.Witesses = withnesses
 	newBlock.TimeStamp = time.Now().UnixNano()
 	newBlock.BookkeepingPubkey = groupPublicKey
+	newBlock.SudoBlock = sudo
 
 	bbytes, err := proto.Marshal(&newBlock)
 	blockHash := localcrypto.Hash(bbytes)
@@ -80,7 +81,6 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 		return nil, errors.New("create signature failed")
 	}
 	newBlock.BookkeepingSignature = signature
-
 	return &newBlock, nil
 }
 
@@ -103,6 +103,7 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 	genesisBlock.Witesses = witesses
 	genesisBlock.TimeStamp = time.Now().UnixNano()
 	genesisBlock.BookkeepingPubkey = groupPublicKey
+	genesisBlock.SudoBlock = false
 
 	bbytes, err := proto.Marshal(genesisBlock)
 	blockHash := localcrypto.Hash(bbytes)
@@ -121,7 +122,6 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 		return nil, errors.New("create signature on genesisblock failed")
 	}
 	genesisBlock.BookkeepingSignature = signature
-
 	return genesisBlock, nil
 }
 

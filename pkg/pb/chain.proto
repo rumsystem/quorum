@@ -66,6 +66,7 @@ message Trx {
     string  SenderPubkey = 10;  
     bytes   SenderSign   = 11;
     TrxStroageType StorageType = 12;
+    bool    SudoTrx      = 13;
 }
 
 message Witnesses {
@@ -77,16 +78,17 @@ message Witnesses {
 }
 
 message Block {
-    string   GroupId              = 1;       
-    int64    Epoch                = 2;  
-    bytes    PrevEpochHash        = 3;
-    repeated Trx Trxs             = 4; 
-    bytes    EpochHash            = 5; 
-    repeated Witnesses Witesses   = 6;
-    int64    TimeStamp            = 7;     
-    bytes    BlockHash            = 8;
-    string   BookkeepingPubkey    = 9;   
-    bytes    BookkeepingSignature = 10;
+    string      GroupId              = 1;       
+    int64       Epoch                = 2;  
+    bytes       PrevEpochHash        = 3;
+    repeated    Trx Trxs             = 4; 
+    bytes       EpochHash            = 5; 
+    repeated    Witnesses Witesses   = 6;
+    int64       TimeStamp            = 7;     
+    bytes       BlockHash            = 8;
+    string      BookkeepingPubkey    = 9;   
+    bytes       BookkeepingSignature = 10;
+    bool        SudoBlock            = 11;
 }
 
 message Snapshot {
