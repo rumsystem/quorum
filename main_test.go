@@ -300,7 +300,7 @@ func TestGroupsPostContents(t *testing.T) {
 		groupIdToTrxIds[groupId] = []string{}
 		for i := 1; i <= posts; i++ {
 			content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupId, i, groupId, i, groupId)
-			_, resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "POST", content)
+			_, resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content/false", "POST", content)
 			if err != nil {
 				t.Errorf("post content to api error %s", err)
 			}
