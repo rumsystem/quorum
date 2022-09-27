@@ -97,7 +97,6 @@ func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.Grou
 	}
 	trx.SenderSign = signature
 	return trx, nil
-
 }
 
 // set TimeStamp and Expired for trx
