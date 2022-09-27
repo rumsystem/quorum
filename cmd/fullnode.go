@@ -11,10 +11,9 @@ import (
 
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	discovery "github.com/libp2p/go-libp2p-discovery"
+	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
+	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
@@ -28,6 +27,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
 )
@@ -164,7 +164,7 @@ func runFullNode(config cli.FullNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
-	if err == nil {
+	if err == nil && nodeoptions.EnableRumExchange == true {
 		fullNode.SetRumExchange(ctx, newchainstorage)
 	}
 

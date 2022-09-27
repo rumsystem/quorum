@@ -3,7 +3,7 @@ package consensus
 import (
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 

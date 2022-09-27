@@ -14,14 +14,14 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/rumsystem/quorum/testnode"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 
 	"github.com/labstack/echo/v4"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type JoinGroupResult struct {

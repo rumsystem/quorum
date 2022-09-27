@@ -12,19 +12,19 @@ import (
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/control"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-core/routing"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/control"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/routing"
+	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
-	ws "github.com/libp2p/go-ws-transport"
+	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -88,7 +88,7 @@ func (PublicGater) InterceptUpgraded(network.Conn) (allow bool, reason control.D
 
 func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethkeystore.Key) (*Node, error) {
 	var ddht *dual.DHT
-	var routingDiscovery *discovery.RoutingDiscovery
+	var routingDiscovery *discoveryrouting.RoutingDiscovery
 	var err error
 
 	//privKey p2pcrypto.PrivKey
@@ -113,7 +113,7 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 
 		var err error
 		ddht, err = dual.New(ctx, host, dhtOpts)
-		routingDiscovery = discovery.NewRoutingDiscovery(ddht)
+		routingDiscovery = discoveryrouting.NewRoutingDiscovery(ddht)
 		return ddht, err
 	})
 

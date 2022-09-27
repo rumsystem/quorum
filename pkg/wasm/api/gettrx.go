@@ -5,7 +5,7 @@ package api
 
 import (
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 func GetTrx(groupId string, trxId string) (*pb.Trx, []int64, error) {

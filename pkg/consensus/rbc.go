@@ -10,7 +10,7 @@ import (
 	"github.com/klauspost/reedsolomon"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 const TRXS_TOTAL_SIZE int = 900 * 1024

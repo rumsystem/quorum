@@ -1,16 +1,13 @@
 package consensus
 
 import (
-
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-
 	"errors"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 var molaproducer_log = logging.Logger("producer")
@@ -218,20 +215,23 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 		return
 	}
 
-	if trx.SudoTrx {
-		molaproducer_log.Debugf("<%s> Molasses AddTrx called, add sudo trx <%s>", producer.groupId, trx.TrxId)
-		err = producer.bft.AddTrx(trx)
-		if err != nil {
-			molaproducer_log.Errorf("add trx failed %s", err.Error())
-		}
-	} else {
-		molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
-		err = producer.bft.AddTrx(trx)
-		if err != nil {
-			molaproducer_log.Errorf("add trx failed %s", err.Error())
-		}
+	/*
+		if trx.SudoTrx {
+			molaproducer_log.Debugf("<%s> Molasses AddTrx called, add sudo trx <%s>", producer.groupId, trx.TrxId)
+			err = producer.bft.AddTrx(trx)
+			if err != nil {
+				molaproducer_log.Errorf("add trx failed %s", err.Error())
+			}
+		} else {
 
+	*/
+	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
+	err = producer.bft.AddTrx(trx)
+	if err != nil {
+		molaproducer_log.Errorf("add trx failed %s", err.Error())
 	}
+
+	//}
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsg) error {

@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 var bft_log = logging.Logger("bft")
@@ -34,7 +34,7 @@ func NewBft(cfg Config, producer *MolassesProducer) *Bft {
 
 func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	bft_log.Debugf("AddTrx called")
-	bft_log.Debugf("IsSudoTrx : <%v>", tx.SudoTrx)
+	//bft_log.Debugf("IsSudoTrx : <%v>", tx.SudoTrx)
 	bft.txBuffer.Push(tx)
 	/*
 		newEpoch := bft.producer.grpItem.Epoch + 1
@@ -171,8 +171,8 @@ func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 
 	//create block
 	ks := localcrypto.GetKeystore()
-	sudo := false
-	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
+	//sudo := false
+	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
 	if err != nil {
 		return err
 	}

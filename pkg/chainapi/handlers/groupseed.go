@@ -9,14 +9,13 @@ import (
 
 	guuid "github.com/google/uuid"
 
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
 
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error) {

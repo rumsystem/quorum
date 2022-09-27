@@ -4,10 +4,10 @@ import (
 	"bufio"
 
 	guuid "github.com/google/uuid"
-	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-msgio/protoio"
 	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type RexRelay struct {

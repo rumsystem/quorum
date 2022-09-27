@@ -2,7 +2,7 @@ package def
 
 import (
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type ChainMolassesIface interface {
@@ -12,5 +12,4 @@ type ChainMolassesIface interface {
 	UpdChainInfo(epoch int64) error
 	ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error
 	ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error
-	AddSyncedBlock(block *quorumpb.Block) error
 }

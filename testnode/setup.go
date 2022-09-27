@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 var (
@@ -51,7 +51,7 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 		return "", []string{}, "", fmt.Errorf("os.Chdir(%s) failed: %s", basepath, err)
 	}
 
-	Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "fullnode", "--bootstrap", "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "--apiport", fmt.Sprintf("%d", bootstrapapiport), "--configdir", testconfdir, "--keystoredir", testkeystoredir, "--datadir", testdatadir)
+	Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "bootstrapnode", "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "--apiport", fmt.Sprintf("%d", bootstrapapiport), "--configdir", testconfdir, "--keystoredir", testkeystoredir, "--datadir", testdatadir)
 
 	// wait bootstrap node
 	bootstrapBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport)

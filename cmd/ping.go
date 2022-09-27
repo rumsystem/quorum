@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p"
-	peerstore "github.com/libp2p/go-libp2p-core/peer"
+	peerstore "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/spf13/cobra"

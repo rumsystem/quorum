@@ -10,19 +10,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 
 	"github.com/labstack/echo/v4"
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 // @Tags Groups
@@ -154,8 +154,9 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 
 		secp256k1pubkey, ok := ownerPubkey.(*p2pcrypto.Secp256k1PublicKey)
 		if ok == true {
-			btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
-			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(btcecpubkey.ToECDSA()))
+			//btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
+			pubkey := (*secp256k1.PublicKey)(secp256k1pubkey)
+			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(pubkey.ToECDSA()))
 		}
 
 		item.CipherKey = params.CipherKey

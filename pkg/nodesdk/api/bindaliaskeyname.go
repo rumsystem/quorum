@@ -4,9 +4,9 @@ import (
 	"os"
 
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 

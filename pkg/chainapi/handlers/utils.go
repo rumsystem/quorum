@@ -6,8 +6,8 @@ import (
 
 	"strings"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 func initSignKey(groupId string, ks localcrypto.Keystore, nodeoptions *options.NodeOptions) (string, error) {

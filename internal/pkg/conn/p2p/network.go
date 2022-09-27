@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/event"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -34,7 +34,7 @@ type Node struct {
 	RumExchange      *RexService
 	Ddht             *dual.DHT
 	Info             *NodeInfo
-	RoutingDiscovery *discovery.RoutingDiscovery
+	RoutingDiscovery *discoveryrouting.RoutingDiscovery
 	PubSubConnMgr    *pubsubconn.PubSubConnMgr
 	peerStatus       *PeerStatus
 	Nodeopt          *options.NodeOptions

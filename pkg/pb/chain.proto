@@ -1,0 +1,422 @@
+syntax = "proto3";
+package quorum.pb;
+option go_package = "github.com/rumsystem/quorum/pkg/pb";
+
+enum PackageType {
+    TRX      = 0;
+    BLOCK    = 1;
+    SNAPSHOT = 2;
+    HBB      = 3;
+}
+
+message Package {
+    PackageType type = 1;
+    bytes       Data = 2;
+}
+
+enum TrxType {
+  POST               = 0; // post to group
+  SCHEMA             = 2; // group schema
+  PRODUCER           = 3; // update group producer
+  ANNOUNCE           = 4; // self announce, producer or user)  
+  REQ_BLOCK_FORWARD  = 5; // request next block 
+  REQ_BLOCK_BACKWARD = 6; // request previous block
+  REQ_BLOCK_RESP     = 7; // response request next block
+  BLOCK_SYNCED       = 8; // block for producer to sync (old block)
+  BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
+  USER               = 10; // update group user
+  ASK_PEERID         = 11; // ask owner/producer peerid
+  ASK_PEERID_RESP    = 12; // response ask peerid
+  CHAIN_CONFIG       = 13; // predefined chain configuration
+  APP_CONFIG         = 14; // group app customized configuration
+}
+
+enum AnnounceType {
+   AS_USER     = 0;
+   AS_PRODUCER = 1;
+   AS_USER_ENCRYPT  = 2;
+}
+
+enum ApproveType {
+    ANNOUNCED = 0;
+    APPROVED  = 1;
+    REJECTED  = 2;
+}
+
+enum ActionType {
+    ADD    = 0;
+    REMOVE = 1;
+}
+
+enum TrxStroageType {
+    CHAIN    = 0;
+    CACHE = 1;
+}
+
+message Trx {
+    string  TrxId        = 1;
+    TrxType Type         = 2;    
+    string  GroupId      = 3;
+    bytes   Data         = 4; 
+    int64   TimeStamp    = 5;
+    string  Version      = 6;
+    int64   Expired      = 7;
+    int64   ResendCount  = 8;
+    int64   Nonce        = 9;
+    string  SenderPubkey = 10;  
+    bytes   SenderSign   = 11;
+    TrxStroageType StorageType = 12;
+}
+
+message Witnesses {
+    string   groupId       = 1;
+    int64    epoch         = 2;
+    bytes    TrxHash       = 3;
+    string   WitnessPubkey = 4;
+    bytes    Signature     = 5;
+}
+
+message Block {
+    string   GroupId              = 1;       
+    int64    Epoch                = 2;  
+    bytes    PrevEpochHash        = 3;
+    repeated Trx Trxs             = 4; 
+    bytes    EpochHash            = 5; 
+    repeated Witnesses Witesses   = 6;
+    int64    TimeStamp            = 7;     
+    bytes    BlockHash            = 8;
+    string   BookkeepingPubkey    = 9;   
+    bytes    BookkeepingSignature = 10;
+}
+
+message Snapshot {
+    string   SnapshotId                 = 1;
+    string   SnapshotPackageId          = 2;
+    int64    TotalCount                 = 3;
+    string   GroupId                    = 4;    
+    int64    Nonce                      = 5;
+    repeated SnapshotItem SnapshotItems = 6;
+    string   SenderPubkey               = 7;
+    bytes    Singature                  = 8;
+    int64    TimeStamp                  = 9;
+    int64    HighestHeight              = 10;
+    int64    Epoch                      = 11;
+    bytes    ItemsHash                  = 12;
+}
+
+message SnapshotItem {
+    string           SnapshotItemId = 1;
+    SnapShotItemType Type           = 2;
+    bytes            Data           = 3; 
+}
+
+enum SnapShotItemType {
+    SNAPSHOT_APP_CONFIG   = 0;    //app_config item
+    SNAPSHOT_CHAIN_CONFIG = 1;    //chain_config item
+    SNAPSHOT_PRODUCER     = 2;    //producer item
+    SNAPSHOT_USER         = 3;    //user item
+    SNAPSHOT_ANNOUNCE     = 4;    //announce item
+}
+
+message SnapShotTag {
+    int64  TimeStamp                  = 1;
+    int64  HighestHeight              = 2;
+    int64  Epoch                      = 3;
+    bytes  ItemsHash                  = 4;
+    int64  Nonce                      = 5;   
+    string SnapshotPackageId          = 6;
+    string SenderPubkey               = 7;
+}
+
+message ReqBlock {
+    int64  Epoch   = 1; //epoch
+    string GroupId = 2; //group id
+    string UserId  = 3; //requester
+}
+
+message BlockSynced {
+    Block BlockItem = 1;
+}
+
+message AskPeerId {
+    string GroupId     = 1;   
+    string UserPeerId  = 2;
+    string UserPubkey  = 3;
+    string UserSign    = 4;
+    string Memo        = 5;    
+}
+
+message AskPeerIdResp {
+    string GroupId           = 1;   
+    string RespPeerId        = 2;
+    string RespPeerPubkey    = 3;
+    string RespSign          = 4;
+    bool   IsDirectConnected = 5;
+}
+
+message BlockProduced {
+    Block BlockItem = 1;
+}
+
+enum ReqBlkResult {
+    BLOCK_IN_TRX = 0;    //block data in trx
+    BLOCK_NOT_FOUND = 1; //block not found
+}
+
+message ReqBlockResp {
+    ReqBlkResult Result          = 1;
+    string       ProviderPubkey  = 2;
+    string       RequesterPubkey = 3;
+    string       GroupId         = 4;  
+    int64        epoch           = 5; 
+    bytes        Block           = 6;
+}
+
+message PostItem {
+    string TrxId           = 1;
+    string PublisherPubkey = 2;
+    bytes  Content         = 3;
+    int64  TimeStamp       = 4;
+}
+
+message ProducerItem {
+   string     GroupId             = 1;
+   string     ProducerPubkey      = 2;
+   string     GroupOwnerPubkey    = 3;   
+   string     GroupOwnerSign      = 4;
+   int64      TimeStamp           = 5;    
+   ActionType Action              = 6;
+   int64      WithnessBlockNum    = 7;
+   string     Memo                = 8;
+}
+
+message BFTProducerBundleItem {
+    repeated ProducerItem Producers = 1;
+}
+
+message UserItem {
+   string     GroupId             = 1;
+   string     UserPubkey          = 2;
+   string     EncryptPubkey       = 3;
+   string     GroupOwnerPubkey    = 4;
+   string     GroupOwnerSign      = 5;
+   int64      TimeStamp           = 6;
+   ActionType Action              = 7;
+   string     Memo                = 8;
+}
+
+message AnnounceItem {
+    string       GroupId            = 1;
+    string       SignPubkey         = 2;
+    string       EncryptPubkey      = 3;
+    string       AnnouncerSignature = 4;
+    AnnounceType Type               = 5;
+    string       OwnerPubkey        = 6;
+    string       OwnerSignature     = 7;
+    ApproveType  Result             = 8;    
+    int64        TimeStamp          = 9; 
+    ActionType   Action             = 10;
+    string       Memo               = 11;
+}
+
+message SchemaItem {
+    string       GroupId          = 1;    
+    string       GroupOwnerPubkey = 2;
+    string       GroupOwnerSign   = 3;    
+    string       Type             = 4;    
+    string       Rule             = 5;
+    int64        TimeStamp        = 6;    
+    ActionType   Action           = 7;
+}
+
+enum GroupEncryptType {
+    PUBLIC   = 0; //public group
+    PRIVATE  = 1; //private group
+}
+
+enum GroupConsenseType {
+    POA = 0;    //proof of authen
+    POS = 1;
+}
+
+message GroupItem {
+    string GroupId                 = 1;
+    string GroupName               = 2;
+    string OwnerPubKey             = 3;
+    string UserSignPubkey          = 4;
+    string UserEncryptPubkey       = 5;
+    int64  LastUpdate              = 6;
+    int64  Epoch                   = 7;
+    Block  GenesisBlock            = 8;
+    GroupEncryptType EncryptType   = 9;
+    GroupConsenseType ConsenseType = 10;
+    string CipherKey               = 11;
+    string AppKey                  = 12;
+}
+
+enum RoleV0 {
+    GROUP_PRODUCER = 0;
+    GROUP_USER     = 1;
+}
+
+enum ChainConfigType {
+    SET_TRX_AUTH_MODE = 0;
+    UPD_DNY_LIST      = 1;
+    UPD_ALW_LIST      = 2;
+}
+
+enum TrxAuthMode {
+    FOLLOW_ALW_LIST = 0;
+    FOLLOW_DNY_LIST = 1;
+}
+
+enum AuthListType {
+    ALLOW_LIST = 0;
+    DENY_LIST  = 1;
+} 
+
+message ChainConfigItem {
+    string          GroupId        = 1;
+    ChainConfigType Type           = 2;
+    bytes           Data           = 3;
+    string          OwnerPubkey    = 4;
+    string          OwnerSignature = 5;
+    int64           TimeStamp      = 6;       
+    string          Memo           = 7; 
+}
+
+message ChainSendTrxRuleListItem {
+    ActionType Action       = 1; 
+    string     Pubkey       = 3;
+    repeated   TrxType Type = 4;
+}
+
+message SetTrxAuthModeItem {
+    TrxType     Type = 1;
+    TrxAuthMode Mode = 2;
+}
+
+message GroupItemV0 {
+    string GroupId                 = 1;
+    string GroupName               = 2;
+    string OwnerPubKey             = 3;
+    string UserSignPubkey          = 4;
+    string UserEncryptPubkey       = 5;
+    RoleV0 UserRole                = 6;
+    int64  LastUpdate              = 7;
+    int64  HighestHeight           = 8;
+    string HighestBlockId          = 9;
+    Block  GenesisBlock            = 10;
+    GroupEncryptType EncryptType   = 11;
+    GroupConsenseType ConsenseType = 12;
+    string CipherKey               = 13;
+    string AppKey                  = 14;
+}
+
+enum AppConfigType {
+    INT    = 0;
+    BOOL   = 1;
+    STRING = 2;
+}
+
+message AppConfigItem{
+    string        GroupId     = 1;
+    ActionType    Action      = 2;
+    string        Name        = 3;
+    AppConfigType Type        = 4;
+    string        Value       = 5;
+    string        OwnerPubkey = 6;
+    string        OwnerSign   = 7;
+    string        Memo        = 8;
+    int64         TimeStamp   = 9;
+}
+
+message PSPing {
+    int32 Seqnum        = 1;
+    bool  IsResp        = 2;
+    int64 TimeStamp     = 3;
+    bytes Payload       = 4;
+}
+
+message GroupSeed {
+    Block  GenesisBlock   = 1;
+    string GroupId        = 2;
+    string GroupName      = 3;
+    string OwnerPubkey    = 4;
+    string ConsensusType  = 5;
+    string EncryptionType = 6;
+    string CipherKey      = 7;
+    string AppKey         = 8;
+    string Signature      = 9;
+}
+
+message NodeSDKGroupItem {
+    GroupItem Group          = 1;
+    string    EncryptAlias   = 2;
+    string    SignAlias      = 3;
+    repeated  string ApiUrl  = 4;
+    string    GroupSeed      = 5;
+}
+
+enum HBBMsgType {
+    AGREEMENT = 0;
+    BROADCAST = 1;
+}
+
+message HBMsg {
+    string      MsgId   = 1;
+    HBBMsgType  MsgType = 2;
+    int64       Epoch   = 3;       
+    bytes       Payload = 4;
+}
+
+enum BroadcastMsgType {
+    PROOF = 0;
+    READY = 1;
+}
+
+message HBTrxBundle {
+    repeated Trx Trxs = 1;
+}
+
+message BroadcastMsg {
+    BroadcastMsgType Type         = 2;
+    bytes            Payload      = 4;
+}
+
+message Proof{ 
+    bytes          RootHash       = 1;
+    repeated bytes Proof          = 2;
+    int64          Index          = 3;
+    int64          Leaves         = 4;
+    string         ProposerPubkey = 5;
+    bytes          ProposerSign   = 6;
+}
+
+message Ready {
+    bytes  RootHash             = 1;
+    string ProofProviderPubkey  = 2;
+    string ProposerPubkey       = 3;
+    bytes  ProposerSign         = 4;
+}
+
+enum AgreementMsgType {
+    BVAL  = 0;
+    AUX   = 1;
+}
+
+message AgreementMsg {
+    AgreementMsgType  Type       = 1;
+    string            ProposerId = 2;
+    string            SenderId   = 3;
+    int64             Epoch      = 4;
+    bytes             Payload    = 5;
+}
+
+message Bval {
+    bool Value = 1;
+}
+
+message Aux {
+    bool Value = 1;
+}

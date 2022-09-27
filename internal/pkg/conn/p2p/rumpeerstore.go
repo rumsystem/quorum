@@ -2,10 +2,11 @@ package p2p
 
 import (
 	"fmt"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type RumPeer struct {

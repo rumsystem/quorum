@@ -10,9 +10,8 @@ import (
 	"time"
 
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	discovery "github.com/libp2p/go-libp2p-discovery"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
+	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
@@ -25,6 +24,7 @@ import (
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
 )
 
