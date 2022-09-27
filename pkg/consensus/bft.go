@@ -36,11 +36,9 @@ func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	bft_log.Debugf("AddTrx called")
 	//bft_log.Debugf("IsSudoTrx : <%v>", tx.SudoTrx)
 	bft.txBuffer.Push(tx)
-	/*
-		newEpoch := bft.producer.grpItem.Epoch + 1
-		bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
-		bft.propose(newEpoch)
-	*/
+	newEpoch := bft.producer.grpItem.Epoch + 1
+	bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
+	bft.propose(newEpoch)
 	return nil
 }
 
