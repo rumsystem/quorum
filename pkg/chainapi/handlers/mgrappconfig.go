@@ -31,7 +31,7 @@ type AppConfigResult struct {
 	TrxId   string `json:"trx_id" validate:"required"`
 }
 
-func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
+func MgrAppConfig(params *AppConfigParam, sudo bool) (*AppConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 		item.OwnerPubkey = group.Item.OwnerPubKey
 		item.OwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdAppConfig(item)
+		trxId, err := group.UpdAppConfig(item, sudo)
 
 		if err != nil {
 			return nil, err

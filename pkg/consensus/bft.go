@@ -16,9 +16,10 @@ var bft_log = logging.Logger("bft")
 
 type Bft struct {
 	Config
-	producer *MolassesProducer
-	acsInsts map[int64]*ACS //map key is epoch
-	txBuffer *TrxBuffer
+	producer     *MolassesProducer
+	acsInsts     map[int64]*ACS //map key is epoch
+	txBuffer     *TrxBuffer
+	sudoTxBuffer *TrxBuffer
 }
 
 func NewBft(cfg Config, producer *MolassesProducer) *Bft {
@@ -33,12 +34,32 @@ func NewBft(cfg Config, producer *MolassesProducer) *Bft {
 
 func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	bft_log.Debugf("AddTrx called")
+	bft_log.Debugf("IsSudoTrx : <%v>", tx.SudoTrx)
 	bft.txBuffer.Push(tx)
+	/*
+		newEpoch := bft.producer.grpItem.Epoch + 1
+		bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
+		bft.propose(newEpoch)
+	*/
+	return nil
+}
 
-	newEpoch := bft.producer.grpItem.Epoch + 1
+func (bft *Bft) AddSudoTrx(tx *quorumpb.Trx) error {
+	bft_log.Debugf("AddSudoTrx called")
 
-	bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
-	bft.propose(newEpoch)
+	//check if sudotrx is from group owner
+	if bft.producer.grpItem.OwnerPubKey != tx.SenderPubkey {
+		bft_log.Warnf("SudoTrx <%s> from non owner <%s>, ignore", tx.TrxId, tx.SenderPubkey)
+		return nil
+	}
+
+	//check if I am owner
+	if bft.producer.grpItem.OwnerPubKey != bft.producer.grpItem.UserSignPubkey {
+		bft_log.Warnf("Ignore by me, owner node will handle sudotrx <%s>", tx.SenderPubkey)
+		return nil
+	}
+
+	//SudoTrx will bypass consensus, owner node will generate SudoBlock by itself
 
 	return nil
 }
@@ -87,9 +108,6 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	}
 
 	//TBD order trx
-
-	//bft_log.Infof("trx[] %v", trxs)
-
 	err := hb.buildBlock(epoch, trxs)
 	if err != nil {
 		bft_log.Warnf(err.Error())
@@ -128,7 +146,6 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 		bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
 		hb.propose(newEpoch)
 	}
-
 }
 
 func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
@@ -154,7 +171,8 @@ func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 
 	//create block
 	ks := localcrypto.GetKeystore()
-	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
+	sudo := false
+	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
 	if err != nil {
 		return err
 	}

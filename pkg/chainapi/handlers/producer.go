@@ -30,7 +30,7 @@ type GrpProducerParam struct {
 	Memo           string   `from:"memo"            json:"memo"`
 }
 
-func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*GrpProducerResult, error) {
+func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sudo bool) (*GrpProducerResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
@@ -105,7 +105,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*G
 
 		bftProducerBundle.Producers = producers
 
-		trxId, err := group.UpdProducerBundle(bftProducerBundle)
+		trxId, err := group.UpdProducerBundle(bftProducerBundle, sudo)
 
 		if err != nil {
 			return nil, err

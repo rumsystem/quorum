@@ -31,7 +31,7 @@ type AnnounceParam struct {
 	Memo    string `from:"memo"        json:"memo"`
 }
 
-func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
+func AnnounceHandler(params *AnnounceParam, sudo bool) (*AnnounceResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
@@ -46,6 +46,10 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		return nil, rumerrors.ErrGroupNotFound
 	} else {
+		if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
+			return nil, errors.New("Only group owner can run sudo")
+		}
+
 		//check announce type according to node type, see document for more details
 		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 			if params.Type != "producer" {

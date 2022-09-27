@@ -1243,6 +1243,10 @@ github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383 h1:AEHW94qUDxgYL
 github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383/go.mod h1:kKyQafGZXzEwsNPvbZQZiLo0+HhwU5BYrB3kQmmfAs4=
 github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4 h1:L2dcF739Rm5OoXxpuLnXj5XmqXbi7Hvi/BtKb/tGveo=
 github.com/rumsystem/keystore v0.0.0-20220725160135-7a6fb482bfb4/go.mod h1:nKn5yxGheL0r26G47N9ui50TFyCtKYtq0pUkP4BDfsM=
+github.com/rumsystem/rumchaindata v0.0.0-20220916225719-dc1e52fd094b h1:rmXJHEUl/JqGpyqzpSkvQfk9FXYQj7EiP1f5ltLqPE0=
+github.com/rumsystem/rumchaindata v0.0.0-20220916225719-dc1e52fd094b/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
+github.com/rumsystem/rumchaindata v0.0.0-20220926184442-c3734034c35d h1:GlZnXRYCgogYA/k7MA0EJxm0qSJTUzsKx2NHcaNoOgw=
+github.com/rumsystem/rumchaindata v0.0.0-20220926184442-c3734034c35d/go.mod h1:MICQdzVCNzf7nRghRGalca/oNqJmROVmehRMIEqg3ck=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=

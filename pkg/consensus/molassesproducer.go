@@ -218,10 +218,19 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 		return
 	}
 
-	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
-	err = producer.bft.AddTrx(trx)
-	if err != nil {
-		molaproducer_log.Errorf("add trx failed %s", err.Error())
+	if trx.SudoTrx {
+		molaproducer_log.Debugf("<%s> Molasses AddTrx called, add sudo trx <%s>", producer.groupId, trx.TrxId)
+		err = producer.bft.AddTrx(trx)
+		if err != nil {
+			molaproducer_log.Errorf("add trx failed %s", err.Error())
+		}
+	} else {
+		molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
+		err = producer.bft.AddTrx(trx)
+		if err != nil {
+			molaproducer_log.Errorf("add trx failed %s", err.Error())
+		}
+
 	}
 }
 

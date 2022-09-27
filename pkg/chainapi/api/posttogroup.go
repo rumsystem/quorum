@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
@@ -25,7 +26,21 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 		return err
 	}
 
-	res, err := handlers.PostToGroup(paramspb)
+	//var sudo bool
+	sudo, err := strconv.ParseBool(c.Param("sudo"))
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	/*
+		if c.QueryParams().Get("sudo") == "" {
+			sudo = false
+		} else {
+
+		}
+	*/
+
+	res, err := handlers.PostToGroup(paramspb, sudo)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

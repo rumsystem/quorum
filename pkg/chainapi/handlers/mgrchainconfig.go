@@ -43,7 +43,7 @@ type ChainConfigResult struct {
 	TrxId            string `json:"trx_id"       validate:"required"`
 }
 
-func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
+func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -57,6 +57,10 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	}
 
 	group := groupmgr.Groups[params.GroupId]
+
+	if group.Item.UserSignPubkey != group.Item.OwnerPubKey {
+		return nil, errors.New("Only group owner can run sudo mode")
+	}
 
 	ks := nodectx.GetNodeCtx().Keystore
 	base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)

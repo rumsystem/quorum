@@ -223,7 +223,7 @@ func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) PostToGroup(content proto.Message) (string, error) {
+func (grp *Group) PostToGroup(content proto.Message, sudo bool) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
@@ -235,48 +235,48 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		trx.SudoTrx = sudo
 		return grp.sendTrx(trx, conn.ProducerChannel)
 	}
+
 	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content)
 	if err != nil {
 		return "", err
 	}
+	trx.SudoTrx = sudo
+
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) UpdProducerBundle(item *quorumpb.BFTProducerBundleItem) (string, error) {
+func (grp *Group) UpdProducerBundle(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
 	if err != nil {
 		return "", nil
 	}
+
+	trx.SudoTrx = sudo
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
+func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool) (string, error) {
 	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx("", item)
 	if err != nil {
 		return "", nil
 	}
+	trx.SudoTrx = sudo
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) UpdSchema(item *quorumpb.SchemaItem) (string, error) {
-	group_log.Debugf("<%s> UpdSchema called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdSchemaTrx("", item)
-	if err != nil {
-		return "", nil
-	}
-	return grp.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
+func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool) (string, error) {
 	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
 	if err != nil {
 		return "", nil
 	}
+	trx.SudoTrx = sudo
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
