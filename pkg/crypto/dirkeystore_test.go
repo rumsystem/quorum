@@ -8,7 +8,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/rumsystem/quorum/pkg/options"
+	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
 func TestInitDirKeyStore(t *testing.T) {
