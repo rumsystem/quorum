@@ -123,15 +123,6 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	return true, nil
 }
 
-func newPubQueueDb() (*storage.QSIndexDB, error) {
-	appDb := quorumStorage.QSIndexDB{}
-	err := appDb.Init("pubqueue")
-	if err != nil {
-		return nil, err
-	}
-	return &appDb, nil
-}
-
 func newAppDb() (*storage.QSIndexDB, error) {
 	appDb := quorumStorage.QSIndexDB{}
 	err := appDb.Init("app")
