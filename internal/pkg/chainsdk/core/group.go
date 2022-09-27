@@ -86,7 +86,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.NewChain(grp)
 
-	err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(item.GenesisBlock, false, grp.ChainCtx.nodename)
+	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, false, grp.ChainCtx.nodename)
 	if err != nil {
 		return err
 	}

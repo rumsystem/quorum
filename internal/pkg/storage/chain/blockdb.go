@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -12,6 +13,15 @@ import (
 //add block
 func (cs *Storage) AddBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
 	return cs.dbmgr.SaveBlock(block, cached, prefix...)
+}
+
+//add genesis block
+func (cs *Storage) AddGensisBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
+	err := cs.dbmgr.SaveBlock(block, cached, prefix...)
+	if err == rumerrors.ErrBlockExist {
+		return nil
+	}
+	return err
 }
 
 //remove block
