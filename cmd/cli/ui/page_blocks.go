@@ -14,10 +14,10 @@ import (
 	"code.rocketnine.space/tslocum/cbind"
 	"code.rocketnine.space/tslocum/cview"
 	"github.com/gdamore/tcell/v2"
-	qCrypto "github.com/rumsystem/pkg/crypto"
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
+	qCrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/pkg/pb"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )

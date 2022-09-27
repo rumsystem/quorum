@@ -23,7 +23,7 @@ import (
 	"github.com/google/uuid"
 	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	peer "github.com/libp2p/go-libp2p/core/peer"
-	quorumStorage "github.com/rumsystem/quorum/pkg/storage"
+	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 type BrowserKeystore struct {
