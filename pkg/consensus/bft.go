@@ -171,8 +171,8 @@ func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 
 	//create block
 	ks := localcrypto.GetKeystore()
-	//sudo := false
-	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
+	sudo := false
+	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, hb.producer.grpItem.UserSignPubkey, witnesses, ks, "", hb.producer.nodename)
 	if err != nil {
 		return err
 	}
