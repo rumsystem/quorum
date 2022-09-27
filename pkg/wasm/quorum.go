@@ -115,21 +115,12 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 
 	/* Bootstrap will connect to all bootstrap nodes in config.
 	since we can not listen in browser, there is no need to anounce */
-	err = Bootstrap()
+	err = Bootstrap(&appDb.Db)
 	if err != nil {
 		return false, err
 	}
 
 	return true, nil
-}
-
-func newPubQueueDb() (*storage.QSIndexDB, error) {
-	appDb := quorumStorage.QSIndexDB{}
-	err := appDb.Init("pubqueue")
-	if err != nil {
-		return nil, err
-	}
-	return &appDb, nil
 }
 
 func newAppDb() (*storage.QSIndexDB, error) {
@@ -162,7 +153,7 @@ func newStoreManager() (*storage.DbMgr, error) {
 	return &storeMgr, nil
 }
 
-func Bootstrap() error {
+func Bootstrap(appdb *storage.QuorumStorage) error {
 	wasmCtx := quorumContext.GetWASMContext()
 
 	/* connect to bootstraps */
@@ -174,15 +165,11 @@ func Bootstrap() error {
 	connectedPeers := wasmCtx.QNode.AddPeers(wasmCtx.Ctx, bootstraps)
 	mainLogger.Info(fmt.Sprintf("Connected to %d peers", connectedPeers))
 
-	/*init the publish queue watcher*/
-	pubqueueDb, err := newPubQueueDb()
-	if err != nil {
-		return err
-	}
-	chain.InitPublishQueueWatcher(wasmCtx.PubqueueChan, chain.GetGroupMgr(), pubqueueDb)
+	/* init the publish queue watcher */
+	chain.InitPublishQueueWatcher(wasmCtx.PubqueueChan, chain.GetGroupMgr(), *appdb)
 
 	/* start syncing all local groups */
-	err = chain.GetGroupMgr().LoadAllGroups()
+	err := chain.GetGroupMgr().LoadAllGroups()
 	if err != nil {
 		return err
 	}

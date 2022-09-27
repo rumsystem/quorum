@@ -71,17 +71,6 @@ func init() {
 	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 
-func createPubQueueDb(path string) (*storage.QSBadger, error) {
-	var err error
-	pubQueueDb := storage.QSBadger{}
-	err = pubQueueDb.Init(path + "_pubqueue")
-	if err != nil {
-		return nil, err
-	}
-
-	return &pubQueueDb, nil
-}
-
 func runFullnode(config cli.FullnodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
@@ -238,13 +227,15 @@ func runFullnode(config cli.FullnodeFlag) {
 			chain.GetGroupMgr().SetRumExchangeTestMode()
 		}
 
-		// init the publish queue watcher
-		doneCh := make(chan bool)
-		pubqueueDb, err := createPubQueueDb(datapath)
+		appdb, err := appdata.CreateAppDb(datapath)
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
+		CheckLockError(err)
+
+		// init the publish queue watcher
+		doneCh := make(chan bool)
+		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()
@@ -257,12 +248,6 @@ func runFullnode(config cli.FullnodeFlag) {
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-
-		appdb, err := appdata.CreateAppDb(datapath)
-		if err != nil {
-			logger.Fatalf(err.Error())
-		}
-		CheckLockError(err)
 
 		//run local http api service
 		h := &api.Handler{
