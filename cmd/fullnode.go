@@ -26,7 +26,7 @@ import (
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
-	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	"github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
 	_ "google.golang.org/protobuf/proto" //import for swaggo
@@ -47,17 +47,6 @@ var userNodeCmd = &cobra.Command{
 		}
 		runFullNode(fullNodeFlag)
 	},
-}
-
-func createPubQueueDb(path string) (*storage.QSBadger, error) {
-	var err error
-	pubQueueDb := storage.QSBadger{}
-	err = pubQueueDb.Init(path + "_pubqueue")
-	if err != nil {
-		return nil, err
-	}
-
-	return &pubQueueDb, nil
 }
 
 func init() {
@@ -207,24 +196,22 @@ func runFullNode(config cli.FullNodeFlag) {
 	peerok := make(chan struct{})
 	go fullNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 
-	// init the publish queue watcher
-	doneCh := make(chan bool)
-	pubqueueDb, err := createPubQueueDb(datapath)
+	appdb, err := appdata.CreateAppDb(datapath)
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubqueueDb)
+
+	CheckLockError(err)
+
+	// init the publish queue watcher
+	doneCh := make(chan bool)
+	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
+
 	//start sync all groups
 	err = chain.GetGroupMgr().StartSyncAllGroups()
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-
-	appdb, err := appdata.CreateAppDb(datapath)
-	if err != nil {
-		logger.Fatalf(err.Error())
-	}
-	CheckLockError(err)
 
 	//run local http api service
 	h := &api.Handler{
