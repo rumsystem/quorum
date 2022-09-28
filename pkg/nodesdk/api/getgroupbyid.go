@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )

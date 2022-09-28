@@ -12,7 +12,7 @@ import (
 	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"

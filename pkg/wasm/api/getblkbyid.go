@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	qCrypto "github.com/rumsystem/keystore/pkg/crypto"
+	qCrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"

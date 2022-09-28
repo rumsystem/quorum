@@ -8,7 +8,7 @@ import (
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
