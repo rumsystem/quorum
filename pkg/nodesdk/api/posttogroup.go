@@ -10,8 +10,8 @@ import (
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 

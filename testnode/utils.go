@@ -13,7 +13,7 @@ import (
 
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 func RequestAPI(baseUrl string, endpoint string, method string, data string) (int, []byte, error) {

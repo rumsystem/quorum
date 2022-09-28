@@ -10,7 +10,7 @@ import (
 	"github.com/google/orderedcode"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 var appdatalog = logging.Logger("appdata")
