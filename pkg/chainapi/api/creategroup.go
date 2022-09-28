@@ -7,7 +7,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	_ "github.com/rumsystem/rumchaindata/pkg/pb" //import for swaggo
+	_ "github.com/rumsystem/quorum/pkg/pb" //import for swaggo
 )
 
 // @Tags Groups

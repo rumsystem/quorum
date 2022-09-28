@@ -4,7 +4,7 @@ import (
 	"errors"
 	guuid "github.com/google/uuid"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 	"time"
 )

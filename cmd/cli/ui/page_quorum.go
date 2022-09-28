@@ -22,7 +22,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
 	"github.com/rumsystem/quorum/cmd/cli/utils"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 var quorumPage = cview.NewFlex()
