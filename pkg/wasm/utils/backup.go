@@ -15,7 +15,7 @@ import (
 	"filippo.io/age"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"

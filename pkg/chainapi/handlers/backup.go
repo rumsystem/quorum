@@ -21,8 +21,8 @@ import (
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/rumsystem/keystore/pkg/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/rumsystem/quorum/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type BackupParam struct {
