@@ -42,10 +42,10 @@ type Gsyncer struct {
 	GroupId      string
 	waitEpoch    int64 //waiting the task response for epoch
 	retryCount   int8
+	retrySeconds int
 	retrycountmu sync.Mutex
 	taskq        chan *EpochSyncTask
 	resultq      chan *SyncResult
-	retrynext    bool //workaround for rumexchange
 	taskdone     chan struct{}
 	stopnotify   chan struct{}
 
@@ -74,9 +74,17 @@ func (s *Gsyncer) RetryCounterInc() {
 	s.retryCount++
 	s.retrycountmu.Unlock()
 }
+
+func (s *Gsyncer) SetRetrySeconds(sec int) {
+	s.retrycountmu.Lock()
+	s.retrySeconds = sec
+	s.retrycountmu.Unlock()
+}
+
 func (s *Gsyncer) RetryCounterClear() {
 	s.retrycountmu.Lock()
 	s.retryCount = 0
+	s.retrySeconds = 0
 	s.retrycountmu.Unlock()
 }
 
@@ -160,6 +168,12 @@ func (s *Gsyncer) Start() {
 				//retry this task
 				gsyncer_log.Debugf("<%s> task process epoch %d error: %s, retry...", s.GroupId, task.Epoch, err)
 				s.RetryCounterInc()
+				if s.retrySeconds > 0 {
+					gsyncer_log.Debugf("<%s> task process epoch %d wait %ds to retry", s.GroupId, task.Epoch, s.retrySeconds)
+					time.Sleep(time.Duration(s.retrySeconds) * time.Second)
+				}
+				//TEST
+				s.SetRetrySeconds(int(s.retryCount))
 				s.addTask(task)
 			}
 		}
