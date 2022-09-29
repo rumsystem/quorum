@@ -186,6 +186,7 @@ func (psconn *P2pPubSubConn) Publish(data []byte) error {
 		size := float64(metric.GetBinarySize(data))
 		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToTopic).Inc()
 		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToTopic).Set(size)
+		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToTopic).Add(size)
 	}
 
 	return err
@@ -200,6 +201,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 				size := float64(metric.GetProtoSize(&pkg))
 				metric.SuccessCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
 				metric.InBytes.WithLabelValues(metric.ActionType.ReceiveFromTopic).Set(size)
+				metric.InBytesTotal.WithLabelValues(metric.ActionType.ReceiveFromTopic).Add(size)
 
 				if pkg.Type == quorumpb.PackageType_BLOCK {
 					//is block
