@@ -146,6 +146,7 @@ func (r *RexService) PublishToStream(msg *quorumpb.RumMsg, s network.Stream) err
 		size := float64(metric.GetProtoSize(msg))
 		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToStream).Inc()
 		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToStream).Set(size)
+		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToStream).Add(size)
 	}
 	bufw.Flush()
 	return nil
@@ -182,6 +183,7 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 		size := float64(metric.GetProtoSize(msg))
 		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToPeerid).Inc()
 		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToPeerid).Set(size)
+		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToPeerid).Add(size)
 
 		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
 	}
@@ -259,9 +261,11 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 		if rummsg.MsgType == quorumpb.RumMsgType_RELAY_REQ {
 			metric.SuccessCount.WithLabelValues(metric.ActionType.RumRelayReq).Inc()
 			metric.InBytes.WithLabelValues(metric.ActionType.RumRelayReq).Set(rumMsgSize)
+			metric.InBytesTotal.WithLabelValues(metric.ActionType.RumRelayReq).Add(rumMsgSize)
 		} else if rummsg.MsgType == quorumpb.RumMsgType_RELAY_RESP {
 			metric.SuccessCount.WithLabelValues(metric.ActionType.RumRelayResp).Inc()
 			metric.InBytes.WithLabelValues(metric.ActionType.RumRelayResp).Set(rumMsgSize)
+			metric.InBytesTotal.WithLabelValues(metric.ActionType.RumRelayResp).Add(rumMsgSize)
 		}
 
 		for _, v := range r.msgtypehandlers {
@@ -273,6 +277,7 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 	case quorumpb.RumMsgType_CHAIN_DATA:
 		metric.SuccessCount.WithLabelValues(metric.ActionType.RumChainData).Inc()
 		metric.InBytes.WithLabelValues(metric.ActionType.RumChainData).Set(rumMsgSize)
+		metric.InBytesTotal.WithLabelValues(metric.ActionType.RumChainData).Add(rumMsgSize)
 
 		for _, v := range r.msgtypehandlers {
 			if v.Name == "rumchaindata" {
