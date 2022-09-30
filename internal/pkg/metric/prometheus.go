@@ -61,11 +61,29 @@ var (
 		[]string{"action"},
 	)
 
+	InBytesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "in_bytes_total",
+			Help:      "Total count of bytes received",
+		},
+		[]string{"action"},
+	)
+
 	OutBytes = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "out_bytes",
 			Help:      "Current count of bytes sent",
+		},
+		[]string{"action"},
+	)
+
+	OutBytesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "out_bytes_total",
+			Help:      "Total count of bytes sent",
 		},
 		[]string{"action"},
 	)
