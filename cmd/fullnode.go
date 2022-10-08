@@ -234,8 +234,13 @@ func runFullnode(config cli.FullnodeFlag) {
 		CheckLockError(err)
 
 		// init the publish queue watcher
+		pubquedb := appdb.Db
+		if nodeoptions.EnablePubQue == false {
+			pubquedb = nil
+		}
+
 		doneCh := make(chan bool)
-		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
+		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubquedb)
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()

@@ -90,6 +90,9 @@ type PublishQueueWatcher struct {
 }
 
 func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
+	if watcher.db == nil {
+		return nil
+	}
 	newK, err := item.GetKey()
 	if err != nil {
 		return err
@@ -164,23 +167,23 @@ func GetPubQueueWatcher() *PublishQueueWatcher {
 }
 
 func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
-
 	publishQueueWatcher.db = db
 	publishQueueWatcher.running = false
 	publishQueueWatcher.groupMgrIface = groupMgrIface
-
-	// hard coded to 10s
-	ticker := time.NewTicker(10 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				doRefresh()
+	if db != nil {
+		// hard coded to 10s
+		ticker := time.NewTicker(10 * time.Second)
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					doRefresh()
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 func doRefresh() {
