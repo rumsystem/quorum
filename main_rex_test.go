@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	api "github.com/rumsystem/quorum/pkg/chainapi/api"
 	"github.com/rumsystem/quorum/testnode"
 )
@@ -21,6 +21,7 @@ var (
 	bootstrapapi, peer1api, peer2api          string
 	peerapilist, groupIds                     []string
 	timerange, nodes, groups, posts, synctime int
+	logger                                    = logging.Logger("main_rex_test")
 )
 
 func TestMain(m *testing.M) {
@@ -39,14 +40,14 @@ func TestMain(m *testing.M) {
 	posts = *postsPtr
 	synctime = *synctimePtr
 
-	log.Printf("Setup testing nodes: %d, groups: %d, posts: %d\n", nodes, groups, posts)
-	log.Println(pidlist)
+	logger.Debugf("Setup testing nodes: %d, groups: %d, posts: %d\n", nodes, groups, posts)
+	logger.Debug(pidlist)
 	pidch := make(chan int)
 	go func() {
 		for {
 			select {
 			case pid := <-pidch:
-				log.Println("receive pid", pid)
+				logger.Debug("receive pid", pid)
 				pidlist = append(pidlist, pid)
 				if len(pidlist) == 3 {
 					return
@@ -58,9 +59,9 @@ func TestMain(m *testing.M) {
 	cliargs := testnode.Nodecliargs{Rextest: *rextestmode}
 	var tempdatadir string
 	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, nodes)
-	log.Println("peers: ", peerapilist)
+	logger.Debug("peers: ", peerapilist)
 	exitVal := m.Run()
-	log.Println("after tests clean:", tempdatadir)
+	logger.Debug("after tests clean:", tempdatadir)
 	testnode.Cleanup(tempdatadir, peerapilist)
 	os.Exit(exitVal)
 }
@@ -68,7 +69,7 @@ func TestMain(m *testing.M) {
 // create n groups on each peer, post contents, then join all groups, wait for sync, and verify peerN groups == peerM groups
 func TestGroupsContentsRexSync(t *testing.T) {
 
-	log.Printf("_____________TestGroupsContentsRexSync_RUNNING_____________")
+	logger.Debugf("_____________TestGroupsContentsRexSync_RUNNING_____________")
 
 	var seedsByNode [][]string
 
@@ -89,7 +90,7 @@ func TestGroupsContentsRexSync(t *testing.T) {
 					seedurl := objmap["seed"]
 					groupId := testnode.SeedUrlToGroupId(seedurl.(string))
 					groupIds = append(groupIds, groupId)
-					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
+					logger.Debugf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
 			} else {
 				t.Errorf("create group on peer%d error %s", 1, err)
@@ -99,7 +100,7 @@ func TestGroupsContentsRexSync(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-	log.Printf("_____________create group done_____________")
+	logger.Debugf("_____________create group done_____________")
 	ready := "IDLE"
 	waitingcounter := 10
 
@@ -126,9 +127,9 @@ func TestGroupsContentsRexSync(t *testing.T) {
 				}
 
 				for _, groupinfo := range groupslist.GroupInfos {
-					log.Printf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
+					logger.Debugf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
 					if groupinfo.GroupStatus != ready {
-						log.Printf("group %s status is %s not ready.", groupinfo.GroupId, groupinfo.GroupStatus)
+						logger.Debugf("group %s status is %s not ready.", groupinfo.GroupId, groupinfo.GroupStatus)
 						ok = false
 					}
 				}
@@ -144,7 +145,7 @@ func TestGroupsContentsRexSync(t *testing.T) {
 		}
 		waitingcounter -= 1
 	}
-	log.Printf("_____________group status verify done_____________")
+	logger.Debugf("_____________group status verify done_____________")
 
 	groupIdToTrxIds := map[string][]string{}
 	for peeridx, peerapi := range peerapilist {
@@ -182,14 +183,14 @@ func TestGroupsContentsRexSync(t *testing.T) {
 					mean := float64(timerange) / 2.0
 					stddev := mean / 3.0
 					sleepTime := rand.NormFloat64()*stddev + mean + 5
-					log.Printf("sleep: %.2f s before next post\n", sleepTime)
+					logger.Debugf("sleep: %.2f s before next post\n", sleepTime)
 					time.Sleep(time.Duration(sleepTime*1000) * time.Millisecond)
 				}
 			}
 		}
 	}
 
-	log.Printf("Wait 20s for sync")
+	logger.Debugf("Wait 20s for sync")
 	time.Sleep(20 * time.Second)
 
 	grouptrxsbefore := make(map[string]int)
@@ -210,7 +211,7 @@ func TestGroupsContentsRexSync(t *testing.T) {
 		}
 	}
 
-	log.Printf("_____________join all groups_____________")
+	logger.Debugf("_____________join all groups_____________")
 	for peerIdx, peerapi := range peerapilist {
 		for seedIdx := 0; seedIdx < nodes; seedIdx++ {
 			if seedIdx != peerIdx {
@@ -231,7 +232,7 @@ func TestGroupsContentsRexSync(t *testing.T) {
 		}
 	}
 
-	log.Printf("Wait 20s for sync")
+	logger.Debugf("Wait 20s for sync")
 	time.Sleep(20 * time.Second)
 
 	grouptrxsafter := make(map[string]int)
@@ -259,6 +260,6 @@ func TestGroupsContentsRexSync(t *testing.T) {
 		if v != beforenum {
 			t.Errorf("not match key %s value %d expect %d", key, v, beforenum)
 		}
-		log.Printf("peer %s group %s trxs number: %d", keys[1], keys[0], v)
+		logger.Debugf("peer %s group %s trxs number: %d", keys[1], keys[0], v)
 	}
 }

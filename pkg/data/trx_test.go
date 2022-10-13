@@ -1,14 +1,18 @@
 package data
 
 import (
-	"log"
 	"testing"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var signKeyMap = map[string]string{}
+var (
+	signKeyMap = map[string]string{}
+
+	logger = logging.Logger("data")
+)
 
 type TestNonce struct {
 	nonce uint64
@@ -48,7 +52,7 @@ func TestVerifyTrx(t *testing.T) {
 	groupitem := GetGroupItem()
 	trxFactory.Init("1.0.0", groupitem, "default", tn)
 	addr, pubkey, err := GetKeyStorePubKey(groupitem.GroupId, keystoreDir)
-	log.Printf("new eth key addr:%s", addr)
+	logger.Debugf("new eth key addr:%s", addr)
 	if err != nil {
 		t.Errorf("keystore new key err : %s", err)
 	}
@@ -71,7 +75,7 @@ func TestVerifyTrxByAddress(t *testing.T) {
 	groupitem := GetGroupItem()
 	trxFactory.Init("1.0.0", groupitem, "default", tn)
 	addr, _, err := GetKeyStorePubKey(groupitem.GroupId, keystoreDir)
-	log.Printf("new eth key addr:%s", addr)
+	logger.Debugf("new eth key addr:%s", addr)
 	if err != nil {
 		t.Errorf("keystore new key err : %s", err)
 	}
