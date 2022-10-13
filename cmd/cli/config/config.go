@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -31,6 +30,7 @@ type RumCliConfig struct {
 var RumConfig RumCliConfig
 var Logger *logging.ZapEventLogger
 var absConfigFilePath string
+var logger = logging.Logger("cli.config")
 
 func Init(configPath string) {
 	var configFilePath string
@@ -75,12 +75,12 @@ func initLogger() {
 	// init log file
 	logFilePath, err := xdg.ConfigFile("rumcli/rumcli.log")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	// truncate error log on each starts
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	f.Close()
 	if Logger == nil {
@@ -99,24 +99,24 @@ func initKeyStore() {
 	if RumConfig.Quorum.KeyStoreName != "" && RumConfig.Quorum.KeyStoreDir != "" {
 		kCount, err := qCrypto.InitKeystore(RumConfig.Quorum.KeyStoreName, RumConfig.Quorum.KeyStoreDir)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 		ksi := qCrypto.GetKeystore()
 		ks, ok := ksi.(*qCrypto.DirKeyStore)
 		if !ok {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 		if kCount > 0 {
 			password := RumConfig.Quorum.KeyStorePass
 			if password == "" {
 				password, err = qCrypto.PassphrasePromptForUnlock()
 				if err != nil {
-					log.Fatal(err)
+					logger.Fatal(err)
 				}
 			}
 			err = ks.Unlock(signKeyMap, password)
 			if err != nil {
-				log.Fatal(err)
+				logger.Fatal(err)
 			}
 		}
 		Logger.Infof("keystore OK, %d keys loaded", kCount)

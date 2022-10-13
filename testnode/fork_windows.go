@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package testnode
@@ -5,7 +6,6 @@ package testnode
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -24,10 +24,10 @@ func Fork(pidch chan int, keystorepassword string, cmdName string, cmdArgs ...st
 			"RUM_KSPASSWD="+keystorepassword,
 		)
 
-		log.Printf("run command: %s", command)
+		logger.Debugf("run command: %s", command)
 		err := command.Start()
 		if err != nil {
-			log.Println(err, string(stderr))
+			logger.Error(err, string(stderr))
 		}
 
 		var wg sync.WaitGroup
@@ -41,7 +41,7 @@ func Fork(pidch chan int, keystorepassword string, cmdName string, cmdArgs ...st
 		wg.Wait()
 
 		if errStdout != nil || errStderr != nil {
-			log.Fatal("failed to capture stdout or stderr\n")
+			logger.Error("failed to capture stdout or stderr")
 		}
 		outStr, errStr := string(stdout), string(stderr)
 		fmt.Printf("\nout:\n%s\nerr:\n%s\n", outStr, errStr)

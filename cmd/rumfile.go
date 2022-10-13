@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -155,7 +154,7 @@ func Download(destdir, apiPrefix, groupid, trxid string) error {
 func Upload(segmentsdir, groupid, apiPrefix string) error {
 	fileinfo, err := VerifySegments(segmentsdir)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	fmt.Println("uploading to ..", apiPrefix)
 	f, err := os.Open(filepath.Join(segmentsdir, "fileinfo"))
@@ -228,7 +227,7 @@ func Split(filename, tmpdir string) error {
 
 	err = FileToSegments(filename, fileinfo, tmpdir)
 	if err != nil {
-		log.Fatalf("error: %s", err)
+		logger.Fatalf("error: %s", err)
 		return err
 	}
 	return nil
@@ -273,11 +272,11 @@ type GroupContentObjectItem struct {
 func WriteFileinfo(segmentpath string, fileinfo *Fileinfo) {
 	data, err := json.Marshal(fileinfo)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	err = WriteToFile(segmentpath, "fileinfo", data)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	logger.Infof("Write fileinfo to %s/%s", segmentpath, "fileinfo")
@@ -300,10 +299,10 @@ func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(segmentpath, 0770)
 			if err != nil {
-				log.Fatal(err)
+				logger.Fatal(err)
 			}
 		} else {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 	}
 
@@ -321,10 +320,10 @@ func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
 			if err == io.EOF {
 				break
 			}
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 		if err != nil && err != io.EOF {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 
 		nChunks++
@@ -343,7 +342,7 @@ func FileToSegments(filename string, fileinfo *Fileinfo, tmpdir string) error {
 			seginfo := &Segmentinfo{Id: segname, Sha256: bufhashhex}
 			segfileinfolist = append(segfileinfolist, *seginfo)
 		} else {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 	}
 	logger.Infof("File bytes: %d, Write Segments:%d", nBytes, nChunks)
@@ -453,10 +452,10 @@ func VerifySegments(segmentpath string) (*Fileinfo, error) {
 	logger.Infof("Verify Segments %s ...", segmentpath)
 	fi, err := os.Stat(segmentpath)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	if fi.IsDir() == false {
-		log.Fatalf("Error, %s is not a file segments dir", segmentpath)
+		logger.Fatalf("Error, %s is not a file segments dir", segmentpath)
 	}
 	//read fileinfo
 	f, err := os.Open(filepath.Join(segmentpath, "fileinfo"))
@@ -489,7 +488,7 @@ func VerifySegments(segmentpath string) (*Fileinfo, error) {
 		filesha256 := filehash.Sum(nil)
 		sha256hex := hex.EncodeToString(filesha256[:])
 		if seg.Sha256 != sha256hex {
-			log.Fatalf("File segment %s verify error. expect checksum: %s, but file hash: %s", seg.Id, seg.Sha256, sha256hex)
+			logger.Fatalf("File segment %s verify error. expect checksum: %s, but file hash: %s", seg.Id, seg.Sha256, sha256hex)
 		}
 	}
 	return &fileinfo, nil

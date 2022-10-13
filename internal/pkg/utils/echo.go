@@ -51,7 +51,7 @@ func NewEcho(debug bool) *echo.Echo {
 	if debug {
 		e.Logger.SetLevel(log.DEBUG)
 	} else {
-		e.Logger.SetLevel(log.INFO)
+		e.Logger.SetLevel(log.ERROR)
 	}
 	e.Logger.SetHeader("${time_rfc3339_nano} ${level} ${prefix} ${short_file} ${line}")
 
@@ -74,13 +74,6 @@ func NewEcho(debug bool) *echo.Echo {
 			return next(cc)
 		}
 	})
-
-	// logs the information about each HTTP request
-	// ref: https://echo.labstack.com/middleware/logger/
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "${time_rfc3339_nano} method=${method} uri=${uri} status=${status} latency=${latency_human} error={${error}}\n",
-	}))
-
 	e.Use(middleware.Recover())
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
