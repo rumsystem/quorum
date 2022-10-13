@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"go/build"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 var (
 	_, b, _, _ = runtime.Caller(0)
 	basepath   = filepath.Join(filepath.Dir(b), "../")
+	logger     = logging.Logger("testnode")
 )
 
 const (
@@ -56,13 +57,13 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 	// wait bootstrap node
 	bootstrapBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport)
 	checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
-	log.Printf("request: %s", bootstrapBaseUrl)
+	logger.Debugf("request: %s", bootstrapBaseUrl)
 	bootstrappeerid, result := CheckNodeRunning(checkctx, bootstrapBaseUrl)
 	if result == false {
 		return "", []string{}, "", fmt.Errorf("bootstrap node start failed")
 	}
 	bootstrapaddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/20666/p2p/%s", bootstrappeerid)
-	log.Printf("bootstrap addr: %s\n", bootstrapaddr)
+	logger.Debugf("bootstrap addr: %s\n", bootstrapaddr)
 
 	// start other nodes
 	peerport := 17001
@@ -119,7 +120,7 @@ func newKeystore(ksdir string) (*localcrypto.DirKeyStore, bool) {
 func CleanTestData(dir string) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 	configdirexist := false
 	datadirexist := false
@@ -132,34 +133,33 @@ func CleanTestData(dir string) {
 		}
 	}
 	if configdirexist == true && datadirexist == true {
-		log.Printf("remove testdata:%s ...\n", dir)
+		logger.Debugf("remove testdata: %s ...", dir)
 		err = os.RemoveAll(dir)
 		if err != nil {
-			log.Printf("can't remove testdata:%s %s\n", dir, err)
+			logger.Errorf("can't remove testdata: %s %s", dir, err)
 		}
 	} else {
-		log.Printf("can't remove testdata:%s\n", dir)
+		logger.Warnf("can't remove testdata: %s", dir)
 	}
 }
 
 func Cleanup(dir string, peerapilist []string) {
-	log.Printf("Clean testdata path: %s ...", dir)
-	log.Println("peer api list", peerapilist)
+	logger.Debugf("Clean testdata path: %s ...", dir)
+	logger.Debug("peer api list", peerapilist)
 	//add bootstrap node
 	peerapilist = append(peerapilist, fmt.Sprintf("http://127.0.0.1:%d", 18010))
 	for _, peerapi := range peerapilist {
 		_, _, err := RequestAPI(peerapi, "/api/quit", "GET", "")
 		if err == nil {
-			log.Printf("kill node at %s ", peerapi)
+			logger.Debugf("kill node at %s ", peerapi)
 		}
-
 	}
 	//waiting 3 sencodes for all processes quit.
 	time.Sleep(3 * time.Second)
 
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	configdirexist := false
@@ -174,12 +174,12 @@ func Cleanup(dir string, peerapilist []string) {
 	}
 
 	if configdirexist == true && datadirexist == true {
-		log.Printf("remove testdata:%s ...\n", dir)
+		logger.Debugf("remove testdata:%s ...", dir)
 		err = os.RemoveAll(dir)
 		if err != nil {
-			log.Printf("can't remove testdata:%s %s\n", dir, err)
+			logger.Warnf("can't remove testdata: %s %s", dir, err)
 		}
 	} else {
-		log.Printf("can't remove testdata:%s\n", dir)
+		logger.Warnf("can't remove testdata: %s", dir)
 	}
 }
