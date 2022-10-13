@@ -29,6 +29,7 @@ var lightnodeCmd = &cobra.Command{
 		if lnodeFlag.KeyStorePwd == "" {
 			lnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
+		lnodeFlag.IsDebug = isDebug
 		runLightnode(lnodeFlag)
 	},
 }
@@ -48,12 +49,9 @@ func init() {
 	flags.StringVar(&lnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
 	flags.UintVar(&lnodeFlag.APIPort, "apiport", 5215, "api server listen port")
 	flags.StringVar(&lnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&lnodeFlag.IsDebug, "debug", false, "show debug log")
 }
 
 func runLightnode(config cli.LightnodeFlag) {
-	configLogger(config.IsDebug)
-
 	logger.Infof("Version: %s", utils.GitCommit)
 	const defaultKeyName = "nodesdk_default"
 

@@ -9,7 +9,7 @@ The rumcli needs an API server running first, all operations will go through the
 Use following command to start a local api server with a remote peer.
 
 ```bash
-quorum fullnode --peername chux0519_peer --listen /ip4/0.0.0.0/tcp/7002  --apiport 8002 --peer /ip4/167.114.61.179/tcp/10666/p2p/16Uiu2HAmE7TYnrYtC6tAsWvz4EUGQke1wsdrkw2kt8GFv6brfHFw --debug true
+quorum fullnode --peername chux0519_peer --listen /ip4/0.0.0.0/tcp/7002  --apiport 8002 --peer /ip4/167.114.61.179/tcp/10666/p2p/16Uiu2HAmE7TYnrYtC6tAsWvz4EUGQke1wsdrkw2kt8GFv6brfHFw --loglevel debug
 ```
 
 [The quorum project](https://github.com/rumsystem/quorum)

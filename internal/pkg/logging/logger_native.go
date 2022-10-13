@@ -5,6 +5,7 @@ package logging
 
 import (
 	log "github.com/ipfs/go-log/v2"
+	"go.uber.org/zap/zapcore"
 )
 
 func Logger(system string) QuorumLogger {
@@ -22,4 +23,8 @@ func SetAllLoggers(lvl int) {
 func LevelFromString(level string) (int, error) {
 	l, e := log.LevelFromString(level)
 	return int(l), e
+}
+
+func SetPrimaryCore(core zapcore.Core) {
+	log.SetPrimaryCore(core)
 }

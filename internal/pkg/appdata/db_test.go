@@ -2,11 +2,11 @@ package appdata
 
 import (
 	"fmt"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	"log"
 	"testing"
 	"time"
+
+	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
 )
 
 func ifTrxWithNonceSliceEqual(left []TrxIdNonce, right []TrxIdNonce) bool {
@@ -26,7 +26,7 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	name := "testappdb"
 	dbname := "appdata"
 	tempdir := fmt.Sprintf("%s/%s/%s", temppath, name, dbname)
-	log.Printf("tempdir %s", tempdir)
+	appdatalog.Debugf("tempdir %s", tempdir)
 
 	var err error
 	db := storage.QSBadger{}

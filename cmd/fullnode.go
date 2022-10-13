@@ -41,6 +41,7 @@ var fullnodeCmd = &cobra.Command{
 		if fnodeFlag.KeyStorePwd == "" {
 			fnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
+		fnodeFlag.IsDebug = isDebug
 		runFullnode(fnodeFlag)
 	},
 }
@@ -64,7 +65,6 @@ func init() {
 	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
 	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
 	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&fnodeFlag.IsDebug, "debug", false, "show debug log")
 	flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flags.BoolVar(&fnodeFlag.IsBootstrap, "bootstrap", false, "run a bootstrap node")
 	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
@@ -76,7 +76,6 @@ func runFullnode(config cli.FullnodeFlag) {
 	const defaultKeyName = "default"
 
 	logger.Infof("Version: %s", utils.GitCommit)
-	configLogger(fnodeFlag.IsDebug)
 
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
