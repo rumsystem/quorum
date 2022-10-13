@@ -1,19 +1,19 @@
 #!bin/bash
 
 #Start owner node
-RUM_KSPASSWD=123 go run main.go fullnode --peername owner --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir ownerkeystore --jsontracer ownertracer.json --debug true
+RUM_KSPASSWD=123 go run main.go fullnode --peername owner --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir ownerkeystore --jsontracer ownertracer.json --loglevel debug
 
 #Start node1
-RUM_KSPASSWD=123 go run main.go fullnode --peername n1 --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir n1keystore --jsontracer n1tracer.json --debug true
+RUM_KSPASSWD=123 go run main.go fullnode --peername n1 --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir n1keystore --jsontracer n1tracer.json --loglevel debug
 
 #start node2
-RUM_KSPASSWD=123 go run main.go fullnode --peername n2 --listen /ip4/127.0.0.1/tcp/7004 --apiport 8004 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir n2keystore --jsontracer n2tracer.json --debug true
+RUM_KSPASSWD=123 go run main.go fullnode --peername n2 --listen /ip4/127.0.0.1/tcp/7004 --apiport 8004 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir n2keystore --jsontracer n2tracer.json --loglevel debug
 
 #start producer1
-RUM_KSPASSWD=123 go run main.go fullnode --peername p1 --listen /ip4/127.0.0.1/tcp/7005 --apiport 8005 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir p1keystore --jsontracer p1tracer.json --debug true
+RUM_KSPASSWD=123 go run main.go fullnode --peername p1 --listen /ip4/127.0.0.1/tcp/7005 --apiport 8005 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir p1keystore --jsontracer p1tracer.json --loglevel debug
 
 #start producer2
-RUM_KSPASSWD=123 go run main.go fullnode --peername p1 --listen /ip4/127.0.0.1/tcp/7006 --apiport 8006 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir p1keystore --jsontracer p2tracer.json --debug true
+RUM_KSPASSWD=123 go run main.go fullnode --peername p1 --listen /ip4/127.0.0.1/tcp/7006 --apiport 8006 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAmFJTDvYqAgWk6rfNYNJhcCpPi2v6UDQrifhzgnVp3iKWg --keystoredir p1keystore --jsontracer p2tracer.json --loglevel debug
 
 #Owner create group
 curl -X POST -H 'Content-Type: application/json' -d '{"group_name":"my_test_group", "consensus_type":"poa", "encryption_type":"public", "app_key":"test_app"}' http://127.0.0.1:8002/api/v1/group
