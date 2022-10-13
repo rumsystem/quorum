@@ -282,85 +282,50 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
-	if networktype == conn.PubSub {
-		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-			return nil
-		}
-		chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-		clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
+	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+		return nil
+	}
+	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
+	clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 
-		requester, blocks, isEmpty, err := chain.chaindata.GetBlockForward(trx)
+	requester, blocks, isEmpty, err := chain.chaindata.GetBlockForward(trx)
+	if err != nil {
+		return err
+	}
+
+	//no block found
+	if isEmpty {
+		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
+		trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, blocks[0], quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
 		if err != nil {
 			return err
 		}
-
-		//no block found
-		if isEmpty {
-			chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
-			trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, blocks[0], quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
-			if err != nil {
-				return err
-			}
-
-			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-				return err
-			} else {
-				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
-			}
-		}
-
-		//send requested blocks out
-		for _, block := range blocks {
-			chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
-			trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-			if err != nil {
-				return err
-			}
-			if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-				return err
-			} else {
-				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
-			}
-		}
-	} else if networktype == conn.RumExchange {
-		subBlocks, err := chain.chaindata.GetBlockForwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
-		if err == nil {
-			if len(subBlocks) > 0 {
-				ks := nodectx.GetNodeCtx().Keystore
-				mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
-				if err != nil {
-					return err
-				}
-				for _, block := range subBlocks {
-					reqBlockRespItem, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-					chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
-					if err != nil {
-						return err
-					}
-
-					bItemBytes, err := proto.Marshal(reqBlockRespItem)
-					if err != nil {
-						return err
-					}
-
-					trx, err := chain.trxFactory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, "")
-					if err != nil {
-						return err
-					}
-
-					if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-						return err
-					} else {
-						//reply to the source net stream
-						return cmgr.SendTrxRex(trx, s)
-					}
-				}
-			} else {
-				chain_log.Debugf("no more block for <%s>, send ontop message?", chain.groupId)
-			}
-
+		if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
+			return err
 		} else {
-			chain_log.Debugf("GetBlockForwardByReqTrx err %s", err)
+			if networktype == conn.PubSub {
+				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
+			} else if networktype == conn.RumExchange {
+				return cmgr.SendTrxRex(trx, s)
+			}
+		}
+	}
+
+	//send requested blocks out
+	for _, block := range blocks {
+		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
+		trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
+		if err != nil {
+			return err
+		}
+		if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
+			return err
+		} else {
+			if networktype == conn.PubSub {
+				return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
+			} else if networktype == conn.RumExchange {
+				return cmgr.SendTrxRex(trx, s)
+			}
 		}
 	}
 	return nil
