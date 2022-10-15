@@ -7,11 +7,11 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -365,23 +365,23 @@ func (connMgr *ConnMgr) SendSnapshotPsconn(snapshot *quorumpb.Snapshot, psChanne
 	return fmt.Errorf("Can not find psChannel")
 }
 
-func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
-	conn_log.Debugf("<%s> SendBlockRex called", connMgr.GroupId)
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(blk)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_BLOCK
-	pkg.Data = pbBytes
-
-	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return connMgr.Rex.Publish(blk.GroupId, rummsg)
-
-}
+//func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
+//	conn_log.Debugf("<%s> SendBlockRex called", connMgr.GroupId)
+//	var pkg *quorumpb.Package
+//	pkg = &quorumpb.Package{}
+//
+//	pbBytes, err := proto.Marshal(blk)
+//	if err != nil {
+//		return err
+//	}
+//
+//	pkg.Type = quorumpb.PackageType_BLOCK
+//	pkg.Data = pbBytes
+//
+//	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+//	return connMgr.Rex.Publish(blk.GroupId, rummsg)
+//
+//}
 
 func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
@@ -421,7 +421,7 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 	return fmt.Errorf("Can not find psChannel")
 }
 
-func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
+func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
@@ -436,11 +436,32 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	if s == nil {
-		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg) //publish to all(or some random) peers
-	} else {
-		return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
+
+	//TODO: select a peer, create a stream s, wait for respose, timeout/error/succ and close the steam
+	//TODO:  add a timeout ctx to close the steam after timeout
+	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
+}
+
+func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) error {
+	conn_log.Debugf("<%s> SendRespTrxRex called", connMgr.GroupId)
+	if nodectx.GetNodeCtx().Node.RumExchange == nil {
+		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
+
+	if s == nil {
+		return errors.New("Resp peer steam can't be nil")
+	}
+
+	pbBytes, err := proto.Marshal(trx)
+	if err != nil {
+		return err
+	}
+	pkg := &quorumpb.Package{}
+	pkg.Type = quorumpb.PackageType_TRX
+	pkg.Data = pbBytes
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//TODO:  add a timeout ctx to close the steam after timeout
+	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {

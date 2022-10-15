@@ -189,7 +189,8 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		if sr.rumExchangeTestMode == false && sr.syncNetworkType == conn.PubSub {
 			return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
 		} else {
-			return connMgr.SendTrxRex(trx, nil)
+			//send the request, will wait for the response
+			return connMgr.SendReqTrxRex(trx)
 		}
 	} else {
 		gsyncer_log.Errorf("<%s> Unsupported task %s", sr.group.Item.GroupId, task.Id)
