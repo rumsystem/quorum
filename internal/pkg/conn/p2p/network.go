@@ -162,9 +162,7 @@ func (node *Node) SetRumExchange(ctx context.Context, cs csdef.ChainStorageIface
 	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
-	rexrelay := NewRexRelay(rexservice, cs)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
-	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
 	networklog.Infof("Enable protocol RumExchange")
 
 	node.peerStatus = peerStatus

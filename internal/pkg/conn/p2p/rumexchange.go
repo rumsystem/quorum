@@ -255,23 +255,6 @@ func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) 
 func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Stream) {
 	rumMsgSize := float64(metric.GetProtoSize(rummsg))
 	switch rummsg.MsgType {
-	case quorumpb.RumMsgType_RELAY_REQ, quorumpb.RumMsgType_RELAY_RESP:
-		if rummsg.MsgType == quorumpb.RumMsgType_RELAY_REQ {
-			metric.SuccessCount.WithLabelValues(metric.ActionType.RumRelayReq).Inc()
-			metric.InBytes.WithLabelValues(metric.ActionType.RumRelayReq).Set(rumMsgSize)
-			metric.InBytesTotal.WithLabelValues(metric.ActionType.RumRelayReq).Add(rumMsgSize)
-		} else if rummsg.MsgType == quorumpb.RumMsgType_RELAY_RESP {
-			metric.SuccessCount.WithLabelValues(metric.ActionType.RumRelayResp).Inc()
-			metric.InBytes.WithLabelValues(metric.ActionType.RumRelayResp).Set(rumMsgSize)
-			metric.InBytesTotal.WithLabelValues(metric.ActionType.RumRelayResp).Add(rumMsgSize)
-		}
-
-		for _, v := range r.msgtypehandlers {
-			if v.Name == "rumrelay" {
-				v.Handler(rummsg, s)
-				break
-			}
-		}
 	case quorumpb.RumMsgType_CHAIN_DATA:
 		metric.SuccessCount.WithLabelValues(metric.ActionType.RumChainData).Inc()
 		metric.InBytes.WithLabelValues(metric.ActionType.RumChainData).Set(rumMsgSize)
