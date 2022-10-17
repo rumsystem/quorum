@@ -246,12 +246,6 @@ func (r *RexService) PublishToOneRandom(msg *quorumpb.RumMsg) error {
 	return nil
 }
 
-func (r *RexService) PrivateChannelReady(connrespmsg *quorumpb.SessionConnResp) {
-	noti := RexNotification{JoinChannel, connrespmsg.ChannelId}
-	r.notificationch <- noti
-	rumexchangelog.Debugf("join channel %s notification emit %s.", connrespmsg.ChannelId, r.Host.ID())
-}
-
 func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Stream) {
 	rumMsgSize := float64(metric.GetProtoSize(rummsg))
 	switch rummsg.MsgType {
@@ -271,41 +265,7 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Str
 
 func (r *RexService) Handler(s network.Stream) {
 	ctx := context.Background()
-	r.HandlerProcessloop(ctx, s)
-}
-
-func (r *RexService) HandlerProcessloop(ctx context.Context, s network.Stream) {
-	remotePeer := s.Conn().RemotePeer()
-	rumexchangelog.Debugf("RumExchange stream handler %s start", remotePeer)
-	defer rumexchangelog.Debugf("RumExchange stream handler %s exit", remotePeer)
-
-	reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			msgdata, err := reader.ReadMsg()
-			if err != nil {
-				if err != io.EOF {
-					stat := s.Conn().Stat()
-					rumexchangelog.Debugf("RumExchange stream handler from %s error: %s, stat: %v", s.Conn().RemotePeer(), err, stat)
-					//TODO: close steam?
-					_ = s.Reset()
-					return
-				} else {
-					rumexchangelog.Debugf("RumExchange stream handler EOF %s", remotePeer)
-					r.streampool.Delete(remotePeer)
-					_ = s.Close()
-					return
-				}
-			}
-			var rummsg quorumpb.RumMsg
-			if err = proto.Unmarshal(msgdata, &rummsg); err == nil {
-				r.HandleRumExchangeMsg(&rummsg, s)
-			}
-		}
-	}
+	r.HandlerProcessStream(ctx, s)
 }
 
 func (r *RexService) HandlerProcessStream(ctx context.Context, s network.Stream) {
