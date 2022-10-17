@@ -90,8 +90,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	if nodeopt.EnableRelay {
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
-				//TODO: upgrade the WithPeerSource for relay
-				//autorelay.WithPeerSource(peerChan),
+				autorelay.WithPeerSource(func(context.Context, int) <-chan peer.AddrInfo { return peerChan }, time.Hour),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0)),

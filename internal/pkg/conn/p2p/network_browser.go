@@ -135,7 +135,7 @@ func NewBrowserNode(ctx context.Context, nodeOpt *options.NodeOptions, key *ethk
 	if nodeOpt.EnableRelay {
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
-				autorelay.WithPeerSource(peerChan),
+				autorelay.WithPeerSource(func(context.Context, int) <-chan peer.AddrInfo { return peerChan }, time.Hour),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0),
