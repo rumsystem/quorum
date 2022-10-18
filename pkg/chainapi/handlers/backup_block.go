@@ -6,13 +6,7 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-)
-
-var (
-	logger   = logging.Logger("handlers")
-	nodename = "default" // NOTE: hardcode
 )
 
 // BackupBlock get block from data db and backup to `backupPath`

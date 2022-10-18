@@ -28,6 +28,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/pkg/autorelay/audit"
 )
 
 type RelayNode struct {
@@ -105,8 +106,7 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 		),
 		libp2p.DisableRelay(),
 		libp2p.EnableRelayService(
-			//TODO: upgrade the WithAudit func
-			//relay.WithAudit(audit.NewQuorumTrafficAudit(db)),
+			relay.WithAudit(audit.NewQuorumTrafficAudit(db)),
 			relay.WithACL(NewQuorumRelayFilter(db)),
 			relay.WithResources(nodeOpt.RC),
 			relay.WithLimit(nil), /* double check, nodeOpt.RC.Limit should already be nil */

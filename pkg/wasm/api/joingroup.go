@@ -92,7 +92,7 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = group.StartSync()
+	err = group.StartSync(false)
 	if err != nil {
 		return nil, err
 	}
