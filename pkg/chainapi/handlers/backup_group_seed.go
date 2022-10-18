@@ -7,7 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+)
+
+var (
+	logger = logging.Logger("handlers")
 )
 
 // get myself group seeds
