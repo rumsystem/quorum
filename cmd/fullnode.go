@@ -88,7 +88,9 @@ func runFullnode(config cli.FullnodeFlag) {
 		peername = "bootstrap"
 	}
 
-	utils.EnsureDir(config.DataDir)
+	if err := utils.EnsureDir(config.DataDir); err != nil {
+		logger.Fatalf("check or create directory: %s failed: %s", config.DataDir, err)
+	}
 
 	//Load node options from config
 	nodeoptions, err := options.InitNodeOptions(config.ConfigDir, peername)

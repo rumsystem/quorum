@@ -40,8 +40,8 @@ func init() {
 	flags.StringVar(&keystoreName, "keystorename", "defaultkeystore", "keystore name")
 	flags.StringVar(&keystorePassword, "keystorepass", "", "keystore password")
 
-	flags.StringVar(&dataDir, "datadir", "datadir", "data dir")
-	flags.StringVar(&seedDir, "seeddir", "seeddir", "seed dir")
+	flags.StringVar(&dataDir, "datadir", "data", "data dir")
+	flags.StringVar(&seedDir, "seeddir", "seeds", "seed dir")
 	flags.StringVar(&backupFile, "file", "", "backup filename")
 
 	flags.BoolVar(&isWasm, "wasm", false, "is wasm")
