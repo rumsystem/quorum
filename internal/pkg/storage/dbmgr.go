@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -138,7 +139,7 @@ func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...stri
 	}
 
 	if isExist {
-		return errors.New("block aleady exist, ignore")
+		return rumerrors.ErrBlockExist
 	}
 
 	value, err := proto.Marshal(block)

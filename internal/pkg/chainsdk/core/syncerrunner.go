@@ -95,9 +95,8 @@ func (sr *SyncerRunner) Start(epoch int64) error {
 	if err != nil {
 		return err
 	}
-	sr.gsyncer.Start()
-	//add the first task
-	sr.gsyncer.AddTask(task)
+	//start with the first task
+	sr.gsyncer.StartWithTask(task)
 	return nil
 }
 

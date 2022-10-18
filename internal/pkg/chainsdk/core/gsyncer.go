@@ -42,10 +42,10 @@ type Gsyncer struct {
 	GroupId      string
 	waitEpoch    int64 //waiting the task response for epoch
 	retryCount   int8
+	retrySeconds int
 	retrycountmu sync.Mutex
 	taskq        chan *EpochSyncTask
 	resultq      chan *SyncResult
-	retrynext    bool //workaround for rumexchange
 	taskdone     chan struct{}
 	stopnotify   chan struct{}
 
@@ -74,9 +74,17 @@ func (s *Gsyncer) RetryCounterInc() {
 	s.retryCount++
 	s.retrycountmu.Unlock()
 }
+
+func (s *Gsyncer) SetRetrySeconds(sec int) {
+	s.retrycountmu.Lock()
+	s.retrySeconds = sec
+	s.retrycountmu.Unlock()
+}
+
 func (s *Gsyncer) RetryCounterClear() {
 	s.retrycountmu.Lock()
 	s.retryCount = 0
+	s.retrySeconds = 0
 	s.retrycountmu.Unlock()
 }
 
@@ -138,6 +146,11 @@ func (s *Gsyncer) Stop() {
 	}
 }
 
+func (s *Gsyncer) StartWithTask(task *EpochSyncTask) {
+	s.Start()
+	s.addTask(task)
+}
+
 func (s *Gsyncer) Start() {
 	s.taskq = make(chan *EpochSyncTask)
 	s.resultq = make(chan *SyncResult, 3)
@@ -155,7 +168,13 @@ func (s *Gsyncer) Start() {
 				//retry this task
 				gsyncer_log.Debugf("<%s> task process epoch %d error: %s, retry...", s.GroupId, task.Epoch, err)
 				s.RetryCounterInc()
-				s.AddTask(task)
+				if s.retrySeconds > 0 {
+					gsyncer_log.Debugf("<%s> task process epoch %d wait %ds to retry", s.GroupId, task.Epoch, s.retrySeconds)
+					time.Sleep(time.Duration(s.retrySeconds) * time.Second)
+				}
+				//TEST
+				s.SetRetrySeconds(int(s.retryCount))
+				s.addTask(task)
 			}
 		}
 		s.stopnotify <- struct{}{}
@@ -179,7 +198,7 @@ func (s *Gsyncer) Start() {
 					gsyncer_log.Debugf("nextTask error:%s", err)
 					continue
 				}
-				s.AddTask(nexttask)
+				s.addTask(nexttask)
 			} else if err == ErrSyncDone {
 				gsyncer_log.Infof("<%s> result %s is Sync Pause Signal", s.GroupId, result.Id)
 				//SyncPause, stop add next task, pause
@@ -244,7 +263,7 @@ func (s *Gsyncer) processTask(ctx context.Context, task *EpochSyncTask) error {
 	}
 }
 
-func (s *Gsyncer) AddTask(task *EpochSyncTask) {
+func (s *Gsyncer) addTask(task *EpochSyncTask) {
 	go func() {
 		s.taskq <- task
 	}()

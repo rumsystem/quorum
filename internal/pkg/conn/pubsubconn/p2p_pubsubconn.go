@@ -226,6 +226,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 	for {
 		msg, err := psconn.Subscription.Next(ctx)
 		if err == nil {
+
 			var pkg quorumpb.Package
 			if err := proto.Unmarshal(msg.Data, &pkg); err == nil {
 				log := stats.NetworkStats{
@@ -239,44 +240,8 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 				if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
 					channel_log.Warningf("add network log to db failed: %s", err)
 				}
+				psconn.chain.HandlePackageMessage(&pkg)
 
-				if pkg.Type == quorumpb.PackageType_BLOCK {
-					//is block
-					var blk *quorumpb.Block
-					blk = &quorumpb.Block{}
-					err := proto.Unmarshal(pkg.Data, blk)
-					if err == nil {
-						psconn.chain.HandleBlockPsConn(blk)
-					} else {
-						channel_log.Warning(err.Error())
-					}
-				} else if pkg.Type == quorumpb.PackageType_TRX {
-					var trx *quorumpb.Trx
-					trx = &quorumpb.Trx{}
-					err := proto.Unmarshal(pkg.Data, trx)
-
-					if err == nil {
-						psconn.chain.HandleTrxPsConn(trx)
-					} else {
-						channel_log.Warningf(err.Error())
-					}
-				} else if pkg.Type == quorumpb.PackageType_SNAPSHOT {
-					var snapshot *quorumpb.Snapshot
-					snapshot = &quorumpb.Snapshot{}
-					err := proto.Unmarshal(pkg.Data, snapshot)
-					if err == nil {
-						//psconn.chain.HandleSnapshotPsConn(snapshot)
-					} else {
-						channel_log.Warningf(err.Error())
-					}
-				} else if pkg.Type == quorumpb.PackageType_HBB {
-					hb := &quorumpb.HBMsg{}
-					err := proto.Unmarshal(pkg.Data, hb)
-					if err != nil {
-						channel_log.Warningf(err.Error())
-					}
-					psconn.chain.HandleHBPsConn(hb)
-				}
 			} else {
 				channel_log.Warningf(err.Error())
 				channel_log.Warningf("%s", msg.Data)

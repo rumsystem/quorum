@@ -6,6 +6,7 @@ import (
 )
 
 type ChainDataSyncIface interface {
+	HandlePackageMessage(pkg *quorumpb.Package) error
 	HandleTrxPsConn(trx *quorumpb.Trx) error
 	HandleBlockPsConn(block *quorumpb.Block) error
 	HandleTrxRex(trx *quorumpb.Trx, fromstream network.Stream) error

@@ -78,12 +78,6 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-/*
-func (chain *Chain) GetSyncer() *Syncer {
-	return chain.syncer
-}
-*/
-
 func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
 	chain_log.Debugf("<%s> GetPubqueueIface called", chain.groupId)
 	return GetPubQueueWatcher()
@@ -100,6 +94,47 @@ func (chain *Chain) UpdChainInfo(Epoch int64) error {
 /*
 	PSConn handler
 */
+
+func (chain *Chain) HandlePackageMessage(pkg *quorumpb.Package) error {
+	var err error
+	if pkg.Type == quorumpb.PackageType_BLOCK {
+		//is block
+		var blk *quorumpb.Block
+		blk = &quorumpb.Block{}
+		err = proto.Unmarshal(pkg.Data, blk)
+		if err == nil {
+			chain.HandleBlockPsConn(blk)
+		} else {
+			chain_log.Warning(err.Error())
+		}
+	} else if pkg.Type == quorumpb.PackageType_TRX {
+		var trx *quorumpb.Trx
+		trx = &quorumpb.Trx{}
+		err = proto.Unmarshal(pkg.Data, trx)
+		if err == nil {
+			chain.HandleTrxPsConn(trx)
+		} else {
+			chain_log.Warningf(err.Error())
+		}
+	} else if pkg.Type == quorumpb.PackageType_SNAPSHOT {
+		var snapshot *quorumpb.Snapshot
+		snapshot = &quorumpb.Snapshot{}
+		err = proto.Unmarshal(pkg.Data, snapshot)
+		if err == nil {
+			//psconn.chain.HandleSnapshotPsConn(snapshot)
+		} else {
+			chain_log.Warningf(err.Error())
+		}
+	} else if pkg.Type == quorumpb.PackageType_HBB {
+		hb := &quorumpb.HBMsg{}
+		err = proto.Unmarshal(pkg.Data, hb)
+		if err != nil {
+			chain_log.Warningf(err.Error())
+		}
+		chain.HandleHBPsConn(hb)
+	}
+	return err
+}
 
 //Handle Trx from PsConn
 func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
@@ -696,25 +731,6 @@ func (chain *Chain) StartSync() error {
 	chain.syncerrunner.Start(chain.group.Item.Epoch + 1)
 	return nil
 }
-
-//func (chain *Chain) SyncForward(epoch int64, nodename string) error {
-//	chain_log.Debugf("<%s> SyncForward called", chain.groupId)
-//	go func() {
-//		//before start sync from other node, gather all local block and re-apply all trxs
-//		//chain_log.Debugf("<%s> Try find and chain all local blocks", chain.groupId)
-//		//chain.syncer.SyncLocalBlock(epoch, nodename)
-//		//topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.GroupId, chain.group.Item.Epoch, false, nodename)
-//		//if err != nil {
-//		//	chain_log.Warningf("Get top block error, epoch <%d>, <%s>", epoch, err.Error())
-//		//	return
-//		//}
-//		//if chain.syncer != nil {
-//		//	chain.syncer.SyncForward(topBlock)
-//		//}
-//	}()
-//
-//	return nil
-//}
 
 func (chain *Chain) StopSync() error {
 	chain_log.Debugf("<%s> StopSync called", chain.groupId)
