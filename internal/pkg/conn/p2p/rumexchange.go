@@ -16,11 +16,14 @@ import (
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
+
+//TODO: add connMgr update updatePeerScorerStats, after received response block, call the update func
 
 var rumexchangelog = logging.Logger("rumexchange")
 var peerstoreTTL time.Duration = time.Duration(20 * time.Minute)
@@ -62,15 +65,16 @@ type RexNotification struct {
 	ChannelId string
 }
 
-type streamPoolItem struct {
-	s      network.Stream
-	cancel context.CancelFunc
-}
+//type streamPoolItem struct {
+//	s      network.Stream
+//	cancel context.CancelFunc
+//}
 
 func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
-	rumpeerstore := &RumGroupPeerStore{}
+	//rumpeerstore := &RumGroupPeerStore{}
+	rumpeerstore := NewRumGroupPeerStore()
 	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
@@ -191,39 +195,53 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 // Publish to 1 random connected peers
 func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	//TODO: select peers
-	succ := 0
-	peers := r.Host.Network().Peers()
-	maxnum := 1
+	//succ := 0
+	//maxnum := 1
+	ctx := context.Background()
+	peers := r.peerstore.filterPeers(ctx, r.Host.Network().Peers(), 0.7)
 
 	//set timeout  and succ counter
 	//TODO: CLOSE the stream before return? (defer?)
-	publishctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	//publishctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	//defer cancel()
 
-	ch := make(chan struct{})
-
-	go func(ctx context.Context) {
-		//for {
-		select {
-		case <-ctx.Done():
-			ch <- struct{}{}
-			return
-		default:
-			randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
-			for _, p := range randompeerlist {
-				if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
-					rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-				} else {
-					succ++
-					rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
-				}
-				return
-			}
-			return
+	//randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
+	for _, p := range peers {
+		if err := r.PublishToPeerId(msg, peer.Encode(p)); err == nil {
+			r.peerstore.Scorers().BlockProviderScorer().Touch(p)
+			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+			return nil
+		} else {
+			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		}
-		//}
-	}(publishctx)
-	<-ch
+	}
+
+	return rumerrors.ErrNoPeersAvailable
+
+	//ch := make(chan struct{})
+
+	//go func(ctx context.Context) {
+	//	//for {
+	//	select {
+	//	case <-ctx.Done():
+	//		ch <- struct{}{}
+	//		return
+	//	default:
+	//		randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
+	//		for _, p := range randompeerlist {
+	//			if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
+	//				rumexchangelog.Debugf("writemsg to network stream err: %s", err)
+	//			} else {
+	//				succ++
+	//				rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+	//			}
+	//			return
+	//		}
+	//		return
+	//	}
+	//	//}
+	//}(publishctx)
+	//<-ch
 	return nil
 }
 
@@ -232,6 +250,7 @@ func (r *RexService) PublishToOneRandom(msg *quorumpb.RumMsg) error {
 	rumexchangelog.Debugf("PublishToOneRandom called")
 
 	peers := r.Host.Network().Peers()
+
 	p, err := r.peerstore.GetOneRandomPeer(peers)
 	rumexchangelog.Debugf("PublishToOneRandom to peer: %s err:", p, err)
 	if err != nil {

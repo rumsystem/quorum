@@ -126,7 +126,8 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		}
 		//use gsyncer, current blockid as taskid
 		//!!! don't add repeat trx result to the gsyncer
-		chain.syncerrunner.AddTrxToSyncerQueue(trx)
+		//TODO: may have a bug, RemotePeer should return the real node, not the circuit/relay node.
+		chain.syncerrunner.AddTrxToSyncerQueue(trx, s.Conn().RemotePeer())
 	default:
 		//do nothing
 	}
@@ -183,7 +184,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 			return nil
 		}
 		//use current blockid as taskid
-		chain.syncerrunner.AddTrxToSyncerQueue(trx)
+		chain.syncerrunner.AddTrxToSyncerQueue(trx, "")
 	case quorumpb.TrxType_BLOCK_PRODUCED:
 		chain.handleBlockProduced(trx)
 		return nil
@@ -458,7 +459,6 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx, waittask *BlockSyncTas
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
 		return "", errors.New("not ask by myself")
 	}
-
 	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND { //sync done, set to IDLE
 		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
 		return reqBlockResp.BlockId, ErrSyncDone

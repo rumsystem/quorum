@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -207,7 +208,10 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 		nexttaskid, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult, sr.currentWaitTask)
 		if err != nil {
 			if err == ErrSyncDone {
+				//Sync done, set status to IDLE and stop syncer
 				sr.Status = IDLE
+				return nexttaskid, err
+				//sr.Stop()
 			} else if err.Error() == "PARENT_NOT_EXIST" && sr.Status == SYNCING_BACKWARD {
 				gsyncer_log.Debugf("<%s> PARENT_NOT_EXIST and SYNCING_BACKWARD, continue. %s", sr.group.Item.GroupId, result.Id)
 				err = nil
@@ -240,7 +244,7 @@ func (sr *SyncerRunner) ResultReceiver(result *SyncResult) (string, error) {
 	}
 }
 
-func (sr *SyncerRunner) AddTrxToSyncerQueue(trx *quorumpb.Trx) {
+func (sr *SyncerRunner) AddTrxToSyncerQueue(trx *quorumpb.Trx, peerid peer.ID) {
 	sr.resultserialid++
 	resultid := strconv.FormatUint(uint64(sr.resultserialid), 10)
 	result := &SyncResult{Id: resultid, Data: trx}
