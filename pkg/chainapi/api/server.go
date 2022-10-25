@@ -147,11 +147,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
-	/*
-	 * user node can not create group
-	 * all local group should be created by use local producer node
-	 */
-
 	//POST API does not support sudo
 	r.POST("/v1/group", h.CreateGroupUrl())
 	r.POST("/v2/group/join", h.JoinGroupV2())

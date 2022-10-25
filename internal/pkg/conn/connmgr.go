@@ -206,7 +206,7 @@ func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey str
 }
 
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
-	conn_log.Debugf("AddProducer, groupId <%s>", connMgr.GroupId)
+	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
 	connMgr.ProducerPool = make(map[string]string)
 
 	for _, pubkey := range pubkeys {

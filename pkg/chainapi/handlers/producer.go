@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -16,15 +17,13 @@ import (
 )
 
 type GrpProducerResult struct {
+	TrxId     string `json:"trx_id" validate:"required"`
 	GroupId   string `json:"group_id" validate:"required"`
 	Producers []*quorumpb.ProducerItem
-	TrxId     string `json:"trx_id" validate:"required"`
 	Memo      string `json:"memo"`
-	Action    string `json:"action" validate:"required,oneof=ADD REMOVE"`
 }
 
 type GrpProducerParam struct {
-	Action         string   `from:"action"          json:"action"           validate:"required,oneof=add remove"`
 	ProducerPubkey []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required"`
 	GroupId        string   `from:"group_id"        json:"group_id"         validate:"required"`
 	Memo           string   `from:"memo"            json:"memo"`
@@ -43,9 +42,8 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, rumerrors.ErrOnlyGroupOwner
 	} else {
-
 		if len(params.ProducerPubkey)%2 != 0 {
-			return nil, errors.New("For group use BFT consensus, you can only add/remove prodcers in even number(2,4,6...) each time")
+			return nil, errors.New("for group use BFT consensus, you can only update group producers in even number(2,4,6...) each time")
 		}
 
 		bftProducerBundle := &quorumpb.BFTProducerBundleItem{}
@@ -59,7 +57,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 			}
 
 			if !isAnnounced {
-				return nil, errors.New("Producer is not announced")
+				return nil, errors.New(fmt.Errorf("producer %s is not announced", producerPubkey).Error())
 			}
 
 			producer, err := group.GetAnnouncedProducer(producerPubkey)
@@ -67,8 +65,8 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 				return nil, err
 			}
 
-			if producer.Action == quorumpb.ActionType_REMOVE && params.Action == "add" {
-				return nil, errors.New("Can not add a none active producer")
+			if producer.Action == quorumpb.ActionType_REMOVE {
+				return nil, errors.New(fmt.Errorf("can not add a non-active producer %s", producerPubkey).Error())
 			}
 
 			item := &quorumpb.ProducerItem{}
@@ -90,14 +88,6 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 			}
 
 			item.GroupOwnerSign = hex.EncodeToString(signature)
-			if params.Action == "add" {
-				item.Action = quorumpb.ActionType_ADD
-			} else if params.Action == "remove" {
-				item.Action = quorumpb.ActionType_REMOVE
-			} else {
-				return nil, errors.New("Unknown action")
-			}
-
 			item.Memo = params.Memo
 			item.TimeStamp = time.Now().UnixNano()
 			producers = append(producers, item)
@@ -106,14 +96,11 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 		bftProducerBundle.Producers = producers
 
 		trxId, err := group.UpdProducerBundle(bftProducerBundle, sudo)
-
 		if err != nil {
 			return nil, err
 		}
 
-		var blockGrpUserResult *GrpProducerResult
-		blockGrpUserResult = &GrpProducerResult{GroupId: group.Item.GroupId, Producers: bftProducerBundle.Producers, Memo: params.Memo, TrxId: trxId}
-
+		blockGrpUserResult := &GrpProducerResult{GroupId: group.Item.GroupId, Producers: bftProducerBundle.Producers, Memo: params.Memo, TrxId: trxId}
 		return blockGrpUserResult, nil
 	}
 }

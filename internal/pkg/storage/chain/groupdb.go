@@ -13,7 +13,7 @@ import (
 func (cs *Storage) AddGroup(groupItem *quorumpb.GroupItem) error {
 	//check if group exist
 	key := s.GROUPITEM_PREFIX + "_" + groupItem.GroupId
-	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	exist, _ := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist {
 		return errors.New("Group with same GroupId existed")
 	}
@@ -52,6 +52,31 @@ func (cs *Storage) RmGroup(groupId string) error {
 	return cs.dbmgr.GroupInfoDb.Delete([]byte(key))
 }
 
+func (cs *Storage) GetGroupInfo(groupId string) (*quorumpb.GroupItem, error) {
+	//check if group exist
+	key := s.GROUPITEM_PREFIX + "_" + groupId
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	if !exist {
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.New("group not found")
+	}
+
+	bGrpInfo, err := cs.dbmgr.GroupInfoDb.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	grpInfo := &quorumpb.GroupItem{}
+	err = proto.Unmarshal(bGrpInfo, grpInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return grpInfo, nil
+}
+
 func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var keys []string
@@ -88,8 +113,8 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 	key = nodeprefix + s.NONCE_PREFIX + "_" + item.GroupId
 	keys = append(keys, key)
 
-	//snapshot
-	key = nodeprefix + s.SNAPSHOT_PREFIX + "_" + item.GroupId
+	//trx_id for producer update trx
+	key = nodeprefix + s.PRD_TRX_ID_PREFIX + "_" + item.GroupId
 	keys = append(keys, key)
 
 	//remove all
@@ -161,7 +186,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	//check if group exist
 	key := s.GROUPITEM_PREFIX + "_" + groupItem.Group.GroupId
-	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	exist, _ := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist {
 		return errors.New("Group with same GroupId existed")
 	}
@@ -174,7 +199,7 @@ func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-//Get Gorup Info
+// Get Gorup Info
 func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, error) {
 	key := s.GROUPITEM_PREFIX + "_" + groupId
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
@@ -208,8 +233,7 @@ func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
 		if err != nil {
 			return err
 		}
-		var item *quorumpb.NodeSDKGroupItem
-		item = &quorumpb.NodeSDKGroupItem{}
+		item := &quorumpb.NodeSDKGroupItem{}
 		err = proto.Unmarshal(v, item)
 		if err != nil {
 			return err
