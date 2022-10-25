@@ -6,8 +6,9 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers/peerdata"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers/scorers"
+	"github.com/rumsystem/quorum/internal/pkg/conn/p2p/peerdata"
+	"github.com/rumsystem/quorum/internal/pkg/conn/p2p/scorers"
+
 	p2ptypes "github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/types"
 	types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
 	pb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"

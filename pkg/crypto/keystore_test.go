@@ -6,7 +6,7 @@ import (
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/rumsystem/quorum/pkg/utils"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 func TestKeyType(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/peers/scorers"
 	"github.com/prysmaticlabs/prysm/v3/cmd/beacon-chain/flags"
 	"github.com/prysmaticlabs/prysm/v3/config/features"
+	"github.com/rumsystem/quorum/internal/pkg/conn/p2p/scorers"
 	"github.com/sirupsen/logrus"
 )
 
