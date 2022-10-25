@@ -9,12 +9,12 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/ip-cert/pkg/zerossl"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -98,12 +98,6 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 
 		r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 		r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
-
-		r.POST("/v1/preview/relay/req", h.RequestRelay)
-		r.GET("/v1/preview/relay", h.ListRelay)
-		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
-		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)
-
 		r.POST("/v1/keystore/signtx", h.SignTx)
 
 		//for nodesdk

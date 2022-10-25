@@ -184,7 +184,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		}
 		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil && nodeoptions.EnableRumExchange == true {
-			node.SetRumExchange(ctx, newchainstorage)
+			node.SetRumExchange(ctx)
 		}
 
 		if err := node.Bootstrap(ctx, config.BootstrapPeers); err != nil {

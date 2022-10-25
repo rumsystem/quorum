@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -64,108 +63,20 @@ func (rps *RumGroupPeerStore) Scorers() *scorers.Service {
 	return rps.scorers
 }
 
-func (rps *RumGroupPeerStore) Save(groupid string, Id peer.ID, TTL time.Duration) {
-	//if groupid == ignoregroupid {
-	//	return
-	//}
-	//list, succ := rps.store.Load(groupid)
-	//if succ == false {
-	//	newpeerlist := &[]RumPeer{}
-	//	rps.store.Store(groupid, newpeerlist)
-	//	list, succ = rps.store.Load(groupid)
-	//}
-
-	//newrumpeer := RumPeer{Id: Id, TTL: TTL, Updated: time.Now()}
-	//peerlist := *list.(*[]RumPeer)
-	////if peer exist? update it
-	//for i, p := range peerlist {
-	//	if p.Id == newrumpeer.Id {
-	//		peerlist[i] = newrumpeer
-	//		rps.store.Store(groupid, &peerlist) //update the sync.Map
-	//		return
-	//	}
-	//}
-	//peerlist = append(peerlist, newrumpeer)
-	//rps.store.Store(groupid, &peerlist) //update the sync.Map
-}
-
-func (rps *RumGroupPeerStore) AddIgnorePeer(Id peer.ID) {
-	//	rps.Save(ignoregroupid, Id, time.Duration(5*time.Hour))
-}
-
-func (rps *RumGroupPeerStore) Get(groupid string) []peer.ID {
-	//list, succ := rps.store.Load(groupid)
-	result := []peer.ID{}
-	//if succ == false {
-	//	return result
-	//}
-	//peerlist := *list.(*[]RumPeer)
-	//for _, p := range peerlist {
-	//	if time.Now().Sub(p.Updated) <= p.TTL {
-	//		result = append(result, p.Id)
-	//	}
-	//}
-	return result
-}
-
-func (rps *RumGroupPeerStore) GetOneRandomPeer(connectPeers []peer.ID) (peer.ID, error) {
-	//ignoredpeers := rps.Get(ignoregroupid)
-	//rand.Seed(time.Now().UnixNano())
-	//rand.Shuffle(len(connectPeers), func(i, j int) { connectPeers[i], connectPeers[j] = connectPeers[j], connectPeers[i] })
-
-	//for _, newp := range connectPeers {
-	//	for _, ip := range ignoredpeers {
-	//		if ip == newp {
-	//			break
-	//		}
-	//	}
-	//	return newp, nil
-	//}
-
-	return "", fmt.Errorf("no available peer")
-}
-
-func (rps *RumGroupPeerStore) GetRandomPeer(groupid string, count int, connectPeers []peer.ID) []peer.ID {
-	//savedpeers := rps.Get(groupid)
-	//if len(savedpeers) == count {
-	//	return savedpeers
-	//} else if len(savedpeers) > count {
-	//	rand.Seed(time.Now().UnixNano())
-	//	rand.Shuffle(len(savedpeers), func(i, j int) { savedpeers[i], savedpeers[j] = savedpeers[j], savedpeers[i] })
-	//	return savedpeers[0:count]
-	//} else {
-	//	ignoredpeers := rps.Get(groupid)
-	//	rand.Seed(time.Now().UnixNano())
-	//	rand.Shuffle(len(connectPeers), func(i, j int) { connectPeers[i], connectPeers[j] = connectPeers[j], connectPeers[i] })
-
-	//	for _, newp := range connectPeers {
-	//		for _, ip := range ignoredpeers {
-	//			if ip == newp {
-	//				break
-	//			}
-	//		}
-	//		for _, sp := range savedpeers {
-	//			if sp == newp {
-	//				break
-	//			}
-	//		}
-	//		savedpeers = append(savedpeers, newp)
-	//		if len(savedpeers) == count {
-	//			return savedpeers
-	//		}
-	//	}
-	//	return savedpeers
-
-	//}
-	return nil
-}
-
 func (rps *RumGroupPeerStore) filterPeers(ctx context.Context, peers []peer.ID, peersPercentage float64) []peer.ID {
 	//ctx, span := trace.StartSpan(ctx, "initialsync.filterPeers")
 	//defer span.End()
 
 	if len(peers) == 0 {
 		return peers
+	}
+	badscorer := rps.scorers.BadResponsesScorer()
+	goodpeers := []peer.ID{}
+	for _, peer := range peers {
+		isbad := badscorer.IsBadPeer(peer)
+		if isbad == false {
+			goodpeers = append(goodpeers, peer)
+		}
 	}
 
 	// Sort peers using both block provider score and, custom, capacity based score (see
@@ -179,9 +90,8 @@ func (rps *RumGroupPeerStore) filterPeers(ctx context.Context, peers []peer.ID, 
 	//	MaxPeers: maxLimitBuffer + config.PeerLimit,
 	//})
 
-	//scorer := scorers.Scorers().BlockProviderScorer()
 	scorer := rps.scorers.BlockProviderScorer()
-	peers = scorer.WeightSorted(rps.rand, peers, func(peerID peer.ID, blockProviderScore float64) float64 {
+	peers = scorer.WeightSorted(rps.rand, goodpeers, func(peerID peer.ID, blockProviderScore float64) float64 {
 		remaining, capacity := float64(rps.rateLimiter.Remaining(peerID.String())), float64(rps.rateLimiter.Capacity())
 		// When capacity is close to exhaustion, allow less performant peer to take a chance.
 		// Otherwise, there's a good chance system will be forced to wait for rate limiter.
@@ -192,7 +102,6 @@ func (rps *RumGroupPeerStore) filterPeers(ctx context.Context, peers []peer.ID, 
 		overallScore := blockProviderScore*(1.0-rps.capacityWeight) + capScore*rps.capacityWeight
 		return math.Round(overallScore*scorers.ScoreRoundingFactor) / scorers.ScoreRoundingFactor
 	})
-
 	return trimPeers(peers, peersPercentage)
 }
 

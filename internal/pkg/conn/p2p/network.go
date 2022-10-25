@@ -15,7 +15,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -36,8 +35,8 @@ type Node struct {
 	Info             *NodeInfo
 	RoutingDiscovery *discovery.RoutingDiscovery
 	PubSubConnMgr    *pubsubconn.PubSubConnMgr
-	peerStatus       *PeerStatus
-	Nodeopt          *options.NodeOptions
+	//peerStatus       *PeerStatus
+	Nodeopt *options.NodeOptions
 }
 
 func (node *Node) eventhandler(ctx context.Context) {
@@ -154,18 +153,18 @@ func (node *Node) PeersProtocol() *map[string][]string {
 	return &protocolpeers
 }
 
-func (node *Node) SetRumExchange(ctx context.Context, cs csdef.ChainStorageIface) {
-	peerStatus := NewPeerStatus()
+func (node *Node) SetRumExchange(ctx context.Context) {
+	//peerStatus := NewPeerStatus()
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	var rexservice *RexService
-	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice = NewRexService(node.Host, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
 	networklog.Infof("Enable protocol RumExchange")
 
-	node.peerStatus = peerStatus
+	//node.peerStatus = peerStatus
 	node.RumExchange = rexservice
 
 	if rexnotification != nil {

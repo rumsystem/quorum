@@ -43,8 +43,8 @@ type RumHandler struct {
 }
 
 type RexService struct {
-	Host               host.Host
-	peerStatus         *PeerStatus
+	Host host.Host
+	//peerStatus         *PeerStatus
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
 	chainmgr           map[string]chaindef.ChainDataSyncIface
@@ -70,12 +70,12 @@ type RexNotification struct {
 //	cancel context.CancelFunc
 //}
 
-func NewRexService(h host.Host, peerStatus *PeerStatus, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
+func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
 	//rumpeerstore := &RumGroupPeerStore{}
 	rumpeerstore := NewRumGroupPeerStore()
-	rexs := &RexService{Host: h, peerStatus: peerStatus, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
+	rexs := &RexService{Host: h, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -174,17 +174,14 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 	if err != nil {
 		metric.FailedCount.WithLabelValues(metric.ActionType.PublishToPeerid).Inc()
 		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-		//r.streampool.Delete(remotePeer)
-		r.peerstore.AddIgnorePeer(toid)
+		r.peerstore.Scorers().BadResponsesScorer().Increment(toid)
 		s.Close()
-
 		return err
 	} else {
 		size := float64(metric.GetProtoSize(msg))
 		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToPeerid).Inc()
 		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToPeerid).Set(size)
 		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToPeerid).Add(size)
-
 		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
 	}
 	bufw.Flush()
@@ -212,56 +209,13 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
 			return nil
 		} else {
+			r.peerstore.Scorers().BadResponsesScorer().Increment(p)
 			rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		}
 	}
 
 	return rumerrors.ErrNoPeersAvailable
 
-	//ch := make(chan struct{})
-
-	//go func(ctx context.Context) {
-	//	//for {
-	//	select {
-	//	case <-ctx.Done():
-	//		ch <- struct{}{}
-	//		return
-	//	default:
-	//		randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
-	//		for _, p := range randompeerlist {
-	//			if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
-	//				rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-	//			} else {
-	//				succ++
-	//				rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
-	//			}
-	//			return
-	//		}
-	//		return
-	//	}
-	//	//}
-	//}(publishctx)
-	//<-ch
-	return nil
-}
-
-// Publish to one random peer
-func (r *RexService) PublishToOneRandom(msg *quorumpb.RumMsg) error {
-	rumexchangelog.Debugf("PublishToOneRandom called")
-
-	peers := r.Host.Network().Peers()
-
-	p, err := r.peerstore.GetOneRandomPeer(peers)
-	rumexchangelog.Debugf("PublishToOneRandom to peer: %s err:", p, err)
-	if err != nil {
-		return err
-	}
-
-	if err := r.PublishToPeerId(msg, peer.Encode(p)); err != nil {
-		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-		return err
-	}
-	rumexchangelog.Debugf("writemsg to network stream succ: %s. wait the response", p)
 	return nil
 }
 
