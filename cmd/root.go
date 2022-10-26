@@ -6,7 +6,6 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -43,12 +42,6 @@ var rootCmd = &cobra.Command{
 	Use:   "quorum",
 	Short: "The internet alternatives",
 	Long:  `An open source peer-to-peer application infrastructure to offer the internet alternatives in a decentralized and privacy oriented way.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if dataDir != "" {
-			utils.EnsureDir(dataDir)
-		}
-		return nil
-	},
 }
 
 func Execute() {
