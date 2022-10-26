@@ -33,14 +33,14 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
 
 	//check if block is in storage
-	isSaved, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, false, user.nodename)
-	if err != nil {
-		return err
-	}
+	//isSaved, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, false, user.nodename)
+	//if err != nil {
+	//	return err
+	//}
 
-	if isSaved {
-		return errors.New("Block already saved, ignore")
-	}
+	//if isSaved {
+	//	return errors.New("Block already saved, ignore")
+	//}
 
 	//check if block is in cache
 	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, user.nodename)
