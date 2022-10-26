@@ -16,14 +16,14 @@ import (
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
+	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
+	"github.com/rumsystem/quorum/pkg/constants"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
-
-//TODO: add connMgr update updatePeerScorerStats, after received response block, call the update func
 
 var rumexchangelog = logging.Logger("rumexchange")
 var peerstoreTTL time.Duration = time.Duration(20 * time.Minute)
@@ -43,7 +43,8 @@ type RumHandler struct {
 }
 
 type RexService struct {
-	Host host.Host
+	Host          host.Host
+	pubSubConnMgr *pubsubconn.PubSubConnMgr
 	//peerStatus         *PeerStatus
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
@@ -70,12 +71,12 @@ type RexNotification struct {
 //	cancel context.CancelFunc
 //}
 
-func NewRexService(h host.Host, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
+func NewRexService(h host.Host, psconnmgr *pubsubconn.PubSubConnMgr, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
 	//rumpeerstore := &RumGroupPeerStore{}
 	rumpeerstore := NewRumGroupPeerStore()
-	rexs := &RexService{Host: h, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
+	rexs := &RexService{Host: h, pubSubConnMgr: psconnmgr, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
@@ -191,18 +192,22 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 
 // Publish to 1 random connected peers
 func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
-	//TODO: select peers
-	//succ := 0
-	//maxnum := 1
+	//TODO: save good peers?
 	ctx := context.Background()
-	peers := r.peerstore.filterPeers(ctx, r.Host.Network().Peers(), 0.7)
+	connectedpeers := r.Host.Network().Peers()
+	UserChannelId := constants.USER_CHANNEL_PREFIX + groupid
+	channelpeers, err := r.pubSubConnMgr.GetPeersByChannelId(UserChannelId)
+	if err == nil {
+		if len(channelpeers) > 0 {
+			connectedpeers = channelpeers
+		}
+	}
+	peers := r.peerstore.filterPeers(ctx, connectedpeers, 0.7)
 
-	//set timeout  and succ counter
 	//TODO: CLOSE the stream before return? (defer?)
 	//publishctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	//defer cancel()
 
-	//randompeerlist := r.peerstore.GetRandomPeer(groupid, maxnum, peers)
 	for _, p := range peers {
 		if err := r.PublishToPeerId(msg, peer.Encode(p)); err == nil {
 			r.peerstore.Scorers().BlockProviderScorer().Touch(p)

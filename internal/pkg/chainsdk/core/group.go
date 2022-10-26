@@ -5,19 +5,13 @@ import (
 	"encoding/hex"
 	"time"
 
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
-)
-
-const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-	SYNC_CHANNEL_PREFIX     = "sync_channel_"
 )
 
 type Group struct {

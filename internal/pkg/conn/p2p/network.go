@@ -158,7 +158,7 @@ func (node *Node) SetRumExchange(ctx context.Context) {
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	var rexservice *RexService
-	rexservice = NewRexService(node.Host, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)

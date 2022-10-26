@@ -11,6 +11,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -19,10 +20,6 @@ import (
 var conn_log = logging.Logger("conn")
 
 const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-	SYNC_CHANNEL_PREFIX     = "sync_channel_"
-
 	RelayUserType  string = "user"
 	RelayGroupType string = "group"
 )
@@ -168,9 +165,9 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 
 func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
-	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
-	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
+	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
 	connMgr.GroupId = groupId
 	connMgr.OwnerPubkey = ownerPubkey
 	connMgr.UserSignPubkey = userSignPubkey
@@ -194,9 +191,9 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 
 func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
 	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
-	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
-	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
+	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
 	connMgr.GroupId = groupId
 	connMgr.UserSignPubkey = userSignPubkey
 	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)

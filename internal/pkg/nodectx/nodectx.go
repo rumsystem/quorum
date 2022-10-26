@@ -5,10 +5,11 @@ import (
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
+	"github.com/rumsystem/quorum/pkg/constants"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type NodeStatus int8
@@ -16,12 +17,6 @@ type NodeStatus int8
 const (
 	NODE_ONLINE  = 0 //node connected with bootstramp and pubchannel
 	NODE_OFFLINE = 1 //node disconnected with bootstram and pubchannel
-)
-
-const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-	SYNC_CHANNEL_PREFIX     = "sync_channel_"
 )
 
 type NodeCtx struct {
@@ -91,7 +86,7 @@ func (nodeCtx *NodeCtx) GetNodePubKey() (string, error) {
 }
 
 func (nodeCtx *NodeCtx) ListGroupPeers(groupid string) []peer.ID {
-	userChannelId := USER_CHANNEL_PREFIX + groupid
+	userChannelId := constants.USER_CHANNEL_PREFIX + groupid
 	return nodeCtx.Node.Pubsub.ListPeers(userChannelId)
 }
 

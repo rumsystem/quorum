@@ -13,6 +13,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/consensus"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
+	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -287,7 +288,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 		return nil
 	}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-	clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
+	clientSyncerChannelId := constants.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 
 	requester, blocks, isEmpty, err := chain.chaindata.GetBlockForward(trx)
 	if err != nil {
@@ -341,7 +342,7 @@ func (chain *Chain) handleReqBlockBackward(trx *quorumpb.Trx, networktype conn.P
 		}
 
 		chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-		clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
+		clientSyncerChannelId := constants.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 
 		requester, block, isEmpty, err := chain.chaindata.GetBlockBackward(trx)
 		if err != nil {

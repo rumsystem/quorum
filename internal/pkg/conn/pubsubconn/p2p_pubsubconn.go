@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -50,6 +51,15 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
 
+func (pscm *PubSubConnMgr) GetPeersByChannelId(channelId string) ([]peer.ID, error) {
+	psconni, ok := pscm.connmgr.Load(channelId)
+	if ok == true {
+		psconn := psconni.(*P2pPubSubConn)
+		return psconn.Topic.ListPeers(), nil
+	} else {
+		return nil, fmt.Errorf("Topic not exist.")
+	}
+}
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface chaindef.ChainDataSyncIface) *P2pPubSubConn {
 	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
