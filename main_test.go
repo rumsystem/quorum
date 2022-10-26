@@ -20,8 +20,7 @@ var (
 	bootstrapapi, peer1api, peer2api          string
 	peerapilist, groupIds                     []string
 	timerange, nodes, groups, posts, synctime int
-
-	logger = logging.Logger("main_test")
+	logger                                    = logging.Logger("main_test")
 )
 
 func TestMain(m *testing.M) {
