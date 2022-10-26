@@ -28,7 +28,7 @@ import (
 var rumexchangelog = logging.Logger("rumexchange")
 var peerstoreTTL time.Duration = time.Duration(20 * time.Minute)
 
-const IDVer = "1.0.0"
+const IDVer = "2.0.0"
 
 type Chain interface {
 	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
