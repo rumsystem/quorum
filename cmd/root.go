@@ -53,7 +53,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&logLevel, "loglevel", "", "log level")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "loglevel", "error", "log level")
 	rootCmd.PersistentFlags().StringVar(&logFile, "logfile", "", "log file, default output to stdout")
 	rootCmd.PersistentFlags().IntVar(&logMaxSize, "log-max-size", 100, "log file max size, unit: megabytes")
 	rootCmd.PersistentFlags().IntVar(&logMaxAge, "log-max-age", 7, "log file max ages, unit: day")
