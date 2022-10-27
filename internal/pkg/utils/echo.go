@@ -84,6 +84,10 @@ func NewEcho(debug bool) *echo.Echo {
 		},
 	}))
 
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Level: 5, // hardcode
+	}))
+
 	return e
 }
 

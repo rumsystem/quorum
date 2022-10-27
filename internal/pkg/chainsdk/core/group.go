@@ -60,7 +60,7 @@ func (grp *Group) SetRumExchangeTestMode() {
 	grp.ChainCtx.SetRumExchangeTestMode()
 }
 
-//teardown group
+// teardown group
 func (grp *Group) Teardown() {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
 
@@ -163,7 +163,6 @@ func (grp *Group) StopSync() error {
 
 func (grp *Group) GetSyncerStatus() int8 {
 	return grp.ChainCtx.GetSyncStatus()
-	return 0
 }
 
 func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
