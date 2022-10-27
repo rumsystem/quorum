@@ -6,7 +6,6 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -43,12 +42,6 @@ var rootCmd = &cobra.Command{
 	Use:   "quorum",
 	Short: "The internet alternatives",
 	Long:  `An open source peer-to-peer application infrastructure to offer the internet alternatives in a decentralized and privacy oriented way.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if dataDir != "" {
-			utils.EnsureDir(dataDir)
-		}
-		return nil
-	},
 }
 
 func Execute() {
@@ -60,7 +53,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&logLevel, "loglevel", "", "log level")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "loglevel", "error", "log level")
 	rootCmd.PersistentFlags().StringVar(&logFile, "logfile", "", "log file, default output to stdout")
 	rootCmd.PersistentFlags().IntVar(&logMaxSize, "log-max-size", 100, "log file max size, unit: megabytes")
 	rootCmd.PersistentFlags().IntVar(&logMaxAge, "log-max-age", 7, "log file max ages, unit: day")

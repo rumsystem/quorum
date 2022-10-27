@@ -73,8 +73,10 @@ require (
 	github.com/spf13/viper v1.12.0
 	github.com/swaggo/echo-swagger v1.1.0
 	github.com/swaggo/swag v1.8.1
+	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	google.golang.org/protobuf v1.28.1
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
 require (
@@ -234,7 +236,6 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220614195744-fb05da6f9022 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
@@ -245,7 +246,6 @@ require (
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -12,7 +12,8 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("%s - %s", utils.ReleaseVersion, utils.GitCommit)
+		version := fmt.Sprintf("%s - %s", utils.ReleaseVersion, utils.GitCommit)
+		fmt.Println(version)
 	},
 }
 

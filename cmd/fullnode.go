@@ -54,7 +54,7 @@ func init() {
 
 	flags.StringVar(&fnodeFlag.PeerName, "peername", "peer", "peername")
 	flags.StringVar(&fnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "config dir")
+	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "data dir")
 	flags.StringVar(&fnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
 	flags.StringVar(&fnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
 	flags.StringVar(&fnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
@@ -88,7 +88,9 @@ func runFullnode(config cli.FullnodeFlag) {
 		peername = "bootstrap"
 	}
 
-	utils.EnsureDir(config.DataDir)
+	if err := utils.EnsureDir(config.DataDir); err != nil {
+		logger.Fatalf("check or create directory: %s failed: %s", config.DataDir, err)
+	}
 
 	//Load node options from config
 	nodeoptions, err := options.InitNodeOptions(config.ConfigDir, peername)
