@@ -685,48 +685,10 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	return TrxEnqueue(groupId, trx)
 }
 
-//func (chain *Chain) SyncForward(blockId string, nodename string) error {
-//	chain_log.Debugf("<%s> SyncForward called", chain.groupId)
-//	go func() {
-//		//before start sync from other node, gather all local block and re-apply all trxs
-//		chain_log.Debugf("<%s> Try find and chain all local blocks", chain.groupId)
-//		chain_log.Debugf("<%s> height <%d>", chain.groupId, chain.group.Item.HighestHeight)
-//		chain_log.Debugf("<%s> block_id <%s>", chain.groupId, chain.group.Item.HighestBlockId)
-//
-//		chain.syncer.SyncLocalBlock(blockId, nodename)
-//		topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.HighestBlockId, false, nodename)
-//		if err != nil {
-//			chain_log.Warningf("Get top block error, blockId <%s>, <%s>", blockId, err.Error())
-//			return
-//		}
-//		if chain.syncer != nil {
-//			chain.syncer.SyncForward(topBlock)
-//		}
-//	}()
-//
-//	return nil
-//}
-
-//func (chain *Chain) SyncBackward(blockId string, nodename string) error {
-//	chain_log.Debugf("<%s> SyncBackward called", chain.groupId)
-//	go func() {
-//		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(blockId, false, nodename)
-//		if err != nil {
-//			chain_log.Warningf("Get block error, blockId <%s>, <%s>", blockId, err.Error())
-//			return
-//		}
-//
-//		if chain.syncer != nil {
-//			chain.syncer.SyncBackward(block)
-//		}
-//	}()
-//
-//	return nil
-//}
-
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
 
+	chain.SyncLocalBlock()
 	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
 		if len(chain.ProducerPool) == 1 {
 			chain_log.Debugf("<%s> group owner, no registed producer, no need to sync", chain.group.Item.GroupId)
@@ -738,9 +700,71 @@ func (chain *Chain) StartSync() error {
 		chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
 		return nil
 	}
+
 	chain.syncerrunner.Start(chain.group.Item.HighestBlockId)
 	return nil
 }
+
+func (chain *Chain) SyncLocalBlock() error {
+	startFrom := chain.group.Item.HighestBlockId
+	for {
+		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(chain.group.Item.HighestBlockId, chain.nodename)
+		if err != nil {
+			chain_log.Debugf("<%s> GetSubBlock failed <%s>", chain.groupId, err.Error())
+			return err
+		}
+		if len(subblocks) > 0 {
+			for _, block := range subblocks {
+				err := chain.AddLocalBlock(block)
+				if err != nil {
+					chain_log.Debugf("<%s> AddLocalBlock failed <%s>", chain.groupId, err.Error())
+					break // for range subblocks
+				}
+			}
+		} else {
+			chain_log.Debugf("<%s> No more local blocks", chain.groupId)
+			return nil
+		}
+		topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.HighestBlockId, false, chain.nodename)
+		if err != nil {
+			chain_log.Debugf("<%s> Get Top Block failed <%s>", chain.groupId, err.Error())
+			return err
+		} else {
+			if topBlock.BlockId == startFrom {
+				return nil
+			} else {
+				startFrom = topBlock.BlockId
+			}
+		}
+	}
+
+}
+
+func (chain *Chain) AddLocalBlock(block *quorumpb.Block) error {
+	chain_log.Debugf("<%s> AddLocalBlock called", chain.groupId)
+	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.UserSignPubkey)
+	if err != nil && signpkey == "" {
+		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)
+	}
+
+	_, producer := chain.ProducerPool[signpkey]
+
+	if producer {
+		chain_log.Debugf("<%s> PRODUCER ADD LOCAL BLOCK <%s>", chain.groupId, block.BlockId)
+		err := chain.AddBlock(block)
+		if err != nil {
+			chain_log.Infof(err.Error())
+		}
+	} else {
+		chain_log.Debugf("<%s> USER ADD LOCAL BLOCK <%s>", chain.groupId, block.BlockId)
+		err := chain.Consensus.User().AddBlock(block)
+		if err != nil {
+			chain_log.Infof(err.Error())
+		}
+	}
+	return nil
+}
+
 func (chain *Chain) StopSync() {
 	chain_log.Debugf("<%s> StopSync called", chain.groupId)
 	if chain.syncerrunner != nil {
@@ -991,13 +1015,13 @@ func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> AddBlock called", chain.groupId)
 
 	//check if block is in storage
-	isSaved, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, false, chain.nodename)
-	if err != nil {
-		return err
-	}
-	if isSaved {
-		return errors.New("Block already saved, ignore")
-	}
+	//isSaved, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, false, chain.nodename)
+	//if err != nil {
+	//	return err
+	//}
+	//if isSaved {
+	//	return errors.New("Block already saved, ignore")
+	//}
 
 	//check if block is in cache
 	isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.BlockId, true, chain.nodename)
