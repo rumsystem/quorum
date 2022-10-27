@@ -6,7 +6,6 @@ enum PackageType {
     TRX      = 0;
     BLOCK    = 1;
     HBB      = 2;
-    PSYNC    = 3;
 }
 
 message Package {
@@ -312,20 +311,26 @@ message NodeSDKGroupItem {
 }
 
 enum HBBMsgType {
-    AGREEMENT = 0;
-    BROADCAST = 1;
-}
-
-message HBMsg {
-    string      MsgId   = 1;
-    HBBMsgType  MsgType = 2;
-    int64       Epoch   = 3;       
-    bytes       Payload = 4;
+    BROADCAST = 0;    
+    AGREEMENT = 1; //not used
 }
 
 enum BroadcastMsgType {
     PROOF = 0;
     READY = 1;
+}
+
+enum HBMsgPayloadType {
+    HB_TRX   = 0;
+    HB_PSYNC = 1;
+}
+
+message HBMsgv1 {
+    string           MsgId       = 1;
+    HBBMsgType       MsgType     = 2;
+    int64            Epoch       = 3;
+    HBMsgPayloadType PayloadType = 4;
+    bytes            Payload     = 5;
 }
 
 message HBTrxBundle {
@@ -374,6 +379,31 @@ message Aux {
     bool Value = 1;
 }
 
+message PSyncMsg {
+    string          SessionId             = 1;
+    int64           CurrentEpoch          = 2;
+    PSyncNodeStatus NodeStatus            = 3;
+    Trx             ProofTrx              = 4; 
+    repeated        PSyncItem  PSyncItems = 5;
+    int64           TimeStamp             = 6;
+    string          Memo                  = 7;   
+    string          SenderPubkey          = 8;
+    bytes           PSyncMsgHash          = 9;
+    bytes           SenderSign            = 10;    
+}
+
+//Node status type
+enum PSyncNodeStatus {
+    NODE_OK      = 0;
+    NODE_SYNCING = 1;
+    NODE_ERROR   = 2;
+}
+
+message PSyncItem {
+    PSyncItemType Type    = 1;
+    bytes         Payload = 2;  
+}
+
 enum PSyncItemType {
     PSYNC_APP_CONFIG    = 0;    //app_config item
     PSYNC_CHAIN_CONFIG  = 1;    //chain_config item
@@ -393,26 +423,6 @@ message PSyncProducerItem {
     repeated ProducerItem Producers = 1;
 }
 
-message PSyncItem {
-    PSyncItemType Type    = 1;
-    bytes         Payload = 2;  
-}
 
-enum PSyncNodeStatus {
-    NODE_OK      = 0;
-    NODE_SYNCING = 1;
-    NODE_ERROR   = 2;
-}
 
-message PSyncMsg {
-    string          SessionId             = 1;
-    int64           CurrentEpoch          = 2;
-    PSyncNodeStatus NodeStatus            = 3;
-    Trx             ProofTrx              = 4; 
-    repeated        PSyncItem  PSyncItems = 5;
-    int64           TimeStamp             = 6;
-    string          Memo                  = 7;   
-    string          SenderPubkey          = 8;
-    bytes           PSyncMsgHash          = 9;
-    bytes           SenderSign            = 10;    
-}
+

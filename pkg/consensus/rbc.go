@@ -101,7 +101,7 @@ func (r *RBC) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, req := range reqs {
-		err := SendHbbRBC(r.groupId, req, r.acs.epoch)
+		err := SendHbbRBC(r.groupId, req, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX)
 		if err != nil {
 			return err
 		}
@@ -233,7 +233,7 @@ func (r *RBC) handleProofMsg(proof *quorumpb.Proof) error {
 			return err
 		}
 
-		err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch)
+		err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX)
 		if err != nil {
 			return err
 		}

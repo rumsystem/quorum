@@ -79,15 +79,6 @@ func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.Announ
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_ANNOUNCE, encodedcontent, keyalias)
 }
 
-func (factory *TrxFactory) GetUpdSchemaTrx(keyalias string, item *quorumpb.SchemaItem) (*quorumpb.Trx, error) {
-	encodedcontent, err := proto.Marshal(item)
-	if err != nil {
-		return nil, err
-	}
-
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_SCHEMA, encodedcontent, keyalias)
-}
-
 func (factory *TrxFactory) GetReqBlockRespTrx(keyalias string, requester string, block *quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error) {
 	var reqBlockRespItem quorumpb.ReqBlockResp
 	reqBlockRespItem.Result = result

@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -23,6 +24,24 @@ func (cs *Storage) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) error 
 
 	key := nodeprefix + s.PRD_TRX_ID_PREFIX + "_" + groupInfo.GroupId
 	return cs.dbmgr.Db.Set([]byte(key), []byte(trx.TrxId))
+}
+
+func (cs *Storage) GetUpdProducerListTrx(groupId string, prefix ...string) (*quorumpb.Trx, error) {
+	nodeprefix := utils.GetPrefix(prefix...)
+	key := nodeprefix + s.PRD_TRX_ID_PREFIX + "_" + groupId
+	btrx_id, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	trxId := string(btrx_id)
+
+	trx, _, err := cs.GetTrx(trxId, def.Chain, prefix...)
+	if err != nil {
+		return nil, err
+	}
+
+	return trx, nil
 }
 
 func (cs *Storage) UpdateProducer(groupId string, data []byte, prefix ...string) error {

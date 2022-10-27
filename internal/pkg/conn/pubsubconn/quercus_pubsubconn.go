@@ -100,7 +100,7 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 						quercus_log.Warningf(err.Error())
 					}
 				} else if pkg.Type == quorumpb.PackageType_HBB {
-					hb := &quorumpb.HBMsg{}
+					hb := &quorumpb.HBMsgv1{}
 					err := proto.Unmarshal(pkg.Data, hb)
 					if err != nil {
 						channel_log.Warningf(err.Error())

@@ -10,5 +10,5 @@ type Producer interface {
 	TryPropose()
 	AddBlock(block *quorumpb.Block) error
 	AddTrx(trx *quorumpb.Trx)
-	HandleHBMsg(hb *quorumpb.HBMsg) error
+	HandleHBMsg(hb *quorumpb.HBMsgv1) error
 }

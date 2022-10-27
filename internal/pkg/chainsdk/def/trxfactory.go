@@ -9,7 +9,6 @@ type TrxFactoryIface interface {
 	GetBlockProducedTrx(keyalias string, blk *quorumpb.Block) (*quorumpb.Trx, error)
 	GetAnnounceTrx(keyalias string, item *quorumpb.AnnounceItem) (*quorumpb.Trx, error)
 	GetChainConfigTrx(keyalias string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error)
-	GetUpdSchemaTrx(keyalias string, item *quorumpb.SchemaItem) (*quorumpb.Trx, error)
 	GetRegProducerBundleTrx(keyalias string, item *quorumpb.BFTProducerBundleItem) (*quorumpb.Trx, error)
 	GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
 	GetRegUserTrx(keyalias string, item *quorumpb.UserItem) (*quorumpb.Trx, error)

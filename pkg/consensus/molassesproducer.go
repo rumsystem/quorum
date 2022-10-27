@@ -17,7 +17,7 @@ type MolassesProducer struct {
 	nodename string
 	cIface   def.ChainMolassesIface
 	groupId  string
-	bft      *Bft
+	bft      *TrxBft
 }
 
 func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
@@ -29,11 +29,11 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 
 	config, err := producer.createBftConfig()
 	if err != nil {
-		molaproducer_log.Errorf("create bft failed")
-		molauser_log.Error(err.Error())
+		molaproducer_log.Error("create bft failed")
+		molaproducer_log.Error(err.Error())
 		return
 	}
-	producer.bft = NewBft(*config, producer)
+	producer.bft = NewTrxBft(*config, producer)
 }
 
 func (producer *MolassesProducer) TryPropose() {
@@ -47,11 +47,11 @@ func (producer *MolassesProducer) RecreateBft() {
 	config, err := producer.createBftConfig()
 	if err != nil {
 		molaproducer_log.Errorf("recreate bft failed")
-		molauser_log.Error(err.Error())
+		molaproducer_log.Error(err.Error())
 		return
 	}
 
-	producer.bft = NewBft(*config, producer)
+	producer.bft = NewTrxBft(*config, producer)
 }
 
 func (producer *MolassesProducer) createBftConfig() (*Config, error) {
@@ -234,7 +234,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	//}
 }
 
-func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsg) error {
+func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	molaproducer_log.Debugf("<%s> HandleHBMsg %s, %d", producer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
 	return producer.bft.HandleMessage(hbmsg)
 }

@@ -39,7 +39,7 @@ func NewACS(cfg Config, bft *Bft, epoch int64) *ACS {
 	return acs
 }
 
-//give input value to
+// give input value to
 func (a *ACS) InputValue(val []byte) error {
 	rbc, ok := a.rbcInstances[a.MySignPubkey]
 	if !ok {
@@ -49,7 +49,7 @@ func (a *ACS) InputValue(val []byte) error {
 	return rbc.InputValue(val)
 }
 
-//rbc for proposerIs finished
+// rbc for proposerIs finished
 func (a *ACS) RbcDone(proposerPubkey string) {
 	acs_log.Infof("RbcDone called, Epoch <%d>", a.epoch)
 	a.rbcOutput[proposerPubkey] = true
@@ -71,7 +71,7 @@ func (a *ACS) RbcDone(proposerPubkey string) {
 	}
 }
 
-func (a *ACS) HandleMessage(hbmsg *quorumpb.HBMsg) error {
+func (a *ACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	acs_log.Infof("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
 	switch hbmsg.MsgType {
 	case quorumpb.HBBMsgType_BROADCAST:

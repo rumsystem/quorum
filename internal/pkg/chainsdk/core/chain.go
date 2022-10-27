@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/network"
@@ -108,25 +109,15 @@ func (chain *Chain) HandlePackageMessage(pkg *quorumpb.Package) error {
 			chain_log.Warning(err.Error())
 		}
 	} else if pkg.Type == quorumpb.PackageType_TRX {
-		var trx *quorumpb.Trx
-		trx = &quorumpb.Trx{}
+		trx := &quorumpb.Trx{}
 		err = proto.Unmarshal(pkg.Data, trx)
 		if err == nil {
 			chain.HandleTrxPsConn(trx)
 		} else {
 			chain_log.Warningf(err.Error())
 		}
-	} else if pkg.Type == quorumpb.PackageType_SNAPSHOT {
-		var snapshot *quorumpb.Snapshot
-		snapshot = &quorumpb.Snapshot{}
-		err = proto.Unmarshal(pkg.Data, snapshot)
-		if err == nil {
-			//psconn.chain.HandleSnapshotPsConn(snapshot)
-		} else {
-			chain_log.Warningf(err.Error())
-		}
 	} else if pkg.Type == quorumpb.PackageType_HBB {
-		hb := &quorumpb.HBMsg{}
+		hb := &quorumpb.HBMsgv1{}
 		err = proto.Unmarshal(pkg.Data, hb)
 		if err != nil {
 			chain_log.Warningf(err.Error())
@@ -136,23 +127,23 @@ func (chain *Chain) HandlePackageMessage(pkg *quorumpb.Package) error {
 	return err
 }
 
-//Handle Trx from PsConn
+// Handle Trx from PsConn
 func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> HandleTrxPsConn called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
 		chain_log.Errorf("HandleTrxPsConn called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
-		return errors.New("Trx Version mismatch")
+		return fmt.Errorf("trx Version mismatch")
 	}
 
 	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
 		chain_log.Warnf("<%s> verify Trx failed with err <%s>", chain.groupId, err.Error())
-		return errors.New("Verify Trx failed")
+		return fmt.Errorf("verify Trx failed")
 	}
 
 	if !verified {
 		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender %s", chain.groupId, trx.SenderPubkey)
-		return errors.New("Invalid Trx")
+		return fmt.Errorf("invalid Trx")
 	}
 
 	switch trx.Type {
@@ -164,7 +155,6 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_CHAIN_CONFIG:
 		chain.producerAddTrx(trx)
-		break
 	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -185,7 +175,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	return nil
 }
 
-//handle BLOCK msg from PSconn
+// handle BLOCK msg from PSconn
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
 
@@ -226,7 +216,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	return nil
 }
 
-func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
+func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 
 	//non producer node should not handle hb msg
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
@@ -237,40 +227,14 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsg) error {
 		return nil
 	}
 
-	return chain.Consensus.Producer().HandleHBMsg(hb)
-}
-
-/*
-func (chain *Chain) HandleSnapshotPsConn(snapshot *quorumpb.Snapshot) error {
-	chain_log.Debugf("<%s> HandleSnapshotPsConn called", chain.groupId)
-
-	if nodectx.GetNodeCtx().Node.Nodeopt.EnableSnapshot == false {
-		chain_log.Debugf("<%s> Snapshot has been disabled on this node, skip", chain.groupId)
-		return nil
+	if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_TRX {
+		return chain.Consensus.Producer().HandleHBMsg(hb)
+	} else if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_PSYNC {
+		return chain.Consensus.PSyncer().HandleHBMsg(hb)
 	}
 
-	if snapshot.SenderPubkey == chain.group.Item.OwnerPubKey {
-		if chain.Consensus.SnapshotReceiver() != nil {
-			//check signature
-			verified, err := chain.Consensus.SnapshotReceiver().VerifySignature(snapshot)
-			if err != nil {
-				chain_log.Debugf("<%s> verify snapshot failed", chain.groupId)
-				return err
-			}
-
-			if !verified {
-				chain_log.Debugf("<%s> Invalid snapshot, signature invalid", chain.groupId)
-				return errors.New("Invalid signature")
-			}
-			chain.Consensus.SnapshotReceiver().ApplySnapshot(snapshot)
-		}
-	} else {
-		chain_log.Warningf("<%s> Snapshot from unknown source(not owner), pubkey <%s>", chain.groupId, snapshot.SenderPubkey)
-	}
-
-	return nil
+	return fmt.Errorf("unknown hbmsg type %s", hb.PayloadType.String())
 }
-*/
 
 /*
 	Rex Handler
@@ -280,7 +244,7 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
 		chain_log.Errorf("HandleTrxRex called, Trx Version mismatch %s: %s vs %s", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
-		return errors.New("Trx Version mismatch")
+		return fmt.Errorf("trx Version mismatch")
 	}
 
 	//Rex Channel only support the following trx type
@@ -307,7 +271,7 @@ func (chain *Chain) HandleBlockRex(block *quorumpb.Block, s network.Stream) erro
 	return nil
 }
 
-func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsg) error {
+func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsgv1) error {
 	chain_log.Debugf("<%s> HandleBlockRex called", chain.groupId)
 	return nil
 }
@@ -461,8 +425,7 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (int64, error) {
 	}
 
 	//TODO: if block epoch < waiting epoch, ignore it.
-	var shouldAccept bool
-	shouldAccept = true
+	shouldAccept := true
 	//TODO: verify the block
 	//if run as producer node
 	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp set shouldAccept", chain.groupId)
@@ -586,18 +549,6 @@ func (chain *Chain) UpdUserList() {
 	}
 }
 
-func (chain *Chain) GetSnapshotTag() (tag *quorumpb.SnapShotTag, err error) {
-	/*
-		if chain.Consensus.SnapshotReceiver() != nil {
-			return chain.Consensus.SnapshotReceiver().GetTag(), nil
-		} else {
-			return nil, errors.New("Sender don't have snapshot tag")
-		}
-	*/
-
-	return nil, nil
-}
-
 func (chain *Chain) CreateConsensus() error {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupId)
 
@@ -620,91 +571,25 @@ func (chain *Chain) CreateConsensus() error {
 		}
 		shouldCreateUser = true
 	} else {
-		return errors.New("Unknow nodetype")
+		return fmt.Errorf("unknow nodetype")
 	}
 
 	if shouldCreateProducer {
-		//create producer anyway
-		//if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupId)
 		producer = &consensus.MolassesProducer{}
 		producer.NewProducer(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-
-		/*
-			} else {
-				chain_log.Infof("<%s> reuse molasses producer", chain.groupId)
-				producer = chain.Consensus.Producer()
-				producer.RecreateBft()
-			}
-		*/
 	}
 
 	if shouldCreateUser {
-
-		//if chain.Consensus == nil || chain.Consensus.User() == nil {
 		chain_log.Infof("<%s> Create and initial molasses user", chain.groupId)
 		user = &consensus.MolassesUser{}
 		user.NewUser(chain.group.Item, chain.group.ChainCtx.nodename, chain)
-		/*
-				} else {
-				chain_log.Infof("<%s> reuse molasses user", chain.groupId)
-				user = chain.Consensus.User()
-			}
-		*/
 	}
 
-	/*
-		var snapshotreceiver chaindef.SnapshotReceiver
-		var snapshotsender chaindef.SnapshotSender
+	//create psyncer
 
-		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.UserSignPubkey)
-		if pk == "" {
-			pk = chain.group.Item.UserSignPubkey
-		}
-
-		ownerpk, _ := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.OwnerPubKey)
-		if ownerpk == "" {
-			ownerpk = chain.group.Item.OwnerPubKey
-		}
-
-
-			if ownerpk == pk {
-				if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
-					chain_log.Infof("<%s> Create and initial molasses SnapshotSender", chain.groupId)
-					snapshotsender = &MolassesSnapshotSender{}
-					snapshotsender.Init(chain.group.Item, chain.group.ChainCtx.nodename)
-				} else {
-					chain_log.Infof("<%s> reuse molasses snapshotsender", chain.groupId)
-					snapshotsender = chain.Consensus.SnapshotSender()
-				}
-				snapshotreceiver = nil
-			} else {
-				if chain.Consensus == nil || chain.Consensus.SnapshotSender() == nil {
-					chain_log.Infof("<%s> Create and initial molasses SnapshotReceiver", chain.groupId)
-					snapshotreceiver = &MolassesSnapshotReceiver{}
-					snapshotreceiver.Init(chain.group.Item, chain.group.ChainCtx.nodename)
-				} else {
-					chain_log.Infof("<%s> reuse molasses snapshot", chain.groupId)
-					snapshotreceiver = chain.Consensus.SnapshotReceiver()
-				}
-				snapshotsender = nil
-			}
-	*/
-
-	//if chain.Consensus == nil {
 	chain_log.Infof("<%s> create new consensus", chain.groupId)
-	chain.Consensus = consensus.NewMolasses(producer, user /*, snapshotsender, snapshotreceiver */)
-
-	/*
-
-		} else {
-			chain_log.Infof("<%s> reuse consensus", chain.groupId)
-			chain.Consensus.SetProducer(producer)
-			chain.Consensus.SetUser(user)
-			//chain.Consensus.SetSnapshotSender(snapshotsender)
-			//chain.Consensus.SetSnapshotReceiver(snapshotreceiver)
-		}
-	*/
+	chain.Consensus = consensus.NewMolasses(producer, user, nil)
 
 	return nil
 }
@@ -759,32 +644,6 @@ func (chain *Chain) IsSyncerIdle() bool {
 	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
-}
-
-func (chain *Chain) StartSnapshot() {
-	chain_log.Debugf("<%s> StartSnapshot called", chain.groupId)
-	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
-		//I am producer, start snapshot ticker
-		chain_log.Debugf("<%s> Owner start snapshot", chain.groupId)
-		if chain.Consensus.SnapshotSender() == nil {
-			chain_log.Debugf("<%s> snapshotsender is nil", chain.groupId)
-			return
-		}
-		chain.Consensus.SnapshotSender().Start()
-	}
-}
-
-func (chain *Chain) StopSnapshot() {
-	chain_log.Debugf("<%s> StopSnapshot called", chain.groupId)
-	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
-		//I am producer, start snapshot ticker
-		chain_log.Debugf("<%s> Owner stop snapshot", chain.groupId)
-		if chain.Consensus.SnapshotSender() == nil {
-			chain_log.Debugf("<%s> snapshotsender is nil", chain.groupId)
-			return
-		}
-		chain.Consensus.SnapshotSender().Stop()
-	}
 }
 */
 
@@ -844,18 +703,6 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		//apply trx
 		chain_log.Debugf("<%s> try apply trx <%s>", chain.groupId, trx.TrxId)
 
-		/*
-			//check if snapshotTag is available
-			if trx.Type != quorumpb.TrxType_POST {
-				snapshotTag, err := nodectx.GetNodeCtx().GetChainStorage().GetSnapshotTag(trx.GroupId, nodename)
-				if err == nil && snapshotTag != nil {
-					if snapshotTag.HighestHeight > chain.group.Item.HighestHeight {
-						chain_log.Debugf("<%s> snapshotTag exist, trx already applied, ignore <%s>", chain.groupId, trx.TrxId)
-						continue
-					}
-				}
-			}
-		*/
 		switch trx.Type {
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupId)

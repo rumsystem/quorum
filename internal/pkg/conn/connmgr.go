@@ -141,7 +141,7 @@ func (conn *Conn) UnregisterChainRelay(relayid, groupId, relaytype string) error
 		delete(conn.ConnMgrs, key)
 		return nil
 	}
-	return errors.New(fmt.Sprintf("unknown relay: %s", relayid))
+	return fmt.Errorf("unknown relay: %s", relayid)
 }
 
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
@@ -276,7 +276,7 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 			timer.Stop()
 			timer.Reset(CLOSE_SYNC_CHANN_TIMER)
 		} else {
-			return nil, fmt.Errorf("Can not find timer for syncer channel")
+			return nil, fmt.Errorf("can not find timer for syncer channel")
 		}
 		return psconn, nil
 	} else {
@@ -331,49 +331,12 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 		return psconn.Publish(pkgBytes)
 	}
 
-	return fmt.Errorf("Can not find psChannel")
-}
-
-func (connMgr *ConnMgr) SendSnapshotPsconn(snapshot *quorumpb.Snapshot, psChannel PsConnChanel, chanelId ...string) error {
-	conn_log.Debugf("<%s> SendSnapshotPsconn called", connMgr.GroupId)
-
-	pbBytes, err := proto.Marshal(snapshot)
-	if err != nil {
-		return err
-	}
-
-	pkg := &quorumpb.Package{}
-	pkg.Type = quorumpb.PackageType_SNAPSHOT
-	pkg.Data = pbBytes
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	if psChannel == ProducerChannel {
-		conn_log.Debugf("<%s> Send snapshot via Producer_Channel", connMgr.GroupId)
-		psconn := connMgr.getProducerPsConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == UserChannel {
-		conn_log.Debugf("<%s> Send snapshot via User_Channel", connMgr.GroupId)
-		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == SyncerChannel {
-		conn_log.Debugf("<%s> Send snapshot via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
-		psconn, err := connMgr.getSyncConn(chanelId[0])
-		if err != nil {
-			return err
-		}
-		return psconn.Publish(pkgBytes)
-	}
-
-	return fmt.Errorf("Can not find psChannel")
+	return fmt.Errorf("can not find psChannel")
 }
 
 func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
 	conn_log.Debugf("<%s> SendBlockRex called", connMgr.GroupId)
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
+	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
@@ -390,8 +353,7 @@ func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
 
 func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
+	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
@@ -423,7 +385,7 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 		return psconn.Publish(pkgBytes)
 	}
 
-	return fmt.Errorf("Can not find psChannel")
+	return fmt.Errorf("can not find psChannel")
 }
 
 func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
@@ -448,9 +410,8 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	}
 }
 
-func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsg, psChannel PsConnChanel, channelId ...string) error {
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
+func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsgv1, psChannel PsConnChanel, channelId ...string) error {
+	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)
 	if err != nil {
@@ -482,7 +443,7 @@ func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsg, psChannel PsConnChanel, c
 		return psconn.Publish(pkgBytes)
 	}
 
-	return fmt.Errorf("Can not find psChannel")
+	return fmt.Errorf("can not find psChannel")
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {

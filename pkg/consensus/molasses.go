@@ -8,12 +8,11 @@ type Molasses struct {
 	name     string
 	producer def.Producer
 	user     def.User
-	//sssender   chaindef.SnapshotSender
-	//ssreceiver chaindef.SnapshotReceiver
+	psyncer  def.PSyncer
 }
 
-func NewMolasses(p def.Producer, u def.User /*, sss chaindef.SnapshotSender, ssr chaindef.SnapshotReceiver */) *Molasses {
-	return &Molasses{name: "Molasses", producer: p, user: u /*, sssender: sss, ssreceiver: ssr */}
+func NewMolasses(p def.Producer, u def.User, s def.PSyncer) *Molasses {
+	return &Molasses{name: "Molasses", producer: p, user: u, psyncer: s}
 }
 
 func (m *Molasses) Name() string {
@@ -28,15 +27,9 @@ func (m *Molasses) User() def.User {
 	return m.user
 }
 
-/*
-func (m *Molasses) SnapshotSender() chaindef.SnapshotSender {
-	return m.sssender
+func (m *Molasses) PSyncer() def.PSyncer {
+	return m.psyncer
 }
-
-func (m *Molasses) SnapshotReceiver() chaindef.SnapshotReceiver {
-	return m.ssreceiver
-}
-*/
 
 func (m *Molasses) SetProducer(p def.Producer) {
 	m.producer = p
@@ -46,18 +39,18 @@ func (m *Molasses) SetUser(u def.User) {
 	m.user = u
 }
 
-func (m *Molasses) TryPropose() {
+func (m *Molasses) SetPSyncer(s def.PSyncer) {
+	m.psyncer = s
+}
+
+func (m *Molasses) TryProposeTrx() {
 	if m.producer != nil {
 		m.producer.TryPropose()
 	}
 }
 
-/*
-func (m *Molasses) SetSnapshotSender(sss chaindef.SnapshotSender) {
-	m.sssender = sss
+func (m *Molasses) TryProposePSync() {
+	if m.psyncer != nil {
+		m.psyncer.TryPropose()
+	}
 }
-
-func (m *Molasses) SetSnapshotReceiver(ssr chaindef.SnapshotReceiver) {
-	m.ssreceiver = ssr
-}
-*/

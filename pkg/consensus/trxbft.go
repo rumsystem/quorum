@@ -12,9 +12,9 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var bft_log = logging.Logger("bft")
+var bft_log = logging.Logger("tbft")
 
-type Bft struct {
+type TrxBft struct {
 	Config
 	producer     *MolassesProducer
 	acsInsts     map[int64]*ACS //map key is epoch
@@ -22,9 +22,9 @@ type Bft struct {
 	sudoTxBuffer *TrxBuffer
 }
 
-func NewBft(cfg Config, producer *MolassesProducer) *Bft {
+func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 	bft_log.Debugf("NewBft called")
-	return &Bft{
+	return &TrxBft{
 		Config:   cfg,
 		producer: producer,
 		acsInsts: make(map[int64]*ACS),
@@ -32,7 +32,7 @@ func NewBft(cfg Config, producer *MolassesProducer) *Bft {
 	}
 }
 
-func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
+func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	bft_log.Debugf("AddTrx called")
 	//bft_log.Debugf("IsSudoTrx : <%v>", tx.SudoTrx)
 	bft.txBuffer.Push(tx)
@@ -42,7 +42,7 @@ func (bft *Bft) AddTrx(tx *quorumpb.Trx) error {
 	return nil
 }
 
-func (bft *Bft) AddSudoTrx(tx *quorumpb.Trx) error {
+func (bft *TrxBft) AddSudoTrx(tx *quorumpb.Trx) error {
 	bft_log.Debugf("AddSudoTrx called")
 
 	//check if sudotrx is from group owner
@@ -62,7 +62,7 @@ func (bft *Bft) AddSudoTrx(tx *quorumpb.Trx) error {
 	return nil
 }
 
-func (bft *Bft) HandleMessage(hbmsg *quorumpb.HBMsg) error {
+func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	bft_log.Debugf("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
 	acs, ok := bft.acsInsts[hbmsg.Epoch]
 
@@ -79,7 +79,7 @@ func (bft *Bft) HandleMessage(hbmsg *quorumpb.HBMsg) error {
 	return acs.HandleMessage(hbmsg)
 }
 
-func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
+func (hb *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	bft_log.Debugf("AcsDone called, Epoch <%d>", epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 	//bft_log.Infof("result %v", result)
@@ -146,7 +146,7 @@ func (hb *Bft) AcsDone(epoch int64, result map[string][]byte) {
 	}
 }
 
-func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
+func (hb *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 	//try build block by using trxs
 
 	var trxToPackage []*quorumpb.Trx
@@ -202,7 +202,7 @@ func (hb *Bft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 	return nil
 }
 
-func (hb *Bft) propose(epoch int64) error {
+func (hb *TrxBft) propose(epoch int64) error {
 	trxs, err := hb.txBuffer.GetNRandTrx(hb.BatchSize)
 	if err != nil {
 		return err

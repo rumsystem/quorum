@@ -58,14 +58,14 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 
-	grp.ChainCtx.Consensus.TryPropose()
+	grp.ChainCtx.Consensus.TryProposeTrx()
 	//start send snapshot
 	//grp.ChainCtx.StartSnapshot()
 
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
 
-//teardown group
+// teardown group
 func (grp *Group) Teardown() {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
 
@@ -93,8 +93,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer
-	var pItem *quorumpb.ProducerItem
-	pItem = &quorumpb.ProducerItem{}
+	pItem := &quorumpb.ProducerItem{}
 	pItem.GroupId = item.GroupId
 	pItem.GroupOwnerPubkey = item.OwnerPubKey
 	pItem.ProducerPubkey = item.OwnerPubKey
@@ -134,10 +133,7 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 
-	grp.ChainCtx.Consensus.TryPropose()
-	//start send snapshot
-	//grp.ChainCtx.StartSnapshot()
-
+	grp.ChainCtx.Consensus.TryProposeTrx()
 	return nil
 }
 
