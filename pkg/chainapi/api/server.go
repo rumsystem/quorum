@@ -40,10 +40,6 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
 	}))
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		Skipper: rummiddleware.ChainGzipSkipper,
-		Level:   5, // hardcode
-	}))
 
 	// prometheus metric
 	e.GET("/metrics", h.Metrics)
