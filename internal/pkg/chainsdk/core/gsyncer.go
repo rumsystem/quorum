@@ -135,9 +135,11 @@ func safeCloseResult(ch chan *SyncResult) (recovered bool) {
 }
 
 func (s *Gsyncer) Stop() {
-	safeClose(s.taskdone)
+	chain_log.Infof("syncer <%s> stopping...", s.GroupId)
+	s.Status = CLOSE
 	safeCloseTask(s.taskq)
 	safeCloseResult(s.resultq)
+	safeClose(s.taskdone)
 	if s.stopnotify != nil {
 		signcount := 0
 		for _ = range s.stopnotify {
@@ -146,6 +148,7 @@ func (s *Gsyncer) Stop() {
 			if signcount == 2 { // taskq and resultq stopped
 				s.Status = IDLE
 				close(s.stopnotify)
+				chain_log.Infof("syncer <%s> stop success.", s.GroupId)
 			}
 		}
 	}
@@ -277,12 +280,16 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 
 func (s *Gsyncer) AddTask(task *SyncTask) {
 	go func() {
-		s.taskq <- task
+		if s.Status != CLOSE {
+			s.taskq <- task
+		}
 	}()
 }
 
 func (s *Gsyncer) AddResult(result *SyncResult) {
 	go func() {
-		s.resultq <- result
+		if s.Status != CLOSE {
+			s.resultq <- result
+		}
 	}()
 }

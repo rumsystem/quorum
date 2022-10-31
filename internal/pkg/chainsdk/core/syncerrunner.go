@@ -21,6 +21,7 @@ const (
 	SYNC_FAILED      = 2
 	IDLE             = 3
 	LOCAL_SYNCING    = 4
+	CLOSE            = 5
 )
 
 type SyncerRunner struct {
