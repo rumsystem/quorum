@@ -220,6 +220,7 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 						rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
 					}
 				}
+				return
 			}
 
 		}

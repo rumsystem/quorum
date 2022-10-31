@@ -52,7 +52,7 @@ func init() {
 
 	flags.StringVar(&fnodeFlag.PeerName, "peername", "peer", "peername")
 	flags.StringVar(&fnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "config dir")
+	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "data dir")
 	flags.StringVar(&fnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
 	flags.StringVar(&fnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
 	flags.StringVar(&fnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
