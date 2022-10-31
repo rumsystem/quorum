@@ -14,7 +14,7 @@ type MolassesPSyncer struct {
 	nodename string
 	cIface   def.ChainMolassesIface
 	groupId  string
-	bft      *PSyncerBft
+	bft      *PSyncBft
 }
 
 func (psyncer *MolassesPSyncer) NewPSyncer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
