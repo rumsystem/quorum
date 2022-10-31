@@ -1,6 +1,6 @@
 module github.com/rumsystem/quorum
 
-go 1.18
+go 1.19
 
 //replace github.com/libp2p/go-libp2p-autonat => github.com/huo-ju/go-libp2p-autonat v0.4.3
 
@@ -12,7 +12,7 @@ replace github.com/dgraph-io/ristretto => github.com/chux0519/ristretto v0.1.1
 
 replace github.com/ipfs/go-ds-badger2 => github.com/ipfs/go-ds-badger2 v0.1.2
 
-//replace github.com/libp2p/go-libp2p => github.com/chux0519/go-libp2p v0.19.1-0.20220814133711-afcc91c7c730
+replace github.com/libp2p/go-libp2p => github.com/chux0519/go-libp2p v0.23.2
 
 // replace github.com/libp2p/go-libp2p => ../go-libp2p
 
