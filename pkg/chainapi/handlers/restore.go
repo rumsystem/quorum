@@ -15,7 +15,6 @@ import (
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/crypto"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
@@ -105,10 +104,10 @@ func Restore(params RestoreParam) {
 	}
 
 	// restore block db
-	srcBlockDBDir := getBlockBackupPath(absUnZipDir)
-	dstBlockDBDir := getBlockRestorePath(params.Peername, params.DataDir)
-	if err := restoreBlockDB(srcBlockDBDir, dstBlockDBDir); err != nil {
-		logger.Fatalf("restoreBlockDB(%s) failed: %s", srcBlockDBDir, err)
+	srcDBDir := filepath.Join(absUnZipDir, "data", params.Peername)
+	dstDBDir := GetDataPath(params.DataDir, params.Peername)
+	if err := utils.Copy(srcDBDir, dstDBDir); err != nil {
+		logger.Fatalf("restore data failed: %s", err)
 	}
 }
 
@@ -201,43 +200,4 @@ func RestoreFromWasm(param RestoreParam) {
 			logger.Fatalf("write group seed failed: %s", err)
 		}
 	}
-}
-
-// restoreBlockDB restore block data to `data/{peerName}_db`
-func restoreBlockDB(srcBlockDBDir string, dstDir string) error {
-	if err := utils.EnsureDir(dstDir); err != nil {
-		return fmt.Errorf("utils.EnsureDir(%s) failed: %s", dstDir, err)
-	}
-
-	srcDB := storage.QSBadger{}
-	err := srcDB.Init(srcBlockDBDir)
-	if err != nil {
-		return fmt.Errorf("srcDB.Init failed: %s", err)
-	}
-	defer srcDB.Close()
-
-	dstDB := storage.QSBadger{}
-	err = dstDB.Init(dstDir)
-	if err != nil {
-		return fmt.Errorf("dstDB.Init failed: %s", err)
-	}
-	defer dstDB.Close()
-
-	key := getBlockPrefixKey()
-	err = srcDB.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if err := dstDB.Set(k, v); err != nil {
-			return fmt.Errorf("restoreDB.Set(%s) failed: %s", key, err)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("backupDB.PrefixForeach failed: %s", err)
-	}
-
-	return nil
 }

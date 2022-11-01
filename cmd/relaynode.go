@@ -88,7 +88,8 @@ func runRelaynode(config cli.RelayNodeFlag) {
 	logger.Infof("peer ID: <%s>", peerid)
 	logger.Infof("eth addresss: <%s>", ethaddr)
 
-	rdb, err := storage.InitRelayDb(config.DataDir + "/" + config.PeerName)
+	bucket := "relaydb"
+	rdb, err := storage.NewStore(ctx, config.DataDir+"/"+config.PeerName, bucket)
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
