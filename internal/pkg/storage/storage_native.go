@@ -123,29 +123,31 @@ func (s *Store) Delete(key []byte) error {
 	})
 }
 
+// Get retrieves the value for a key in the bucket. Returns a nil value if the key does not exist or if the key is a nested bucket.
 func (s *Store) Get(key []byte) ([]byte, error) {
 	if key == nil || len(key) == 0 {
 		return nil, rumerrors.ErrEmptyKey
 	}
 
 	var val []byte
-	s.db.View(func(tx *bolt.Tx) error {
+	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(s.bucket)
 		val = bucket.Get(key)
+		if val != nil {
+			val = val[:]
+		}
 		return nil
 	})
-
-	if val == nil {
-		return nil, rumerrors.ErrKeyNotFound
+	if err != nil {
+		dbmgr_log.Warnf("kvdb Get %s failed: %s", key, err)
+		return nil, err
 	}
+
 	return val, nil
 }
 
 func (s *Store) IsExist(key []byte) (bool, error) {
 	val, err := s.Get(key)
-	if errors.Is(err, rumerrors.ErrKeyNotFound) {
-		return false, nil
-	}
 	return val != nil, err
 }
 

@@ -273,7 +273,7 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
