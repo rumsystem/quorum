@@ -12,7 +12,6 @@ var psync_acs_log = logging.Logger("pacs")
 
 type PSyncACS struct {
 	Config
-	groupId      string
 	bft          *PSyncBft
 	SessionId    string
 	rbcInstances map[string]*PSyncRBC
@@ -21,7 +20,7 @@ type PSyncACS struct {
 }
 
 func NewPSyncACS(cfg Config, bft *PSyncBft, sid string) *PSyncACS {
-	trx_acs_log.Infof("NewPSyncACS called PSyncerSessionId <%s>", sid)
+	psync_acs_log.Debugf("<%s> NewPSyncACS called, SessionId <%s>", bft.PSyncer.groupId, sid)
 
 	acs := &PSyncACS{
 		Config:       cfg,
@@ -41,7 +40,7 @@ func NewPSyncACS(cfg Config, bft *PSyncBft, sid string) *PSyncACS {
 
 // give input value to
 func (a *PSyncACS) InputValue(val []byte) error {
-	psync_acs_log.Info("InputValue called")
+	psync_acs_log.Debugf("<%s> InputValue called", a.bft.PSyncer.groupId)
 
 	rbc, ok := a.rbcInstances[a.MySignPubkey]
 	if !ok {
@@ -53,7 +52,7 @@ func (a *PSyncACS) InputValue(val []byte) error {
 
 // rbc for proposerIs finished
 func (a *PSyncACS) RbcDone(proposerPubkey string) {
-	trx_acs_log.Infof("RbcDone called, sessionId <%s>", a.SessionId)
+	psync_acs_log.Debugf("<%s> RbcDone called, SessionId <%s>", a.bft.PSyncer.groupId, a.SessionId)
 
 	a.rbcOutput[proposerPubkey] = true
 
@@ -69,13 +68,14 @@ func (a *PSyncACS) RbcDone(proposerPubkey string) {
 		//call hbb to get result
 		a.bft.AcsDone(a.SessionId, a.rbcResults)
 	} else {
-		trx_acs_log.Debugf("Wait for all RBC done")
+		psync_acs_log.Debugf("Wait for all RBC done")
 		return
 	}
 }
 
 func (a *PSyncACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	trx_acs_log.Infof("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
+	psync_acs_log.Debugf("<%s> HandleMessage called,  SessionId <%s>", a.bft.PSyncer.groupId, hbmsg.SessionId)
+
 	switch hbmsg.MsgType {
 	case quorumpb.HBBMsgType_BROADCAST:
 		broadcastMsg := &quorumpb.BroadcastMsg{}

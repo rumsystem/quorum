@@ -327,10 +327,11 @@ enum HBMsgPayloadType {
 
 message HBMsgv1 {
     string           MsgId       = 1;
-    HBBMsgType       MsgType     = 2;
-    int64            Epoch       = 3;
-    HBMsgPayloadType PayloadType = 4;
-    bytes            Payload     = 5;
+    string           SessionId   = 2;    
+    HBBMsgType       MsgType     = 3;
+    int64            Epoch       = 4;
+    HBMsgPayloadType PayloadType = 5;
+    bytes            Payload     = 6;
 }
 
 message HBTrxBundle {

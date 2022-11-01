@@ -31,12 +31,8 @@ type Chain struct {
 	nodename           string
 	groupId            string
 	group              *Group
-	userChannelId      string
-	producerChannelId  string
-	syncChannelId      string
 	ProducerPool       map[string]*quorumpb.ProducerItem
 	userPool           map[string]*quorumpb.UserItem
-	peerIdPool         map[string]string
 	Consensus          def.Consensus
 	ProviderPeerIdPool map[string]string
 	trxFactory         *rumchaindata.TrxFactory
@@ -93,15 +89,12 @@ func (chain *Chain) UpdChainInfo(Epoch int64) error {
 }
 
 /*
-	PSConn handler
+PSConn handler
 */
-
 func (chain *Chain) HandlePackageMessage(pkg *quorumpb.Package) error {
 	var err error
 	if pkg.Type == quorumpb.PackageType_BLOCK {
-		//is block
-		var blk *quorumpb.Block
-		blk = &quorumpb.Block{}
+		blk := &quorumpb.Block{}
 		err = proto.Unmarshal(pkg.Data, blk)
 		if err == nil {
 			chain.HandleBlockPsConn(blk)
@@ -217,7 +210,6 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 }
 
 func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
-
 	//non producer node should not handle hb msg
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
 		return nil
@@ -237,9 +229,8 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 }
 
 /*
-	Rex Handler
+Rex Handler
 */
-
 func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupId)
 	if trx.Version != nodectx.GetNodeCtx().Version {
@@ -379,7 +370,6 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 		}
 
 	*/
-	return nil
 }
 
 func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (int64, error) {
@@ -554,11 +544,10 @@ func (chain *Chain) CreateConsensus() error {
 
 	var user def.User
 	var producer def.Producer
+	var psyncer def.PSync
 
 	var shouldCreateUser, shouldCreateProducer bool
 
-	//create user/producer when run as FULL_NODE
-	//only create producer when run PRODUCER_NODE
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		shouldCreateProducer = true
 		shouldCreateUser = false
@@ -587,9 +576,12 @@ func (chain *Chain) CreateConsensus() error {
 	}
 
 	//create psyncer
+	chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupId)
+	psyncer = &consensus.MolassesPSyncer{}
+	psyncer.NewPSyncer(chain.group.Item, chain.nodename, chain)
 
 	chain_log.Infof("<%s> create new consensus", chain.groupId)
-	chain.Consensus = consensus.NewMolasses(producer, user, nil)
+	chain.Consensus = consensus.NewMolasses(producer, user, psyncer)
 
 	return nil
 }
@@ -598,8 +590,19 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	return TrxEnqueue(groupId, trx)
 }
 
-func (chain *Chain) StartSync() error {
-	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
+func (chain *Chain) StartPSync() error {
+	chain_log.Debugf("<%s> StartPSync called", chain.groupId)
+	chain.Consensus.TryProposePSync()
+	return nil
+}
+
+func (chain *Chain) StopPSync() error {
+	chain_log.Debugf("<%s> StopPSync called", chain.groupId)
+	return nil
+}
+
+func (chain *Chain) StartBSync() error {
+	chain_log.Debugf("<%s> StartBSync called.", chain.groupId)
 	//all producers and owner must do sync after service start.
 	//if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
 	//	if len(chain.ProducerPool) == 1 {
@@ -612,13 +615,13 @@ func (chain *Chain) StartSync() error {
 	//	chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
 	//	return nil
 	//}
-	chain_log.Debugf("<%s> StartSync from %d", chain.groupId, chain.group.Item.Epoch)
+	chain_log.Debugf("<%s> StartBSync from %d", chain.groupId, chain.group.Item.Epoch)
 	chain.syncerrunner.Start(chain.group.Item.Epoch + 1)
 	return nil
 }
 
-func (chain *Chain) StopSync() error {
-	chain_log.Debugf("<%s> StopSync called", chain.groupId)
+func (chain *Chain) StopBSync() error {
+	chain_log.Debugf("<%s> StopBSync called", chain.groupId)
 	chain_log.Debugf("<%s> ======TODO: cal syncerrunner to stop", chain.groupId)
 	//before start sync from other node, gather all
 	//if chain.syncer != nil {
@@ -626,7 +629,7 @@ func (chain *Chain) StopSync() error {
 	//}
 	return nil
 }
-func (chain *Chain) GetSyncerStatus() int8 {
+func (chain *Chain) GetBSyncerStatus() int8 {
 	return chain.syncerrunner.Status
 }
 

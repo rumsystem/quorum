@@ -54,25 +54,25 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		var groupSignPubkey []byte
 		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
-		if ok == true {
+		if ok {
 			base64key, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
-					_, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
+					_, _ = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 					err = nodeoptions.SetSignKeyMap(params.GroupId, newsignaddr)
 					if err != nil {
 						msg := fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
 						return rumerrors.NewBadRequestError(msg)
 					}
-					base64key, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+					base64key, _ = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				} else {
 					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(params.GroupId))
 					if err != nil {
 						msg := "create new group key err:" + err.Error()
 						return rumerrors.NewBadRequestError(msg)
 					}
-					base64key, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+					base64key, _ = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 				}
 			}
 			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
@@ -111,14 +111,14 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		groupEncryptkey, err := dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "key not exist") {
-				groupEncryptkey, err = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
+				/*groupEncryptkey*/ _, _ = dirks.NewKeyWithDefaultPassword(params.GroupId, localcrypto.Encrypt)
 
 				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(params.GroupId))
 				if err != nil {
 					msg := "Create key pair failed with msg:" + err.Error()
 					return rumerrors.NewBadRequestError(msg)
 				}
-				groupEncryptkey, err = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
+				groupEncryptkey, _ = dirks.GetEncodedPubkey(params.GroupId, localcrypto.Encrypt)
 			} else {
 				msg := "Create key pair failed with msg:" + err.Error()
 				return rumerrors.NewBadRequestError(msg)
@@ -145,15 +145,14 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError("Join Group failed, can not verify signature")
 		}
 
-		var item *quorumpb.GroupItem
-		item = &quorumpb.GroupItem{}
+		item := &quorumpb.GroupItem{}
 
 		item.OwnerPubKey = params.OwnerPubkey
 		item.GroupId = params.GroupId
 		item.GroupName = params.GroupName
 
 		secp256k1pubkey, ok := ownerPubkey.(*p2pcrypto.Secp256k1PublicKey)
-		if ok == true {
+		if ok {
 			//btcecpubkey := (*btcec.PublicKey)(secp256k1pubkey)
 			pubkey := (*secp256k1.PublicKey)(secp256k1pubkey)
 			item.OwnerPubKey = base64.RawURLEncoding.EncodeToString(ethcrypto.CompressPubkey(pubkey.ToECDSA()))
@@ -188,30 +187,25 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
 		}
 
-		//item.HighestBlockId = params.GenesisBlock.BlockId
-		//item.HighestHeight = 0
 		item.Epoch = 0
 		item.LastUpdate = time.Now().UnixNano()
 		item.GenesisBlock = params.GenesisBlock
 
 		//create the group
-		var group *chain.Group
-		group = &chain.Group{}
+		group := &chain.Group{}
 		err = group.CreateGrp(item)
-		if nodeoptions.IsRexTestMode == true {
+		if nodeoptions.IsRexTestMode {
 			group.SetRumExchangeTestMode()
 		}
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		//start sync
-		/*
-			err = group.StartSync()
-			if err != nil {
-				return rumerrors.NewBadRequestError(err)
-			}
-		*/
+		//start psync
+		err = group.StartPSync()
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
 
 		//add group to context
 		groupmgr := chain.GetGroupMgr()
@@ -229,7 +223,7 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 		buffer.Write([]byte(item.CipherKey))
 		buffer.Write([]byte(item.AppKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
-		signature, err := ks.EthSignByKeyName(item.GroupId, hashResult)
+		signature, _ := ks.EthSignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{GroupId: item.GroupId, GroupName: item.GroupName, OwnerPubkey: item.OwnerPubKey, ConsensusType: params.ConsensusType, EncryptionType: params.EncryptionType, UserPubkey: item.UserSignPubkey, UserEncryptPubkey: groupEncryptkey, CipherKey: item.CipherKey, AppKey: item.AppKey, Signature: encodedSign}

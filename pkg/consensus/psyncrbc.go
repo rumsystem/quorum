@@ -81,7 +81,7 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 	}
 
 	//create RBC msg for each shards
-	reqs, err := MakeRBCProofMessages(r.MySignPubkey, shards)
+	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, shards)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, req := range reqs {
-		err := SendHbbRBC(r.groupId, req, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC)
+		err := SendHbbRBC(r.groupId, req, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	if !ValidateProof(proof) {
-		return fmt.Errorf("Received invalid proof from producer node <%s>", proof.ProposerPubkey)
+		return fmt.Errorf("received invalid proof from producer node <%s>", proof.ProposerPubkey)
 	}
 
 	//save proof
@@ -153,12 +153,12 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		r.dataDecodeDone = true
 
 		psync_rbc_log.Infof("broadcast ready msg")
-		readyMsg, err := MakeRBCReadyMessage(r.MySignPubkey, proof)
+		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, proof)
 		if err != nil {
 			return err
 		}
 
-		err = SendHbbRBC(r.groupId, readyMsg, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC)
+		err = SendHbbRBC(r.groupId, readyMsg, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
 		if err != nil {
 			return err
 		}
@@ -205,7 +205,7 @@ func (r *PSyncRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	}
 
 	if _, ok := r.recvReadys[string(ready.ProposerPubkey)]; ok {
-		return fmt.Errorf("Received multiple readys from <%s>", ready.ProposerPubkey)
+		return fmt.Errorf("received multiple readys from <%s>", ready.ProposerPubkey)
 	}
 
 	r.recvReadys[string(ready.ProposerPubkey)] = ready

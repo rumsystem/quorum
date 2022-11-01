@@ -6,6 +6,7 @@ import (
 
 	"github.com/NebulousLabs/merkletree"
 	"github.com/klauspost/reedsolomon"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,8 +17,7 @@ func (p Proofs) Len() int           { return len(p) }
 func (p Proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p Proofs) Less(i, j int) bool { return p[i].Index < p[j].Index }
 
-func MakeRBCProofMessages(proposerPubkey string, shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
-
+func MakeRBCProofMessages(groupId, nodename, proposerPubkey string, shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
 	msgs := make([]*quorumpb.BroadcastMsg, len(shards))
 
 	for i := 0; i < len(msgs); i++ {
@@ -28,18 +28,29 @@ func MakeRBCProofMessages(proposerPubkey string, shards [][]byte) ([]*quorumpb.B
 		}
 		root, proof, proofIndex, n := tree.Prove()
 
-		//TBD, call localcypto to sign root_hash with proposerPubkey(mySignPubkey)
-		signature := []byte("FAKE_SIGN")
-
 		payload := &quorumpb.Proof{
-
 			RootHash:       root,
 			Proof:          proof,
 			Index:          int64(proofIndex),
 			Leaves:         int64(n),
 			ProposerPubkey: proposerPubkey,
-			ProposerSign:   signature,
+			ProposerSign:   nil,
 		}
+
+		bbytes, err := proto.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+
+		payloadhash := localcrypto.Hash(bbytes)
+
+		var signature []byte
+		ks := localcrypto.GetKeystore()
+		signature, err = ks.EthSignByKeyName(groupId, payloadhash, nodename)
+		if err != nil {
+			return nil, err
+		}
+		payload.ProposerSign = signature
 
 		payloadb, err := proto.Marshal(payload)
 		if err != nil {
@@ -55,16 +66,30 @@ func MakeRBCProofMessages(proposerPubkey string, shards [][]byte) ([]*quorumpb.B
 	return msgs, nil
 }
 
-func MakeRBCReadyMessage(signPubkey string, proof *quorumpb.Proof) (*quorumpb.BroadcastMsg, error) {
-	//sign root_hash with my pubkey
-	signature := []byte("FAKE_SIGN")
-
+func MakeRBCReadyMessage(groupId, nodename, signPubkey string, proof *quorumpb.Proof) (*quorumpb.BroadcastMsg, error) {
 	ready := &quorumpb.Ready{
 		RootHash:            proof.RootHash,
 		ProofProviderPubkey: proof.ProposerPubkey, //pubkey for who send the original proof msg
 		ProposerPubkey:      signPubkey,
-		ProposerSign:        signature,
+		ProposerSign:        nil,
 	}
+
+	//sign root_hash with my pubkey
+	bbytes, err := proto.Marshal(ready)
+	if err != nil {
+		return nil, err
+	}
+
+	readyHash := localcrypto.Hash(bbytes)
+
+	var signature []byte
+	ks := localcrypto.GetKeystore()
+	signature, err = ks.EthSignByKeyName(groupId, readyHash, nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	ready.ProposerSign = signature
 
 	payloadb, err := proto.Marshal(ready)
 	if err != nil {
@@ -80,13 +105,11 @@ func MakeRBCReadyMessage(signPubkey string, proof *quorumpb.Proof) (*quorumpb.Br
 }
 
 func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numDShards int) ([]byte, error) {
-
 	//sort proof by indexId
 	sort.Sort(proofs)
 
 	shards := make([][]byte, numPShards+numDShards)
 	for _, p := range proofs {
-		trx_rbc_log.Infof("index %d", p.Index)
 		shards[p.Index] = p.Proof[0]
 	}
 

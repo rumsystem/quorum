@@ -18,7 +18,7 @@ type MolassesPSyncer struct {
 }
 
 func (psyncer *MolassesPSyncer) NewPSyncer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
-	molapsyncer_log.Infof("NewPsyncer called")
+	molapsyncer_log.Debugf("<%s> NewPSyncer called", item.GroupId)
 	psyncer.grpItem = item
 	psyncer.cIface = iface
 	psyncer.nodename = nodename
@@ -30,12 +30,12 @@ func (psyncer *MolassesPSyncer) NewPSyncer(item *quorumpb.GroupItem, nodename st
 		molapsyncer_log.Error(err.Error)
 		return
 	}
-	psyncer.bft = NewPSyncBft(*config, psyncer)
 
+	psyncer.bft = NewPSyncBft(*config, psyncer)
 }
 
 func (psyncer *MolassesPSyncer) RecreateBft() {
-	molapsyncer_log.Debug("RecreateBft called")
+	molapsyncer_log.Debugf("<%s> RecreateBft called", psyncer.groupId)
 	config, err := psyncer.createBftConfig()
 	if err != nil {
 		molapsyncer_log.Errorf("recreate bft failed")
@@ -44,6 +44,16 @@ func (psyncer *MolassesPSyncer) RecreateBft() {
 	}
 
 	psyncer.bft = NewPSyncBft(*config, psyncer)
+}
+
+func (psyncer *MolassesPSyncer) TryPropose() {
+	molapsyncer_log.Debugf("<%s> TryPropose called", psyncer.groupId)
+	psyncer.bft.Propose()
+}
+
+func (psyncer *MolassesPSyncer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
+	molapsyncer_log.Debugf("<%s> HandleHBMsg %s, %d", psyncer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
+	return psyncer.bft.HandleMessage(hbmsg)
 }
 
 func (psyncer *MolassesPSyncer) createBftConfig() (*Config, error) {
@@ -82,9 +92,4 @@ func (psyncer *MolassesPSyncer) createBftConfig() (*Config, error) {
 	}
 
 	return config, nil
-}
-
-func (psyncer *MolassesPSyncer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molapsyncer_log.Debugf("<%s> HandleHBMsg %s, %d", psyncer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
-	return psyncer.bft.HandleMessage(hbmsg)
 }

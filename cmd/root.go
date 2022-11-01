@@ -64,7 +64,7 @@ func configLogger(isDebug bool) {
 		logging.SetLogLevel("dbmgr", "debug")
 		logging.SetLogLevel("chainctx", "debug")
 		logging.SetLogLevel("syncer", "debug")
-		logging.SetLogLevel("producer", "debug")
+
 		logging.SetLogLevel("trxmgr", "debug")
 		logging.SetLogLevel("conn", "debug")
 		logging.SetLogLevel("rumexchange", "debug")
@@ -74,12 +74,19 @@ func configLogger(isDebug bool) {
 		logging.SetLogLevel("chan", "debug")
 		//logging.SetLogLevel("pubsub", "debug")
 
-		logging.SetLogLevel("user", "debug")
-		logging.SetLogLevel("rbc", "debug")
-		logging.SetLogLevel("acs", "debug")
-		logging.SetLogLevel("bft", "debug")
-		logging.SetLogLevel("user", "debug")
 		logging.SetLogLevel("chaindb", "debug")
+
+		logging.SetLogLevel("producer", "debug")
+		logging.SetLogLevel("user", "debug")
+		logging.SetLogLevel("psyncer", "debug")
+
+		logging.SetLogLevel("trbc", "debug")
+		logging.SetLogLevel("tacs", "debug")
+		logging.SetLogLevel("tbft", "debug")
+
+		logging.SetLogLevel("prbc", "debug")
+		logging.SetLogLevel("pacs", "debug")
+		logging.SetLogLevel("pbft", "debug")
 	} else {
 		logging.SetLogLevel("*", "info")
 	}

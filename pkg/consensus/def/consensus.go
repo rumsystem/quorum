@@ -4,10 +4,10 @@ type Consensus interface {
 	Name() string
 	Producer() Producer
 	User() User
-	PSyncer() PSyncer
+	PSyncer() PSync
 	SetProducer(p Producer)
 	SetUser(u User)
-	SetPSyncer(s PSyncer)
+	SetPSyncer(s PSync)
 	TryProposeTrx()
 	TryProposePSync()
 }

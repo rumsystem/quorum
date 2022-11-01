@@ -107,7 +107,7 @@ func (h *Handler) ApproveRelay(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	if succ == true {
+	if succ {
 		conn := conn.GetConn()
 		//add relay
 		conn.RegisterChainRelay(reqitem.GroupId, reqitem.UserPubkey, reqitem.Type)
@@ -147,7 +147,7 @@ func SendRelayRequestByRex(relayreq *quorumpb.RelayReq) error {
 	} else {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
-	if succ == false {
+	if !succ {
 		return errors.New("failed publish to random peer ")
 	}
 	return nil

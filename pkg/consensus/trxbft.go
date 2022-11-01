@@ -57,7 +57,6 @@ func (bft *TrxBft) AddSudoTrx(tx *quorumpb.Trx) error {
 	}
 
 	//SudoTrx will bypass consensus, owner node will generate SudoBlock by itself
-
 	return nil
 }
 

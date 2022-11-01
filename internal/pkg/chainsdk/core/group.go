@@ -58,23 +58,14 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 
-	grp.ChainCtx.Consensus.TryProposeTrx()
-	//start send snapshot
-	//grp.ChainCtx.StartSnapshot()
-
 	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
 }
 
 // teardown group
 func (grp *Group) Teardown() {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
-
 	//unregisted chainctx with conn
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
-
-	//stop snapshot
-	//grp.ChainCtx.StopSnapshot()
-
 	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
 }
 
@@ -91,8 +82,8 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 		return err
 	}
 
-	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	//add owner as the first producer
+	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	pItem := &quorumpb.ProducerItem{}
 	pItem.GroupId = item.GroupId
 	pItem.GroupOwnerPubkey = item.OwnerPubKey
@@ -119,8 +110,6 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 		return err
 	}
 
-	group_log.Infof("Group <%s> created", grp.Item.GroupId)
-
 	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
 	if err != nil {
 		return err
@@ -128,12 +117,13 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 
 	//register chainctx with conn
 	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
-	//reload producers
+
+	//load producers
 	grp.ChainCtx.UpdProducerList()
 	grp.ChainCtx.UpdConnMgrProducer()
 	grp.ChainCtx.CreateConsensus()
 
-	grp.ChainCtx.Consensus.TryProposeTrx()
+	group_log.Debugf("Group <%s> created", grp.Item.GroupId)
 	return nil
 }
 
@@ -143,32 +133,41 @@ func (grp *Group) LeaveGrp() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)
 }
 
-func (grp *Group) ClearGroup() error {
+func (grp *Group) ClearGroupData() error {
+	group_log.Debugf("<%s> ClearGroupData called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) StartSync(restart bool) error {
-	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	if restart == true {
-		grp.ChainCtx.StopSync()
-	}
-	//time.Sleep(10 * time.Second)
-	return grp.ChainCtx.StartSync()
-}
-
-func (grp *Group) StopSync() error {
-	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-	grp.ChainCtx.StopSync()
+func (grp *Group) StartPSync() error {
+	group_log.Debugf("<%s> StartPSync called", grp.Item.GroupId)
+	grp.ChainCtx.StartPSync()
 	return nil
 }
 
-func (grp *Group) GetSyncerStatus() int8 {
-	return grp.ChainCtx.GetSyncerStatus()
+func (grp *Group) StopPSync() error {
+	group_log.Debugf("<%s> StopPSync called", grp.Item.GroupId)
+	grp.ChainCtx.StopPSync()
+	return nil
 }
 
-//func (grp *Group) GetSnapshotInfo() (tag *quorumpb.SnapShotTag, err error) {
-//	return grp.ChainCtx.GetSnapshotTag()
-//}
+func (grp *Group) StartBSync(restart bool) error {
+	group_log.Debugf("<%s> StartBSync called", grp.Item.GroupId)
+	if restart {
+		grp.ChainCtx.StopBSync()
+	}
+	//time.Sleep(10 * time.Second)
+	return grp.ChainCtx.StartBSync()
+}
+
+func (grp *Group) StopBSync() error {
+	group_log.Debugf("<%s> StopBSync called", grp.Item.GroupId)
+	grp.ChainCtx.StopBSync()
+	return nil
+}
+
+func (grp *Group) GetBSyncerStatus() int8 {
+	return grp.ChainCtx.GetBSyncerStatus()
+}
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
@@ -291,6 +290,7 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 	}
 
 	/*
+		Commented by cuicat
 		err = grp.ChainCtx.GetPubqueueIface().TrxEnqueue(grp.Item.GroupId, trx)
 		if err != nil {
 			return "", err

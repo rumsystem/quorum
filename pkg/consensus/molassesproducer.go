@@ -37,9 +37,9 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 }
 
 func (producer *MolassesProducer) TryPropose() {
+	molaproducer_log.Debug("TryPropose called")
 	newEpoch := producer.grpItem.Epoch + 1
 	producer.bft.propose(newEpoch)
-	molaproducer_log.Debugf("new: Epoch <%d> proposed", newEpoch)
 }
 
 func (producer *MolassesProducer) RecreateBft() {

@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SendHbbRBC(groupId string, msg *quorumpb.BroadcastMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType) error {
+func SendHbbRBC(groupId string, msg *quorumpb.BroadcastMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType, sessionId string) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
@@ -20,6 +20,7 @@ func SendHbbRBC(groupId string, msg *quorumpb.BroadcastMsg, epoch int64, payload
 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
+		SessionId:   sessionId,
 		MsgType:     quorumpb.HBBMsgType_BROADCAST,
 		Epoch:       epoch,
 		PayloadType: payloadType,
@@ -29,7 +30,7 @@ func SendHbbRBC(groupId string, msg *quorumpb.BroadcastMsg, epoch int64, payload
 	return connMgr.SendHBMsg(hbmsg, conn.ProducerChannel)
 }
 
-func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType) error {
+func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType, sessionId string) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
@@ -42,6 +43,7 @@ func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, p
 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
+		SessionId:   sessionId,
 		MsgType:     quorumpb.HBBMsgType_AGREEMENT,
 		Epoch:       epoch,
 		PayloadType: payloadType,

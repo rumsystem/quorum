@@ -1,11 +1,8 @@
 package consensus
 
 import (
-	"crypto/sha256"
 	"fmt"
 
-	"github.com/NebulousLabs/merkletree"
-	"github.com/golang/protobuf/proto"
 	"github.com/klauspost/reedsolomon"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 
@@ -85,7 +82,7 @@ func (r *TrxRBC) InputValue(data []byte) error {
 	}
 
 	//create RBC msg for each shards
-	reqs, err := r.makeRBCProofMessages(shards)
+	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, shards)
 	if err != nil {
 		return err
 	}
@@ -94,80 +91,13 @@ func (r *TrxRBC) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, req := range reqs {
-		err := SendHbbRBC(r.groupId, req, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX)
+		err := SendHbbRBC(r.groupId, req, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "") //sessionId is used by psync
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func (r *TrxRBC) makeRBCProofMessages(shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
-	trx_rbc_log.Infof("makeRBCProofMessages called")
-
-	msgs := make([]*quorumpb.BroadcastMsg, len(shards))
-
-	for i := 0; i < len(msgs); i++ {
-		tree := merkletree.New(sha256.New())
-		tree.SetIndex(uint64(i))
-		for j := 0; j < len(shards); j++ {
-			tree.Push(shards[i])
-		}
-		root, proof, proofIndex, n := tree.Prove()
-
-		//TBD, call localcypto to sign root_hash with proposerPubkey(mySignPubkey)
-		signature := []byte("FAKE_SIGN")
-
-		payload := &quorumpb.Proof{
-
-			RootHash:       root,
-			Proof:          proof,
-			Index:          int64(proofIndex),
-			Leaves:         int64(n),
-			ProposerPubkey: r.proposerPubkey,
-			ProposerSign:   signature,
-		}
-
-		payloadb, err := proto.Marshal(payload)
-		if err != nil {
-			return nil, err
-		}
-
-		msgs[i] = &quorumpb.BroadcastMsg{
-			Type:    quorumpb.BroadcastMsgType_PROOF,
-			Payload: payloadb,
-		}
-	}
-
-	return msgs, nil
-}
-
-func (r *TrxRBC) makeRBCReadyMessage(proof *quorumpb.Proof) (*quorumpb.BroadcastMsg, error) {
-	trx_rbc_log.Infof("makeRBCReadyMessage called")
-	//convert group user pubkey to byte
-
-	//sign root_hash with my pubkey
-	signature := []byte("FAKE_SIGN")
-
-	ready := &quorumpb.Ready{
-		RootHash:            proof.RootHash,
-		ProofProviderPubkey: proof.ProposerPubkey, //pubkey for who send the original proof msg
-		ProposerPubkey:      r.MySignPubkey,
-		ProposerSign:        signature,
-	}
-
-	payloadb, err := proto.Marshal(ready)
-	if err != nil {
-		return nil, err
-	}
-
-	readyMsg := &quorumpb.BroadcastMsg{
-		Type:    quorumpb.BroadcastMsgType_READY,
-		Payload: payloadb,
-	}
-
-	return readyMsg, nil
 }
 
 func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
@@ -204,7 +134,7 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	if !ValidateProof(proof) {
-		return fmt.Errorf("Received invalid proof from producer node <%s>", proof.ProposerPubkey)
+		return fmt.Errorf("received invalid proof from producer node <%s>", proof.ProposerPubkey)
 	}
 
 	//save proof
@@ -224,12 +154,12 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		r.dataDecodeDone = true
 
 		trx_rbc_log.Infof("broadcast ready msg")
-		readyMsg, err := r.makeRBCReadyMessage(proof)
+		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, proof)
 		if err != nil {
 			return err
 		}
 
-		err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX)
+		err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "") //sessionId is used by psync
 		if err != nil {
 			return err
 		}

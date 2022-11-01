@@ -61,8 +61,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 	var groups []*groupInfo
 	groupmgr := chain.GetGroupMgr()
 	for _, value := range groupmgr.Groups {
-		var group *groupInfo
-		group = &groupInfo{}
+		group := &groupInfo{}
 
 		group.OwnerPubKey = value.Item.OwnerPubKey
 		group.GroupId = value.Item.GroupId
@@ -75,8 +74,6 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.AppKey = value.Item.AppKey
 		group.LastUpdated = value.Item.LastUpdate
 		group.Epoch = value.Item.Epoch
-		//group.HighestHeight = value.Item.HighestHeight
-		//group.HighestBlockId = value.Item.HighestBlockId
 
 		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
 		if err != nil {
@@ -90,7 +87,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			}
 		}
 
-		switch value.GetSyncerStatus() {
+		switch value.GetBSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
 			group.GroupStatus = "SYNCING"
 		case chain.SYNCING_FORWARD:
@@ -101,21 +98,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			group.GroupStatus = "IDLE"
 		}
 
-		/* commented by cuicat
-		snapshottag, err := value.GetSnapshotInfo()
-		if err != nil {
-			group.SnapshotInfo = nil
-		} else {
-			snapshot := &snapshotInfo{}
-			snapshot.TimeStamp = snapshottag.TimeStamp
-			snapshot.HighestBlockId = snapshottag.HighestBlockId
-			snapshot.HighestHeight = snapshottag.HighestHeight
-			snapshot.Nonce = snapshottag.Nonce
-			snapshot.SenderPubkey = snapshottag.SenderPubkey
-			snapshot.SnapshotPackageId = snapshottag.SnapshotPackageId
-			group.SnapshotInfo = snapshot
-		}
-		*/
+		//TBD add psync info
 
 		groups = append(groups, group)
 	}

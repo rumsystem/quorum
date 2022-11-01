@@ -62,25 +62,25 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		var groupSignPubkey []byte
 		ks := nodectx.GetNodeCtx().Keystore
 		dirks, ok := ks.(*localcrypto.DirKeyStore)
-		if ok == true {
+		if ok {
 			base64key, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
 				newsignaddr, err := dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				if err == nil && newsignaddr != "" {
-					_, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+					_, _ = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
 					err = nodeoptions.SetSignKeyMap(seed.GenesisBlock.GroupId, newsignaddr)
 					if err != nil {
 						msg := fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
 						return rumerrors.NewBadRequestError(msg)
 					}
-					base64key, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					base64key, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				} else {
 					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(seed.GenesisBlock.GroupId))
 					if err != nil {
 						msg := "create new group key err:" + err.Error()
 						return rumerrors.NewBadRequestError(msg)
 					}
-					base64key, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					base64key, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
 				}
 			}
 			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
@@ -107,14 +107,13 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "key not exist") {
-				groupEncryptkey, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
-
+				_, _ = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
 				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(seed.GenesisBlock.GroupId))
 				if err != nil {
 					msg := "Create key pair failed with msg:" + err.Error()
 					return rumerrors.NewBadRequestError(msg)
 				}
-				groupEncryptkey, err = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+				groupEncryptkey, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
 			} else {
 				msg := "Create key pair failed with msg:" + err.Error()
 				return rumerrors.NewBadRequestError(msg)
@@ -126,13 +125,12 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		if r == false {
+		if !r {
 			msg := "Join Group failed, can not verify signature"
 			return rumerrors.NewBadRequestError(msg)
 		}
 
-		var item *quorumpb.GroupItem
-		item = &quorumpb.GroupItem{}
+		item := &quorumpb.GroupItem{}
 
 		//item.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
 		item.OwnerPubKey = seed.OwnerPubkey
@@ -175,19 +173,17 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		item.GenesisBlock = seed.GenesisBlock
 
 		//create the group
-		var group *chain.Group
-		group = &chain.Group{}
+		group := &chain.Group{}
 		err = group.CreateGrp(item)
-		if nodeoptions.IsRexTestMode == true {
+		if nodeoptions.IsRexTestMode {
 			group.SetRumExchangeTestMode()
 		}
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		//start sync
-
-		err = group.StartSync(false)
+		//start psync
+		err = group.StartPSync()
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
@@ -205,7 +201,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		bufferResult.Write([]byte(groupEncryptkey))
 		bufferResult.Write([]byte(item.CipherKey))
 		hashResult := localcrypto.Hash(bufferResult.Bytes())
-		signature, err := ks.EthSignByKeyName(item.GroupId, hashResult)
+		signature, _ := ks.EthSignByKeyName(item.GroupId, hashResult)
 		encodedSign := hex.EncodeToString(signature)
 
 		joinGrpResult := &JoinGroupResult{

@@ -23,7 +23,6 @@ func GetGroupMgr() *GroupMgr {
 	return groupMgr
 }
 
-//TODO: singlaton
 func InitGroupMgr() error {
 	groupMgr_log.Debug("InitGroupMgr called")
 	groupMgr = &GroupMgr{}
@@ -37,18 +36,14 @@ func (groupMgr *GroupMgr) SetRumExchangeTestMode() {
 
 func (groupMgr *GroupMgr) LoadAllGroups() error {
 	groupMgr_log.Debug("LoadAllGroup called")
-	//open all groups
 	groupItemsBytes, err := nodectx.GetDbMgr().GetGroupsBytes()
 	if err != nil {
 		return err
 	}
 
 	for _, b := range groupItemsBytes {
-		var group *Group
-		group = &Group{}
-
-		var item *quorumpb.GroupItem
-		item = &quorumpb.GroupItem{}
+		group := &Group{}
+		item := &quorumpb.GroupItem{}
 		err := proto.Unmarshal(b, item)
 
 		if err != nil {
@@ -63,16 +58,17 @@ func (groupMgr *GroupMgr) LoadAllGroups() error {
 	return nil
 }
 
-//load and group and start syncing
+// load and group and start syncing
 func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 	groupMgr_log.Debug("SyncAllGroup called")
 
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
-		if groupMgr.rumExchangeTestMode == true {
+		if groupMgr.rumExchangeTestMode {
 			grp.SetRumExchangeTestMode()
 		}
-		grp.StartSync(false)
+
+		grp.StartPSync()
 	}
 	return nil
 }

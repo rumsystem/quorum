@@ -32,7 +32,7 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 			}
 		*/
 		// group may not exists or already be left
-		if err := group.ClearGroup(); err != nil {
+		if err := group.ClearGroupData(); err != nil {
 			return nil, err
 		}
 	}
