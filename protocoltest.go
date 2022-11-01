@@ -83,7 +83,7 @@ func main() {
 		defer cancel()
 		err := host.Connect(pctx, *bootpeer)
 		if err != nil {
-			mainlog.Warningf("connect peer failure: %s \n", bootpeer)
+			mainlog.Warningf("connect peer failure: %s", bootpeer)
 			cancel()
 		}
 	}
