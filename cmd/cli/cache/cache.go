@@ -1,18 +1,17 @@
 package cache
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/adrg/xdg"
 	"github.com/rumsystem/quorum/cmd/cli/config"
-
-	badger "github.com/dgraph-io/badger/v3"
-	badgerOptions "github.com/dgraph-io/badger/v3/options"
+	"github.com/rumsystem/quorum/internal/pkg/storage"
 )
 
 type QuorumDataCache struct {
-	db *badger.DB
+	db *storage.Store
 }
 
 var QCache *QuorumDataCache
@@ -28,9 +27,11 @@ func Init() {
 		config.Logger.Fatalf(err.Error())
 	}
 	if QCache == nil {
-		db, err := badger.Open(badger.DefaultOptions(path).WithCompression(badgerOptions.Snappy))
+		ctx := context.Background()
+		bucket := "cache"
+		db, err := storage.NewStore(ctx, path, bucket)
 		if err != nil {
-			config.Logger.Errorf("Failed to open db: %s", err.Error())
+			config.Logger.Errorf("Failed to open cache db: %s", err.Error())
 		}
 		QCache = &QuorumDataCache{db}
 		config.Logger.Infof("cache db opened")
@@ -39,13 +40,7 @@ func Init() {
 
 func (cache *QuorumDataCache) Set(key []byte, value []byte) {
 	if cache != nil && cache.db != nil {
-		err := cache.db.Update(func(txn *badger.Txn) error {
-			e := badger.NewEntry(key, value)
-			err := txn.SetEntry(e)
-			return err
-		})
-
-		if err != nil {
+		if err := cache.db.Set(key, value); err != nil {
 			config.Logger.Errorf("Failed to Set: %s\n", err.Error())
 		} else {
 			config.Logger.Infof("cache %s setted", string(key))
@@ -55,20 +50,7 @@ func (cache *QuorumDataCache) Set(key []byte, value []byte) {
 
 func (cache *QuorumDataCache) Get(key []byte) ([]byte, error) {
 	if cache != nil && cache.db != nil {
-		var ret []byte
-		err := cache.db.View(func(txn *badger.Txn) error {
-			item, err := txn.Get(key)
-			if err != nil {
-				return err
-			}
-
-			ret, err = item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			return err
-		})
-		return ret, err
+		return cache.db.Get(key)
 	}
 	return nil, errors.New("Not found")
 }
