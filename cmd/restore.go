@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/phayes/freeport"
@@ -120,17 +119,6 @@ func restore(params handlers.RestoreParam, isWasm bool) {
 		"--keystoredir", params.KeystoreDir,
 		"--datadir", params.DataDir,
 	)
-	elems := []string{
-		params.Password, process,
-		"fullnode",
-		"--peername", params.Peername,
-		"--apiport", fmt.Sprintf("%d", apiPort),
-		"--configdir", params.ConfigDir,
-		"--keystoredir", params.KeystoreDir,
-		"--datadir", params.DataDir,
-	}
-	cmd := strings.Join(elems, " ")
-	fmt.Printf("xxxx %s\n", cmd)
 
 	peerBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", apiPort)
 	ctx := context.Background()

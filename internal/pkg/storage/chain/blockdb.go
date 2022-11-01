@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//add block
+// add block
 func (cs *Storage) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...string) error {
 	isSaved, err := cs.IsBlockExist(newBlock.BlockId, cached, prefix...)
 	if err != nil {
@@ -55,7 +56,7 @@ func (cs *Storage) AddBlock(newBlock *quorumpb.Block, cached bool, prefix ...str
 	return err
 }
 
-//remove block
+// remove block
 func (cs *Storage) RmBlock(blockId string, cached bool, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
@@ -69,12 +70,16 @@ func (cs *Storage) RmBlock(blockId string, cached bool, prefix ...string) error 
 	return err
 }
 
-//get block by block_id
+// get block by block_id
 func (cs *Storage) GetBlock(blockId string, cached bool, prefix ...string) (*quorumpb.Block, error) {
 	pChunk, err := cs.dbmgr.GetBlockChunk(blockId, cached, prefix...)
 	if err != nil {
 		return nil, err
 	}
+	if pChunk == nil || pChunk.BlockItem == nil {
+		return nil, errors.New("got empty block chunk")
+	}
+
 	for i := 0; i < len(pChunk.BlockItem.Trxs); i++ {
 		pk, err := localcrypto.Libp2pPubkeyToEthBase64(pChunk.BlockItem.Trxs[i].SenderPubkey)
 		if err == nil {
@@ -161,7 +166,7 @@ func (cs *Storage) GetBlockHeight(blockId string, prefix ...string) (int64, erro
 	return pChunk.Height, nil
 }
 
-//check if block existed
+// check if block existed
 func (cs *Storage) IsBlockExist(blockId string, cached bool, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
@@ -175,7 +180,7 @@ func (cs *Storage) IsBlockExist(blockId string, cached bool, prefix ...string) (
 	return r, err
 }
 
-//check if parent block existed
+// check if parent block existed
 func (cs *Storage) IsParentExist(parentBlockId string, cached bool, prefix ...string) (bool, error) {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var pKey string
@@ -219,7 +224,7 @@ func (cs *Storage) GetParentBlock(blockId string, prefix ...string) (*quorumpb.B
 	}
 }
 
-//try to find the subblocks of one block. search from the block to the to blockid
+// try to find the subblocks of one block. search from the block to the to blockid
 func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...string) error {
 	if toblockid == blockid {
 		return fmt.Errorf("no new blocks, no need to repair")

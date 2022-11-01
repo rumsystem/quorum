@@ -158,16 +158,15 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	hash := localcrypto.Hash(buffer.Bytes())
 
 	signature, err := ks.EthSignByKeyName(params.GroupId, hash)
-
 	if err != nil {
 		return nil, err
 	}
+
 	configItem.Memo = params.Memo
 	configItem.TimeStamp = time.Now().UnixNano()
 	configItem.OwnerPubkey = group.Item.OwnerPubKey
 	configItem.OwnerSignature = hex.EncodeToString(signature)
 	trxId, err := group.UpdChainConfig(&configItem)
-
 	if err != nil {
 		return nil, err
 	}
