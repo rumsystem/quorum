@@ -4,257 +4,406 @@
 package storage
 
 import (
+	"bytes"
+	"context"
+	"encoding/binary"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
 
-	badger "github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/badger/v3/options"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	bolt "go.etcd.io/bbolt"
 )
 
-type QSBadger struct {
-	db *badger.DB
+const (
+	boltAllocSize      = 8 * 1024 * 1024
+	mmapSize           = 536870912 // Specifies the initial mmap size of bolt.
+	sequenceBucketName = "__sequence__"
+)
+
+type Store struct {
+	db           *bolt.DB
+	databasePath string
+	bucket       []byte
+	ctx          context.Context
 }
 
-var DefaultLogFileSize int64 = 16 << 20
-var DefaultMemTableSize int64 = 8 << 20
-var DefaultMaxEntries uint32 = 50000
-var DefaultBlockCacheSize int64 = 32 << 20
-var DefaultCompressionType = options.Snappy
-var DefaultPrefetchSize = 10
+func getDBPath(dir string, bucket string) string {
+	return filepath.Join(dir, bucket+".db")
+}
 
-func (s *QSBadger) Init(path string) error {
-	var err error
-	s.db, err = badger.Open(badger.DefaultOptions(path).WithValueLogFileSize(DefaultLogFileSize).WithMemTableSize(DefaultMemTableSize).WithValueLogMaxEntries(DefaultMaxEntries).WithBlockCacheSize(DefaultBlockCacheSize).WithCompression(DefaultCompressionType).WithLoggingLevel(badger.ERROR))
-	if err != nil {
-		return err
-	}
-
-	// enable compaction
-	go dbGC(s.db, path)
+func (s *Store) Init(path string) error {
 	return nil
 }
 
-func dbGC(db *badger.DB, path string) {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
-	again:
-		err := db.RunValueLogGC(0.5)
-		if err == nil {
-			goto again
-		} else {
-			dbmgr_log.Debugf("badger db %s GC finished, err: %s", path, err.Error())
-		}
-	}
-}
-
-func (s *QSBadger) Close() error {
-	return s.db.Close()
-}
-
-func (s *QSBadger) Set(key []byte, val []byte) error {
-	return s.db.Update(func(txn *badger.Txn) error {
-		e := badger.NewEntry(key, val)
-		err := txn.SetEntry(e)
-		return err
-	})
-}
-
-func (s *QSBadger) Delete(key []byte) error {
-	return s.db.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(key))
-		return err
-	})
-
-}
-
-func (s *QSBadger) Get(key []byte) ([]byte, error) {
-	var val []byte
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-
-		val, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return val, err
-}
-
-func (s *QSBadger) IsExist(key []byte) (bool, error) {
-	var ret bool
-
-	err := s.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 1
-		opts.PrefetchValues = false
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		it.Seek(key)
-		ret = it.ValidForPrefix(key)
-		return nil
-	})
-
-	if err == nil {
-		return ret, nil
-	}
-	return false, err
-}
-
-func (s *QSBadger) PrefixDelete(prefix []byte) (int, error) {
-	return s.PrefixForeachKey(prefix, prefix, false, func(k []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		return s.Delete(k)
-	})
-}
-
-func (s *QSBadger) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) (int, error) {
-	matched := 0
-	err := s.PrefixForeach(prefix, func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		del, err := fn(k, v, err)
-		if err != nil {
-			return err
-		}
-		if del {
-			matched += 1
-			delErr := s.Delete(k)
-			if delErr != nil {
-				return delErr
-			}
-		}
-		return nil
-	})
-	return matched, err
-}
-
-func (s *QSBadger) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
-	err := s.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = DefaultPrefetchSize
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			key := item.KeyCopy(nil)
-			val, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			ferr := fn(key, val, nil)
-			if ferr != nil {
-				return ferr
-			}
-		}
-		return nil
-	})
-	return err
-}
-
-func (s *QSBadger) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) (int, error) {
-	matched := 0
-
-	err := s.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 20
-		opts.PrefetchValues = false
-		opts.Reverse = reverse
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Seek(prefix); it.ValidForPrefix(valid); it.Next() {
-			matched += 1
-			item := it.Item()
-			key := item.KeyCopy(nil)
-			ferr := fn(key, nil)
-			if ferr != nil {
-				return ferr
-			}
-		}
-		return nil
-	})
-	return matched, err
-}
-
-func (s *QSBadger) Foreach(fn func([]byte, []byte, error) error) error {
-	err := s.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = DefaultPrefetchSize
-		it := txn.NewIterator(opts)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			key := item.KeyCopy(nil)
-			val, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			ferr := fn(key, val, nil)
-			if ferr != nil {
-				return ferr
-			}
-		}
-		return nil
-	})
-	return err
-}
-
-func (s *QSBadger) BatchWrite(keys [][]byte, values [][]byte) error {
-	if len(keys) != len(values) {
-		return errors.New("keys' and values' length should be equal")
-	}
-
-	txn := s.db.NewTransaction(true)
-	defer txn.Discard()
-
-	for i, k := range keys {
-		v := values[i]
-		e := badger.NewEntry(k, v)
-		err := txn.SetEntry(e)
-		if err != nil {
-			return err
-		}
-	}
-	return txn.Commit()
-
-}
-
-func (s *QSBadger) GetSequence(key []byte, bandwidth uint64) (Sequence, error) {
-	return s.db.GetSequence(key, bandwidth)
-}
-
-func CreateDb(path string) (*DbMgr, error) {
-	groupDb := QSBadger{}
-	dataDb := QSBadger{}
-	if err := groupDb.Init(path + "_groups"); err != nil {
+func NewStore(ctx context.Context, dir string, bucket string) (*Store, error) {
+	if err := utils.EnsureDir(dir); err != nil {
+		dbmgr_log.Errorf("check or create directory failed: %w", err)
 		return nil, err
 	}
 
-	if err := dataDb.Init(path + "_db"); err != nil {
+	dbPath := getDBPath(dir, bucket)
+	db, err := bolt.Open(
+		dbPath,
+		0644,
+		&bolt.Options{
+			Timeout:         1 * time.Second,
+			InitialMmapSize: mmapSize,
+		},
+	)
+	if err != nil {
+		if errors.Is(err, bolt.ErrTimeout) {
+			return nil, errors.New("can not obtain database lock, database may be in use by another process")
+		}
+		return nil, err
+	}
+	db.AllocSize = boltAllocSize
+
+	if err := db.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(bucket)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	store := Store{
+		db:           db,
+		bucket:       []byte(bucket),
+		databasePath: dbPath,
+		ctx:          ctx,
+	}
+
+	return &store, nil
+}
+
+func createBuckets(tx *bolt.Tx, buckets ...[]byte) error {
+	for _, bucket := range buckets {
+		if _, err := tx.CreateBucketIfNotExists(bucket); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ClearDB removes the previously stored database in the data directory.
+func (s *Store) ClearDB() error {
+	if err := os.Remove(s.databasePath); err != nil {
+		return errors.New(fmt.Sprintf("could not remove database file: %s", err))
+	}
+	return nil
+}
+
+// Close closes the underlying BoltDB database.
+func (s *Store) Close() error {
+	return s.db.Close()
+}
+
+// DatabasePath at which this database writes files.
+func (s *Store) DatabasePath() string {
+	return s.databasePath
+}
+
+func (s *Store) Set(key []byte, val []byte) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		return bucket.Put(key, val)
+	})
+}
+
+func (s *Store) Delete(key []byte) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		return bucket.Delete(key)
+	})
+}
+
+// Get retrieves the value for a key in the bucket. Returns a nil value if the key does not exist or if the key is a nested bucket.
+func (s *Store) Get(key []byte) ([]byte, error) {
+	if key == nil || len(key) == 0 {
+		return nil, rumerrors.ErrEmptyKey
+	}
+
+	var val []byte
+	err := s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		val = bucket.Get(key)
+		if val != nil {
+			val = val[:]
+		}
+		return nil
+	})
+	if err != nil {
+		dbmgr_log.Warnf("kvdb Get %s failed: %s", key, err)
+		return nil, err
+	}
+
+	return val, nil
+}
+
+func (s *Store) IsExist(key []byte) (bool, error) {
+	val, err := s.Get(key)
+	return val != nil, err
+}
+
+func (s *Store) PrefixDelete(prefix []byte) (int, error) {
+	matched := 0
+
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		c := bucket.Cursor()
+		for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
+			if err := c.Delete(); err != nil {
+				return err
+			}
+			matched += 1
+			return nil
+		}
+		return nil
+	})
+
+	return matched, err
+}
+
+func (s *Store) PrefixCondDelete(prefix []byte, fn func(k []byte, v []byte, err error) (bool, error)) (int, error) {
+	matched := 0
+
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		c := bucket.Cursor()
+
+		for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
+			ok, err := fn(k, v, nil)
+			if err != nil {
+				return err
+			}
+			if ok {
+				if err := c.Delete(); err != nil {
+					return err
+				}
+				matched += 1
+			}
+		}
+
+		return nil
+	})
+
+	return matched, err
+}
+
+func (s *Store) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn func([]byte, error) error) (int, error) {
+	matched := 0
+
+	err := s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		c := bucket.Cursor()
+		if reverse {
+			for k, _ := c.Last(); k != nil && bytes.HasPrefix(k, valid); k, _ = c.Prev() {
+				if err := fn(k, nil); err != nil {
+					return err
+				}
+				matched += 1
+			}
+		} else {
+			for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, valid); k, _ = c.Next() {
+				if err := fn(k, nil); err != nil {
+					return err
+				}
+				matched += 1
+			}
+		}
+
+		return nil
+	})
+
+	return matched, err
+}
+
+func (s *Store) PrefixForeach(prefix []byte, fn func([]byte, []byte, error) error) error {
+	return s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		if bucket == nil {
+			panic("bucket is nil")
+		}
+		c := bucket.Cursor()
+		for k, v := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, v = c.Next() {
+			if err := fn(k, v, nil); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+func (s *Store) Foreach(fn func(k []byte, v []byte, err error) error) error {
+	return s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(s.bucket)
+		return bucket.ForEach(func(k, v []byte) error {
+			return fn(k, v, nil)
+		})
+	})
+}
+
+func (s *Store) BatchWrite(keys [][]byte, vals [][]byte) error {
+	if len(keys) != len(vals) {
+		return errors.New("keys' and values' length should be equal")
+	}
+
+	tx, err := s.db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	bucket := tx.Bucket(s.bucket)
+	for i, k := range keys {
+		if err := bucket.Put(k, vals[i]); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Store) GetSequence(key []byte, bandwidth uint64) (Sequence, error) {
+	if len(key) == 0 {
+		return nil, errors.New("empty key")
+	}
+	if bandwidth == 0 {
+		return nil, errors.New("zero bandwidth")
+	}
+
+	seq := &StoreSequence{
+		store:     s,
+		key:       key,
+		next:      0,
+		leased:    0,
+		bandwidth: bandwidth,
+	}
+	err := seq.updateLease()
+	return seq, err
+}
+
+func CreateDb(path string) (*DbMgr, error) {
+	ctx := context.Background()
+	groupDb, err := NewStore(ctx, path, "groups")
+	if err != nil {
+		return nil, err
+	}
+	dataDb, err := NewStore(ctx, path, "db")
+	if err != nil {
 		return nil, err
 	}
 
 	manager := DbMgr{
-		GroupInfoDb: &groupDb,
-		Db:          &dataDb,
+		GroupInfoDb: groupDb,
+		Db:          dataDb,
 		Auth:        nil,
 		DataPath:    path,
 	}
 	return &manager, nil
 }
 
-func InitRelayDb(path string) (*QSBadger, error) {
-	db := QSBadger{}
-	if err := db.Init(path + "_relaydb"); err != nil {
-		return nil, err
+// implement Sequence
+type (
+	StoreSequence struct {
+		lock      sync.Mutex
+		store     *Store
+		key       []byte
+		next      uint64
+		leased    uint64
+		bandwidth uint64
 	}
-	return &db, nil
+)
+
+var sequenceStore *Store = nil
+
+func InitSequenceDB(dir string) error {
+	if sequenceStore == nil {
+		ctx := context.Background()
+		var err error
+		sequenceStore, err = NewStore(ctx, dir, sequenceBucketName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Next would return the next integer in the sequence, updating the lease by running a transaction
+// if needed.
+func (seq *StoreSequence) Next() (uint64, error) {
+	seq.lock.Lock()
+	defer seq.lock.Unlock()
+	if seq.next >= seq.leased {
+		if err := seq.updateLease(); err != nil {
+			return 0, err
+		}
+	}
+	val := seq.next
+	seq.next++
+	return val, nil
+}
+
+// Release the leased sequence to avoid wasted integers. This should be done right
+// before closing the associated DB. However it is valid to use the sequence after
+// it was released, causing a new lease with full bandwidth.
+func (seq *StoreSequence) Release() error {
+	seq.lock.Lock()
+	defer seq.lock.Unlock()
+	err := seq.store.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(seq.store.bucket)
+		val := bucket.Get(seq.key)
+
+		var num uint64
+		num = binary.BigEndian.Uint64(val)
+
+		if num == seq.leased {
+			var buf [8]byte
+			binary.BigEndian.PutUint64(buf[:], seq.next)
+			return bucket.Put(seq.key, buf[:])
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	seq.leased = seq.next
+	return nil
+}
+
+func (seq *StoreSequence) updateLease() error {
+	return seq.store.db.Update(func(tx *bolt.Tx) error {
+		val, err := seq.store.Get(seq.key)
+		if err != nil {
+			return err
+		}
+		if val == nil {
+			seq.next = 0
+		} else {
+			var num uint64
+			num = binary.BigEndian.Uint64(val)
+			seq.next = num
+		}
+
+		lease := seq.next + seq.bandwidth
+		var buf [8]byte
+		binary.BigEndian.PutUint64(buf[:], lease)
+		bucket := tx.Bucket(seq.store.bucket)
+		bucket.Put(seq.key, buf[:])
+		seq.leased = lease
+		return nil
+	})
 }

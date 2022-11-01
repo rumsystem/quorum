@@ -242,7 +242,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 					defer cancel()
 					err := node.Host.Connect(pctx, peer)
 					if err != nil {
-						networklog.Warningf("connect peer failure: %s \n", peer)
+						networklog.Warningf("connect peer failure: %s", peer)
 						cancel()
 						continue
 					} else {

@@ -3,6 +3,10 @@ package errors
 import "errors"
 
 var (
+	// kv db
+	ErrEmptyKey    = errors.New("key cannot be empty")
+	ErrKeyNotFound = errors.New("key not found")
+
 	ErrInvalidGroupID   = errors.New("Invalid group id")
 	ErrGroupNotFound    = errors.New("Group not found")
 	ErrJoinGroup        = errors.New("Join group failed")

@@ -154,8 +154,6 @@ func runFullnode(config cli.FullnodeFlag) {
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		dbManager.TryMigration(1)
 
 		nodectx.InitCtx(ctx, "", node, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit)
 		nodectx.GetNodeCtx().Keystore = ks
@@ -184,8 +182,6 @@ func runFullnode(config cli.FullnodeFlag) {
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-		dbManager.TryMigration(1)
 		newchainstorage := chainstorage.NewChainStorage(dbManager)
 
 		//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s

@@ -16,7 +16,7 @@ var (
 )
 
 // BackupBlock get block from data db and backup to `backupPath`
-func BackupBlock(dataDir, peerName, backupPath string) {
+func BackupBlock(dataDir, peerName, backupDataPath string) {
 	datapath := dataDir + "/" + peerName
 	dbManager, err := storage.CreateDb(datapath)
 	if err != nil {
@@ -26,11 +26,12 @@ func BackupBlock(dataDir, peerName, backupPath string) {
 	defer dbManager.GroupInfoDb.Close()
 
 	// backup block
-	backupDB := storage.QSBadger{}
-	if err := backupDB.Init(backupPath); err != nil {
-		logger.Fatalf("backupDB.Init failed: %s", err)
+	backupDbMgr, err := storage.CreateDb(backupDataPath)
+	if err != nil {
+		logger.Fatalf("storage.CreateDb %s failed: %s", backupDataPath, err)
 	}
-	defer backupDB.Close()
+	defer backupDbMgr.Db.Close()
+	defer backupDbMgr.GroupInfoDb.Close()
 
 	key := getBlockPrefixKey()
 	err = dbManager.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -38,13 +39,13 @@ func BackupBlock(dataDir, peerName, backupPath string) {
 			return err
 		}
 
-		if err := backupDB.Set(k, v); err != nil {
-			return fmt.Errorf("backupDB.Set failed: %s", err)
+		if err := backupDbMgr.Db.Set(k, v); err != nil {
+			return fmt.Errorf("backupDbMgr.Db.Set failed: %s", err)
 		}
 		return nil
 	})
 
 	if err != nil {
-		logger.Fatalf("dbManager.Db.PrefixForeach failed: %s", err)
+		logger.Fatalf("backupDbMgr.Db.PrefixForeach failed: %s", err)
 	}
 }

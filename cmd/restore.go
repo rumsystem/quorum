@@ -119,7 +119,6 @@ func restore(params handlers.RestoreParam, isWasm bool) {
 		"--keystoredir", params.KeystoreDir,
 		"--datadir", params.DataDir,
 	)
-	defer utils.RemoveAll("certs") // NOTE: HARDCODE
 
 	peerBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", apiPort)
 	ctx := context.Background()

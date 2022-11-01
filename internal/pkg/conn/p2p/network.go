@@ -111,7 +111,7 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 		err := node.Host.Connect(pctx, peer)
 		if err != nil {
 			metric.FailedCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
-			networklog.Warningf("connect peer failure: %s \n", peer)
+			networklog.Warningf("connect peer failure: %s", peer)
 			cancel()
 			continue
 		} else {

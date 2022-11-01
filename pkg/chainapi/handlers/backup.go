@@ -44,8 +44,8 @@ func getSeedBackupPath(dstPath string) string {
 	return filepath.Join(dstPath, "seeds")
 }
 
-func getBlockBackupPath(dstPath string) string {
-	return filepath.Join(dstPath, "block_db")
+func getDataBackupPath(dstPath string, peerName string) string {
+	return filepath.Join(dstPath, "data", peerName)
 }
 
 func getBlockRestorePath(peerName, dstPath string) string {
@@ -158,6 +158,8 @@ func BackupForWasm(param BackupParam) {
 	if err != nil {
 		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
 	}
+	defer appdb.Db.Close()
+
 	seeds, err := GetAllGroupSeeds(appdb)
 	backupObj.Seeds = seeds
 
@@ -220,12 +222,14 @@ func Backup(param BackupParam) {
 	if err != nil {
 		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
 	}
+	defer appdb.Db.Close()
+
 	seedDstPath := getSeedBackupPath(dstPath)
 	SaveAllGroupSeeds(appdb, seedDstPath)
 
 	// backup block
-	blockDstPath := getBlockBackupPath(dstPath)
-	BackupBlock(param.DataDir, param.Peername, blockDstPath)
+	dataDstPath := getDataBackupPath(dstPath, param.Peername)
+	BackupBlock(param.DataDir, param.Peername, dataDstPath)
 
 	// zip backup directory
 	zipFilePath := fmt.Sprintf("%s.zip", dstPath)
@@ -250,7 +254,7 @@ func Backup(param BackupParam) {
 		logger.Fatalf("init restored keystore failed: %s", err)
 	}
 	ks.Unlock(nodeoptions.SignKeyMap, password)
-	if err := loadAndDecryptTrx(blockDstPath, seedDstPath, ks); err != nil {
+	if err := loadAndDecryptTrx(dataDstPath, seedDstPath, ks); err != nil {
 		logger.Fatalf("check backuped block data failed: %s", err)
 	}
 
