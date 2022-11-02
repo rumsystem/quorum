@@ -112,6 +112,7 @@ func (sr *SyncerRunner) Start(blockid string) error {
 	sr.gsyncer.AddTask(task)
 	return nil
 }
+
 func (sr *SyncerRunner) SwapSyncDirection() {
 	if sr.Status == SYNCING_FORWARD {
 		sr.Status = SYNCING_BACKWARD
