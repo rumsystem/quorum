@@ -75,7 +75,7 @@ func runFullnode(config cli.FullnodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
-	logger.Infof("Version: %s", utils.GitCommit)
+	logger.Errorf("Version: %s", utils.GitCommit)
 
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
