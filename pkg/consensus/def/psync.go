@@ -5,8 +5,8 @@ import (
 )
 
 type PSync interface {
-	NewPSyncer(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
+	NewPSync(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	RecreateBft()
-	TryPropose()
+	AddConsensusReq(req *quorumpb.ConsensusMsg) error
 	HandleHBMsg(msg *quorumpb.HBMsgv1) error
 }

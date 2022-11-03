@@ -102,10 +102,19 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 				} else if pkg.Type == quorumpb.PackageType_HBB {
 					hb := &quorumpb.HBMsgv1{}
 					err := proto.Unmarshal(pkg.Data, hb)
-					if err != nil {
+					if err == nil {
+						qconn.chain.HandleHBPsConn(hb)
+					} else {
 						channel_log.Warningf(err.Error())
 					}
-					qconn.chain.HandleHBPsConn(hb)
+				} else if pkg.Type == quorumpb.PackageType_CONSENSUS {
+					consensus := &quorumpb.ConsensusMsg{}
+					err := proto.Unmarshal(pkg.Data, consensus)
+					if err == nil {
+						channel_log.Warningf(err.Error())
+					} else {
+						qconn.chain.HandleConsesusPsConn(consensus)
+					}
 				}
 			}
 			//fmt.Printf("Node:(%s) [%s] got pubsub msg\n", channel.Subscription.Id, channel.Cid)

@@ -388,6 +388,43 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 	return fmt.Errorf("can not find psChannel")
 }
 
+func (connMgr *ConnMgr) SentConsensusMsgPubsub(msg *quorumpb.ConsensusMsg, psChannel PsConnChanel, channelId ...string) error {
+	conn_log.Debugf("<%s> SentConsensusReqPubsub called", connMgr.GroupId)
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_CONSENSUS
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	if psChannel == ProducerChannel {
+		conn_log.Debugf("<%s> Send ConsensusReq via Producer_Channel", connMgr.GroupId)
+		psconn := connMgr.getProducerPsConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == UserChannel {
+		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
+		psconn, err := connMgr.getSyncConn(channelId[0])
+		if err != nil {
+			return err
+		}
+		return psconn.Publish(pkgBytes)
+	}
+
+	return fmt.Errorf("can not find psChannel")
+}
+
 func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {

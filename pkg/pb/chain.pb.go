@@ -23,9 +23,10 @@ const (
 type PackageType int32
 
 const (
-	PackageType_TRX   PackageType = 0
-	PackageType_BLOCK PackageType = 1
-	PackageType_HBB   PackageType = 2
+	PackageType_TRX       PackageType = 0
+	PackageType_BLOCK     PackageType = 1
+	PackageType_HBB       PackageType = 2
+	PackageType_CONSENSUS PackageType = 3
 )
 
 // Enum value maps for PackageType.
@@ -34,11 +35,13 @@ var (
 		0: "TRX",
 		1: "BLOCK",
 		2: "HBB",
+		3: "CONSENSUS",
 	}
 	PackageType_value = map[string]int32{
-		"TRX":   0,
-		"BLOCK": 1,
-		"HBB":   2,
+		"TRX":       0,
+		"BLOCK":     1,
+		"HBB":       2,
+		"CONSENSUS": 3,
 	}
 )
 
@@ -899,106 +902,50 @@ func (AgreementMsgType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{17}
 }
 
-//Node status type
-type PSyncNodeStatus int32
+type ConsensusType int32
 
 const (
-	PSyncNodeStatus_NODE_OK      PSyncNodeStatus = 0
-	PSyncNodeStatus_NODE_SYNCING PSyncNodeStatus = 1
-	PSyncNodeStatus_NODE_ERROR   PSyncNodeStatus = 2
+	ConsensusType_REQ  ConsensusType = 0
+	ConsensusType_RESP ConsensusType = 1
 )
 
-// Enum value maps for PSyncNodeStatus.
+// Enum value maps for ConsensusType.
 var (
-	PSyncNodeStatus_name = map[int32]string{
-		0: "NODE_OK",
-		1: "NODE_SYNCING",
-		2: "NODE_ERROR",
+	ConsensusType_name = map[int32]string{
+		0: "REQ",
+		1: "RESP",
 	}
-	PSyncNodeStatus_value = map[string]int32{
-		"NODE_OK":      0,
-		"NODE_SYNCING": 1,
-		"NODE_ERROR":   2,
+	ConsensusType_value = map[string]int32{
+		"REQ":  0,
+		"RESP": 1,
 	}
 )
 
-func (x PSyncNodeStatus) Enum() *PSyncNodeStatus {
-	p := new(PSyncNodeStatus)
+func (x ConsensusType) Enum() *ConsensusType {
+	p := new(ConsensusType)
 	*p = x
 	return p
 }
 
-func (x PSyncNodeStatus) String() string {
+func (x ConsensusType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (PSyncNodeStatus) Descriptor() protoreflect.EnumDescriptor {
+func (ConsensusType) Descriptor() protoreflect.EnumDescriptor {
 	return file_chain_proto_enumTypes[18].Descriptor()
 }
 
-func (PSyncNodeStatus) Type() protoreflect.EnumType {
+func (ConsensusType) Type() protoreflect.EnumType {
 	return &file_chain_proto_enumTypes[18]
 }
 
-func (x PSyncNodeStatus) Number() protoreflect.EnumNumber {
+func (x ConsensusType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use PSyncNodeStatus.Descriptor instead.
-func (PSyncNodeStatus) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use ConsensusType.Descriptor instead.
+func (ConsensusType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{18}
-}
-
-type PSyncItemType int32
-
-const (
-	PSyncItemType_PSYNC_APP_CONFIG   PSyncItemType = 0 //app_config item
-	PSyncItemType_PSYNC_CHAIN_CONFIG PSyncItemType = 1 //chain_config item
-	PSyncItemType_PSYNC_USER         PSyncItemType = 2 //user item
-	PSyncItemType_PSYNC_ANNOUNCE     PSyncItemType = 3 //announce item
-)
-
-// Enum value maps for PSyncItemType.
-var (
-	PSyncItemType_name = map[int32]string{
-		0: "PSYNC_APP_CONFIG",
-		1: "PSYNC_CHAIN_CONFIG",
-		2: "PSYNC_USER",
-		3: "PSYNC_ANNOUNCE",
-	}
-	PSyncItemType_value = map[string]int32{
-		"PSYNC_APP_CONFIG":   0,
-		"PSYNC_CHAIN_CONFIG": 1,
-		"PSYNC_USER":         2,
-		"PSYNC_ANNOUNCE":     3,
-	}
-)
-
-func (x PSyncItemType) Enum() *PSyncItemType {
-	p := new(PSyncItemType)
-	*p = x
-	return p
-}
-
-func (x PSyncItemType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (PSyncItemType) Descriptor() protoreflect.EnumDescriptor {
-	return file_chain_proto_enumTypes[19].Descriptor()
-}
-
-func (PSyncItemType) Type() protoreflect.EnumType {
-	return &file_chain_proto_enumTypes[19]
-}
-
-func (x PSyncItemType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use PSyncItemType.Descriptor instead.
-func (PSyncItemType) EnumDescriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{19}
 }
 
 type Package struct {
@@ -3649,180 +3596,6 @@ func (x *Aux) GetValue() bool {
 	return false
 }
 
-type PSyncMsg struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	SessionId    string          `protobuf:"bytes,1,opt,name=SessionId,proto3" json:"SessionId,omitempty"`
-	CurrentEpoch int64           `protobuf:"varint,2,opt,name=CurrentEpoch,proto3" json:"CurrentEpoch,omitempty"`
-	NodeStatus   PSyncNodeStatus `protobuf:"varint,3,opt,name=NodeStatus,proto3,enum=quorum.pb.PSyncNodeStatus" json:"NodeStatus,omitempty"`
-	ProofTrx     *Trx            `protobuf:"bytes,4,opt,name=ProofTrx,proto3" json:"ProofTrx,omitempty"`
-	PSyncItems   []*PSyncItem    `protobuf:"bytes,5,rep,name=PSyncItems,proto3" json:"PSyncItems,omitempty"`
-	TimeStamp    int64           `protobuf:"varint,6,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
-	Memo         string          `protobuf:"bytes,7,opt,name=Memo,proto3" json:"Memo,omitempty"`
-	SenderPubkey string          `protobuf:"bytes,8,opt,name=SenderPubkey,proto3" json:"SenderPubkey,omitempty"`
-	PSyncMsgHash []byte          `protobuf:"bytes,9,opt,name=PSyncMsgHash,proto3" json:"PSyncMsgHash,omitempty"`
-	SenderSign   []byte          `protobuf:"bytes,10,opt,name=SenderSign,proto3" json:"SenderSign,omitempty"`
-}
-
-func (x *PSyncMsg) Reset() {
-	*x = PSyncMsg{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_chain_proto_msgTypes[32]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PSyncMsg) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PSyncMsg) ProtoMessage() {}
-
-func (x *PSyncMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[32]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PSyncMsg.ProtoReflect.Descriptor instead.
-func (*PSyncMsg) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{32}
-}
-
-func (x *PSyncMsg) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *PSyncMsg) GetCurrentEpoch() int64 {
-	if x != nil {
-		return x.CurrentEpoch
-	}
-	return 0
-}
-
-func (x *PSyncMsg) GetNodeStatus() PSyncNodeStatus {
-	if x != nil {
-		return x.NodeStatus
-	}
-	return PSyncNodeStatus_NODE_OK
-}
-
-func (x *PSyncMsg) GetProofTrx() *Trx {
-	if x != nil {
-		return x.ProofTrx
-	}
-	return nil
-}
-
-func (x *PSyncMsg) GetPSyncItems() []*PSyncItem {
-	if x != nil {
-		return x.PSyncItems
-	}
-	return nil
-}
-
-func (x *PSyncMsg) GetTimeStamp() int64 {
-	if x != nil {
-		return x.TimeStamp
-	}
-	return 0
-}
-
-func (x *PSyncMsg) GetMemo() string {
-	if x != nil {
-		return x.Memo
-	}
-	return ""
-}
-
-func (x *PSyncMsg) GetSenderPubkey() string {
-	if x != nil {
-		return x.SenderPubkey
-	}
-	return ""
-}
-
-func (x *PSyncMsg) GetPSyncMsgHash() []byte {
-	if x != nil {
-		return x.PSyncMsgHash
-	}
-	return nil
-}
-
-func (x *PSyncMsg) GetSenderSign() []byte {
-	if x != nil {
-		return x.SenderSign
-	}
-	return nil
-}
-
-type PSyncItem struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Type    PSyncItemType `protobuf:"varint,1,opt,name=Type,proto3,enum=quorum.pb.PSyncItemType" json:"Type,omitempty"`
-	Payload []byte        `protobuf:"bytes,2,opt,name=Payload,proto3" json:"Payload,omitempty"`
-}
-
-func (x *PSyncItem) Reset() {
-	*x = PSyncItem{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_chain_proto_msgTypes[33]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PSyncItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PSyncItem) ProtoMessage() {}
-
-func (x *PSyncItem) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[33]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PSyncItem.ProtoReflect.Descriptor instead.
-func (*PSyncItem) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{33}
-}
-
-func (x *PSyncItem) GetType() PSyncItemType {
-	if x != nil {
-		return x.Type
-	}
-	return PSyncItemType_PSYNC_APP_CONFIG
-}
-
-func (x *PSyncItem) GetPayload() []byte {
-	if x != nil {
-		return x.Payload
-	}
-	return nil
-}
-
 type PSyncAppConfigItem struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -3834,7 +3607,7 @@ type PSyncAppConfigItem struct {
 func (x *PSyncAppConfigItem) Reset() {
 	*x = PSyncAppConfigItem{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_chain_proto_msgTypes[34]
+		mi := &file_chain_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3847,7 +3620,7 @@ func (x *PSyncAppConfigItem) String() string {
 func (*PSyncAppConfigItem) ProtoMessage() {}
 
 func (x *PSyncAppConfigItem) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[34]
+	mi := &file_chain_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3860,7 +3633,7 @@ func (x *PSyncAppConfigItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PSyncAppConfigItem.ProtoReflect.Descriptor instead.
 func (*PSyncAppConfigItem) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{34}
+	return file_chain_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *PSyncAppConfigItem) GetAppConfigs() []*AppConfigItem {
@@ -3881,7 +3654,7 @@ type PSyncChainConfigItem struct {
 func (x *PSyncChainConfigItem) Reset() {
 	*x = PSyncChainConfigItem{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_chain_proto_msgTypes[35]
+		mi := &file_chain_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3894,7 +3667,7 @@ func (x *PSyncChainConfigItem) String() string {
 func (*PSyncChainConfigItem) ProtoMessage() {}
 
 func (x *PSyncChainConfigItem) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[35]
+	mi := &file_chain_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3907,7 +3680,7 @@ func (x *PSyncChainConfigItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PSyncChainConfigItem.ProtoReflect.Descriptor instead.
 func (*PSyncChainConfigItem) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{35}
+	return file_chain_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *PSyncChainConfigItem) GetChainConfigs() []*ChainConfigItem {
@@ -3928,7 +3701,7 @@ type PSyncProducerItem struct {
 func (x *PSyncProducerItem) Reset() {
 	*x = PSyncProducerItem{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_chain_proto_msgTypes[36]
+		mi := &file_chain_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3941,7 +3714,7 @@ func (x *PSyncProducerItem) String() string {
 func (*PSyncProducerItem) ProtoMessage() {}
 
 func (x *PSyncProducerItem) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[36]
+	mi := &file_chain_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3954,12 +3727,251 @@ func (x *PSyncProducerItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PSyncProducerItem.ProtoReflect.Descriptor instead.
 func (*PSyncProducerItem) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{36}
+	return file_chain_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *PSyncProducerItem) GetProducers() []*ProducerItem {
 	if x != nil {
 		return x.Producers
+	}
+	return nil
+}
+
+type ConsensusMsg struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	GroupId      string        `protobuf:"bytes,1,opt,name=GroupId,proto3" json:"GroupId,omitempty"`
+	SessionId    string        `protobuf:"bytes,2,opt,name=SessionId,proto3" json:"SessionId,omitempty"`
+	MsgType      ConsensusType `protobuf:"varint,3,opt,name=MsgType,proto3,enum=quorum.pb.ConsensusType" json:"MsgType,omitempty"`
+	Payload      []byte        `protobuf:"bytes,4,opt,name=Payload,proto3" json:"Payload,omitempty"`
+	SenderPubkey string        `protobuf:"bytes,5,opt,name=SenderPubkey,proto3" json:"SenderPubkey,omitempty"`
+	TimeStamp    int64         `protobuf:"varint,6,opt,name=TimeStamp,proto3" json:"TimeStamp,omitempty,string"`
+	MsgHash      []byte        `protobuf:"bytes,7,opt,name=MsgHash,proto3" json:"MsgHash,omitempty"`
+	SenderSign   []byte        `protobuf:"bytes,8,opt,name=SenderSign,proto3" json:"SenderSign,omitempty"`
+}
+
+func (x *ConsensusMsg) Reset() {
+	*x = ConsensusMsg{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_chain_proto_msgTypes[35]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ConsensusMsg) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsensusMsg) ProtoMessage() {}
+
+func (x *ConsensusMsg) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[35]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsensusMsg.ProtoReflect.Descriptor instead.
+func (*ConsensusMsg) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ConsensusMsg) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *ConsensusMsg) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ConsensusMsg) GetMsgType() ConsensusType {
+	if x != nil {
+		return x.MsgType
+	}
+	return ConsensusType_REQ
+}
+
+func (x *ConsensusMsg) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *ConsensusMsg) GetSenderPubkey() string {
+	if x != nil {
+		return x.SenderPubkey
+	}
+	return ""
+}
+
+func (x *ConsensusMsg) GetTimeStamp() int64 {
+	if x != nil {
+		return x.TimeStamp
+	}
+	return 0
+}
+
+func (x *ConsensusMsg) GetMsgHash() []byte {
+	if x != nil {
+		return x.MsgHash
+	}
+	return nil
+}
+
+func (x *ConsensusMsg) GetSenderSign() []byte {
+	if x != nil {
+		return x.SenderSign
+	}
+	return nil
+}
+
+//for CONSENSE_REQ
+type ConsensusReq struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	MyEpoch int64 `protobuf:"varint,1,opt,name=MyEpoch,proto3" json:"MyEpoch,omitempty"`
+}
+
+func (x *ConsensusReq) Reset() {
+	*x = ConsensusReq{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_chain_proto_msgTypes[36]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ConsensusReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsensusReq) ProtoMessage() {}
+
+func (x *ConsensusReq) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[36]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsensusReq.ProtoReflect.Descriptor instead.
+func (*ConsensusReq) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ConsensusReq) GetMyEpoch() int64 {
+	if x != nil {
+		return x.MyEpoch
+	}
+	return 0
+}
+
+//for CONSENSE_RESULT
+type ConsensusResp struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	CurChainEpoch int64                 `protobuf:"varint,1,opt,name=CurChainEpoch,proto3" json:"CurChainEpoch,omitempty"`
+	CurProducer   *PSyncProducerItem    `protobuf:"bytes,2,opt,name=CurProducer,proto3" json:"CurProducer,omitempty"`
+	CurChainCnf   *PSyncChainConfigItem `protobuf:"bytes,3,opt,name=CurChainCnf,proto3" json:"CurChainCnf,omitempty"`
+	CurAppCnf     *PSyncAppConfigItem   `protobuf:"bytes,4,opt,name=CurAppCnf,proto3" json:"CurAppCnf,omitempty"`
+	Witesses      []*Witnesses          `protobuf:"bytes,5,rep,name=Witesses,proto3" json:"Witesses,omitempty"`
+	ProducerProof *Trx                  `protobuf:"bytes,6,opt,name=ProducerProof,proto3" json:"ProducerProof,omitempty"`
+}
+
+func (x *ConsensusResp) Reset() {
+	*x = ConsensusResp{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_chain_proto_msgTypes[37]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ConsensusResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsensusResp) ProtoMessage() {}
+
+func (x *ConsensusResp) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[37]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsensusResp.ProtoReflect.Descriptor instead.
+func (*ConsensusResp) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *ConsensusResp) GetCurChainEpoch() int64 {
+	if x != nil {
+		return x.CurChainEpoch
+	}
+	return 0
+}
+
+func (x *ConsensusResp) GetCurProducer() *PSyncProducerItem {
+	if x != nil {
+		return x.CurProducer
+	}
+	return nil
+}
+
+func (x *ConsensusResp) GetCurChainCnf() *PSyncChainConfigItem {
+	if x != nil {
+		return x.CurChainCnf
+	}
+	return nil
+}
+
+func (x *ConsensusResp) GetCurAppCnf() *PSyncAppConfigItem {
+	if x != nil {
+		return x.CurAppCnf
+	}
+	return nil
+}
+
+func (x *ConsensusResp) GetWitesses() []*Witnesses {
+	if x != nil {
+		return x.Witesses
+	}
+	return nil
+}
+
+func (x *ConsensusResp) GetProducerProof() *Trx {
+	if x != nil {
+		return x.ProducerProof
 	}
 	return nil
 }
@@ -4372,54 +4384,67 @@ var file_chain_proto_rawDesc = []byte{
 	0x05, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x56, 0x61,
 	0x6c, 0x75, 0x65, 0x22, 0x1b, 0x0a, 0x03, 0x41, 0x75, 0x78, 0x12, 0x14, 0x0a, 0x05, 0x56, 0x61,
 	0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x56, 0x61, 0x6c, 0x75, 0x65,
-	0x22, 0x84, 0x03, 0x0a, 0x08, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x4d, 0x73, 0x67, 0x12, 0x1c, 0x0a,
-	0x09, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x09, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x22, 0x0a, 0x0c, 0x43,
-	0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x45, 0x70, 0x6f, 0x63, 0x68, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x0c, 0x43, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x45, 0x70, 0x6f, 0x63, 0x68, 0x12,
-	0x3a, 0x0a, 0x0a, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x0e, 0x32, 0x1a, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e,
-	0x50, 0x53, 0x79, 0x6e, 0x63, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52,
-	0x0a, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x2a, 0x0a, 0x08, 0x50,
-	0x72, 0x6f, 0x6f, 0x66, 0x54, 0x72, 0x78, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e,
-	0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x54, 0x72, 0x78, 0x52, 0x08, 0x50,
-	0x72, 0x6f, 0x6f, 0x66, 0x54, 0x72, 0x78, 0x12, 0x34, 0x0a, 0x0a, 0x50, 0x53, 0x79, 0x6e, 0x63,
-	0x49, 0x74, 0x65, 0x6d, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x71, 0x75,
-	0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x49, 0x74, 0x65,
-	0x6d, 0x52, 0x0a, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x49, 0x74, 0x65, 0x6d, 0x73, 0x12, 0x1c, 0x0a,
-	0x09, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03,
-	0x52, 0x09, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x74, 0x61, 0x6d, 0x70, 0x12, 0x12, 0x0a, 0x04, 0x4d,
-	0x65, 0x6d, 0x6f, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x4d, 0x65, 0x6d, 0x6f, 0x12,
-	0x22, 0x0a, 0x0c, 0x53, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x50, 0x75, 0x62, 0x6b, 0x65, 0x79, 0x18,
-	0x08, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x50, 0x75, 0x62,
-	0x6b, 0x65, 0x79, 0x12, 0x22, 0x0a, 0x0c, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x4d, 0x73, 0x67, 0x48,
-	0x61, 0x73, 0x68, 0x18, 0x09, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0c, 0x50, 0x53, 0x79, 0x6e, 0x63,
+	0x22, 0x4e, 0x0a, 0x12, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66,
+	0x69, 0x67, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x38, 0x0a, 0x0a, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e,
+	0x66, 0x69, 0x67, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x71, 0x75, 0x6f,
+	0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x49, 0x74, 0x65, 0x6d, 0x52, 0x0a, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73,
+	0x22, 0x56, 0x0a, 0x14, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x3e, 0x0a, 0x0c, 0x43, 0x68, 0x61, 0x69,
+	0x6e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1a,
+	0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x68, 0x61, 0x69, 0x6e,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x0c, 0x43, 0x68, 0x61, 0x69,
+	0x6e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73, 0x22, 0x4a, 0x0a, 0x11, 0x50, 0x53, 0x79, 0x6e,
+	0x63, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x35, 0x0a,
+	0x09, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x17, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x72, 0x6f,
+	0x64, 0x75, 0x63, 0x65, 0x72, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x09, 0x50, 0x72, 0x6f, 0x64, 0x75,
+	0x63, 0x65, 0x72, 0x73, 0x22, 0x90, 0x02, 0x0a, 0x0c, 0x43, 0x6f, 0x6e, 0x73, 0x65, 0x6e, 0x73,
+	0x75, 0x73, 0x4d, 0x73, 0x67, 0x12, 0x18, 0x0a, 0x07, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12,
+	0x1c, 0x0a, 0x09, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x32, 0x0a,
+	0x07, 0x4d, 0x73, 0x67, 0x54, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x18,
+	0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x6f, 0x6e, 0x73, 0x65,
+	0x6e, 0x73, 0x75, 0x73, 0x54, 0x79, 0x70, 0x65, 0x52, 0x07, 0x4d, 0x73, 0x67, 0x54, 0x79, 0x70,
+	0x65, 0x12, 0x18, 0x0a, 0x07, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x0c, 0x52, 0x07, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x12, 0x22, 0x0a, 0x0c, 0x53,
+	0x65, 0x6e, 0x64, 0x65, 0x72, 0x50, 0x75, 0x62, 0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0c, 0x53, 0x65, 0x6e, 0x64, 0x65, 0x72, 0x50, 0x75, 0x62, 0x6b, 0x65, 0x79, 0x12,
+	0x1c, 0x0a, 0x09, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x06, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x09, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x74, 0x61, 0x6d, 0x70, 0x12, 0x18, 0x0a,
+	0x07, 0x4d, 0x73, 0x67, 0x48, 0x61, 0x73, 0x68, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07,
 	0x4d, 0x73, 0x67, 0x48, 0x61, 0x73, 0x68, 0x12, 0x1e, 0x0a, 0x0a, 0x53, 0x65, 0x6e, 0x64, 0x65,
-	0x72, 0x53, 0x69, 0x67, 0x6e, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x53, 0x65, 0x6e,
-	0x64, 0x65, 0x72, 0x53, 0x69, 0x67, 0x6e, 0x22, 0x53, 0x0a, 0x09, 0x50, 0x53, 0x79, 0x6e, 0x63,
-	0x49, 0x74, 0x65, 0x6d, 0x12, 0x2c, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x0e, 0x32, 0x18, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50,
-	0x53, 0x79, 0x6e, 0x63, 0x49, 0x74, 0x65, 0x6d, 0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x54, 0x79,
-	0x70, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x0c, 0x52, 0x07, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x4e, 0x0a, 0x12,
-	0x50, 0x53, 0x79, 0x6e, 0x63, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x49, 0x74,
-	0x65, 0x6d, 0x12, 0x38, 0x0a, 0x0a, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73,
-	0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e,
-	0x70, 0x62, 0x2e, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x49, 0x74, 0x65, 0x6d,
-	0x52, 0x0a, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x73, 0x22, 0x56, 0x0a, 0x14,
-	0x50, 0x53, 0x79, 0x6e, 0x63, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
-	0x49, 0x74, 0x65, 0x6d, 0x12, 0x3e, 0x0a, 0x0c, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x71, 0x75, 0x6f,
-	0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x0c, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x73, 0x22, 0x4a, 0x0a, 0x11, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x50, 0x72, 0x6f,
-	0x64, 0x75, 0x63, 0x65, 0x72, 0x49, 0x74, 0x65, 0x6d, 0x12, 0x35, 0x0a, 0x09, 0x50, 0x72, 0x6f,
-	0x64, 0x75, 0x63, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x71,
-	0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65,
-	0x72, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x09, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x73,
-	0x2a, 0x2a, 0x0a, 0x0b, 0x50, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12,
-	0x07, 0x0a, 0x03, 0x54, 0x52, 0x58, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x42, 0x4c, 0x4f, 0x43,
-	0x4b, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x48, 0x42, 0x42, 0x10, 0x02, 0x2a, 0xf5, 0x01, 0x0a,
+	0x72, 0x53, 0x69, 0x67, 0x6e, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x53, 0x65, 0x6e,
+	0x64, 0x65, 0x72, 0x53, 0x69, 0x67, 0x6e, 0x22, 0x28, 0x0a, 0x0c, 0x43, 0x6f, 0x6e, 0x73, 0x65,
+	0x6e, 0x73, 0x75, 0x73, 0x52, 0x65, 0x71, 0x12, 0x18, 0x0a, 0x07, 0x4d, 0x79, 0x45, 0x70, 0x6f,
+	0x63, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x4d, 0x79, 0x45, 0x70, 0x6f, 0x63,
+	0x68, 0x22, 0xdd, 0x02, 0x0a, 0x0d, 0x43, 0x6f, 0x6e, 0x73, 0x65, 0x6e, 0x73, 0x75, 0x73, 0x52,
+	0x65, 0x73, 0x70, 0x12, 0x24, 0x0a, 0x0d, 0x43, 0x75, 0x72, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x45,
+	0x70, 0x6f, 0x63, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x43, 0x75, 0x72, 0x43,
+	0x68, 0x61, 0x69, 0x6e, 0x45, 0x70, 0x6f, 0x63, 0x68, 0x12, 0x3e, 0x0a, 0x0b, 0x43, 0x75, 0x72,
+	0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c,
+	0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x53, 0x79, 0x6e, 0x63,
+	0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x0b, 0x43, 0x75,
+	0x72, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x12, 0x41, 0x0a, 0x0b, 0x43, 0x75, 0x72,
+	0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6e, 0x66, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1f,
+	0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x53, 0x79, 0x6e, 0x63,
+	0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x49, 0x74, 0x65, 0x6d, 0x52,
+	0x0b, 0x43, 0x75, 0x72, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x43, 0x6e, 0x66, 0x12, 0x3b, 0x0a, 0x09,
+	0x43, 0x75, 0x72, 0x41, 0x70, 0x70, 0x43, 0x6e, 0x66, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x1d, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x53, 0x79, 0x6e,
+	0x63, 0x41, 0x70, 0x70, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x49, 0x74, 0x65, 0x6d, 0x52, 0x09,
+	0x43, 0x75, 0x72, 0x41, 0x70, 0x70, 0x43, 0x6e, 0x66, 0x12, 0x30, 0x0a, 0x08, 0x57, 0x69, 0x74,
+	0x65, 0x73, 0x73, 0x65, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x71, 0x75,
+	0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x57, 0x69, 0x74, 0x6e, 0x65, 0x73, 0x73, 0x65,
+	0x73, 0x52, 0x08, 0x57, 0x69, 0x74, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x34, 0x0a, 0x0d, 0x50,
+	0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x6f, 0x66, 0x18, 0x06, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2e, 0x70, 0x62, 0x2e, 0x54,
+	0x72, 0x78, 0x52, 0x0d, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x6f,
+	0x66, 0x2a, 0x39, 0x0a, 0x0b, 0x50, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70, 0x65,
+	0x12, 0x07, 0x0a, 0x03, 0x54, 0x52, 0x58, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x42, 0x4c, 0x4f,
+	0x43, 0x4b, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x48, 0x42, 0x42, 0x10, 0x02, 0x12, 0x0d, 0x0a,
+	0x09, 0x43, 0x4f, 0x4e, 0x53, 0x45, 0x4e, 0x53, 0x55, 0x53, 0x10, 0x03, 0x2a, 0xf5, 0x01, 0x0a,
 	0x07, 0x54, 0x72, 0x78, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x50, 0x4f, 0x53, 0x54,
 	0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x53, 0x43, 0x48, 0x45, 0x4d, 0x41, 0x10, 0x02, 0x12, 0x0c,
 	0x0a, 0x08, 0x50, 0x52, 0x4f, 0x44, 0x55, 0x43, 0x45, 0x52, 0x10, 0x03, 0x12, 0x0c, 0x0a, 0x08,
@@ -4484,20 +4509,12 @@ var file_chain_proto_rawDesc = []byte{
 	0x00, 0x12, 0x0c, 0x0a, 0x08, 0x48, 0x42, 0x5f, 0x50, 0x53, 0x59, 0x4e, 0x43, 0x10, 0x01, 0x2a,
 	0x25, 0x0a, 0x10, 0x41, 0x67, 0x72, 0x65, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x4d, 0x73, 0x67, 0x54,
 	0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x42, 0x56, 0x41, 0x4c, 0x10, 0x00, 0x12, 0x07, 0x0a,
-	0x03, 0x41, 0x55, 0x58, 0x10, 0x01, 0x2a, 0x40, 0x0a, 0x0f, 0x50, 0x53, 0x79, 0x6e, 0x63, 0x4e,
-	0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x0b, 0x0a, 0x07, 0x4e, 0x4f, 0x44,
-	0x45, 0x5f, 0x4f, 0x4b, 0x10, 0x00, 0x12, 0x10, 0x0a, 0x0c, 0x4e, 0x4f, 0x44, 0x45, 0x5f, 0x53,
-	0x59, 0x4e, 0x43, 0x49, 0x4e, 0x47, 0x10, 0x01, 0x12, 0x0e, 0x0a, 0x0a, 0x4e, 0x4f, 0x44, 0x45,
-	0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x10, 0x02, 0x2a, 0x61, 0x0a, 0x0d, 0x50, 0x53, 0x79, 0x6e,
-	0x63, 0x49, 0x74, 0x65, 0x6d, 0x54, 0x79, 0x70, 0x65, 0x12, 0x14, 0x0a, 0x10, 0x50, 0x53, 0x59,
-	0x4e, 0x43, 0x5f, 0x41, 0x50, 0x50, 0x5f, 0x43, 0x4f, 0x4e, 0x46, 0x49, 0x47, 0x10, 0x00, 0x12,
-	0x16, 0x0a, 0x12, 0x50, 0x53, 0x59, 0x4e, 0x43, 0x5f, 0x43, 0x48, 0x41, 0x49, 0x4e, 0x5f, 0x43,
-	0x4f, 0x4e, 0x46, 0x49, 0x47, 0x10, 0x01, 0x12, 0x0e, 0x0a, 0x0a, 0x50, 0x53, 0x59, 0x4e, 0x43,
-	0x5f, 0x55, 0x53, 0x45, 0x52, 0x10, 0x02, 0x12, 0x12, 0x0a, 0x0e, 0x50, 0x53, 0x59, 0x4e, 0x43,
-	0x5f, 0x41, 0x4e, 0x4e, 0x4f, 0x55, 0x4e, 0x43, 0x45, 0x10, 0x03, 0x42, 0x24, 0x5a, 0x22, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x72, 0x75, 0x6d, 0x73, 0x79, 0x73,
-	0x74, 0x65, 0x6d, 0x2f, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70,
-	0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x03, 0x41, 0x55, 0x58, 0x10, 0x01, 0x2a, 0x22, 0x0a, 0x0d, 0x43, 0x6f, 0x6e, 0x73, 0x65, 0x6e,
+	0x73, 0x75, 0x73, 0x54, 0x79, 0x70, 0x65, 0x12, 0x07, 0x0a, 0x03, 0x52, 0x45, 0x51, 0x10, 0x00,
+	0x12, 0x08, 0x0a, 0x04, 0x52, 0x45, 0x53, 0x50, 0x10, 0x01, 0x42, 0x24, 0x5a, 0x22, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x72, 0x75, 0x6d, 0x73, 0x79, 0x73, 0x74,
+	0x65, 0x6d, 0x2f, 0x71, 0x75, 0x6f, 0x72, 0x75, 0x6d, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x62,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -4512,8 +4529,8 @@ func file_chain_proto_rawDescGZIP() []byte {
 	return file_chain_proto_rawDescData
 }
 
-var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 20)
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 19)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_chain_proto_goTypes = []interface{}{
 	(PackageType)(0),                 // 0: quorum.pb.PackageType
 	(TrxType)(0),                     // 1: quorum.pb.TrxType
@@ -4533,62 +4550,62 @@ var file_chain_proto_goTypes = []interface{}{
 	(BroadcastMsgType)(0),            // 15: quorum.pb.BroadcastMsgType
 	(HBMsgPayloadType)(0),            // 16: quorum.pb.HBMsgPayloadType
 	(AgreementMsgType)(0),            // 17: quorum.pb.AgreementMsgType
-	(PSyncNodeStatus)(0),             // 18: quorum.pb.PSyncNodeStatus
-	(PSyncItemType)(0),               // 19: quorum.pb.PSyncItemType
-	(*Package)(nil),                  // 20: quorum.pb.Package
-	(*Trx)(nil),                      // 21: quorum.pb.Trx
-	(*Witnesses)(nil),                // 22: quorum.pb.Witnesses
-	(*Block)(nil),                    // 23: quorum.pb.Block
-	(*ReqBlock)(nil),                 // 24: quorum.pb.ReqBlock
-	(*BlockSynced)(nil),              // 25: quorum.pb.BlockSynced
-	(*AskPeerId)(nil),                // 26: quorum.pb.AskPeerId
-	(*AskPeerIdResp)(nil),            // 27: quorum.pb.AskPeerIdResp
-	(*BlockProduced)(nil),            // 28: quorum.pb.BlockProduced
-	(*ReqBlockResp)(nil),             // 29: quorum.pb.ReqBlockResp
-	(*PostItem)(nil),                 // 30: quorum.pb.PostItem
-	(*ProducerItem)(nil),             // 31: quorum.pb.ProducerItem
-	(*BFTProducerBundleItem)(nil),    // 32: quorum.pb.BFTProducerBundleItem
-	(*UserItem)(nil),                 // 33: quorum.pb.UserItem
-	(*AnnounceItem)(nil),             // 34: quorum.pb.AnnounceItem
-	(*GroupItem)(nil),                // 35: quorum.pb.GroupItem
-	(*ChainConfigItem)(nil),          // 36: quorum.pb.ChainConfigItem
-	(*ChainSendTrxRuleListItem)(nil), // 37: quorum.pb.ChainSendTrxRuleListItem
-	(*SetTrxAuthModeItem)(nil),       // 38: quorum.pb.SetTrxAuthModeItem
-	(*GroupItemV0)(nil),              // 39: quorum.pb.GroupItemV0
-	(*AppConfigItem)(nil),            // 40: quorum.pb.AppConfigItem
-	(*PSPing)(nil),                   // 41: quorum.pb.PSPing
-	(*GroupSeed)(nil),                // 42: quorum.pb.GroupSeed
-	(*NodeSDKGroupItem)(nil),         // 43: quorum.pb.NodeSDKGroupItem
-	(*HBMsgv1)(nil),                  // 44: quorum.pb.HBMsgv1
-	(*HBTrxBundle)(nil),              // 45: quorum.pb.HBTrxBundle
-	(*BroadcastMsg)(nil),             // 46: quorum.pb.BroadcastMsg
-	(*Proof)(nil),                    // 47: quorum.pb.Proof
-	(*Ready)(nil),                    // 48: quorum.pb.Ready
-	(*AgreementMsg)(nil),             // 49: quorum.pb.AgreementMsg
-	(*Bval)(nil),                     // 50: quorum.pb.Bval
-	(*Aux)(nil),                      // 51: quorum.pb.Aux
-	(*PSyncMsg)(nil),                 // 52: quorum.pb.PSyncMsg
-	(*PSyncItem)(nil),                // 53: quorum.pb.PSyncItem
-	(*PSyncAppConfigItem)(nil),       // 54: quorum.pb.PSyncAppConfigItem
-	(*PSyncChainConfigItem)(nil),     // 55: quorum.pb.PSyncChainConfigItem
-	(*PSyncProducerItem)(nil),        // 56: quorum.pb.PSyncProducerItem
+	(ConsensusType)(0),               // 18: quorum.pb.ConsensusType
+	(*Package)(nil),                  // 19: quorum.pb.Package
+	(*Trx)(nil),                      // 20: quorum.pb.Trx
+	(*Witnesses)(nil),                // 21: quorum.pb.Witnesses
+	(*Block)(nil),                    // 22: quorum.pb.Block
+	(*ReqBlock)(nil),                 // 23: quorum.pb.ReqBlock
+	(*BlockSynced)(nil),              // 24: quorum.pb.BlockSynced
+	(*AskPeerId)(nil),                // 25: quorum.pb.AskPeerId
+	(*AskPeerIdResp)(nil),            // 26: quorum.pb.AskPeerIdResp
+	(*BlockProduced)(nil),            // 27: quorum.pb.BlockProduced
+	(*ReqBlockResp)(nil),             // 28: quorum.pb.ReqBlockResp
+	(*PostItem)(nil),                 // 29: quorum.pb.PostItem
+	(*ProducerItem)(nil),             // 30: quorum.pb.ProducerItem
+	(*BFTProducerBundleItem)(nil),    // 31: quorum.pb.BFTProducerBundleItem
+	(*UserItem)(nil),                 // 32: quorum.pb.UserItem
+	(*AnnounceItem)(nil),             // 33: quorum.pb.AnnounceItem
+	(*GroupItem)(nil),                // 34: quorum.pb.GroupItem
+	(*ChainConfigItem)(nil),          // 35: quorum.pb.ChainConfigItem
+	(*ChainSendTrxRuleListItem)(nil), // 36: quorum.pb.ChainSendTrxRuleListItem
+	(*SetTrxAuthModeItem)(nil),       // 37: quorum.pb.SetTrxAuthModeItem
+	(*GroupItemV0)(nil),              // 38: quorum.pb.GroupItemV0
+	(*AppConfigItem)(nil),            // 39: quorum.pb.AppConfigItem
+	(*PSPing)(nil),                   // 40: quorum.pb.PSPing
+	(*GroupSeed)(nil),                // 41: quorum.pb.GroupSeed
+	(*NodeSDKGroupItem)(nil),         // 42: quorum.pb.NodeSDKGroupItem
+	(*HBMsgv1)(nil),                  // 43: quorum.pb.HBMsgv1
+	(*HBTrxBundle)(nil),              // 44: quorum.pb.HBTrxBundle
+	(*BroadcastMsg)(nil),             // 45: quorum.pb.BroadcastMsg
+	(*Proof)(nil),                    // 46: quorum.pb.Proof
+	(*Ready)(nil),                    // 47: quorum.pb.Ready
+	(*AgreementMsg)(nil),             // 48: quorum.pb.AgreementMsg
+	(*Bval)(nil),                     // 49: quorum.pb.Bval
+	(*Aux)(nil),                      // 50: quorum.pb.Aux
+	(*PSyncAppConfigItem)(nil),       // 51: quorum.pb.PSyncAppConfigItem
+	(*PSyncChainConfigItem)(nil),     // 52: quorum.pb.PSyncChainConfigItem
+	(*PSyncProducerItem)(nil),        // 53: quorum.pb.PSyncProducerItem
+	(*ConsensusMsg)(nil),             // 54: quorum.pb.ConsensusMsg
+	(*ConsensusReq)(nil),             // 55: quorum.pb.ConsensusReq
+	(*ConsensusResp)(nil),            // 56: quorum.pb.ConsensusResp
 }
 var file_chain_proto_depIdxs = []int32{
 	0,  // 0: quorum.pb.Package.type:type_name -> quorum.pb.PackageType
 	1,  // 1: quorum.pb.Trx.Type:type_name -> quorum.pb.TrxType
 	5,  // 2: quorum.pb.Trx.StorageType:type_name -> quorum.pb.TrxStroageType
-	21, // 3: quorum.pb.Block.Trxs:type_name -> quorum.pb.Trx
-	22, // 4: quorum.pb.Block.Witesses:type_name -> quorum.pb.Witnesses
-	23, // 5: quorum.pb.BlockSynced.BlockItem:type_name -> quorum.pb.Block
-	23, // 6: quorum.pb.BlockProduced.BlockItem:type_name -> quorum.pb.Block
+	20, // 3: quorum.pb.Block.Trxs:type_name -> quorum.pb.Trx
+	21, // 4: quorum.pb.Block.Witesses:type_name -> quorum.pb.Witnesses
+	22, // 5: quorum.pb.BlockSynced.BlockItem:type_name -> quorum.pb.Block
+	22, // 6: quorum.pb.BlockProduced.BlockItem:type_name -> quorum.pb.Block
 	6,  // 7: quorum.pb.ReqBlockResp.Result:type_name -> quorum.pb.ReqBlkResult
 	4,  // 8: quorum.pb.ProducerItem.Action:type_name -> quorum.pb.ActionType
-	31, // 9: quorum.pb.BFTProducerBundleItem.Producers:type_name -> quorum.pb.ProducerItem
+	30, // 9: quorum.pb.BFTProducerBundleItem.Producers:type_name -> quorum.pb.ProducerItem
 	4,  // 10: quorum.pb.UserItem.Action:type_name -> quorum.pb.ActionType
 	2,  // 11: quorum.pb.AnnounceItem.Type:type_name -> quorum.pb.AnnounceType
 	3,  // 12: quorum.pb.AnnounceItem.Result:type_name -> quorum.pb.ApproveType
 	4,  // 13: quorum.pb.AnnounceItem.Action:type_name -> quorum.pb.ActionType
-	23, // 14: quorum.pb.GroupItem.GenesisBlock:type_name -> quorum.pb.Block
+	22, // 14: quorum.pb.GroupItem.GenesisBlock:type_name -> quorum.pb.Block
 	7,  // 15: quorum.pb.GroupItem.EncryptType:type_name -> quorum.pb.GroupEncryptType
 	8,  // 16: quorum.pb.GroupItem.ConsenseType:type_name -> quorum.pb.GroupConsenseType
 	10, // 17: quorum.pb.ChainConfigItem.Type:type_name -> quorum.pb.ChainConfigType
@@ -4597,30 +4614,32 @@ var file_chain_proto_depIdxs = []int32{
 	1,  // 20: quorum.pb.SetTrxAuthModeItem.Type:type_name -> quorum.pb.TrxType
 	11, // 21: quorum.pb.SetTrxAuthModeItem.Mode:type_name -> quorum.pb.TrxAuthMode
 	9,  // 22: quorum.pb.GroupItemV0.UserRole:type_name -> quorum.pb.RoleV0
-	23, // 23: quorum.pb.GroupItemV0.GenesisBlock:type_name -> quorum.pb.Block
+	22, // 23: quorum.pb.GroupItemV0.GenesisBlock:type_name -> quorum.pb.Block
 	7,  // 24: quorum.pb.GroupItemV0.EncryptType:type_name -> quorum.pb.GroupEncryptType
 	8,  // 25: quorum.pb.GroupItemV0.ConsenseType:type_name -> quorum.pb.GroupConsenseType
 	4,  // 26: quorum.pb.AppConfigItem.Action:type_name -> quorum.pb.ActionType
 	13, // 27: quorum.pb.AppConfigItem.Type:type_name -> quorum.pb.AppConfigType
-	23, // 28: quorum.pb.GroupSeed.GenesisBlock:type_name -> quorum.pb.Block
-	35, // 29: quorum.pb.NodeSDKGroupItem.Group:type_name -> quorum.pb.GroupItem
+	22, // 28: quorum.pb.GroupSeed.GenesisBlock:type_name -> quorum.pb.Block
+	34, // 29: quorum.pb.NodeSDKGroupItem.Group:type_name -> quorum.pb.GroupItem
 	14, // 30: quorum.pb.HBMsgv1.MsgType:type_name -> quorum.pb.HBBMsgType
 	16, // 31: quorum.pb.HBMsgv1.PayloadType:type_name -> quorum.pb.HBMsgPayloadType
-	21, // 32: quorum.pb.HBTrxBundle.Trxs:type_name -> quorum.pb.Trx
+	20, // 32: quorum.pb.HBTrxBundle.Trxs:type_name -> quorum.pb.Trx
 	15, // 33: quorum.pb.BroadcastMsg.Type:type_name -> quorum.pb.BroadcastMsgType
 	17, // 34: quorum.pb.AgreementMsg.Type:type_name -> quorum.pb.AgreementMsgType
-	18, // 35: quorum.pb.PSyncMsg.NodeStatus:type_name -> quorum.pb.PSyncNodeStatus
-	21, // 36: quorum.pb.PSyncMsg.ProofTrx:type_name -> quorum.pb.Trx
-	53, // 37: quorum.pb.PSyncMsg.PSyncItems:type_name -> quorum.pb.PSyncItem
-	19, // 38: quorum.pb.PSyncItem.Type:type_name -> quorum.pb.PSyncItemType
-	40, // 39: quorum.pb.PSyncAppConfigItem.AppConfigs:type_name -> quorum.pb.AppConfigItem
-	36, // 40: quorum.pb.PSyncChainConfigItem.ChainConfigs:type_name -> quorum.pb.ChainConfigItem
-	31, // 41: quorum.pb.PSyncProducerItem.Producers:type_name -> quorum.pb.ProducerItem
-	42, // [42:42] is the sub-list for method output_type
-	42, // [42:42] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	39, // 35: quorum.pb.PSyncAppConfigItem.AppConfigs:type_name -> quorum.pb.AppConfigItem
+	35, // 36: quorum.pb.PSyncChainConfigItem.ChainConfigs:type_name -> quorum.pb.ChainConfigItem
+	30, // 37: quorum.pb.PSyncProducerItem.Producers:type_name -> quorum.pb.ProducerItem
+	18, // 38: quorum.pb.ConsensusMsg.MsgType:type_name -> quorum.pb.ConsensusType
+	53, // 39: quorum.pb.ConsensusResp.CurProducer:type_name -> quorum.pb.PSyncProducerItem
+	52, // 40: quorum.pb.ConsensusResp.CurChainCnf:type_name -> quorum.pb.PSyncChainConfigItem
+	51, // 41: quorum.pb.ConsensusResp.CurAppCnf:type_name -> quorum.pb.PSyncAppConfigItem
+	21, // 42: quorum.pb.ConsensusResp.Witesses:type_name -> quorum.pb.Witnesses
+	20, // 43: quorum.pb.ConsensusResp.ProducerProof:type_name -> quorum.pb.Trx
+	44, // [44:44] is the sub-list for method output_type
+	44, // [44:44] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_chain_proto_init() }
@@ -5014,30 +5033,6 @@ func file_chain_proto_init() {
 			}
 		}
 		file_chain_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PSyncMsg); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_chain_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PSyncItem); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_chain_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PSyncAppConfigItem); i {
 			case 0:
 				return &v.state
@@ -5049,7 +5044,7 @@ func file_chain_proto_init() {
 				return nil
 			}
 		}
-		file_chain_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
+		file_chain_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PSyncChainConfigItem); i {
 			case 0:
 				return &v.state
@@ -5061,8 +5056,44 @@ func file_chain_proto_init() {
 				return nil
 			}
 		}
-		file_chain_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
+		file_chain_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PSyncProducerItem); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_chain_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ConsensusMsg); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_chain_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ConsensusReq); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_chain_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ConsensusResp); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5079,8 +5110,8 @@ func file_chain_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_chain_proto_rawDesc,
-			NumEnums:      20,
-			NumMessages:   37,
+			NumEnums:      19,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

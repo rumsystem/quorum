@@ -126,7 +126,6 @@ func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numD
 }
 
 func ValidateProof(req *quorumpb.Proof) bool {
-
 	return merkletree.VerifyProof(
 		sha256.New(),
 		req.RootHash,
@@ -136,7 +135,6 @@ func ValidateProof(req *quorumpb.Proof) bool {
 }
 
 func MakeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
-
 	shards, err := enc.Split(data)
 	if err != nil {
 		return nil, err

@@ -3,9 +3,10 @@ package quorum.pb;
 option go_package = "github.com/rumsystem/quorum/pkg/pb";
 
 enum PackageType {
-    TRX      = 0;
-    BLOCK    = 1;
-    HBB      = 2;
+    TRX             = 0;
+    BLOCK           = 1;
+    HBB             = 2;
+    CONSENSUS       = 3;
 }
 
 message Package {
@@ -380,38 +381,6 @@ message Aux {
     bool Value = 1;
 }
 
-message PSyncMsg {
-    string          SessionId             = 1;
-    int64           CurrentEpoch          = 2;
-    PSyncNodeStatus NodeStatus            = 3;
-    Trx             ProofTrx              = 4; 
-    repeated        PSyncItem  PSyncItems = 5;
-    int64           TimeStamp             = 6;
-    string          Memo                  = 7;   
-    string          SenderPubkey          = 8;
-    bytes           PSyncMsgHash          = 9;
-    bytes           SenderSign            = 10;    
-}
-
-//Node status type
-enum PSyncNodeStatus {
-    NODE_OK      = 0;
-    NODE_SYNCING = 1;
-    NODE_ERROR   = 2;
-}
-
-message PSyncItem {
-    PSyncItemType Type    = 1;
-    bytes         Payload = 2;  
-}
-
-enum PSyncItemType {
-    PSYNC_APP_CONFIG    = 0;    //app_config item
-    PSYNC_CHAIN_CONFIG  = 1;    //chain_config item
-    PSYNC_USER          = 2;    //user item
-    PSYNC_ANNOUNCE      = 3;    //announce item
-}
-
 message PSyncAppConfigItem {
     repeated AppConfigItem AppConfigs = 1;
 }
@@ -424,6 +393,35 @@ message PSyncProducerItem {
     repeated ProducerItem Producers = 1;
 }
 
+enum ConsensusType {
+    REQ  = 0;
+    RESP = 1;
+}
 
+message ConsensusMsg {
+    string        GroupId       = 1;
+    string        SessionId     = 2;
+    ConsensusType MsgType       = 3;
+    bytes         Payload       = 4;
+    string        SenderPubkey  = 5;
+    int64         TimeStamp     = 6;
+    bytes         MsgHash       = 7;
+    bytes         SenderSign    = 8;
+}
+
+//for CONSENSE_REQ
+message ConsensusReq {
+    int64        MyEpoch             = 1;
+}
+
+//for CONSENSE_RESULT
+message ConsensusResp {
+    int64                CurChainEpoch  = 1;
+    PSyncProducerItem    CurProducer    = 2;
+    PSyncChainConfigItem CurChainCnf    = 3;
+    PSyncAppConfigItem   CurAppCnf      = 4; 
+    repeated   Witnesses Witesses       = 5;
+    Trx                  ProducerProof  = 6;
+}
 
 

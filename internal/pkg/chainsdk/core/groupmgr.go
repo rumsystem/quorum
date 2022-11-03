@@ -67,8 +67,12 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 		if groupMgr.rumExchangeTestMode {
 			grp.SetRumExchangeTestMode()
 		}
-
-		grp.StartPSync()
+		if _, ok := grp.ChainCtx.ProducerPool[grp.Item.UserSignPubkey]; ok {
+			//try get consensus before start sync
+			grp.TryGetChainConsensus()
+		} else {
+			grp.StartBSync(true)
+		}
 	}
 	return nil
 }

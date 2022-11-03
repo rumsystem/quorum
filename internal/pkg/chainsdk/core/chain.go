@@ -215,17 +215,97 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 		return nil
 	}
 
-	if chain.Consensus.Producer() == nil {
-		return nil
-	}
-
 	if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_TRX {
+		if chain.Consensus.Producer() == nil {
+			return nil
+		}
 		return chain.Consensus.Producer().HandleHBMsg(hb)
 	} else if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_PSYNC {
-		return chain.Consensus.PSyncer().HandleHBMsg(hb)
+		if chain.Consensus.PSync() == nil {
+			return nil
+		}
+		return chain.Consensus.PSync().HandleHBMsg(hb)
 	}
 
 	return fmt.Errorf("unknown hbmsg type %s", hb.PayloadType.String())
+}
+
+func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
+	chain_log.Debugf("<%s> HandleConsesusPsConn called", chain.groupId)
+
+	//non producer node should not handle consensus msg
+	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
+		return nil
+	}
+
+	if chain.Consensus.PSync() == nil {
+		return nil
+	}
+
+	//verify the msg is ok
+	if c.MsgType == quorumpb.ConsensusType_REQ {
+		if _, ok := chain.ProducerPool[c.SenderPubkey]; !ok {
+			chain_log.Debugf("consensusReq from non producer node, ignore")
+			return nil
+		}
+		//let psync handle the req
+		return chain.Consensus.PSync().AddConsensusReq(c)
+	} else if c.MsgType == quorumpb.ConsensusType_RESP {
+		//verify response
+		ok, err := chain.verifyConsensusMsg(c)
+		if err != nil {
+			chain_log.Debugf(err.Error())
+			return nil
+		}
+		if !ok {
+			chain_log.Debugf("invalid consensusResp from producer %s", c.SenderPubkey)
+		}
+
+		//check if need sync or do something else
+		return nil
+	} else {
+		return fmt.Errorf("unknown msgType %s", c.MsgType)
+	}
+}
+
+func (chain *Chain) HandleConsesusRex(c *quorumpb.ConsensusMsg) error {
+	return nil
+}
+
+func (chain *Chain) verifyConsensusMsg(c *quorumpb.ConsensusMsg) (bool, error) {
+	//TBD verify msg signature
+
+	resp := &quorumpb.ConsensusResp{}
+	err := proto.Unmarshal(c.Payload, resp)
+	if err != nil {
+		return false, err
+	}
+
+	//verify producer trx
+	trxOK, err := rumchaindata.VerifyTrx(resp.ProducerProof)
+	if err != nil {
+		return false, err
+	}
+
+	if !trxOK {
+		chain_log.Debugf("Invalid proof producer trx")
+		return false, err
+	}
+
+	bftProducerBundleItem := &quorumpb.BFTProducerBundleItem{}
+	err = proto.Unmarshal(resp.ProducerProof.Data, bftProducerBundleItem)
+	if err != nil {
+		return false, err
+	}
+
+	for _, producer := range bftProducerBundleItem.Producers {
+		if producer.ProducerPubkey == c.SenderPubkey {
+			//is producer
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 /*
@@ -544,7 +624,7 @@ func (chain *Chain) CreateConsensus() error {
 
 	var user def.User
 	var producer def.Producer
-	var psyncer def.PSync
+	var psync def.PSync
 
 	var shouldCreateUser, shouldCreateProducer bool
 
@@ -577,11 +657,11 @@ func (chain *Chain) CreateConsensus() error {
 
 	//create psyncer
 	chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupId)
-	psyncer = &consensus.MolassesPSyncer{}
-	psyncer.NewPSyncer(chain.group.Item, chain.nodename, chain)
+	psync = &consensus.MolassesPSync{}
+	psync.NewPSync(chain.group.Item, chain.nodename, chain)
 
 	chain_log.Infof("<%s> create new consensus", chain.groupId)
-	chain.Consensus = consensus.NewMolasses(producer, user, psyncer)
+	chain.Consensus = consensus.NewMolasses(producer, user, psync)
 
 	return nil
 }
@@ -590,14 +670,9 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	return TrxEnqueue(groupId, trx)
 }
 
-func (chain *Chain) StartPSync() error {
+func (chain *Chain) StartInitConsensusReq() error {
 	chain_log.Debugf("<%s> StartPSync called", chain.groupId)
-	chain.Consensus.TryProposePSync()
-	return nil
-}
-
-func (chain *Chain) StopPSync() error {
-	chain_log.Debugf("<%s> StopPSync called", chain.groupId)
+	chain.Consensus.PSync()
 	return nil
 }
 

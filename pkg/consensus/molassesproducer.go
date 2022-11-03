@@ -230,8 +230,6 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	if err != nil {
 		molaproducer_log.Errorf("add trx failed %s", err.Error())
 	}
-
-	//}
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {

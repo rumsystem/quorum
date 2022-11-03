@@ -3,8 +3,10 @@ package chain
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -138,18 +140,6 @@ func (grp *Group) ClearGroupData() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) StartPSync() error {
-	group_log.Debugf("<%s> StartPSync called", grp.Item.GroupId)
-	grp.ChainCtx.StartPSync()
-	return nil
-}
-
-func (grp *Group) StopPSync() error {
-	group_log.Debugf("<%s> StopPSync called", grp.Item.GroupId)
-	grp.ChainCtx.StopPSync()
-	return nil
-}
-
 func (grp *Group) StartBSync(restart bool) error {
 	group_log.Debugf("<%s> StartBSync called", grp.Item.GroupId)
 	if restart {
@@ -244,6 +234,11 @@ func (grp *Group) PostToGroup(content proto.Message, sudo bool) (string, error) 
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
+func (grp *Group) TryGetChainConsensus() (string, error) {
+	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
+	return grp.sendConsensusReq()
+}
+
 func (grp *Group) UpdProducerBundle(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
@@ -279,6 +274,19 @@ func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
+func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
+	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx, conn.ProducerChannel)
+}
+
+func (grp *Group) SetRumExchangeTestMode() {
+	grp.ChainCtx.SetRumExchangeTestMode()
+}
+
 func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
 	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
 	if err != nil {
@@ -300,15 +308,59 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 	return trx.TrxId, nil
 }
 
-func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
-	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
-	if err != nil {
-		return "", nil
+func (grp *Group) sendConsensusReq() (string, error) {
+	group_log.Debugf("<%s> sendConsensusReq called", grp.Item.GroupId)
+	//create protobuf msg
+	consensusReq := &quorumpb.ConsensusReq{
+		MyEpoch: grp.Item.Epoch,
 	}
-	return grp.sendTrx(trx, conn.ProducerChannel)
-}
 
-func (grp *Group) SetRumExchangeTestMode() {
-	grp.ChainCtx.SetRumExchangeTestMode()
+	cbytes, err := proto.Marshal(consensusReq)
+	if err != nil {
+		return "", err
+	}
+
+	consensusMsg := &quorumpb.ConsensusMsg{
+		GroupId:      grp.Item.GroupId,
+		SessionId:    uuid.NewString(),
+		MsgType:      quorumpb.ConsensusType_REQ,
+		Payload:      cbytes,
+		SenderPubkey: grp.Item.UserSignPubkey,
+		TimeStamp:    time.Now().UnixNano(),
+	}
+
+	bbytes, err := proto.Marshal(consensusMsg)
+	if err != nil {
+		return "", err
+	}
+
+	msgHash := localcrypto.Hash(bbytes)
+
+	var signature []byte
+	ks := localcrypto.GetKeystore()
+	signature, err = ks.EthSignByKeyName(grp.Item.GroupId, msgHash, grp.ChainCtx.nodename)
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(signature) == 0 {
+		return "", fmt.Errorf("create signature failed")
+	}
+
+	//save hash and signature
+	consensusMsg.MsgHash = msgHash
+	consensusMsg.SenderSign = signature
+
+	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
+	if err != nil {
+		return "", err
+	}
+
+	err = connMgr.SentConsensusMsgPubsub(consensusMsg, conn.ProducerChannel)
+	if err != nil {
+		return "", err
+	}
+
+	return consensusMsg.SessionId, nil
 }

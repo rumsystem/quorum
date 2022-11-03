@@ -85,7 +85,6 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	//decode trxs
 	for key, value := range result {
 		trxBundle := &quorumpb.HBTrxBundle{}
-		trx_bft_log.Infof("raw TrxBundle %v", value)
 		err := proto.Unmarshal(value, trxBundle)
 		if err != nil {
 			trx_bft_log.Warningf("decode trxs failed for rbc inst %s, err %s", key, err.Error())

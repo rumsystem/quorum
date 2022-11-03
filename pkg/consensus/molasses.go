@@ -27,7 +27,7 @@ func (m *Molasses) User() def.User {
 	return m.user
 }
 
-func (m *Molasses) PSyncer() def.PSync {
+func (m *Molasses) PSync() def.PSync {
 	return m.psync
 }
 
@@ -39,18 +39,12 @@ func (m *Molasses) SetUser(u def.User) {
 	m.user = u
 }
 
-func (m *Molasses) SetPSyncer(s def.PSync) {
+func (m *Molasses) SetPSync(s def.PSync) {
 	m.psync = s
 }
 
 func (m *Molasses) TryProposeTrx() {
 	if m.producer != nil {
 		m.producer.TryPropose()
-	}
-}
-
-func (m *Molasses) TryProposePSync() {
-	if m.psync != nil {
-		m.psync.TryPropose()
 	}
 }

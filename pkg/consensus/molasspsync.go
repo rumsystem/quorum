@@ -9,7 +9,7 @@ import (
 
 var molapsyncer_log = logging.Logger("psyncer")
 
-type MolassesPSyncer struct {
+type MolassesPSync struct {
 	grpItem  *quorumpb.GroupItem
 	nodename string
 	cIface   def.ChainMolassesIface
@@ -17,48 +17,48 @@ type MolassesPSyncer struct {
 	bft      *PSyncBft
 }
 
-func (psyncer *MolassesPSyncer) NewPSyncer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+func (psync *MolassesPSync) NewPSync(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
 	molapsyncer_log.Debugf("<%s> NewPSyncer called", item.GroupId)
-	psyncer.grpItem = item
-	psyncer.cIface = iface
-	psyncer.nodename = nodename
-	psyncer.groupId = item.GroupId
+	psync.grpItem = item
+	psync.cIface = iface
+	psync.nodename = nodename
+	psync.groupId = item.GroupId
 
-	config, err := psyncer.createBftConfig()
+	config, err := psync.createBftConfig()
 	if err != nil {
 		molapsyncer_log.Error("create bft failed")
 		molapsyncer_log.Error(err.Error)
 		return
 	}
 
-	psyncer.bft = NewPSyncBft(*config, psyncer)
+	psync.bft = NewPSyncBft(*config, psync)
 }
 
-func (psyncer *MolassesPSyncer) RecreateBft() {
-	molapsyncer_log.Debugf("<%s> RecreateBft called", psyncer.groupId)
-	config, err := psyncer.createBftConfig()
+func (psync *MolassesPSync) RecreateBft() {
+	molapsyncer_log.Debugf("<%s> RecreateBft called", psync.groupId)
+	config, err := psync.createBftConfig()
 	if err != nil {
 		molapsyncer_log.Errorf("recreate bft failed")
 		molapsyncer_log.Error(err.Error())
 		return
 	}
 
-	psyncer.bft = NewPSyncBft(*config, psyncer)
+	psync.bft = NewPSyncBft(*config, psync)
 }
 
-func (psyncer *MolassesPSyncer) TryPropose() {
-	molapsyncer_log.Debugf("<%s> TryPropose called", psyncer.groupId)
-	psyncer.bft.Propose()
+func (psync *MolassesPSync) AddConsensusReq(req *quorumpb.ConsensusMsg) error {
+	molapsyncer_log.Debugf("<%s> TryGetConsensus called", psync.groupId)
+	return psync.bft.AddConsensusReq(req)
 }
 
-func (psyncer *MolassesPSyncer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molapsyncer_log.Debugf("<%s> HandleHBMsg %s, %d", psyncer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
-	return psyncer.bft.HandleMessage(hbmsg)
+func (psync *MolassesPSync) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
+	molapsyncer_log.Debugf("<%s> HandleHBMsg %s, %d", psync.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
+	return psync.bft.HandleMessage(hbmsg)
 }
 
-func (psyncer *MolassesPSyncer) createBftConfig() (*Config, error) {
-	molapsyncer_log.Debugf("<%s> createBftConfig called", psyncer.groupId)
-	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(psyncer.groupId, psyncer.nodename)
+func (psync *MolassesPSync) createBftConfig() (*Config, error) {
+	molapsyncer_log.Debugf("<%s> createBftConfig called", psync.groupId)
+	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(psync.groupId, psync.nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (psyncer *MolassesPSyncer) createBftConfig() (*Config, error) {
 		F:            f,
 		Nodes:        nodes,
 		BatchSize:    batchSize,
-		MySignPubkey: psyncer.grpItem.UserSignPubkey,
+		MySignPubkey: psync.grpItem.UserSignPubkey,
 	}
 
 	return config, nil
