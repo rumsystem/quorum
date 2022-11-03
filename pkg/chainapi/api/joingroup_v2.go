@@ -37,6 +37,14 @@ type JoinGroupResult struct {
 	Signature         string `json:"signature" validate:"required"`
 }
 
+// @Tags Groups
+// @Summary JoinGroup
+// @Description Join a group
+// @Accept json
+// @Produce json
+// @Param data body handlers.JoinGroupParamV2 true "JoinGroupParamV2"
+// @Success 200 {object} JoinGroupResult
+// @Router /api/v2/group/join [post]
 func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)

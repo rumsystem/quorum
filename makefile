@@ -74,7 +74,7 @@ gen-doc: install-swag
 	$(shell which swag) init -g main.go --parseDependency --parseInternal --parseDepth 3 --parseGoList=false
 
 serve-doc: gen-doc
-	go run ./cmd/docs.go
+	go run ./docs.go
 
 test-main:
 	go test -timeout 99999s main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20
