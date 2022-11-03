@@ -27,6 +27,7 @@ require (
 	github.com/adrg/xdg v0.3.3
 	github.com/atotto/clipboard v0.1.4
 	github.com/btcsuite/btcd v0.22.1
+	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/ethereum/go-ethereum v1.10.17
 	github.com/gdamore/tcell/v2 v2.4.0
 	github.com/go-playground/locales v0.13.0
@@ -114,9 +115,10 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/flatbuffers v22.9.29+incompatible // indirect
+	github.com/google/flatbuffers v22.10.26+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
@@ -136,7 +138,7 @@ require (
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.15.11 // indirect
+	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
 	github.com/koron/go-ssdp v0.0.2 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
