@@ -86,7 +86,7 @@ func initConfig() {
 		core := zapcore.NewCore(
 			zapcore.NewConsoleEncoder(encoderCfg),
 			w,
-			zap.InfoLevel,
+			zapcore.Level(lvl),
 		)
 		logging.SetPrimaryCore(core)
 	}
