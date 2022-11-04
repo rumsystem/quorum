@@ -220,7 +220,7 @@ func (cs *Storage) GetParentBlock(blockId string, prefix ...string) (*quorumpb.B
 }
 
 //try to find the subblocks of one block. search from the block to the to blockid
-func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...string) error {
+func (cs *Storage) RepairSubblocksList(blockid, toblockid string, groupid string, prefix ...string) error {
 	if toblockid == blockid {
 		return fmt.Errorf("no new blocks, no need to repair")
 	}
@@ -238,7 +238,7 @@ func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...stri
 	}
 	dblogger = log.New(logfile, "blockdb", log.LstdFlags)
 
-	dblogger.Printf("verify block: %s", blockid)
+	dblogger.Printf("group %s verify block: %s , to %s", groupid, blockid, toblockid)
 	var verifyblockChunk *quorumpb.BlockDbChunk
 	for {
 		verifyblockChunk, err = cs.dbmgr.GetBlockChunk(verifyblockid, false, prefix...)
@@ -258,7 +258,7 @@ func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...stri
 		verifyblockid = verifyblockChunk.ParentBlockId
 	}
 	if succ == false {
-		dblogger.Printf("not find the subblock of %s", blockid)
+		dblogger.Printf("group %s not find the subblock of %s , to %s ", groupid, blockid, toblockid)
 	} else {
 		dblogger.Printf("update the subblockid of %s", blockid)
 		err = cs.dbmgr.SaveBlockChunk(blockChunk, false, prefix...)
