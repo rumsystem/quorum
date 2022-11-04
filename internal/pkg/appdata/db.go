@@ -78,19 +78,15 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 	for _, s := range senders {
 		sendermap[s] = true
 	}
+
 	trxidsnonce := []TrxIdNonce{}
-
-	p := []byte(prefix)
-	if reverse == true {
-		p = append(p, 0xff, 0xff, 0xff, 0xff) // add the postfix 0xffffffff, badger will search the seqid <= 4294967295, it's big enough?
-	}
-
 	runcollector := false
+
 	if starttrx == "" {
 		runcollector = true //no trxid, start collecting from the first item
 	}
 
-	_, err := appdb.Db.PrefixForeachKey(p, []byte(prefix), reverse, func(k []byte, err error) error {
+	_, err := appdb.Db.PrefixForeachKey([]byte(prefix), []byte(prefix), reverse, func(k []byte, err error) error {
 		if err != nil {
 			return err
 		}

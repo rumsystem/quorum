@@ -203,7 +203,10 @@ func (s *Store) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn f
 		bucket := tx.Bucket(s.bucket)
 		c := bucket.Cursor()
 		if reverse {
-			for k, _ := c.Last(); k != nil && bytes.HasPrefix(k, valid); k, _ = c.Prev() {
+			for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
+				if !bytes.HasPrefix(k, valid) {
+					continue
+				}
 				if err := fn(k, nil); err != nil {
 					return err
 				}
