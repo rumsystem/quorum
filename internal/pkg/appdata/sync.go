@@ -35,7 +35,7 @@ func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
 }
 
 func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) ([]*quorumpb.Block, error) {
-	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s", len(block.Trxs), groupid)
+	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s of block %s", len(block.Trxs), groupid, block.BlockId)
 	err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
 	if err != nil {
 		appsynclog.Errorf("ParseBlockTrxs on group %s err:  ", groupid, err)
