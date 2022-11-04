@@ -203,7 +203,10 @@ func (s *Store) PrefixForeachKey(prefix []byte, valid []byte, reverse bool, fn f
 		bucket := tx.Bucket(s.bucket)
 		c := bucket.Cursor()
 		if reverse {
-			for k, _ := c.Last(); k != nil && bytes.HasPrefix(k, valid); k, _ = c.Prev() {
+			for k, _ := c.Last(); k != nil; k, _ = c.Prev() {
+				if !bytes.HasPrefix(k, valid) {
+					continue
+				}
 				if err := fn(k, nil); err != nil {
 					return err
 				}
@@ -402,7 +405,9 @@ func (seq *StoreSequence) updateLease() error {
 		var buf [8]byte
 		binary.BigEndian.PutUint64(buf[:], lease)
 		bucket := tx.Bucket(seq.store.bucket)
-		bucket.Put(seq.key, buf[:])
+		if err := bucket.Put(seq.key, buf[:]); err != nil {
+			return err
+		}
 		seq.leased = lease
 		return nil
 	})
