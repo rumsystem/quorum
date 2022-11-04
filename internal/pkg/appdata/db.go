@@ -61,7 +61,6 @@ func (appdb *AppDb) GetSeqId(seqkey string) (uint64, error) {
 			return 0, err
 		}
 		appdb.seq[seqkey] = seq
-
 	}
 
 	return appdb.seq[seqkey].Next()

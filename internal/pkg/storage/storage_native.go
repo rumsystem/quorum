@@ -405,7 +405,9 @@ func (seq *StoreSequence) updateLease() error {
 		var buf [8]byte
 		binary.BigEndian.PutUint64(buf[:], lease)
 		bucket := tx.Bucket(seq.store.bucket)
-		bucket.Put(seq.key, buf[:])
+		if err := bucket.Put(seq.key, buf[:]); err != nil {
+			return err
+		}
 		seq.leased = lease
 		return nil
 	})
