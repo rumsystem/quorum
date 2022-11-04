@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -78,8 +79,12 @@ func initConfig() {
 			MaxAge:     logMaxAge,
 			Compress:   logCompress,
 		})
+
+		encoderCfg := zap.NewProductionEncoderConfig()
+		encoderCfg.EncodeTime = zapcore.TimeEncoderOfLayout(time.RFC3339)
+
 		core := zapcore.NewCore(
-			zapcore.NewConsoleEncoder(zap.NewProductionEncoderConfig()),
+			zapcore.NewConsoleEncoder(encoderCfg),
 			w,
 			zap.InfoLevel,
 		)
