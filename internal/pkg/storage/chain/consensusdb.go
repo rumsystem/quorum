@@ -99,3 +99,49 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 
 	return trx, nil
 }
+
+func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) {
+	key := s.CNS_PSYNC + "_" + groupId + "_" + sessionId
+	return cs.dbmgr.Db.IsExist([]byte(key))
+}
+
+func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.ConsensusResp) error {
+	//remove all current group PSync Session
+	key_prefix := s.CNS_PSYNC + "_" + groupId
+	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
+	if err != nil {
+		return err
+	}
+
+	//update group psync session
+	key := s.CNS_PSYNC + "_" + groupId + "_" + sessionId
+	if value, err := proto.Marshal(resp); err != nil {
+		return err
+	} else {
+		err = cs.dbmgr.Db.Set([]byte(key), value)
+		return err
+	}
+}
+
+func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.ConsensusResp, error) {
+
+	resps := []*quorumpb.ConsensusResp{}
+
+	key := s.CNS_PSYNC + "_" + groupId
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+
+		resp := &quorumpb.ConsensusResp{}
+		if err := proto.Unmarshal(v, resp); err != nil {
+			return err
+		}
+
+		//should be only 1 (or no) resp item, otherwise something goes wrong
+		resps = append(resps, resp)
+		return nil
+	})
+
+	return resps, err
+}

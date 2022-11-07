@@ -1,8 +1,13 @@
 package consensus
 
 import (
+	"time"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -41,86 +46,87 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	pbft_log.Debugf("AcsDone called, SessionId <%s>", sessionId)
 
 	//make a consensusResp and send it out
-	/*
 
+	//get producer registered trx
+	trx, err := nodectx.GetNodeCtx().GetChainStorage().GetUpdProducerListTrx(pbft.PSyncer.groupId, pbft.PSyncer.nodename)
+	if err != nil && err.Error() != "Key not found" {
+		pbft_log.Debugf(err.Error())
+		return
+	}
 
-		//get producer registered trx
-		trx, err := nodectx.GetNodeCtx().GetChainStorage().GetUpdProducerListTrx(pbft.PSyncer.groupId, pbft.PSyncer.nodename)
-		if err != nil && err.Error() != "Key not found" {
-			pbft_log.Debugf(err.Error())
-			return err
-		}
+	//get current producers
+	prds := &quorumpb.PSyncProducerItem{}
+	prds.Producers = append(prds.Producers, pbft.Config.Nodes...)
 
-		pSyncMsg := &quorumpb.PSyncMsg{
-			SessionId:    uuid.NewString(),
-			CurrentEpoch: pbft.PSyncer.grpItem.Epoch,
-			NodeStatus:   quorumpb.PSyncNodeStatus_NODE_SYNCING,
-			ProofTrx:     trx,
-			PSyncItems:   []*quorumpb.PSyncItem{}, //TBD should fill more item if needed
-			TimeStamp:    time.Now().UnixNano(),
-			Memo:         "",
-			SenderPubkey: pbft.MySignPubkey,
-		}
+	//TBD fill withness
+	witness := []*quorumpb.Witnesses{}
 
-		bbytes, err := proto.Marshal(pSyncMsg)
-		if err != nil {
-			return err
-		}
+	resp := &quorumpb.ConsensusResp{
+		CurChainEpoch: pbft.PSyncer.grpItem.Epoch,
+		CurProducer:   prds,
+		Witesses:      witness,
+		ProducerProof: trx,
+	}
 
-		msgHash := localcrypto.Hash(bbytes)
+	payload, err := proto.Marshal(resp)
+	if err != nil {
+		pbft_log.Debugf(err.Error())
+		return
+	}
 
-		var signature []byte
-		ks := localcrypto.GetKeystore()
-		signature, err = ks.EthSignByKeyName(pbft.PSyncer.groupId, msgHash, pbft.PSyncer.nodename)
+	consusResp := &quorumpb.ConsensusMsg{
+		GroupId:      pbft.PSyncer.groupId,
+		SessionId:    sessionId,
+		MsgType:      quorumpb.ConsensusType_RESP,
+		Payload:      payload,
+		SenderPubkey: pbft.MySignPubkey,
+		TimeStamp:    time.Now().UnixNano(),
+	}
 
-		if err != nil {
-			return err
-		}
+	bbytes, err := proto.Marshal(consusResp)
+	if err != nil {
+		pbft_log.Debugf(err.Error())
+		return
+	}
 
-		if len(signature) == 0 {
-			return errors.New("create signature failed")
-		}
+	msgHash := localcrypto.Hash(bbytes)
 
-		//save hash and signature
-		pSyncMsg.PSyncMsgHash = msgHash
-		pSyncMsg.SenderSign = signature
+	var signature []byte
+	ks := localcrypto.GetKeystore()
+	signature, err = ks.EthSignByKeyName(pbft.PSyncer.groupId, msgHash, pbft.PSyncer.nodename)
 
-		//try propose to BFT
-		msgb, err := proto.Marshal(pSyncMsg)
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		pbft_log.Debugf(err.Error())
+		return
+	}
 
-		var acs *PSyncACS
-		acs, ok := pbft.acsInsts[pSyncMsg.SenderPubkey]
-		if !ok {
-			//create and save psync acs instance
-			acs = NewPSyncACS(pbft.Config, pbft, pSyncMsg.SessionId)
-			pbft.acsInsts[pSyncMsg.SessionId] = acs
-		}
+	if len(signature) == 0 {
+		pbft_log.Debugf("create signature failed")
+		return
+	}
 
-		   isProducer := false
-		   pbft_log.Debugf("check who am I")
+	//save hash and signature
+	consusResp.MsgHash = msgHash
+	consusResp.SenderSign = signature
 
-		   	for _, producerId := range pbft.Config.Nodes {
-		   		if pbft.PSyncer.grpItem.UserSignPubkey == producerId {
-		   			pbft_log.Debugf("I am producer <%s>", pbft.PSyncer.grpItem.UserSignPubkey)
-		   			isProducer = true
-		   			break
-		   		}
-		   	}
+	//send consensusResp out
+	connMgr, err := conn.GetConn().GetConnMgr(pbft.PSyncer.groupId)
+	if err != nil {
+		pbft_log.Debugf(err.Error())
+		return
+	}
 
-		   //get the largest epoch and ignore the epoch less than my current epoch
+	err = connMgr.SentConsensusMsgPubsub(consusResp, conn.ProducerChannel)
+	if err != nil {
+		pbft_log.Debugf(err.Error())
+		return
+	}
 
-		   	for key, item := range result {
-		   		psyncMsg := &quorumpb.PSyncMsg{}
-		   		err := proto.Unmarshal(item, psyncMsg)
-		   		if err != nil {
-		   			pbft_log.Debug("Something wrong %s", err.Error())
-		   		}
-		   		pbft_log.Debug("%v", psyncMsg)
-		   	}
-	*/
+	//clear acs
+	pbft.acsInsts[sessionId] = nil
+	delete(pbft.acsInsts, sessionId)
+
+	pbft_log.Debugf("Remove acs %s", sessionId)
 }
 
 func (pbft *PSyncBft) AddConsensusReq(req *quorumpb.ConsensusMsg) error {

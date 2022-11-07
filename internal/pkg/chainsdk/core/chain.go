@@ -92,31 +92,46 @@ func (chain *Chain) UpdChainInfo(Epoch int64) error {
 PSConn handler
 */
 func (chain *Chain) HandlePackageMessage(pkg *quorumpb.Package) error {
+	chain_log.Debugf("<%s> HandlePackageMessage called", chain.groupId)
 	var err error
 	if pkg.Type == quorumpb.PackageType_BLOCK {
+		chain_log.Infof("Handle BLOCK")
 		blk := &quorumpb.Block{}
 		err = proto.Unmarshal(pkg.Data, blk)
-		if err == nil {
-			chain.HandleBlockPsConn(blk)
-		} else {
+		if err != nil {
 			chain_log.Warning(err.Error())
+		} else {
+			err = chain.HandleBlockPsConn(blk)
 		}
 	} else if pkg.Type == quorumpb.PackageType_TRX {
+		chain_log.Infof("Handle TRX")
 		trx := &quorumpb.Trx{}
 		err = proto.Unmarshal(pkg.Data, trx)
-		if err == nil {
-			chain.HandleTrxPsConn(trx)
-		} else {
+		if err != nil {
 			chain_log.Warningf(err.Error())
+		} else {
+			err = chain.HandleTrxPsConn(trx)
 		}
 	} else if pkg.Type == quorumpb.PackageType_HBB {
+		chain_log.Infof("Handle HBB")
 		hb := &quorumpb.HBMsgv1{}
 		err = proto.Unmarshal(pkg.Data, hb)
 		if err != nil {
 			chain_log.Warningf(err.Error())
+		} else {
+			err = chain.HandleHBPsConn(hb)
 		}
-		chain.HandleHBPsConn(hb)
+	} else if pkg.Type == quorumpb.PackageType_CONSENSUS {
+		chain_log.Infof("Handle CONSENSUS")
+		cm := &quorumpb.ConsensusMsg{}
+		err = proto.Unmarshal(pkg.Data, cm)
+		if err != nil {
+			chain_log.Warnf(err.Error())
+		} else {
+			err = chain.HandleConsesusPsConn(cm)
+		}
 	}
+
 	return err
 }
 
@@ -242,7 +257,13 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		return nil
 	}
 
-	//verify the msg is ok
+	// TBD verify msg signature
+	/*
+		Create hash
+		check hash
+		verify signature with senderpubkey
+	*/
+
 	if c.MsgType == quorumpb.ConsensusType_REQ {
 		if _, ok := chain.ProducerPool[c.SenderPubkey]; !ok {
 			chain_log.Debugf("consensusReq from non producer node, ignore")
@@ -251,61 +272,119 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		//let psync handle the req
 		return chain.Consensus.PSync().AddConsensusReq(c)
 	} else if c.MsgType == quorumpb.ConsensusType_RESP {
-		//verify response
-		ok, err := chain.verifyConsensusMsg(c)
+
+		//check if psync result with same session_id exist
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsPSyncSessionExist(chain.groupId, c.SessionId)
 		if err != nil {
-			chain_log.Debugf(err.Error())
-			return nil
-		}
-		if !ok {
-			chain_log.Debugf("invalid consensusResp from producer %s", c.SenderPubkey)
+			return err
 		}
 
+		if isExist {
+			chain_log.Debugf("Session <%s> is handled, ignore", c.SessionId)
+			return nil
+		}
+
+		//verify response
+		resp := &quorumpb.ConsensusResp{}
+		err = proto.Unmarshal(c.Payload, resp)
+		if err != nil {
+			return err
+		}
+
+		ok, err := chain.verifyProducer(c.SenderPubkey, resp)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("invalid consensusResp from producer %s", c.SenderPubkey)
+		}
+		chain_log.Debugf("PSyncResp From valid producer/owner")
+
 		//check if need sync or do something else
+		err = chain.handlePSyncResp(c.SessionId, resp)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	} else {
 		return fmt.Errorf("unknown msgType %s", c.MsgType)
 	}
 }
 
-func (chain *Chain) HandleConsesusRex(c *quorumpb.ConsensusMsg) error {
-	return nil
-}
-
-func (chain *Chain) verifyConsensusMsg(c *quorumpb.ConsensusMsg) (bool, error) {
-	//TBD verify msg signature
-
-	resp := &quorumpb.ConsensusResp{}
-	err := proto.Unmarshal(c.Payload, resp)
+/*
+all sync related rules go here
+*/
+func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
+	//if curEposh is less than psync resp already handled
+	savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupId)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	//verify producer trx
-	trxOK, err := rumchaindata.VerifyTrx(resp.ProducerProof)
-	if err != nil {
-		return false, err
+	//just in case
+	if len(savedResp) > 1 {
+		return fmt.Errorf("get more than 1 saved psync resp msg, something goes wrong")
 	}
 
-	if !trxOK {
-		chain_log.Debugf("Invalid proof producer trx")
-		return false, err
-	}
-
-	bftProducerBundleItem := &quorumpb.BFTProducerBundleItem{}
-	err = proto.Unmarshal(resp.ProducerProof.Data, bftProducerBundleItem)
-	if err != nil {
-		return false, err
-	}
-
-	for _, producer := range bftProducerBundleItem.Producers {
-		if producer.ProducerPubkey == c.SenderPubkey {
-			//is producer
-			return true, nil
+	if len(savedResp) == 1 {
+		respItem := savedResp[0]
+		if respItem.CurChainEpoch > resp.CurChainEpoch {
+			chain_log.Debugf("resp from old epoch, do nothing, ignore")
 		}
 	}
 
-	return false, nil
+	//if curChainCnf > myEpoch, start sync
+	if resp.CurChainEpoch > chain.group.Item.Epoch {
+		chain_log.Debugf("Miss something, start sync")
+		chain.StartBSync()
+	} else {
+		chain_log.Debugf("same epoch with chain, no need to sync, do nothing")
+	}
+
+	//update PsyncResp in DB
+	nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupId, sessionId, resp)
+
+	return nil
+}
+
+func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.ConsensusResp) (bool, error) {
+	//TBD verify signature
+
+	if len(resp.CurProducer.Producers) == 1 && resp.CurProducer.Producers[0] == chain.group.Item.OwnerPubKey {
+		return true, nil
+	} else {
+		//verify producer trx
+		trxOK, err := rumchaindata.VerifyTrx(resp.ProducerProof)
+		if err != nil {
+			return false, err
+		}
+
+		if !trxOK {
+			chain_log.Debugf("Invalid proof producer trx")
+			return false, err
+		}
+
+		//sender(producer) Id should in the update producer trx list
+		bftProducerBundleItem := &quorumpb.BFTProducerBundleItem{}
+		err = proto.Unmarshal(resp.ProducerProof.Data, bftProducerBundleItem)
+		if err != nil {
+			return false, err
+		}
+		for _, producer := range bftProducerBundleItem.Producers {
+			if producer.ProducerPubkey == senderPubkey {
+				//is producer
+				return true, nil
+			}
+		}
+
+		//no, not a producer
+		return false, nil
+	}
+}
+
+func (chain *Chain) HandleConsesusRex(c *quorumpb.ConsensusMsg) error {
+	return nil
 }
 
 /*

@@ -7,8 +7,8 @@ import (
 )
 
 type ReqPSyncResult struct {
-	GroupId string `json:"group_id" validate:"required,uuid4"`
-	ReqId   string `json:"req_id" validate:"required"`
+	GroupId   string `json:"group_id" validate:"required,uuid4"`
+	SessionId string `json:"session_id" validate:"required"`
 }
 
 type ReqPSyncParam struct {
@@ -25,11 +25,11 @@ func ReqPSyncHandler(params *ReqPSyncParam) (*ReqPSyncResult, error) {
 		return nil, rumerrors.ErrGroupNotFound
 	} else {
 
-		reqId, err := group.TryGetChainConsensus()
+		sessionId, err := group.TryGetChainConsensus()
 		if err != nil {
 			return nil, err
 		}
 
-		return &ReqPSyncResult{GroupId: params.GroupId, ReqId: reqId}, nil
+		return &ReqPSyncResult{GroupId: params.GroupId, SessionId: sessionId}, nil
 	}
 }

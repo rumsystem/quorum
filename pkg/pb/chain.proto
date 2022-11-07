@@ -381,16 +381,8 @@ message Aux {
     bool Value = 1;
 }
 
-message PSyncAppConfigItem {
-    repeated AppConfigItem AppConfigs = 1;
-}
-
-message PSyncChainConfigItem {
-    repeated ChainConfigItem ChainConfigs = 1;
-}
-
 message PSyncProducerItem {
-    repeated ProducerItem Producers = 1;
+    repeated string Producers = 1;
 }
 
 enum ConsensusType {
@@ -418,10 +410,8 @@ message ConsensusReq {
 message ConsensusResp {
     int64                CurChainEpoch  = 1;
     PSyncProducerItem    CurProducer    = 2;
-    PSyncChainConfigItem CurChainCnf    = 3;
-    PSyncAppConfigItem   CurAppCnf      = 4; 
-    repeated   Witnesses Witesses       = 5;
-    Trx                  ProducerProof  = 6;
+    repeated   Witnesses Witesses       = 3;
+    Trx                  ProducerProof  = 4;
 }
 
 

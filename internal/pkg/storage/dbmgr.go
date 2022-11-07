@@ -40,6 +40,7 @@ const RELAY_PREFIX string = "rly" //relay
 // consensus db
 const CNS_BUFD_TRX string = "cns_bf_trx" //buffered trx (used by acs)
 const CNS_BUFD_MSG string = "cns_bf_msg" //buffered message (used by bba & rbc)
+const CNS_PSYNC string = "cns_psync"     //psync resp
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
