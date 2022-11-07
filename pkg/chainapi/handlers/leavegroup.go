@@ -37,30 +37,16 @@ func LeaveGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*LeaveGroupResul
 		return nil, err
 	}
 
-	delete(groupmgr.Groups, params.GroupId)
-
-	//var groupSignPubkey []byte
-	//ks := localcrypto.GetKeystore()
-
-	//hexkey, err := ks.GetEncodedPubkey("default", localcrypto.Sign)
-	//pubkeybytes, err := hex.DecodeString(hexkey)
-	//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	//groupSignPubkey, err = p2pcrypto.MarshalPublicKey(p2ppubkey)
-	//if err != nil {
-	//	return nil, errors.New("group key can't be decoded, err:" + err.Error())
-	//}
-
-	//var buffer bytes.Buffer
-	//buffer.Write(groupSignPubkey)
-	//buffer.Write([]byte(params.GroupId))
-	//hash := localcrypto.Hash(buffer.Bytes())
-	//signature, err := ks.EthSignByKeyName(params.GroupId, hash)
-	//encodedString := hex.EncodeToString(signature)
+	if err := group.ClearGroup(); err != nil {
+		return nil, err
+	}
 
 	// delete group seed from appdata
 	if err := appdb.DelGroupSeed(params.GroupId); err != nil {
 		return nil, fmt.Errorf("save group seed failed: %s", err)
 	}
+
+	delete(groupmgr.Groups, params.GroupId)
 
 	return &LeaveGroupResult{GroupId: params.GroupId}, nil
 }
