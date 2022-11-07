@@ -38,8 +38,7 @@ func AnnounceHandler(params *AnnounceParam, sudo bool) (*AnnounceResult, error) 
 		return nil, err
 	}
 
-	var item *quorumpb.AnnounceItem
-	item = &quorumpb.AnnounceItem{}
+	item := &quorumpb.AnnounceItem{}
 	item.GroupId = params.GroupId
 
 	groupmgr := chain.GetGroupMgr()
