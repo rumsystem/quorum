@@ -40,7 +40,8 @@ func (s *Store) Init(path string) error {
 	return nil
 }
 
-func NewStore(ctx context.Context, dir string, bucket string) (*Store, error) {
+// OpenDB one bucket as a db
+func OpenDB(dir, bucket string) (*bolt.DB, error) {
 	if err := utils.EnsureDir(dir); err != nil {
 		dbmgr_log.Errorf("check or create directory failed: %w", err)
 		return nil, err
@@ -63,6 +64,20 @@ func NewStore(ctx context.Context, dir string, bucket string) (*Store, error) {
 	}
 	db.AllocSize = boltAllocSize
 
+	return db, nil
+}
+
+func NewStore(ctx context.Context, dir string, bucket string) (*Store, error) {
+	if err := utils.EnsureDir(dir); err != nil {
+		dbmgr_log.Errorf("check or create directory failed: %w", err)
+		return nil, err
+	}
+
+	db, err := OpenDB(dir, bucket)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := db.Update(func(tx *bolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists([]byte(bucket)); err != nil {
 			return err
@@ -75,7 +90,7 @@ func NewStore(ctx context.Context, dir string, bucket string) (*Store, error) {
 	store := Store{
 		db:           db,
 		bucket:       []byte(bucket),
-		databasePath: dbPath,
+		databasePath: getDBPath(dir, bucket),
 		ctx:          ctx,
 	}
 
@@ -152,17 +167,19 @@ func (s *Store) IsExist(key []byte) (bool, error) {
 }
 
 func (s *Store) PrefixDelete(prefix []byte) (int, error) {
+	dbmgr_log.Debugf("delete key by prefix: %s", prefix)
+
 	matched := 0
 
 	err := s.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(s.bucket)
 		c := bucket.Cursor()
 		for k, _ := c.Seek(prefix); k != nil && bytes.HasPrefix(k, prefix); k, _ = c.Next() {
+			dbmgr_log.Debugf("delete key %s", k)
 			if err := c.Delete(); err != nil {
 				return err
 			}
 			matched += 1
-			return nil
 		}
 		return nil
 	})
