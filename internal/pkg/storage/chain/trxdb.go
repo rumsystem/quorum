@@ -6,6 +6,7 @@ import (
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -79,6 +80,8 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 
 	}
 
+	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
+	trx.SenderPubkey = pk
 	return &trx, nonces, err
 }
 

@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
-	"log"
 	"math/rand"
 	"os"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -17,6 +17,8 @@ var (
 	bootstrapapi, peerapi, peerapi2           string
 	peerapilist, groupIds                     []string
 	timerange, nodes, groups, posts, synctime int
+
+	logger = logging.Logger("api")
 )
 
 func TestMain(m *testing.M) {
@@ -27,7 +29,7 @@ func TestMain(m *testing.M) {
 		for {
 			select {
 			case pid := <-pidch:
-				log.Println("receive pid", pid)
+				logger.Debug("receive pid", pid)
 				pidlist = append(pidlist, pid)
 				if len(pidlist) == 3 {
 					return
@@ -40,12 +42,12 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 	cliargs := testnode.Nodecliargs{Rextest: false}
 	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(ctx, cliargs, pidch, nodes)
-	log.Println("peers: ", peerapilist)
+	logger.Debug("peers: ", peerapilist)
 	peerapi = peerapilist[0]
 	peerapi2 = peerapilist[1]
 
 	exitVal := m.Run()
-	log.Println("after tests clean:", tempdatadir)
+	logger.Debug("after tests clean:", tempdatadir)
 	testnode.Cleanup(tempdatadir, peerapilist)
 	os.Exit(exitVal)
 }

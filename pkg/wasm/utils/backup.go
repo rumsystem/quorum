@@ -83,7 +83,7 @@ func getKeystore(password string) ([]string, error) {
 	return ret, nil
 }
 
-func getSeeds(password string) ([]handlers.GroupSeed, error) {
+func getSeeds(password string) ([]handlers.CreateGroupResult, error) {
 	idb := quorumStorage.QSIndexDB{}
 	err := idb.Init("app")
 	if err != nil {

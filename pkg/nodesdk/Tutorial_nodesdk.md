@@ -11,10 +11,10 @@
   https://github.com/rumsystem/quorum/tree/nodesdk
 
 ## Run full node (chainsdk)
- RUM_KSPASSWD=123 go run main.go fullnode --peername n1 --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAkwZ53wCxAecczHiypKFJhWXwfP1G87n8G5R4i5qhszy8v --keystoredir n1keystore --jsontracer n1tracer.json --debug true
+ RUM_KSPASSWD=123 go run main.go fullnode --peername n1 --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAkwZ53wCxAecczHiypKFJhWXwfP1G87n8G5R4i5qhszy8v --keystoredir n1keystore --jsontracer n1tracer.json --loglevel debug
 
 ## Run light node (nodesdk)
-RUM_KSPASSWD=123 go run main.go lightnode --peername nodesdk --apihost 127.0.0.1 --apiport 6002 --keystoredir nodesdkkeystore --debug true
+RUM_KSPASSWD=123 go run main.go lightnode --peername nodesdk --apihost 127.0.0.1 --apiport 6002 --keystoredir nodesdkkeystore --loglevel debug
 
 Params
   - `--apihost`: nodesdk listening host

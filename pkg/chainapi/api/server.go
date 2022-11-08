@@ -35,14 +35,16 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
-		Skipper:   rummiddleware.LocalhostSkipper,
+		//TODO: ask wm
+		//Skipper:   rummiddleware.LocalhostSkipper,
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
 	}))
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		Skipper: rummiddleware.ChainGzipSkipper,
-		Level:   5, // hardcode
+		//TODO: ask wm
+		//Skipper: rummiddleware.ChainGzipSkipper,
+		Level: 5, // hardcode
 	}))
 	r := e.Group("/api")
 	r.GET("/quit", quitapp)
@@ -79,8 +81,9 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 		InputFunc: opaInputFunc,
 	}))
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		Skipper: rummiddleware.ChainGzipSkipper,
-		Level:   5, // hardcode
+		//TODO ask wm
+		//Skipper: rummiddleware.ChainGzipSkipper,
+		Level: 5, // hardcode
 	}))
 	r := e.Group("/api")
 	r.GET("/quit", quitapp)
@@ -95,7 +98,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
-	r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
+	//r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
 	r.GET("/v1/block/:group_id/:epoch", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 
@@ -140,10 +143,10 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
 	}))
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		Skipper: rummiddleware.ChainGzipSkipper,
-		Level:   5, // hardcode
-	}))
+
+	// prometheus metric
+	e.GET("/metrics", h.Metrics)
+
 	r := e.Group("/api")
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
@@ -174,7 +177,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
-	r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
+	//r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
 	r.GET("/v1/network/peers/ping", h.PingPeers(node))
 	r.GET("/v1/block/:group_id/:epoch", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
@@ -196,19 +199,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	a.POST("/v1/token/create", apph.CreateToken)
 	a.POST("/v1/group/:group_id/content", apph.ContentByPeers) //actually a "GET" API
 
-	//for reply
-	// commented by cuicat
-	//		r.POST("/v1/preview/relay/req", h.RequestRelay)
-	//		r.GET("/v1/preview/relay", h.ListRelay)
-	//		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
-	//		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)
 	if nodeopt.EnableRelay {
-		// ???  should go here ???
-		// moved by cuicat
-		r.POST("/v1/preview/relay/req", h.RequestRelay)
-		r.GET("/v1/preview/relay", h.ListRelay)
-		r.GET("/v1/preview/relay/:req_id/approve", h.ApproveRelay)
-		r.DELETE("/v1/preview/relay/:relay_id", h.RemoveRelay)
 		r.POST("/v1/network/relay", h.AddRelayServers)
 	}
 

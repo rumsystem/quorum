@@ -5,16 +5,20 @@ package crypto
 
 import (
 	"fmt"
-	"log"
 	"testing"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+)
+
+var (
+	logger = logging.Logger("crypto")
 )
 
 func TestInitDirKeyStore(t *testing.T) {
 	name := "testkeystore"
 	tempdir := fmt.Sprintf("%s/%s", t.TempDir(), name)
-	log.Printf("tempdir %s", tempdir)
+	logger.Debugf("tempdir %s", tempdir)
 	_, count, err := InitDirKeyStore(name, tempdir)
 	if err != nil {
 		t.Errorf("keystore init err: %s", err)
@@ -42,7 +46,7 @@ func TestNewSignKey(t *testing.T) {
 func TestImportSignKey(t *testing.T) {
 	name := "testnewkey"
 	tempdir := fmt.Sprintf("%s/%s", t.TempDir(), name)
-	log.Printf("tempdir %s", tempdir)
+	logger.Debugf("tempdir %s", tempdir)
 	dirks, _, err := InitDirKeyStore(name, tempdir)
 	if err != nil {
 		t.Errorf("keystore init err: %s", err)

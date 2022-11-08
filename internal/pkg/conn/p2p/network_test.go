@@ -5,7 +5,6 @@ package p2p
 
 import (
 	"context"
-	"log"
 	"testing"
 	"time"
 
@@ -22,11 +21,11 @@ func TestNodeConnecting(t *testing.T) {
 		t.Errorf("create test peers err:%s", err)
 	}
 
-	log.Printf("bootstrap id: %s", bootstrap.Host.ID())
-	log.Printf("peer1 id: %s", peer1.Host.ID())
-	log.Printf("peer2 id: %s", peer2.Host.ID())
+	networklog.Debugf("bootstrap id: %s", bootstrap.Host.ID())
+	networklog.Debugf("peer1 id: %s", peer1.Host.ID())
+	networklog.Debugf("peer2 id: %s", peer2.Host.ID())
 
-	log.Println("Waitting 10s for finding peers testing...")
+	networklog.Debug("Waitting 10s for finding peers testing...")
 	time.Sleep(10 * time.Second)
 	peer1info, err := peer1.FindPeers(ctx, mockRendezvousString)
 	if err != nil {
@@ -39,11 +38,11 @@ func TestNodeConnecting(t *testing.T) {
 	if len(peer2info) == len(peer1info) && len(peer1info) == 2 {
 		for _, p2 := range peer2info {
 			peerexist := false
-			log.Printf("check addr %s", p2)
+			networklog.Debugf("check addr %s", p2)
 			for _, p1 := range peer1info {
 				if p1.String() == p2.String() {
 					peerexist = true
-					log.Printf("addr %s exist", p2)
+					networklog.Debugf("addr %s exist", p2)
 				}
 			}
 			if peerexist != true {
@@ -64,7 +63,7 @@ func TestNodeConnecting(t *testing.T) {
 
 	select {
 	case <-ctx.Done():
-		log.Println("cancel all nodes after 60s")
+		("cancel all nodes after 60s")
 		return
 	}
 }

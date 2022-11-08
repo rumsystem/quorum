@@ -9,19 +9,18 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/labstack/echo/v4"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/rumsystem/quorum/testnode"
-
-	"github.com/labstack/echo/v4"
-	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
-	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type JoinGroupResult struct {
@@ -37,6 +36,14 @@ type JoinGroupResult struct {
 	Signature         string `json:"signature" validate:"required"`
 }
 
+// @Tags Groups
+// @Summary JoinGroup
+// @Description Join a group
+// @Accept json
+// @Produce json
+// @Param data body handlers.JoinGroupParamV2 true "JoinGroupParamV2"
+// @Success 200 {object} JoinGroupResult
+// @Router /api/v2/group/join [post]
 func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
@@ -182,8 +189,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		//start psync
-		err = group.StartBSync(true)
+		//start sync
+		err = group.StartSync(false)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
@@ -229,7 +236,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 }
 
 // JoinGroupByHTTPRequest restore cli use it
-func JoinGroupByHTTPRequest(apiBaseUrl string, payload handlers.GroupSeed) (*JoinGroupResult, error) {
+func JoinGroupByHTTPRequest(apiBaseUrl string, payload *handlers.CreateGroupResult) (*JoinGroupResult, error) {
 	payloadByte, err := json.Marshal(payload)
 	if err != nil {
 		e := fmt.Errorf("json.Marshal failed: %s, joinGroupParam: %+v", err, payload)
@@ -237,7 +244,7 @@ func JoinGroupByHTTPRequest(apiBaseUrl string, payload handlers.GroupSeed) (*Joi
 	}
 
 	payloadStr := string(payloadByte[:])
-	urlPath := "/api/v1/group/join"
+	urlPath := "/api/v2/group/join"
 	_, resp, err := testnode.RequestAPI(apiBaseUrl, urlPath, "POST", payloadStr)
 	if err != nil {
 		e := fmt.Errorf("request %s failed: %s, payload: %s", urlPath, err, payloadStr)

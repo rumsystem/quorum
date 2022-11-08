@@ -14,6 +14,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/consensus"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
+	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -172,7 +173,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.syncerrunner.AddTrxToSyncerQueue(trx)
+		chain.syncerrunner.AddTrxToSyncerQueue(trx, "")
 		//err := chain.handleReqBlockResp(trx)
 		//return err
 	default:
@@ -337,7 +338,7 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 	//if curChainCnf > myEpoch, start sync
 	if resp.CurChainEpoch > chain.group.Item.Epoch {
 		chain_log.Debugf("Miss something, start sync")
-		chain.StartBSync()
+		chain.StartSync()
 	} else {
 		chain_log.Debugf("same epoch with chain, no need to sync, do nothing")
 	}
@@ -453,7 +454,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	//	return nil
 	//}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-	clientSyncerChannelId := conn.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
+	clientSyncerChannelId := constants.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 	requester, block, isEmpty, err := chain.chaindata.GetBlockForward(trx)
 	if err != nil {
 		return err
@@ -755,54 +756,112 @@ func (chain *Chain) StartInitConsensusReq() error {
 	return nil
 }
 
-func (chain *Chain) StartBSync() error {
-	chain_log.Debugf("<%s> StartBSync called.", chain.groupId)
-	//all producers and owner must do sync after service start.
-	//if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
-	//	if len(chain.ProducerPool) == 1 {
-	//		chain_log.Debugf("<%s> group owner, no registed producer, no need to sync", chain.group.Item.GroupId)
-	//		return nil
-	//	} else {
-	//		chain_log.Debugf("<%s> owner, has registed producer, start sync missing block", chain.group.Item.GroupId)
-	//	}
-	//} else if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
-	//	chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
-	//	return nil
-	//}
-	chain_log.Debugf("<%s> StartBSync from %d", chain.groupId, chain.group.Item.Epoch)
+func (chain *Chain) StartSync() error {
+	chain_log.Debugf("<%s> StartSync called.", chain.groupId)
+
+	//TODO
+	//chain.SyncLocalBlock()
+	if chain.group.Item.OwnerPubKey == chain.group.Item.UserSignPubkey {
+		if len(chain.ProducerPool) == 1 {
+			chain_log.Debugf("<%s> group owner, no registed producer, no need to sync", chain.group.Item.GroupId)
+			return nil
+		} else {
+			chain_log.Debugf("<%s> owner, has registed producer, start sync missing block", chain.group.Item.GroupId)
+		}
+	} else if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; ok {
+		chain_log.Debugf("<%s> producer, no need to sync forward (sync backward when new block produced and found missing block(s)", chain.group.Item.GroupId)
+		return nil
+	}
+
 	chain.syncerrunner.Start(chain.group.Item.Epoch + 1)
 	return nil
 }
 
-func (chain *Chain) StopBSync() error {
-	chain_log.Debugf("<%s> StopBSync called", chain.groupId)
-	chain_log.Debugf("<%s> ======TODO: cal syncerrunner to stop", chain.groupId)
-	//before start sync from other node, gather all
-	//if chain.syncer != nil {
-	//	return chain.syncer.StopSync()
-	//}
-	return nil
+//TODO
+//func (chain *Chain) SyncLocalBlock() error {
+//	startFrom := chain.group.Item.HighestBlockId
+//	for {
+//		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(chain.group.Item.HighestBlockId, chain.nodename)
+//		if err != nil {
+//			chain_log.Debugf("<%s> GetSubBlock failed <%s>", chain.groupId, err.Error())
+//			return err
+//		}
+//		if len(subblocks) > 0 {
+//			for _, block := range subblocks {
+//				err := chain.AddLocalBlock(block)
+//				if err != nil {
+//					chain_log.Debugf("<%s> AddLocalBlock failed <%s>", chain.groupId, err.Error())
+//					break // for range subblocks
+//				}
+//			}
+//		} else {
+//			chain_log.Debugf("<%s> No more local blocks", chain.groupId)
+//			return nil
+//		}
+//		topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.group.Item.HighestBlockId, false, chain.nodename)
+//		if err != nil {
+//			chain_log.Debugf("<%s> Get Top Block failed <%s>", chain.groupId, err.Error())
+//			return err
+//		} else {
+//			if topBlock.BlockId == startFrom {
+//				return nil
+//			} else {
+//				startFrom = topBlock.BlockId
+//			}
+//		}
+//	}
+//
+//}
+
+//TODO
+//func (chain *Chain) AddLocalBlock(block *quorumpb.Block) error {
+//	chain_log.Debugf("<%s> AddLocalBlock called", chain.groupId)
+//	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(chain.group.Item.UserSignPubkey)
+//	if err != nil && signpkey == "" {
+//		chain_log.Warnf("<%s> Pubkey err <%s>", chain.groupId, err)
+//	}
+//
+//	_, producer := chain.ProducerPool[signpkey]
+//
+//	if producer {
+//		chain_log.Debugf("<%s> PRODUCER ADD LOCAL BLOCK <%d>", chain.groupId, block.Epoch)
+//		err := chain.AddBlock(block)
+//		if err != nil {
+//			chain_log.Infof(err.Error())
+//		}
+//	} else {
+//		chain_log.Debugf("<%s> USER ADD LOCAL BLOCK <%d>", chain.groupId, block.Epoch)
+//		err := chain.Consensus.User().AddBlock(block)
+//		if err != nil {
+//			chain_log.Infof(err.Error())
+//		}
+//	}
+//	return nil
+//}
+
+func (chain *Chain) StopSync() {
+	chain_log.Debugf("<%s> StopSync called", chain.groupId)
+	if chain.syncerrunner != nil {
+		chain.syncerrunner.Stop()
+	}
 }
-func (chain *Chain) GetBSyncerStatus() int8 {
+
+func (chain *Chain) GetSyncerStatus() int8 {
 	return chain.syncerrunner.Status
 }
 
-/*
-
 func (chain *Chain) IsSyncerIdle() bool {
 	chain_log.Debugf("IsSyncerIdle called, groupId <%s>", chain.groupId)
-
-	if chain.syncer.Status == SYNCING_BACKWARD ||
-		chain.syncer.Status == SYNCING_FORWARD ||
-		chain.syncer.Status == LOCAL_SYNCING ||
-		chain.syncer.Status == SYNC_FAILED {
-		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncer.Status)
+	if chain.syncerrunner.Status == SYNCING_BACKWARD ||
+		chain.syncerrunner.Status == SYNCING_FORWARD ||
+		chain.syncerrunner.Status == LOCAL_SYNCING ||
+		chain.syncerrunner.Status == SYNC_FAILED {
+		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncerrunner.Status)
 		return true
 	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
 	return false
 }
-*/
 
 func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := utils.GetPrefix(prefix...)

@@ -201,8 +201,8 @@ func (h *Handler) JoinGroup() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		//start psync
-		err = group.StartBSync(true)
+		//start sync
+		err = group.StartSync(false)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

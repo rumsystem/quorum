@@ -2,7 +2,6 @@ package appdata
 
 import (
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -27,7 +26,7 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	name := "testappdb"
 	dbname := "appdata"
 	tempdir := fmt.Sprintf("%s/%s/%s", temppath, name, dbname)
-	log.Printf("tempdir %s", tempdir)
+	appdatalog.Debugf("tempdir %s", tempdir)
 
 	var err error
 	db := storage.QSBadger{}

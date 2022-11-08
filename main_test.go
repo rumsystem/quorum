@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	api "github.com/rumsystem/quorum/pkg/chainapi/api"
 	"github.com/rumsystem/quorum/testnode"
 )
@@ -20,6 +20,7 @@ var (
 	bootstrapapi, peer1api, peer2api          string
 	peerapilist, groupIds                     []string
 	timerange, nodes, groups, posts, synctime int
+	logger                                    = logging.Logger("main_test")
 )
 
 func TestMain(m *testing.M) {
@@ -38,14 +39,14 @@ func TestMain(m *testing.M) {
 	posts = *postsPtr
 	synctime = *synctimePtr
 
-	log.Printf("Setup testing nodes: %d, groups: %d, posts: %d\n", nodes, groups, posts)
-	log.Println(pidlist)
+	logger.Debugf("Setup testing nodes: %d, groups: %d, posts: %d\n", nodes, groups, posts)
+	logger.Debug(pidlist)
 	pidch := make(chan int)
 	go func() {
 		for {
 			select {
 			case pid := <-pidch:
-				log.Println("receive pid", pid)
+				logger.Debug("receive pid", pid)
 				pidlist = append(pidlist, pid)
 				if len(pidlist) == 3 {
 					return
@@ -57,9 +58,9 @@ func TestMain(m *testing.M) {
 	cliargs := testnode.Nodecliargs{Rextest: *rextestmode}
 	var tempdatadir string
 	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, nodes)
-	log.Println("peers: ", peerapilist)
+	logger.Debug("peers: ", peerapilist)
 	exitVal := m.Run()
-	log.Println("after tests clean:", tempdatadir)
+	logger.Debug("after tests clean:", tempdatadir)
 	testnode.Cleanup(tempdatadir, peerapilist)
 	os.Exit(exitVal)
 }
@@ -74,7 +75,7 @@ type RespError struct {
 }
 
 func TestJoinGroup(t *testing.T) {
-	log.Printf("_____________TestJoinGroup_RUNNING_____________")
+	logger.Debugf("_____________TestJoinGroup_RUNNING_____________")
 
 	//initial
 	groupToCreate := 1
@@ -82,7 +83,7 @@ func TestJoinGroup(t *testing.T) {
 	//create 1 group on each peer, join the group then leave, repeat 3 times and verify the group exist and in "IDLE" status
 	for idx, peerapi := range peerapilist {
 		for i := 0; i < groupToCreate; i++ {
-			log.Printf("_____________CREATE_GROUP_____________")
+			logger.Debugf("_____________CREATE_GROUP_____________")
 			var groupseed string
 			var groupId string
 			groupName := fmt.Sprintf("testgroup_peer_%d_%d", idx+1, i+1)
@@ -95,14 +96,14 @@ func TestJoinGroup(t *testing.T) {
 					groupseed = string(resp)
 					seedurl := objmap["seed"]
 					groupId = testnode.SeedUrlToGroupId(seedurl.(string))
-					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
+					logger.Debugf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
 			} else {
 				t.Errorf("create group on peer%d error %s", 1, err)
 			}
 			time.Sleep(1 * time.Second)
 			// try join the same group just created
-			log.Printf("_____________TEST_JOIN_EXIST_GROUP_____________")
+			logger.Debugf("_____________TEST_JOIN_EXIST_GROUP_____________")
 			status, resp, err = testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", groupseed)
 
 			//check if failed
@@ -111,14 +112,14 @@ func TestJoinGroup(t *testing.T) {
 			}
 			time.Sleep(1 * time.Second)
 
-			log.Printf("_____________TEST_LEAVE_GROUP_____________")
+			logger.Debugf("_____________TEST_LEAVE_GROUP_____________")
 			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
 			if status != 200 {
 				t.Errorf("Leave group test failed with response code %d", status)
 			}
 			time.Sleep(1 * time.Second)
 
-			log.Printf("_____________TEST_JOIN_LEAVED_GROUP_____________")
+			logger.Debugf("_____________TEST_JOIN_LEAVED_GROUP_____________")
 			status, resp, err = testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", groupseed)
 			if status != 200 {
 				t.Errorf("join leaved group test failed with response code %d", status)
@@ -142,7 +143,7 @@ func TestJoinGroup(t *testing.T) {
 
 			//ready := "IDLE"
 			for _, groupinfo := range groupslist.GroupInfos {
-				log.Printf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
+				logger.Debugf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
 				if groupinfo.GroupId != groupId {
 					t.Errorf("Check group status failed %s, groupId mismatch", err)
 				}
@@ -152,7 +153,7 @@ func TestJoinGroup(t *testing.T) {
 				//}
 			}
 
-			log.Printf("_____________TEST_LEAVE_GROUP_____________")
+			logger.Debugf("_____________TEST_LEAVE_GROUP_____________")
 			//leave group
 			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
 			if status != 200 {
@@ -163,7 +164,7 @@ func TestJoinGroup(t *testing.T) {
 				}
 			}
 
-			log.Printf("_____________TEST_CLEAR_GROUP_____________")
+			logger.Debugf("_____________TEST_CLEAR_GROUP_____________")
 			//clear group data
 			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
 			if status != 200 {
@@ -183,7 +184,7 @@ func TestJoinGroup(t *testing.T) {
 // create n groups on each peer, and join all groups, then verify peerN groups == peerM groups
 func TestGroupsPostContents(t *testing.T) {
 
-	log.Printf("_____________TestGroupContents_RUNNING_____________")
+	logger.Debugf("_____________TestGroupContents_RUNNING_____________")
 
 	var seedsByNode [][]string
 
@@ -203,7 +204,7 @@ func TestGroupsPostContents(t *testing.T) {
 					seedurl := objmap["seed"]
 					groupId := testnode.SeedUrlToGroupId(seedurl.(string))
 					groupIds = append(groupIds, groupId)
-					log.Printf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
+					logger.Debugf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
 			} else {
 				t.Errorf("create group on peer%d error %s", 1, err)
@@ -321,14 +322,14 @@ func TestGroupsPostContents(t *testing.T) {
 			mean := float64(timerange) / 2.0
 			stddev := mean / 3.0
 			sleepTime := rand.NormFloat64()*stddev + mean
-			log.Printf("sleep: %.2f s before next post\n", sleepTime)
+			logger.Debugf("sleep: %.2f s before next post\n", sleepTime)
 			time.Sleep(time.Duration(sleepTime*1000) * time.Millisecond)
 			//time.Sleep(time.Duration(5*1000) * time.Millisecond)
 		}
 	}
 	t.Logf("waiting %d seconds for peers data sync", synctime)
 	time.Sleep(time.Duration(synctime) * time.Second)
-	log.Println("start verify groups content")
+	logger.Debug("start verify groups content")
 
 	for _, groupId := range groupIds {
 		trxIds := groupIdToTrxIds[groupId]

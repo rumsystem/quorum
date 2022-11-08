@@ -16,12 +16,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-	SYNC_CHANNEL_PREFIX     = "sync_channel_"
-)
-
 type Group struct {
 	//Group Item
 	Item     *quorumpb.GroupItem
@@ -140,23 +134,24 @@ func (grp *Group) ClearGroupData() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) StartBSync(restart bool) error {
-	group_log.Debugf("<%s> StartBSync called", grp.Item.GroupId)
-	if restart {
-		grp.ChainCtx.StopBSync()
+func (grp *Group) StartSync(restart bool) error {
+	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
+	if restart == true {
+		grp.ChainCtx.StopSync()
 	}
 	//time.Sleep(10 * time.Second)
-	return grp.ChainCtx.StartBSync()
+	return grp.ChainCtx.StartSync()
+	//return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
 }
 
-func (grp *Group) StopBSync() error {
-	group_log.Debugf("<%s> StopBSync called", grp.Item.GroupId)
-	grp.ChainCtx.StopBSync()
+func (grp *Group) StopSync() error {
+	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
+	grp.ChainCtx.StopSync()
 	return nil
 }
 
-func (grp *Group) GetBSyncerStatus() int8 {
-	return grp.ChainCtx.GetBSyncerStatus()
+func (grp *Group) GetSyncerStatus() int8 {
+	return grp.ChainCtx.GetSyncerStatus()
 }
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {

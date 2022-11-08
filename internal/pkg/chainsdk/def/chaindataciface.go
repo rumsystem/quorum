@@ -15,10 +15,7 @@ type ChainDataSyncIface interface {
 	HandleHBRex(hb *quorumpb.HBMsgv1) error
 	HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error
 	HandleConsesusRex(c *quorumpb.ConsensusMsg) error
-	StartBSync() error
-	StopBSync() error
-	//SyncBackward(blockId string, nodename string) error
-	//SyncForward(blockId string, nodename string) error
-	//StopSync() error
-	//IsSyncerIdle() bool
+	StartSync() error
+	StopSync()
+	IsSyncerIdle() bool
 }

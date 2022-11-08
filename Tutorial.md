@@ -195,7 +195,7 @@ Record `<HOST_ID>`, for example:
 5. Start `owner node`
 
 ```bash
-go run main.go fullnode --peername owner --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> --configdir config --datadir data --keystoredir ownerkeystore  --jsontracer ownertracer.json --debug=true
+go run main.go fullnode --peername owner --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> --configdir config --datadir data --keystoredir ownerkeystore  --jsontracer ownertracer.json --loglevel debug
 ```
 
 - For the first time, user will be asked to input a password for the node, if not given, a password will be created for the node
@@ -209,7 +209,7 @@ RUM_KSPASSWD=<node_password> go run main.go fullnode ...
 6. Start `user node`
 
 ```bash
-go run main.go fullnode --peername user --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> --configdir config --datadir data --keystoredir userkeystore  --jsontracer usertracer.json --debug=true
+go run main.go fullnode --peername user --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/<QmR1VFquywCnakSThwWQY6euj9sRBn3586LDUm5vsfCDJR> --configdir config --datadir data --keystoredir userkeystore  --jsontracer usertracer.json --loglevel debug
 ```
 
 6. Backup/Restore

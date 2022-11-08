@@ -3,7 +3,6 @@ package data
 import (
 	"encoding/binary"
 	"errors"
-
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )

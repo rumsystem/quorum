@@ -17,7 +17,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	quorumStats "github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
@@ -108,11 +107,6 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	appDb := appdata.NewAppDb()
 	appDb.Db = appIndexedDb
 
-	if err = quorumStats.InitDB("stats", peerId); err != nil {
-		cancel()
-		return false, err
-	}
-
 	quorumContext.Init(qchan, config, node, ethAddr, &nodeOpt, appDb, newchainstorage, dbMgr, ctx, cancel)
 
 	storage.InitSeqenceDB()
@@ -127,15 +121,6 @@ func StartQuorum(qchan chan struct{}, password string, bootAddrs []string) (bool
 	}
 
 	return true, nil
-}
-
-func newPubQueueDb() (*storage.QSIndexDB, error) {
-	appDb := quorumStorage.QSIndexDB{}
-	err := appDb.Init("pubqueue")
-	if err != nil {
-		return nil, err
-	}
-	return &appDb, nil
 }
 
 func newAppDb() (*storage.QSIndexDB, error) {

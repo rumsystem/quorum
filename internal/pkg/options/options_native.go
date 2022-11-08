@@ -156,6 +156,13 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	} else {
 		options.EnableSnapshot = v.GetBool("EnableSnapshot")
 	}
+
+	if v.Get("EnablePubQue") == nil {
+		options.EnablePubQue = true
+	} else {
+		options.EnablePubQue = v.GetBool("EnablePubQue")
+	}
+
 	if options.NetworkName == "" {
 		options.NetworkName = defaultNetworkName
 	}

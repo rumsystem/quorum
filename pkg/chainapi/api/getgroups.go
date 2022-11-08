@@ -87,7 +87,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			}
 		}
 
-		switch value.GetBSyncerStatus() {
+		switch value.GetSyncerStatus() {
 		case chain.SYNCING_BACKWARD:
 			group.GroupStatus = "SYNCING"
 		case chain.SYNCING_FORWARD:

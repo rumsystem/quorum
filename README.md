@@ -112,7 +112,7 @@ Try [rum-app](https://rumsystem.net/apps), a cross platform RUM GUI application.
 Run the [quorum binary](#build_quorum):
 
 ```sh
-./quorum fullnode --peername peer --listen /ip4/0.0.0.0/tcp/7000 --listen /ip4/0.0.0.0/tcp/9000/ws --apiport 8000 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir rum/peerConfig --datadir rum/peerData --keystoredir rum/keystore --debug true
+./quorum fullnode --peername peer --listen /ip4/0.0.0.0/tcp/7000 --listen /ip4/0.0.0.0/tcp/9000/ws --apiport 8000 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir rum/peerConfig --datadir rum/peerData --keystoredir rum/keystore --loglevel debug
 ```
 
 OPTIONS:
@@ -316,7 +316,7 @@ Add more producers to prevent outages.
 2. Add a shell script to run the peer:
 
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum fullnode --peername your_peer_name --listen /ip4/0.0.0.0/tcp/7002 --listen /ip4/0.0.0.0/tcp/7100/ws --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir /var/data/your_peer_nameConfig --datadir /var/data/your_peer_nameData --keystoredir /var/data/keystore --debug true
+RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum fullnode --peername your_peer_name --listen /ip4/0.0.0.0/tcp/7002 --listen /ip4/0.0.0.0/tcp/7100/ws --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir /var/data/your_peer_nameConfig --datadir /var/data/your_peer_nameData --keystoredir /var/data/keystore --loglevel debug
 ```
 
 [view OPTIONS](#run_a_peer)

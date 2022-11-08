@@ -146,13 +146,13 @@ func restore(params handlers.RestoreParam, isWasm bool) {
 				continue
 			}
 
-			var seed handlers.GroupSeed
+			var seed handlers.CreateGroupResult
 			if err := json.Unmarshal(seedByte, &seed); err != nil {
 				logger.Errorf("unmarshal seed file failed: %s", err)
 				continue
 			}
 
-			if _, err := api.JoinGroupByHTTPRequest(peerBaseUrl, seed); err != nil {
+			if _, err := api.JoinGroupByHTTPRequest(peerBaseUrl, &seed); err != nil {
 				logger.Errorf("join group %s failed: %s", seed.GroupId, err)
 			}
 		}

@@ -93,14 +93,18 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 		return nil, err
 	}
 
-	/*
-		Don't start sync here, wait for psync done
-		err = group.StartSync()
-		if err != nil {
-			return nil, err
-		}
+	/* TODO
+	Don't start sync here, wait for psync done
+	err = group.StartSync()
+	if err != nil {
+		return nil, err
+	}
 	*/
 
+	err = group.StartSync(false)
+	if err != nil {
+		return nil, err
+	}
 	println("create group: OK")
 
 	/* Add group to context */

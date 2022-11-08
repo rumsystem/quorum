@@ -11,17 +11,29 @@ import (
 )
 
 // get myself group seeds
-func GetAllGroupSeeds(appdb *appdata.AppDb) ([]GroupSeed, error) {
+func GetAllGroupSeeds(appdb *appdata.AppDb) ([]CreateGroupResult, error) {
 
 	pbSeeds, err := appdb.GetAllGroupSeeds()
 	if err != nil {
 		return nil, err
 	}
 
-	var seeds []GroupSeed
+	var seeds []CreateGroupResult
 	for _, value := range pbSeeds {
 		seed := FromPbGroupSeed(value)
-		seeds = append(seeds, seed)
+
+		// FIXME: hardcode version 1
+		seedUrl, err := GroupSeedToUrl(1, nil, &seed)
+		if err != nil {
+			logger.Errorf("GroupSeedToUrl failed: %s", err)
+			return nil, err
+		}
+
+		item := CreateGroupResult{
+			Seed:    seedUrl,
+			GroupId: seed.GroupId,
+		}
+		seeds = append(seeds, item)
 	}
 
 	return seeds, nil

@@ -8,6 +8,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
+	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
@@ -101,7 +102,7 @@ func (nodeCtx *NodeCtx) GetNodePubKey() (string, error) {
 }
 
 func (nodeCtx *NodeCtx) ListGroupPeers(groupid string) []peer.ID {
-	userChannelId := USER_CHANNEL_PREFIX + groupid
+	userChannelId := constants.USER_CHANNEL_PREFIX + groupid
 	return nodeCtx.Node.Pubsub.ListPeers(userChannelId)
 }
 

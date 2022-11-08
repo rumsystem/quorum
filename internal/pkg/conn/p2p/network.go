@@ -13,9 +13,8 @@ import (
 	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/metric"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
-	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -36,8 +35,8 @@ type Node struct {
 	Info             *NodeInfo
 	RoutingDiscovery *discoveryrouting.RoutingDiscovery
 	PubSubConnMgr    *pubsubconn.PubSubConnMgr
-	peerStatus       *PeerStatus
-	Nodeopt          *options.NodeOptions
+	//peerStatus       *PeerStatus
+	Nodeopt *options.NodeOptions
 }
 
 func (node *Node) eventhandler(ctx context.Context) {
@@ -110,24 +109,14 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 		defer cancel()
 		err := node.Host.Connect(pctx, peer)
 		if err != nil {
+			metric.FailedCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
 			networklog.Warningf("connect peer failure: %s \n", peer)
 			cancel()
 			continue
 		} else {
+			metric.SuccessCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
 			connectedCount++
 			networklog.Infof("connect: %s", peer)
-
-			log := stats.NetworkStats{
-				From:      node.Host.ID(),
-				To:        peer.ID,
-				Action:    stats.ConnectPeer,
-				Direction: network.DirOutbound,
-				Size:      0,
-				Success:   true,
-			}
-			if err := stats.GetStatsDB().AddNetworkLog(&log); err != nil {
-				networklog.Warningf("add network log to db failed: %s", err)
-			}
 		}
 	}
 	return connectedCount
@@ -164,20 +153,18 @@ func (node *Node) PeersProtocol() *map[string][]string {
 	return &protocolpeers
 }
 
-func (node *Node) SetRumExchange(ctx context.Context, cs csdef.ChainStorageIface) {
-	peerStatus := NewPeerStatus()
+func (node *Node) SetRumExchange(ctx context.Context) {
+	//peerStatus := NewPeerStatus()
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	var rexservice *RexService
-	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
-	rexrelay := NewRexRelay(rexservice, cs)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
-	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
 	networklog.Infof("Enable protocol RumExchange")
 
-	node.peerStatus = peerStatus
+	//node.peerStatus = peerStatus
 	node.RumExchange = rexservice
 
 	if rexnotification != nil {

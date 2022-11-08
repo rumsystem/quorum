@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
+
 	"github.com/rumsystem/quorum/cmd"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )

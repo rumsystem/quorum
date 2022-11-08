@@ -31,4 +31,6 @@ var (
 	ErrInvalidChainAPIURL = errors.New("Invalid chain api url")
 
 	ErrInvalidJWT = errors.New("Invalid JWT")
+
+	ErrNoPeersAvailable = errors.New("no peers available, waiting for reconnect")
 )

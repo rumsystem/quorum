@@ -1,0 +1,24 @@
+# quorum.service
+
+[Unit]
+Description=RUM node
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+User=rum
+Group=rum
+RuntimeMaxSec=24h
+Environment="RUM_KSPASSWD=YOUR_PASSWORD"
+ExecStart=/usr/local/bin/quorum_linux fullnode --peername peer0 --listen /ip4/0.0.0.0/tcp/27002 --listen /ip4/0.0.0.0/tcp/27003/ws  --apiport 28002 --apihost 127.0.0.1 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM --configdir /var/data/peer0data/config --datadir /var/data/peer0data/peerdata --keystoredir /var/data/peer0data/keystore
+TimeoutStopSec=10s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+Restart=always
+RestartSec=10
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

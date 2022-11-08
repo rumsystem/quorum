@@ -2,21 +2,17 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 	"time"
 
-	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -65,7 +61,6 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	const defaultKeyName = "default"
 
 	logger.Infof("Version: %s", utils.GitCommit)
-	configLogger(bootstrapNodeFlag.IsDebug)
 
 	bootstrapSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -117,7 +112,6 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	}
 
 	logger.Infof("eth addresss: <%s>", ethaddr)
-	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
 	CheckLockError(err)
 	if err != nil {
 		cancel()
@@ -130,7 +124,7 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	bootstrapNode, err = p2p.NewNode(ctx, "", nodeoptions, true, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	bootstrapNode, err = p2p.NewNode(ctx, "", nodeoptions, true, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 
 	if err != nil {
 		logger.Fatalf(err.Error())
@@ -149,10 +143,6 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
-
-	if err := stats.InitDB(datapath, bootstrapNode.Host.ID()); err != nil {
-		logger.Fatalf("init stats db failed: %s", err)
-	}
 
 	logger.Infof("usernode host created, ID:<%s>, Address:<%s>", bootstrapNode.Host.ID(), bootstrapNode.Host.Addrs())
 	h := &api.Handler{

@@ -2,15 +2,28 @@ package cmd
 
 import (
 	"os"
+	"strings"
+	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
 	logger = logging.Logger("cmd")
+
+	logLevel      string
+	logFile       string
+	logMaxSize    int // megabytes
+	logMaxBackups int
+	logMaxAge     int // days
+	logCompress   bool
+
+	isDebug bool // true is lower(logLevel) == "debug" else false
 
 	// flags
 	peerName         string
@@ -23,7 +36,6 @@ var (
 	seedDir          string
 	backupFile       string
 	isWasm           bool
-	isDebug          bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -31,66 +43,51 @@ var rootCmd = &cobra.Command{
 	Use:   "quorum",
 	Short: "The internet alternatives",
 	Long:  `An open source peer-to-peer application infrastructure to offer the internet alternatives in a decentralized and privacy oriented way.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if dataDir != "" {
-			utils.EnsureDir(dataDir)
-		}
-		return nil
-	},
 }
 
 func Execute() {
-	// set default log level to info
-	lvl, err := logging.LevelFromString("info")
-	if err != nil {
-		logger.Fatal(err)
-	}
-	logging.SetAllLoggers(lvl)
-
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
-func configLogger(isDebug bool) {
-	if isDebug == true {
-		logging.SetLogLevel("cmd", "debug")
-		logging.SetLogLevel("nodesdk", "debug")
-		logging.SetLogLevel("handlers", "debug")
-		logging.SetLogLevel("crypto", "debug")
-		logging.SetLogLevel("network", "debug")
-		logging.SetLogLevel("autonat", "debug")
-		logging.SetLogLevel("chain", "debug")
-		logging.SetLogLevel("dbmgr", "debug")
-		logging.SetLogLevel("chainctx", "debug")
-		logging.SetLogLevel("syncer", "debug")
+func init() {
+	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().StringVar(&logLevel, "loglevel", "error", "log level")
+	rootCmd.PersistentFlags().StringVar(&logFile, "logfile", "", "log file, default output to stdout")
+	rootCmd.PersistentFlags().IntVar(&logMaxSize, "log-max-size", 100, "log file max size, unit: megabytes")
+	rootCmd.PersistentFlags().IntVar(&logMaxAge, "log-max-age", 7, "log file max ages, unit: day")
+	rootCmd.PersistentFlags().IntVar(&logMaxBackups, "log-max-backups", 3, "log file max backups count")
+	rootCmd.PersistentFlags().BoolVar(&logCompress, "log-compress", true, "is log file compress")
+}
 
-		logging.SetLogLevel("trxmgr", "debug")
-		logging.SetLogLevel("conn", "debug")
-		logging.SetLogLevel("rumexchange", "debug")
-		logging.SetLogLevel("ssreceiver", "debug")
-		logging.SetLogLevel("sssender", "debug")
-		logging.SetLogLevel("ping", "debug")
-		logging.SetLogLevel("chan", "debug")
-		//logging.SetLogLevel("pubsub", "debug")
+func initConfig() {
+	isDebug = strings.ToLower(logLevel) == "debug"
 
-		logging.SetLogLevel("chaindb", "debug")
-
-		logging.SetLogLevel("producer", "debug")
-		logging.SetLogLevel("user", "debug")
-		logging.SetLogLevel("psyncer", "debug")
-
-		logging.SetLogLevel("trbc", "debug")
-		logging.SetLogLevel("tacs", "debug")
-		logging.SetLogLevel("tbft", "debug")
-
-		logging.SetLogLevel("prbc", "debug")
-		logging.SetLogLevel("pacs", "debug")
-		logging.SetLogLevel("pbft", "debug")
-	} else {
-		logging.SetLogLevel("*", "info")
+	// set log level
+	lvl, err := logging.LevelFromString(logLevel)
+	if err != nil {
+		logger.Fatal(err)
 	}
+	logging.SetAllLoggers(lvl)
 
-	logging.SetLogLevel("appsync", "error")
-	logging.SetLogLevel("appdata", "error")
+	if logFile != "" {
+		w := zapcore.AddSync(&lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    logMaxSize,
+			MaxBackups: logMaxBackups,
+			MaxAge:     logMaxAge,
+			Compress:   logCompress,
+		})
+
+		encoderCfg := zap.NewProductionEncoderConfig()
+		encoderCfg.EncodeTime = zapcore.TimeEncoderOfLayout(time.RFC3339)
+
+		core := zapcore.NewCore(
+			zapcore.NewConsoleEncoder(encoderCfg),
+			w,
+			zap.InfoLevel,
+		)
+		logging.SetPrimaryCore(core)
+	}
 }

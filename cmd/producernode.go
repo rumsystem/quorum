@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 	"time"
 
-	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -19,7 +17,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/stats"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -67,7 +64,6 @@ func init() {
 }
 
 func runProducerNode(config cli.ProducerNodeFlag) {
-	configLogger(producerNodeFlag.IsDebug)
 	logger.Infof("Version:%s", utils.GitCommit)
 	const defaultKeyName = "default"
 
@@ -116,7 +112,6 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	}
 
 	logger.Infof("eth addresss: <%s>", ethaddr)
-	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
 	CheckLockError(err)
 	if err != nil {
 		cancel()
@@ -139,19 +134,15 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	producerNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	producerNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 	if err == nil {
-		producerNode.SetRumExchange(ctx, newchainstorage)
+		producerNode.SetRumExchange(ctx)
 	}
 
 	nodectx.InitCtx(ctx, nodename, producerNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.PRODUCER_NODE)
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
-
-	if err := stats.InitDB(datapath, producerNode.Host.ID()); err != nil {
-		logger.Fatalf("init stats db failed: %s", err)
-	}
 
 	//initial conn
 	conn.InitConn()

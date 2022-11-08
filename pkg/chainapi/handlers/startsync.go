@@ -23,7 +23,7 @@ func StartSync(groupid string) (*StartSyncResult, error) {
 	}
 
 	startSyncResult := &StartSyncResult{GroupId: group.Item.GroupId, Error: ""}
-	if err := group.StartBSync(true); err != nil {
+	if err := group.StartSync(true); err != nil {
 		startSyncResult.Error = err.Error()
 	}
 	return startSyncResult, nil

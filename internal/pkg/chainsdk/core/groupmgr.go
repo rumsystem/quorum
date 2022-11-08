@@ -71,7 +71,7 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 			//try get consensus before start sync
 			grp.TryGetChainConsensus()
 		} else {
-			grp.StartBSync(true)
+			grp.StartSync(true)
 		}
 	}
 	return nil
