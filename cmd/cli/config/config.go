@@ -8,7 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/adrg/xdg"
 	logging "github.com/ipfs/go-log/v2"
-	qCrypto "github.com/rumsystem/keystore/pkg/crypto"
+	qCrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 var signKeyMap = map[string]string{}

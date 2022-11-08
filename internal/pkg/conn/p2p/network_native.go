@@ -11,20 +11,18 @@ import (
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	tcp "github.com/libp2p/go-tcp-transport"
@@ -41,10 +39,9 @@ func GetRelayPeerChan() chan peer.AddrInfo {
 	return peerChan
 }
 
-func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, ds *dsbadger2.Datastore, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discovery.RoutingDiscovery
-	var pstore peerstore.Peerstore
 	var err error
 
 	//privKey p2pcrypto.PrivKey
@@ -93,20 +90,18 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	if nodeopt.EnableRelay {
 		libp2poptions = append(libp2poptions,
 			libp2p.EnableAutoRelay(
-				autorelay.WithPeerSource(peerChan),
+				autorelay.WithPeerSource(func(context.Context, int) <-chan peer.AddrInfo { return peerChan }, time.Hour),
 				autorelay.WithMaxCandidates(1),
 				autorelay.WithNumRelays(99999),
 				autorelay.WithBootDelay(0)),
 		)
 	}
 
-	if ds != nil {
-		pstore, err = pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
-		if err != nil {
-			return nil, err
-		}
-		libp2poptions = append(libp2poptions, libp2p.Peerstore(pstore))
+	pstore, err := pstoremem.NewPeerstore()
+	if err != nil {
+		return nil, err
 	}
+	libp2poptions = append(libp2poptions, libp2p.Peerstore(pstore))
 
 	if nodeopt.EnableNat == true {
 		libp2poptions = append(libp2poptions, libp2p.EnableNATService())
@@ -177,20 +172,6 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, Nodeopt: nodeopt}
 
-	//reconnect peers
-	storedpeers := []peer.AddrInfo{}
-	if ds != nil {
-		for _, peer := range pstore.Peers() {
-			peerinfo := pstore.PeerInfo(peer)
-			storedpeers = append(storedpeers, peerinfo)
-		}
-	}
-	if len(storedpeers) > 0 {
-		//TODO: try connect every x minutes for x*y minutes?
-		go func() {
-			newnode.AddPeers(ctx, storedpeers)
-		}()
-	}
 	go newnode.eventhandler(ctx)
 	return newnode, nil
 }

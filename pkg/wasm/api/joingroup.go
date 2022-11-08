@@ -17,8 +17,8 @@ import (
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 
 	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 /* from echo handlers, should be refactored later after wasm stabeld */
@@ -92,7 +92,7 @@ func JoinGroup(paramsBytes []byte) (*JoinGroupResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = group.StartSync()
+	err = group.StartSync(false)
 	if err != nil {
 		return nil, err
 	}
