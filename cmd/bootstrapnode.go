@@ -8,7 +8,6 @@ import (
 	"time"
 
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -66,12 +65,11 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	//??
-	chain.SetAutoAck(config.AutoAck)
-
 	peername := "bootstrap"
 
-	utils.EnsureDir(config.DataDir)
+	if err := utils.EnsureDir(config.DataDir); err != nil {
+		logger.Fatalf("check or create directory: %s failed: %s", config.DataDir, err)
+	}
 
 	//Load node options from config
 	nodeoptions, err := options.InitNodeOptions(config.ConfigDir, peername)
@@ -135,16 +133,13 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	//commented by cuicat
-	//dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-	//dbManager.TryMigration(1)
 
 	nodectx.InitCtx(ctx, "", bootstrapNode, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit, nodectx.BOOTSTRAP_NODE)
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
 
-	logger.Infof("usernode host created, ID:<%s>, Address:<%s>", bootstrapNode.Host.ID(), bootstrapNode.Host.Addrs())
+	logger.Infof("bootstrap host created, ID:<%s>, Address:<%s>", bootstrapNode.Host.ID(), bootstrapNode.Host.Addrs())
 	h := &api.Handler{
 		Node:      bootstrapNode,
 		NodeCtx:   nodectx.GetNodeCtx(),
