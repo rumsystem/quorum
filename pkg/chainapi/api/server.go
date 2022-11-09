@@ -35,17 +35,12 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
-		//TODO: ask wm
-		//Skipper:   rummiddleware.LocalhostSkipper,
+		Skipper:   rummiddleware.LocalhostSkipper,
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
 	}))
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		//TODO: ask wm
-		//Skipper: rummiddleware.ChainGzipSkipper,
-		Level: 5, // hardcode
-	}))
+
 	r := e.Group("/api")
 	r.GET("/quit", quitapp)
 	r.GET("/v1/node", h.GetBootstrapNodeInfo)
@@ -79,11 +74,6 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
-	}))
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-		//TODO ask wm
-		//Skipper: rummiddleware.ChainGzipSkipper,
-		Level: 5, // hardcode
 	}))
 	r := e.Group("/api")
 	r.GET("/quit", quitapp)
