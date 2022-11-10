@@ -163,6 +163,7 @@ func (s *Gsyncer) Start() {
 	s.resultq = make(chan *SyncResult, 3)
 	s.taskdone = make(chan struct{})
 	s.stopnotify = make(chan struct{})
+	s.Status = SYNCING_FORWARD
 	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
 	go func() {
 		for task := range s.taskq {

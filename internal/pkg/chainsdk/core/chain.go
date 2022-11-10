@@ -317,6 +317,9 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 all sync related rules go here
 */
 func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
+	if resp.ProducerProof == nil {
+		return errors.New("resp.trx is nil")
+	}
 	//if curEposh is less than psync resp already handled
 	savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupId)
 	if err != nil {
