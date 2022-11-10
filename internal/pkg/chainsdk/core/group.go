@@ -306,9 +306,12 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 func (grp *Group) sendConsensusReq() (string, error) {
 	group_log.Debugf("<%s> sendConsensusReq called", grp.Item.GroupId)
 	//create protobuf msg
+
 	consensusReq := &quorumpb.ConsensusReq{
 		MyEpoch: grp.Item.Epoch,
 	}
+
+	group_log.Debugf("<%s> Create ConsensusReq with Epoch <%d> done", grp.Item.GroupId, grp.Item.Epoch)
 
 	cbytes, err := proto.Marshal(consensusReq)
 	if err != nil {
@@ -346,6 +349,8 @@ func (grp *Group) sendConsensusReq() (string, error) {
 	//save hash and signature
 	consensusMsg.MsgHash = msgHash
 	consensusMsg.SenderSign = signature
+
+	group_log.Debugf("<%s> Create ConsensusMsg done, sessionId <%s>", grp.Item.GroupId, consensusMsg.SessionId)
 
 	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
 	if err != nil {

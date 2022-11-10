@@ -20,7 +20,7 @@ type PSyncACS struct {
 }
 
 func NewPSyncACS(cfg Config, bft *PSyncBft, sid string) *PSyncACS {
-	psync_acs_log.Debugf("<%s> NewPSyncACS called, SessionId <%s>", bft.PSyncer.groupId, sid)
+	psync_acs_log.Debugf("SessionId <%s> NewPSyncACS called", sid)
 
 	acs := &PSyncACS{
 		Config:       cfg,
@@ -40,11 +40,11 @@ func NewPSyncACS(cfg Config, bft *PSyncBft, sid string) *PSyncACS {
 
 // give input value to
 func (a *PSyncACS) InputValue(val []byte) error {
-	psync_acs_log.Debugf("<%s> InputValue called", a.bft.PSyncer.groupId)
+	psync_acs_log.Debugf("SessionId <%s> InputValue called", a.SessionId)
 
 	rbc, ok := a.rbcInstances[a.MySignPubkey]
 	if !ok {
-		return fmt.Errorf("could not find rbc instance (%s)", a.MySignPubkey)
+		return fmt.Errorf("could not find rbc instance <%s>", a.MySignPubkey)
 	}
 
 	return rbc.InputValue(val)
@@ -52,13 +52,13 @@ func (a *PSyncACS) InputValue(val []byte) error {
 
 // rbc for proposerIs finished
 func (a *PSyncACS) RbcDone(proposerPubkey string) {
-	psync_acs_log.Debugf("<%s> RbcDone called, SessionId <%s>", a.bft.PSyncer.groupId, a.SessionId)
+	psync_acs_log.Debugf("SessionId <%s> RbcDone called", a.SessionId)
 
 	a.rbcOutput[proposerPubkey] = true
 
 	//check if all rbc instance output
 	if len(a.rbcOutput) == a.N-a.F {
-		trx_acs_log.Debugf("all RBC done, call acs")
+		trx_acs_log.Debugf("all RBC done")
 		// all rbc done, get all rbc results, send them back to BFT
 		for _, rbcInst := range a.rbcInstances {
 			//load all rbc results
@@ -68,13 +68,13 @@ func (a *PSyncACS) RbcDone(proposerPubkey string) {
 		//call hbb to get result
 		a.bft.AcsDone(a.SessionId, a.rbcResults)
 	} else {
-		psync_acs_log.Debugf("Wait for all RBC done")
+		psync_acs_log.Debugf("Wait for all RBC to finished")
 		return
 	}
 }
 
 func (a *PSyncACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	psync_acs_log.Debugf("<%s> HandleMessage called,  SessionId <%s>", a.bft.PSyncer.groupId, hbmsg.SessionId)
+	psync_acs_log.Debugf("SessionId <%s> HandleMessage called", hbmsg.SessionId)
 
 	switch hbmsg.MsgType {
 	case quorumpb.HBBMsgType_BROADCAST:

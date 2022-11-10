@@ -37,7 +37,7 @@ type PSyncRBC struct {
 // ecc will encode data bytes into 3 pieces
 // a witnesses need at least 3 - 1 = 2 pieces to recover data
 func NewPSyncRBC(cfg Config, acs *PSyncACS, groupId, proposerPubkey string) (*PSyncRBC, error) {
-	psync_rbc_log.Infof("NewTrxRBC called, witnesses pubkey %s, sessionid %s", proposerPubkey, acs.SessionId)
+	psync_rbc_log.Infof("SessionId <%s> NewTrxRBC called, witnesses pubkey <%s>", acs.SessionId, proposerPubkey)
 
 	parityShards := cfg.F
 	if parityShards == 0 {
@@ -73,8 +73,8 @@ func NewPSyncRBC(cfg Config, acs *PSyncACS, groupId, proposerPubkey string) (*PS
 // 2. make proofReq for each pieces
 // 3. broadcast all proofReq via pubsub
 func (r *PSyncRBC) InputValue(data []byte) error {
-	psync_rbc_log.Infof("InputValue called, data length %d", len(data))
-	//rbc_log.Infof("raw trxBundle %v", data)
+	psync_rbc_log.Infof("SessionId <%s> InputValue called, data length %d", r.acs.SessionId, len(data))
+
 	shards, err := MakeShards(r.enc, data)
 	if err != nil {
 		return err
@@ -85,8 +85,6 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 	if err != nil {
 		return err
 	}
-
-	psync_rbc_log.Infof("ProofMsg length %d", len(reqs))
 
 	// broadcast RBC msg out via pubsub
 	for _, req := range reqs {
@@ -100,7 +98,7 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 }
 
 func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
-	psync_rbc_log.Infof("PROOF_MSG:ProofProviderPubkey <%s>, sessionId %s", proof.ProposerPubkey, r.acs.SessionId)
+	psync_rbc_log.Infof("SessionId <%s> PROOF_MSG:ProofProviderPubkey <%s>", r.acs.SessionId, proof.ProposerPubkey)
 
 	if r.consenusDone {
 		//rbc done, do nothing, ignore the msg
@@ -136,13 +134,10 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		return fmt.Errorf("received invalid proof from producer node <%s>", proof.ProposerPubkey)
 	}
 
-	//save proof
-	psync_rbc_log.Infof("Save proof")
 	r.recvProofs = append(r.recvProofs, proof)
 
 	//if got enough proof, try decode it
 	if r.recvProofs.Len() == r.N-r.F {
-		psync_rbc_log.Infof("Try decode")
 		output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
@@ -164,7 +159,7 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		}
 
 		//check if we already receive enough readyMsg (N - F)
-		psync_rbc_log.Infof("r.recvReadys: %d, r.N-r.F: %d .", len(r.recvReadys), r.N-r.F)
+		psync_rbc_log.Infof("r.recvReadys: %d, r.N-r.F: %d", len(r.recvReadys), r.N-r.F)
 		if len(r.recvReadys) == r.N-r.F {
 			psync_rbc_log.Infof("RBC done")
 			r.consenusDone = true
@@ -178,7 +173,7 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 }
 
 func (r *PSyncRBC) handleReadyMsg(ready *quorumpb.Ready) error {
-	psync_rbc_log.Infof("READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>, SessionId %s", ready.ProofProviderPubkey, ready.ProposerPubkey, r.acs.SessionId)
+	psync_rbc_log.Infof("SessionId <%s> READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>", r.acs.SessionId, ready.ProofProviderPubkey, ready.ProposerPubkey)
 
 	if r.consenusDone {
 		psync_rbc_log.Infof("Rbc is already done, do nothing")

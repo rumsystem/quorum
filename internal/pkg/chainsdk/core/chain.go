@@ -1,11 +1,14 @@
 package chain
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -249,7 +252,7 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 	chain_log.Debugf("<%s> HandleConsesusPsConn called", chain.groupId)
 
-	//non producer node should not handle consensus msg
+	//non producer should not handle consensus msg
 	if _, ok := chain.ProducerPool[chain.group.Item.UserSignPubkey]; !ok {
 		return nil
 	}
@@ -257,13 +260,42 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 	if chain.Consensus.PSync() == nil {
 		return nil
 	}
+	d := &quorumpb.ConsensusMsg{
+		GroupId:      c.GroupId,
+		SessionId:    c.SessionId,
+		MsgType:      c.MsgType,
+		Payload:      c.Payload,
+		SenderPubkey: c.SenderPubkey,
+		TimeStamp:    c.TimeStamp,
+	}
 
-	// TBD verify msg signature
-	/*
-		Create hash
-		check hash
-		verify signature with senderpubkey
-	*/
+	db, err := proto.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	dhash := localcrypto.Hash(db)
+	if res := bytes.Compare(c.MsgHash, dhash); res != 0 {
+		return fmt.Errorf("msg hash mismatch")
+	}
+
+	bytespubkey, err := base64.RawURLEncoding.DecodeString(c.SenderPubkey)
+	if err != nil {
+		return err
+	}
+
+	ethpbukey, err := ethcrypto.DecompressPubkey(bytespubkey)
+	if err == nil {
+		ks := localcrypto.GetKeystore()
+		r := ks.EthVerifySign(c.MsgHash, c.SenderSign, ethpbukey)
+		if !r {
+			return fmt.Errorf("verify signature failed")
+		} else {
+			chain_log.Debugf("<%s> MsgSignature is good", chain.groupId)
+		}
+	} else {
+		return err
+	}
 
 	if c.MsgType == quorumpb.ConsensusType_REQ {
 		if _, ok := chain.ProducerPool[c.SenderPubkey]; !ok {
@@ -303,6 +335,7 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 
 		//check if need sync or do something else
 		err = chain.handlePSyncResp(c.SessionId, resp)
+
 		if err != nil {
 			return err
 		}
@@ -317,6 +350,8 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 all sync related rules go here
 */
 func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
+	chain_log.Debugf("<%s> handlePSyncResp called, SessionId <%s>", chain.groupId, sessionId)
+
 	//if curEposh is less than psync resp already handled
 	savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupId)
 	if err != nil {
@@ -344,9 +379,7 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 	}
 
 	//update PsyncResp in DB
-	nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupId, sessionId, resp)
-
-	return nil
+	return nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupId, sessionId, resp)
 }
 
 func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.ConsensusResp) (bool, error) {

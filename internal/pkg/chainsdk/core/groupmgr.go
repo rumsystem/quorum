@@ -68,7 +68,8 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 			grp.SetRumExchangeTestMode()
 		}
 		if _, ok := grp.ChainCtx.ProducerPool[grp.Item.UserSignPubkey]; ok {
-			//try get consensus before start sync
+			//producer try get consensus before start sync block
+			groupMgr_log.Debugf("producer(owner) try get consensus before sync. group <%s>", grp.Item.GroupId)
 			grp.TryGetChainConsensus()
 		} else {
 			grp.StartSync(true)
