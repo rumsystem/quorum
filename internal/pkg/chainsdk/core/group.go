@@ -136,7 +136,7 @@ func (grp *Group) ClearGroupData() error {
 
 func (grp *Group) StartSync(restart bool) error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	if restart == true {
+	if restart {
 		grp.ChainCtx.StopSync()
 	}
 	//time.Sleep(10 * time.Second)

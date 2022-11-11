@@ -72,7 +72,8 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 			groupMgr_log.Debugf("producer(owner) try get consensus before sync. group <%s>", grp.Item.GroupId)
 			grp.TryGetChainConsensus()
 		} else {
-			grp.StartSync(true)
+			groupMgr_log.Debugf("user start sync. group <%s>", grp.Item.GroupId)
+			grp.StartSync(false)
 		}
 	}
 	return nil

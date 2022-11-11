@@ -739,17 +739,20 @@ func (chain *Chain) CreateConsensus() error {
 	var producer def.Producer
 	var psync def.PSync
 
-	var shouldCreateUser, shouldCreateProducer bool
+	var shouldCreateUser, shouldCreateProducer, shouldCreatePSyncer bool
 
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		shouldCreateProducer = true
 		shouldCreateUser = false
+		shouldCreatePSyncer = true
 	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
 		//check if I am owner of the group
 		if chain.group.Item.UserSignPubkey == chain.group.Item.OwnerPubKey {
 			shouldCreateProducer = true
+			shouldCreatePSyncer = true
 		} else {
 			shouldCreateProducer = false
+			shouldCreatePSyncer = false
 		}
 		shouldCreateUser = true
 	} else {
@@ -768,10 +771,11 @@ func (chain *Chain) CreateConsensus() error {
 		user.NewUser(chain.group.Item, chain.group.ChainCtx.nodename, chain)
 	}
 
-	//create psyncer
-	chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupId)
-	psync = &consensus.MolassesPSync{}
-	psync.NewPSync(chain.group.Item, chain.nodename, chain)
+	if shouldCreatePSyncer {
+		chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupId)
+		psync = &consensus.MolassesPSync{}
+		psync.NewPSync(chain.group.Item, chain.nodename, chain)
+	}
 
 	chain_log.Infof("<%s> create new consensus", chain.groupId)
 	chain.Consensus = consensus.NewMolasses(producer, user, psync)
@@ -784,7 +788,7 @@ func (chain *Chain) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 }
 
 func (chain *Chain) StartInitConsensusReq() error {
-	chain_log.Debugf("<%s> StartPSync called", chain.groupId)
+	chain_log.Debugf("<%s> StartInitConsensusReq called", chain.groupId)
 	chain.Consensus.PSync()
 	return nil
 }

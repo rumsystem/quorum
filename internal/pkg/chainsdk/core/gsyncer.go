@@ -139,7 +139,7 @@ func safeCloseResult(ch chan *SyncResult) (recovered bool) {
 }
 
 func (s *Gsyncer) Stop() {
-	chain_log.Infof("syncer <%s> stopping...", s.GroupId)
+	gsyncer_log.Debugf("<%s> GSyncer stopping...", s.GroupId)
 	s.Status = CLOSE
 	safeCloseTask(s.taskq)
 	safeCloseResult(s.resultq)
@@ -152,20 +152,22 @@ func (s *Gsyncer) Stop() {
 			if signcount == 2 { // taskq and resultq stopped
 				s.Status = IDLE
 				close(s.stopnotify)
-				chain_log.Infof("syncer <%s> stop success.", s.GroupId)
+				gsyncer_log.Debugf("gsyncer <%s> stop success.", s.GroupId)
 			}
 		}
 	}
 }
 
 func (s *Gsyncer) Start() {
+	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
 	s.taskq = make(chan *SyncTask)
 	s.resultq = make(chan *SyncResult, 3)
 	s.taskdone = make(chan struct{})
 	s.stopnotify = make(chan struct{})
-	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
+
 	go func() {
 		for task := range s.taskq {
+			gsyncer_log.Debugf("Start process task")
 			ctx, cancel := context.WithTimeout(context.Background(), 2*RESULT_TIMEOUT*time.Second)
 			defer cancel()
 			err := s.processTask(ctx, task)
@@ -255,6 +257,8 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (int64,
 
 func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
+	gsyncer_log.Debugf("processTask called")
+
 	go func() {
 		s.waitResultTaskId = task.Id //set waiting task
 		s.tasksender(task)
@@ -273,6 +277,9 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 }
 
 func (s *Gsyncer) addTask(task *SyncTask) {
+	gsyncer_log.Debugf("Gsyncer addTask called")
+	gsyncer_log.Debugf("Syncer status %d", s.Status)
+
 	go func() {
 		if s.Status != CLOSE {
 			s.taskq <- task
