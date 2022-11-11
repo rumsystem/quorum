@@ -257,6 +257,12 @@ func (s *Gsyncer) processResult(ctx context.Context, result *SyncResult) (int64,
 func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
 	go func() {
+		//set waiting epoch
+		//Epoch
+		epochtask, ok := task.Meta.(EpochSyncTask)
+		if ok == true {
+			s.waitEpoch = epochtask.Epoch
+		}
 		s.waitResultTaskId = task.Id //set waiting task
 		s.tasksender(task)
 		//TODO: lock
