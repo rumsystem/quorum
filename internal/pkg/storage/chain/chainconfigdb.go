@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -16,7 +15,6 @@ func (cs *Storage) UpdateChainConfigTrx(trx *quorumpb.Trx, prefix ...string) (er
 
 func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) {
 	chaindb_log.Infof("UpdateChainConfig called")
-	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.ChainConfigItem{}
 
 	if err := proto.Unmarshal(data, item); err != nil {
@@ -31,7 +29,7 @@ func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) 
 			return err
 		}
 
-		key := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.TRX_AUTH_TYPE_PREFIX + "_" + authModeItem.Type.String()
+		key := s.GetChainConfigAuthKey(item.GroupId, authModeItem.Type.String(), prefix...)
 		return cs.dbmgr.Db.Set([]byte(key), data)
 	} else if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST ||
 		item.Type == quorumpb.ChainConfigType_UPD_DNY_LIST {
@@ -46,9 +44,9 @@ func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) 
 
 		var key string
 		if item.Type == quorumpb.ChainConfigType_UPD_ALW_LIST {
-			key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.ALLW_LIST_PREFIX + "_" + pk
+			key = s.GetChainConfigAllowKey(item.GroupId, pk, prefix...)
 		} else {
-			key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId + "_" + s.DENY_LIST_PREFIX + "_" + pk
+			key = s.GetChainConfigDenyKey(item.GroupId, pk, prefix...)
 		}
 
 		chaindb_log.Infof("key %s", key)
@@ -72,8 +70,7 @@ func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) 
 }
 
 func (cs *Storage) GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error) {
-	nodoeprefix := utils.GetPrefix(prefix...)
-	key := nodoeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.TRX_AUTH_TYPE_PREFIX + "_" + trxType.String()
+	key := s.GetChainConfigAuthKey(groupId, trxType.String(), prefix...)
 
 	//if not specified by group owner
 	//follow deny list by default
@@ -107,12 +104,11 @@ func (cs *Storage) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb
 	var chainConfigList []*quorumpb.ChainConfigItem
 	var sendTrxRuleList []*quorumpb.ChainSendTrxRuleListItem
 
-	nodeprefix := utils.GetPrefix(prefix...)
 	var key string
 	if listType == quorumpb.AuthListType_ALLOW_LIST {
-		key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.ALLW_LIST_PREFIX
+		key = s.GetChainConfigAllowPrefix(groupId, prefix...)
 	} else {
-		key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.DENY_LIST_PREFIX
+		key = s.GetChainConfigDenyPrefix(groupId, prefix...)
 	}
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -149,15 +145,13 @@ func (cs *Storage) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb
 }
 
 func (cs *Storage) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.TrxType, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
 	if pk == "" {
 		pk = pubkey
 	}
 
-	keyAllow := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.ALLW_LIST_PREFIX + "_" + pk
-	keyDeny := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_" + s.DENY_LIST_PREFIX + "_" + pk
+	keyAllow := s.GetChainConfigAllowKey(groupId, pk, prefix...)
+	keyDeny := s.GetChainConfigDenyKey(groupId, pk, prefix...)
 
 	isInAllowList, err := cs.dbmgr.Db.IsExist([]byte(keyAllow))
 	if err != nil {
@@ -226,8 +220,7 @@ func (cs *Storage) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.Trx
 }
 
 func (cs *Storage) GetAllChainConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId + "_"
+	key := s.GetChainConfigPrefix(groupId, Prefix...)
 	var chainConfigByteList [][]byte
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {

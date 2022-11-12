@@ -8,39 +8,11 @@ import (
 
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 var dbmgr_log = logging.Logger("dbmgr")
-
-const TRX_PREFIX string = "trx"                //trx
-const BLK_PREFIX string = "blk"                //block
-const GRP_PREFIX string = "grp"                //group
-const CNT_PREFIX string = "cnt"                //content
-const PRD_PREFIX string = "prd"                //producer
-const USR_PREFIX string = "usr"                //user
-const ANN_PREFIX string = "ann"                //announce
-const SMA_PREFIX string = "sma"                //schema
-const CHD_PREFIX string = "chd"                //cached
-const APP_CONFIG_PREFIX string = "app_conf"    //group configuration
-const CHAIN_CONFIG_PREFIX string = "chn_conf"  //chain configuration
-const TRX_AUTH_TYPE_PREFIX string = "trx_auth" //trx auth type
-const ALLW_LIST_PREFIX string = "alw_list"     //allow list
-const DENY_LIST_PREFIX string = "dny_list"     //deny list
-const NONCE_PREFIX string = "nonce"            //group trx nonce
-const PRD_TRX_ID_PREFIX string = "prd_trxid"   //trxid of latest trx which update group producer list
-
-// groupinfo db
-const GROUPITEM_PREFIX string = "grpitem"
-const GROUPSEED_PREFIX string = "grpseed"
-const RELAY_PREFIX string = "rly" //relay
-
-// consensus db
-const CNS_BUFD_TRX string = "cns_bf_trx" //buffered trx (used by acs)
-const CNS_BUFD_MSG string = "cns_bf_msg" //buffered message (used by bba & rbc)
-const CNS_PSYNC string = "cns_psync"     //psync resp
 
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
@@ -93,7 +65,7 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 		err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
 			key := string(k)
 			if len(key) == 36 && strings.Contains(key, "_") == false {
-				newkey := GROUPITEM_PREFIX + "_" + key
+				newkey := GetGroupItemKey(key)
 				err = dbMgr.GroupInfoDb.Set([]byte(newkey), v)
 				if err == nil {
 					dbmgr_log.Infof("db migration v1 for group %s", key)
@@ -113,7 +85,7 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 
 // get block
 func (dbMgr *DbMgr) GetBlock(groupId string, epoch int64, cached bool, prefix ...string) (*quorumpb.Block, error) {
-	key := getBlockKey(groupId, epoch, cached, prefix...)
+	key := GetBlockKey(groupId, epoch, cached, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
@@ -130,7 +102,7 @@ func (dbMgr *DbMgr) GetBlock(groupId string, epoch int64, cached bool, prefix ..
 // save block chunk
 func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
 	dbmgr_log.Debug("SaveBlock called")
-	key := getBlockKey(block.GroupId, block.Epoch, cached, prefix...)
+	key := GetBlockKey(block.GroupId, block.Epoch, cached, prefix...)
 	dbmgr_log.Debugf("KEY %s", key)
 
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
@@ -150,7 +122,7 @@ func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...stri
 }
 
 func (dbMgr *DbMgr) RmBlock(groupId string, epoch int64, cached bool, prefix ...string) error {
-	key := getBlockKey(groupId, epoch, cached, prefix...)
+	key := GetBlockKey(groupId, epoch, cached, prefix...)
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
 	if err != nil {
 		return err
@@ -164,14 +136,14 @@ func (dbMgr *DbMgr) RmBlock(groupId string, epoch int64, cached bool, prefix ...
 }
 
 func (dbMgr *DbMgr) IsBlockExist(groupId string, epoch int64, cached bool, prefix ...string) (bool, error) {
-	key := getBlockKey(groupId, epoch, cached, prefix...)
+	key := GetBlockKey(groupId, epoch, cached, prefix...)
 	return dbMgr.Db.IsExist([]byte(key))
 }
 
 // Get group list
 func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	var groupItemList [][]byte
-	key := GROUPITEM_PREFIX + "_"
+	key := GetGroupItemPrefix()
 
 	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -184,8 +156,7 @@ func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 }
 
 func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + ANN_PREFIX + "_" + groupId + "_"
+	key := GetAnnouncedPrefix(groupId, Prefix...)
 	var announceByteList [][]byte
 
 	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -199,10 +170,8 @@ func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][
 	return announceByteList, err
 }
 
-func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix ...string) (int, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
-
+func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, prefix ...string) (int, error) {
+	key := GetAppConfigKey(groupId, itemKey, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return -1, err
@@ -218,10 +187,8 @@ func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, Prefix .
 	return result, err
 }
 
-func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, Prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
-
+func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, prefix ...string) (bool, error) {
+	key := GetAppConfigKey(groupId, itemKey, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return false, err
@@ -237,10 +204,8 @@ func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, Prefix 
 	return result, err
 }
 
-func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, Prefix ...string) (string, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
-
+func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, prefix ...string) (string, error) {
+	key := GetAppConfigKey(groupId, itemKey, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return "", err
@@ -262,9 +227,7 @@ func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (p
 
 // get next nonce
 func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + NONCE_PREFIX + "_" + groupId
-
+	key := GetNonceKey(groupId, prefix...)
 	nonceseq, succ := dbMgr.seq.Load(key)
 	if succ == false {
 		newseq, err := dbMgr.Db.GetSequence([]byte(key), 1)
@@ -276,18 +239,6 @@ func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, erro
 	} else {
 		return nonceseq.(Sequence).Next()
 	}
-}
-
-func getBlockKey(groupId string, epoch int64, cached bool, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	epochSD := strconv.FormatInt(epoch, 10)
-	var key string
-	if cached {
-		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + groupId + "_" + epochSD
-	} else {
-		key = nodeprefix + BLK_PREFIX + "_" + groupId + "_" + epochSD
-	}
-	return key
 }
 
 //func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string) ([]*quorumpb.PostItem, error) {
