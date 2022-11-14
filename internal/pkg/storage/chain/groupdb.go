@@ -76,105 +76,66 @@ func (cs *Storage) GetGroupInfo(groupId string) (*quorumpb.GroupItem, error) {
 }
 
 func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
+	return RemoveGroupData(cs.dbmgr.Db, item.GroupId, prefix...)
+}
+
+func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error {
 	var keys []string
 
 	//remove all group POST
-	key := s.GetPostPrefix(item.GroupId, prefix...)
+	key := s.GetPostPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//all group producer
-	key = s.GetProducerPrefix(item.GroupId, prefix...)
+	key = s.GetProducerPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//all group users
-	key = s.GetUserPrefix(item.GroupId, prefix...)
+	key = s.GetUserPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//all group announced item
-	key = s.GetAnnouncedPrefix(item.GroupId, prefix...)
+	key = s.GetAnnouncedPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//all group schema item
-	key = s.GetSchemaPrefix(item.GroupId, prefix...)
+	key = s.GetSchemaPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//all group chain_config item
-	key = s.GetChainConfigPrefix(item.GroupId, prefix...)
+	key = s.GetChainConfigPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//all group app_config item
-	key = s.GetAppConfigPrefix(item.GroupId, prefix...)
+	key = s.GetAppConfigPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//nonce prefix
-	key = s.GetNonceKey(item.GroupId, prefix...)
+	key = s.GetNonceKey(groupId, prefix...)
 	keys = append(keys, key)
 
 	//trx_id for producer update trx
-	key = s.GetProducerTrxIDKey(item.GroupId, prefix...)
+	key = s.GetProducerTrxIDKey(groupId, prefix...)
+	keys = append(keys, key)
+
+	// cached block
+	key = s.GetCachedBlockPrefix(groupId, prefix...)
+	keys = append(keys, key)
+
+	// block
+	key = s.GetBlockPrefix(groupId, prefix...)
+	keys = append(keys, key)
+
+	// trx
+	key = s.GetTrxPrefix(groupId, "", prefix...)
 	keys = append(keys, key)
 
 	//remove all
 	for _, key_prefix := range keys {
-		_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
+		_, err := db.PrefixDelete([]byte(key_prefix))
 		if err != nil {
 			return err
 		}
-	}
-
-	keys = nil
-	//remove all cached block
-	key = s.GetBlockPrefix(prefix...)
-	keys = append(keys, key)
-	key = s.GetCachedBlockPrefix(prefix...)
-	keys = append(keys, key)
-
-	for _, key_prefix := range keys {
-		_, err := cs.dbmgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
-			if err != nil {
-				return false, err
-			}
-
-			block := quorumpb.Block{}
-			perr := proto.Unmarshal(v, &block)
-			if perr != nil {
-				return false, perr
-			}
-
-			if block.GroupId == item.GroupId {
-				return true, nil
-			}
-			return false, nil
-		})
-
-		if err != nil {
-			return err
-		}
-	}
-
-	//remove all trx
-	key = s.GetTrxPrefix("", prefix...)
-	_, err := cs.dbmgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
-		if err != nil {
-			return false, err
-		}
-
-		trx := quorumpb.Trx{}
-		perr := proto.Unmarshal(v, &trx)
-
-		if perr != nil {
-			return false, perr
-		}
-
-		if trx.GroupId == item.GroupId {
-			return true, nil
-		}
-
-		return false, nil
-	})
-
-	if err != nil {
-		return err
 	}
 
 	return nil

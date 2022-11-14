@@ -12,7 +12,7 @@ const (
 )
 
 type TrxStorageIface interface {
-	GetTrx(trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error)
+	GetTrx(groupId string, trxId string, storagetype TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error)
 }
 
 type APIHandlerIface interface {

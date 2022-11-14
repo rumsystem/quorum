@@ -38,18 +38,6 @@ const (
 	CNS_PSYNC    = "cns_psync"  //psync resp
 )
 
-func GetBlockKey(groupId string, epoch int64, cached bool, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	epochSD := strconv.FormatInt(epoch, 10)
-	var key string
-	if cached {
-		key = nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_" + groupId + "_" + epochSD
-	} else {
-		key = nodeprefix + BLK_PREFIX + "_" + groupId + "_" + epochSD
-	}
-	return key
-}
-
 func _getEthPubkey(libp2pPubkey string) string {
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(libp2pPubkey)
 	if pk == "" {
@@ -57,6 +45,36 @@ func _getEthPubkey(libp2pPubkey string) string {
 	}
 
 	return pk
+}
+
+func GetBlockPrefix(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	key := nodeprefix + BLK_PREFIX + "_"
+	if groupId != "" {
+		key = key + groupId + "_"
+	}
+	return key
+}
+
+func GetBlockKey(groupId string, epoch int64, prefix ...string) string {
+	epochSD := strconv.FormatInt(epoch, 10)
+	_prefix := GetBlockPrefix(groupId, prefix...)
+	return _prefix + epochSD
+}
+
+func GetCachedBlockPrefix(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	key := nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
+	if groupId != "" {
+		return key + groupId + "_"
+	}
+	return key
+}
+
+func GetCachedBlockKey(groupId string, epoch int64, prefix ...string) string {
+	epochSD := strconv.FormatInt(epoch, 10)
+	_prefix := GetCachedBlockPrefix(groupId, prefix...)
+	return _prefix + epochSD
 }
 
 func GetGroupItemPrefix() string {
@@ -186,33 +204,18 @@ func GetProducerTrxIDKey(groupId string, prefix ...string) string {
 	return nodeprefix + PRD_TRX_ID_PREFIX + "_" + groupId
 }
 
-func GetBlockPrefix(prefix ...string) string {
+func GetTrxPrefix(groupId, trxId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + BLK_PREFIX + "_"
-}
-
-func GetTrxPrefix(trxId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + TRX_PREFIX + "_"
+	key := nodeprefix + TRX_PREFIX + "_" + groupId + "_"
 	if trxId != "" {
 		key = key + trxId + "_"
 	}
 	return key
 }
 
-func GetTrxKey(trxId string, nonce int64, prefix ...string) string {
-	_prefix := GetTrxPrefix(trxId, prefix...)
+func GetTrxKey(groupId, trxId string, nonce int64, prefix ...string) string {
+	_prefix := GetTrxPrefix(groupId, trxId, prefix...)
 	return _prefix + fmt.Sprint(nonce)
-}
-
-func GetCachedBlockPrefix(prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
-}
-
-func GetCachedBlockKey(groupId string, prefix ...string) string {
-	_prefix := GetCachedBlockPrefix(prefix...)
-	return _prefix + "_" + groupId
 }
 
 func GetSeedKey(groupID string) []byte {
