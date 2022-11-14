@@ -5,7 +5,6 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -25,25 +24,23 @@ func NewChainStorage(dbmgr *s.DbMgr) (storage *Storage) {
 }
 
 func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(signPubkey)
 	if pk == "" {
 		pk = signPubkey
 	}
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + pk
+	key := s.GetAnnouncedKey(groupId, announcetype.String(), pk, prefix...)
 	pAnnounced := &quorumpb.AnnounceItem{}
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
 		//patch for old keyformat
-		key = nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + signPubkey
+		key := s.GetAnnouncedKey(groupId, announcetype.String(), signPubkey, prefix...)
 		value, err = cs.dbmgr.Db.Get([]byte(key))
 		if err != nil {
 			return err
 		}
 		//update to the new keyformat
-		key = nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + announcetype.String() + "_" + pk
+		key = s.GetAnnouncedKey(groupId, announcetype.String(), pk, prefix...)
 	}
 
 	err = proto.Unmarshal(value, pAnnounced)
@@ -65,7 +62,6 @@ func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, grou
 }
 
 func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
-	nodeprefix := utils.GetPrefix(prefix...)
 	item := &quorumpb.AnnounceItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		chaindb_log.Debugf(err.Error())
@@ -75,7 +71,7 @@ func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
 	if pk == "" {
 		pk = item.SignPubkey
 	}
-	key := nodeprefix + s.ANN_PREFIX + "_" + item.GroupId + "_" + item.Type.Enum().String() + "_" + pk
+	key := s.GetAnnouncedKey(item.GroupId, item.Type.Enum().String(), pk, prefix...)
 	err = cs.dbmgr.Db.Set([]byte(key), data)
 	if err != nil {
 		chaindb_log.Debugf("error %s", err.Error())
@@ -86,8 +82,7 @@ func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
 
 func (cs *Storage) GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserItem, error) {
 	var pList []*quorumpb.UserItem
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.USR_PREFIX + "_" + groupId
+	key := s.GetUserPrefix(groupId, prefix...)
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -106,8 +101,7 @@ func (cs *Storage) GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserI
 
 func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error) {
 	var pList []*quorumpb.ProducerItem
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.PRD_PREFIX + "_" + groupId
+	key := s.GetProducerPrefix(groupId, prefix...)
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -127,9 +121,7 @@ func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.P
 
 func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
 	var aList []*quorumpb.AnnounceItem
-
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String()
+	key := s.GetAnnounceAsProducerPrefix(groupId, prefix...)
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -152,8 +144,7 @@ func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string)
 }
 
 func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.GRP_PREFIX + "_" + s.CNT_PREFIX + "_" + trx.GroupId + "_" + fmt.Sprint(trx.TimeStamp) + "_" + trx.TrxId
+	key := s.GetPostKey(trx.GroupId, fmt.Sprint(trx.TimeStamp), trx.TrxId, prefix...)
 	chaindb_log.Debugf("Add POST with key %s", key)
 
 	ctnItem := &quorumpb.PostItem{}

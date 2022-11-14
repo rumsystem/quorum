@@ -4,8 +4,6 @@ import (
 	"errors"
 
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -15,21 +13,13 @@ func (cs *Storage) UpdateUserTrx(trx *quorumpb.Trx, prefix ...string) (err error
 }
 
 func (cs *Storage) UpdateUser(data []byte, prefix ...string) (err error) {
-
-	nodeprefix := utils.GetPrefix(prefix...)
-
 	item := &quorumpb.UserItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
 	}
 
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserPubkey)
-	if pk == "" {
-		pk = item.UserPubkey
-	}
-
-	key := nodeprefix + s.USR_PREFIX + "_" + item.GroupId + "_" + pk
-	chaindb_log.Infof("upd user with key %s", key)
+	key := s.GetUserKey(item.GroupId, item.UserPubkey, prefix...)
+	chaindb_log.Infof("update user with key %s", key)
 
 	if item.Action == quorumpb.ActionType_ADD {
 		chaindb_log.Infof("Add user")
@@ -52,9 +42,8 @@ func (cs *Storage) UpdateUser(data []byte, prefix ...string) (err error) {
 	}
 }
 
-func (cs *Storage) GetAllUserInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + s.USR_PREFIX + "_" + groupId + "_"
+func (cs *Storage) GetAllUserInBytes(groupId string, prefix ...string) ([][]byte, error) {
+	key := s.GetUserPrefix(groupId, prefix...)
 	var usersByteList [][]byte
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -71,8 +60,7 @@ func (cs *Storage) GetAllUserInBytes(groupId string, Prefix ...string) ([][]byte
 func (cs *Storage) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
 	var aList []*quorumpb.AnnounceItem
 
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String()
+	key := s.GetAnnounceAsUserPrefix(groupId, prefix...)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -90,15 +78,7 @@ func (cs *Storage) GetAnnounceUsersByGroup(groupId string, prefix ...string) ([]
 }
 
 func (cs *Storage) GetAnnouncedUser(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
-	if pk == "" {
-		pk = pubkey
-	}
-
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pk
-
+	key := s.GetAnnounceAsUserKey(groupId, pubkey, prefix...)
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
@@ -114,25 +94,12 @@ func (cs *Storage) GetAnnouncedUser(groupId string, pubkey string, prefix ...str
 }
 
 func (cs *Storage) IsUserAnnounced(groupId, userSignPubkey string, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(userSignPubkey)
-	if pk == "" {
-		pk = userSignPubkey
-	}
-
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pk
+	key := s.GetAnnounceAsUserKey(groupId, userSignPubkey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
 
+// IsUser check if group user (announced) exist
 func (cs *Storage) IsUser(groupId, userPubKey string, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(userPubKey)
-	if pk == "" {
-		pk = userPubKey
-	}
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_USER.String() + "_" + pk
-
-	//check if group user (announced) exist
+	key := s.GetAnnounceAsUserKey(groupId, userPubKey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

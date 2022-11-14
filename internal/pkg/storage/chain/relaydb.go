@@ -10,16 +10,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//relaystatus: req, approved and activity
+// relaystatus: req, approved and activity
 func (cs *Storage) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) (string, error) {
 	groupRelayItem.RelayId = guuid.New().String()
-	key := s.RELAY_PREFIX + "_req_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type
 
 	//dbMgr.GroupInfoDb.PrefixDelete([]byte(RELAY_PREFIX))
 
+	key := s.GetRelayReqKey(groupRelayItem.GroupId, groupRelayItem.Type)
 	if groupRelayItem.Type == "user" {
-		key = s.RELAY_PREFIX + "_req_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type + "_" + groupRelayItem.UserPubkey
+		key = s.GetRelayReqUserKey(groupRelayItem.GroupId, groupRelayItem.Type, groupRelayItem.UserPubkey)
 	}
+
 	//check if group relay req exist
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist { //check if not expire
@@ -35,7 +36,7 @@ func (cs *Storage) AddRelayReq(groupRelayItem *quorumpb.GroupRelayItem) (string,
 }
 
 func (cs *Storage) AddRelayActivity(groupRelayItem *quorumpb.GroupRelayItem) (string, error) {
-	key := s.RELAY_PREFIX + "_activity_" + groupRelayItem.GroupId + "_" + groupRelayItem.Type
+	key := s.GetRelayActivityKey(groupRelayItem.GroupId, groupRelayItem.Type)
 	//check if group relay req exist
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist { //check if not expire
@@ -51,7 +52,7 @@ func (cs *Storage) AddRelayActivity(groupRelayItem *quorumpb.GroupRelayItem) (st
 }
 
 func (cs *Storage) DeleteRelay(relayid string) (bool, *quorumpb.GroupRelayItem, error) {
-	key := s.RELAY_PREFIX
+	key := s.GetRelayPrefix()
 	succ := false
 	relayitem := quorumpb.GroupRelayItem{}
 	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -73,7 +74,7 @@ func (cs *Storage) DeleteRelay(relayid string) (bool, *quorumpb.GroupRelayItem, 
 }
 
 func (cs *Storage) ApproveRelayReq(reqid string) (bool, *quorumpb.GroupRelayItem, error) {
-	key := s.RELAY_PREFIX + "_req_"
+	key := s.GetRelayReqPrefix()
 	succ := false
 
 	relayreq := quorumpb.GroupRelayItem{}
@@ -84,7 +85,7 @@ func (cs *Storage) ApproveRelayReq(reqid string) (bool, *quorumpb.GroupRelayItem
 		err = proto.Unmarshal(v, &relayreq)
 		if relayreq.RelayId == reqid {
 			relayreq.ApproveTime = time.Now().UnixNano()
-			approvedkey := s.RELAY_PREFIX + "_approved_" + relayreq.GroupId + "_" + relayreq.Type
+			approvedkey := s.GetRelayApprovedKey(relayreq.GroupId, relayreq.Type)
 			approvedvalue, err := proto.Marshal(&relayreq)
 			if err != nil {
 				return err
