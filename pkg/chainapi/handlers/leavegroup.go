@@ -32,10 +32,6 @@ func LeaveGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*LeaveGroupResul
 		return nil, err
 	}
 
-	if err := group.ClearGroupData(); err != nil {
-		return nil, err
-	}
-
 	// delete group seed from appdata
 	if err := appdb.DelGroupSeed(params.GroupId); err != nil {
 		return nil, fmt.Errorf("save group seed failed: %s", err)

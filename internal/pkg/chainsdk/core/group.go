@@ -131,7 +131,7 @@ func (grp *Group) LeaveGrp() error {
 
 func (grp *Group) ClearGroupData() error {
 	group_log.Debugf("<%s> ClearGroupData called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StartSync(restart bool) error {

@@ -10,6 +10,7 @@ var (
 	ErrInvalidGroupID   = errors.New("Invalid group id")
 	ErrGroupNotFound    = errors.New("Group not found")
 	ErrJoinGroup        = errors.New("Join group failed")
+	ErrClearJoinedGroup = errors.New("Can not clear joined group")
 	ErrInvalidGroupData = errors.New("Invalid group data")
 	ErrOnlyGroupOwner   = errors.New("Only group owner can do this")
 

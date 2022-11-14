@@ -3,6 +3,8 @@ package handlers
 import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type ClearGroupDataParam struct {
@@ -22,19 +24,12 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	group, ok := groupmgr.Groups[params.GroupId]
+	_, ok := groupmgr.Groups[params.GroupId]
 	if ok {
-		/* commented by cuicat
-		// stop syncing first, to avoid starving in browser (indexeddb)
-
-			if err := group.StopSync(); err != nil {
-				return nil, err
-			}
-		*/
-		// group may not exists or already be left
-		if err := group.ClearGroupData(); err != nil {
-			return nil, err
-		}
+		return nil, rumerrors.NewBadRequestError(rumerrors.ErrClearJoinedGroup)
 	}
-	return &ClearGroupDataResult{GroupId: params.GroupId}, nil
+
+	nodename := nodectx.GetNodeCtx().Name
+	err = nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(params.GroupId, nodename)
+	return &ClearGroupDataResult{GroupId: params.GroupId}, err
 }
