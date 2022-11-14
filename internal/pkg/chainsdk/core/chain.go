@@ -910,7 +910,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 	chain_log.Debugf("<%s> ApplyTrxsFullNode called", chain.groupId)
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, trx.Nonce, nodename)
 		if err != nil {
 			chain_log.Debugf("<%s> %s", chain.groupId, err.Error())
 			continue
@@ -1006,7 +1006,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		}
 
 		//check if trx already applied
-		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.TrxId, trx.Nonce, nodename)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, trx.Nonce, nodename)
 		if err != nil {
 			chain_log.Debugf("<%s> %s", chain.groupId, err.Error())
 			continue

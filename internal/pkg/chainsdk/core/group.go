@@ -161,12 +161,12 @@ func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
 	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(trxId, def.Chain, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) {
 	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(trxId, def.Cache, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {

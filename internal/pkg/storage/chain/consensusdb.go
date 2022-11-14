@@ -4,14 +4,12 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 func (cs *Storage) AddTrxHBB(trx *quorumpb.Trx, queueId string) error {
-	key := s.CNS_BUFD_TRX + "_" + queueId + "_" + trx.TrxId
-
+	key := s.GetTrxHBBKey(queueId, trx.TrxId)
 	exist, err := cs.dbmgr.Db.IsExist([]byte(key))
 	if err != nil {
 		return err
@@ -31,8 +29,7 @@ func (cs *Storage) AddTrxHBB(trx *quorumpb.Trx, queueId string) error {
 
 func (cs *Storage) GetAllTrxHBB(queueId string) ([]*quorumpb.Trx, error) {
 	var trxs []*quorumpb.Trx
-	key := s.CNS_BUFD_TRX + "_" + queueId
-
+	key := s.GetTrxHBBPrefix(queueId)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -55,7 +52,7 @@ func (cs *Storage) GeBufferedTrxLenHBB(queueId string) (int, error) {
 }
 
 func (cs *Storage) RemoveTrxHBB(trxId, queueId string) error {
-	key := s.CNS_BUFD_TRX + "_" + queueId + "_" + trxId
+	key := s.GetTrxHBBKey(queueId, trxId)
 	exist, err := cs.dbmgr.Db.IsExist([]byte(key))
 	if err != nil {
 		return err
@@ -70,13 +67,13 @@ func (cs *Storage) RemoveTrxHBB(trxId, queueId string) error {
 }
 
 func (cs *Storage) RemoveAllTrxHBB(queueId string) error {
-	key_prefix := s.CNS_BUFD_TRX + "_" + queueId + "_"
+	key_prefix := s.GetTrxHBBPrefix(queueId)
 	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
 	return err
 }
 
 func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, error) {
-	key := s.CNS_BUFD_TRX + "_" + queueId + "_" + trxId
+	key := s.GetTrxHBBKey(queueId, trxId)
 
 	exist, err := cs.dbmgr.Db.IsExist([]byte(key))
 	if err != nil {
@@ -101,20 +98,20 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 }
 
 func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) {
-	key := s.CNS_PSYNC + "_" + groupId + "_" + sessionId
+	key := s.GetPSyncKey(groupId, sessionId)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
 
 func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.ConsensusResp) error {
 	//remove all current group PSync Session
-	key_prefix := s.CNS_PSYNC + "_" + groupId
+	key_prefix := s.GetPSyncPrefix(groupId)
 	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
 	if err != nil {
 		return err
 	}
 
 	//update group psync session
-	key := s.CNS_PSYNC + "_" + groupId + "_" + sessionId
+	key := s.GetPSyncKey(groupId, sessionId)
 	if value, err := proto.Marshal(resp); err != nil {
 		return err
 	} else {
@@ -126,8 +123,7 @@ func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.Consen
 func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.ConsensusResp, error) {
 
 	resps := []*quorumpb.ConsensusResp{}
-
-	key := s.CNS_PSYNC + "_" + groupId
+	key := s.GetPSyncPrefix(groupId)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err

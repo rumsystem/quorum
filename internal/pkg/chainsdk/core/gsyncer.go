@@ -19,7 +19,6 @@ var (
 )
 
 const RESULT_TIMEOUT = 4 //seconds
-
 type Syncdirection uint
 
 const (
@@ -31,7 +30,15 @@ type EpochSyncTask struct {
 	Epoch int64
 }
 
+type SyncTaskType uint
+
+const (
+	BlockSync SyncTaskType = iota
+	ConsensusSync
+)
+
 type SyncTask struct {
+	Type SyncTaskType
 	Meta interface{}
 	Id   string
 }
@@ -47,7 +54,7 @@ type SyncResult struct {
 }
 
 type Gsyncer struct {
-	nodeName         string
+	//nodeName         string
 	GroupId          string
 	waitEpoch        int64 //waiting the task response for epoch
 	Status           int8
@@ -113,6 +120,7 @@ func safeClose(ch chan struct{}) (recovered bool) {
 	close(ch)
 	return false
 }
+
 func safeCloseTask(ch chan *SyncTask) (recovered bool) {
 	defer func() {
 		if recover() != nil {
@@ -125,6 +133,7 @@ func safeCloseTask(ch chan *SyncTask) (recovered bool) {
 	close(ch)
 	return false
 }
+
 func safeCloseResult(ch chan *SyncResult) (recovered bool) {
 	defer func() {
 		if recover() != nil {
