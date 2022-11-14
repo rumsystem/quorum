@@ -75,8 +75,8 @@ func (cs *Storage) GetGroupInfo(groupId string) (*quorumpb.GroupItem, error) {
 	return grpInfo, nil
 }
 
-func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
-	return RemoveGroupData(cs.dbmgr.Db, item.GroupId, prefix...)
+func (cs *Storage) RemoveGroupData(groupId string, prefix ...string) error {
+	return RemoveGroupData(cs.dbmgr.Db, groupId, prefix...)
 }
 
 func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error {
