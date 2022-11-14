@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	maddr "github.com/multiformats/go-multiaddr"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"

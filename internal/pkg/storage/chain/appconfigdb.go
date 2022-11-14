@@ -2,9 +2,9 @@ package chainstorage
 
 import (
 	"errors"
+
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -13,12 +13,11 @@ func (cs *Storage) UpdateAppConfigTrx(trx *quorumpb.Trx, Prefix ...string) (err 
 }
 
 func (cs *Storage) UpdateAppConfig(data []byte, Prefix ...string) (err error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
 	item := &quorumpb.AppConfigItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
 	}
-	key := nodeprefix + s.APP_CONFIG_PREFIX + "_" + item.GroupId + "_" + item.Name
+	key := s.GetAppConfigKey(item.GroupId, item.Name, Prefix...) + item.Name
 
 	if item.Action == quorumpb.ActionType_ADD {
 		chaindb_log.Infof("Add AppConfig item")
@@ -41,8 +40,7 @@ func (cs *Storage) UpdateAppConfig(data []byte, Prefix ...string) (err error) {
 
 // name, type
 func (cs *Storage) GetAppConfigKey(groupId string, prefix ...string) ([]string, []string, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.APP_CONFIG_PREFIX + "_" + groupId
+	key := s.GetAppConfigPrefix(groupId, prefix...)
 
 	var itemName []string
 	var itemType []string
@@ -64,9 +62,7 @@ func (cs *Storage) GetAppConfigKey(groupId string, prefix ...string) ([]string, 
 }
 
 func (cs *Storage) GetAppConfigItem(itemKey string, groupId string, Prefix ...string) (*quorumpb.AppConfigItem, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + s.APP_CONFIG_PREFIX + "_" + groupId + "_" + itemKey
-
+	key := s.GetAppConfigKey(groupId, itemKey, Prefix...)
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
@@ -82,9 +78,8 @@ func (cs *Storage) GetAppConfigItem(itemKey string, groupId string, Prefix ...st
 }
 
 func (cs *Storage) GetAllAppConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + s.APP_CONFIG_PREFIX + "_" + groupId + "_"
 	var appConfigByteList [][]byte
+	key := s.GetAppConfigPrefix(groupId, Prefix...)
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {

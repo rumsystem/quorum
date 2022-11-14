@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type AppConfigParam struct {
@@ -31,7 +31,7 @@ type AppConfigResult struct {
 	TrxId   string `json:"trx_id" validate:"required"`
 }
 
-func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
+func MgrAppConfig(params *AppConfigParam, sudo bool) (*AppConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 		item.OwnerPubkey = group.Item.OwnerPubKey
 		item.OwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdAppConfig(item)
+		trxId, err := group.UpdAppConfig(item, sudo)
 
 		if err != nil {
 			return nil, err

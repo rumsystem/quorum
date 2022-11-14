@@ -4,18 +4,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/event"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	csdef "github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
 const ProtocolPrefix string = "/quorum"
@@ -34,10 +33,10 @@ type Node struct {
 	RumExchange      *RexService
 	Ddht             *dual.DHT
 	Info             *NodeInfo
-	RoutingDiscovery *discovery.RoutingDiscovery
+	RoutingDiscovery *discoveryrouting.RoutingDiscovery
 	PubSubConnMgr    *pubsubconn.PubSubConnMgr
-	peerStatus       *PeerStatus
-	Nodeopt          *options.NodeOptions
+	//peerStatus       *PeerStatus
+	Nodeopt *options.NodeOptions
 }
 
 func (node *Node) eventhandler(ctx context.Context) {
@@ -154,20 +153,18 @@ func (node *Node) PeersProtocol() *map[string][]string {
 	return &protocolpeers
 }
 
-func (node *Node) SetRumExchange(ctx context.Context, cs csdef.ChainStorageIface) {
-	peerStatus := NewPeerStatus()
+func (node *Node) SetRumExchange(ctx context.Context) {
+	//peerStatus := NewPeerStatus()
 	var rexnotification chan RexNotification
 	rexnotification = make(chan RexNotification, 1)
 	var rexservice *RexService
-	rexservice = NewRexService(node.Host, peerStatus, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix, rexnotification)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
-	rexrelay := NewRexRelay(rexservice, cs)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
-	rexservice.SetHandlerMatchMsgType("rumrelay", rexrelay.Handler)
 	networklog.Infof("Enable protocol RumExchange")
 
-	node.peerStatus = peerStatus
+	//node.peerStatus = peerStatus
 	node.RumExchange = rexservice
 
 	if rexnotification != nil {

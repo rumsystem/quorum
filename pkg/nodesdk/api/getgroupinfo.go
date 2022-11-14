@@ -62,8 +62,7 @@ func (h *NodeSDKHandler) GetGroupInfo(c echo.Context) (err error) {
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
-	grpInfo.Group.HighestBlockId = result.HighestBlockId
-	grpInfo.Group.HighestHeight = result.HighestHeight
+	grpInfo.Group.Epoch = result.Epoch
 	grpInfo.Group.LastUpdate = result.LatestUpdate
 
 	if err := nodesdkctx.GetCtx().GetChainStorage().UpdGroupV2(grpInfo); err != nil {

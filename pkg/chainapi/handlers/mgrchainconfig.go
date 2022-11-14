@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,7 +43,7 @@ type ChainConfigResult struct {
 	TrxId            string `json:"trx_id"       validate:"required"`
 }
 
-func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
+func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -57,6 +57,10 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	}
 
 	group := groupmgr.Groups[params.GroupId]
+
+	if group.Item.UserSignPubkey != group.Item.OwnerPubKey {
+		return nil, errors.New("Only group owner can run sudo mode")
+	}
 
 	ks := nodectx.GetNodeCtx().Keystore
 	base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)

@@ -6,13 +6,14 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type CustomValidatorProfile struct {
@@ -64,7 +65,18 @@ func (h *Handler) UpdateProfile(c echo.Context) (err error) {
 		return err
 	}
 
-	res, err := handlers.UpdateProfile(paramspb)
+	var sudo bool
+	if c.QueryParams().Get("sudo") == "" {
+		sudo = false
+	} else {
+		v, err := strconv.ParseBool(c.Param("sudo"))
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
+		sudo = v
+	}
+
+	res, err := handlers.UpdateProfile(paramspb, sudo)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

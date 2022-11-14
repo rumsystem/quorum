@@ -9,8 +9,8 @@ import (
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type PublishQueueItem struct {
@@ -90,6 +90,9 @@ type PublishQueueWatcher struct {
 }
 
 func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
+	if watcher.db == nil {
+		return nil
+	}
 	newK, err := item.GetKey()
 	if err != nil {
 		return err
@@ -164,23 +167,23 @@ func GetPubQueueWatcher() *PublishQueueWatcher {
 }
 
 func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
-
 	publishQueueWatcher.db = db
 	publishQueueWatcher.running = false
 	publishQueueWatcher.groupMgrIface = groupMgrIface
-
-	// hard coded to 10s
-	ticker := time.NewTicker(10 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				doRefresh()
+	if db != nil {
+		// hard coded to 10s
+		ticker := time.NewTicker(10 * time.Second)
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					doRefresh()
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 func doRefresh() {
@@ -237,9 +240,12 @@ func doRefresh() {
 				group, err := publishQueueWatcher.groupMgrIface.GetGroup(item.GroupId)
 				if err == nil {
 					// make sure data is updated to the latest change
-					if group.GetSyncerStatus() != IDLE {
-						chain_log.Debugf("<pubqueue>: group is not up to date yet.")
-					}
+					// commented by cuicat
+					/*
+						if group.GetSyncerStatus() != IDLE {
+							chain_log.Debugf("<pubqueue>: group is not up to date yet.")
+						}
+					*/
 					// try to find it from chain
 					trx, _, err := group.GetTrx(item.Trx.TrxId)
 					if err != nil {

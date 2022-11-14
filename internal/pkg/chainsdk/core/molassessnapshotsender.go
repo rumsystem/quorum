@@ -1,16 +1,17 @@
 package chain
 
+/*
 import (
 	"encoding/binary"
 	"sync"
 	"time"
 
 	guuid "github.com/google/uuid"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,10 +26,6 @@ const (
 	SENDER_RUNNING SnapshotSenderStatus = iota
 	SENDER_IDLE
 )
-
-/*
-	ADD DESCRIPTION for SNAPSHOTPACKAGE HERE
-*/
 
 type MolassesSnapshotSender struct {
 	grpItem *quorumpb.GroupItem
@@ -288,3 +285,5 @@ func (sssender *MolassesSnapshotSender) getSnapshotItems() ([]*quorumpb.Snapshot
 
 	return result, nil
 }
+
+*/

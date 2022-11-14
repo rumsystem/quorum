@@ -6,7 +6,7 @@ import (
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -23,7 +23,6 @@ func GetGroupMgr() *GroupMgr {
 	return groupMgr
 }
 
-//TODO: singlaton
 func InitGroupMgr() error {
 	groupMgr_log.Debug("InitGroupMgr called")
 	groupMgr = &GroupMgr{}
@@ -37,18 +36,14 @@ func (groupMgr *GroupMgr) SetRumExchangeTestMode() {
 
 func (groupMgr *GroupMgr) LoadAllGroups() error {
 	groupMgr_log.Debug("LoadAllGroup called")
-	//open all groups
 	groupItemsBytes, err := nodectx.GetDbMgr().GetGroupsBytes()
 	if err != nil {
 		return err
 	}
 
 	for _, b := range groupItemsBytes {
-		var group *Group
-		group = &Group{}
-
-		var item *quorumpb.GroupItem
-		item = &quorumpb.GroupItem{}
+		group := &Group{}
+		item := &quorumpb.GroupItem{}
 		err := proto.Unmarshal(b, item)
 
 		if err != nil {
@@ -63,16 +58,21 @@ func (groupMgr *GroupMgr) LoadAllGroups() error {
 	return nil
 }
 
-//load and group and start syncing
+// load and group and start syncing
 func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 	groupMgr_log.Debug("SyncAllGroup called")
 
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
-		if groupMgr.rumExchangeTestMode == true {
+		if groupMgr.rumExchangeTestMode {
 			grp.SetRumExchangeTestMode()
 		}
-		grp.StartSync(false)
+		if _, ok := grp.ChainCtx.ProducerPool[grp.Item.UserSignPubkey]; ok {
+			//try get consensus before start sync
+			grp.TryGetChainConsensus()
+		} else {
+			grp.StartSync(true)
+		}
 	}
 	return nil
 }
@@ -81,7 +81,7 @@ func (groupmgr *GroupMgr) StopSyncAllGroups() error {
 	groupMgr_log.Debug("StopSyncAllGroup called")
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Stop sync group: <%s>", grp.Item.GroupId)
-		grp.StopSync()
+		//grp.StopSync()
 	}
 
 	return nil

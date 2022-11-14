@@ -2,20 +2,20 @@ package handlers
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 
 	guuid "github.com/google/uuid"
 
-	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
 
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error) {
@@ -24,9 +24,10 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 		urllist = append(urllist, url.QueryEscape(u))
 	}
 
-	b64buuid, _ := guuid.Parse(seed.GenesisBlock.BlockId)
+	//b64buuid, _ := guuid.Parse(seed.GenesisBlock.Epoch)
+	b64epoch := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b64epoch, uint64(seed.GenesisBlock.Epoch))
 	b64guuid, _ := guuid.Parse(seed.GenesisBlock.GroupId)
-	b64bstr := base64.RawURLEncoding.EncodeToString(b64buuid[:])
 	b64gstr := base64.RawURLEncoding.EncodeToString(b64guuid[:])
 
 	b64timestampstr := base64.RawURLEncoding.EncodeToString(big.NewInt(seed.GenesisBlock.TimeStamp).Bytes())
@@ -50,12 +51,16 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 		return "", err
 	}
 	b64cipher := base64.RawURLEncoding.EncodeToString(cipherkeybytes)
-	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
+
+	//b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
+	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.BookkeepingSignature)
 
 	//new eth key: is the compressed base64 RawURLEncoding
 	//old libp2p key: base64.StdEncoding
 	var b64producerpubkey string
-	b64producerpubkey = seed.GenesisBlock.ProducerPubKey
+	//b64producerpubkey = seed.GenesisBlock.ProducerPubKey
+	b64producerpubkey = seed.GenesisBlock.BookkeepingPubkey
+
 	//if strings.HasPrefix(seed.GenesisBlock.ProducerPubKey, "0x") {
 	//	bethpubkey, err := hex.DecodeString(seed.GenesisBlock.ProducerPubKey[2:])
 	//	if err != nil {
@@ -72,7 +77,7 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	//}
 
 	values := url.Values{}
-	values.Add("b", b64bstr)
+	//values.Add("e", b64bstr)
 	values.Add("g", b64gstr)
 	values.Add("k", b64producerpubkey)
 	values.Add("t", b64timestampstr)
@@ -99,12 +104,11 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	if version != "1" {
 		return nil, nil, errors.New("unsupport seed url version")
 	}
-	b64bstr := q.Get("b")
-	b64gstr := q.Get("g")
 
-	b64bbyte, err := base64.RawURLEncoding.DecodeString(b64bstr)
+	b64gstr := q.Get("g")
 	b64gbyte, err := base64.RawURLEncoding.DecodeString(b64gstr)
-	b64buuid, err := guuid.FromBytes(b64bbyte)
+
+	//b64buuid, err := guuid.FromBytes(b64bbyte)
 	if err != nil {
 		return nil, nil, fmt.Errorf("uuid decode err: %s", err)
 	}
@@ -140,22 +144,31 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		return nil, nil, fmt.Errorf("seed decode err: %s", err)
 	}
 
+	//recreate genesis block
 	genesisBlock := &pb.Block{
-		BlockId:        b64buuid.String(),
-		GroupId:        b64guuid.String(),
-		PrevBlockId:    "",
-		PreviousHash:   nil,
-		TimeStamp:      timestamp,
-		ProducerPubKey: b64producerpubkey,
-		Trxs:           nil,
-		Signature:      b64signbyte,
+		Epoch:         0,
+		GroupId:       b64guuid.String(),
+		PrevEpochHash: nil,
+		Trxs:          nil,
 	}
 
-	hash, err := rumchaindata.BlockHash(genesisBlock)
+	trxHash, err := rumchaindata.BlockEpochHash(genesisBlock)
 	if err != nil {
 		return nil, nil, err
 	}
-	genesisBlock.Hash = hash
+	genesisBlock.EpochHash = trxHash
+
+	genesisBlock.Witesses = nil
+	genesisBlock.BookkeepingPubkey = b64producerpubkey
+	genesisBlock.TimeStamp = timestamp
+
+	bookkeepingHash, err := rumchaindata.BlockHash(genesisBlock)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	genesisBlock.BlockHash = bookkeepingHash
+	genesisBlock.BookkeepingSignature = b64signbyte
 
 	consensustype := "poa"
 	if q.Get("n") == "1" {
@@ -178,9 +191,11 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		EncryptionType: encryptiontype,
 		CipherKey:      cipherkeyhexstr,
 		GroupId:        genesisBlock.GroupId,
-		OwnerPubkey:    genesisBlock.ProducerPubKey,
-		Signature:      hex.EncodeToString(genesisBlock.Signature),
-		AppKey:         appkey,
+		//OwnerPubkey:    genesisBlock.ProducerPubKey,
+		//Signature:      hex.EncodeToString(genesisBlock.Signature),
+		OwnerPubkey: genesisBlock.BookkeepingPubkey,
+		Signature:   hex.EncodeToString(genesisBlock.BookkeepingSignature),
+		AppKey:      appkey,
 	}
 
 	urlstr := q.Get("u")

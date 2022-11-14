@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type AnnounceResult struct {
@@ -31,21 +31,35 @@ type AnnounceParam struct {
 	Memo    string `from:"memo"        json:"memo"`
 }
 
-func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
+func AnnounceHandler(params *AnnounceParam, sudo bool) (*AnnounceResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
 		return nil, err
 	}
 
-	var item *quorumpb.AnnounceItem
-	item = &quorumpb.AnnounceItem{}
+	item := &quorumpb.AnnounceItem{}
 	item.GroupId = params.GroupId
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[item.GroupId]; !ok {
 		return nil, rumerrors.ErrGroupNotFound
 	} else {
+		if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
+			return nil, errors.New("Only group owner can run sudo")
+		}
+
+		//check announce type according to node type, see document for more details
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+			if params.Type != "producer" {
+				return nil, errors.New("Producer node can only announced as \"producer\"")
+			}
+		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+			if params.Type == "producer" {
+				return nil, errors.New("Full node can not announce as producer")
+			}
+		}
+
 		if params.Type == "user" {
 			item.Type = quorumpb.AnnounceType_AS_USER
 		} else if params.Type == "producer" {

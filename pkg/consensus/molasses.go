@@ -1,20 +1,18 @@
 package consensus
 
 import (
-	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 )
 
 type Molasses struct {
-	name       string
-	producer   def.Producer
-	user       def.User
-	sssender   chaindef.SnapshotSender
-	ssreceiver chaindef.SnapshotReceiver
+	name     string
+	producer def.Producer
+	user     def.User
+	psync    def.PSync
 }
 
-func NewMolasses(p def.Producer, u def.User, sss chaindef.SnapshotSender, ssr chaindef.SnapshotReceiver) *Molasses {
-	return &Molasses{name: "Molasses", producer: p, user: u, sssender: sss, ssreceiver: ssr}
+func NewMolasses(p def.Producer, u def.User, s def.PSync) *Molasses {
+	return &Molasses{name: "Molasses", producer: p, user: u, psync: s}
 }
 
 func (m *Molasses) Name() string {
@@ -29,12 +27,8 @@ func (m *Molasses) User() def.User {
 	return m.user
 }
 
-func (m *Molasses) SnapshotSender() chaindef.SnapshotSender {
-	return m.sssender
-}
-
-func (m *Molasses) SnapshotReceiver() chaindef.SnapshotReceiver {
-	return m.ssreceiver
+func (m *Molasses) PSync() def.PSync {
+	return m.psync
 }
 
 func (m *Molasses) SetProducer(p def.Producer) {
@@ -45,10 +39,12 @@ func (m *Molasses) SetUser(u def.User) {
 	m.user = u
 }
 
-func (m *Molasses) SetSnapshotSender(sss chaindef.SnapshotSender) {
-	m.sssender = sss
+func (m *Molasses) SetPSync(s def.PSync) {
+	m.psync = s
 }
 
-func (m *Molasses) SetSnapshotReceiver(ssr chaindef.SnapshotReceiver) {
-	m.ssreceiver = ssr
+func (m *Molasses) TryProposeTrx() {
+	if m.producer != nil {
+		m.producer.TryPropose()
+	}
 }

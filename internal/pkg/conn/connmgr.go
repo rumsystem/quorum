@@ -6,23 +6,20 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/network"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/libp2p/go-libp2p/core/network"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/quorum/pkg/constants"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 var conn_log = logging.Logger("conn")
 
 const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-	SYNC_CHANNEL_PREFIX     = "sync_channel_"
-
 	RelayUserType  string = "user"
 	RelayGroupType string = "group"
 )
@@ -141,7 +138,7 @@ func (conn *Conn) UnregisterChainRelay(relayid, groupId, relaytype string) error
 		delete(conn.ConnMgrs, key)
 		return nil
 	}
-	return errors.New(fmt.Sprintf("unknown relay: %s", relayid))
+	return fmt.Errorf("unknown relay: %s", relayid)
 }
 
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
@@ -168,9 +165,9 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 
 func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
-	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
-	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
+	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
 	connMgr.GroupId = groupId
 	connMgr.OwnerPubkey = ownerPubkey
 	connMgr.UserSignPubkey = userSignPubkey
@@ -194,9 +191,9 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 
 func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
 	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
-	connMgr.UserChannelId = USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = PRODUCER_CHANNEL_PREFIX + groupId
-	connMgr.SyncChannelId = SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
+	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
 	connMgr.GroupId = groupId
 	connMgr.UserSignPubkey = userSignPubkey
 	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
@@ -206,7 +203,7 @@ func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey str
 }
 
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
-	conn_log.Debugf("AddProducer, groupId <%s>", connMgr.GroupId)
+	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
 	connMgr.ProducerPool = make(map[string]string)
 
 	for _, pubkey := range pubkeys {
@@ -240,12 +237,17 @@ func (connMgr *ConnMgr) LeaveAllChannels() error {
 }
 
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
-	//conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
+	conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
 	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
 		if !connMgr.StableProdPsConn { //is user, no need to keep producer psconn
 			conn_log.Debugf("<%s> reset connection timer for producer psconn <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 			connMgr.producerChannTimer.Stop()
 			connMgr.producerChannTimer.Reset(CLOSE_PRD_CHANN_TIMER)
+		} else {
+			if connMgr.producerChannTimer != nil {
+				conn_log.Debugf("<%s> stop producer psconn timer <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
+				connMgr.producerChannTimer.Stop()
+			}
 		}
 		return psconn
 	} else {
@@ -271,7 +273,7 @@ func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn
 			timer.Stop()
 			timer.Reset(CLOSE_SYNC_CHANN_TIMER)
 		} else {
-			return nil, fmt.Errorf("Can not find timer for syncer channel")
+			return nil, fmt.Errorf("can not find timer for syncer channel")
 		}
 		return psconn, nil
 	} else {
@@ -326,67 +328,12 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 		return psconn.Publish(pkgBytes)
 	}
 
-	return fmt.Errorf("Can not find psChannel")
-}
-
-func (connMgr *ConnMgr) SendSnapshotPsconn(snapshot *quorumpb.Snapshot, psChannel PsConnChanel, chanelId ...string) error {
-	conn_log.Debugf("<%s> SendSnapshotPsconn called", connMgr.GroupId)
-
-	pbBytes, err := proto.Marshal(snapshot)
-	if err != nil {
-		return err
-	}
-
-	pkg := &quorumpb.Package{}
-	pkg.Type = quorumpb.PackageType_SNAPSHOT
-	pkg.Data = pbBytes
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	if psChannel == ProducerChannel {
-		conn_log.Debugf("<%s> Send snapshot via Producer_Channel", connMgr.GroupId)
-		psconn := connMgr.getProducerPsConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == UserChannel {
-		conn_log.Debugf("<%s> Send snapshot via User_Channel", connMgr.GroupId)
-		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == SyncerChannel {
-		conn_log.Debugf("<%s> Send snapshot via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
-		psconn, err := connMgr.getSyncConn(chanelId[0])
-		if err != nil {
-			return err
-		}
-		return psconn.Publish(pkgBytes)
-	}
-
-	return fmt.Errorf("Can not find psChannel")
-}
-
-func (connMgr *ConnMgr) SendBlockRex(blk *quorumpb.Block) error {
-	conn_log.Debugf("<%s> SendBlockRex called", connMgr.GroupId)
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(blk)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_BLOCK
-	pkg.Data = pbBytes
-
-	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return connMgr.Rex.Publish(blk.GroupId, rummsg)
-
+	return fmt.Errorf("can not find psChannel")
 }
 
 func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
-	var pkg *quorumpb.Package
-	pkg = &quorumpb.Package{}
+	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
@@ -418,10 +365,47 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 		return psconn.Publish(pkgBytes)
 	}
 
-	return fmt.Errorf("Can not find psChannel")
+	return fmt.Errorf("can not find psChannel")
 }
 
-func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
+func (connMgr *ConnMgr) SentConsensusMsgPubsub(msg *quorumpb.ConsensusMsg, psChannel PsConnChanel, channelId ...string) error {
+	conn_log.Debugf("<%s> SentConsensusReqPubsub called", connMgr.GroupId)
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_CONSENSUS
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	if psChannel == ProducerChannel {
+		conn_log.Debugf("<%s> Send ConsensusReq via Producer_Channel", connMgr.GroupId)
+		psconn := connMgr.getProducerPsConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == UserChannel {
+		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
+		psconn, err := connMgr.getSyncConn(channelId[0])
+		if err != nil {
+			return err
+		}
+		return psconn.Publish(pkgBytes)
+	}
+
+	return fmt.Errorf("can not find psChannel")
+}
+
+func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
@@ -436,11 +420,68 @@ func (connMgr *ConnMgr) SendTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	if s == nil {
-		return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg) //publish to all(or some random) peers
-	} else {
-		return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
+
+	//TODO: select a peer, create a stream s, wait for respose, timeout/error/succ and close the steam
+	//TODO:  add a timeout ctx to close the steam after timeout
+	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
+}
+
+func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) error {
+	conn_log.Debugf("<%s> SendRespTrxRex called", connMgr.GroupId)
+	if nodectx.GetNodeCtx().Node.RumExchange == nil {
+		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
+
+	if s == nil {
+		return errors.New("Resp peer steam can't be nil")
+	}
+
+	pbBytes, err := proto.Marshal(trx)
+	if err != nil {
+		return err
+	}
+	pkg := &quorumpb.Package{}
+	pkg.Type = quorumpb.PackageType_TRX
+	pkg.Data = pbBytes
+	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	//TODO:  add a timeout ctx to close the steam after timeout
+	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
+}
+
+func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsgv1, psChannel PsConnChanel, channelId ...string) error {
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(hbb)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_HBB
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	if psChannel == ProducerChannel {
+		//conn_log.Debugf("<%s> Send hbmsg via Producer_Channel", connMgr.GroupId)
+		psconn := connMgr.getProducerPsConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == UserChannel {
+		//conn_log.Debugf("<%s> Send hbmsg via User_Channel", connMgr.GroupId)
+		psconn := connMgr.getUserConn()
+		return psconn.Publish(pkgBytes)
+	} else if psChannel == SyncerChannel {
+		//conn_log.Debugf("<%s> Send hbmsg via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
+		psconn, err := connMgr.getSyncConn(channelId[0])
+		if err != nil {
+			return err
+		}
+		return psconn.Publish(pkgBytes)
+	}
+
+	return fmt.Errorf("can not find psChannel")
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {

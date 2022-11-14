@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	guuid "github.com/google/uuid"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 type CreateGroupParam struct {
@@ -102,8 +102,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 
 	item.CipherKey = hex.EncodeToString(cipherKey)
 	item.AppKey = params.AppKey
-	item.HighestHeight = 0
-	item.HighestBlockId = genesisBlock.BlockId
+	item.Epoch = 0 //Epoch means the current highest block epoch
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 

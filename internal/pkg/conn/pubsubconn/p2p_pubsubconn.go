@@ -7,10 +7,11 @@ import (
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -50,6 +51,15 @@ func GetPubSubConnMgr() *PubSubConnMgr {
 	return pubsubconnmgr
 }
 
+func (pscm *PubSubConnMgr) GetPeersByChannelId(channelId string) ([]peer.ID, error) {
+	psconni, ok := pscm.connmgr.Load(channelId)
+	if ok == true {
+		psconn := psconni.(*P2pPubSubConn)
+		return psconn.Topic.ListPeers(), nil
+	} else {
+		return nil, fmt.Errorf("Topic not exist.")
+	}
+}
 func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface chaindef.ChainDataSyncIface) *P2pPubSubConn {
 	_, ok := pscm.connmgr.Load(channelId)
 	if ok == false {
@@ -196,43 +206,15 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 	for {
 		msg, err := psconn.Subscription.Next(ctx)
 		if err == nil {
+
 			var pkg quorumpb.Package
 			if err := proto.Unmarshal(msg.Data, &pkg); err == nil {
 				size := float64(metric.GetProtoSize(&pkg))
 				metric.SuccessCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
 				metric.InBytes.WithLabelValues(metric.ActionType.ReceiveFromTopic).Set(size)
 				metric.InBytesTotal.WithLabelValues(metric.ActionType.ReceiveFromTopic).Add(size)
+				psconn.chain.HandlePackageMessage(&pkg)
 
-				if pkg.Type == quorumpb.PackageType_BLOCK {
-					//is block
-					var blk *quorumpb.Block
-					blk = &quorumpb.Block{}
-					err := proto.Unmarshal(pkg.Data, blk)
-					if err == nil {
-						psconn.chain.HandleBlockPsConn(blk)
-					} else {
-						channel_log.Warning(err.Error())
-					}
-				} else if pkg.Type == quorumpb.PackageType_TRX {
-					var trx *quorumpb.Trx
-					trx = &quorumpb.Trx{}
-					err := proto.Unmarshal(pkg.Data, trx)
-
-					if err == nil {
-						psconn.chain.HandleTrxPsConn(trx)
-					} else {
-						channel_log.Warningf(err.Error())
-					}
-				} else if pkg.Type == quorumpb.PackageType_SNAPSHOT {
-					var snapshot *quorumpb.Snapshot
-					snapshot = &quorumpb.Snapshot{}
-					err := proto.Unmarshal(pkg.Data, snapshot)
-					if err == nil {
-						psconn.chain.HandleSnapshotPsConn(snapshot)
-					} else {
-						channel_log.Warningf(err.Error())
-					}
-				}
 			} else {
 				metric.FailedCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
 				channel_log.Warningf(err.Error())

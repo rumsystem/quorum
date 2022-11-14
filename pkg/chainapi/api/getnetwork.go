@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"

@@ -1,11 +1,14 @@
 package def
 
 import (
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type Producer interface {
-	Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
+	NewProducer(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
+	RecreateBft()
+	TryPropose()
+	AddBlock(block *quorumpb.Block) error
 	AddTrx(trx *quorumpb.Trx)
-	AddProducedBlock(trx *quorumpb.Trx) error
+	HandleHBMsg(hb *quorumpb.HBMsgv1) error
 }

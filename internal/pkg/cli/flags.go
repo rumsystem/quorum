@@ -8,7 +8,7 @@ import (
 
 type AddrList []maddr.Multiaddr
 
-type FullnodeFlag struct {
+type FullNodeFlag struct {
 	RendezvousString string
 	BootstrapPeers   AddrList
 	ListenAddresses  AddrList
@@ -17,7 +17,29 @@ type FullnodeFlag struct {
 	CertDir          string
 	ZeroAccessKey    string
 	ProtocolID       string
-	IsBootstrap      bool
+	IsRexTestMode    bool
+	PeerName         string
+	JsonTracer       string
+	IsDebug          bool
+	ConfigDir        string
+	DataDir          string
+	KeyStoreDir      string
+	KeyStoreName     string
+	KeyStorePwd      string
+	AutoAck          bool
+	EnableRelay      bool
+}
+
+// TBD remove unused flags
+type BootstrapNodeFlag struct {
+	RendezvousString string
+	BootstrapPeers   AddrList
+	ListenAddresses  AddrList
+	APIHost          string
+	APIPort          uint
+	CertDir          string
+	ZeroAccessKey    string
+	ProtocolID       string
 	IsRexTestMode    bool
 	PeerName         string
 	JsonTracer       string
@@ -56,6 +78,25 @@ type RelayNodeFlag struct {
 	KeyStoreName    string
 	KeyStorePwd     string
 	IsDebug         bool
+}
+
+type ProducerNodeFlag struct {
+	RendezvousString string
+	BootstrapPeers   AddrList
+	ListenAddresses  AddrList
+	APIHost          string
+	APIPort          uint
+	CertDir          string
+	ZeroAccessKey    string
+	ProtocolID       string
+	PeerName         string
+	JsonTracer       string
+	IsDebug          bool
+	ConfigDir        string
+	DataDir          string
+	KeyStoreDir      string
+	KeyStoreName     string
+	KeyStorePwd      string
 }
 
 func (al *AddrList) String() string {

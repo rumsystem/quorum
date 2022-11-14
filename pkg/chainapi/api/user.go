@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"encoding/hex"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type GrpUserResult struct {
@@ -48,6 +49,17 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 	params := new(GrpUserParam)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
+	}
+
+	var sudo bool
+	if c.QueryParams().Get("sudo") == "" {
+		sudo = false
+	} else {
+		v, err := strconv.ParseBool(c.Param("sudo"))
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
+		sudo = v
 	}
 
 	groupmgr := chain.GetGroupMgr()
@@ -113,7 +125,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 
 		item.Memo = params.Memo
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdUser(item)
+		trxId, err := group.UpdUser(item, sudo)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

@@ -6,12 +6,12 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 const GROUP_INFO string = "group_info"
@@ -73,13 +73,12 @@ type AnnGrpUser struct {
 }
 
 type GrpInfoNodeSDK struct {
-	GroupId        string
-	Owner          string
-	HighestBlockId string
-	HighestHeight  int64
-	LatestUpdate   int64
-	Provider       string
-	Singature      string
+	GroupId      string
+	Owner        string
+	Epoch        int64
+	LatestUpdate int64
+	Provider     string
+	Singature    string
 }
 
 func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
@@ -221,8 +220,9 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				grpInfo.Owner = grp.Item.OwnerPubKey
 				grpInfo.Provider = grp.Item.UserSignPubkey
 				grpInfo.LatestUpdate = grp.Item.LastUpdate
-				grpInfo.HighestBlockId = grp.Item.HighestBlockId
-				grpInfo.HighestHeight = grp.Item.HighestHeight
+				grpInfo.Epoch = grp.Item.Epoch
+				//grpInfo.HighestBlockId = grp.Item.HighestBlockId
+				//grpInfo.HighestHeight = grp.Item.HighestHeight
 
 				/*
 					//Did we really need a sign from fullnode ?

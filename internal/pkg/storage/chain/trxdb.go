@@ -1,20 +1,16 @@
 package chainstorage
 
 import (
-	"fmt"
-
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-//save trx
+// save trx
 func (cs *Storage) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.TRX_PREFIX + "_" + trx.TrxId + "_" + fmt.Sprint(trx.Nonce)
+	key := s.GetTrxKey(trx.GroupId, trx.TrxId, trx.Nonce, prefix...)
 	value, err := proto.Marshal(trx)
 	if err != nil {
 		return err
@@ -27,15 +23,14 @@ func (cs *Storage) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
 	return cs.AddTrx(trx, prefix...)
 }
 
-//Get Trx
-func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
-	nodeprefix := utils.GetPrefix(prefix...)
+// Get Trx
+func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
 	var trx quorumpb.Trx
 	var nonces []int64
 
 	var key string
 	if storagetype == def.Chain {
-		key = nodeprefix + s.TRX_PREFIX + "_" + trxId
+		key = s.GetTrxPrefix(groupId, trxId, prefix...)
 		err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 			if err != nil {
 				return err
@@ -49,18 +44,18 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 		})
 		trx.StorageType = quorumpb.TrxStroageType_CHAIN
 	} else if storagetype == def.Cache {
-		key = nodeprefix + s.CHD_PREFIX + "_" + s.BLK_PREFIX
+		key = s.GetCachedBlockPrefix(groupId, prefix...)
 		err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 			if err != nil {
 				return err
 			}
-			chunk := quorumpb.BlockDbChunk{}
-			perr := proto.Unmarshal(v, &chunk)
+			block := quorumpb.Block{}
+			perr := proto.Unmarshal(v, &block)
 			if perr != nil {
 				return perr
 			}
-			if chunk.BlockItem != nil && chunk.BlockItem.Trxs != nil {
-				for _, blocktrx := range chunk.BlockItem.Trxs {
+			if block.Trxs != nil {
+				for _, blocktrx := range block.Trxs {
 					if blocktrx.TrxId == trxId {
 						nonces = append(nonces, blocktrx.Nonce)
 
@@ -85,8 +80,7 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 	return &trx, nonces, err
 }
 
-func (cs *Storage) IsTrxExist(trxId string, nonce int64, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	key := nodeprefix + s.TRX_PREFIX + "_" + trxId + "_" + fmt.Sprint(nonce)
+func (cs *Storage) IsTrxExist(groupId string, trxId string, nonce int64, prefix ...string) (bool, error) {
+	key := s.GetTrxKey(groupId, trxId, nonce, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

@@ -20,8 +20,7 @@ var (
 	bootstrapapi, peer1api, peer2api          string
 	peerapilist, groupIds                     []string
 	timerange, nodes, groups, posts, synctime int
-
-	logger = logging.Logger("main_test")
+	logger                                    = logging.Logger("main_test")
 )
 
 func TestMain(m *testing.M) {
@@ -126,7 +125,6 @@ func TestJoinGroup(t *testing.T) {
 				t.Errorf("join leaved group test failed with response code %d", status)
 			}
 			// verify group status
-			ready := "IDLE"
 			_, resp, err = testnode.RequestAPI(peerapi, "/api/v1/groups", "GET", "")
 
 			if err != nil {
@@ -143,14 +141,16 @@ func TestJoinGroup(t *testing.T) {
 				t.Errorf("Group number check failed, have %d groups, except 1", len(groupslist.GroupInfos))
 			}
 
+			//ready := "IDLE"
 			for _, groupinfo := range groupslist.GroupInfos {
 				logger.Debugf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
 				if groupinfo.GroupId != groupId {
 					t.Errorf("Check group status failed %s, groupId mismatch", err)
 				}
-				if groupinfo.GroupStatus != ready {
-					t.Errorf("Check group status failed %s, group not IDLE", err)
-				}
+				//No need to check IDLE status in this test case
+				//if groupinfo.GroupStatus != ready {
+				//	t.Errorf("Check group status failed %s, group not IDLE", err)
+				//}
 			}
 
 			logger.Debugf("_____________TEST_LEAVE_GROUP_____________")
@@ -302,7 +302,7 @@ func TestGroupsPostContents(t *testing.T) {
 		groupIdToTrxIds[groupId] = []string{}
 		for i := 1; i <= posts; i++ {
 			content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupId, i, groupId, i, groupId)
-			_, resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content", "POST", content)
+			_, resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content/false", "POST", content)
 			if err != nil {
 				t.Errorf("post content to api error %s", err)
 			}

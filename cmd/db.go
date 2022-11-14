@@ -9,7 +9,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"

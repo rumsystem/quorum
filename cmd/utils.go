@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 // reutrn EBUSY if LOCK is exist

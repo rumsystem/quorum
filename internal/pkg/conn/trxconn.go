@@ -1,7 +1,7 @@
 package conn
 
 import (
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 func SendTrxWithoutRetry(groupId string, trx *quorumpb.Trx, channel PsConnChanel) (string, error) {

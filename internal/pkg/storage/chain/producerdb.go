@@ -1,59 +1,114 @@
 package chainstorage
 
 import (
-	"errors"
-
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return cs.UpdateProducer(trx.Data, prefix...)
+func (cs *Storage) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) error {
+	err := cs.UpdateProducer(trx.GroupId, trx.Data, prefix...)
+	if err != nil {
+		return err
+	}
+
+	//save trxId of latest producer update trx
+	groupInfo, err := cs.GetGroupInfo(trx.GroupId)
+	if err != nil {
+		return err
+	}
+
+	key := s.GetProducerTrxIDKey(groupInfo.GroupId, prefix...)
+	return cs.dbmgr.Db.Set([]byte(key), []byte(trx.TrxId))
 }
 
-func (cs *Storage) UpdateProducer(data []byte, prefix ...string) (err error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	item := &quorumpb.ProducerItem{}
+func (cs *Storage) GetUpdProducerListTrx(groupId string, prefix ...string) (*quorumpb.Trx, error) {
+	key := s.GetProducerTrxIDKey(groupId, prefix...)
+	btrx_id, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	trxId := string(btrx_id)
+
+	trx, _, err := cs.GetTrx(groupId, trxId, def.Chain, prefix...)
+	if err != nil {
+		return nil, err
+	}
+
+	return trx, nil
+}
+
+func (cs *Storage) UpdateProducer(groupId string, data []byte, prefix ...string) error {
+	item := &quorumpb.BFTProducerBundleItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
 	}
 
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
-	if pk == "" {
-		pk = item.ProducerPubkey
+	groupInfo, err := cs.GetGroupInfo(groupId)
+	if err != nil {
+		return err
 	}
 
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
-
-	chaindb_log.Infof("upd producer with key %s", key)
-
-	if item.Action == quorumpb.ActionType_ADD {
-		chaindb_log.Infof("Add producer")
-		return cs.dbmgr.Db.Set([]byte(key), data)
-	} else if item.Action == quorumpb.ActionType_REMOVE {
-		//check if group exist
-		chaindb_log.Infof("Remove producer")
-		exist, err := cs.dbmgr.Db.IsExist([]byte(key))
-		if !exist {
-			if err != nil {
-				return err
-			}
-			return errors.New("Producer Not Found")
+	//Get all current producers (except owner)
+	var cplist []string
+	key := s.GetProducerPrefix(groupId, prefix...)
+	err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		item := &quorumpb.ProducerItem{}
+		perr := proto.Unmarshal(v, item)
+		if perr != nil {
+			return perr
 		}
 
-		return cs.dbmgr.Db.Delete([]byte(key))
-	} else {
-		chaindb_log.Infof("Remove producer")
-		return errors.New("unknow msgType")
+		if item.ProducerPubkey != groupInfo.OwnerPubKey {
+			pkey := key + "_" + item.ProducerPubkey
+			cplist = append(cplist, pkey)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
+
+	//remove all producers (except owner)
+	for _, pkey := range cplist {
+		err := cs.dbmgr.Db.Delete([]byte(pkey))
+		if err != nil {
+			return err
+		}
+	}
+
+	//update with new producers list
+	for _, producerItem := range item.Producers {
+		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(producerItem.ProducerPubkey)
+		if pk == "" {
+			pk = producerItem.ProducerPubkey
+		}
+
+		pdata, err := proto.Marshal(producerItem)
+		if err != nil {
+			return err
+		}
+
+		key := s.GetProducerKey(producerItem.GroupId, pk, prefix...)
+		err = cs.dbmgr.Db.Set([]byte(key), pdata)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (cs *Storage) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	nodeprefix := utils.GetPrefix(Prefix...)
-	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_"
+	key := s.GetProducerPrefix(groupId, Prefix...)
 	var producerByteList [][]byte
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -68,15 +123,12 @@ func (cs *Storage) GetAllProducerInBytes(groupId string, Prefix ...string) ([][]
 }
 
 func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
-
-	nodeprefix := utils.GetPrefix(prefix...)
-
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
 	if pk == "" {
 		pk = item.ProducerPubkey
 	}
 
-	key := nodeprefix + s.PRD_PREFIX + "_" + item.GroupId + "_" + pk
+	key := s.GetProducerKey(item.GroupId, pk, prefix...)
 	chaindb_log.Infof("Add Producer with key %s", key)
 
 	pbyte, err := proto.Marshal(item)
@@ -86,72 +138,8 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 	return cs.dbmgr.Db.Set([]byte(key), pbyte)
 }
 
-func (cs *Storage) AddProducedBlockCount(groupId, pubkey string, prefix ...string) error {
-	nodeprefix := utils.GetPrefix(prefix...)
-	var err error
-	libp2ppk := ""
-	ethpk := ""
-	pk, err := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
-	if err == nil {
-		ethpk = pk
-		libp2ppk = pubkey
-		//the pubkey is libp2pkey, convert succ, pk is eth base64key
-	} else {
-		//if pubkey is a ethkey
-		libp2ppk, err = localcrypto.EthBase64ToLibp2pPubkey(pubkey)
-		if err == nil {
-			//the pubkey is ethkey
-			ethpk = pubkey
-		}
-	}
-
-	key := nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + ethpk
-	var pProducer *quorumpb.ProducerItem
-	pProducer = &quorumpb.ProducerItem{}
-
-	value, err := cs.dbmgr.Db.Get([]byte(key))
-	if err != nil {
-		if libp2ppk != "" {
-			//patch for old keyformat
-			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
-			value, err = cs.dbmgr.Db.Get([]byte(key))
-			if err != nil {
-				key = s.PRD_PREFIX + "_" + groupId + "_" + libp2ppk
-				value, err = cs.dbmgr.Db.Get([]byte(key))
-				if err != nil {
-					return err
-				}
-
-			}
-			//update to the new keyformat
-			key = nodeprefix + s.PRD_PREFIX + "_" + groupId + "_" + ethpk
-		} else {
-			return err
-		}
-
-	}
-
-	err = proto.Unmarshal(value, pProducer)
-	if err != nil {
-		return err
-	}
-
-	pProducer.BlockProduced += 1
-
-	value, err = proto.Marshal(pProducer)
-	if err != nil {
-		return err
-	}
-	return cs.dbmgr.Db.Set([]byte(key), value)
-}
-
 func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
-	if pk == "" {
-		pk = pubkey
-	}
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pk
+	key := s.GetAnnounceAsProducerKey(groupId, pubkey, prefix...)
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
@@ -168,11 +156,6 @@ func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ..
 }
 
 func (cs *Storage) IsProducerAnnounced(groupId, pubkey string, prefix ...string) (bool, error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
-	if pk == "" {
-		pk = pubkey
-	}
-	key := nodeprefix + s.ANN_PREFIX + "_" + groupId + "_" + quorumpb.AnnounceType_AS_PRODUCER.String() + "_" + pk
+	key := s.GetAnnounceAsProducerKey(groupId, pubkey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

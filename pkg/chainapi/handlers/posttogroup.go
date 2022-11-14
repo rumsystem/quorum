@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type CustomValidatorPost struct {
@@ -55,7 +55,7 @@ type TrxResult struct {
 	TrxId string `json:"trx_id" validate:"required"`
 }
 
-func PostToGroup(paramspb *quorumpb.Activity) (*TrxResult, error) {
+func PostToGroup(paramspb *quorumpb.Activity, sudo bool) (*TrxResult, error) {
 	validate := &CustomValidatorPost{Validator: validator.New()}
 	if err := validate.Validate(paramspb); err != nil {
 		return nil, err
@@ -63,11 +63,14 @@ func PostToGroup(paramspb *quorumpb.Activity) (*TrxResult, error) {
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
+		if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
+			return nil, errors.New("Only group owner can run sudo")
+		}
+
 		if paramspb.Object.Type == "" {
 			paramspb.Object.Type = paramspb.Type
 		}
-
-		trxId, err := group.PostToGroup(paramspb.Object)
+		trxId, err := group.PostToGroup(paramspb.Object, sudo)
 
 		if err != nil {
 			return nil, err

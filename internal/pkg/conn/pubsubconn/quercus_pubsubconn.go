@@ -9,7 +9,7 @@ import (
 	"github.com/huo-ju/quercus/pkg/quality"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -98,6 +98,22 @@ func (qconn *QuercusConn) handleGroupChannel(chantype ChannelType) error {
 						qconn.chain.HandleTrxPsConn(trx)
 					} else {
 						quercus_log.Warningf(err.Error())
+					}
+				} else if pkg.Type == quorumpb.PackageType_HBB {
+					hb := &quorumpb.HBMsgv1{}
+					err := proto.Unmarshal(pkg.Data, hb)
+					if err == nil {
+						qconn.chain.HandleHBPsConn(hb)
+					} else {
+						channel_log.Warningf(err.Error())
+					}
+				} else if pkg.Type == quorumpb.PackageType_CONSENSUS {
+					consensus := &quorumpb.ConsensusMsg{}
+					err := proto.Unmarshal(pkg.Data, consensus)
+					if err == nil {
+						channel_log.Warningf(err.Error())
+					} else {
+						qconn.chain.HandleConsesusPsConn(consensus)
 					}
 				}
 			}

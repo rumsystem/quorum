@@ -24,12 +24,15 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[params.GroupId]
 	if ok {
+		/* commented by cuicat
 		// stop syncing first, to avoid starving in browser (indexeddb)
-		if err := group.StopSync(); err != nil {
-			return nil, err
-		}
+
+			if err := group.StopSync(); err != nil {
+				return nil, err
+			}
+		*/
 		// group may not exists or already be left
-		if err := group.ClearGroup(); err != nil {
+		if err := group.ClearGroupData(); err != nil {
 			return nil, err
 		}
 	}

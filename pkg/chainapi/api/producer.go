@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
@@ -24,7 +25,18 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		return err
 	}
 
-	res, err := handlers.GroupProducer(h.ChainAPIdb, params)
+	var sudo bool
+	if c.QueryParams().Get("sudo") == "" {
+		sudo = false
+	} else {
+		v, err := strconv.ParseBool(c.Param("sudo"))
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
+		sudo = v
+	}
+
+	res, err := handlers.GroupProducer(h.ChainAPIdb, params, sudo)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

@@ -3,12 +3,13 @@ package nodectx
 import (
 	"context"
 
-	p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
+	"github.com/rumsystem/quorum/pkg/constants"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type NodeStatus int8
@@ -24,8 +25,17 @@ const (
 	SYNC_CHANNEL_PREFIX     = "sync_channel_"
 )
 
+type NODE_TYPE int
+
+const (
+	BOOTSTRAP_NODE NODE_TYPE = iota
+	PRODUCER_NODE
+	FULL_NODE
+)
+
 type NodeCtx struct {
 	Node      *p2p.Node
+	NodeType  NODE_TYPE
 	PeerId    peer.ID
 	Keystore  localcrypto.Keystore
 	PublicKey p2pcrypto.PubKey
@@ -54,11 +64,12 @@ func (nodeCtx *NodeCtx) GetChainStorage() *chainstorage.Storage {
 	return nodeCtx.chaindb
 }
 
-func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, chaindb *chainstorage.Storage, channeltype string, gitcommit string) {
+func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr, chaindb *chainstorage.Storage, channeltype string, gitcommit string, nodetype NODE_TYPE) {
 	nodeCtx = &NodeCtx{}
 	nodeCtx.Name = name
 	nodeCtx.Node = node
 	nodeCtx.chaindb = chaindb
+	nodeCtx.NodeType = nodetype
 
 	dbMgr = db
 
@@ -91,7 +102,7 @@ func (nodeCtx *NodeCtx) GetNodePubKey() (string, error) {
 }
 
 func (nodeCtx *NodeCtx) ListGroupPeers(groupid string) []peer.ID {
-	userChannelId := USER_CHANNEL_PREFIX + groupid
+	userChannelId := constants.USER_CHANNEL_PREFIX + groupid
 	return nodeCtx.Node.Pubsub.ListPeers(userChannelId)
 }
 

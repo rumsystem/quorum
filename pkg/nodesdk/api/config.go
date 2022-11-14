@@ -133,11 +133,10 @@ type GrpInfo struct {
 }
 
 type GrpInfoNodeSDK struct {
-	GroupId        string
-	Owner          string
-	HighestBlockId string
-	HighestHeight  int64
-	LatestUpdate   int64
-	Provider       string
-	Singature      string
+	GroupId      string
+	Owner        string
+	Epoch        int64
+	LatestUpdate int64
+	Provider     string
+	Singature    string
 }

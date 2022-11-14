@@ -6,19 +6,20 @@ import (
 	"os/signal"
 	"syscall"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	nodesdkapi "github.com/rumsystem/quorum/pkg/nodesdk/api"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	"github.com/spf13/cobra"
 )
 
 var (
-	lnodeFlag = cli.LightnodeFlag{}
+	lnodeFlag         = cli.LightnodeFlag{}
+	lightnodeSignalch chan os.Signal
 )
 
 // lightnodeCmd represents the lightnode command
@@ -55,7 +56,7 @@ func runLightnode(config cli.LightnodeFlag) {
 	logger.Infof("Version: %s", utils.GitCommit)
 	const defaultKeyName = "nodesdk_default"
 
-	signalch = make(chan os.Signal, 1)
+	lightnodeSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -124,12 +125,12 @@ func runLightnode(config cli.LightnodeFlag) {
 		APIHost: config.APIHost,
 		APIPort: config.APIPort,
 	}
-	go nodesdkapi.StartNodeSDKServer(startApiParam, signalch, nodeHandler, nodeoptions)
+	go nodesdkapi.StartNodeSDKServer(startApiParam, lightnodeSignalch, nodeHandler, nodeoptions)
 
 	//attach signal
-	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
-	signalType := <-signalch
-	signal.Stop(signalch)
+	signal.Notify(lightnodeSignalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signalType := <-lightnodeSignalch
+	signal.Stop(lightnodeSignalch)
 
 	nodesdkctx.GetDbMgr().CloseDb()
 

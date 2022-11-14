@@ -9,8 +9,7 @@ import (
 	"fmt"
 
 	ethKeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/libp2p/go-libp2p-core/peer"
-	quorumCrypto "github.com/rumsystem/keystore/pkg/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -21,6 +20,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumStorage "github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
+	quorumCrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumConfig "github.com/rumsystem/quorum/pkg/wasm/config"
 	quorumContext "github.com/rumsystem/quorum/pkg/wasm/context"
 )

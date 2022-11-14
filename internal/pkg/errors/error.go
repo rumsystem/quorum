@@ -15,6 +15,7 @@ var (
 
 	ErrInvalidBlockID  = errors.New("Invalid block id")
 	ErrBlockIDNotFound = errors.New("Block id not found")
+	ErrBlockExist      = errors.New("Block aleady exist")
 
 	ErrInvalidTrxID     = errors.New("Invalid trx id")
 	ErrInvalidTrxIDList = errors.New("Invalid trx id list")
@@ -34,4 +35,6 @@ var (
 	ErrInvalidChainAPIURL = errors.New("Invalid chain api url")
 
 	ErrInvalidJWT = errors.New("Invalid JWT")
+
+	ErrNoPeersAvailable = errors.New("no peers available, waiting for reconnect")
 )

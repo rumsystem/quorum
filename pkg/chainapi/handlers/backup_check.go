@@ -4,21 +4,17 @@
 package handlers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"path/filepath"
 
-	"github.com/rumsystem/keystore/pkg/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
-	"google.golang.org/protobuf/proto"
+	"github.com/rumsystem/quorum/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 func CheckSignAndEncryptWithKeystore(keystoreName, keystoreDir, configDir, peerName, password string) error {
@@ -133,6 +129,7 @@ func loadAndDecryptTrx(dir, seedDir string, ks *localcrypto.DirKeyStore) error {
 	defer dbMgr.Db.Close()
 	defer dbMgr.GroupInfoDb.Close()
 
+	/* commented by cuicat
 	pubCount, privCount := 0, 0
 	key := getBlockPrefixKey()
 	err = dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
@@ -195,6 +192,7 @@ func loadAndDecryptTrx(dir, seedDir string, ks *localcrypto.DirKeyStore) error {
 	if err != nil {
 		logger.Fatalf("dbManager.Db.PrefixForeach failed: %s", err)
 	}
+	*/
 	return nil
 }
 

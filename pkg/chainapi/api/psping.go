@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/labstack/echo/v4"
-	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
