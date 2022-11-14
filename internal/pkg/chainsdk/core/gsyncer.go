@@ -30,17 +30,21 @@ type EpochSyncTask struct {
 	Epoch int64
 }
 
-type SyncTaskType uint
+type ConsensusSyncTask struct {
+	SessionId string
+}
+
+type TaskType uint
 
 const (
-	BlockSync SyncTaskType = iota
+	GetEpoch TaskType = iota
 	ConsensusSync
 )
 
 type SyncTask struct {
-	Type SyncTaskType
-	Meta interface{}
 	Id   string
+	Type TaskType
+	Meta interface{}
 }
 
 type TimeoutNoResult struct {
@@ -48,40 +52,53 @@ type TimeoutNoResult struct {
 }
 
 type SyncResult struct {
-	Data   interface{}
 	Id     string
 	TaskId string
+	Data   interface{}
 }
 
 type Gsyncer struct {
-	//nodeName         string
 	GroupId          string
-	waitEpoch        int64 //waiting the task response for epoch
 	Status           int8
+	waitEpoch        int64  //waiting the task response for epoch
 	waitResultTaskId string //waiting the result for taskid
 	retryCount       int8
 	retrycountmu     sync.Mutex
-	taskq            chan *SyncTask
-	resultq          chan *SyncResult
-	retrynext        bool //workaround for rumexchange
-	taskdone         chan struct{}
-	stopnotify       chan struct{}
 
-	nextTask       func(epoch int64) (*SyncTask, error)    //request the next task
+	//chan signals
+	taskq      chan *SyncTask
+	resultq    chan *SyncResult
+	taskdone   chan struct{}
+	stopnotify chan struct{}
+
+	GetATask       map[TaskType]func(args ...interface{}) (*SyncTask, error)
 	resultreceiver func(result *SyncResult) (int64, error) //receive resutls and process them (save to the db, update chain...), return an id related with next task and error
 	tasksender     func(task *SyncTask) error              //send task via network or others
+
+	retrynext bool //workaround for rumexchange
+
+	//nodeName         string
+	//nextTask       func(epoch int64) (*SyncTask, error)    //request the next task
 }
 
-func NewGsyncer(groupid string, getTask func(epoch int64) (*SyncTask, error), resultreceiver func(result *SyncResult) (int64, error), tasksender func(task *SyncTask) error) *Gsyncer {
+func NewGsyncer(groupid string,
+	getSyncTask map[TaskType]func(args ...interface{}) (*SyncTask, error),
+	resultreceiver func(result *SyncResult) (int64, error),
+	tasksender func(task *SyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
+
 	s := &Gsyncer{}
-	s.Status = IDLE
+
 	s.GroupId = groupid
-	s.nextTask = getTask
-	s.resultreceiver = resultreceiver
-	s.tasksender = tasksender
+	s.Status = IDLE
+
 	s.retryCount = 0
 
+	s.GetATask = getSyncTask
+	s.resultreceiver = resultreceiver
+	s.tasksender = tasksender
+
+	//s.nextTask = getTask
 	return s
 }
 
@@ -98,6 +115,7 @@ func (s *Gsyncer) RetryCounterInc() {
 	s.retryCount++
 	s.retrycountmu.Unlock()
 }
+
 func (s *Gsyncer) RetryCounterClear() {
 	s.retrycountmu.Lock()
 	s.retryCount = 0
@@ -174,6 +192,7 @@ func (s *Gsyncer) Start() {
 	s.taskdone = make(chan struct{})
 	s.stopnotify = make(chan struct{})
 
+	//taskq
 	go func() {
 		for task := range s.taskq {
 			gsyncer_log.Debugf("Start process task")
@@ -201,6 +220,7 @@ func (s *Gsyncer) Start() {
 		s.stopnotify <- struct{}{}
 	}()
 
+	//resultq
 	go func() {
 		for result := range s.resultq {
 			ctx, cancel := context.WithTimeout(context.Background(), RESULT_TIMEOUT*time.Second)
@@ -214,6 +234,7 @@ func (s *Gsyncer) Start() {
 					continue
 				}
 
+				//TBD add new task according to different scenes
 				nexttask, err := s.nextTask(nextepoch)
 				if err != nil {
 					gsyncer_log.Debugf("nextTask error:%s", err)
