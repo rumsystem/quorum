@@ -42,7 +42,7 @@ func (cs *Storage) GatherBlocksFromCache(block *quorumpb.Block, prefix ...string
 	var blocks []*quorumpb.Block
 	blocks = append(blocks, block)
 	epoch := block.Epoch
-	pre := s.GetCachedBlockKey(block.GroupId, prefix...)
+	pre := s.GetCachedBlockPrefix(block.GroupId, prefix...)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(pre), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err

@@ -73,7 +73,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 
 	ctnobjList := []*GroupContentObjectItem{}
 	for _, trxid := range trxids {
-		trx, _, err := h.Trxdb.GetTrx(trxid.TrxId, def.Chain, h.NodeName)
+		trx, _, err := h.Trxdb.GetTrx(groupid, trxid.TrxId, def.Chain, h.NodeName)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue
