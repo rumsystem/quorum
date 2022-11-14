@@ -1,18 +1,23 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	txMaxSize = 1024 * 1024 * 50
+	maxBatchSize = 1000
+	txMaxSize    = 1024 * 1024 * 50
 )
 
 var (
@@ -107,7 +112,7 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 
 	err = srcDB.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 1000
+		opts.PrefetchSize = maxBatchSize
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
@@ -121,15 +126,19 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 				return err
 			}
 
-			if len(keys) >= 1000 {
+			newKey, err := _getNewTrxKey(kind, k[:], v)
+			if err != nil {
+				return err
+			}
+
+			keys = append(keys, newKey)
+			vals = append(vals, v)
+			if len(keys) >= maxBatchSize {
 				if err := dstDB.BatchWrite(keys, vals); err != nil {
 					return err
 				}
 				keys = [][]byte{}
 				vals = [][]byte{}
-			} else {
-				keys = append(keys, k)
-				vals = append(vals, v)
 			}
 		}
 
@@ -147,6 +156,36 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 		return err
 	}
 	return nil
+}
+
+// _getNewTrxKey return new trx key or just origin key
+func _getNewTrxKey(kind string, key []byte, val []byte) ([]byte, error) {
+	if kind != "db" { // FIXME: hardcode; trx data in db.db
+		return key, nil
+	}
+
+	var prefix string
+	if bytes.HasPrefix(key, []byte("trx_")) {
+		prefix = "trx_"
+	} else if bytes.HasPrefix(key, []byte("default_trx_")) {
+		prefix = "default_trx_"
+	} else {
+		return key, nil
+	}
+
+	keySuffix := strings.ReplaceAll(string(key), prefix, "")
+	parts := strings.Split(keySuffix, "_")
+	if len(parts) > 2 && len(parts[0]) == 36 && len(parts[1]) == 36 {
+		return key, nil
+	}
+
+	var trx quorumpb.Trx
+	if err := proto.Unmarshal(val, &trx); err != nil {
+		return nil, err
+	}
+
+	newKey := []byte(prefix + trx.GroupId + "_" + strings.Join(parts, "_"))
+	return newKey, nil
 }
 
 func migrateAll() error {
