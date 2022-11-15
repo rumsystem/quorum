@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -175,9 +176,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.syncerrunner.AddTrxToSyncerQueue(trx, "")
-		//err := chain.handleReqBlockResp(trx)
-		//return err
+		chain.HandleReqBlockResp(trx)
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -304,7 +303,6 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		//let psync handle the req
 		return chain.Consensus.PSync().AddConsensusReq(c)
 	} else if c.MsgType == quorumpb.ConsensusType_RESP {
-
 		//check if psync result with same session_id exist
 		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsPSyncSessionExist(chain.groupId, c.SessionId)
 		if err != nil {
@@ -332,13 +330,7 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		}
 		chain_log.Debugf("PSyncResp From valid producer/owner")
 
-		//check if need sync or do something else
-		err = chain.handlePSyncResp(c.SessionId, resp)
-
-		if err != nil {
-			return err
-		}
-
+		chain.syncerrunner.AddConsensusToSyncerQueue(resp)
 		return nil
 	} else {
 		return fmt.Errorf("unknown msgType %s", c.MsgType)
@@ -348,7 +340,7 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 /*
 all sync related rules go here
 */
-func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
+func (chain *Chain) HandlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
 	chain_log.Debugf("<%s> handlePSyncResp called, SessionId <%s>", chain.groupId, sessionId)
 
 	//if curEposh is less than psync resp already handled
@@ -369,13 +361,8 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 		}
 	}
 
-	//if curChainCnf > myEpoch, start sync
-	if resp.CurChainEpoch > chain.group.Item.Epoch {
-		chain_log.Debugf("Miss something, start sync")
-		chain.StartSync()
-	} else {
-		chain_log.Debugf("same epoch with chain, no need to sync, do nothing")
-	}
+	//tell syncer we are finished
+	chain.syncerrunner.AddConsensusToSyncerQueue(resp)
 
 	//update PsyncResp in DB
 	return nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupId, sessionId, resp)
@@ -564,65 +551,76 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	*/
 }
 
-func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (int64, error) {
-	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupId)
+func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) { //taskId,error
+	chain_log.Debugf("<%s> HandleReqBlockResp called", chain.groupId)
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	reqBlockResp := &quorumpb.ReqBlockResp{}
 	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
-		return 0, err
+		return "", err
 	}
+
+	//if not asked by me, ignore it
+	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
+		return "", ErrIgnore
+	}
+
+	gsyncerTaskId, gsyncerTaskType, err := chain.syncerrunner.GetCurrentSyncTask()
+	if gsyncerTaskType != GetEpoch {
+		return "", ErrIgnore
+	}
+
+	//get epoch by using taskId
+	epochWaiting, err := strconv.ParseInt(gsyncerTaskId, 10, 64)
+	if err != nil {
+		return "", err
+	}
+
+	//check if the epoch is what we are waiting for
+	if reqBlockResp.Epoch != epochWaiting {
+		return "", ErrIgnore
+	}
+
+	//sync done
+	//TBD should wait till all producers say so
+	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
+		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
+		taskId := strconv.Itoa(int(reqBlockResp.Epoch))
+		return taskId, ErrSyncDone
+	}
+
+	//handle synced block
+	newBlock := &quorumpb.Block{}
+	if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
+		return "", err
+	}
+
 	//TODO: Verify response and block
 	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp Verify response and block ", chain.groupId)
 
-	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND { //sync done, set to IDLE
-		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
-		return reqBlockResp.Epoch, ErrSyncDone
-	}
-
-	//if not asked by myself, ignore it
-	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
-		return 0, nil
-	}
-
-	newBlock := &quorumpb.Block{}
-
-	if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
-		return 0, err
-	}
-
-	chain_log.Debugf("<%s> newBlock.Epoch is %d  waitepoch is %d .", chain.groupId, newBlock.Epoch, chain.syncerrunner.GetWaitEpoch())
-	if newBlock.Epoch != chain.syncerrunner.GetWaitEpoch() {
-		chain_log.Debugf("<%s> Ingore newBlock, return", chain.groupId)
-		return 0, nil
-
-	}
-
-	//TODO: if block epoch < waiting epoch, ignore it.
-	shouldAccept := true
-	//TODO: verify the block
-	//if run as producer node
-	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp set shouldAccept", chain.groupId)
-
-	if !shouldAccept {
-		chain_log.Debugf("The block can't be accepted, reason:...")
-		return 0, nil
-	}
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		chain_log.Info("PRODUCER_NODE handle block")
-		return newBlock.Epoch + 1, chain.Consensus.Producer().AddBlock(newBlock)
+		err = chain.Consensus.Producer().AddBlock(newBlock)
+		if err != nil {
+			return "", err
+		}
+		return gsyncerTaskId, nil
 	} else {
-		//user sync
-		return newBlock.Epoch + 1, chain.Consensus.User().AddBlock(newBlock)
+		err = chain.Consensus.User().AddBlock(newBlock)
+		if err != nil {
+			return "", err
+		}
+		return gsyncerTaskId, nil
 	}
+
+	chain.syncerrunner.UpdateGetEpochResult(gsyncerTaskId)
 }
 
 func (chain *Chain) UpdProducerList() {

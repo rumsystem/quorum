@@ -3,10 +3,8 @@ package chain
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -301,66 +299,4 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 	*/
 
 	return trx.TrxId, nil
-}
-
-func (grp *Group) sendConsensusReq() (string, error) {
-	group_log.Debugf("<%s> sendConsensusReq called", grp.Item.GroupId)
-	//create protobuf msg
-
-	consensusReq := &quorumpb.ConsensusReq{
-		MyEpoch: grp.Item.Epoch,
-	}
-
-	group_log.Debugf("<%s> Create ConsensusReq with Epoch <%d> done", grp.Item.GroupId, grp.Item.Epoch)
-
-	cbytes, err := proto.Marshal(consensusReq)
-	if err != nil {
-		return "", err
-	}
-
-	consensusMsg := &quorumpb.ConsensusMsg{
-		GroupId:      grp.Item.GroupId,
-		SessionId:    uuid.NewString(),
-		MsgType:      quorumpb.ConsensusType_REQ,
-		Payload:      cbytes,
-		SenderPubkey: grp.Item.UserSignPubkey,
-		TimeStamp:    time.Now().UnixNano(),
-	}
-
-	bbytes, err := proto.Marshal(consensusMsg)
-	if err != nil {
-		return "", err
-	}
-
-	msgHash := localcrypto.Hash(bbytes)
-
-	var signature []byte
-	ks := localcrypto.GetKeystore()
-	signature, err = ks.EthSignByKeyName(grp.Item.GroupId, msgHash, grp.ChainCtx.nodename)
-
-	if err != nil {
-		return "", err
-	}
-
-	if len(signature) == 0 {
-		return "", fmt.Errorf("create signature failed")
-	}
-
-	//save hash and signature
-	consensusMsg.MsgHash = msgHash
-	consensusMsg.SenderSign = signature
-
-	group_log.Debugf("<%s> Create ConsensusMsg done, sessionId <%s>", grp.Item.GroupId, consensusMsg.SessionId)
-
-	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
-	if err != nil {
-		return "", err
-	}
-
-	err = connMgr.SentConsensusMsgPubsub(consensusMsg, conn.ProducerChannel)
-	if err != nil {
-		return "", err
-	}
-
-	return consensusMsg.SessionId, nil
 }
