@@ -77,11 +77,11 @@ serve-doc: gen-doc
 	go run ./docs.go
 
 test-main:
-	go test -timeout 99999s main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20
+	go test -timeout 99999s main_test.go -v -fullnodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20
 
 test-main-rex:
 	#go test -timeout 99999s main_rex_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20 -rextest=true
-	go test -timeout 99999s main_test.go -v -nodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20 -rextest=true
+	go test -timeout 99999s main_test.go -v -fullnodes=3 -posts=2 -timerange=5 -groups=3 -synctime=20 -rextest=true
 
 test-api:
 	go test -v pkg/chainapi/api/*

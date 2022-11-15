@@ -217,7 +217,7 @@ func runFullnode(config cli.FullNodeFlag) {
 	}
 
 	apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
-	appsync := appdata.NewAppSyncAgent(apiaddress, "default", appdb, dbManager)
+	appsync := appdata.NewAppSyncAgent(apiaddress, nodectx.GetNodeCtx().Name, appdb, dbManager)
 	appsync.Start(10)
 	apph := &appapi.Handler{
 		Appdb:     appdb,

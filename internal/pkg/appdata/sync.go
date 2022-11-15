@@ -1,8 +1,12 @@
 package appdata
 
 import (
+	"strconv"
+	"time"
+
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
@@ -31,18 +35,13 @@ func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
 	return items
 }
 
-func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) ([]*quorumpb.Block, error) {
-	/*
-		appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s", len(block.Trxs), groupid)
-		err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
-		if err != nil {
-			appsynclog.Errorf("ParseBlockTrxs on group %s err:  ", groupid, err)
-		}
-		return nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(block.BlockId, appsync.nodename)
-	*/
-
-	// added by cuicat
-	return nil, nil
+func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) error {
+	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s", len(block.Trxs), groupid)
+	err := appsync.appdb.AddMetaByTrx(block.Epoch, groupid, block.Trxs)
+	if err != nil {
+		appsynclog.Errorf("ParseBlockTrxs on group %s err:  ", groupid, err)
+	}
+	return err
 }
 
 //return the length of the path between the from and to block. and if the path can reach to the toblock.
@@ -104,57 +103,53 @@ func (appsync *AppSync) findNextBlock(blocks []*quorumpb.Block, toBlockId string
 	return nil
 }
 
-func (appsync *AppSync) RunSync(groupid string, lastBlockId string, newBlockId string) {
-	/*
-		var nextblock *quorumpb.Block
-		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(lastBlockId, appsync.nodename)
-		if err == nil {
-			nextblock = appsync.findNextBlock(subblocks, newBlockId)
-			if nextblock == nil && lastBlockId != newBlockId {
-				err = nodectx.GetNodeCtx().GetChainStorage().RepairSubblocksList(lastBlockId, newBlockId, appsync.nodename)
-				if err != nil {
-					appsynclog.Errorf("run RepairSubblocksList on %s, err %s", lastBlockId, err)
-				}
-			}
-			for {
-				if nextblock == nil {
-					appsynclog.Infof("no new blocks, skip sync.")
-					break
-				}
-				newsubblocks, err := appsync.ParseBlockTrxs(groupid, nextblock)
-				if err == nil {
-					nextblock = appsync.findNextBlock(newsubblocks, newBlockId)
-				} else {
-					appsynclog.Errorf("ParseBlockTrxs error %s", err)
-				}
+func (appsync *AppSync) RunSync(groupid string, lastSyncEpoch int64, highestepoch int64) {
 
-			}
-		} else {
-			appsynclog.Errorf("db read err: %s, groupid: %s, lastBlockId: %s, newBlockId: %s", err, groupid, lastBlockId, newBlockId)
+	for {
+		if lastSyncEpoch >= highestepoch {
+			break
 		}
-	*/
+		lastSyncEpoch++
+		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(groupid, lastSyncEpoch, false, appsync.nodename)
+		if err == nil {
+			err := appsync.ParseBlockTrxs(groupid, block)
+			if err != nil {
+				appsynclog.Errorf("ParseBlockTrxs error %s", err)
+				break
+			}
+
+		} else {
+			appsynclog.Errorf("db read err: %s, groupid: %s, lastSyncEpoch : %d, HighestEpoch: %d", err, groupid, lastSyncEpoch, highestepoch)
+			break
+		}
+	}
 }
 
 func (appsync *AppSync) Start(interval int) {
-	/*
-		go func() {
-			for {
-				groups := appsync.GetGroups()
-				for _, groupitem := range groups {
-					lastBlockId, err := appsync.appdb.GetGroupStatus(groupitem.GroupId, "HighestBlockId")
-					if err == nil {
-						if lastBlockId == "" {
-							lastBlockId = groupitem.GenesisBlock.BlockId
-						}
-						if lastBlockId != groupitem.HighestBlockId {
-							appsync.RunSync(groupitem.GroupId, lastBlockId, groupitem.HighestBlockId)
-						}
-					} else {
-						appsynclog.Errorf("sync group : %s Get HighestBlockId err %s", groupitem.GroupId, err)
+	go func() {
+		for {
+			groups := appsync.GetGroups()
+			for _, groupitem := range groups {
+
+				epochstr, err := appsync.appdb.GetGroupStatus(groupitem.GroupId, "Epoch")
+				if err == nil {
+					if epochstr == "" { //init, set to 0
+						epochstr = "0"
 					}
+				} else {
+					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupitem.GroupId, err)
+					break
 				}
-				time.Sleep(time.Duration(interval) * time.Second)
+				lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
+				if err == nil {
+					if groupitem.Epoch > lastSyncEpoch {
+						appsync.RunSync(groupitem.GroupId, lastSyncEpoch, groupitem.Epoch)
+					}
+				} else {
+					appsynclog.Errorf("sync group : %s Get Group last sync Epoch err %s", groupitem.GroupId, err)
+				}
 			}
-		}()
-	*/
+			time.Sleep(time.Duration(interval) * time.Second)
+		}
+	}()
 }

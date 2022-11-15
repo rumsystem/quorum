@@ -12,20 +12,22 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	api "github.com/rumsystem/quorum/pkg/chainapi/api"
+	"github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	"github.com/rumsystem/quorum/testnode"
 )
 
 var (
-	pidlist                                   []int
-	bootstrapapi, peer1api, peer2api          string
-	peerapilist, groupIds                     []string
-	timerange, nodes, groups, posts, synctime int
-	logger                                    = logging.Logger("main_test")
+	pidlist                                                []int
+	bootstrapapi, peer1api, peer2api                       string
+	peerapilist, groupIds                                  []string
+	timerange, fullnodes, bpnodes, groups, posts, synctime int
+	logger                                                 = logging.Logger("main_test")
 )
 
 func TestMain(m *testing.M) {
 	timerangePtr := flag.Int("timerange", 5, "interval(in normal distribution) of sending transactions")
-	nodesPtr := flag.Int("nodes", 2, "mock nodes")
+	bpnodesPtr := flag.Int("bpnodes", 0, "mock nodes")
+	fullnodesPtr := flag.Int("fullnodes", 2, "mock nodes")
 	groupsPtr := flag.Int("groups", 5, "groups on each node")
 	postsPtr := flag.Int("posts", 5, "posts on each group")
 	synctimePtr := flag.Int("synctime", 30, "time to wait before verify")
@@ -34,12 +36,13 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	timerange = *timerangePtr
-	nodes = *nodesPtr
+	fullnodes = *fullnodesPtr
+	bpnodes = *bpnodesPtr
 	groups = *groupsPtr
 	posts = *postsPtr
 	synctime = *synctimePtr
 
-	logger.Debugf("Setup testing nodes: %d, groups: %d, posts: %d\n", nodes, groups, posts)
+	logger.Debugf("Setup testing fullnodes: %d, bpnodes: %d, groups: %d, posts: %d\n", fullnodes, bpnodes, groups, posts)
 	logger.Debug(pidlist)
 	pidch := make(chan int)
 	go func() {
@@ -57,7 +60,7 @@ func TestMain(m *testing.M) {
 
 	cliargs := testnode.Nodecliargs{Rextest: *rextestmode}
 	var tempdatadir string
-	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, nodes)
+	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, fullnodes, bpnodes)
 	logger.Debug("peers: ", peerapilist)
 	exitVal := m.Run()
 	logger.Debug("after tests clean:", tempdatadir)
@@ -222,7 +225,7 @@ func TestGroupsPostContents(t *testing.T) {
 	}
 
 	for peerIdx, peerapi := range peerapilist {
-		for seedIdx := 0; seedIdx < nodes; seedIdx++ {
+		for seedIdx := 0; seedIdx < fullnodes+bpnodes; seedIdx++ {
 			if seedIdx != peerIdx {
 				seedsFromOtherNode := seedsByNode[seedIdx]
 				if len(seedsFromOtherNode) >= groupspeernum {
@@ -243,7 +246,7 @@ func TestGroupsPostContents(t *testing.T) {
 
 	ready := "IDLE"
 
-	for i := 0; i < nodes; i++ {
+	for i := 0; i < fullnodes+bpnodes; i++ {
 		// wait for all nodes, all groups ready
 		// reinit groupStatus here, to check each node
 		groupStatus := map[string]bool{} // add ready groups
@@ -352,27 +355,28 @@ func TestGroupsPostContents(t *testing.T) {
 				}
 			}
 
-			//t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
-			//resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
-			//groupcontentlist := []api.GroupContentObjectItem{}
+			t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
+			_, resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
+			groupcontentlist := []appapi.GroupContentObjectItem{}
 
-			//if err == nil {
-			//	if err := json.Unmarshal(resp, &groupcontentlist); err != nil {
-			//		t.Errorf("Data Unmarshal error %s", err)
-			//	}
-			//} else {
-			//	t.Errorf("get /api/v1/group/content err: %s", err)
-			//}
-			//for _, contentitem := range groupcontentlist {
-			//	if contentitem.Content != nil {
-			//		if _, found := trxStatus[contentitem.TrxId]; found {
-			//			trxStatus[contentitem.TrxId] = true
-			//			t.Logf("trx %s ok", contentitem.TrxId)
-			//		} else {
-			//			t.Errorf("trx %s not exists in this groups", contentitem.TrxId)
-			//		}
-			//	}
-			//}
+			if err == nil {
+				if err := json.Unmarshal(resp, &groupcontentlist); err != nil {
+					print(string(resp))
+					t.Errorf("Data Unmarshal error %s", err)
+				}
+			} else {
+				t.Errorf("get /api/v1/group/content err: %s", err)
+			}
+			for _, contentitem := range groupcontentlist {
+				if contentitem.Content != nil {
+					if _, found := trxStatus[contentitem.TrxId]; found {
+						trxStatus[contentitem.TrxId] = true
+						t.Logf("trx %s ok", contentitem.TrxId)
+					} else {
+						t.Errorf("trx %s not exists in this groups", contentitem.TrxId)
+					}
+				}
+			}
 
 			// check trxStatus, if it has some false value
 			for k, v := range trxStatus {

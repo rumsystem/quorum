@@ -181,7 +181,7 @@ func Bootstrap(appdb *storage.QuorumStorage) error {
 	mainLogger.Info("Group Syncer Started")
 
 	/* new syncer for app data */
-	appsync := appdata.NewAppSyncAgent("", "default", wasmCtx.AppDb, wasmCtx.DbMgr)
+	appsync := appdata.NewAppSyncAgent("", nodectx.GetNodeCtx().Name, wasmCtx.AppDb, wasmCtx.DbMgr)
 	appsync.Start(10)
 	mainLogger.Info("App Syncer Started")
 

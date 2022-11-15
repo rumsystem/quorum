@@ -29,7 +29,7 @@ type Nodecliargs struct {
 	Rextest bool
 }
 
-func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int, n int) (string, []string, string, error) {
+func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int, fullnodenum int, bpnodenum int) (string, []string, string, error) {
 	var bootstrapaddr, testtempdir string
 	peers := []string{}
 	testtempdir, err := ioutil.TempDir("", "quorumtestdata")
@@ -65,17 +65,16 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 	bootstrapaddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/20666/p2p/%s", bootstrappeerid)
 	logger.Debugf("bootstrap addr: %s\n", bootstrapaddr)
 
-	// start other nodes
 	peerport := 17001
 	peerapiport := bootstrapapiport + 1
 	i := 0
-	for i < n {
+
+	// start users nodes
+	for i < fullnodenum {
 		peerport = peerport + i
 		peerapiport = peerapiport + i
 		peername := fmt.Sprintf("peer%d", i+1)
-
 		testpeerkeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", peername)
-
 		Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "fullnode", "--peername", peername, "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "--apiport", fmt.Sprintf("%d", peerapiport), "--peer", bootstrapaddr, "--configdir", testconfdir, "--keystoredir", testpeerkeystoredir, "--datadir", testdatadir, fmt.Sprintf("--rextest=%s", strconv.FormatBool(cli.Rextest)))
 
 		checkctx, _ = context.WithTimeout(ctx, 60*time.Second)
@@ -88,6 +87,11 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 		peers = append(peers, peerapiurl)
 
 		i++
+	}
+
+	// start bp nodes
+	for i < bpnodenum {
+		//TODO: run bp nodes
 	}
 
 	return bootstrapBaseUrl, peers, testtempdir, nil
