@@ -13,7 +13,7 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

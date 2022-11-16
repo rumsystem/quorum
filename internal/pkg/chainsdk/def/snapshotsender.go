@@ -1,6 +1,6 @@
 package def
 
-import quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+import quorumpb "github.com/rumsystem/quorum/pkg/pb"
 
 type SnapshotSender interface {
 	//Init(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)

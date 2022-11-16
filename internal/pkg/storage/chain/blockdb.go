@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -225,7 +225,7 @@ func (cs *Storage) GetParentBlock(blockId string, prefix ...string) (*quorumpb.B
 }
 
 // try to find the subblocks of one block. search from the block to the to blockid
-func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...string) error {
+func (cs *Storage) RepairSubblocksList(blockid, toblockid string, groupid string, prefix ...string) error {
 	if toblockid == blockid {
 		return fmt.Errorf("no new blocks, no need to repair")
 	}
@@ -243,7 +243,7 @@ func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...stri
 	}
 	dblogger = log.New(logfile, "blockdb", log.LstdFlags)
 
-	dblogger.Printf("verify block: %s", blockid)
+	dblogger.Printf("group %s verify block: %s , to %s", groupid, blockid, toblockid)
 	var verifyblockChunk *quorumpb.BlockDbChunk
 	for {
 		verifyblockChunk, err = cs.dbmgr.GetBlockChunk(verifyblockid, false, prefix...)
@@ -263,7 +263,7 @@ func (cs *Storage) RepairSubblocksList(blockid, toblockid string, prefix ...stri
 		verifyblockid = verifyblockChunk.ParentBlockId
 	}
 	if succ == false {
-		dblogger.Printf("not find the subblock of %s", blockid)
+		dblogger.Printf("group %s not find the subblock of %s , to %s ", groupid, blockid, toblockid)
 	} else {
 		dblogger.Printf("update the subblockid of %s", blockid)
 		err = cs.dbmgr.SaveBlockChunk(blockChunk, false, prefix...)

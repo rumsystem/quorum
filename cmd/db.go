@@ -105,7 +105,7 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 	}
 	defer dstDB.Close()
 
-	err = srcDB.View(func(txn *badger.Txn) error {
+	return srcDB.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 1000
 		it := txn.NewIterator(opts)
@@ -121,15 +121,15 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 				return err
 			}
 
+			keys = append(keys, k)
+			vals = append(vals, v)
+
 			if len(keys) >= 1000 {
 				if err := dstDB.BatchWrite(keys, vals); err != nil {
 					return err
 				}
 				keys = [][]byte{}
 				vals = [][]byte{}
-			} else {
-				keys = append(keys, k)
-				vals = append(vals, v)
 			}
 		}
 
@@ -143,10 +143,6 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func migrateAll() error {

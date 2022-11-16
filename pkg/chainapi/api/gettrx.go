@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	_ "github.com/rumsystem/rumchaindata/pkg/pb" //import for swaggo
+	_ "github.com/rumsystem/quorum/pkg/pb" //import for swaggo
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
