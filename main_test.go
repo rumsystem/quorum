@@ -356,8 +356,8 @@ func TestGroupsPostContents(t *testing.T) {
 			}
 
 			t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
-			_, resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/group/%s/content", groupId), "GET", "")
-			groupcontentlist := []appapi.GroupContentObjectItem{}
+			_, resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/app/api/v1/group/%s/content?num=100", groupId), "POST", "{\"senders\":[]}")
+			groupcontentlist := []appapi.ContentStruct{}
 
 			if err == nil {
 				if err := json.Unmarshal(resp, &groupcontentlist); err != nil {

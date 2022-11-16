@@ -14,6 +14,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type ContentInnerStruct map[string]interface{}
+
+type ContentStruct struct {
+	TrxId     string             `json:"TrxId"`
+	Publisher string             `json:"Publisher"`
+	Content   ContentInnerStruct `json:"Content"`
+	TypeUrl   string             `json:"TypeUrl"`
+	TimeStamp int64              `json:"TimeStamp"`
+}
+
 type GroupContentObjectItem struct {
 	TrxId     string
 	Publisher string
