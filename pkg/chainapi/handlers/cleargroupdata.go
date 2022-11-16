@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type ClearGroupDataParam struct {
@@ -32,6 +33,13 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 		if err := group.ClearGroup(); err != nil {
 			return nil, err
 		}
+	} else {
+		// NOTE: compatible with older versions
+		// NOTE: allow clearing group data even after leaving the group
+		if err := nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(params.GroupId, nodectx.GetNodeCtx().Name); err != nil {
+			return nil, err
+		}
 	}
+
 	return &ClearGroupDataResult{GroupId: params.GroupId}, nil
 }

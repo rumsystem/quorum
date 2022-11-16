@@ -52,49 +52,53 @@ func (cs *Storage) RmGroup(groupId string) error {
 	return cs.dbmgr.GroupInfoDb.Delete([]byte(key))
 }
 
-func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) error {
+func (cs *Storage) RemoveGroupData(groupId string, prefix ...string) error {
+	return RemoveGroupData(cs.dbmgr.Db, groupId, prefix...)
+}
+
+func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error {
 	nodeprefix := utils.GetPrefix(prefix...)
 	var keys []string
 
 	//remove all group POST
-	key := nodeprefix + s.GRP_PREFIX + "_" + s.CNT_PREFIX + "_" + item.GroupId
+	key := nodeprefix + s.GRP_PREFIX + "_" + s.CNT_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group producer
-	key = nodeprefix + s.PRD_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.PRD_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group users
-	key = nodeprefix + s.USR_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.USR_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group announced item
-	key = nodeprefix + s.ANN_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.ANN_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group schema item
-	key = nodeprefix + s.SMA_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.SMA_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group chain_config item
-	key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.CHAIN_CONFIG_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//all group app_config item
-	key = nodeprefix + s.APP_CONFIG_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.APP_CONFIG_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//nonce prefix
-	key = nodeprefix + s.NONCE_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.NONCE_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//snapshot
-	key = nodeprefix + s.SNAPSHOT_PREFIX + "_" + item.GroupId
+	key = nodeprefix + s.SNAPSHOT_PREFIX + "_" + groupId
 	keys = append(keys, key)
 
 	//remove all
 	for _, key_prefix := range keys {
-		_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
+		_, err := db.PrefixDelete([]byte(key_prefix))
 		if err != nil {
 			return err
 		}
@@ -108,7 +112,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 	keys = append(keys, key)
 
 	for _, key_prefix := range keys {
-		_, err := cs.dbmgr.Db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
+		_, err := db.PrefixCondDelete([]byte(key_prefix), func(k []byte, v []byte, err error) (bool, error) {
 			if err != nil {
 				return false, err
 			}
@@ -119,7 +123,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 				return false, perr
 			}
 
-			if blockChunk.BlockItem.GroupId == item.GroupId {
+			if blockChunk.BlockItem.GroupId == groupId {
 				return true, nil
 			}
 			return false, nil
@@ -132,7 +136,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 
 	//remove all trx
 	key = nodeprefix + s.TRX_PREFIX + "_"
-	_, err := cs.dbmgr.Db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
+	_, err := db.PrefixCondDelete([]byte(key), func(k []byte, v []byte, err error) (bool, error) {
 		if err != nil {
 			return false, err
 		}
@@ -144,7 +148,7 @@ func (cs *Storage) RemoveGroupData(item *quorumpb.GroupItem, prefix ...string) e
 			return false, perr
 		}
 
-		if trx.GroupId == item.GroupId {
+		if trx.GroupId == groupId {
 			return true, nil
 		}
 
@@ -174,7 +178,7 @@ func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-//Get Gorup Info
+// Get Gorup Info
 func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, error) {
 	key := s.GROUPITEM_PREFIX + "_" + groupId
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
