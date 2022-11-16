@@ -6,7 +6,7 @@ import (
 
 	"strings"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 

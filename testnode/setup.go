@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 var (

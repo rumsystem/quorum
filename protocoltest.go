@@ -17,7 +17,7 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"

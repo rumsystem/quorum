@@ -6,12 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	nodesdkapi "github.com/rumsystem/quorum/pkg/nodesdk/api"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	"github.com/spf13/cobra"

@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 	"time"
 
-	dsbadger2 "github.com/ipfs/go-ds-badger2"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
@@ -25,6 +22,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
 )
 
@@ -75,7 +73,7 @@ func runFullnode(config cli.FullnodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
-	logger.Infof("Version: %s", utils.GitCommit)
+	logger.Errorf("Version: %s", utils.GitCommit)
 
 	signalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -130,20 +128,13 @@ func runFullnode(config cli.FullnodeFlag) {
 	}
 
 	logger.Infof("eth addresss: <%s>", ethaddr)
-	ds, err := dsbadger2.NewDatastore(path.Join(config.DataDir, fmt.Sprintf("%s-%s", peername, "peerstore")), &dsbadger2.DefaultOptions)
-	CheckLockError(err)
-	if err != nil {
-		cancel()
-		logger.Fatalf(err.Error())
-	}
-
 	if config.IsBootstrap {
 		//bootstrop/relay node connections: low watermarks: 1000  hi watermarks 50000, grace 30s
 		cm, err := connmgr.NewConnManager(1000, 50000, connmgr.WithGracePeriod(30*time.Second))
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		node, err = p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, "", nodeoptions, config.IsBootstrap, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 
 		if err != nil {
 			logger.Fatalf(err.Error())
@@ -189,7 +180,7 @@ func runFullnode(config cli.FullnodeFlag) {
 		if err != nil {
 			logger.Fatalf(err.Error())
 		}
-		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, ds, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+		node, err = p2p.NewNode(ctx, nodename, nodeoptions, config.IsBootstrap, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
 		if err == nil && nodeoptions.EnableRumExchange == true {
 			node.SetRumExchange(ctx, newchainstorage)
 		}
@@ -231,8 +222,13 @@ func runFullnode(config cli.FullnodeFlag) {
 		CheckLockError(err)
 
 		// init the publish queue watcher
+		pubquedb := appdb.Db
+		if nodeoptions.EnablePubQue == false {
+			pubquedb = nil
+		}
+
 		doneCh := make(chan bool)
-		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
+		chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), pubquedb)
 
 		//load all groups
 		err = chain.GetGroupMgr().LoadAllGroups()

@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 const GET_BLOCK_URI string = "/api/v1/block"

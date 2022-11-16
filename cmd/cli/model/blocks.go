@@ -6,7 +6,7 @@ import (
 
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
-	"github.com/rumsystem/rumchaindata/pkg/pb"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 // can only check from back to front

@@ -9,13 +9,13 @@ import (
 	"time"
 
 	//p2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	localcrypto "github.com/rumsystem/keystore/pkg/crypto"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
-	rumchaindata "github.com/rumsystem/rumchaindata/pkg/data"
-	quorumpb "github.com/rumsystem/rumchaindata/pkg/pb"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
