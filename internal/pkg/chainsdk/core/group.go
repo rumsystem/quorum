@@ -131,7 +131,7 @@ func (grp *Group) LeaveGrp() error {
 
 func (grp *Group) ClearGroupData() error {
 	group_log.Debugf("<%s> ClearGroupData called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StartSync(restart bool) error {
@@ -273,7 +273,7 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }

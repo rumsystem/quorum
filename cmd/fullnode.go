@@ -140,8 +140,6 @@ func runFullnode(config cli.FullNodeFlag) {
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	dbManager.TryMigration(0) //TOFIX: pass the node data_ver
-	dbManager.TryMigration(1)
 	newchainstorage := chainstorage.NewChainStorage(dbManager)
 
 	//normal node connections: low watermarks: 10  hi watermarks 200, grace 60s

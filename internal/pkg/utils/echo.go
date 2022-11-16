@@ -43,24 +43,30 @@ type (
 func NewEcho(debug bool) *echo.Echo {
 	e := echo.New()
 
-	// enable or disable debug mode
-	e.Debug = debug
-
-	// config log level and format
-	// ref: https://echo.labstack.com/guide/customization/#logging
-	if debug {
-		e.Logger.SetLevel(log.DEBUG)
-	} else {
-		e.Logger.SetLevel(log.ERROR)
-	}
-	e.Logger.SetHeader("${time_rfc3339_nano} ${level} ${prefix} ${short_file} ${line}")
-
 	// hide banner
 	e.HideBanner = true
 
 	e.Binder = new(CustomBinder)
 	e.Validator = NewCustomValidator()
 	e.HTTPErrorHandler = customHTTPErrorHandler
+
+	// enable or disable debug mode
+	e.Debug = debug
+
+	e.Logger.SetHeader("${time_rfc3339_nano} ${level} ${prefix} ${short_file} ${line}")
+	// config log level and format
+	// ref: https://echo.labstack.com/guide/customization/#logging
+	if debug {
+		e.Logger.SetLevel(log.DEBUG)
+
+		// logs the information about each HTTP request
+		// ref: https://echo.labstack.com/middleware/logger/
+		e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+			Format: "${time_rfc3339_nano} method=${method} uri=${uri} status=${status} latency=${latency_human} error={${error}}\n",
+		}))
+	} else {
+		e.Logger.SetLevel(log.ERROR)
+	}
 
 	// timeout
 	e.Server.ReadTimeout = 30 * time.Second
@@ -74,6 +80,7 @@ func NewEcho(debug bool) *echo.Echo {
 			return next(cc)
 		}
 	})
+
 	e.Use(middleware.Recover())
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

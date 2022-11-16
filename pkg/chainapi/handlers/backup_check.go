@@ -117,21 +117,22 @@ func checkEncrypt(ks *localcrypto.DirKeyStore, keyname, password string) error {
 	return nil
 }
 
-func loadAndDecryptTrx(blockDbDir, seedDir string, ks *localcrypto.DirKeyStore) error {
-	if !utils.DirExist(blockDbDir) {
-		return fmt.Errorf("%s not exist", blockDbDir)
+func loadAndDecryptTrx(dir, seedDir string, ks *localcrypto.DirKeyStore) error {
+	if !utils.DirExist(dir) {
+		return fmt.Errorf("%s not exist", dir)
 	}
 
-	db := storage.QSBadger{}
-	if err := db.Init(blockDbDir); err != nil {
+	dbMgr, err := storage.CreateDb(dir)
+	if err != nil {
 		logger.Fatalf("init backuped db failed: %s", err)
 	}
-	defer db.Close()
+	defer dbMgr.Db.Close()
+	defer dbMgr.GroupInfoDb.Close()
 
 	/* commented by cuicat
 	pubCount, privCount := 0, 0
 	key := getBlockPrefixKey()
-	err := db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+	err = dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
