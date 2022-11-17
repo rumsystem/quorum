@@ -52,17 +52,17 @@ func (a *PSyncACS) InputValue(val []byte) error {
 
 // rbc for proposerIs finished
 func (a *PSyncACS) RbcDone(proposerPubkey string) {
-	psync_acs_log.Debugf("SessionId <%s> RbcDone called", a.SessionId)
-
+	psync_acs_log.Debugf("SessionId <%s> RbcDone called, RBC <%s> finished", a.SessionId, proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 
 	//check if all rbc instance output
+	psync_acs_log.Debugf("SessionId <%s> <%d> RBC finished, need ", a.SessionId, len(a.rbcOutput), a.N-a.F)
 	if len(a.rbcOutput) == a.N-a.F {
 		trx_acs_log.Debugf("all RBC done")
 		// all rbc done, get all rbc results, send them back to BFT
-		for _, rbcInst := range a.rbcInstances {
+		for rbcInst, _ := range a.rbcOutput {
 			//load all rbc results
-			a.rbcResults[rbcInst.proposerPubkey] = rbcInst.Output()
+			a.rbcResults[rbcInst] = a.rbcInstances[rbcInst].Output()
 		}
 
 		//call hbb to get result

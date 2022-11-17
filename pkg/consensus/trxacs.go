@@ -21,7 +21,7 @@ type TrxACS struct {
 }
 
 func NewTrxACS(cfg Config, bft *TrxBft, epoch int64) *TrxACS {
-	trx_acs_log.Infof("NewACS called epoch <%d>", epoch)
+	trx_acs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 
 	acs := &TrxACS{
 		Config:       cfg,
@@ -59,17 +59,17 @@ func (a *TrxACS) RbcDone(proposerPubkey string) {
 
 	//check if all rbc instance output
 	if len(a.rbcOutput) == a.N-a.F {
-		trx_acs_log.Debugf("all RBC done, call acs")
+		trx_acs_log.Debugf("enough RBC done, call acs")
 		// all rbc done, get all rbc results, send them back to BFT
-		for _, rbcInst := range a.rbcInstances {
-			//load all rbc results
-			a.rbcResults[rbcInst.proposerPubkey] = rbcInst.Output()
+		for rbcInst, _ := range a.rbcOutput {
+			//load all valid rbc results
+			a.rbcResults[rbcInst] = a.rbcInstances[rbcInst].Output()
 		}
 
 		//call hbb to get result
 		a.bft.AcsDone(a.epoch, a.rbcResults)
 	} else {
-		trx_acs_log.Debugf("Wait for all RBC done")
+		trx_acs_log.Debugf("Wait for enough RBC done")
 		return
 	}
 }

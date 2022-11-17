@@ -134,12 +134,7 @@ func (grp *Group) ClearGroupData() error {
 
 func (grp *Group) StartSync(restart bool) error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	if restart {
-		grp.ChainCtx.StopSync()
-	}
-	//time.Sleep(10 * time.Second)
 	return grp.ChainCtx.StartSync()
-	//return grp.ChainCtx.SyncForward(grp.ChainCtx.group.Item.HighestBlockId, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) StopSync() error {

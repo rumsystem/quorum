@@ -37,7 +37,7 @@ type PSyncRBC struct {
 // ecc will encode data bytes into 3 pieces
 // a witnesses need at least 3 - 1 = 2 pieces to recover data
 func NewPSyncRBC(cfg Config, acs *PSyncACS, groupId, proposerPubkey string) (*PSyncRBC, error) {
-	psync_rbc_log.Infof("SessionId <%s> NewTrxRBC called, witnesses pubkey <%s>", acs.SessionId, proposerPubkey)
+	psync_rbc_log.Debugf("SessionId <%s> NewPSyncRBC called, witnesses pubkey <%s>", acs.SessionId, proposerPubkey)
 
 	parityShards := cfg.F
 	if parityShards == 0 {
@@ -73,7 +73,7 @@ func NewPSyncRBC(cfg Config, acs *PSyncACS, groupId, proposerPubkey string) (*PS
 // 2. make proofReq for each pieces
 // 3. broadcast all proofReq via pubsub
 func (r *PSyncRBC) InputValue(data []byte) error {
-	psync_rbc_log.Infof("SessionId <%s> InputValue called, data length %d", r.acs.SessionId, len(data))
+	psync_rbc_log.Debugf("<%s> SessionId <%s> InputValue called, data length %d", r.proposerPubkey, r.acs.SessionId, len(data))
 
 	shards, err := MakeShards(r.enc, data)
 	if err != nil {
@@ -98,16 +98,16 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 }
 
 func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
-	psync_rbc_log.Infof("SessionId <%s> PROOF_MSG:ProofProviderPubkey <%s>", r.acs.SessionId, proof.ProposerPubkey)
+	psync_rbc_log.Debugf("<%s> SessionId <%s> PROOF_MSG:ProofProviderPubkey <%s>", r.proposerPubkey, r.acs.SessionId, proof.ProposerPubkey)
 
 	if r.consenusDone {
 		//rbc done, do nothing, ignore the msg
-		psync_rbc_log.Infof("rbc is done, do nothing")
+		psync_rbc_log.Debugf("<%s> rbc is done, do nothing", r.proposerPubkey)
 		return nil
 	}
 
 	if r.dataDecodeDone {
-		psync_rbc_log.Infof("Data decode done, do nothing")
+		psync_rbc_log.Debugf("<%s> Data decode done, do nothing", r.proposerPubkey)
 		return nil
 	}
 
@@ -144,10 +144,10 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		}
 		r.output = output
 
-		psync_rbc_log.Infof("Data is ready")
+		psync_rbc_log.Debugf("<%s> Data is ready", r.proposerPubkey)
 		r.dataDecodeDone = true
 
-		psync_rbc_log.Infof("broadcast ready msg")
+		psync_rbc_log.Debugf("<%s> broadcast READY msg", r.proposerPubkey)
 		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, proof)
 		if err != nil {
 			return err
@@ -159,13 +159,13 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		}
 
 		//check if we already receive enough readyMsg (N - F)
-		psync_rbc_log.Infof("r.recvReadys: %d, r.N-r.F: %d", len(r.recvReadys), r.N-r.F)
+		psync_rbc_log.Debugf("<%s> received readyMsg <%d>, need <%d>", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
 		if len(r.recvReadys) == r.N-r.F {
-			psync_rbc_log.Infof("RBC done")
+			psync_rbc_log.Debugf("<%s> RBC done", r.proposerPubkey)
 			r.consenusDone = true
 			r.acs.RbcDone(r.proposerPubkey)
 		} else {
-			psync_rbc_log.Infof("wait more ready")
+			psync_rbc_log.Infof("<%s> wait for more READY", r.proposerPubkey)
 		}
 	}
 
@@ -173,10 +173,10 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 }
 
 func (r *PSyncRBC) handleReadyMsg(ready *quorumpb.Ready) error {
-	psync_rbc_log.Infof("SessionId <%s> READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>", r.acs.SessionId, ready.ProofProviderPubkey, ready.ProposerPubkey)
+	psync_rbc_log.Debugf("<%s> SessionId <%s> READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>", r.proposerPubkey, r.acs.SessionId, ready.ProofProviderPubkey, ready.ProposerPubkey)
 
 	if r.consenusDone {
-		psync_rbc_log.Infof("Rbc is already done, do nothing")
+		psync_rbc_log.Debugf("<%s> RBC is already done, do nothing", r.proposerPubkey)
 		return nil
 	}
 
@@ -206,13 +206,14 @@ func (r *PSyncRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	r.recvReadys[string(ready.ProposerPubkey)] = ready
 
 	//check if get enough ready
+	psync_rbc_log.Debugf("<%s> received readyMsg <%d>, need <%d>", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
 	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
-		psync_rbc_log.Infof("RBC done")
+		psync_rbc_log.Debugf("<%s> RBC done", r.proposerPubkey)
 		r.consenusDone = true
 		r.acs.RbcDone(r.proposerPubkey)
 	} else {
 		//wait till enough
-		psync_rbc_log.Infof("wait for more READY")
+		psync_rbc_log.Debugf("<%s> wait for more READY", r.proposerPubkey)
 	}
 
 	return nil

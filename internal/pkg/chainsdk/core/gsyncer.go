@@ -211,6 +211,7 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	gsyncer_log.Debugf("processTask called, taskId <%s>, retry <%d>", task.TaskId, task.RetryCount)
 	go func() {
 		s.CurrentTask = task //set current task
+		gsyncer_log.Debugf("Set current task %s %d", s.CurrentTask.TaskId, s.CurrentTask.Type)
 		switch task.Type {
 		case ConsensusSync:
 			s.Status = CONSENSUS_SYNC
@@ -227,11 +228,20 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 		if s.Status != CLOSE {
 			//a workround, should cancel the ctx for current task
 			if s.CurrentTask != nil {
-				gsyncer_log.Debugf("task <%s> timeout, retry now", task.TaskId)
-				//recreate timeout
-				task.RetryCount++
-				//put same task back to taskq again
-				s.AddTask(task)
+				gsyncer_log.Debugf("task <%s> timeout,  retry now", task.TaskId)
+				if task.Type == GetEpoch {
+					//recreate timeout
+					task.RetryCount++
+					//put same task back to taskq again
+					s.AddTask(task)
+				} else if task.Type == ConsensusSync {
+					//create a new consensus sync task
+					newTask, _ := s.taskGenerators[ConsensusSync]()
+					//keep the retry count
+					newTask.RetryCount = task.RetryCount + 1
+					s.AddTask(newTask)
+				}
+
 			}
 		}
 		return nil
