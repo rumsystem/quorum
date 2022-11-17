@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -17,21 +16,19 @@ import (
 
 var syncerrunner_log = logging.Logger("syncerrunner")
 
-var WAIT_BLOCK_TIME_S = 10 //wait time period
-var RETRY_LIMIT = 30       //retry times
+var RETRY_LIMIT = 30 //retry times
 
 const (
-	SYNCING_FORWARD = 0
-	SYNC_FAILED     = 1
-	IDLE            = 2
-	CLOSE           = 3
-	LOCAL_SYNCING   = 4
-	CONSENSUS_SYNC  = 5
+	IDLE            = 1
+	SYNCING_FORWARD = 2
+	LOCAL_SYNCING   = 3
+	CONSENSUS_SYNC  = 4
+	SYNC_FAILED     = 5
+	CLOSE           = 6
 )
 
 type SyncerRunner struct {
-	group  *Group
-	Status int8
+	group *Group
 
 	cdnIface        def.ChainDataSyncIface
 	syncNetworkType conn.P2pNetworkType
@@ -42,7 +39,6 @@ type SyncerRunner struct {
 	//responses           map[string]*quorumpb.ReqBlockResp
 	//rwMutex         sync.RWMutex
 	//localSyncFinished   bool
-
 }
 
 func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename string) *SyncerRunner {
@@ -50,63 +46,47 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 	sr := &SyncerRunner{}
 	sr.group = group
 	sr.cdnIface = cdnIface
-	sr.Status = IDLE
-	sr.cdnIface = cdnIface
 	sr.syncNetworkType = conn.PubSub
 	sr.rumExchangeTestMode = false
 
 	//create and initial Get Task Apis
 	taskGenerators := make(map[TaskType]func(args ...interface{}) (*SyncTask, error))
-	taskGenerators[GetEpoch] = sr.GetEpochTask
+	taskGenerators[GetEpoch] = sr.GetNextEpochTask
 	taskGenerators[ConsensusSync] = sr.GetConsensusSyncTask
 
-	resultHandlers := make(map[TaskType]func(result *SyncResult) (string, error))
-	resultHandlers[GetEpoch] = sr.EpochTaskHandler
-	resultHandlers[ConsensusSync] = sr.ConsenesusTaskHandler
-
-	gs := NewGsyncer(group.Item.GroupId, taskGenerators, resultHandlers, sr.TaskSender)
+	gs := NewGsyncer(group.Item.GroupId, taskGenerators, sr.TaskSender)
 	gs.SetRetryWithNext(false)
 	sr.gsyncer = gs
 
 	return sr
 }
 
+//commented by cuicat
+/*
 func (sr *SyncerRunner) SetRumExchangeTestMode() {
 	syncerrunner_log.Debugf("<%s> SetRumExchangeTestMode called", sr.group.Item.GroupId)
 	sr.rumExchangeTestMode = true
 }
+*/
 
-func (sr *SyncerRunner) GetCurrentSyncTask() (string, TaskType, error) {
+func (sr *SyncerRunner) GetCurrentSyncTask() (string, TaskType, uint, error) {
 	syncerrunner_log.Debugf("<%s> GetCurrentSyncTask called", sr.group.Item.GroupId)
 	return sr.gsyncer.GetCurrentTask()
 }
 
 // define how to get next task, for example, taskid+1
-func (sr *SyncerRunner) GetEpochTask(args ...interface{}) (*SyncTask, error) {
+func (sr *SyncerRunner) GetNextEpochTask(args ...interface{}) (*SyncTask, error) {
 	syncerrunner_log.Debugf("<%s> GetEpochTask called", sr.group.Item.GroupId)
-	//convert func parameter
-
-	if len(args) != 1 {
-		return nil, fmt.Errorf("params mismatch, GetEpochTask(epoch int64)")
-	}
-	epoch, ok := args[0].(int64)
-	if !ok {
-		return nil, fmt.Errorf("convert interface{} to int64 failed")
-	}
-
-	if epoch == 0 {
-		return nil, errors.New("no task for Epoch 0 ")
-	} else {
-		taskmeta := EpochSyncTask{Epoch: epoch}
-		taskid := strconv.FormatUint(uint64(epoch), 10)
-		return &SyncTask{TaskId: taskid, Type: GetEpoch, Meta: taskmeta}, nil
-	}
+	nextEpoch := sr.cdnIface.GetCurrentChainEpoch() + 1
+	taskmeta := EpochSyncTask{Epoch: nextEpoch}
+	taskid := strconv.FormatUint(uint64(nextEpoch), 10)
+	return &SyncTask{TaskId: taskid, Type: GetEpoch, RetryCount: 0, Meta: taskmeta}, nil
 }
 
 func (sr *SyncerRunner) GetConsensusSyncTask(args ...interface{}) (*SyncTask, error) {
 	syncerrunner_log.Debugf("<%s> GetConsensusSyncTask called", sr.group.Item.GroupId)
 	taskmate := ConsensusSyncTask{SessionId: uuid.NewString()}
-	return &SyncTask{TaskId: taskmate.SessionId, Type: ConsensusSync, Meta: taskmate}, nil
+	return &SyncTask{TaskId: taskmate.SessionId, Type: ConsensusSync, RetryCount: 0, Meta: taskmate}, nil
 }
 
 func (sr *SyncerRunner) Start() error {
@@ -118,32 +98,42 @@ func (sr *SyncerRunner) Start() error {
 	if _, ok := sr.group.ChainCtx.ProducerPool[sr.group.Item.UserSignPubkey]; ok {
 		//producer try get consensus before start sync block
 		groupMgr_log.Debugf("<%s> producer(owner) node try get consensus before sync", sr.group.Item.GroupId)
-		sr.Status = CONSENSUS_SYNC
 		task, err = sr.GetConsensusSyncTask()
 		if err != nil {
 			return err
 		}
 	} else {
-		groupMgr_log.Debugf("<%s> user node start epoch (block) sync. group", sr.group.Item.GroupId)
-		sr.Status = SYNCING_FORWARD
-		task, err = sr.GetEpochTask(sr.group.Item.Epoch + 1)
+		//user node start sync directly
+		groupMgr_log.Debugf("<%s> user node start epoch (block) sync", sr.group.Item.GroupId)
+		task, err = sr.GetNextEpochTask()
 		if err != nil {
 			return err
 		}
 	}
 
-	//start syncer
+	//start syncer and add the first task
 	sr.gsyncer.Start()
-
-	//add the first task
 	sr.gsyncer.AddTask(task)
 	return nil
+}
+
+func (sr *SyncerRunner) GetConsensus() (sessionId string, err error) {
+	syncerrunner_log.Debugf("<%s> TryGetChainConsensus called", sr.group.Item.GroupId)
+	if _, ok := sr.group.ChainCtx.ProducerPool[sr.group.Item.UserSignPubkey]; ok {
+		task, err := sr.GetConsensusSyncTask()
+		if err != nil {
+			return "", err
+		}
+		sr.gsyncer.AddTask(task)
+		return task.TaskId, nil
+	} else {
+		return "", fmt.Errorf("user node can not call get consensus")
+	}
 }
 
 func (sr *SyncerRunner) Stop() {
 	syncerrunner_log.Debugf("<%s> Stop called", sr.group.Item.GroupId)
 	sr.gsyncer.Stop()
-	sr.Status = IDLE
 }
 
 func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
@@ -175,7 +165,7 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 
 		//TODO
 		//sr.SetCurrentWaitTask(&blocktask)
-		if sr.gsyncer.GetRetryCount() >= 30 { //max retry count
+		if task.RetryCount >= uint(RETRY_LIMIT) { //max retry count
 			//change networktype and clear counter
 			if !sr.rumExchangeTestMode {
 				if sr.syncNetworkType == conn.PubSub {
@@ -183,9 +173,9 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 				} else {
 					sr.syncNetworkType = conn.PubSub
 				}
-				syncerrunner_log.Debugf("<%s> retry <%d> times, switch network type to <%s>", sr.group.Item.GroupId, sr.gsyncer.GetRetryCounter(), sr.syncNetworkType)
+				syncerrunner_log.Debugf("<%s> task <%s> retry <%d> times, switch network type to <%s>", sr.group.Item.GroupId, task.TaskId, task.RetryCount, sr.syncNetworkType)
 			}
-			sr.gsyncer.RetryCounterClear()
+			task.RetryCount = 0
 		}
 
 		//Commented by cuicat
@@ -265,63 +255,18 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 	return fmt.Errorf("<%s> Unsupported task type %s", sr.group.Item.GroupId, task.TaskId)
 }
 
-func (sr *SyncerRunner) EpochTaskHandler(result *SyncResult) (taskId string, err error) {
-	syncerrunner_log.Debugf("<%s> EpochReceiver called", sr.group.Item.GroupId)
-	trxtaskresult, ok := result.Data.(*quorumpb.Trx)
-	if ok {
-		nextepoch, err := sr.group.ChainCtx.HandleReqBlockResp(trxtaskresult)
-		if err != nil {
-			if err == ErrSyncDone {
-				syncerrunner_log.Debugf("<%s> SYNC done", sr.group.Item.GroupId)
-				sr.Status = IDLE
-			}
-		}
-		return nextepoch, err
-	} else {
-		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.TaskId)
-		return 0, fmt.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.TaskId)
-	}
-}
-
-func (sr *SyncerRunner) ConsenesusTaskHandler(result *SyncResult) (taskId string, err error) {
-	syncerrunner_log.Debugf("<%s> EpochReceiver called", sr.group.Item.GroupId)
-
-	trxtaskresult, ok := result.Data.(*quorumpb.Trx)
-
-	//check if need sync or do something else
-	err = chain.handlePSyncResp(c.SessionId, resp)
-
-	if err != nil {
-		return err
-	}
-
-	if ok {
-		nextepoch, err := sr.group.ChainCtx.HandlePSyncResp(trxtaskresult)
-		if err != nil {
-			if err == ErrSyncDone {
-				syncerrunner_log.Debugf("<%s> SYNC done", sr.group.Item.GroupId)
-				sr.Status = IDLE
-			}
-		}
-		return nextepoch, err
-	} else {
-		gsyncer_log.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.TaskId)
-		return 0, fmt.Errorf("<%s> Unsupported result %s", sr.group.Item.GroupId, result.TaskId)
-	}
-}
-
-func (sr *SyncerRunner) UpdateGetEpochResult(taskId string) {
-	syncerrunner_log.Debugf("<%s> AddTrxToSyncerQueue called", sr.group.Item.GroupId)
-	result := &SyncResult{TaskId: taskId, Type: GetEpoch}
-	if sr.Status == SYNCING_FORWARD {
+func (sr *SyncerRunner) UpdateGetEpochResult(taskId string, nextAction uint) {
+	syncerrunner_log.Debugf("<%s> UpdateGetEpochResult called", sr.group.Item.GroupId)
+	result := &SyncResult{TaskId: taskId, Type: GetEpoch, nextAction: SyncerAction(nextAction)}
+	if sr.gsyncer.Status == SYNCING_FORWARD {
 		sr.gsyncer.AddResult(result)
 	}
 }
 
-func (sr *SyncerRunner) UpdateConsensusResult(taskId string) {
-	syncerrunner_log.Debugf("<%s> AddConsensusToSyncerQueue called", sr.gsyncer.GroupId)
-	result := &SyncResult{TaskId: taskId, Type: ConsensusSync}
-	if sr.Status == CONSENSUS_SYNC {
+func (sr *SyncerRunner) UpdateConsensusResult(taskId string, nextAction uint) {
+	syncerrunner_log.Debugf("<%s> UpdateConsensusResult called", sr.gsyncer.GroupId)
+	result := &SyncResult{TaskId: taskId, Type: ConsensusSync, nextAction: SyncerAction(nextAction)}
+	if sr.gsyncer.Status == CONSENSUS_SYNC {
 		sr.gsyncer.AddResult(result)
 	}
 }

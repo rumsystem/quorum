@@ -229,7 +229,8 @@ func (grp *Group) PostToGroup(content proto.Message, sudo bool) (string, error) 
 
 func (grp *Group) TryGetChainConsensus() (string, error) {
 	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
-	return grp.sendConsensusReq()
+
+	return grp.ChainCtx.GetConsensus()
 }
 
 func (grp *Group) UpdProducerBundle(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {

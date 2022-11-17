@@ -84,6 +84,14 @@ func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
 	return GetPubQueueWatcher()
 }
 
+func (chain *Chain) GetCurrentChainEpoch() int64 {
+	return chain.group.Item.Epoch
+}
+
+func (chain *Chain) GetConsensus() (string, error) {
+	return chain.syncerrunner.GetConsensus()
+}
+
 func (chain *Chain) UpdChainInfo(Epoch int64) error {
 	chain_log.Debugf("<%s> UpdChainInfo called", chain.groupId)
 	chain.group.Item.Epoch = Epoch
@@ -328,10 +336,8 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		if !ok {
 			return fmt.Errorf("invalid consensusResp from producer %s", c.SenderPubkey)
 		}
-		chain_log.Debugf("PSyncResp From valid producer/owner")
 
-		chain.syncerrunner.AddConsensusToSyncerQueue(resp)
-		return nil
+		return chain.handlePSyncResp(c.SessionId, resp)
 	} else {
 		return fmt.Errorf("unknown msgType %s", c.MsgType)
 	}
@@ -340,8 +346,15 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 /*
 all sync related rules go here
 */
-func (chain *Chain) HandlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
+func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
 	chain_log.Debugf("<%s> handlePSyncResp called, SessionId <%s>", chain.groupId, sessionId)
+
+	//check if the resp is what gsyncer expected
+	taskId, taskType, _, _ := chain.syncerrunner.GetCurrentSyncTask()
+	if taskType != ConsensusSync || taskId != sessionId {
+		//not the expected consensus resp
+		return fmt.Errorf(ErrConsusMismatch.Error())
+	}
 
 	//if curEposh is less than psync resp already handled
 	savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupId)
@@ -358,14 +371,33 @@ func (chain *Chain) HandlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 		respItem := savedResp[0]
 		if respItem.CurChainEpoch > resp.CurChainEpoch {
 			chain_log.Debugf("resp from old epoch, do nothing, ignore")
+			return fmt.Errorf("resp from old epoch, ignore")
 		}
 	}
 
-	//tell syncer we are finished
-	chain.syncerrunner.AddConsensusToSyncerQueue(resp)
+	//save ConsensusResp
+	nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupId, sessionId, resp)
 
-	//update PsyncResp in DB
-	return nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupId, sessionId, resp)
+	//check and update producer
+	/*
+		trx, _, err := nodectx.GetNodeCtx().GetChainStorage().GetTrx(chain.groupId, resp.ProducerProof.TrxId, sdef.Chain, chain.nodename)
+		if err != nil && trx != nil {
+			chain_log.Debugf("No need to upgrade producer list")
+		} else {
+			//TBD update producers list and regerate all consensus
+			// user
+			// producer
+			// psync
+		}
+	*/
+	if resp.CurChainEpoch == chain.group.Item.Epoch {
+		chain_log.Debugf("node local epoch = current chain epoch, No need to sync")
+		chain.syncerrunner.UpdateConsensusResult(sessionId, uint(SyncDone))
+	} else {
+		chain.syncerrunner.UpdateConsensusResult(sessionId, uint(ContinueGetEpoch))
+	}
+
+	return nil
 }
 
 func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.ConsensusResp) (bool, error) {
@@ -494,7 +526,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	}
 
 	//send requested blocks out
-	chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX)", chain.groupId)
+	chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX), epoch <%d>", chain.groupId, block.Epoch)
 	blockresptrx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
 	if err != nil {
 		return err
@@ -551,42 +583,52 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	*/
 }
 
-func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) { //taskId,error
+func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) { //taskId,error
 	chain_log.Debugf("<%s> HandleReqBlockResp called", chain.groupId)
+
+	var err error
+
 	ciperKey, err := hex.DecodeString(chain.group.Item.CipherKey)
 	if err != nil {
-		return "", err
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+		return
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
-		return "", err
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+		return
 	}
 
 	reqBlockResp := &quorumpb.ReqBlockResp{}
 	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
-		return "", err
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+		return
 	}
 
 	//if not asked by me, ignore it
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
-		return "", ErrIgnore
+		chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.groupId, ErrNotAskedByMe.Error())
+		return
 	}
 
-	gsyncerTaskId, gsyncerTaskType, err := chain.syncerrunner.GetCurrentSyncTask()
+	gsyncerTaskId, gsyncerTaskType, _, err := chain.syncerrunner.GetCurrentSyncTask()
 	if gsyncerTaskType != GetEpoch {
-		return "", ErrIgnore
+		chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.groupId, ErrSyncerStatus.Error())
+		return
 	}
 
 	//get epoch by using taskId
 	epochWaiting, err := strconv.ParseInt(gsyncerTaskId, 10, 64)
 	if err != nil {
-		return "", err
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+		return
 	}
 
 	//check if the epoch is what we are waiting for
 	if reqBlockResp.Epoch != epochWaiting {
-		return "", ErrIgnore
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, ErrEpochMismatch)
+		return
 	}
 
 	//sync done
@@ -594,33 +636,34 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) (string, error) { //ta
 	if reqBlockResp.Result == quorumpb.ReqBlkResult_BLOCK_NOT_FOUND {
 		chain_log.Debugf("<%s> receive BLOCK_NOT_FOUND response", chain.groupId)
 		taskId := strconv.Itoa(int(reqBlockResp.Epoch))
-		return taskId, ErrSyncDone
+		chain.syncerrunner.UpdateGetEpochResult(taskId, uint(SyncDone))
+		return
 	}
 
 	//handle synced block
 	newBlock := &quorumpb.Block{}
 	if err := proto.Unmarshal(reqBlockResp.Block, newBlock); err != nil {
-		return "", err
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+		return
 	}
 
 	//TODO: Verify response and block
 	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp Verify response and block ", chain.groupId)
-
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		err = chain.Consensus.Producer().AddBlock(newBlock)
 		if err != nil {
-			return "", err
+			chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+			return
 		}
-		return gsyncerTaskId, nil
 	} else {
 		err = chain.Consensus.User().AddBlock(newBlock)
 		if err != nil {
-			return "", err
+			chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, err.Error())
+			return
 		}
-		return gsyncerTaskId, nil
 	}
-
-	chain.syncerrunner.UpdateGetEpochResult(gsyncerTaskId)
+	//update sync task result to syncerrunner
+	chain.syncerrunner.UpdateGetEpochResult(gsyncerTaskId, uint(ContinueGetEpoch))
 }
 
 func (chain *Chain) UpdProducerList() {
@@ -861,16 +904,16 @@ func (chain *Chain) StopSync() {
 }
 
 func (chain *Chain) GetSyncerStatus() int8 {
-	return chain.syncerrunner.Status
+	return chain.syncerrunner.gsyncer.Status
 }
 
 func (chain *Chain) IsSyncerIdle() bool {
 	chain_log.Debugf("IsSyncerIdle called, groupId <%s>", chain.groupId)
-	if chain.syncerrunner.Status == SYNCING_BACKWARD ||
-		chain.syncerrunner.Status == SYNCING_FORWARD ||
-		chain.syncerrunner.Status == LOCAL_SYNCING ||
-		chain.syncerrunner.Status == SYNC_FAILED {
-		chain_log.Debugf("<%s> syncer is busy, status: <%d>", chain.groupId, chain.syncerrunner.Status)
+	if chain.syncerrunner.gsyncer.Status == SYNCING_FORWARD ||
+		chain.syncerrunner.gsyncer.Status == LOCAL_SYNCING ||
+		chain.syncerrunner.gsyncer.Status == CONSENSUS_SYNC ||
+		chain.syncerrunner.gsyncer.Status == SYNC_FAILED {
+		chain_log.Debugf("<%s> gsyncer is busy, status: <%d>", chain.groupId, chain.syncerrunner.gsyncer.Status)
 		return true
 	}
 	chain_log.Debugf("<%s> syncer is IDLE", chain.groupId)
