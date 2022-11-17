@@ -88,17 +88,15 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		}
 
 		switch value.GetSyncerStatus() {
-		case chain.SYNCING_BACKWARD:
-			group.GroupStatus = "SYNCING"
+		case chain.CONSENSUS_SYNC:
+			group.GroupStatus = "CONSENSUS_SYNCING"
 		case chain.SYNCING_FORWARD:
-			group.GroupStatus = "SYNCING"
+			group.GroupStatus = "BLOCK_SYNCING"
 		case chain.SYNC_FAILED:
 			group.GroupStatus = "SYNC_FAILED"
 		case chain.IDLE:
 			group.GroupStatus = "IDLE"
 		}
-
-		//TBD add psync info
 
 		groups = append(groups, group)
 	}

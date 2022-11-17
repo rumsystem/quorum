@@ -18,4 +18,5 @@ type ChainDataSyncIface interface {
 	StartSync() error
 	StopSync()
 	IsSyncerIdle() bool
+	GetCurrentChainEpoch() int64
 }

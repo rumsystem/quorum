@@ -29,7 +29,7 @@ func NewPSyncBft(cfg Config, psyncer *MolassesPSync) *PSyncBft {
 }
 
 func (pbft *PSyncBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	pbft_log.Debugf("HandleMessage called,  <%s>", hbmsg.MsgId)
+	pbft_log.Debugf("SessionId <%s> HandleMessage called", hbmsg.SessionId)
 
 	acs, ok := pbft.acsInsts[hbmsg.SessionId]
 
@@ -43,9 +43,7 @@ func (pbft *PSyncBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
-	pbft_log.Debugf("AcsDone called, SessionId <%s>", sessionId)
-
-	//make a consensusResp and send it out
+	pbft_log.Debugf("SessionId <%s> AcsDone called", sessionId)
 
 	//get producer registered trx
 	trx, err := nodectx.GetNodeCtx().GetChainStorage().GetUpdProducerListTrx(pbft.PSyncer.groupId, pbft.PSyncer.nodename)
@@ -109,6 +107,8 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	consusResp.MsgHash = msgHash
 	consusResp.SenderSign = signature
 
+	pbft_log.Debugf("ConsensusResp for Session <%s> created", sessionId)
+
 	//send consensusResp out
 	connMgr, err := conn.GetConn().GetConnMgr(pbft.PSyncer.groupId)
 	if err != nil {
@@ -116,21 +116,21 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 		return
 	}
 
+	pbft_log.Debugf("Send ConsensusResp for Session <%s>", sessionId)
 	err = connMgr.SentConsensusMsgPubsub(consusResp, conn.ProducerChannel)
 	if err != nil {
 		pbft_log.Debugf(err.Error())
 		return
 	}
 
+	pbft_log.Debugf("Resp for Session <%s> done, delete and clear ACS", sessionId)
 	//clear acs
 	pbft.acsInsts[sessionId] = nil
 	delete(pbft.acsInsts, sessionId)
-
-	pbft_log.Debugf("Remove acs %s", sessionId)
 }
 
 func (pbft *PSyncBft) AddConsensusReq(req *quorumpb.ConsensusMsg) error {
-	pbft_log.Debug("Propose called")
+	pbft_log.Debugf("SessionId <%s> AddConsensusReq called", req.SessionId)
 
 	datab, err := proto.Marshal(req)
 	if err != nil {
@@ -139,6 +139,7 @@ func (pbft *PSyncBft) AddConsensusReq(req *quorumpb.ConsensusMsg) error {
 
 	_, ok := pbft.acsInsts[req.SessionId]
 	if !ok {
+		pbft_log.Debugf("Create new ACS with sessionId <%s>", req.SessionId)
 		acs := NewPSyncACS(pbft.Config, pbft, req.SessionId)
 		pbft.acsInsts[req.SessionId] = acs
 	}

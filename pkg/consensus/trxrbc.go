@@ -74,7 +74,7 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 // 2. make proofReq for each pieces
 // 3. broadcast all proofReq via pubsub
 func (r *TrxRBC) InputValue(data []byte) error {
-	trx_rbc_log.Infof("Input value called, data length %d", len(data))
+	trx_rbc_log.Infof("<%s>Input value called, data length %d", r.proposerPubkey, len(data))
 	//rbc_log.Infof("raw trxBundle %v", data)
 	shards, err := MakeShards(r.enc, data)
 	if err != nil {
@@ -87,7 +87,7 @@ func (r *TrxRBC) InputValue(data []byte) error {
 		return err
 	}
 
-	trx_rbc_log.Infof("ProofMsg length %d", len(reqs))
+	trx_rbc_log.Infof("<%s> ProofMsg length %d", r.proposerPubkey, len(reqs))
 
 	// broadcast RBC msg out via pubsub
 	for _, req := range reqs {
@@ -101,16 +101,16 @@ func (r *TrxRBC) InputValue(data []byte) error {
 }
 
 func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
-	trx_rbc_log.Infof("PROOF_MSG:ProofProviderPubkey <%s>, epoch %d", proof.ProposerPubkey, r.acs.epoch)
+	trx_rbc_log.Infof("<%s> handle PROOF_MSG: ProofProviderPubkey <%s>, epoch <%d>", r.proposerPubkey, proof.ProposerPubkey, r.acs.epoch)
 
 	if r.consenusDone {
 		//rbc done, do nothing, ignore the msg
-		trx_rbc_log.Infof("rbc is done, do nothing")
+		trx_rbc_log.Infof("<%s> rbc is done, do nothing", r.proposerPubkey)
 		return nil
 	}
 
 	if r.dataDecodeDone {
-		trx_rbc_log.Infof("Data decode done, do nothing")
+		trx_rbc_log.Infof("<%s> Data decode done, do nothing", r.proposerPubkey)
 		return nil
 	}
 
@@ -124,7 +124,7 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	if !isInProducerList {
-		return fmt.Errorf("receive proof from non producer node <%s>", proof.ProposerPubkey)
+		return fmt.Errorf("<%s> receive proof from non producer node <%s>", r.proposerPubkey, proof.ProposerPubkey)
 	}
 
 	//TBD check signature
@@ -134,44 +134,44 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	}
 
 	if !ValidateProof(proof) {
-		return fmt.Errorf("received invalid proof from producer node <%s>", proof.ProposerPubkey)
+		return fmt.Errorf("<%s> received invalid proof from producer node <%s>", r.proposerPubkey, proof.ProposerPubkey)
 	}
 
 	//save proof
-	trx_rbc_log.Infof("Save proof")
+	trx_rbc_log.Debugf("<%s> Save proof", r.proposerPubkey)
 	r.recvProofs = append(r.recvProofs, proof)
 
 	//if got enough proof, try decode it
 	if r.recvProofs.Len() == r.N-r.F {
-		trx_rbc_log.Infof("Try decode")
+		trx_rbc_log.Debugf("<%s> try decode", r.proposerPubkey)
 		output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
 		}
 		r.output = output
 
-		trx_rbc_log.Infof("Data is ready")
+		trx_rbc_log.Debugf("<%s> data is ready", r.proposerPubkey)
 		r.dataDecodeDone = true
 
-		trx_rbc_log.Infof("broadcast ready msg")
+		trx_rbc_log.Debugf("<%s> broadcast ready msg", r.proposerPubkey)
 		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, proof)
 		if err != nil {
 			return err
 		}
 
-		err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "") //sessionId is used by psync
+		err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "")
 		if err != nil {
 			return err
 		}
 
 		//check if we already receive enough readyMsg (N - F)
-		trx_rbc_log.Infof("r.recvReadys: %d, r.N-r.F: %d .", len(r.recvReadys), r.N-r.F)
+		trx_rbc_log.Debugf("<%s> recvived ReadyMsg: %d, expected ReadyMsg(r.N-r.F): %d .", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
 		if len(r.recvReadys) == r.N-r.F {
-			trx_rbc_log.Infof("RBC done")
+			trx_rbc_log.Debugf("<%s> RBC done", r.proposerPubkey)
 			r.consenusDone = true
 			r.acs.RbcDone(r.proposerPubkey)
 		} else {
-			trx_rbc_log.Infof("wait more ready")
+			trx_rbc_log.Debugf("<%s> wait more ready", r.proposerPubkey)
 		}
 	}
 
@@ -179,10 +179,10 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 }
 
 func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
-	trx_rbc_log.Infof("READY_MSG, ProofProviderPubkey <%s>, ProofProposerId <%s>, epoch %d", ready.ProofProviderPubkey, ready.ProposerPubkey, r.acs.epoch)
+	trx_rbc_log.Debugf("<%s> handle READY_MSG, ProofProviderPubkey <%s>, ReadyMsgProposerId <%s>, epoch <%d>", r.proposerPubkey, ready.ProofProviderPubkey, ready.ProposerPubkey, r.acs.epoch)
 
 	if r.consenusDone {
-		trx_rbc_log.Infof("Rbc is already done, do nothing")
+		trx_rbc_log.Debugf("<%s> RBC is already done, do nothing", r.proposerPubkey)
 		return nil
 	}
 
@@ -196,29 +196,30 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	}
 
 	if !isInProducerList {
-		return fmt.Errorf("receive READY from non producer <%s>", ready.ProposerPubkey)
+		return fmt.Errorf("<%s> receive READY from non producer <%s>", r.proposerPubkey, ready.ProposerPubkey)
 	}
 
-	//check signature with ready.root_hash , ready.Proposer.Pubkey, ready.proposer.Sign
+	//TBD check signature with ready.root_hash , ready.Proposer.Pubkey, ready.proposer.Sign
 	signOk := true
 	if !signOk {
-		return fmt.Errorf("invalid ready signature")
+		return fmt.Errorf("<%s> invalid ready signature", r.proposerPubkey)
 	}
 
 	if _, ok := r.recvReadys[string(ready.ProposerPubkey)]; ok {
-		return fmt.Errorf("Received multiple readys from <%s>", ready.ProposerPubkey)
+		return fmt.Errorf("<%s> received multiple readys from <%s>", r.proposerPubkey, ready.ProposerPubkey)
 	}
 
 	r.recvReadys[string(ready.ProposerPubkey)] = ready
 
 	//check if get enough ready
+	trx_rbc_log.Debugf("<%s> Recvived ReadyMsg: %d, Expected ReadyMsg(r.N-r.F): %d .", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
 	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
-		trx_rbc_log.Infof("RBC done")
+		trx_rbc_log.Debugf("<%s> get ENOUGH READY_MSG, RBC done", r.proposerPubkey)
 		r.consenusDone = true
 		r.acs.RbcDone(r.proposerPubkey)
 	} else {
 		//wait till enough
-		trx_rbc_log.Infof("wait for more READY")
+		trx_rbc_log.Debugf("<%s> wait for more READY_MSG", r.proposerPubkey)
 	}
 
 	return nil
