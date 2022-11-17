@@ -51,6 +51,7 @@ type Gsyncer struct {
 	nodeName         string
 	GroupId          string
 	Status           int8
+	statusmu         sync.Mutex
 	waitResultTaskId string //waiting the result for taskid
 	retryCount       int8
 	retrycountmu     sync.Mutex
@@ -68,7 +69,9 @@ type Gsyncer struct {
 func NewGsyncer(groupid string, getTask func(taskid string) (*SyncTask, error), resultreceiver func(result *SyncResult) (string, error), tasksender func(task *SyncTask) error) *Gsyncer {
 	gsyncer_log.Debugf("<%s> NewGsyncer called", groupid)
 	s := &Gsyncer{}
+	s.statusmu.Lock()
 	s.Status = IDLE
+	s.statusmu.Unlock()
 	s.GroupId = groupid
 	s.nextTask = getTask
 	s.resultreceiver = resultreceiver
@@ -135,6 +138,9 @@ func safeCloseResult(ch chan *SyncResult) (recovered bool) {
 }
 
 func (s *Gsyncer) Stop() {
+	s.statusmu.Lock()
+	s.Status = SYNC_STOP
+	s.statusmu.Unlock()
 	safeClose(s.taskdone)
 	safeCloseTask(s.taskq)
 	safeCloseResult(s.resultq)
@@ -144,7 +150,6 @@ func (s *Gsyncer) Stop() {
 			signcount++
 			//wait stop sign and set idle
 			if signcount == 2 { // taskq and resultq stopped
-				s.Status = IDLE
 				close(s.stopnotify)
 			}
 		}
@@ -156,6 +161,9 @@ func (s *Gsyncer) Start() {
 	s.resultq = make(chan *SyncResult, 3)
 	s.taskdone = make(chan struct{})
 	s.stopnotify = make(chan struct{})
+	s.statusmu.Lock()
+	s.Status = SYNCING_FORWARD
+	s.statusmu.Unlock()
 	gsyncer_log.Debugf("<%s> Gsyncer Start", s.GroupId)
 	go func() {
 		for task := range s.taskq {
@@ -276,13 +284,34 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 }
 
 func (s *Gsyncer) AddTask(task *SyncTask) {
-	go func() {
-		s.taskq <- task
+	go func() (recovered bool) {
+		defer func() {
+			if recover() != nil {
+				recovered = true
+			}
+		}()
+		if s.taskq == nil {
+			return false
+		}
+		if s.Status != SYNC_STOP {
+			s.taskq <- task
+		}
+		return false
 	}()
 }
 
 func (s *Gsyncer) AddResult(result *SyncResult) {
-	go func() {
+	go func() (recovered bool) {
+
+		defer func() {
+			if recover() != nil {
+				recovered = true
+			}
+		}()
+		if s.resultq == nil {
+			return false
+		}
 		s.resultq <- result
+		return false
 	}()
 }

@@ -20,6 +20,7 @@ const (
 	SYNC_FAILED      = 2
 	IDLE             = 3
 	LOCAL_SYNCING    = 4
+	SYNC_STOP        = 5
 )
 
 type SyncerRunner struct {
@@ -124,7 +125,7 @@ func (sr *SyncerRunner) SwapSyncDirection() {
 }
 
 func (sr *SyncerRunner) Stop() {
-	sr.Status = IDLE
+	sr.Status = SYNC_STOP
 	sr.gsyncer.Stop()
 }
 
