@@ -47,12 +47,12 @@ func (psync *MolassesPSync) RecreateBft() {
 }
 
 func (psync *MolassesPSync) AddConsensusReq(req *quorumpb.ConsensusMsg) error {
-	molapsyncer_log.Debugf("<%s> TryGetConsensus called", psync.groupId)
+	molapsyncer_log.Debugf("<%s> AddConsensusReq called", psync.groupId)
 	return psync.bft.AddConsensusReq(req)
 }
 
 func (psync *MolassesPSync) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molapsyncer_log.Debugf("<%s> HandleHBMsg %s, %d", psync.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
+	molapsyncer_log.Debugf("<%s> PSyncer HandleHBMsg %s, Epoch %d", psync.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
 	return psync.bft.HandleMessage(hbmsg)
 }
 
