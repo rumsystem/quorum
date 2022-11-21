@@ -279,3 +279,11 @@ func (appdb *AppDb) Close() {
 func groupSeedKey(groupID string) []byte {
 	return []byte(fmt.Sprintf("%s%s", SED_PREFIX, groupID))
 }
+
+func IsGroupSeedKey(key []byte) bool {
+	if bytes.HasPrefix(key, []byte(SED_PREFIX)) {
+		return true
+	}
+
+	return false
+}

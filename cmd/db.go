@@ -161,8 +161,16 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 				return err
 			}
 
-			keys = append(keys, k)
-			vals = append(vals, v)
+			if kind == "appdb" {
+				// for appdb, just migrate group seed
+				if appdata.IsGroupSeedKey(k) {
+					keys = append(keys, k)
+					vals = append(vals, v)
+				}
+			} else {
+				keys = append(keys, k)
+				vals = append(vals, v)
+			}
 
 			if len(keys) >= 1000 {
 				if err := dstDB.BatchWrite(keys, vals); err != nil {
