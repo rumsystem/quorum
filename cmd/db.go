@@ -19,7 +19,8 @@ var (
 	_migrateParam dbParam
 	_compactParam dbParam
 
-	kinds = []string{"db", "appdb", "groups", "pubqueue"} // FIXME: hardcode
+	_migrateDbKinds = []string{"db", "appdb", "groups"}             // FIXME: hardcode
+	_compactDbKinds = []string{"db", "appdb", "groups", "pubqueue"} // FIXME: hardcode
 )
 
 var (
@@ -148,7 +149,7 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 func migrateAll() error {
 	_dbParam := _migrateParam
 
-	for _, kind := range kinds {
+	for _, kind := range _migrateDbKinds {
 		fmt.Printf("migrate %s\n", kind)
 		if err := migrateDB(_dbParam.PeerName, _dbParam.DataDir, kind, _dbParam.NewDataDir); err != nil {
 			return err
@@ -164,7 +165,7 @@ func compactAll() error {
 	srcBasePath := filepath.Join(_dbParam.DataDir, peerName)
 	dstBasePath := filepath.Join(_dbParam.NewDataDir, peerName)
 
-	for _, kind := range kinds {
+	for _, kind := range _compactDbKinds {
 		fmt.Printf("compact %s\n", kind)
 		srcDB, err := storage.OpenDB(srcBasePath, kind)
 		if err != nil {
