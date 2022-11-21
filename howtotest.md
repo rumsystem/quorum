@@ -8,7 +8,7 @@ Producer node 1     | "p1"      | producernode
 Producer node 2     | "p2"      | producernode
 User node 1         | "u1"      | fullnode
 
-# Roles and node type explain
+#Roles and node type explain
 
 When start a node, a "working mode" should be given, there are 3 types of node
 1. bootstrapnode
@@ -42,7 +42,7 @@ what will happen after a producer node (include owner) offline and back
 4. Till get a "BLOCK_NOT_FOUND" response, then finish epoch sync
 5. work normally
 
-# How to test
+#How to test
 
 ## Start all 5 nodes
 
@@ -67,7 +67,7 @@ curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"7c32cde8-bd01-
 ## owner approve p1 and p2
 
 e.g 
- curl -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":'[\"A8fJLRCgX5ROCbkrhX4bx4yw11Q4yfyQxhCnG_87BJN_\",\"AhCUlCfHYt19mjoyu4W3iMOQAZ2JNJdTo0WR1KWz1QNl\"]' ,"group_id":"7c32cde8-bd01-417b-b671-5956ec525fed", "action":"add"}' http://127.0.0.1:8002/api/v1/group/producer/false
+ curl -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":["A8fJLRCgX5ROCbkrhX4bx4yw11Q4yfyQxhCnG_87BJN_","AhCUlCfHYt19mjoyu4W3iMOQAZ2JNJdTo0WR1KWz1QNl"] ,"group_id":"7c32cde8-bd01-417b-b671-5956ec525fed", "action":"add"}' http://127.0.0.1:8002/api/v1/group/producer/false
 
 ## owner or n1 send a POST
 
