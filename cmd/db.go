@@ -2,11 +2,17 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
 )
@@ -16,10 +22,12 @@ const (
 )
 
 var (
-	_migrateParam dbParam
-	_compactParam dbParam
+	_migrateParam  dbParam
+	_compactParam  dbParam
+	_saveSeedParam saveSeedParam
 
-	kinds = []string{"db", "appdb", "groups", "pubqueue"} // FIXME: hardcode
+	_migrateDbKinds = []string{"db", "appdb", "groups"}             // FIXME: hardcode
+	_compactDbKinds = []string{"db", "appdb", "groups", "pubqueue"} // FIXME: hardcode
 )
 
 var (
@@ -48,6 +56,21 @@ var (
 			}
 		},
 	}
+
+	seedCmd = &cobra.Command{
+		Use:   "seed",
+		Short: "seed tool",
+	}
+
+	saveSeedCmd = &cobra.Command{
+		Use:   "save",
+		Short: "save seed to appdb",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := saveSeed(&_saveSeedParam); err != nil {
+				logger.Fatal(err)
+			}
+		},
+	}
 )
 
 type (
@@ -56,11 +79,20 @@ type (
 		DataDir    string
 		NewDataDir string
 	}
+
+	saveSeedParam struct {
+		PeerName string
+		DataDir  string
+		SeedPath string // seed json file path
+		SeedURL  string // seed url
+	}
 )
 
 func init() {
 	dbCmd.AddCommand(migrateCmd)
 	dbCmd.AddCommand(compactCmd)
+	dbCmd.AddCommand(seedCmd)
+	seedCmd.AddCommand(saveSeedCmd)
 	rootCmd.AddCommand(dbCmd)
 
 	// migrate
@@ -80,6 +112,14 @@ func init() {
 	compactFlags.StringVar(&_compactParam.DataDir, "datadir", "data", "data dir")
 	compactFlags.StringVar(&_compactParam.NewDataDir, "newdatadir", "", "new data dir")
 	migrateCmd.MarkFlagRequired("newdatadir")
+
+	// seed
+	saveSeedFlags := saveSeedCmd.Flags()
+	saveSeedFlags.SortFlags = false
+	saveSeedFlags.StringVar(&_saveSeedParam.PeerName, "peername", "peer", "peer name")
+	saveSeedFlags.StringVar(&_saveSeedParam.DataDir, "datadir", "data", "data dir")
+	saveSeedFlags.StringVar(&_saveSeedParam.SeedPath, "seedpath", "", "seed json file")
+	saveSeedFlags.StringVar(&_saveSeedParam.SeedURL, "seedurl", "", "seed url")
 }
 
 func openBadgerDB(dbDir string) (*badger.DB, error) {
@@ -121,8 +161,16 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 				return err
 			}
 
-			keys = append(keys, k)
-			vals = append(vals, v)
+			if kind == "appdb" {
+				// for appdb, just migrate group seed
+				if appdata.IsGroupSeedKey(k) {
+					keys = append(keys, k)
+					vals = append(vals, v)
+				}
+			} else {
+				keys = append(keys, k)
+				vals = append(vals, v)
+			}
 
 			if len(keys) >= 1000 {
 				if err := dstDB.BatchWrite(keys, vals); err != nil {
@@ -148,7 +196,7 @@ func migrateDB(peerName, dataDir, kind, newDataDir string) error {
 func migrateAll() error {
 	_dbParam := _migrateParam
 
-	for _, kind := range kinds {
+	for _, kind := range _migrateDbKinds {
 		fmt.Printf("migrate %s\n", kind)
 		if err := migrateDB(_dbParam.PeerName, _dbParam.DataDir, kind, _dbParam.NewDataDir); err != nil {
 			return err
@@ -164,7 +212,7 @@ func compactAll() error {
 	srcBasePath := filepath.Join(_dbParam.DataDir, peerName)
 	dstBasePath := filepath.Join(_dbParam.NewDataDir, peerName)
 
-	for _, kind := range kinds {
+	for _, kind := range _compactDbKinds {
 		fmt.Printf("compact %s\n", kind)
 		srcDB, err := storage.OpenDB(srcBasePath, kind)
 		if err != nil {
@@ -182,6 +230,49 @@ func compactAll() error {
 	}
 
 	fmt.Printf("please use new data directory: %s\n", _dbParam.NewDataDir)
+
+	return nil
+}
+
+func saveSeed(param *saveSeedParam) error {
+	if param.SeedPath == "" && param.SeedURL == "" {
+		return errors.New("you must specify command line option `--seedpath` or `--seedurl`")
+	}
+
+	seed := &handlers.GroupSeed{}
+
+	if param.SeedPath != "" {
+		// parse seed
+		if !utils.FileExist(param.SeedPath) {
+			return fmt.Errorf("can not find seed file: %s", param.SeedPath)
+		}
+
+		seedContent, err := ioutil.ReadFile(param.SeedPath)
+		if err != nil {
+			return fmt.Errorf("read seed from file failed: %s", err)
+		}
+
+		if err := json.Unmarshal(seedContent, seed); err != nil {
+			return fmt.Errorf("invalid group seed: %s", err)
+		}
+	} else {
+		var err error
+		seed, _, err = handlers.UrlToGroupSeed(param.SeedURL)
+		if err != nil {
+			return fmt.Errorf("invalid seed url: %s", err)
+		}
+	}
+
+	path := filepath.Join(param.DataDir, param.PeerName)
+	appdb, err := appdata.CreateAppDb(path)
+	if err != nil {
+		return fmt.Errorf("open appdb failed: %s", err)
+	}
+
+	pbGroupSeed := handlers.ToPbGroupSeed(*seed)
+	if err := appdb.SetGroupSeed(&pbGroupSeed); err != nil {
+		return fmt.Errorf("save group seed failed: %s", err)
+	}
 
 	return nil
 }
