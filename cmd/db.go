@@ -22,9 +22,10 @@ const (
 )
 
 var (
-	_migrateParam  dbParam
-	_compactParam  dbParam
-	_saveSeedParam saveSeedParam
+	_migrateParam    dbParam
+	_compactParam    dbParam
+	_saveSeedParam   saveSeedParam
+	_resetAppdbParam resetAppdbParam
 
 	_migrateDbKinds = []string{"db", "appdb", "groups"}             // FIXME: hardcode
 	_compactDbKinds = []string{"db", "appdb", "groups", "pubqueue"} // FIXME: hardcode
@@ -62,11 +63,26 @@ var (
 		Short: "seed tool",
 	}
 
+	appdbCmd = &cobra.Command{
+		Use:   "appdb",
+		Short: "appdb tool",
+	}
+
 	saveSeedCmd = &cobra.Command{
 		Use:   "save",
 		Short: "save seed to appdb",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := saveSeed(&_saveSeedParam); err != nil {
+				logger.Fatal(err)
+			}
+		},
+	}
+
+	resetAppdbCmd = &cobra.Command{
+		Use:   "reset",
+		Short: "reset appdb",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := resetAppdb(&_resetAppdbParam); err != nil {
 				logger.Fatal(err)
 			}
 		},
@@ -86,13 +102,22 @@ type (
 		SeedPath string // seed json file path
 		SeedURL  string // seed url
 	}
+
+	resetAppdbParam struct {
+		PeerName string
+		DataDir  string
+	}
 )
 
 func init() {
 	dbCmd.AddCommand(migrateCmd)
 	dbCmd.AddCommand(compactCmd)
 	dbCmd.AddCommand(seedCmd)
+	dbCmd.AddCommand(appdbCmd)
+
 	seedCmd.AddCommand(saveSeedCmd)
+	appdbCmd.AddCommand(resetAppdbCmd)
+
 	rootCmd.AddCommand(dbCmd)
 
 	// migrate
@@ -113,13 +138,19 @@ func init() {
 	compactFlags.StringVar(&_compactParam.NewDataDir, "newdatadir", "", "new data dir")
 	migrateCmd.MarkFlagRequired("newdatadir")
 
-	// seed
+	// save seed
 	saveSeedFlags := saveSeedCmd.Flags()
 	saveSeedFlags.SortFlags = false
 	saveSeedFlags.StringVar(&_saveSeedParam.PeerName, "peername", "peer", "peer name")
 	saveSeedFlags.StringVar(&_saveSeedParam.DataDir, "datadir", "data", "data dir")
 	saveSeedFlags.StringVar(&_saveSeedParam.SeedPath, "seedpath", "", "seed json file")
 	saveSeedFlags.StringVar(&_saveSeedParam.SeedURL, "seedurl", "", "seed url")
+
+	// reset appdb
+	resetAppdbFlags := resetAppdbCmd.Flags()
+	resetAppdbFlags.SortFlags = false
+	resetAppdbFlags.StringVar(&_resetAppdbParam.PeerName, "peername", "peer", "peer name")
+	resetAppdbFlags.StringVar(&_resetAppdbParam.DataDir, "datadir", "data", "data dir")
 }
 
 func openBadgerDB(dbDir string) (*badger.DB, error) {
@@ -272,6 +303,20 @@ func saveSeed(param *saveSeedParam) error {
 	pbGroupSeed := handlers.ToPbGroupSeed(*seed)
 	if err := appdb.SetGroupSeed(&pbGroupSeed); err != nil {
 		return fmt.Errorf("save group seed failed: %s", err)
+	}
+
+	return nil
+}
+
+func resetAppdb(param *resetAppdbParam) error {
+	path := filepath.Join(param.DataDir, param.PeerName)
+	appdb, err := appdata.CreateAppDb(path)
+	if err != nil {
+		return fmt.Errorf("open appdb failed: %s", err)
+	}
+
+	if err := appdb.Reset(); err != nil {
+		return fmt.Errorf("reset appdb failed: %s", err)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package appdata
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -164,6 +165,25 @@ func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
 	return &result, nil
 }
 
+func (appdb *AppDb) GetAllGroupIds() ([]string, error) {
+	groupIds := []string{}
+
+	key := []byte(SED_PREFIX)
+	err := appdb.Db.PrefixForeach(key, func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		groupIds = append(groupIds, getGroupIDFromKey(k[:]))
+		return nil
+	})
+
+	if err != nil {
+		appdatalog.Errorf("GetAllGroupIds failed: %s", err)
+	}
+
+	return groupIds, err
+}
+
 func (appdb *AppDb) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
 	var seeds map[string]*quorumpb.GroupSeed
 	seeds = make(map[string]*quorumpb.GroupSeed)
@@ -271,6 +291,37 @@ func (appdb *AppDb) Release() error {
 	return nil
 }
 
+// Reset reset appdb
+// - remove key with prefix: `fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid) `
+// - set value of `SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + groupid` to zero
+func (appdb *AppDb) Reset() error {
+	groupids, err := appdb.GetAllGroupIds()
+	if err != nil {
+		return err
+	}
+
+	// remove group content
+	for _, groupid := range groupids {
+		prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
+		if _, err := appdb.Db.PrefixDelete([]byte(prefix)); err != nil {
+			return err
+		}
+	}
+
+	// reset group content sequence
+	var val [8]byte
+	binary.BigEndian.PutUint64(val[:], 0)
+	for _, groupid := range groupids {
+		key := []byte(SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + groupid)
+		if err := appdb.Db.Set(key, val[:]); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return nil
+}
+
 func (appdb *AppDb) Close() {
 	appdb.Release()
 	appdb.Db.Close()
@@ -278,6 +329,11 @@ func (appdb *AppDb) Close() {
 
 func groupSeedKey(groupID string) []byte {
 	return []byte(fmt.Sprintf("%s%s", SED_PREFIX, groupID))
+}
+
+func getGroupIDFromKey(key []byte) string {
+	groupID := bytes.TrimPrefix(key, []byte(SED_PREFIX))
+	return string(groupID)
 }
 
 func IsGroupSeedKey(key []byte) bool {
