@@ -843,7 +843,7 @@ nodeA can be `owner node` or `user node`.
         - `id`: requested, string, trx_id to like/dislike
   - `target`:requested
     - `id`: requested, string, group_id of the group
-    - `type`: requested, sting, "Group"
+    - `type`: requested, srting, "Group"
 - API return value:
   - [trx_id](#param-trx_id)
 
