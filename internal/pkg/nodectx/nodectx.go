@@ -75,7 +75,7 @@ func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr
 
 	nodeCtx.Status = NODE_OFFLINE
 	nodeCtx.Ctx = ctx
-	nodeCtx.Version = "1.0.0"
+	nodeCtx.Version = "2.0.0"
 }
 
 func (nodeCtx *NodeCtx) PeersProtocol() *map[string][]string {

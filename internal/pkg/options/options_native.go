@@ -19,7 +19,7 @@ var nodeconfigdir string
 var nodepeername string
 
 const JWTKeyLength = 32
-const defaultNetworkName = "nevis"
+const defaultNetworkName = "staten"
 const defaultMaxPeers = 50
 const defaultConnsHi = 100
 
