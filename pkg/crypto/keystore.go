@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	//p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -64,17 +64,17 @@ type Keystore interface {
 	NewAlias(keyalias, keyname, password string) error
 	UnAlias(keyalias, password string) error
 	Import(keyname string, encodedkey string, keytype KeyType, password string) (string, error)
-	Sign(data []byte, privKey p2pcrypto.PrivKey) ([]byte, error)
+	//Sign(data []byte, privKey p2pcrypto.PrivKey) ([]byte, error)
 	EthSign(digestHash []byte, privKey *ecdsa.PrivateKey) ([]byte, error)
-	VerifySign(data, signature []byte, pubKey p2pcrypto.PubKey) (bool, error)
+	//VerifySign(data, signature []byte, pubKey p2pcrypto.PubKey) (bool, error)
 	EthVerifySign(digestHash, signature []byte, pubKey *ecdsa.PublicKey) bool
-	SignByKeyName(keyname string, data []byte, opts ...string) ([]byte, error)
+	//SignByKeyName(keyname string, data []byte, opts ...string) ([]byte, error)
 	EthSignByKeyName(keyname string, digestHash []byte, opts ...string) ([]byte, error)
-	SignByKeyAlias(keyalias string, data []byte, opts ...string) ([]byte, error)
+	//SignByKeyAlias(keyalias string, data []byte, opts ...string) ([]byte, error)
 	EthSignByKeyAlias(keyalias string, digestHash []byte, opts ...string) ([]byte, error)
 	SignTxByKeyName(keyname string, nonce uint64, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID *big.Int) (string, error)
 	SignTxByKeyAlias(keyalias string, nonce uint64, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID *big.Int) (string, error)
-	VerifySignByKeyName(keyname string, data []byte, sig []byte, opts ...string) (bool, error)
+	//VerifySignByKeyName(keyname string, data []byte, sig []byte, opts ...string) (bool, error)
 	EncryptTo(to []string, data []byte) ([]byte, error)
 	Decrypt(keyname string, data []byte) ([]byte, error)
 	DecryptByAlias(keyalias string, data []byte) ([]byte, error)

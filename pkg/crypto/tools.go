@@ -37,20 +37,3 @@ func Libp2pPubkeyToEthBase64(libp2ppubkey string) (string, error) {
 	}
 	return libp2ppubkey, errors.New("convert to Secp256k1PublicKey failed")
 }
-
-func EthBase64ToLibp2pPubkey(ethbase64pubkey string) (string, error) {
-	bytespubkey, err := base64.RawURLEncoding.DecodeString(ethbase64pubkey)
-	if err != nil {
-		return "", err
-	}
-	ecdsapubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
-	pubkeybytes := ethcrypto.FromECDSAPub(ecdsapubkey)
-	p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	if err != nil {
-		return "", err
-	}
-	SignPubkey, _ := p2pcrypto.MarshalPublicKey(p2ppubkey)
-	pubkey := p2pcrypto.ConfigEncodeKey(SignPubkey)
-	return pubkey, nil
-
-}
