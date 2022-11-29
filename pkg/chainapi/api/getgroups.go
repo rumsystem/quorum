@@ -23,19 +23,7 @@ type groupInfo struct {
 	AppKey         string `json:"app_key" validate:"required"`
 	Epoch          int64  `json:"epoch" validate:"required"`
 	LastUpdated    int64  `json:"last_updated" validate:"required"`
-	//HighestHeight  int64         `json:"highest_height" validate:"required"`
-	//HighestBlockId string        `json:"highest_block_id" validate:"required,uuid4"`
-	GroupStatus string `json:"group_status" validate:"required"`
-	//SnapshotInfo *snapshotInfo `json:"snapshot_info"`
-}
-
-type snapshotInfo struct {
-	TimeStamp         int64
-	HighestHeight     int64
-	HighestBlockId    string
-	Nonce             int64
-	SnapshotPackageId string
-	SenderPubkey      string
+	GroupStatus    string `json:"group_status" validate:"required"`
 }
 
 type GroupInfoList struct {

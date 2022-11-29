@@ -18,7 +18,6 @@ var (
 	ErrEpochMismatch  = errors.New("Error Epoch mismatch with what syncer expected")
 	ErrConsusMismatch = errors.New("Error consensus session mismatch")
 	ErrSyncerStatus   = errors.New("Error Get GetEpoch response but syncer status mismatch")
-	//ErrIgnore        = errors.New("Ignore and wait for time out")
 )
 
 const TASK_TIMEOUT = 4 //seconds
