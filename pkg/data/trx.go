@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	guuid "github.com/google/uuid"
-	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -156,21 +155,7 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 			r := ks.EthVerifySign(hash, trx.SenderSign, ethpubkey)
 			return r, nil
 		}
-	}
-	//create pubkey
-	serializedpub, err := p2pcrypto.ConfigDecodeKey(trx.SenderPubkey)
-	if err != nil {
 		return false, err
 	}
-
-	pubkey, err := p2pcrypto.UnmarshalPublicKey(serializedpub)
-	if err != nil {
-		pubkey, err = p2pcrypto.UnmarshalPublicKey(bytespubkey)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	verify, err := pubkey.Verify(hash, trx.SenderSign)
-	return verify, err
+	return false, err
 }

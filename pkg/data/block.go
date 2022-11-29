@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -180,19 +179,9 @@ func VerifyBookkeepingSign(block *quorumpb.Block) (bool, error) {
 			r := ks.EthVerifySign(bookkeepingHash, block.GetBookkeepingSignature(), ethpubkey)
 			return r, nil
 		}
-	}
-
-	//libp2p key for backward campatibility
-	serializedpub, err := p2pcrypto.ConfigDecodeKey(block.BookkeepingPubkey)
-	if err != nil {
 		return false, err
 	}
-
-	pubkey, err := p2pcrypto.UnmarshalPublicKey(serializedpub)
-	if err != nil {
-		return false, err
-	}
-	return pubkey.Verify(bookkeepingHash, block.BookkeepingSignature)
+	return false, err
 }
 
 func IsBlockValid(newBlock, oldBlock *quorumpb.Block) (bool, error) {

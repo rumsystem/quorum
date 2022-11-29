@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -102,13 +101,8 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 
 		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.BookkeepingPubkey)
 		if err != nil {
-			//the key maybe a libp2p key, try...
-			//ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
-			ownerPubkeyBytes, err = p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.BookkeepingPubkey)
-			if err != nil {
-				msg := "Decode OwnerPubkey failed: " + err.Error()
-				return rumerrors.NewBadRequestError(msg)
-			}
+			msg := "Decode OwnerPubkey failed: " + err.Error()
+			return rumerrors.NewBadRequestError(msg)
 		}
 
 		groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
