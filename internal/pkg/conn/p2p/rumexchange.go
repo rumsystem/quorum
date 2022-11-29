@@ -26,7 +26,6 @@ import (
 )
 
 var rumexchangelog = logging.Logger("rumexchange")
-var peerstoreTTL time.Duration = time.Duration(20 * time.Minute)
 
 const IDVer = "2.0.0"
 
@@ -51,7 +50,6 @@ type RexService struct {
 	chainmgr           map[string]chaindef.ChainDataSyncIface
 	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
-	streampool         sync.Map //map[peer.ID]streamPoolItem
 	msgtypehandlerlock sync.RWMutex
 }
 

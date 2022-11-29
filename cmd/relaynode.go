@@ -112,7 +112,7 @@ func runRelaynode(config cli.RelayNodeFlag) {
 	go autorelay.StartRelayServer(config, signalch, &handler)
 
 	//attach signal
-	signal.Notify(signalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(signalch, os.Interrupt, syscall.SIGTERM)
 	signalType := <-signalch
 	signal.Stop(signalch)
 

@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/kevinms/leakybucket-go"
@@ -22,7 +21,6 @@ type RumPeer struct {
 
 //groupid to RumPeer
 type RumGroupPeerStore struct {
-	syncmapstore    sync.Map
 	scorers         *scorers.Service
 	store           *peerdata.Store
 	rand            *localcrypto.Rand
@@ -30,8 +28,6 @@ type RumGroupPeerStore struct {
 	blocksPerSecond uint64
 	capacityWeight  float64
 }
-
-var ignoregroupid string = "00000000-0000-0000-0000-000000000000"
 
 func NewRumGroupPeerStore() *RumGroupPeerStore {
 	ctx := context.Background()

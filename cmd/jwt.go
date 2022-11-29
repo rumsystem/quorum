@@ -10,7 +10,6 @@ import (
 
 var (
 	// create
-	jwtType        string // node or chain
 	jwtName        string
 	jwtAllowGroups []string
 	jwtDuration    time.Duration

@@ -22,7 +22,6 @@ const SEQ_PREFIX string = "seq_"
 const TRX_PREFIX string = "trx_"
 const SED_PREFIX string = "sed_"
 const STATUS_PREFIX string = "stu_"
-const term = "\x00\x01"
 
 type AppDb struct {
 	Db       storage.QuorumStorage
@@ -105,17 +104,17 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 				} else if seg == 1 {
 					if len(k)-2 > start+i {
 						n := string(k[start+i : len(k)-2])
-						trxnonce, err = strconv.ParseInt(n, 10, 64)
+						trxnonce, _ = strconv.ParseInt(n, 10, 64)
 					}
 				}
 			}
 		}
-		if runcollector == true {
+		if runcollector {
 			if len(senders) == 0 || sendermap[sender] == true {
 				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
 			}
 		}
-		if trxid == starttrx && runcollector == false { //start collecting after this item
+		if trxid == starttrx && !runcollector { //start collecting after this item
 			if targetnonce > 0 {
 				if targetnonce == trxnonce {
 					runcollector = true
@@ -123,7 +122,7 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 			} else {
 				runcollector = true
 			}
-			if starttrxinclude == true && runcollector == true {
+			if starttrxinclude && runcollector {
 				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
 			}
 		}
@@ -165,8 +164,7 @@ func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
 }
 
 func (appdb *AppDb) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
-	var seeds map[string]*quorumpb.GroupSeed
-	seeds = make(map[string]*quorumpb.GroupSeed)
+	var seeds map[string]*quorumpb.GroupSeed = make(map[string]*quorumpb.GroupSeed)
 
 	key := []byte(SED_PREFIX)
 	err := appdb.Db.PrefixForeach(key, func(k []byte, v []byte, err error) error {

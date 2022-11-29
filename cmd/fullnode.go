@@ -236,7 +236,7 @@ func runFullnode(config cli.FullNodeFlag) {
 	go api.StartFullNodeServer(startParam, fullNodeSignalch, h, apph, fullNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
-	signal.Notify(fullNodeSignalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(fullNodeSignalch, os.Interrupt, syscall.SIGTERM)
 	signalType := <-fullNodeSignalch
 	signal.Stop(fullNodeSignalch)
 

@@ -74,7 +74,7 @@ func TestMain(m *testing.M) {
 */
 
 type RespError struct {
-	error string `json:"error"`
+	Error string `json:"error"`
 }
 
 func TestJoinGroup(t *testing.T) {

@@ -128,7 +128,7 @@ func runLightnode(config cli.LightnodeFlag) {
 	go nodesdkapi.StartNodeSDKServer(startApiParam, lightnodeSignalch, nodeHandler, nodeoptions)
 
 	//attach signal
-	signal.Notify(lightnodeSignalch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(lightnodeSignalch, os.Interrupt, syscall.SIGTERM)
 	signalType := <-lightnodeSignalch
 	signal.Stop(lightnodeSignalch)
 

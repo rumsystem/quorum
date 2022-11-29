@@ -44,65 +44,6 @@ func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) er
 	return err
 }
 
-//return the length of the path between the from and to block. and if the path can reach to the toblock.
-func (appsync *AppSync) chainLength(fromBlockId string, toBlockId string) (uint, bool) {
-	/*
-		var chainlength uint
-		if fromBlockId == toBlockId {
-			return 0, true //reach the toblock
-		}
-		nextblockid := fromBlockId
-
-		for {
-			subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(nextblockid, appsync.nodename)
-			if err != nil {
-				return 0, false //error
-			}
-			if len(subblocks) == 0 {
-				return chainlength, false //can not reach the toblock
-			} else if len(subblocks) == 1 {
-				chainlength += 1
-				nextblockid = subblocks[0].BlockId
-			} else if len(subblocks) > 1 { //multi path, calculate every paths
-				var subchainlen uint
-				nextsubblkid := ""
-				for _, blk := range subblocks {
-					l, s := appsync.chainLength(blk.BlockId, toBlockId)
-					if l > subchainlen && s == true { //find a longer chain and can reach the toBlock
-						subchainlen = l
-						nextsubblkid = blk.BlockId
-					}
-				}
-				nextblockid = nextsubblkid
-			}
-		}*/
-
-	//added by cuicat
-	return 0, false
-}
-
-func (appsync *AppSync) findNextBlock(blocks []*quorumpb.Block, toBlockId string) *quorumpb.Block {
-	/*
-		var nextsubblk *quorumpb.Block
-		var subchainlen uint
-		if len(blocks) == 1 {
-			nextsubblk = blocks[0]
-		} else {
-			for _, blk := range blocks {
-				l, s := appsync.chainLength(blk.BlockId, toBlockId)
-				if l > subchainlen && s == true { //reach the toblock
-					subchainlen = l
-					nextsubblk = blk
-				}
-			}
-		}
-
-		return nextsubblk
-	*/
-
-	return nil
-}
-
 func (appsync *AppSync) RunSync(groupid string, lastSyncEpoch int64, highestepoch int64) {
 
 	for {
