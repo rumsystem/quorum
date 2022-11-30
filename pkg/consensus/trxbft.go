@@ -125,7 +125,7 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	delete(bft.acsInsts, epoch)
 
 	bft.producer.grpItem.Epoch = epoch
-	bft.producer.grpItem.LastUpdate = time.Now().Unix()
+	bft.producer.grpItem.LastUpdate = time.Now().UnixNano()
 	nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
 	trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
 
