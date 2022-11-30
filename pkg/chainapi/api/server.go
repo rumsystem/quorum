@@ -84,7 +84,6 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/leave", h.LeaveGroup)
 	r.POST("/v1/group/clear", h.ClearGroupData)
 	r.POST("/v1/group/announce", h.Announce)
-	r.POST("/v1/group/reqpsync", h.ReqPSync)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))

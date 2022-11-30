@@ -12,10 +12,8 @@ import (
 // @Tags User
 // @Summary Request psync with other producers
 // @Description Request a round of psync amont other producers
-// @Accept None
 // @Produce json
-// @Param data body None
-// @Success 200 {object} handlers.ReqPSync
+// @Success 200 {object} handlers.ReqPSyncResult
 // @Router /api/v1/group/reqpsync [post]
 func (h *Handler) ReqPSync(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
