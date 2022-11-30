@@ -84,7 +84,6 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/leave", h.LeaveGroup)
 	r.POST("/v1/group/clear", h.ClearGroupData)
 	r.POST("/v1/group/announce", h.Announce)
-	r.POST("/v1/group/reqpsync", h.ReqPSync)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
@@ -157,12 +156,25 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	//r.POST("/v1/group/join", h.JoinGroup())
 
 	//POST API support sudo
+	r.POST("/v1/group/content", h.PostToGroup)
 	r.POST("/v1/group/content/:sudo", h.PostToGroup)
+
+	r.POST("/v1/group/profile", h.UpdateProfile)
 	r.POST("/v1/group/profile/:sudo", h.UpdateProfile)
+
+	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 	r.POST("/v1/group/appconfig/:sudo", h.MgrAppConfig)
+
+	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 	r.POST("/v1/group/chainconfig/:sudo", h.MgrChainConfig)
+
+	r.POST("/v1/group/producer", h.GroupProducer)
 	r.POST("/v1/group/producer/:sudo", h.GroupProducer)
+
+	r.POST("/v1/group/user", h.GroupUser)
 	r.POST("/v1/group/user/:sudo", h.GroupUser)
+
+	r.POST("/v1/group/announce", h.Announce)
 	r.POST("/v1/group/announce/:sudo", h.Announce)
 
 	r.GET("/v1/node", h.GetNodeInfo)

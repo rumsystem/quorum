@@ -166,8 +166,5 @@ func (node *Node) SetRumExchange(ctx context.Context) {
 
 	//node.peerStatus = peerStatus
 	node.RumExchange = rexservice
-
-	if rexnotification != nil {
-		go node.rexhandler(ctx, rexnotification)
-	}
+	go node.rexhandler(ctx, rexnotification)
 }

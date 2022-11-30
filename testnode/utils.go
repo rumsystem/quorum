@@ -140,7 +140,7 @@ func SeedUrlToGroupId(seedurl string) string {
 	}
 	b64gstr := q.Get("g")
 
-	b64gbyte, err := base64.RawURLEncoding.DecodeString(b64gstr)
-	b64guuid, err := guuid.FromBytes(b64gbyte)
+	b64gbyte, _ := base64.RawURLEncoding.DecodeString(b64gstr)
+	b64guuid, _ := guuid.FromBytes(b64gbyte)
 	return b64guuid.String()
 }

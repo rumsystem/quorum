@@ -25,15 +25,12 @@ func (h *Handler) GroupProducer(c echo.Context) (err error) {
 		return err
 	}
 
-	var sudo bool
-	if c.QueryParams().Get("sudo") == "" {
-		sudo = false
-	} else {
-		v, err := strconv.ParseBool(c.Param("sudo"))
+	sudo := false
+	if c.Param("sudo") != "" {
+		sudo, err = strconv.ParseBool(c.Param("sudo"))
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
-		sudo = v
 	}
 
 	res, err := handlers.GroupProducer(h.ChainAPIdb, params, sudo)

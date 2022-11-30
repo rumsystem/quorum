@@ -12,7 +12,6 @@ var trx_acs_log = logging.Logger("tacs")
 
 type TrxACS struct {
 	Config
-	groupId      string
 	bft          *TrxBft
 	epoch        int64
 	rbcInstances map[string]*TrxRBC

@@ -26,19 +26,13 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 		return err
 	}
 
-	//var sudo bool
-	sudo, err := strconv.ParseBool(c.Param("sudo"))
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
-	/*
-		if c.QueryParams().Get("sudo") == "" {
-			sudo = false
-		} else {
-
+	sudo := false
+	if c.Param("sudo") != "" {
+		sudo, err = strconv.ParseBool(c.Param("sudo"))
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
 		}
-	*/
+	}
 
 	res, err := handlers.PostToGroup(paramspb, sudo)
 	if err != nil {

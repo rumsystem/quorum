@@ -61,21 +61,6 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	//b64producerpubkey = seed.GenesisBlock.ProducerPubKey
 	b64producerpubkey = seed.GenesisBlock.BookkeepingPubkey
 
-	//if strings.HasPrefix(seed.GenesisBlock.ProducerPubKey, "0x") {
-	//	bethpubkey, err := hex.DecodeString(seed.GenesisBlock.ProducerPubKey[2:])
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	b64producerpubkey = base64.RawURLEncoding.EncodeToString(bethpubkey)
-	//	//b64producerpubkey = seed.GenesisBlock.ProducerPubKey
-	//} else {
-	//	byteproducerpubkey, err := p2pcrypto.ConfigDecodeKey(seed.GenesisBlock.ProducerPubKey)
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	b64producerpubkey = base64.RawURLEncoding.EncodeToString(byteproducerpubkey)
-	//}
-
 	values := url.Values{}
 	//values.Add("e", b64bstr)
 	values.Add("g", b64gstr)

@@ -42,9 +42,8 @@ type RumHandler struct {
 }
 
 type RexService struct {
-	Host          host.Host
-	pubSubConnMgr *pubsubconn.PubSubConnMgr
-	//peerStatus         *PeerStatus
+	Host               host.Host
+	pubSubConnMgr      *pubsubconn.PubSubConnMgr
 	ProtocolId         protocol.ID
 	notificationch     chan RexNotification
 	chainmgr           map[string]chaindef.ChainDataSyncIface
@@ -64,15 +63,9 @@ type RexNotification struct {
 	ChannelId string
 }
 
-//type streamPoolItem struct {
-//	s      network.Stream
-//	cancel context.CancelFunc
-//}
-
 func NewRexService(h host.Host, psconnmgr *pubsubconn.PubSubConnMgr, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
-	//rumpeerstore := &RumGroupPeerStore{}
 	rumpeerstore := NewRumGroupPeerStore()
 	rexs := &RexService{Host: h, pubSubConnMgr: psconnmgr, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")

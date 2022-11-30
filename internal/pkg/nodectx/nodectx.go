@@ -19,12 +19,6 @@ const (
 	NODE_OFFLINE = 1 //node disconnected with bootstram and pubchannel
 )
 
-const (
-	USER_CHANNEL_PREFIX     = "user_channel_"
-	PRODUCER_CHANNEL_PREFIX = "prod_channel_"
-	SYNC_CHANNEL_PREFIX     = "sync_channel_"
-)
-
 type NODE_TYPE int
 
 const (
@@ -88,17 +82,6 @@ func (nodeCtx *NodeCtx) ProtocolPrefix() string {
 
 func (nodeCtx *NodeCtx) UpdateOnlineStatus(status NodeStatus) {
 	nodeCtx.Status = status
-}
-
-func (nodeCtx *NodeCtx) GetNodePubKey() (string, error) {
-	var pubkey string
-	pubkeybytes, err := p2pcrypto.MarshalPublicKey(nodeCtx.PublicKey)
-	if err != nil {
-		return pubkey, err
-	}
-
-	pubkey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	return pubkey, nil
 }
 
 func (nodeCtx *NodeCtx) ListGroupPeers(groupid string) []peer.ID {
