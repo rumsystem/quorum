@@ -286,13 +286,10 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 		return "", err
 	}
 
-	/*
-		Commented by cuicat
-		err = grp.ChainCtx.GetPubqueueIface().TrxEnqueue(grp.Item.GroupId, trx)
-		if err != nil {
-			return "", err
-		}
-	*/
+	err = grp.ChainCtx.GetPubqueueIface().TrxEnqueue(grp.Item.GroupId, trx)
+	if err != nil {
+		return "", err
+	}
 
 	return trx.TrxId, nil
 }
