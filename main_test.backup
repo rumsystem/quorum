@@ -2,43 +2,34 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"fmt"
+	"math/rand"
 	"os"
 	"testing"
-	"fmt"
+	"time"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/testnode"
-	"encoding/json"
-
-	"time"	
 	api "github.com/rumsystem/quorum/pkg/chainapi/api"
-)
-
-
-//temp solution
-const (
-	OWNER_NODE = "fullnode_0"
-	PRODUCER_NODE1 = "producernode_0"
-	PRODUCER_NODE2 = "producernode_1"
+	"github.com/rumsystem/quorum/pkg/chainapi/appapi"
+	"github.com/rumsystem/quorum/testnode"
 )
 
 var (
 	pidlist                                                []int
-	nodes                                                  map[string]*testnode.NodeInfo
-	groupIds                                               []string
+	bootstrapapi, peer1api, peer2api                       string
+	peerapilist, groupIds                                  []string
 	timerange, fullnodes, bpnodes, groups, posts, synctime int
 	logger                                                 = logging.Logger("main_test")
 )
 
-func TestMain(m *testing.M) {
-
-	logging.SetLogLevel("main_test", "debug")
-
+func TestMainBackup(m *testing.M) {
 	timerangePtr := flag.Int("timerange", 5, "interval(in normal distribution) of sending transactions")
-	bpnodesPtr := flag.Int("bpnodes", 2, "mock producernodes")
-	fullnodesPtr := flag.Int("fullnodes", 1, "mock fullnodes")
-	groupsPtr := flag.Int("groups", 1, "groups on owner node")
-	postsPtr := flag.Int("posts", 500, "posts on each group")
+	bpnodesPtr := flag.Int("bpnodes", 0, "mock nodes")
+	fullnodesPtr := flag.Int("fullnodes", 2, "mock nodes")
+	groupsPtr := flag.Int("groups", 5, "groups on each node")
+	postsPtr := flag.Int("posts", 5, "posts on each group")
 	synctimePtr := flag.Int("synctime", 30, "time to wait before verify")
 	rextestmode := flag.Bool("rextest", false, "RumExchange Test Mode")
 
@@ -52,16 +43,15 @@ func TestMain(m *testing.M) {
 	synctime = *synctimePtr
 
 	logger.Debugf("Setup testing fullnodes: %d, bpnodes: %d, groups: %d, posts: %d\n", fullnodes, bpnodes, groups, posts)
+	logger.Debug(pidlist)
 	pidch := make(chan int)
-
 	go func() {
 		for {
 			select {
 			case pid := <-pidch:
 				logger.Debug("receive pid", pid)
 				pidlist = append(pidlist, pid)
-				if len(pidlist) == len(nodes) {
-					logger.Debugf("All done...")
+				if len(pidlist) == 3 {
 					return
 				}
 			}
@@ -70,20 +60,11 @@ func TestMain(m *testing.M) {
 
 	cliargs := testnode.Nodecliargs{Rextest: *rextestmode}
 	var tempdatadir string
-
-	//bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, fullnodes, bpnodes)
-
-	nodelist, tempdatadir, _ := testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, fullnodes, bpnodes)
-	
-	nodes = make(map[string]*testnode.NodeInfo)
-	//transfer list to map
-	for _, node := range nodelist {
-		nodes[node.NodeName] = node
-	}
-
+	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(context.Background(), cliargs, pidch, fullnodes, bpnodes)
+	logger.Debug("peers: ", peerapilist)
 	exitVal := m.Run()
 	logger.Debug("after tests clean:", tempdatadir)
-	testnode.Cleanup(tempdatadir, nodelist)
+	testnode.Cleanup(tempdatadir, peerapilist)
 	os.Exit(exitVal)
 }
 
@@ -99,19 +80,17 @@ type RespError struct {
 func TestJoinGroup(t *testing.T) {
 	logger.Debugf("_____________TestJoinGroup_RUNNING_____________")
 
-	//get owner node
-	ownerNode := nodes[OWNER_NODE]
-	
-	//create 3 group on fullnode, join the group then leave, repeat 3 times and verify the group exist and in "IDLE" status	
-	groupToCreate := 3
-	count := 0
-	for count < 3 {
+	//initial
+	groupToCreate := 1
+
+	//create 1 group on each peer, join the group then leave, repeat 3 times and verify the group exist and in "IDLE" status
+	for idx, peerapi := range peerapilist {
 		for i := 0; i < groupToCreate; i++ {
 			logger.Debugf("_____________CREATE_GROUP_____________")
 			var groupseed string
 			var groupId string
-			groupName := fmt.Sprintf("testgroup_%d", i+1)
-			status, resp, err := testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
+			groupName := fmt.Sprintf("testgroup_peer_%d_%d", idx+1, i+1)
+			status, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
 			if err == nil || status != 200 {
 				var objmap map[string]interface{}
 				if err := json.Unmarshal(resp, &objmap); err != nil {
@@ -120,7 +99,7 @@ func TestJoinGroup(t *testing.T) {
 					groupseed = string(resp)
 					seedurl := objmap["seed"]
 					groupId = testnode.SeedUrlToGroupId(seedurl.(string))
-					logger.Debugf("group {Name <%s>, GroupId<%s>} created on node <%s>", groupName, groupId, ownerNode.NodeName)
+					logger.Debugf("group %s(%s) created on peer%d", groupName, groupId, idx+1)
 				}
 			} else {
 				t.Errorf("create group on peer%d error %s", 1, err)
@@ -128,44 +107,43 @@ func TestJoinGroup(t *testing.T) {
 			time.Sleep(1 * time.Second)
 			// try join the same group just created
 			logger.Debugf("_____________TEST_JOIN_EXIST_GROUP_____________")
-			status, _, err = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v2/group/join", "POST", groupseed)
-	
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", groupseed)
+
 			//check if failed
 			if status != 400 {
 				t.Errorf("Join existed group test failed with err %s", err.Error())
 			}
-	
 			time.Sleep(1 * time.Second)
-	
+
 			logger.Debugf("_____________TEST_LEAVE_GROUP_____________")
-			status, _, _ = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
 			if status != 200 {
 				t.Errorf("Leave group test failed with response code %d", status)
 			}
 			time.Sleep(1 * time.Second)
-	
+
 			logger.Debugf("_____________TEST_JOIN_LEAVED_GROUP_____________")
-			status, _, _ = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v2/group/join", "POST", groupseed)
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v2/group/join", "POST", groupseed)
 			if status != 200 {
 				t.Errorf("join leaved group test failed with response code %d", status)
 			}
 			// verify group status
-			_, resp, err = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/groups", "GET", "")
-	
+			_, resp, err = testnode.RequestAPI(peerapi, "/api/v1/groups", "GET", "")
+
 			if err != nil {
 				t.Errorf("get peer group error %s", err)
 			}
-	
+
 			groupslist := &api.GroupInfoList{}
 			if err := json.Unmarshal(resp, &groupslist); err != nil {
 				t.Errorf("parse peer group error %s", err)
 			}
-	
+
 			//check group number,
 			if len(groupslist.GroupInfos) != 1 {
 				t.Errorf("Group number check failed, have %d groups, except 1", len(groupslist.GroupInfos))
 			}
-	
+
 			//ready := "IDLE"
 			for _, groupinfo := range groupslist.GroupInfos {
 				logger.Debugf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
@@ -177,10 +155,10 @@ func TestJoinGroup(t *testing.T) {
 				//	t.Errorf("Check group status failed %s, group not IDLE", err)
 				//}
 			}
-	
+
 			logger.Debugf("_____________TEST_LEAVE_GROUP_____________")
 			//leave group
-			status, resp, err = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
 			if status != 200 {
 				if err != nil {
 					t.Errorf("Leave group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
@@ -188,10 +166,10 @@ func TestJoinGroup(t *testing.T) {
 					t.Errorf("leave group test failed with response code %d, resp <%s>", status, string(resp))
 				}
 			}
-	
+
 			logger.Debugf("_____________TEST_CLEAR_GROUP_____________")
 			//clear group data
-			status, resp, err = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+			status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
 			if status != 200 {
 				if err != nil {
 					t.Errorf("clean group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
@@ -199,15 +177,14 @@ func TestJoinGroup(t *testing.T) {
 					t.Errorf("clean group test failed with response code %d, resp <%s>", status, string(resp))
 				}
 			}
+
 		}
-	
+
 		time.Sleep(1 * time.Second)
-		count++
-	}	
+	}
 }
 
-/*
-// create 1 groups on owner, and join all groups, then verify peerN groups == peerM groups
+// create n groups on each peer, and join all groups, then verify peerN groups == peerM groups
 func TestGroupsPostContents(t *testing.T) {
 
 	logger.Debugf("_____________TestGroupContents_RUNNING_____________")
@@ -435,5 +412,3 @@ func TestGroupsPostContents(t *testing.T) {
 	}
 
 }
-
-*/
