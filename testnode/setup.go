@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	//localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 const (
@@ -188,54 +188,77 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 		}
 	}
 
-	/*
-		Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "bootstrapnode", "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", bootstrapport), "--apiport", fmt.Sprintf("%d", bootstrapapiport), "--configdir", testconfdir, "--keystoredir", testkeystoredir, "--datadir", testdatadir)
-
-		// wait bootstrap node
-		bootstrapBaseUrl := fmt.Sprintf("http://127.0.0.1:%d", bootstrapapiport)
-		checkctx, _ := context.WithTimeout(ctx, 60*time.Second)
-		logger.Debugf("request: %s", bootstrapBaseUrl)
-		bootstrappeerid, result := CheckNodeRunning(checkctx, bootstrapBaseUrl)
-		if result == false {
-			return "", []string{}, "", fmt.Errorf("bootstrap node start failed")
-		}
-		bootstrapaddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/20666/p2p/%s", bootstrappeerid)
-		logger.Debugf("bootstrap addr: %s\n", bootstrapaddr)
-	*/
-	/*
-		peerport := 17001
-		peerapiport := bootstrapapiport + 1
-		i := 0
-
-		// start users nodes
-		for i < fullnodenum {
-			peerport = peerport + i
-			peerapiport = peerapiport + i
-			peername := fmt.Sprintf("peer%d", i+1)
-			testpeerkeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", peername)
-			Fork(pidch, KeystorePassword, gocmd, "run", "main.go", "fullnode", "--peername", peername, "--listen", fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", peerport), "--apiport", fmt.Sprintf("%d", peerapiport), "--peer", bootstrapaddr, "--configdir", testconfdir, "--keystoredir", testpeerkeystoredir, "--datadir", testdatadir, fmt.Sprintf("--rextest=%s", strconv.FormatBool(cli.Rextest)))
-
-			checkctx, _ = context.WithTimeout(ctx, 60*time.Second)
-			_, result := CheckNodeRunning(checkctx, fmt.Sprintf("http://127.0.0.1:%d", peerapiport))
-			if result == false {
-				return "", []string{}, "", fmt.Errorf("%s node start failed", peername)
-			}
-
-			peerapiurl := fmt.Sprintf("http://127.0.0.1:%d", peerapiport)
-			peers = append(peers, peerapiurl)
-
-			i++
-		}
-
-		// start bp nodes
-		for i < bpnodenum {
-			//TODO: run bp nodes
-		}
-
-	*/
 	return nodes, testtempdir, nil
 }
 
+func CleanTestData(dir string) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	configdirexist := false
+	datadirexist := false
+	for _, file := range files {
+		if file.Name() == "config" && file.IsDir() {
+			configdirexist = true
+		}
+		if file.Name() == "data" && file.IsDir(){
+			datadirexist = true
+		}
+	}
+	if configdirexist && datadirexist{
+		logger.Debugf("remove testdata: %s ...", dir)
+		err = os.RemoveAll(dir)
+		if err != nil {
+			logger.Errorf("can't remove testdata: %s %s", dir, err)
+		}
+	} else {
+		logger.Warnf("can't remove testdata: %s", dir)
+	}
+}
+
+func Cleanup(dir string, nodes []*NodeInfo) {
+	logger.Debug("Try kill all running nodes")	
+	for _, node := range nodes {
+		_, _, err := RequestAPI(node.APIBaseUrl, "/api/quit", "GET", "")
+		if err == nil {
+			logger.Debugf("kill node %s ", node.NodeName)
+		}
+	}
+
+	//waiting 3 sencodes for all processes quit.
+	time.Sleep(3 * time.Second)
+
+	logger.Debugf("Clean testdata path: %s ...", dir)	
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	configdirexist := false
+	datadirexist := false
+	for _, file := range files {
+		if file.Name() == "config" && file.IsDir() {
+			configdirexist = true
+		}
+		if file.Name() == "data" && file.IsDir(){
+			datadirexist = true
+		}
+	}
+
+	if configdirexist && datadirexist{
+		logger.Debugf("remove testdata:%s ...", dir)
+		err = os.RemoveAll(dir)
+		if err != nil {
+			logger.Warnf("can't remove testdata: %s %s", dir, err)
+		}
+	} else {
+		logger.Warnf("can't remove testdata: %s", dir)
+	}
+}
+
+
+/*
 func newSignKeyfromKeystore(keyname string, ks *localcrypto.DirKeyStore) {
 }
 
@@ -259,80 +282,4 @@ func newKeystore(ksdir string) (*localcrypto.DirKeyStore, bool) {
 	}
 	return nil, false
 }
-
-func CleanTestData(dir string) {
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	configdirexist := false
-	datadirexist := false
-	for _, file := range files {
-		if file.Name() == "config" && file.IsDir() == true {
-			configdirexist = true
-		}
-		if file.Name() == "data" && file.IsDir() == true {
-			datadirexist = true
-		}
-	}
-	if configdirexist == true && datadirexist == true {
-		logger.Debugf("remove testdata: %s ...", dir)
-		err = os.RemoveAll(dir)
-		if err != nil {
-			logger.Errorf("can't remove testdata: %s %s", dir, err)
-		}
-	} else {
-		logger.Warnf("can't remove testdata: %s", dir)
-	}
-}
-
-func Cleanup(dir string, nodes []*NodeInfo /*peerapilist []string */) {
-	logger.Debugf("Clean testdata path: %s ...", dir)
-	//logger.Debug("peer api list", peerapilist)
-	//add bootstrap node
-	//peerapilist = append(peerapilist, fmt.Sprintf("http://127.0.0.1:%d", 18010))
-	/*
-		for _, peerapi := range peerapilist {
-			_, _, err := RequestAPI(peerapi, "/api/quit", "GET", "")
-			if err == nil {
-				logger.Debugf("kill node at %s ", peerapi)
-			}
-		}
-	*/
-
-	for _, node := range nodes {
-		_, _, err := RequestAPI(node.APIBaseUrl, "/api/quit", "GET", "")
-		if err == nil {
-			logger.Debugf("kill node %s ", node.NodeName)
-		}
-	}
-
-	//waiting 3 sencodes for all processes quit.
-	time.Sleep(3 * time.Second)
-
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	configdirexist := false
-	datadirexist := false
-	for _, file := range files {
-		if file.Name() == "config" && file.IsDir() == true {
-			configdirexist = true
-		}
-		if file.Name() == "data" && file.IsDir() == true {
-			datadirexist = true
-		}
-	}
-
-	if configdirexist == true && datadirexist == true {
-		logger.Debugf("remove testdata:%s ...", dir)
-		err = os.RemoveAll(dir)
-		if err != nil {
-			logger.Warnf("can't remove testdata: %s %s", dir, err)
-		}
-	} else {
-		logger.Warnf("can't remove testdata: %s", dir)
-	}
-}
+*/
