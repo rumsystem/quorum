@@ -38,4 +38,16 @@ var (
 	ErrInvalidJWT = errors.New("Invalid JWT")
 
 	ErrNoPeersAvailable = errors.New("no peers available, waiting for reconnect")
+
+	//syncer
+	ErrNotAskedByMe   = errors.New("Error Get Sync Resp but not asked by me")
+	ErrNoTaskWait     = errors.New("Error No Task Waiting Result")
+	ErrNotAccept      = errors.New("Error The Result had been rejected")
+	ErrIgnore         = errors.New("Ignore")
+	ErrEpochMismatch  = errors.New("Error Epoch mismatch with what syncer expected")
+	ErrConsusMismatch = errors.New("Error consensus session mismatch")
+	ErrSyncerStatus   = errors.New("Error Get GetEpoch response but syncer status mismatch")
+
+	//app
+	ErrNotFound = errors.New("not found")
 )

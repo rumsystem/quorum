@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"strconv"
-	"strings"
 	"sync"
 
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
@@ -30,57 +29,7 @@ func (dbMgr *DbMgr) CloseDb() {
 }
 
 func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
-	if nodeDataVer == 0 { //try migration 0 (Upgrade the GroupItem)
-		dbmgr_log.Infof("db migration v0")
-		groupItemsBytes, err := dbMgr.GetGroupsBytes()
-		if err == nil {
-			for _, b := range groupItemsBytes {
-				item := &quorumpb.GroupItem{}
-				proto.Unmarshal(b, item)
-				if item.CipherKey == "" {
-					itemv0 := &quorumpb.GroupItemV0{}
-					proto.Unmarshal(b, itemv0)
-					if itemv0.CipherKey != "" { //ok
-						item.LastUpdate = itemv0.LastUpdate
-						item.Epoch = itemv0.HighestHeight
-						//item.HighestBlockId = itemv0.HighestBlockId
-						item.GenesisBlock = itemv0.GenesisBlock
-						item.EncryptType = itemv0.EncryptType
-						item.ConsenseType = itemv0.ConsenseType
-						item.CipherKey = itemv0.CipherKey
-						item.AppKey = itemv0.AppKey
-						//add group to db
-						value, err := proto.Marshal(item)
-						if err == nil {
-							dbMgr.GroupInfoDb.Set([]byte(item.GroupId), value)
-							dbmgr_log.Infof("db migration v0 for group %s", item.GroupId)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if nodeDataVer == 1 { //try migration 1 (Upgrade the GroupInfodb key with GROUPITEM_PREFIX prefix)
-		err := dbMgr.GroupInfoDb.Foreach(func(k []byte, v []byte, err error) error {
-			key := string(k)
-			if len(key) == 36 && strings.Contains(key, "_") == false {
-				newkey := GetGroupItemKey(key)
-				err = dbMgr.GroupInfoDb.Set([]byte(newkey), v)
-				if err == nil {
-					dbmgr_log.Infof("db migration v1 for group %s", key)
-					return dbMgr.GroupInfoDb.Delete([]byte(key))
-				} else {
-					return err
-				}
-			}
-			return nil
-		})
-
-		if err != nil {
-			dbmgr_log.Errorf("db migration v1 for groupinfodb err %s", err)
-		}
-	}
+	//no need run migration for the first version
 }
 
 // get block
@@ -260,50 +209,3 @@ func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, erro
 		return nonceseq.(Sequence).Next()
 	}
 }
-
-//func (dbMgr *DbMgr) GetGrpCtnt(groupId string, ctntype string, prefix ...string) ([]*quorumpb.PostItem, error) {
-//	var ctnList []*quorumpb.PostItem
-//	nodeprefix := utils.GetPrefix(prefix...)
-//	pre := nodeprefix + GRP_PREFIX + "_" + CNT_PREFIX + "_" + groupId + "_"
-//	err := dbMgr.Db.PrefixForeach([]byte(pre), func(k []byte, v []byte, err error) error {
-//		if err != nil {
-//			return err
-//		}
-//
-//		item := quorumpb.PostItem{}
-//		perr := proto.Unmarshal(v, &item)
-//		if perr != nil {
-//			return perr
-//		}
-//		ctnList = append(ctnList, &item)
-//		return nil
-//	})
-//
-//	return ctnList, err
-//}
-
-//func (dbMgr *DbMgr) GetTrxContent(trxId string, prefix ...string) (*quorumpb.Trx, error) {
-//	nodeprefix := utils.GetPrefix(prefix...)
-//	var trx quorumpb.Trx
-//	key := nodeprefix + TRX_PREFIX + "_" + trxId
-//	err := dbMgr.Db.View(func(txn *badger.Txn) error {
-//		item, err := txn.Get([]byte(key))
-//		if err != nil {
-//			return err
-//		}
-//
-//		trxBytes, err := item.ValueCopy(nil)
-//		if err != nil {
-//			return err
-//		}
-//
-//		err = proto.Unmarshal(trxBytes, &trx)
-//		if err != nil {
-//			return err
-//		}
-//
-//		return nil
-//	})
-//
-//	return &trx, err
-//}

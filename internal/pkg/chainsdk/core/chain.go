@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -195,12 +196,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 
 // handle BLOCK msg from PSconn
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
-	chain_log.Debugf("<%s> HandleBlock called", chain.groupId)
-
-	bpk, err := localcrypto.Libp2pPubkeyToEthBase64(block.BookkeepingPubkey)
-	if err != nil {
-		bpk = block.BookkeepingPubkey
-	}
+	bpk := block.BookkeepingPubkey
 
 	//from registed producer
 	if _, ok := chain.ProducerPool[bpk]; !ok {
@@ -359,9 +355,9 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 	//check if the resp is from myself
 	//check if the resp is what gsyncer expected
 	taskId, taskType, _, err := chain.syncerrunner.GetCurrentSyncTask()
-	if err == ErrNoTaskWait || taskType != ConsensusSync || taskId != sessionId {
+	if err == rumerrors.ErrNoTaskWait || taskType != ConsensusSync || taskId != sessionId {
 		//not the expected consensus resp
-		return fmt.Errorf(ErrConsusMismatch.Error())
+		return rumerrors.ErrConsusMismatch
 	}
 
 	savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupId)
@@ -560,51 +556,6 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	} else {
 		return cmgr.SendTrxPubsub(blockresptrx, conn.SyncerChannel, clientSyncerChannelId)
 	}
-	/*
-		if networktype == conn.PubSub {
-		} else if networktype == conn.RumExchange {
-			subBlocks, err := chain.chaindata.GetBlockForwardByReqTrx(trx, chain.group.Item.CipherKey, chain.nodename)
-			if err == nil {
-				if len(subBlocks) > 0 {
-					ks := nodectx.GetNodeCtx().Keystore
-					mypubkey, err := ks.GetEncodedPubkey(chain.group.Item.GroupId, localcrypto.Sign)
-					if err != nil {
-						return err
-					}
-					for _, block := range subBlocks {
-						reqBlockRespItem, err := chain.chaindata.CreateReqBlockResp(chain.group.Item.CipherKey, trx, block, mypubkey, quorumpb.ReqBlkResult_BLOCK_IN_TRX)
-						chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_IN_TRX) With RumExchange", chain.groupId)
-						if err != nil {
-							return err
-						}
-
-						bItemBytes, err := proto.Marshal(reqBlockRespItem)
-						if err != nil {
-							return err
-						}
-
-						trx, err := chain.trxFactory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, "")
-						if err != nil {
-							return err
-						}
-
-						if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
-							return err
-						} else {
-							//reply to the source net stream
-							return cmgr.SendTrxRex(trx, s)
-						}
-					}
-				} else {
-					chain_log.Debugf("no more block for <%s>, send ontop message?", chain.groupId)
-				}
-
-			} else {
-				chain_log.Debugf("GetBlockForwardByReqTrx err %s", err)
-			}
-		}
-
-	*/
 }
 
 func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) { //taskId,error
@@ -632,17 +583,17 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) { //taskId,error
 
 	//if not asked by me, ignore it
 	if reqBlockResp.RequesterPubkey != chain.group.Item.UserSignPubkey {
-		chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.groupId, ErrNotAskedByMe.Error())
+		chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.groupId, rumerrors.ErrNotAskedByMe.Error())
 		return
 	}
 
 	gsyncerTaskId, gsyncerTaskType, _, err := chain.syncerrunner.GetCurrentSyncTask()
-	if err == ErrNoTaskWait {
+	if err == rumerrors.ErrNoTaskWait {
 		chain_log.Debugf("<%s> HandleReqBlockResp - no task waiting", chain.groupId)
 		return
 	}
 	if gsyncerTaskType != GetEpoch {
-		chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.groupId, ErrSyncerStatus.Error())
+		chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.groupId, rumerrors.ErrSyncerStatus.Error())
 		return
 	}
 
@@ -655,7 +606,7 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) { //taskId,error
 
 	//check if the epoch is what we are waiting for
 	if reqBlockResp.Epoch != epochWaiting {
-		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, ErrEpochMismatch)
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupId, rumerrors.ErrEpochMismatch)
 		return
 	}
 

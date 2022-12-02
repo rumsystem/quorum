@@ -114,18 +114,18 @@ func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, 
 	return nil
 }
 
-func (conn *Conn) RegisterChainRelay(groupId, userSignPubkey, relaytype string) error {
-	conn_log.Debugf("RegisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
-	key := fmt.Sprintf("%s%s", groupId, relaytype)
-	if _, ok := conn.ConnMgrs[key]; ok {
-		return nil
-	} else {
-		connMgr := &ConnMgr{}
-		connMgr.InitGroupRelayConnMgr(groupId, userSignPubkey, relaytype)
-		conn.ConnMgrs[key] = connMgr
-	}
-	return nil
-}
+//func (conn *Conn) RegisterChainRelay(groupId, userSignPubkey, relaytype string) error {
+//	conn_log.Debugf("RegisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
+//	key := fmt.Sprintf("%s%s", groupId, relaytype)
+//	if _, ok := conn.ConnMgrs[key]; ok {
+//		return nil
+//	} else {
+//		connMgr := &ConnMgr{}
+//		connMgr.InitGroupRelayConnMgr(groupId, userSignPubkey, relaytype)
+//		conn.ConnMgrs[key] = connMgr
+//	}
+//	return nil
+//}
 
 func (conn *Conn) UnregisterChainRelay(relayid, groupId, relaytype string) error {
 	conn_log.Debugf("UnregisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
@@ -189,18 +189,18 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	return nil
 }
 
-func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
-	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
-	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
-	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
-	connMgr.GroupId = groupId
-	connMgr.UserSignPubkey = userSignPubkey
-	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
-	connMgr.InitialPsConnRelay(relaytype)
-
-	return nil
-}
+//func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
+//	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
+//	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
+//	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
+//	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
+//	connMgr.GroupId = groupId
+//	connMgr.UserSignPubkey = userSignPubkey
+//	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
+//	connMgr.InitialPsConnRelay(relaytype)
+//
+//	return nil
+//}
 
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)

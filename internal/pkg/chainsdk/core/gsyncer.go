@@ -2,23 +2,13 @@ package chain
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 )
 
 var gsyncer_log = logging.Logger("syncer")
-
-var (
-	ErrNotAskedByMe   = errors.New("Error Get Sync Resp but not asked by me")
-	ErrNoTaskWait     = errors.New("Error No Task Waiting Result")
-	ErrNotAccept      = errors.New("Error The Result had been rejected")
-	ErrIgnore         = errors.New("Ignore")
-	ErrEpochMismatch  = errors.New("Error Epoch mismatch with what syncer expected")
-	ErrConsusMismatch = errors.New("Error consensus session mismatch")
-	ErrSyncerStatus   = errors.New("Error Get GetEpoch response but syncer status mismatch")
-)
 
 const TASK_TIMEOUT = 4 //seconds
 
@@ -91,7 +81,7 @@ func NewGsyncer(groupid string,
 
 func (s *Gsyncer) GetCurrentTask() (string, TaskType, uint, error) {
 	if s.CurrentTask == nil {
-		return "", 0, 0, ErrNoTaskWait
+		return "", 0, 0, rumerrors.ErrNoTaskWait
 	}
 	return s.CurrentTask.TaskId, s.CurrentTask.Type, s.CurrentTask.RetryCount, nil
 }
