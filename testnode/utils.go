@@ -24,7 +24,7 @@ func RequestAPI(baseUrl string, endpoint string, method string, data string) (in
 		return 0, []byte(""), err
 	}
 
-	logger.Debugf("response status: %d body: %s", statusCode, content)
+	//logger.Debugf("response status: %d body: %s", statusCode, content)
 	return statusCode, content, nil
 }
 
