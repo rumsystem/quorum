@@ -237,6 +237,7 @@ How to test:
 8. verify owner node and user node has the same trx_id list at the end of test (since producer node DOES NOT apply POST trx)
 9. clean up
 */
+
 func TestGroupPostContents(t *testing.T) {
 
 	logger.Debugf("_____________TestGroupPostContents_RUNNING_____________")
@@ -251,21 +252,13 @@ func TestGroupPostContents(t *testing.T) {
 	userNode := nodes[USER_NODE]
 	groupName := "testgroup"
 
-	status, resp, err := testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
-	if err == nil || status != 200 {
-		var objmap map[string]interface{}
-		if err := json.Unmarshal(resp, &objmap); err != nil {
-			t.Errorf("Data Unmarshal error %s", err)
-		} else {
-			groupseed = string(resp)
-			seedurl := objmap["seed"]
-			groupId = testnode.SeedUrlToGroupId(seedurl.(string))
-			logger.Debugf("OK: group {Name <%s>, GroupId<%s>} created on node <%s>", groupName, groupId, ownerNode.NodeName)
-		}
-	} else {
+	groupseed, groupId, err := CreateGroup(ownerNode, groupName)
+	if err != nil {
 		t.Errorf("create group on owner node failed with error <%s>", err)
 		t.Fail()
 	}
+
+	logger.Debugf("OK: group {Name <%s>, GroupId<%s>} created on node <%s>", groupName, groupId, ownerNode.NodeName)
 
 	time.Sleep(1 * time.Second)
 
@@ -276,43 +269,27 @@ func TestGroupPostContents(t *testing.T) {
 			//skip owner node
 			continue
 		} else {
-			logger.Debugf("node <%s> try join group <%s>", node.NodeName, groupId)
-			_, _, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v2/group/join", "POST", groupseed)
-			if err != nil {
+			if err = JoinGroup(node, groupseed, groupId); err != nil {
 				logger.Warningf("node <%s> join group failed with error <%s>", node.NodeName, groupId, err)
 				t.Fail()
 			} else {
 				logger.Debugf("OK: node <%s> join group <%s> done", node.NodeName, groupId)
 			}
+			time.Sleep(1 * time.Second)
 		}
-		time.Sleep(1 * time.Second)
 	}
 
 	//check status of the group on all nodes
 	for _, node := range nodes {
-		_, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/groups", "GET", "")
-		if err != nil {
-			logger.Errorf("node <%s> get group info failed with error <%s>", node.NodeName, err.Error())
-			t.Fail()
-		}
-
-		groupslist := &api.GroupInfoList{}
-		if err := json.Unmarshal(resp, &groupslist); err != nil {
-			logger.Errorf("parse peer group error %s", err)
-			t.Fail()
-		}
-
-		//check there should be only 1 group on each node and the groupid should be the same
-		if len(groupslist.GroupInfos) != 1 || groupslist.GroupInfos[0].GroupId != groupId {
-			logger.Errorf("node <%s> group number/groupid mistch match, group count <%d>", node.NodeName, len(groupslist.GroupInfos))
-			t.Fail()
-		}
-
 		//check group status should be IDLE
 		ready := "IDLE"
-		groupInfo := groupslist.GroupInfos[0]
-		if groupInfo.GroupStatus != ready {
-			logger.Errorf("node <%s> group <%s> not idle, status <%s>", node.NodeName, groupId, groupInfo.GroupStatus)
+		groupStatus, err := GetGroupStatus(node, groupId)
+		if err != nil {
+			t.Fail()
+		}
+
+		if groupStatus != ready {
+			logger.Errorf("node <%s> group <%s> not idle, status <%s>", node.NodeName, groupId, groupStatus)
 			t.Fail()
 		} else {
 			logger.Debugf("OK: node <%s> group <%s> ready", node.NodeName, groupId)
@@ -371,43 +348,26 @@ func TestGroupPostContents(t *testing.T) {
 
 	logger.Debugf("____________VERIFY_EPOCH_____________")
 
-	//verify all nodes has same block epoch
-	//owenr node get group epoch
-	_, resp, err = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/groups", "GET", "")
+	ownerEpoch, err := GetEpochOnGroup(ownerNode, groupId)
 	if err != nil {
-		logger.Errorf("node <%s> get group info failed with error <%s>", ownerNode.NodeName, err.Error())
 		t.Fail()
 	}
 
-	groupslist := &api.GroupInfoList{}
-	if err := json.Unmarshal(resp, &groupslist); err != nil {
-		logger.Errorf("parse peer group error %s", err)
-		t.Fail()
-	}
-
-	owenrGroupInfo := groupslist.GroupInfos[0]
-	logger.Debugf("Owner epoch <%d>", owenrGroupInfo.Epoch)
+	logger.Debugf("Owner epoch <%d>", ownerEpoch)
 
 	for _, node := range nodes {
 		if node.NodeName == OWNER_NODE {
 			//skip owner node
 			continue
 		}
-		_, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/groups", "GET", "")
+
+		userEpoch, err := GetEpochOnGroup(node, groupId)
 		if err != nil {
-			logger.Errorf("node <%s> get group info failed with error <%s>", node.NodeName, err.Error())
 			t.Fail()
 		}
 
-		groupslist := &api.GroupInfoList{}
-		if err := json.Unmarshal(resp, &groupslist); err != nil {
-			logger.Errorf("parse peer group error %s", err)
-			t.Fail()
-		}
-
-		groupInfo := groupslist.GroupInfos[0]
-		logger.Debugf("node <%s> epoch <%d>", node.NodeName, groupInfo.Epoch)
-		if groupInfo.Epoch != owenrGroupInfo.Epoch {
+		logger.Debugf("node <%s> epoch <%d>", node.NodeName, userEpoch)
+		if ownerEpoch != userEpoch {
 			logger.Errorf("node <%s> epoch mismatch", node.NodeName)
 			t.Fail()
 		} else {
@@ -422,202 +382,295 @@ func TestGroupPostContents(t *testing.T) {
 		if node.NodeName == PRODUCER_NODE1 || node.NodeName == PRODUCER_NODE2 {
 			continue
 		}
-		logger.Debugf(">>>>>>> node <%s>", node.NodeName)
-		for trxId, _ := range trxs {
-			logger.Debugf("check trx <%s>", trxId)
-			_, resp, err := testnode.RequestAPI(node.APIBaseUrl, fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId), "GET", "")
-			if err == nil {
-				var data map[string]interface{}
-				if err := json.Unmarshal(resp, &data); err != nil {
-					logger.Errorf("Data Unmarshal error %s", err)
-					t.Fail()
-				}
-				//TBD, run more check on trx
-				if data["TrxId"] == trxId {
-					logger.Debugf("Ok: ---- trx <%s> verified,", trxId)
-				} else {
-					logger.Debugf("????")
-				}
-			} else {
-				logger.Errorf("get /api/v1/trx/%s err: %s", trxId, err)
-				t.Fail()
-			}
+
+		if err = VerifyTrxOnGroup(node, groupId, trxs); err != nil {
+			t.Fail()
 		}
 	}
 
-	/*
+	logger.Debugf("____________LEAVE_GROUP_AND_CLEAR_DATA_____________")
+	for _, node := range nodes {
 
-
-
-		ready := "IDLE"
-
-		for i := 0; i < fullnodes+bpnodes; i++ {
-			// wait for all nodes, all groups ready
-			// reinit groupStatus here, to check each node
-			groupStatus := map[string]bool{} // add ready groups
-			for _, groupId := range groupIds {
-				groupStatus[groupId] = false
-			}
-			waitingcounter := 10
-			for {
-				if waitingcounter <= 0 {
-					break
-				}
-				peerapi := peerapilist[i]
-				groupslist := &api.GroupInfoList{}
-				_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/groups", "GET", "")
-				if err != nil {
-					t.Errorf("get peer group error %s", err)
-				}
-				if err := json.Unmarshal(resp, &groupslist); err != nil {
-					t.Errorf("parse peer group error %s", err)
-				}
-				for _, groupinfo := range groupslist.GroupInfos {
-					if _, found := groupStatus[groupinfo.GroupId]; found {
-						if groupinfo.GroupStatus == ready {
-							groupStatus[groupinfo.GroupId] = true
-						}
-						t.Logf("group(node%d): %s %s", i+1, groupinfo.GroupName, groupinfo.GroupStatus)
-					} else {
-						t.Logf("[cache??] group(node%d): %s %s", i+1, groupinfo.GroupName, groupinfo.GroupStatus)
-					}
-				}
-				ok := true
-				for k, v := range groupStatus {
-					if v == false {
-						ok = false
-						t.Logf("group id %s not ready on node%d", k, i+1)
-					}
-				}
-				if ok {
-					break
-				} else {
-					t.Logf("wait 3s for sync")
-					time.Sleep(3 * time.Second)
-				}
-				waitingcounter -= 1
-			}
+		if err = LeaveGroup(node, groupId); err != nil {
+			t.Fail()
 		}
 
-		if len(peerapilist) == 0 {
-			return
+		if err = ClearGroup(node, groupId); err != nil {
+			t.Fail()
 		}
-		peer1api := peerapilist[0]
+	}
+}
 
-		// create m posts on each group, then verify each group has the same posts
-		groupIdToTrxIds := map[string][]string{}
-		for _, groupId := range groupIds {
-			groupIdToTrxIds[groupId] = []string{}
-			for i := 1; i <= posts; i++ {
-				content := fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"peer1_content_%s_%d","name":"peer1_name_%s_%d"},"target":{"id":"%s","type":"Group"}}`, groupId, i, groupId, i, groupId)
-				_, resp, err := testnode.RequestAPI(peer1api, "/api/v1/group/content/false", "POST", content)
-				if err != nil {
-					t.Errorf("post content to api error %s", err)
-				}
-				var objmap map[string]interface{}
-				if err = json.Unmarshal(resp, &objmap); err != nil {
-					// store trx id, verify it later on each group
-					t.Errorf("Data Unmarshal error %s", err)
-				}
-				if objmap["trx_id"] != nil {
-					t.Logf("post with trxid: %s created", objmap["trx_id"].(string))
-					groupIdToTrxIds[groupId] = append(groupIdToTrxIds[groupId], objmap["trx_id"].(string))
-				} else {
-					t.Errorf("Resp body was not included trx_id %s", string(resp))
-				}
-				// use normal distribution time range
-				// half range  == 3 * stddev (99.7%)
-				mean := float64(timerange) / 2.0
-				stddev := mean / 3.0
-				sleepTime := rand.NormFloat64()*stddev + mean
-				logger.Debugf("sleep: %.2f s before next post\n", sleepTime)
-				time.Sleep(time.Duration(sleepTime*1000) * time.Millisecond)
-				//time.Sleep(time.Duration(5*1000) * time.Millisecond)
+/*
+How to test
+
+1. create 1 group on owner node
+2. owner post 100 trxs
+3. user1 join group
+4. wait 10s for user1 to finish sync (should be quite enough)
+5. check user 1 has same epoch and same trxs
+6. user1 send a POST trx
+7. verify POST send successful
+*/
+func TestBasicSync(t *testing.T) {
+	logger.Debugf("_____________TestGroupPostContents_RUNNING_____________")
+
+	//owner create a group
+	//get owner node
+	ownerNode := nodes[OWNER_NODE]
+	userNode := nodes[USER_NODE]
+	groupName := "testgroup"
+
+	logger.Debugf("_____________CREATE_GROUP_____________")
+	groupSeed, groupId, err := CreateGroup(ownerNode, groupName)
+	if err != nil {
+		t.Fail()
+	}
+
+	logger.Debugf("_____________OWNER_POST_TO_GROUP_____________")
+	trxs, err := PostToGroup(ownerNode, groupId, 100)
+	if err != nil {
+		t.Fail()
+	}
+
+	logger.Debugf("_____________OWNER_VERIFY_TRXS_____________")
+	err = VerifyTrxOnGroup(ownerNode, groupId, trxs)
+	if err != nil {
+		t.Fail()
+	}
+
+	logger.Debugf("_____________USER_JOIN_GROUP_____________")
+	err = JoinGroup(userNode, groupSeed, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	logger.Debugf("_____________WAIT_USERNODE_SYNC_DONE_____________")
+	//wait 10s for user node to finish sync
+	time.Sleep(time.Duration(10) * time.Second)
+
+	logger.Debugf("_____________START_VERIFY_____________")
+	epochOwner, err := GetEpochOnGroup(ownerNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	epochUser, err := GetEpochOnGroup(userNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	//check if user get all epoch
+	if epochUser != epochOwner {
+		logger.Errorf("User node check epoch failed, highest epoch <%d>, should be <%d>", epochUser, epochOwner)
+		t.Fail()
+	}
+
+	logger.Debugf("OK: ownernode epoch <%d>, usernode epoch <%d>", epochOwner, epochUser)
+	//check user node get all trxs
+	err = VerifyTrxOnGroup(userNode, groupId, trxs)
+	if err != nil {
+		t.Fail()
+	}
+
+	logger.Debugf("_____________LEAVE_AND_CLEAR_____________")
+	err = LeaveGroup(userNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = ClearGroup(userNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = LeaveGroup(ownerNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = ClearGroup(ownerNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+}
+
+func CreateGroup(node *testnode.NodeInfo, groupName string) (groupseed, groupId string, err error) {
+	logger.Debugf("node <%s> try create group with name <%s>", node.NodeName, groupName)
+	status, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/group", "POST", fmt.Sprintf(`{"group_name":"%s","app_key":"default", "consensus_type":"poa","encryption_type":"public"}`, groupName))
+	if err == nil || status != 200 {
+		var objmap map[string]interface{}
+		if err := json.Unmarshal(resp, &objmap); err != nil {
+			logger.Errorf("Data Unmarshal error %s", err)
+			return "", "", err
+		} else {
+			groupseed = string(resp)
+			seedurl := objmap["seed"]
+			groupId = testnode.SeedUrlToGroupId(seedurl.(string))
+			logger.Debugf("OK: group {Name <%s>, GroupId<%s>} created on node <%s>", groupName, groupId, node.NodeName)
+		}
+	} else {
+		logger.Errorf("create group on owner node failed with error <%s>", err)
+		return "", "", err
+	}
+	return groupseed, groupId, nil
+}
+
+func JoinGroup(node *testnode.NodeInfo, seed string, groupId string) error {
+	logger.Debugf("node <%s> try join group with groupId <%s>", node.NodeName, groupId)
+	_, _, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v2/group/join", "POST", seed)
+	if err != nil {
+		logger.Warningf("node <%s> join group failed with error <%s>", node.NodeName, groupId, err)
+		return err
+	} else {
+		logger.Debugf("OK: node <%s> join group <%s> done", node.NodeName, groupId)
+		return nil
+	}
+}
+
+func PostToGroup(node *testnode.NodeInfo, groupId string, trxNum int) (map[string]string, error) {
+	logger.Debugf("node <%s> try send <%d> trxs to  group with groupId <%s>", node.NodeName, trxNum, groupId)
+	trxs := make(map[string]string) //trx_id: trx_content
+
+	i := 0
+	for i < trxNum {
+		var postContent string
+		var resp []byte
+		var err error
+
+		r := GetGussRandNum(int64(randRangeMin), int64(randRangeMax)) // from 10ms (0.01s) to 500ms (1s)
+		logger.Debugf("node <%s> try post trx", node.NodeName)
+		postContent = fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}`,
+			node.NodeName, i,
+			node.NodeName, i,
+			groupId)
+		_, resp, err = testnode.RequestAPI(node.APIBaseUrl, "/api/v1/group/content/false", "POST", postContent)
+
+		if err != nil {
+			logger.Errorf("post content to api error %s", err)
+			return nil, err
+		}
+
+		var objmap map[string]interface{}
+		if err = json.Unmarshal(resp, &objmap); err != nil {
+			// store trx id, verify it later on each group
+			logger.Errorf("Data Unmarshal error %s", err)
+			return nil, err
+		}
+
+		if objmap["trx_id"] != nil {
+			logger.Debugf("OK: post with trxid: <%s>", objmap["trx_id"].(string))
+			trxs[objmap["trx_id"].(string)] = "posted"
+		} else {
+			logger.Errorf("resp body was not included trx_id %s", string(resp))
+			err = fmt.Errorf("resp error")
+			return nil, err
+		}
+
+		time.Sleep(time.Duration(r) * time.Millisecond)
+		i++
+	}
+	return trxs, nil
+}
+
+func VerifyTrxOnGroup(node *testnode.NodeInfo, groupId string, trxs map[string]string) error {
+	for trxId, _ := range trxs {
+		logger.Debugf("check trx <%s>", trxId)
+		_, resp, err := testnode.RequestAPI(node.APIBaseUrl, fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId), "GET", "")
+		if err == nil {
+			var data map[string]interface{}
+			if err := json.Unmarshal(resp, &data); err != nil {
+				logger.Errorf("Data Unmarshal error %s", err)
+				return err
 			}
-		}
-		t.Logf("waiting %d seconds for peers data sync", synctime)
-		time.Sleep(time.Duration(synctime) * time.Second)
-		logger.Debug("start verify groups content")
-
-		for _, groupId := range groupIds {
-			trxIds := groupIdToTrxIds[groupId]
-			// for each node, verify groups content
-			for nodeIdx, peerapi := range peerapilist {
-				trxStatus := map[string]bool{}
-				for _, trxId := range trxIds {
-					trxStatus[trxId] = false
-					_, resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId), "GET", "")
-					if err == nil {
-						var data map[string]interface{}
-						if err := json.Unmarshal(resp, &data); err != nil {
-							t.Errorf("Data Unmarshal error %s", err)
-						}
-						if data["TrxId"] == trxId {
-							trxStatus[trxId] = true
-						}
-					} else {
-						t.Errorf("get /api/v1/trx/%s err: %s", trxId, err)
-					}
-				}
-
-				t.Logf("start verify node%d, group id: %s", nodeIdx+1, groupId)
-				_, resp, err := testnode.RequestAPI(peerapi, fmt.Sprintf("/app/api/v1/group/%s/content?num=100", groupId), "POST", "{\"senders\":[]}")
-				groupcontentlist := []appapi.ContentStruct{}
-
-				if err == nil {
-					if err := json.Unmarshal(resp, &groupcontentlist); err != nil {
-						print(string(resp))
-						t.Errorf("Data Unmarshal error %s", err)
-					}
-				} else {
-					t.Errorf("get /api/v1/group/content err: %s", err)
-				}
-				for _, contentitem := range groupcontentlist {
-					if contentitem.Content != nil {
-						if _, found := trxStatus[contentitem.TrxId]; found {
-							trxStatus[contentitem.TrxId] = true
-							t.Logf("trx %s ok", contentitem.TrxId)
-						} else {
-							t.Errorf("trx %s not exists in this groups", contentitem.TrxId)
-						}
-					}
-				}
-
-				// check trxStatus, if it has some false value
-				for k, v := range trxStatus {
-					if v == false {
-						t.Logf("trx id %s not found on node%d", k, nodeIdx+1)
-						//t.Logf("pause for human verify")
-						//time.Sleep(10000000 * time.Second)
-						t.Fail()
-					}
-				}
-
-				//Added by cuicat
-				//leave group
-				status, resp, err := testnode.RequestAPI(peerapi, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
-				if status != 200 {
-					if err != nil {
-						t.Errorf("Leave group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
-					} else {
-						t.Errorf("leave group test failed with response code %d, resp <%s>", status, string(resp))
-					}
-				}
-
-				//clean group data
-				status, resp, err = testnode.RequestAPI(peerapi, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
-				if status != 200 {
-					if err != nil {
-						t.Errorf("clean group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
-					} else {
-						t.Errorf("clean group test failed with response code %d, resp <%s>", status, string(resp))
-					}
-				}
+			//TBD, run more check on trx
+			if data["TrxId"] == trxId {
+				logger.Debugf("Ok: ---- node <%s> trx <%s> verified", node.NodeName, trxId)
+			} else {
+				logger.Errorf("trx <%s> verify failed on node <%s>", trxId, node.NodeName)
+				err = fmt.Errorf("node <%s> verify trx <%s> failed", node.NodeName, trxId)
+				return err
 			}
+		} else {
+			err = fmt.Errorf("get /api/v1/trx/%s err: %s", trxId, err)
+			logger.Error(err.Error())
+			return err
 		}
+	}
 
-	*/
+	return nil
+}
 
+func GetEpochOnGroup(node *testnode.NodeInfo, groupId string) (epoch int, err error) {
+	logger.Debugf("node <%s> get epoch on group with groupId <%s>", node.NodeName, groupId)
+
+	_, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/groups", "GET", "")
+	if err != nil {
+		logger.Errorf("node <%s> get group info failed with error <%s>", node.NodeName, err.Error())
+		return -1, err
+	}
+
+	groupslist := &api.GroupInfoList{}
+	if err := json.Unmarshal(resp, &groupslist); err != nil {
+		logger.Errorf("parse peer group error %s", err)
+		return -1, err
+	}
+
+	groupInfo := groupslist.GroupInfos[0]
+	return int(groupInfo.Epoch), nil
+}
+
+func GetGroupStatus(node *testnode.NodeInfo, groupId string) (string, error) {
+	logger.Debugf("node <%s> get groupstatus on group with groupId <%s>", node.NodeName, groupId)
+
+	_, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/groups", "GET", "")
+	if err != nil {
+		logger.Errorf("node <%s> get group info failed with error <%s>", node.NodeName, err.Error())
+		return "", err
+	}
+
+	groupslist := &api.GroupInfoList{}
+	if err := json.Unmarshal(resp, &groupslist); err != nil {
+		logger.Errorf("parse peer group error %s", err)
+		return "", err
+	}
+
+	groupInfo := groupslist.GroupInfos[0]
+	return groupInfo.GroupStatus, nil
+}
+
+func LeaveGroup(node *testnode.NodeInfo, groupId string) error {
+	//leave group
+	status, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/group/leave", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+	if err != nil {
+		logger.Errorf("Leave group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
+		return err
+	} else if status != 200 {
+		err = fmt.Errorf("leave group test failed with response code %d, resp <%s>", status, string(resp))
+		logger.Errorf(err.Error())
+		return err
+	} else {
+		logger.Debugf("OK: node <%s> leave group <%s>", node.NodeName, groupId)
+	}
+
+	return nil
+}
+
+func ClearGroup(node *testnode.NodeInfo, groupId string) error {
+	//clean group data
+	status, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/group/clear", "POST", fmt.Sprintf(`{"group_id":"%s"}`, groupId))
+	if err != nil {
+		logger.Errorf("clean group test failed with response code %d, resp <%s>, err <%s>", status, string(resp), err.Error())
+		return err
+	} else if status != 200 {
+		err = fmt.Errorf("clean group test failed with response code %d, resp <%s>", status, string(resp))
+		logger.Errorf(err.Error())
+		return err
+	} else {
+		logger.Debugf("OK : node <%s> clear group date <%s>", node.NodeName, groupId)
+	}
+
+	return nil
 }
 
 // Box muller
