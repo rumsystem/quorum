@@ -211,8 +211,6 @@ func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
 	}
 
 	return rumerrors.ErrNoPeersAvailable
-
-	return nil
 }
 
 func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Stream) {

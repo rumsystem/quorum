@@ -65,7 +65,7 @@ func init() {
 	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
 	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
 	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
+	//flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
 	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
@@ -148,7 +148,8 @@ func runFullnode(config cli.FullNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
-	if err == nil && nodeoptions.EnableRumExchange == true {
+	//fullnode must enable rumexchange for sync block
+	if err == nil {
 		fullNode.SetRumExchange(ctx)
 	}
 
@@ -167,9 +168,9 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	//initial group manager
 	chain.InitGroupMgr()
-	if nodeoptions.IsRexTestMode == true {
-		chain.GetGroupMgr().SetRumExchangeTestMode()
-	}
+	//if nodeoptions.IsRexTestMode == true {
+	//	chain.GetGroupMgr().SetRumExchangeTestMode()
+	//}
 
 	//load all groups
 	err = chain.GetGroupMgr().LoadAllGroups()

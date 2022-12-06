@@ -19,7 +19,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/consensus"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
-	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -176,16 +175,17 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_CHAIN_CONFIG:
 		chain.producerAddTrx(trx)
-	case quorumpb.TrxType_REQ_BLOCK_FORWARD:
-		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-			return nil
-		}
-		chain.handleReqBlockForward(trx, conn.PubSub, nil)
-	case quorumpb.TrxType_REQ_BLOCK_RESP:
-		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-			return nil
-		}
-		chain.HandleReqBlockResp(trx)
+	//TODO: remove block sync on pubsub
+	//case quorumpb.TrxType_REQ_BLOCK_FORWARD:
+	//	if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+	//		return nil
+	//	}
+	//	chain.handleReqBlockForward(trx, conn.PubSub, nil)
+	//case quorumpb.TrxType_REQ_BLOCK_RESP:
+	//	if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
+	//		return nil
+	//	}
+	//	chain.HandleReqBlockResp(trx)
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -525,7 +525,6 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	//	return nil
 	//}
 	chain_log.Debugf("<%s> producer handleReqBlockForward called", chain.groupId)
-	clientSyncerChannelId := constants.SYNC_CHANNEL_PREFIX + trx.GroupId + "_" + trx.SenderPubkey
 	requester, block, isEmpty, err := chain.chaindata.GetBlockForward(trx)
 	if err != nil {
 		return err
@@ -541,7 +540,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 		if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 			return err
 		} else {
-			return cmgr.SendTrxPubsub(trx, conn.SyncerChannel, clientSyncerChannelId)
+			return cmgr.SendRespTrxRex(trx, s)
 		}
 	}
 
@@ -554,7 +553,7 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupId); err != nil {
 		return err
 	} else {
-		return cmgr.SendTrxPubsub(blockresptrx, conn.SyncerChannel, clientSyncerChannelId)
+		return cmgr.SendRespTrxRex(blockresptrx, s)
 	}
 }
 
