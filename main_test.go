@@ -412,6 +412,7 @@ How to test
 6. user1 send a POST trx
 7. verify POST send successful
 */
+
 func TestBasicSync(t *testing.T) {
 	logger.Debugf("_____________TestGroupPostContents_RUNNING_____________")
 
@@ -494,6 +495,125 @@ func TestBasicSync(t *testing.T) {
 		t.Fail()
 	}
 }
+
+/*
+func TestBasicMultiProducerBft(t *testing.T) {
+	logger.Debugf("_____________TestBasicMultiProducerBft_RUNNING_____________")
+	//owner create a group
+	//get owner node
+	ownerNode := nodes[OWNER_NODE]
+	userNode := nodes[USER_NODE]
+	p1node := nodes[PRODUCER_NODE1]
+	p2node := nodes[PRODUCER_NODE2]
+	groupName := "testgroup"
+
+	groupSeed, groupId, err := CreateGroup(ownerNode, groupName)
+	if err != nil {
+		t.Fail()
+	}
+
+	trxs, err := PostToGroup(ownerNode, groupId, 100)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = VerifyTrxOnGroup(ownerNode, groupId, trxs)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = JoinGroup(userNode, groupSeed, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = JoinGroup(p1node, groupSeed, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = JoinGroup(p2node, groupSeed, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	//wait 20s for all node to finish sync
+	time.Sleep(time.Duration(20) * time.Second)
+
+	epochOwner, err := GetEpochOnGroup(ownerNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	epochUser, err := GetEpochOnGroup(userNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	epochp1, err := GetEpochOnGroup(p1node, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	epochp2, err := GetEpochOnGroup(p2node, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	logger.Debugf("OK: ownernode epoch <%d>, usernode epoch <%d>, p1 epoch <%d>, p2 epoch <%d>",
+		epochOwner, epochUser, epochp1, epochp2)
+
+	if epochUser != epochOwner || epochp1 != epochOwner || epochp2 != epochOwner {
+		logger.Errorf("User node check epoch failed, highest epoch <%d>, should be <%d>", epochUser, epochOwner)
+		t.Fail()
+	}
+
+	logger.Debugf("OK: ownernode epoch <%d>, p2 epoch <%d>", epochOwner, epochp2)
+
+	logger.Debugf("_____________LEAVE_AND_CLEAR_____________")
+
+	err = LeaveGroup(userNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = ClearGroup(userNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = LeaveGroup(ownerNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = ClearGroup(ownerNode, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = LeaveGroup(p1node, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = ClearGroup(p1node, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = LeaveGroup(p2node, groupId)
+	if err != nil {
+		t.Fail()
+	}
+
+	err = ClearGroup(p2node, groupId)
+	if err != nil {
+		t.Fail()
+	}
+}
+
+*/
 
 func CreateGroup(node *testnode.NodeInfo, groupName string) (groupseed, groupId string, err error) {
 	logger.Debugf("node <%s> try create group with name <%s>", node.NodeName, groupName)

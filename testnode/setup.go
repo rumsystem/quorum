@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -156,8 +155,7 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 				"--peer", bootstrapAddr,
 				"--configdir", testconfdir,
 				"--keystoredir", node.KeystoreDir,
-				"--datadir", testdatadir,
-				fmt.Sprintf("--rextest=%s", strconv.FormatBool(cli.Rextest)))
+				"--datadir", testdatadir)
 
 		case ProducerNode:
 			Fork(pidch, KeystorePassword, gocmd, "run", "main.go",
@@ -202,11 +200,11 @@ func CleanTestData(dir string) {
 		if file.Name() == "config" && file.IsDir() {
 			configdirexist = true
 		}
-		if file.Name() == "data" && file.IsDir(){
+		if file.Name() == "data" && file.IsDir() {
 			datadirexist = true
 		}
 	}
-	if configdirexist && datadirexist{
+	if configdirexist && datadirexist {
 		logger.Debugf("remove testdata: %s ...", dir)
 		err = os.RemoveAll(dir)
 		if err != nil {
@@ -218,7 +216,7 @@ func CleanTestData(dir string) {
 }
 
 func Cleanup(dir string, nodes []*NodeInfo) {
-	logger.Debug("Try kill all running nodes")	
+	logger.Debug("Try kill all running nodes")
 	for _, node := range nodes {
 		_, _, err := RequestAPI(node.APIBaseUrl, "/api/quit", "GET", "")
 		if err == nil {
@@ -229,7 +227,7 @@ func Cleanup(dir string, nodes []*NodeInfo) {
 	//waiting 3 sencodes for all processes quit.
 	time.Sleep(3 * time.Second)
 
-	logger.Debugf("Clean testdata path: %s ...", dir)	
+	logger.Debugf("Clean testdata path: %s ...", dir)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		logger.Fatal(err)
@@ -241,12 +239,12 @@ func Cleanup(dir string, nodes []*NodeInfo) {
 		if file.Name() == "config" && file.IsDir() {
 			configdirexist = true
 		}
-		if file.Name() == "data" && file.IsDir(){
+		if file.Name() == "data" && file.IsDir() {
 			datadirexist = true
 		}
 	}
 
-	if configdirexist && datadirexist{
+	if configdirexist && datadirexist {
 		logger.Debugf("remove testdata:%s ...", dir)
 		err = os.RemoveAll(dir)
 		if err != nil {
@@ -256,7 +254,6 @@ func Cleanup(dir string, nodes []*NodeInfo) {
 		logger.Warnf("can't remove testdata: %s", dir)
 	}
 }
-
 
 /*
 func newSignKeyfromKeystore(keyname string, ks *localcrypto.DirKeyStore) {

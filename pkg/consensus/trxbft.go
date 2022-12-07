@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"sort"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -103,8 +104,6 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 		}
 	}
 
-	//TBD order trx
-
 	//Try build block
 	err := bft.buildBlock(epoch, trxs)
 	if err != nil {
@@ -147,11 +146,13 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	trx_bft_log.Infof("<%s> buildBlock for epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
 	var trxToPackage []*quorumpb.Trx
+	trxToPackage = bft.sortTrx(trxs)
 
-	for trxId, trx := range trxs {
+	/*for trxId, trx := range trxs {
 		trx_bft_log.Infof(">>> package trx : <%s>", trxId)
 		trxToPackage = append(trxToPackage, trx)
 	}
+	*/
 
 	parentEpoch := epoch - 1
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
@@ -196,6 +197,59 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	}
 
 	return nil
+}
+
+// sort trxs by using timestamp
+type TrxSlice []*quorumpb.Trx
+
+func (a TrxSlice) Len() int {
+	return len(a)
+}
+func (a TrxSlice) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+func (a TrxSlice) Less(i, j int) bool {
+	return a[j].TimeStamp < a[i].TimeStamp
+}
+
+func (bft *TrxBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
+	result := []*quorumpb.Trx{}
+	container := make(map[string][]*quorumpb.Trx)
+
+	//group trxs by using sender Pubkey (group trxs from same sender)
+	for _, trx := range trxs {
+		container[trx.SenderPubkey] = append(container[trx.SenderPubkey], trx)
+	}
+
+	//sort each grouped trxs by using timestamp (from small to large)
+	for _, trxs := range container {
+		sort.Sort(sort.Reverse(TrxSlice(trxs)))
+	}
+
+	var senderKeys []string
+	//get all key (sender pubkey) from container
+	for key, _ := range container {
+		senderKeys = append(senderKeys, key)
+	}
+
+	//sort sender key
+	sort.Strings(senderKeys)
+
+	for _, key := range senderKeys {
+		//skip owner trxs
+		if key == bft.producer.grpItem.OwnerPubKey {
+			continue
+		}
+		//append
+		result = append(result, container[key]...)
+	}
+
+	//append any trxs from owner at the end of trxs slice
+	if ownertrxs, ok := container[bft.producer.grpItem.OwnerPubKey]; ok {
+		result = append(result, ownertrxs...)
+	}
+
+	return result
 }
 
 func (bft *TrxBft) propose(epoch int64) error {
