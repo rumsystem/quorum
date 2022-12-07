@@ -183,12 +183,7 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		//v := rand.Intn(500)
 		//time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
 
-		if !sr.rumExchangeTestMode && sr.syncNetworkType == conn.PubSub {
-			return connMgr.SendTrxPubsub(trx, conn.ProducerChannel)
-		} else {
-			//send the request, will wait for the response
-			return connMgr.SendReqTrxRex(trx)
-		}
+		return connMgr.SendReqTrxRex(trx)
 	} else if task.Type == ConsensusSync {
 		consensusSynctask, ok := task.Meta.(ConsensusSyncTask)
 		if !ok {

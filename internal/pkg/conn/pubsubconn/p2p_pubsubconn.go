@@ -146,7 +146,6 @@ func (psconn *P2pPubSubConn) JoinChannelAsRelay(cId string) error {
 }
 
 func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataSyncIface) error {
-	fmt.Println("=================JoinChannel:", cId)
 	psconn.Cid = cId
 
 	// cdhIface == nil, join channel as exchange

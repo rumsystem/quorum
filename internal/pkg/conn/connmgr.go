@@ -78,7 +78,7 @@ type PsConnChanel uint
 const (
 	UserChannel PsConnChanel = iota
 	ProducerChannel
-	SyncerChannel
+	//SyncerChannel
 )
 
 func (t PsConnChanel) String() string {
@@ -87,8 +87,8 @@ func (t PsConnChanel) String() string {
 		return "UserChannel"
 	case ProducerChannel:
 		return "ProducerChannel"
-	case SyncerChannel:
-		return "SyncerChannel"
+	//case SyncerChannel:
+	//	return "SyncerChannel"
 	default:
 		return fmt.Sprintf("%d", int(t))
 	}
@@ -188,19 +188,6 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 
 	return nil
 }
-
-//func (connMgr *ConnMgr) InitGroupRelayConnMgr(groupId string, userSignPubkey string, relaytype string) error {
-//	conn_log.Debugf("InitGroupRelayConnMgr called, groupId <%s>", groupId)
-//	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
-//	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
-//	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
-//	connMgr.GroupId = groupId
-//	connMgr.UserSignPubkey = userSignPubkey
-//	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
-//	connMgr.InitialPsConnRelay(relaytype)
-//
-//	return nil
-//}
 
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
@@ -319,13 +306,13 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 		conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
 		return psconn.Publish(pkgBytes)
-	} else if psChannel == SyncerChannel {
-		conn_log.Debugf("<%s> Send block via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
-		psconn, err := connMgr.getSyncConn(chanelId[0])
-		if err != nil {
-			return err
-		}
-		return psconn.Publish(pkgBytes)
+		//} else if psChannel == SyncerChannel {
+		//	conn_log.Debugf("<%s> Send block via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
+		//	psconn, err := connMgr.getSyncConn(chanelId[0])
+		//	if err != nil {
+		//		return err
+		//	}
+		//	return psconn.Publish(pkgBytes)
 	}
 
 	return fmt.Errorf("can not find psChannel")
@@ -356,13 +343,6 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
 		return psconn.Publish(pkgBytes)
-	} else if psChannel == SyncerChannel {
-		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
-		psconn, err := connMgr.getSyncConn(channelId[0])
-		if err != nil {
-			return err
-		}
-		return psconn.Publish(pkgBytes)
 	}
 
 	return fmt.Errorf("can not find psChannel")
@@ -392,13 +372,6 @@ func (connMgr *ConnMgr) SentConsensusMsgPubsub(msg *quorumpb.ConsensusMsg, psCha
 	} else if psChannel == UserChannel {
 		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == SyncerChannel {
-		conn_log.Debugf("<%s> Send trx via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
-		psconn, err := connMgr.getSyncConn(channelId[0])
-		if err != nil {
-			return err
-		}
 		return psconn.Publish(pkgBytes)
 	}
 
@@ -472,13 +445,6 @@ func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsgv1, psChannel PsConnChanel,
 		//conn_log.Debugf("<%s> Send hbmsg via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
 		return psconn.Publish(pkgBytes)
-	} else if psChannel == SyncerChannel {
-		//conn_log.Debugf("<%s> Send hbmsg via Syncer_Channel <%s>", connMgr.GroupId, channelId[0])
-		psconn, err := connMgr.getSyncConn(channelId[0])
-		if err != nil {
-			return err
-		}
-		return psconn.Publish(pkgBytes)
 	}
 
 	return fmt.Errorf("can not find psChannel")
@@ -492,29 +458,4 @@ func (connMgr *ConnMgr) InitialPsConn() {
 
 	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
-}
-
-func (connMgr *ConnMgr) InitialPsConnRelay(relaytype string) {
-	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
-	if relaytype == RelayGroupType {
-		conn_log.Debugf("<%s> init with RelayGroupType ", connMgr.GroupId)
-
-		//relay newblock/snapshot boardcasting
-		userPsConn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.UserChannelId)
-		connMgr.PsConns[connMgr.UserChannelId] = userPsConn
-
-		//relay producer channel for user's ask
-		producerPsConn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
-		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsConn
-	} else if relaytype == RelayUserType {
-		conn_log.Debugf("<%s> init with RelayUserType ", connMgr.GroupId)
-
-		//relay producer channel for user's ask
-		producerPsConn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.ProducerChannelId)
-		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsConn
-
-		//relay sync channel for producer's response
-		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.CreatePubSubRelayByChannelId(connMgr.SyncChannelId)
-		connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
-	}
 }
