@@ -418,6 +418,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
 	//TODO:  add a timeout ctx to close the steam after timeout
+
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 

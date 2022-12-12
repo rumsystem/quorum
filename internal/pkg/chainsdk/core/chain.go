@@ -175,17 +175,6 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_CHAIN_CONFIG:
 		chain.producerAddTrx(trx)
-	//TODO: remove block sync on pubsub
-	//case quorumpb.TrxType_REQ_BLOCK_FORWARD:
-	//	if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-	//		return nil
-	//	}
-	//	chain.handleReqBlockForward(trx, conn.PubSub, nil)
-	//case quorumpb.TrxType_REQ_BLOCK_RESP:
-	//	if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
-	//		return nil
-	//	}
-	//	chain.HandleReqBlockResp(trx)
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.group.Item.GroupId)
 		err := errors.New("unsupported msg type")
@@ -515,11 +504,6 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
 
-	if chain.Consensus == nil || chain.Consensus.Producer() == nil || !chain.isProducer() {
-		chain_log.Debugf("<%s> not an approved producer, ignore", chain.groupId)
-		return nil
-	}
-
 	//TODO: check my sync status, only response when the status is IDLE
 	//if chain.GetSyncerStatus() != IDLE {
 	//	return nil
@@ -532,6 +516,10 @@ func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2
 	//no block found
 	if isEmpty {
 		chain_log.Debugf("<%s> send REQ_NEXT_BLOCK_RESP (BLOCK_NOT_FOUND)", chain.groupId)
+		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+			chain_log.Debugf("<%s> I'm not a producer, skip BLOCK_NOT_FOUND", chain.groupId)
+			return nil
+		}
 		trx, err := chain.trxFactory.GetReqBlockRespTrx("", requester, block, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND)
 		if err != nil {
 			return err
@@ -626,7 +614,7 @@ func (chain *Chain) HandleReqBlockResp(trx *quorumpb.Trx) { //taskId,error
 	}
 
 	//TODO: Verify response and block
-	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp Verify response and block ", chain.groupId)
+	chain_log.Debugf("<%s> ======TODO: handleReqBlockResp Verify response and block: %d", chain.groupId, newBlock.Epoch)
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		err = chain.Consensus.Producer().AddBlock(newBlock)
 		if err != nil {
