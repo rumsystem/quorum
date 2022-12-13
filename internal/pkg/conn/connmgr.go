@@ -19,15 +19,6 @@ import (
 
 var conn_log = logging.Logger("conn")
 
-const (
-	RelayUserType  string = "user"
-	RelayGroupType string = "group"
-)
-
-const (
-	ERR_CAN_NOT_FIND_OWENR_PEER_ID = "ERR_CAN_NOT_FIND_OWENR_PEER_ID"
-)
-
 var conn *Conn
 
 func GetConn() *Conn {
@@ -35,24 +26,22 @@ func GetConn() *Conn {
 }
 
 type Conn struct {
-	ConnMgrs map[string]*ConnMgr // key: groupId or groupId+relaytype
+	ConnMgrs map[string]*ConnMgr // key: groupId or groupId
 }
 
 type ConnMgr struct {
-	GroupId               string
-	UserChannelId         string
-	ProducerChannelId     string
-	SyncChannelId         string
-	OwnerPubkey           string
-	UserSignPubkey        string
-	ProviderPeerIdPool    map[string]string // key: group owner PubKey; value: group owner peerId
-	ProducerPool          map[string]string // key: group producer Pubkey; value: group producer Pubkey
-	StableProdPsConn      bool
-	producerChannTimer    *time.Timer
-	SyncChannelTimersPool map[string]*time.Timer // key: channelId; value: syncTimer
-	DataHandlerIface      chaindef.ChainDataSyncIface
-	PsConns               map[string]*pubsubconn.P2pPubSubConn // key: channelId
-	Rex                   *p2p.RexService
+	GroupId            string
+	UserChannelId      string
+	ProducerChannelId  string
+	OwnerPubkey        string
+	UserSignPubkey     string
+	ProviderPeerIdPool map[string]string // key: group owner PubKey; value: group owner peerId
+	ProducerPool       map[string]string // key: group producer Pubkey; value: group producer Pubkey
+	StableProdPsConn   bool
+	producerChannTimer *time.Timer
+	DataHandlerIface   chaindef.ChainDataSyncIface
+	PsConns            map[string]*pubsubconn.P2pPubSubConn // key: channelId
+	Rex                *p2p.RexService
 }
 
 type P2pNetworkType uint
@@ -87,16 +76,13 @@ func (t PsConnChanel) String() string {
 		return "UserChannel"
 	case ProducerChannel:
 		return "ProducerChannel"
-	//case SyncerChannel:
-	//	return "SyncerChannel"
 	default:
 		return fmt.Sprintf("%d", int(t))
 	}
 }
 
 const (
-	CLOSE_PRD_CHANN_TIMER  time.Duration = 20 * time.Second
-	CLOSE_SYNC_CHANN_TIMER time.Duration = 20 * time.Second
+	CLOSE_PRD_CHANN_TIMER time.Duration = 20 * time.Second
 )
 
 func InitConn() error {
@@ -114,33 +100,6 @@ func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, 
 	return nil
 }
 
-//func (conn *Conn) RegisterChainRelay(groupId, userSignPubkey, relaytype string) error {
-//	conn_log.Debugf("RegisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
-//	key := fmt.Sprintf("%s%s", groupId, relaytype)
-//	if _, ok := conn.ConnMgrs[key]; ok {
-//		return nil
-//	} else {
-//		connMgr := &ConnMgr{}
-//		connMgr.InitGroupRelayConnMgr(groupId, userSignPubkey, relaytype)
-//		conn.ConnMgrs[key] = connMgr
-//	}
-//	return nil
-//}
-
-func (conn *Conn) UnregisterChainRelay(relayid, groupId, relaytype string) error {
-	conn_log.Debugf("UnregisterChainRelay called, groupId <%s> type: <%s>", groupId, relaytype)
-	key := fmt.Sprintf("%s%s", groupId, relaytype)
-	if connMgr, ok := conn.ConnMgrs[key]; ok {
-		for channelId, _ := range connMgr.PsConns {
-			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveRelayChannel(channelId)
-			delete(connMgr.PsConns, channelId)
-		}
-		delete(conn.ConnMgrs, key)
-		return nil
-	}
-	return fmt.Errorf("unknown relay: %s", relayid)
-}
-
 func (conn *Conn) UnregisterChainCtx(groupId string) error {
 	conn_log.Debugf("UnregisterChainCtx called, groupId <%s>", groupId)
 
@@ -151,7 +110,6 @@ func (conn *Conn) UnregisterChainCtx(groupId string) error {
 	defer delete(conn.ConnMgrs, groupId)
 
 	connMgr.LeaveAllChannels()
-	// TODO: if in syncing, stop it
 
 	return nil
 }
@@ -167,14 +125,12 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
 	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
 	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
-	connMgr.SyncChannelId = constants.SYNC_CHANNEL_PREFIX + groupId + "_" + userSignPubkey
 	connMgr.GroupId = groupId
 	connMgr.OwnerPubkey = ownerPubkey
 	connMgr.UserSignPubkey = userSignPubkey
 	connMgr.ProviderPeerIdPool = make(map[string]string)
 	connMgr.ProducerPool = make(map[string]string)
 	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
-	connMgr.SyncChannelTimersPool = make(map[string]*time.Timer)
 
 	connMgr.DataHandlerIface = cIface
 
@@ -183,7 +139,7 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 		nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 	}
 
-	//initial ps conn for user channel and sync channel
+	//initial ps conn for user channel
 	connMgr.InitialPsConn()
 
 	return nil
@@ -252,32 +208,6 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 	}
 }
 
-func (connMgr *ConnMgr) getSyncConn(channelId string) (*pubsubconn.P2pPubSubConn, error) {
-	//conn_log.Debugf("<%s> getSyncConn called", connMgr.GroupId)
-	if psconn, ok := connMgr.PsConns[channelId]; ok {
-		conn_log.Debugf("<%s> reset connection timer for syncer psconn <%s>", connMgr.GroupId, channelId)
-		if timer, ok := connMgr.SyncChannelTimersPool[channelId]; ok {
-			timer.Stop()
-			timer.Reset(CLOSE_SYNC_CHANN_TIMER)
-		} else {
-			return nil, fmt.Errorf("can not find timer for syncer channel")
-		}
-		return psconn, nil
-	} else {
-		syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(channelId, connMgr.DataHandlerIface)
-		connMgr.PsConns[channelId] = syncerPsconn
-		conn_log.Debugf("<%s> create close_conn timer for syncer channel <%s>", connMgr.GroupId, channelId)
-		syncTimer := time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
-			conn_log.Debugf("<%s> time up, close syncer channel <%s>", connMgr.GroupId, channelId)
-			nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
-			delete(connMgr.PsConns, channelId)
-			delete(connMgr.SyncChannelTimersPool, channelId)
-		})
-		connMgr.SyncChannelTimersPool[channelId] = syncTimer
-		return syncerPsconn, nil
-	}
-}
-
 func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)
 	return connMgr.PsConns[connMgr.UserChannelId]
@@ -306,13 +236,6 @@ func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnCha
 		conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
 		psconn := connMgr.getUserConn()
 		return psconn.Publish(pkgBytes)
-		//} else if psChannel == SyncerChannel {
-		//	conn_log.Debugf("<%s> Send block via Syncer_Channel <%s>", connMgr.GroupId, chanelId[0])
-		//	psconn, err := connMgr.getSyncConn(chanelId[0])
-		//	if err != nil {
-		//		return err
-		//	}
-		//	return psconn.Publish(pkgBytes)
 	}
 
 	return fmt.Errorf("can not find psChannel")
@@ -393,9 +316,6 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-
-	//TODO: select a peer, create a stream s, wait for respose, timeout/error/succ and close the steam
-	//TODO:  add a timeout ctx to close the steam after timeout
 	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
 }
 
@@ -422,7 +342,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 
-func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsgv1, psChannel PsConnChanel, channelId ...string) error {
+func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)
@@ -438,17 +358,8 @@ func (connMgr *ConnMgr) SendHBMsg(hbb *quorumpb.HBMsgv1, psChannel PsConnChanel,
 		return err
 	}
 
-	if psChannel == ProducerChannel {
-		//conn_log.Debugf("<%s> Send hbmsg via Producer_Channel", connMgr.GroupId)
-		psconn := connMgr.getProducerPsConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == UserChannel {
-		//conn_log.Debugf("<%s> Send hbmsg via User_Channel", connMgr.GroupId)
-		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	}
-
-	return fmt.Errorf("can not find psChannel")
+	psconn := connMgr.getProducerPsConn()
+	return psconn.Publish(pkgBytes)
 }
 
 func (connMgr *ConnMgr) InitialPsConn() {
@@ -457,6 +368,4 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 
-	syncerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.SyncChannelId, connMgr.DataHandlerIface)
-	connMgr.PsConns[connMgr.SyncChannelId] = syncerPsconn
 }

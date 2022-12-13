@@ -81,7 +81,6 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	nodeoptions.IsRexTestMode = false
 	nodeoptions.EnableRelay = false
 
 	keystoreParam := InitKeystoreParam{
@@ -149,9 +148,6 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 
 	//initial group manager
 	chain.InitGroupMgr()
-	if nodeoptions.IsRexTestMode == true {
-		chain.GetGroupMgr().SetRumExchangeTestMode()
-	}
 
 	//load all groups
 	err = chain.GetGroupMgr().LoadAllGroups()

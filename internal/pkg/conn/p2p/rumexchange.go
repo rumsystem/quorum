@@ -45,29 +45,17 @@ type RexService struct {
 	Host               host.Host
 	pubSubConnMgr      *pubsubconn.PubSubConnMgr
 	ProtocolId         protocol.ID
-	notificationch     chan RexNotification
 	chainmgr           map[string]chaindef.ChainDataSyncIface
 	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
 	msgtypehandlerlock sync.RWMutex
 }
 
-type ActionType int
-
-const (
-	JoinChannel ActionType = iota
-)
-
-type RexNotification struct {
-	Action    ActionType
-	ChannelId string
-}
-
-func NewRexService(h host.Host, psconnmgr *pubsubconn.PubSubConnMgr, Networkname string, ProtocolPrefix string, notification chan RexNotification) *RexService {
+func NewRexService(h host.Host, psconnmgr *pubsubconn.PubSubConnMgr, Networkname string, ProtocolPrefix string) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
 	rumpeerstore := NewRumGroupPeerStore()
-	rexs := &RexService{Host: h, pubSubConnMgr: psconnmgr, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), notificationch: notification, chainmgr: chainmgr}
+	rexs := &RexService{Host: h, pubSubConnMgr: psconnmgr, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)

@@ -15,8 +15,8 @@ import (
 type NodeStatus int8
 
 const (
-	NODE_ONLINE  = 0 //node connected with bootstramp and pubchannel
-	NODE_OFFLINE = 1 //node disconnected with bootstram and pubchannel
+	NODE_ONLINE  = 0 //node connected with bootstrap and pubchannel
+	NODE_OFFLINE = 1 //node disconnected with bootstrap and pubchannel
 )
 
 type NODE_TYPE int

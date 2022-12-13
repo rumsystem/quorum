@@ -61,30 +61,6 @@ func (node *Node) eventhandler(ctx context.Context) {
 	}
 }
 
-func (node *Node) rexhandler(ctx context.Context, ch chan RexNotification) {
-	for {
-		select {
-		case rexnoti, ok := <-ch:
-			if ok {
-				if rexnoti.Action == JoinChannel {
-					psconn := node.PubSubConnMgr.GetPubSubConnByChannelId(rexnoti.ChannelId, nil)
-					if psconn != nil {
-						//TODO: data can be sync in this channel
-						//psconn.Publish([]byte(fmt.Sprintf("channel ok from %s", node.PeerID)))
-					} else {
-						networklog.Errorf("Can't get pubsubconn %s from PubSubConnMgr", rexnoti.ChannelId)
-					}
-				} else {
-					networklog.Errorf("recv unknown notification %s from: %s", rexnoti, rexnoti.ChannelId)
-				}
-			}
-
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 func (node *Node) FindPeers(ctx context.Context, RendezvousString string) ([]peer.AddrInfo, error) {
 	pctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
@@ -155,10 +131,8 @@ func (node *Node) PeersProtocol() *map[string][]string {
 
 func (node *Node) SetRumExchange(ctx context.Context) {
 	//peerStatus := NewPeerStatus()
-	var rexnotification chan RexNotification
-	rexnotification = make(chan RexNotification, 1)
 	var rexservice *RexService
-	rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix, rexnotification)
+	rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)
@@ -166,5 +140,4 @@ func (node *Node) SetRumExchange(ctx context.Context) {
 
 	//node.peerStatus = peerStatus
 	node.RumExchange = rexservice
-	go node.rexhandler(ctx, rexnotification)
 }

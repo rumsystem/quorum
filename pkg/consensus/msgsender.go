@@ -27,7 +27,7 @@ func SendHbbRBC(groupId string, msg *quorumpb.BroadcastMsg, epoch int64, payload
 		Payload:     msgB,
 	}
 
-	return connMgr.SendHBMsg(hbmsg, conn.ProducerChannel)
+	return connMgr.BroadcastHBMsg(hbmsg)
 }
 
 func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType, sessionId string) error {
@@ -50,5 +50,5 @@ func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, p
 		Payload:     msgB,
 	}
 
-	return connMgr.SendHBMsg(hbmsg, conn.ProducerChannel)
+	return connMgr.BroadcastHBMsg(hbmsg)
 }

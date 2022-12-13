@@ -34,7 +34,6 @@ type SyncerRunner struct {
 	syncNetworkType conn.P2pNetworkType
 	gsyncer         *Gsyncer
 
-	rumExchangeTestMode bool
 	//nodeName string
 	//responses           map[string]*quorumpb.ReqBlockResp
 	//rwMutex         sync.RWMutex
@@ -47,7 +46,6 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 	sr.group = group
 	sr.cdnIface = cdnIface
 	sr.syncNetworkType = conn.PubSub
-	sr.rumExchangeTestMode = false
 
 	//create and initial Get Task Apis
 	taskGenerators := make(map[TaskType]func(args ...interface{}) (*SyncTask, error))
@@ -60,14 +58,6 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 
 	return sr
 }
-
-//commented by cuicat
-/*
-func (sr *SyncerRunner) SetRumExchangeTestMode() {
-	syncerrunner_log.Debugf("<%s> SetRumExchangeTestMode called", sr.group.Item.GroupId)
-	sr.rumExchangeTestMode = true
-}
-*/
 
 func (sr *SyncerRunner) GetCurrentSyncTask() (string, TaskType, uint, error) {
 	syncerrunner_log.Debugf("<%s> GetCurrentSyncTask called", sr.group.Item.GroupId)
@@ -139,9 +129,6 @@ func (sr *SyncerRunner) Stop() {
 func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 	syncerrunner_log.Debugf("<%s> TaskSender called", sr.group.Item.GroupId)
 	//TODO
-	//if sr.syncNetworkType == conn.RumExchange || sr.rumExchangeTestMode == true {
-	//	sr.gsyncer.SetRetryWithNext(true) //workaround for rumexchange
-	//}
 
 	if task.Type == GetEpoch {
 		epochSyncTask, ok := task.Meta.(EpochSyncTask)
@@ -167,14 +154,12 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		//sr.SetCurrentWaitTask(&blocktask)
 		if task.RetryCount >= uint(RETRY_LIMIT) { //max retry count
 			//change networktype and clear counter
-			if !sr.rumExchangeTestMode {
-				if sr.syncNetworkType == conn.PubSub {
-					sr.syncNetworkType = conn.RumExchange
-				} else {
-					sr.syncNetworkType = conn.PubSub
-				}
-				syncerrunner_log.Debugf("<%s> task <%s> retry <%d> times, switch network type to <%s>", sr.group.Item.GroupId, task.TaskId, task.RetryCount, sr.syncNetworkType)
+			if sr.syncNetworkType == conn.PubSub {
+				sr.syncNetworkType = conn.RumExchange
+			} else {
+				sr.syncNetworkType = conn.PubSub
 			}
+			syncerrunner_log.Debugf("<%s> task <%s> retry <%d> times, switch network type to <%s>", sr.group.Item.GroupId, task.TaskId, task.RetryCount, sr.syncNetworkType)
 			task.RetryCount = 0
 		}
 
