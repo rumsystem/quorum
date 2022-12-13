@@ -392,10 +392,12 @@ func TestGroupPostContents(t *testing.T) {
 	for _, node := range nodes {
 
 		if err = LeaveGroup(node, groupId); err != nil {
+			logger.Errorf("leave group err: <%d>", err)
 			t.Fail()
 		}
 
 		if err = ClearGroup(node, groupId); err != nil {
+			logger.Errorf("clean group err: <%d>", err)
 			t.Fail()
 		}
 	}

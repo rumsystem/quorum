@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
+
 	"time"
 
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
@@ -32,6 +34,8 @@ const (
 	PUBQUEUE_PREFIX              = "PUBQUEUE"
 	MAX_RETRY_COUNT              = 10
 )
+
+var mu sync.Mutex
 
 var autoAck bool = false
 
@@ -225,14 +229,14 @@ func doRefresh() {
 		}
 
 		// use goroutine to avoid thread blocking in browser(indexeddb doesn't support nested cursors)
-		go func() {
-			item, err := ParsePublishQueueItem(k, v)
-			if err != nil {
-				chain_log.Warnf("<pubqueue>: %s", err)
-				return
-			}
+		item, err := ParsePublishQueueItem(k, v)
+		if err != nil {
+			chain_log.Warnf("<pubqueue>: %s", err)
+			return err
+		}
 
-			chain_log.Debugf("<pubqueue>: got item %v group_id %s", item.Trx.TrxId, item.GroupId)
+		chain_log.Debugf("<pubqueue>: got item %v group_id %s", item.Trx.TrxId, item.GroupId)
+		go func() {
 
 			switch item.State {
 			case PublishQueueItemStatePending:
