@@ -309,8 +309,8 @@ func (chain *Chain) HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		return chain.Consensus.PSync().AddConsensusReq(c)
 	} else if c.MsgType == quorumpb.ConsensusType_RESP {
 		//check if the resp is from myself
-		if chain.group.Item.UserSignPubkey == c.SenderPubkey {
-			chain_log.Debugf("Session <%s> consensusResp from myself, ignore", c.SessionId)
+		if len(chain.ProducerPool) != 1 && chain.group.Item.UserSignPubkey == c.SenderPubkey {
+			chain_log.Debugf("multiple producer exist, session <%s> consensusResp from myself, ignore", c.SessionId)
 			return nil
 		}
 
