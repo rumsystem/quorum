@@ -179,6 +179,14 @@ func (connMgr *ConnMgr) LeaveAllChannels() error {
 	return nil
 }
 
+func (connMgr *ConnMgr) InitialPsConn() {
+	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
+
+	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
+	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+
+}
+
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 	conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
 	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
@@ -271,36 +279,6 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 	return fmt.Errorf("can not find psChannel")
 }
 
-func (connMgr *ConnMgr) SentConsensusMsgPubsub(msg *quorumpb.ConsensusMsg, psChannel PsConnChanel, channelId ...string) error {
-	conn_log.Debugf("<%s> SentConsensusReqPubsub called", connMgr.GroupId)
-	pkg := &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_CONSENSUS
-	pkg.Data = pbBytes
-
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	if psChannel == ProducerChannel {
-		conn_log.Debugf("<%s> Send ConsensusReq via Producer_Channel", connMgr.GroupId)
-		psconn := connMgr.getProducerPsConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == UserChannel {
-		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
-		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	}
-
-	return fmt.Errorf("can not find psChannel")
-}
-
 func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
@@ -362,10 +340,25 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) InitialPsConn() {
-	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
+func (connMgr *ConnMgr) BroadcastConsensusMsg(msg *quorumpb.ConsensusMsg) error {
+	conn_log.Debugf("<%s> BroadcastConsensusMsg called", connMgr.GroupId)
+	pkg := &quorumpb.Package{}
 
-	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
-	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+	pbBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_CONSENSUS
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	conn_log.Debugf("<%s> Send ConsensusReq via Producer_Channel", connMgr.GroupId)
+	psconn := connMgr.getProducerPsConn()
+	return psconn.Publish(pkgBytes)
 
 }

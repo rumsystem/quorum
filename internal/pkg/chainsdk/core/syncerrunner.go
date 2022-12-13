@@ -30,9 +30,8 @@ const (
 type SyncerRunner struct {
 	group *Group
 
-	cdnIface        def.ChainDataSyncIface
-	syncNetworkType conn.P2pNetworkType
-	gsyncer         *Gsyncer
+	cdnIface def.ChainDataSyncIface
+	gsyncer  *Gsyncer
 
 	//nodeName string
 	//responses           map[string]*quorumpb.ReqBlockResp
@@ -45,7 +44,6 @@ func NewSyncerRunner(group *Group, cdnIface def.ChainDataSyncIface, nodename str
 	sr := &SyncerRunner{}
 	sr.group = group
 	sr.cdnIface = cdnIface
-	sr.syncNetworkType = conn.PubSub
 
 	//create and initial Get Task Apis
 	taskGenerators := make(map[TaskType]func(args ...interface{}) (*SyncTask, error))
@@ -151,17 +149,6 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		}
 
 		//TODO
-		//sr.SetCurrentWaitTask(&blocktask)
-		if task.RetryCount >= uint(RETRY_LIMIT) { //max retry count
-			//change networktype and clear counter
-			if sr.syncNetworkType == conn.PubSub {
-				sr.syncNetworkType = conn.RumExchange
-			} else {
-				sr.syncNetworkType = conn.PubSub
-			}
-			syncerrunner_log.Debugf("<%s> task <%s> retry <%d> times, switch network type to <%s>", sr.group.Item.GroupId, task.TaskId, task.RetryCount, sr.syncNetworkType)
-			task.RetryCount = 0
-		}
 
 		//Commented by cuicat
 		//?? Do we need this in "real" network environment??
@@ -224,7 +211,7 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 			return err
 		}
 
-		err = connMgr.SentConsensusMsgPubsub(consensusMsg, conn.ProducerChannel)
+		err = connMgr.BroadcastConsensusMsg(consensusMsg)
 		if err != nil {
 			return err
 		}

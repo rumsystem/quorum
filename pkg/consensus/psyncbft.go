@@ -117,7 +117,7 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	}
 
 	pbft_log.Debugf("Send ConsensusResp for Session <%s>", sessionId)
-	err = connMgr.SentConsensusMsgPubsub(consusResp, conn.ProducerChannel)
+	err = connMgr.BroadcastConsensusMsg(consusResp)
 	if err != nil {
 		pbft_log.Debugf(err.Error())
 		return
