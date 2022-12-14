@@ -148,7 +148,7 @@ func (grp *Group) GetSyncerStatus() int8 {
 }
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
-	group_log.Debugf("<%s> GetBlock called epoch: %s", grp.Item.GroupId, epoch)
+	group_log.Debugf("<%s> GetBlock called epoch: %d", grp.Item.GroupId, epoch)
 	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.ChainCtx.nodename)
 }
 
