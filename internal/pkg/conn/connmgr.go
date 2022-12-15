@@ -40,26 +40,9 @@ type ConnMgr struct {
 	StableProdPsConn   bool
 	producerChannTimer *time.Timer
 	DataHandlerIface   chaindef.ChainDataSyncIface
-	PsConns            map[string]*pubsubconn.P2pPubSubConn // key: channelId
-	Rex                *p2p.RexService
-}
-
-type P2pNetworkType uint
-
-const (
-	PubSub P2pNetworkType = iota
-	RumExchange
-)
-
-func (t P2pNetworkType) String() string {
-	switch t {
-	case PubSub:
-		return "PubSub"
-	case RumExchange:
-		return "RumExchange"
-	default:
-		return fmt.Sprintf("%d", int(t))
-	}
+	//TODO: sync.map
+	PsConns map[string]*pubsubconn.P2pPubSubConn // key: channelId
+	Rex     *p2p.RexService
 }
 
 type PsConnChanel uint
@@ -67,7 +50,6 @@ type PsConnChanel uint
 const (
 	UserChannel PsConnChanel = iota
 	ProducerChannel
-	//SyncerChannel
 )
 
 func (t PsConnChanel) String() string {
@@ -181,10 +163,8 @@ func (connMgr *ConnMgr) LeaveAllChannels() error {
 
 func (connMgr *ConnMgr) InitialPsConn() {
 	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
-
 	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
-
 }
 
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
@@ -219,34 +199,6 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)
 	return connMgr.PsConns[connMgr.UserChannelId]
-}
-
-func (connMgr *ConnMgr) SendBlockPsconn(blk *quorumpb.Block, psChannel PsConnChanel, chanelId ...string) error {
-	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
-	pbBytes, err := proto.Marshal(blk)
-	if err != nil {
-		return err
-	}
-
-	pkg := &quorumpb.Package{}
-	pkg.Type = quorumpb.PackageType_BLOCK
-	pkg.Data = pbBytes
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	if psChannel == ProducerChannel {
-		conn_log.Debugf("<%s> Send block via Producer_Channel", connMgr.GroupId)
-		psconn := connMgr.getProducerPsConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == UserChannel {
-		conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
-		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	}
-
-	return fmt.Errorf("can not find psChannel")
 }
 
 func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
@@ -294,7 +246,10 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
 	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
-	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, rummsg)
+
+	psconn := connMgr.getUserConn()
+	channelpeers := psconn.Topic.ListPeers()
+	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, channelpeers, rummsg)
 }
 
 func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) error {
@@ -361,4 +316,24 @@ func (connMgr *ConnMgr) BroadcastConsensusMsg(msg *quorumpb.ConsensusMsg) error 
 	psconn := connMgr.getProducerPsConn()
 	return psconn.Publish(pkgBytes)
 
+}
+
+func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
+	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
+	pbBytes, err := proto.Marshal(blk)
+	if err != nil {
+		return err
+	}
+
+	pkg := &quorumpb.Package{}
+	pkg.Type = quorumpb.PackageType_BLOCK
+	pkg.Data = pbBytes
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
+	psconn := connMgr.getUserConn()
+	return psconn.Publish(pkgBytes)
 }

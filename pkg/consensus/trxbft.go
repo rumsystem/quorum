@@ -189,7 +189,7 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	if err != nil {
 		return err
 	}
-	err = connMgr.SendBlockPsconn(newBlock, conn.UserChannel)
+	err = connMgr.BroadcastBlock(newBlock)
 	if err != nil {
 		trx_acs_log.Warnf("<%s> <%s>", bft.producer.groupId, err.Error())
 	}

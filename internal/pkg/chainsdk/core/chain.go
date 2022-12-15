@@ -468,7 +468,7 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
 		}
-		chain.handleReqBlockForward(trx, conn.RumExchange, s)
+		chain.handleReqBlockForward(trx, s)
 	case quorumpb.TrxType_REQ_BLOCK_RESP:
 		if trx.SenderPubkey == chain.group.Item.UserSignPubkey {
 			return nil
@@ -501,7 +501,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, networktype conn.P2pNetworkType, s network.Stream) error {
+func (chain *Chain) handleReqBlockForward(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlockForward called", chain.groupId)
 
 	//TODO: check my sync status, only response when the status is IDLE

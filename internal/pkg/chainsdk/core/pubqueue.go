@@ -295,15 +295,21 @@ func doRefresh() {
 					// TODO: this might consume some storage, not gonna clean it by now
 					break
 				}
-				trxId, err := conn.SendTrxWithoutRetry(item.GroupId, item.Trx, conn.ProducerChannel)
-				if err != nil {
-					chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
-				} else {
-					rumchaindata.UpdateTrxTimeLimit(item.Trx)
-					item.State = PublishQueueItemStatePending
-					item.RetryCount += 1
 
-					chain_log.Debugf("<pubqueue>: trx %s resent(%d)", trxId, item.RetryCount)
+				connMgr, err := conn.GetConn().GetConnMgr(item.GroupId)
+				if err == nil {
+					err := connMgr.SendTrxPubsub(item.Trx, conn.ProducerChannel)
+					if err != nil {
+						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
+					} else {
+						rumchaindata.UpdateTrxTimeLimit(item.Trx)
+						item.State = PublishQueueItemStatePending
+						item.RetryCount += 1
+
+						chain_log.Debugf("<pubqueue>: trx %s resent(%d)", item.Trx.TrxId, item.RetryCount)
+					}
+				} else {
+					chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
 				}
 			default:
 			}

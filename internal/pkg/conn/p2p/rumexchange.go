@@ -20,7 +20,6 @@ import (
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
-	"github.com/rumsystem/quorum/pkg/constants"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -170,17 +169,17 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 }
 
 // Publish to 1 random connected peers
-func (r *RexService) Publish(groupid string, msg *quorumpb.RumMsg) error {
+func (r *RexService) Publish(groupid string, channelpeers []peer.ID, msg *quorumpb.RumMsg) error {
 	//TODO: save good peers?
 	ctx := context.Background()
 	connectedpeers := r.Host.Network().Peers()
-	UserChannelId := constants.USER_CHANNEL_PREFIX + groupid
-	channelpeers, err := r.pubSubConnMgr.GetPeersByChannelId(UserChannelId)
-	if err == nil {
-		if len(channelpeers) > 0 {
-			connectedpeers = channelpeers
-		}
+	//UserChannelId := constants.USER_CHANNEL_PREFIX + groupid
+	//channelpeers, err := r.pubSubConnMgr.GetPeersByChannelId(UserChannelId)
+	//if err == nil {
+	if len(channelpeers) > 0 {
+		connectedpeers = channelpeers
 	}
+	//}
 	peers := r.peerstore.filterPeers(ctx, connectedpeers, 0.7)
 
 	//TODO: CLOSE the stream before return? (defer?)
