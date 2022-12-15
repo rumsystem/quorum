@@ -69,6 +69,7 @@ func (appsync *AppSync) RunSync(groupid string, lastSyncEpoch int64, highestepoc
 func (appsync *AppSync) Start(interval int) {
 	go func() {
 		for {
+			appsynclog.Debug("sync Start: a new loop")
 			groups := appsync.GetGroups()
 			for _, groupitem := range groups {
 
@@ -83,6 +84,7 @@ func (appsync *AppSync) Start(interval int) {
 				}
 				lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
 				if err == nil {
+					appsynclog.Debugf("sync group : %s lastSyncEpoch %d  groupitem.Epoch %d", groupitem.GroupId, lastSyncEpoch, groupitem.Epoch)
 					if groupitem.Epoch > lastSyncEpoch {
 						appsync.RunSync(groupitem.GroupId, lastSyncEpoch, groupitem.Epoch)
 					}

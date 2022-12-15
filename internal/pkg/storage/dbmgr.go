@@ -55,7 +55,7 @@ func (dbMgr *DbMgr) GetBlock(groupId string, epoch int64, cached bool, prefix ..
 
 // save block chunk
 func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
-	dbmgr_log.Debug("SaveBlock called")
+	dbmgr_log.Debugf("<%s> SaveBlock called %d", block.GroupId, block.Epoch)
 	var key string
 	if cached {
 		key = GetCachedBlockKey(block.GroupId, block.Epoch, prefix...)

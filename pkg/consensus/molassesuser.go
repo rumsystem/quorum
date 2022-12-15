@@ -28,7 +28,7 @@ func (user *MolassesUser) NewUser(item *quorumpb.GroupItem, nodename string, ifa
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
-	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
+	molauser_log.Debugf("<%s> AddBlock called %d", user.groupId, block.Epoch)
 	var blocks []*quorumpb.Block
 
 	//check if block exist
@@ -36,11 +36,11 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
 		// maybe saved by local producer or during sync, receive this block from someone else
-		molauser_log.Debugf("Block exist")
+		molauser_log.Debugf("<%s> Block exist %d", user.groupId, block.Epoch)
 		blocks = append(blocks, block)
 	} else { //block not exist, we don't have local producer
 		//check if parent of block exist
-		molauser_log.Debugf("Block not exist")
+		molauser_log.Debugf("<%s> Block not exist %d", user.groupId, block.Epoch)
 		parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch-1, false, user.nodename)
 		if err != nil {
 			return err
@@ -56,7 +56,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			}
 
 			if !isCached {
-				molauser_log.Debugf("<%s> add block to catch", user.groupId)
+				molauser_log.Debugf("<%s> add block to catch %d", user.groupId, block.Epoch)
 				//Save block to cache
 				err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
 				if err != nil {
@@ -76,11 +76,11 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		//valid block with parent block
 		valid, err := rumchaindata.IsBlockValid(block, parentBlock)
 		if !valid {
-			molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
+			molauser_log.Warningf("<%s> invalid block %d <%s>", user.groupId, block.Epoch, err.Error())
 			molauser_log.Debugf("<%s> remove invalid block <%d> from cache", user.groupId, block.Epoch)
 			return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.Epoch, true, user.nodename)
 		} else {
-			molauser_log.Debugf("block is validated")
+			molauser_log.Debugf("<%s> block is validated %d", user.groupId, block.Epoch)
 		}
 
 		//add this block to cache
