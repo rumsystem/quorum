@@ -235,7 +235,7 @@ func doRefresh() {
 			return err
 		}
 
-		chain_log.Debugf("<pubqueue>: got item %v group_id %s", item.Trx.TrxId, item.GroupId)
+		//chain_log.Debugf("<pubqueue>: got item %v group_id %s", item.Trx.TrxId, item.GroupId)
 		go func() {
 
 			switch item.State {
