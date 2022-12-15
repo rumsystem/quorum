@@ -148,17 +148,17 @@ func (grp *Group) GetSyncerStatus() int8 {
 }
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
-	group_log.Debugf("<%s> GetBlock called", grp.Item.GroupId)
+	group_log.Debugf("<%s> GetBlock called epoch: %d", grp.Item.GroupId, epoch)
 	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
-	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
+	group_log.Debugf("<%s> GetTrx called trx: %s", grp.Item.GroupId, trxId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.ChainCtx.nodename)
 }
 
 func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) {
-	group_log.Debugf("<%s> GetTrx called", grp.Item.GroupId)
+	group_log.Debugf("<%s> GetTrx called trx: %s", grp.Item.GroupId, trxId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.ChainCtx.nodename)
 }
 
