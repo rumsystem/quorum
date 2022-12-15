@@ -104,18 +104,16 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 		}
 	}
 
+	buildBlockDone := false
+
 	//Try build block
 	err := bft.buildBlock(epoch, trxs)
 	if err != nil {
-		trx_bft_log.Warnf(err.Error())
-	}
-
-	//remove outputed trxs from buffer
-	for trxId, _ := range trxs {
-		err := bft.txBuffer.Delete(trxId)
-		if err != nil {
-			trx_bft_log.Warnf(err.Error())
-		}
+		trx_bft_log.Warnf("?????????????????????????? %s", err.Error())
+		trx_bft_log.Warnf("?????????????????????????? Build block failed at epoch %d", epoch)
+		//wait for next round
+	} else {
+		buildBlockDone = true
 	}
 
 	//clear acs for finished epoch
@@ -123,11 +121,23 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	bft.acsInsts[epoch] = nil
 	delete(bft.acsInsts, epoch)
 
-	bft.producer.grpItem.Epoch = epoch
-	bft.producer.grpItem.LastUpdate = time.Now().UnixNano()
-	nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
-	trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
+	if buildBlockDone {
+		//remove outputed trxs from buffer
+		for trxId, _ := range trxs {
+			err := bft.txBuffer.Delete(trxId)
+			if err != nil {
+				trx_bft_log.Warnf(err.Error())
+			}
+		}
 
+		//update group info
+		bft.producer.grpItem.Epoch = epoch
+		bft.producer.grpItem.LastUpdate = time.Now().UnixNano()
+		nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
+		trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
+	}
+
+	//check if need continue propose
 	trxBufLen, err := bft.txBuffer.GetBufferLen()
 	if err != nil {
 		trx_bft_log.Warnf(err.Error())
@@ -145,8 +155,7 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
 	trx_bft_log.Infof("<%s> buildBlock for epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
-	var trxToPackage []*quorumpb.Trx
-	trxToPackage = bft.sortTrx(trxs)
+	trxToPackage := bft.sortTrx(trxs)
 
 	/*for trxId, trx := range trxs {
 		trx_bft_log.Infof(">>> package trx : <%s>", trxId)
@@ -157,6 +166,7 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	parentEpoch := epoch - 1
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
 	if err != nil {
+		trx_acs_log.Warnf("?????????????????????????? %s", err.Error())
 		return err
 	}
 
@@ -168,6 +178,8 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	sudo := false
 	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, witnesses, ks, "", bft.producer.nodename)
 	if err != nil {
+		trx_bft_log.Warnf("?????????????????????????? %s", err.Error())
+		trx_bft_log.Warnf("?????????????????????????? parent block %v", parent)
 		return err
 	}
 
@@ -200,6 +212,7 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 }
 
 // sort trxs by using timestamp
+
 type TrxSlice []*quorumpb.Trx
 
 func (a TrxSlice) Len() int {

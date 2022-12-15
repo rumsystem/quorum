@@ -38,6 +38,9 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 	for _, trx := range trxs {
 		trxclone := &quorumpb.Trx{}
 		clonedtrxbuff, err := proto.Marshal(trx)
+		if err != nil {
+			return nil, err
+		}
 
 		err = proto.Unmarshal(clonedtrxbuff, trxclone)
 		if err != nil {
@@ -62,6 +65,9 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 	newBlock.SudoBlock = sudo
 
 	bbytes, err := proto.Marshal(&newBlock)
+	if err != nil {
+		return nil, err
+	}
 	blockHash := localcrypto.Hash(bbytes)
 	newBlock.BlockHash = blockHash
 
@@ -79,6 +85,7 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 	if len(signature) == 0 {
 		return nil, errors.New("create signature failed")
 	}
+
 	newBlock.BookkeepingSignature = signature
 	return &newBlock, nil
 }
@@ -105,6 +112,9 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 	genesisBlock.SudoBlock = false
 
 	bbytes, err := proto.Marshal(genesisBlock)
+	if err != nil {
+		return nil, err
+	}
 	blockHash := localcrypto.Hash(bbytes)
 
 	genesisBlock.BlockHash = blockHash
@@ -129,8 +139,7 @@ func BlockHash(block *quorumpb.Block) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var blockWithoutHash *quorumpb.Block
-	blockWithoutHash = &quorumpb.Block{}
+	blockWithoutHash := &quorumpb.Block{}
 
 	err = proto.Unmarshal(clonedblockbuff, blockWithoutHash)
 	if err != nil {
@@ -206,7 +215,7 @@ func IsBlockValid(newBlock, oldBlock *quorumpb.Block) (bool, error) {
 	return VerifyBookkeepingSign(newBlock)
 }
 
-//get all trx from the block list
+// get all trx from the block list
 func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
 	var trxs []*quorumpb.Trx
 	for _, block := range blocks {
