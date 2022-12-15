@@ -66,7 +66,7 @@ func init() {
 	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
 	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	//flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
-	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", false, "auto ack the transactions in pubqueue")
+	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
 	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 
