@@ -1,14 +1,15 @@
 package conn
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/network"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
-	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/constants"
@@ -41,8 +42,9 @@ type ConnMgr struct {
 	producerChannTimer *time.Timer
 	DataHandlerIface   chaindef.ChainDataSyncIface
 	//TODO: sync.map
+	ps      *pubsub.PubSub
 	PsConns map[string]*pubsubconn.P2pPubSubConn // key: channelId
-	Rex     *p2p.RexService
+	//Rex     *p2p.RexService
 }
 
 type PsConnChanel uint
@@ -154,8 +156,8 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 
 func (connMgr *ConnMgr) LeaveAllChannels() error {
 	conn_log.Debugf("LeaveChannel called, groupId <%s>", connMgr.GroupId)
-	for channelId, _ := range connMgr.PsConns {
-		nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(channelId)
+	for channelId, psconn := range connMgr.PsConns {
+		psconn.LeaveChannel()
 		delete(connMgr.PsConns, channelId)
 	}
 	return nil
@@ -163,7 +165,8 @@ func (connMgr *ConnMgr) LeaveAllChannels() error {
 
 func (connMgr *ConnMgr) InitialPsConn() {
 	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
-	userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
+	//userPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.UserChannelId, connMgr.DataHandlerIface)
+	userPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.UserChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 }
 
@@ -182,13 +185,17 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 		}
 		return psconn
 	} else {
-		producerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.ProducerChannelId, connMgr.DataHandlerIface)
+		//producerPsconn := nodectx.GetNodeCtx().Node.PubSubConnMgr.GetPubSubConnByChannelId(connMgr.ProducerChannelId, connMgr.DataHandlerIface)
+		producerPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.ProducerChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
 		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsconn
 		if !connMgr.StableProdPsConn {
 			conn_log.Debugf("<%s> create close_conn timer for producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
 				conn_log.Debugf("<%s> time up, close producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-				nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
+
+				psconn := connMgr.PsConns[connMgr.ProducerChannelId]
+				psconn.LeaveChannel()
+				//nodectx.GetNodeCtx().Node.PubSubConnMgr.LeaveChannel(connMgr.ProducerChannelId)
 				delete(connMgr.PsConns, connMgr.ProducerChannelId)
 			})
 		}

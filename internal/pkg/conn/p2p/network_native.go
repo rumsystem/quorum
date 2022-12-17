@@ -30,7 +30,6 @@ import (
 	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
-	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 )
 
@@ -168,9 +167,10 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 
-	psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
+	//psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
 
-	newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, Nodeopt: nodeopt}
+	//newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, Nodeopt: nodeopt}
+	newnode := &Node{NetworkName: nodenetworkname, NodeName: nodename, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, Nodeopt: nodeopt}
 
 	go newnode.eventhandler(ctx)
 	return newnode, nil

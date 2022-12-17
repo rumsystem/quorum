@@ -11,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	discoveryrouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -28,13 +27,14 @@ type NodeInfo struct {
 type Node struct {
 	PeerID           peer.ID
 	Host             host.Host
+	NodeName         string
 	NetworkName      string
 	Pubsub           *pubsub.PubSub
 	RumExchange      *RexService
 	Ddht             *dual.DHT
 	Info             *NodeInfo
 	RoutingDiscovery *discoveryrouting.RoutingDiscovery
-	PubSubConnMgr    *pubsubconn.PubSubConnMgr
+	//PubSubConnMgr    *pubsubconn.PubSubConnMgr
 	//peerStatus       *PeerStatus
 	Nodeopt *options.NodeOptions
 }
@@ -132,7 +132,8 @@ func (node *Node) PeersProtocol() *map[string][]string {
 func (node *Node) SetRumExchange(ctx context.Context) {
 	//peerStatus := NewPeerStatus()
 	var rexservice *RexService
-	rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix)
+	//rexservice = NewRexService(node.Host, node.PubSubConnMgr, node.NetworkName, ProtocolPrefix)
+	rexservice = NewRexService(node.Host, node.NetworkName, ProtocolPrefix)
 	rexservice.SetDelegate()
 	rexchaindata := NewRexChainData(rexservice)
 	rexservice.SetHandlerMatchMsgType("rumchaindata", rexchaindata.Handler)

@@ -29,64 +29,32 @@ type P2pPubSubConn struct {
 	cancel       context.CancelFunc
 }
 
-type PubSubConnMgr struct {
-	Ctx      context.Context
-	ps       *pubsub.PubSub
-	nodename string
-	connmgr  sync.Map
-}
-
-var pubsubconnmgr *PubSubConnMgr
-
-func InitPubSubConnMgr(ctx context.Context, ps *pubsub.PubSub, nodename string) *PubSubConnMgr {
-	if pubsubconnmgr == nil {
-		pubsubconnmgr = &PubSubConnMgr{Ctx: ctx, ps: ps, nodename: nodename}
-	}
-	return pubsubconnmgr
-}
-
-func GetPubSubConnMgr() *PubSubConnMgr {
-	return pubsubconnmgr
-}
-
-func (pscm *PubSubConnMgr) GetPubSubConnByChannelId(channelId string, cdhIface chaindef.ChainDataSyncIface) *P2pPubSubConn {
-	_, ok := pscm.connmgr.Load(channelId)
-	if ok == false {
-		ctxwithcancel, cancel := context.WithCancel(pscm.Ctx)
-		psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: pscm.ps, nodename: pscm.nodename}
-		if cdhIface != nil {
-			psconn.JoinChannel(channelId, cdhIface)
-		} else {
-			// join channel as exchange
-			psconn.JoinChannel(channelId, nil)
-		}
-		pscm.connmgr.Store(channelId, psconn)
-	}
-	psconn, _ := pscm.connmgr.Load(channelId)
-	return psconn.(*P2pPubSubConn)
-}
-
-func (pscm *PubSubConnMgr) LeaveChannel(channelId string) {
-	psconni, ok := pscm.connmgr.Load(channelId)
-	if ok == true {
-		psconn := psconni.(*P2pPubSubConn)
-		psconn.mu.Lock()
-		defer psconn.mu.Unlock()
-		if psconn.cancel != nil {
-			psconn.cancel()
-		}
-		if psconn.Subscription != nil {
-			psconn.Subscription.Cancel()
-		}
-		if psconn.Topic != nil {
-			psconn.Topic.Close()
-		}
-		pscm.connmgr.Delete(channelId)
-		channel_log.Infof("Leave channel <%s> done", channelId)
+func GetPubSubConnByChannelId(ctx context.Context, ps *pubsub.PubSub, channelId string, cdhIface chaindef.ChainDataSyncIface, nodename string) *P2pPubSubConn {
+	ctxwithcancel, cancel := context.WithCancel(ctx)
+	psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: ps, nodename: nodename}
+	if cdhIface != nil {
+		psconn.JoinChannel(channelId, cdhIface)
 	} else {
-		channel_log.Infof("psconn channel <%s> not exist", channelId)
+		// join channel as exchange
+		psconn.JoinChannel(channelId, nil)
 	}
+	return psconn
+}
 
+func (psconn *P2pPubSubConn) LeaveChannel() {
+	channelId := psconn.Cid
+	psconn.mu.Lock()
+	defer psconn.mu.Unlock()
+	if psconn.cancel != nil {
+		psconn.cancel()
+	}
+	if psconn.Subscription != nil {
+		psconn.Subscription.Cancel()
+	}
+	if psconn.Topic != nil {
+		psconn.Topic.Close()
+	}
+	channel_log.Infof("Leave channel <%s> done", channelId)
 }
 
 func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataSyncIface) error {

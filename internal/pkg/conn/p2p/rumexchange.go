@@ -16,7 +16,6 @@ import (
 	"github.com/libp2p/go-msgio/protoio"
 	ma "github.com/multiformats/go-multiaddr"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
-	pubsubconn "github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/metric"
@@ -41,8 +40,8 @@ type RumHandler struct {
 }
 
 type RexService struct {
-	Host               host.Host
-	pubSubConnMgr      *pubsubconn.PubSubConnMgr
+	Host host.Host
+	//pubSubConnMgr      *pubsubconn.PubSubConnMgr
 	ProtocolId         protocol.ID
 	chainmgr           map[string]chaindef.ChainDataSyncIface
 	peerstore          *RumGroupPeerStore
@@ -50,11 +49,11 @@ type RexService struct {
 	msgtypehandlerlock sync.RWMutex
 }
 
-func NewRexService(h host.Host, psconnmgr *pubsubconn.PubSubConnMgr, Networkname string, ProtocolPrefix string) *RexService {
+func NewRexService(h host.Host, Networkname string, ProtocolPrefix string) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
 	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
 	rumpeerstore := NewRumGroupPeerStore()
-	rexs := &RexService{Host: h, pubSubConnMgr: psconnmgr, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), chainmgr: chainmgr}
+	rexs := &RexService{Host: h, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
 	h.SetStreamHandler(rexs.ProtocolId, rexs.Handler)
 	rumexchangelog.Debugf("new rex service SetStreamHandler: %s", customprotocol)
