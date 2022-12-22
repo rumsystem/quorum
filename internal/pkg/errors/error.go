@@ -41,6 +41,7 @@ var (
 
 	//syncer
 	ErrNotAskedByMe   = errors.New("Error Get Sync Resp but not asked by me")
+	ErrSenderMismatch = errors.New("Trx Sender/blocks provider mismatch")
 	ErrNoTaskWait     = errors.New("Error No Task Waiting Result")
 	ErrNotAccept      = errors.New("Error The Result had been rejected")
 	ErrIgnore         = errors.New("Ignore")
