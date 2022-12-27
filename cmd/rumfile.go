@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const ChunkSize int = 150 * 1024
+const ChunkSize int = 800 * 1024 //0.8MB
 
 var ( // flags
 	rumfileApiPrefix string

@@ -131,7 +131,7 @@ func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content proto.Message,
 	}
 
 	if binary.Size(encodedcontent) > OBJECT_SIZE_LIMIT {
-		err := errors.New("Content size over 200Kb")
+		err := errors.New("Content size over 0.9MB")
 		return nil, err
 	}
 

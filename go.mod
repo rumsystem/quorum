@@ -33,7 +33,6 @@ require (
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
 	github.com/hack-pad/go-indexeddb v0.2.0
-	github.com/huo-ju/quercus v0.0.0-20210909192534-3740345b9ab8
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
@@ -44,7 +43,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.20.0
 	github.com/libp2p/go-libp2p-kad-dht v0.18.0
 	github.com/libp2p/go-libp2p-peerstore v0.8.0
-	github.com/libp2p/go-libp2p-pubsub v0.8.1
+	github.com/libp2p/go-libp2p-pubsub v0.8.2
 	github.com/libp2p/go-msgio v0.2.0
 	github.com/multiformats/go-multiaddr v0.7.0
 	github.com/open-policy-agent/opa v0.39.0

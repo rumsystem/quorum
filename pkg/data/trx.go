@@ -21,7 +21,7 @@ const (
 	Sec   = 30
 )
 
-const OBJECT_SIZE_LIMIT = 200 * 1024 //(200Kb)
+const OBJECT_SIZE_LIMIT = 900 * 1024 //(0.9MB)
 
 func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx

@@ -26,6 +26,7 @@ import (
 var rumexchangelog = logging.Logger("rumexchange")
 
 const IDVer = "2.0.0"
+const MessageSizeMax = 1 << 24 //16MB
 
 type Chain interface {
 	HandleTrxWithRex(trx *quorumpb.Trx, from peer.ID) error
@@ -229,7 +230,7 @@ func (r *RexService) HandlerProcessStream(ctx context.Context, s network.Stream)
 		_ = s.Close()
 	}()
 
-	reader := msgio.NewVarintReaderSize(s, network.MessageSizeMax)
+	reader := msgio.NewVarintReaderSize(s, MessageSizeMax)
 	select {
 	case <-ctx.Done():
 		return
