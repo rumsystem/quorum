@@ -15,8 +15,8 @@ import (
 )
 
 var syncerrunner_log = logging.Logger("syncerrunner")
-
 var RETRY_LIMIT = 30 //retry times
+var REQ_BLOCKS = 10  //request 1 blocks each time
 
 const (
 	IDLE            = 1
@@ -138,7 +138,7 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 		var trx *quorumpb.Trx
 		var trxerr error
 
-		trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlockForwardTrxWithEpoch("", epochSyncTask.Epoch, sr.group.Item.GroupId)
+		trx, trxerr = sr.group.ChainCtx.GetTrxFactory().GetReqBlocksTrx("", sr.group.Item.GroupId, epochSyncTask.Epoch, int64(REQ_BLOCKS))
 		if trxerr != nil {
 			return trxerr
 		}

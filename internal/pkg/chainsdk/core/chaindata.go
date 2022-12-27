@@ -5,11 +5,11 @@ import (
 	"errors"
 
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
+
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type ChainData struct {
@@ -20,50 +20,86 @@ type ChainData struct {
 	dbmgr          *storage.DbMgr
 }
 
-func (d *ChainData) GetBlockForward(trx *quorumpb.Trx) (requester string, block *quorumpb.Block, isEmptyBlock bool, erer error) {
+// TBD, move this to chain confi
+const MAX_BLOCK_IN_RESP_BYTES = 10485760 //10MB
+
+func (d *ChainData) GetReqBlocks(trx *quorumpb.Trx) (requester string, fromEpoch int64, reqBlocks int64, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult, err error) {
 	chain_log.Debugf("<%s> GetBlockForward called", d.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 	ciperKey, err := hex.DecodeString(d.groupCipherKey)
 	if err != nil {
-		return "", nil, false, err
+		return "", -1, -1, nil, -1, err
 	}
 
 	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 	if err != nil {
-		return "", nil, false, err
+		return "", -1, -1, nil, -1, err
 	}
 
 	if err := proto.Unmarshal(decryptData, &reqBlockItem); err != nil {
-		return "", nil, false, err
+		return "", -1, -1, nil, -1, err
+	}
+
+	//check trx sender should be same as requester in reqBlock Item
+	if trx.SenderPubkey != reqBlockItem.ReqPubkey {
+		return "", -1, -1, nil, -1, errors.New("trx sender/block requester mismatch")
 	}
 
 	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
 	if err != nil {
-		return "", nil, false, err
+		return "", -1, -1, nil, -1, err
 	}
 
 	if !isAllow {
 		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", d.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
-		return reqBlockItem.UserId, nil, false, errors.New("insufficient privileges")
+		return "", -1, -1, nil, -1, errors.New("requester don't have sufficient privileges")
 	}
 
 	exist := false
-	exist, err = nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(trx.GroupId, reqBlockItem.Epoch, false, d.nodename)
+	exist, err = nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(reqBlockItem.GroupId, reqBlockItem.FromEpoch, false, d.nodename)
 	if err != nil {
-		return "", nil, false, err
-	}
-	if exist == false {
-		var emptyBlock *quorumpb.Block
-		emptyBlock = &quorumpb.Block{}
-		emptyBlock.Epoch = reqBlockItem.Epoch
-		return reqBlockItem.UserId, emptyBlock, true, nil
+		return "", -1, -1, nil, -1, err
 	}
 
-	block, err = nodectx.GetNodeCtx().GetChainStorage().GetBlock(trx.GroupId, reqBlockItem.Epoch, false, d.nodename)
-	if err == nil {
-		return reqBlockItem.UserId, block, false, err
-	} else {
-		return "", nil, false, err
+	if exist == false {
+		return reqBlockItem.ReqPubkey, reqBlockItem.FromEpoch, reqBlockItem.BlksRequested, nil, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND, nil
 	}
+
+	var bs []*quorumpb.Block
+	currEpoch := reqBlockItem.FromEpoch
+	totalBlockBytes := 0
+	totalBlockPackaged := 0
+
+	for totalBlockPackaged <= int(reqBlockItem.BlksRequested) {
+		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.GroupId, currEpoch, false, d.nodename)
+		if err != nil {
+			return "", -1, -1, nil, -1, err
+		}
+		//get data length
+		pdate, _ := proto.Marshal(block)
+		totalBlockBytes = totalBlockBytes + len(pdate)
+		//check if reach maximum length, may have more
+		if totalBlockBytes > MAX_BLOCK_IN_RESP_BYTES {
+			return reqBlockItem.ReqPubkey, reqBlockItem.FromEpoch, reqBlockItem.BlksRequested, blocks, quorumpb.ReqBlkResult_BLOCK_IN_RESP, nil
+		}
+
+		//put block into blocks list
+		bs = append(bs, block)
+		totalBlockPackaged += 1
+		currEpoch += 1
+		//check if next epoch exist
+		exist, err = nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(reqBlockItem.GroupId, currEpoch, false, d.nodename)
+		if err != nil {
+			return "", -1, -1, nil, -1, err
+		}
+
+		//no more and on top
+		if !exist {
+			return reqBlockItem.ReqPubkey, reqBlockItem.FromEpoch, reqBlockItem.BlksRequested, bs, quorumpb.ReqBlkResult_BLOCK_IN_RESP_ON_TOP, nil
+		}
+		//continue and put more
+	}
+
+	return reqBlockItem.ReqPubkey, reqBlockItem.FromEpoch, reqBlockItem.BlksRequested, bs, quorumpb.ReqBlkResult_BLOCK_IN_RESP, nil
 }

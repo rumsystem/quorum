@@ -92,47 +92,31 @@ message Block {
 }
 
 message ReqBlock {
-    int64  Epoch   = 1; //epoch
-    string GroupId = 2; //group id
-    string UserId  = 3; //requester
+    string GroupId       = 1; //group id
+    int64  FromEpoch     = 2; //from which epoch 
+    int64  BlksRequested = 3; //how many blocks requested, "-1" means many as possible
+    string ReqPubkey     = 4; //requester pubkey
 }
 
-message BlockSynced {
-    Block BlockItem = 1;
-}
-
-message AskPeerId {
-    string GroupId     = 1;   
-    string UserPeerId  = 2;
-    string UserPubkey  = 3;
-    string UserSign    = 4;
-    string Memo        = 5;    
-}
-
-message AskPeerIdResp {
-    string GroupId           = 1;   
-    string RespPeerId        = 2;
-    string RespPeerPubkey    = 3;
-    string RespSign          = 4;
-    bool   IsDirectConnected = 5;
-}
-
-message BlockProduced {
-    Block BlockItem = 1;
+message BlocksBundle {
+    repeated Block Blocks = 1;
 }
 
 enum ReqBlkResult {
-    BLOCK_IN_TRX = 0;    //block data in trx
-    BLOCK_NOT_FOUND = 1; //block not found
+    BLOCK_IN_RESP         = 0; //"block(s) in resp and I may have more"
+    BLOCK_IN_RESP_ON_TOP  = 1; //"block(s) in resp and I have no more block(when get req)" 
+    BLOCK_NOT_FOUND       = 2; //"no block in resp and I don't have the requested block"
 }
 
 message ReqBlockResp {
-    ReqBlkResult Result          = 1;
-    string       ProviderPubkey  = 2;
+    string       GroupId         = 1;
+    ReqBlkResult Result          = 2;       
     string       RequesterPubkey = 3;
-    string       GroupId         = 4;  
-    int64        epoch           = 5; 
-    bytes        Block           = 6;
+    string       ProviderPubkey  = 4;
+    int64        FromEpoch       = 5;
+    int64        BlksRequested  = 6;     
+    int64        BlksProvided   = 7;
+    BlocksBundle Blocks         = 8;
 }
 
 message PostItem {
