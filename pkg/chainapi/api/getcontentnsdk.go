@@ -7,10 +7,10 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -29,10 +29,19 @@ type GetGroupCtnItem struct {
 }
 
 type GetGroupCtnReqItem struct {
-	GroupId string `param:"group_id" validate:"required"`
-	Req     []byte
+	GroupId string `param:"group_id" json:"-" validate:"required" example:"630a545b-1ff4-4b9e-9a5d-bb13b6f6a629"`
+	Req     []byte `json:"Req" validate:"required" swaggertype:"primitive,string"` // base64 encoded req data
 }
 
+// @Tags LightNode
+// @Summary GetContentNSdk
+// @Description get content
+// @Accept  json
+// @Produce json
+// @Param   group_id path string true "Group Id"
+// @Param   get_content_params  body GetGroupCtnReqItem  true  "get group content params"
+// @Success 200 {object} []quorumpb.Trx
+// @Router  /api/v1/node/groupctn/{group_id} [post]
 func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 	if is_user_blocked(c) {
