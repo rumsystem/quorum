@@ -57,7 +57,7 @@ func (a *TrxACS) RbcDone(proposerPubkey string) {
 	a.rbcOutput[proposerPubkey] = true
 
 	//check if all rbc instance output
-	if len(a.rbcOutput) == a.N-a.F {
+	if len(a.rbcOutput) == a.N-a.f {
 		trx_acs_log.Debugf("enough RBC done, call acs")
 		// all rbc done, get all rbc results, send them back to BFT
 		for rbcInst, _ := range a.rbcOutput {

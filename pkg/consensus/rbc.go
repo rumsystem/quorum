@@ -66,10 +66,10 @@ func MakeRBCProofMessages(groupId, nodename, proposerPubkey string, shards [][]b
 	return msgs, nil
 }
 
-func MakeRBCReadyMessage(groupId, nodename, signPubkey string, proof *quorumpb.Proof) (*quorumpb.BroadcastMsg, error) {
+func MakeRBCReadyMessage(groupId, nodename, signPubkey string, roothash []byte, ProposerPubkey string) (*quorumpb.BroadcastMsg, error) {
 	ready := &quorumpb.Ready{
-		RootHash:            proof.RootHash,
-		ProofProviderPubkey: proof.ProposerPubkey, //pubkey for who send the original proof msg
+		RootHash:            roothash,       //proof.RootHash,
+		ProofProviderPubkey: ProposerPubkey, // proof.ProposerPubkey, //pubkey for who send the original proof msg
 		ProposerPubkey:      signPubkey,
 		ProposerSign:        nil,
 	}

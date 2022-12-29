@@ -39,12 +39,12 @@ type PSyncRBC struct {
 func NewPSyncRBC(cfg Config, acs *PSyncACS, groupId, proposerPubkey string) (*PSyncRBC, error) {
 	psync_rbc_log.Debugf("SessionId <%s> NewPSyncRBC called, witnesses pubkey <%s>", acs.SessionId, proposerPubkey)
 
-	parityShards := cfg.F
+	parityShards := cfg.f
 	if parityShards == 0 {
 		parityShards = 1
 	}
 
-	dataShards := cfg.N - cfg.F
+	dataShards := cfg.N - cfg.f
 
 	// initial reed solomon codec
 	enc, err := reedsolomon.New(dataShards, parityShards)
@@ -137,7 +137,7 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	r.recvProofs = append(r.recvProofs, proof)
 
 	//if got enough proof, try decode it
-	if r.recvProofs.Len() == r.N-r.F {
+	if r.recvProofs.Len() == r.N-r.f {
 		output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
@@ -148,7 +148,7 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		r.dataDecodeDone = true
 
 		psync_rbc_log.Debugf("<%s> broadcast READY msg", r.proposerPubkey)
-		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, proof)
+		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, proof.RootHash, r.proposerPubkey)
 		if err != nil {
 			return err
 		}
@@ -159,8 +159,8 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		}
 
 		//check if we already receive enough readyMsg (N - F)
-		psync_rbc_log.Debugf("<%s> received readyMsg <%d>, need <%d>", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
-		if len(r.recvReadys) == r.N-r.F {
+		psync_rbc_log.Debugf("<%s> received readyMsg <%d>, need <%d>", r.proposerPubkey, len(r.recvReadys), r.N-r.f)
+		if len(r.recvReadys) == r.N-r.f {
 			psync_rbc_log.Debugf("<%s> RBC done", r.proposerPubkey)
 			r.consenusDone = true
 			r.acs.RbcDone(r.proposerPubkey)
@@ -206,8 +206,8 @@ func (r *PSyncRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	r.recvReadys[string(ready.ProposerPubkey)] = ready
 
 	//check if get enough ready
-	psync_rbc_log.Debugf("<%s> received readyMsg <%d>, need <%d>", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
-	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
+	psync_rbc_log.Debugf("<%s> received readyMsg <%d>, need <%d>", r.proposerPubkey, len(r.recvReadys), r.N-r.f)
+	if len(r.recvReadys) == r.N-r.f && r.dataDecodeDone {
 		psync_rbc_log.Debugf("<%s> RBC done", r.proposerPubkey)
 		r.consenusDone = true
 		r.acs.RbcDone(r.proposerPubkey)

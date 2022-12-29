@@ -71,8 +71,8 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 		molaproducer_log.Debugf(">>> producer_id %s", producerId)
 	}
 
-	n := len(nodes)
-	f := (n - 1) / 2
+	N := len(nodes)
+	f := (N - 1) / 3 //f * 3 < N
 
 	molaproducer_log.Debugf("Failable node %d", f)
 
@@ -82,8 +82,8 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	molaproducer_log.Debugf("batchSize %d", batchSize)
 
 	config := &Config{
-		N:            n,
-		F:            f,
+		N:            N,
+		f:            f,
 		Nodes:        nodes,
 		BatchSize:    batchSize,
 		MySignPubkey: producer.grpItem.UserSignPubkey,
@@ -98,7 +98,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	var blocks []*quorumpb.Block
 
 	//check if block exist
-	blockExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, false, producer.nodename)
+	blockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, false, producer.nodename)
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
 		// maybe saved by local producer or during sync, receive this block from someone else
@@ -185,7 +185,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 
 	//get all trxs from blocks
 	var trxs []*quorumpb.Trx
-	trxs, err = rumchaindata.GetAllTrxs(blocks)
+	trxs, err := rumchaindata.GetAllTrxs(blocks)
 	if err != nil {
 		return err
 	}

@@ -85,7 +85,7 @@ func (psync *MolassesPSync) createBftConfig() (*Config, error) {
 
 	config := &Config{
 		N:            n,
-		F:            f,
+		f:            f,
 		Nodes:        nodes,
 		BatchSize:    batchSize,
 		MySignPubkey: psync.grpItem.UserSignPubkey,

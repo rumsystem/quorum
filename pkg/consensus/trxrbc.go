@@ -23,35 +23,46 @@ type TrxRBC struct {
 
 	numParityShards int
 	numDataShards   int
-
-	enc reedsolomon.Encoder
+	enc             reedsolomon.Encoder
 
 	recvProofs Proofs
 	recvReadys map[string]*quorumpb.Ready
 
-	output         []byte
-	dataDecodeDone bool
-	consenusDone   bool
+	output []byte
+
+	readySent    bool
+	waitMoreEcho bool
+	consenusDone bool
 }
 
-// At least 2F + 1 witnesses are needed
-// for example F = 1, N = 2 * 1 + 1, 3 witnesses are needed
-// ecc will encode data bytes into 3 pieces
-// a witnesses need at least 3 - 1 = 2 pieces to recover data
+// f : maximum failable node
+// N : total node
+// request : f * 3 < N
+// for example
+//
+//	3 producers node (owner included), 0 * 3 < 3, 0 failable node
+//	4 producers node (owner included), 1 * 3 < 4, 1 failable node
+//	10 producers node (owner included), 3 * 3 < 10, 3 failable node
+//
+// ecc will encode data bytes into (N) pieces, each node needs (N - 2f) pieces to recover data
 func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC, error) {
 	trx_rbc_log.Infof("NewTrxRBC called, witnesses pubkey %s, epoch %d", proposerPubkey, acs.epoch)
 
-	parityShards := cfg.F
-	if parityShards == 0 {
-		parityShards = 1
+	if cfg.f == 0 {
+		cfg.f = (cfg.N - 1) / 3
 	}
-	dataShards := cfg.N - cfg.F
+	var (
+		parityShards = 2 * cfg.f            //2f
+		dataShards   = cfg.N - parityShards //N - 2f
+	)
 
 	// initial reed solomon codec
-	enc, err := reedsolomon.New(dataShards, parityShards)
+	enc, err := reedsolomon.New(dataShards, parityShards) //(N-2f, N) erasure coding schema
 	if err != nil {
 		return nil, err
 	}
+
+	trx_rbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
 
 	rbc := &TrxRBC{
 		Config:          cfg,
@@ -63,6 +74,8 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 		recvReadys:      make(map[string]*quorumpb.Ready),
 		numParityShards: parityShards,
 		numDataShards:   dataShards,
+		readySent:       false,
+		waitMoreEcho:    false,
 		consenusDone:    false,
 	}
 
@@ -103,16 +116,18 @@ func (r *TrxRBC) InputValue(data []byte) error {
 func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	trx_rbc_log.Infof("<%s> handle PROOF_MSG: ProofProviderPubkey <%s>, epoch <%d>", r.proposerPubkey, proof.ProposerPubkey, r.acs.epoch)
 
-	if r.consenusDone {
-		//rbc done, do nothing, ignore the msg
-		trx_rbc_log.Infof("<%s> rbc is done, do nothing", r.proposerPubkey)
-		return nil
-	}
+	/*
+		if r.consenusDone {
+			//rbc done, do nothing, ignore the msg
+			trx_rbc_log.Infof("<%s> rbc is done, do nothing", r.proposerPubkey)
+			return nil
+		}
 
-	if r.dataDecodeDone {
-		trx_rbc_log.Infof("<%s> Data decode done, do nothing", r.proposerPubkey)
-		return nil
-	}
+		if r.dataDecodeDone {
+			trx_rbc_log.Infof("<%s> Data decode done, do nothing", r.proposerPubkey)
+			return nil
+		}
+	*/
 
 	//check proposerPubkey in producer list
 	isInProducerList := false
@@ -141,8 +156,9 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	trx_rbc_log.Debugf("<%s> Save proof", r.proposerPubkey)
 	r.recvProofs = append(r.recvProofs, proof)
 
-	//if got enough proof, try decode it
-	if r.recvProofs.Len() == r.N-r.F {
+	//got enough proof
+	if r.waitMoreEcho && r.recvProofs.Len() == r.N-2*r.f {
+		//already get 2F + 1 ready, try decode data
 		trx_rbc_log.Debugf("<%s> try decode", r.proposerPubkey)
 		output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
 		if err != nil {
@@ -150,11 +166,19 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 		}
 		r.output = output
 
-		trx_rbc_log.Debugf("<%s> data is ready", r.proposerPubkey)
-		r.dataDecodeDone = true
+		//let acs know
+		trx_rbc_log.Debugf("<%s> rbc is done", r.proposerPubkey)
+		r.acs.RbcDone(r.proposerPubkey)
+		r.consenusDone = true
+	} else if r.recvProofs.Len() == r.N-r.f {
+		//check if ready sent
+		if r.readySent {
+			return nil
+		}
 
+		//multicast READY msg
 		trx_rbc_log.Debugf("<%s> broadcast ready msg", r.proposerPubkey)
-		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, proof)
+		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, proof.RootHash, proof.ProposerPubkey)
 		if err != nil {
 			return err
 		}
@@ -164,15 +188,7 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 			return err
 		}
 
-		//check if we already receive enough readyMsg (N - F)
-		trx_rbc_log.Debugf("<%s> recvived ReadyMsg: %d, expected ReadyMsg(r.N-r.F): %d .", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
-		if len(r.recvReadys) == r.N-r.F {
-			trx_rbc_log.Debugf("<%s> RBC done", r.proposerPubkey)
-			r.consenusDone = true
-			r.acs.RbcDone(r.proposerPubkey)
-		} else {
-			trx_rbc_log.Debugf("<%s> wait more ready", r.proposerPubkey)
-		}
+		r.readySent = true
 	}
 
 	return nil
@@ -181,10 +197,12 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	trx_rbc_log.Debugf("<%s> handle READY_MSG, ProofProviderPubkey <%s>, ReadyMsgProposerId <%s>, epoch <%d>", r.proposerPubkey, ready.ProofProviderPubkey, ready.ProposerPubkey, r.acs.epoch)
 
-	if r.consenusDone {
-		trx_rbc_log.Debugf("<%s> RBC is already done, do nothing", r.proposerPubkey)
-		return nil
-	}
+	/*
+		if r.consenusDone {
+			trx_rbc_log.Debugf("<%s> RBC is already done, do nothing", r.proposerPubkey)
+			return nil
+		}
+	*/
 
 	//check if msg sent from producer in list
 	isInProducerList := false
@@ -205,23 +223,50 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 		return fmt.Errorf("<%s> invalid ready signature", r.proposerPubkey)
 	}
 
-	if _, ok := r.recvReadys[string(ready.ProposerPubkey)]; ok {
-		return fmt.Errorf("<%s> received multiple readys from <%s>", r.proposerPubkey, ready.ProposerPubkey)
-	}
-
+	//save it
 	r.recvReadys[string(ready.ProposerPubkey)] = ready
 
 	//check if get enough ready
-	trx_rbc_log.Debugf("<%s> Recvived ReadyMsg: %d, Expected ReadyMsg(r.N-r.F): %d .", r.proposerPubkey, len(r.recvReadys), r.N-r.F)
-	if len(r.recvReadys) == r.N-r.F && r.dataDecodeDone {
-		trx_rbc_log.Debugf("<%s> get ENOUGH READY_MSG, RBC done", r.proposerPubkey)
-		r.consenusDone = true
-		r.acs.RbcDone(r.proposerPubkey)
-	} else {
-		//wait till enough
-		trx_rbc_log.Debugf("<%s> wait for more READY_MSG", r.proposerPubkey)
+	trx_rbc_log.Debugf("<%s> Recvived ReadyMsg: %d", r.proposerPubkey, len(r.recvReadys))
+	if len(r.recvReadys) == r.f+1 {
+		if !r.readySent {
+			//send ready out
+
+			trx_rbc_log.Debugf("<%s> get f + 1 READY, READY not send,broadcast ready msg", r.proposerPubkey)
+			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, ready.RootHash, ready.ProposerPubkey)
+			if err != nil {
+				return err
+			}
+
+			err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "")
+			if err != nil {
+				return err
+			}
+
+			r.readySent = true
+		}
+	} else if len(r.recvReadys) == 2*r.f+1 {
+		trx_rbc_log.Debugf("<%s> get 2f + 1 READY", r.proposerPubkey)
+		if len(r.recvProofs) >= r.N-2*r.f {
+			//already receive (N-2f) echo messages, try decode it
+			trx_rbc_log.Debugf("<%s> has enough proof, try decode", r.proposerPubkey)
+			output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
+			if err != nil {
+				return err
+			}
+			r.output = output
+			//let acs know
+			trx_rbc_log.Debugf("<%s> rbc is done", r.proposerPubkey)
+			r.acs.RbcDone(r.proposerPubkey)
+			r.consenusDone = true
+		} else {
+			trx_rbc_log.Debugf("<%s> wait for more proof MSG", r.proposerPubkey)
+			r.waitMoreEcho = true
+		}
 	}
 
+	//wait till enough
+	trx_rbc_log.Debugf("<%s> wait for more READY_MSG", r.proposerPubkey)
 	return nil
 }
 
@@ -231,6 +276,5 @@ func (r *TrxRBC) Output() []byte {
 		r.output = nil
 		return output
 	}
-
 	return nil
 }

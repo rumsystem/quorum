@@ -56,8 +56,8 @@ func (a *PSyncACS) RbcDone(proposerPubkey string) {
 	a.rbcOutput[proposerPubkey] = true
 
 	//check if all rbc instance output
-	psync_acs_log.Debugf("SessionId <%s> <%d> RBC finished, need <%d>", a.SessionId, len(a.rbcOutput), a.N-a.F)
-	if len(a.rbcOutput) == a.N-a.F {
+	psync_acs_log.Debugf("SessionId <%s> <%d> RBC finished, need <%d>", a.SessionId, len(a.rbcOutput), a.N-a.f)
+	if len(a.rbcOutput) == a.N-a.f {
 		trx_acs_log.Debugf("all RBC done")
 		// all rbc done, get all rbc results, send them back to BFT
 		for rbcInst, _ := range a.rbcOutput {
