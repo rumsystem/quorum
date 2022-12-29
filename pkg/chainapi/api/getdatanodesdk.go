@@ -28,9 +28,9 @@ const ANNOUNCED_USER string = "announced_user"
 const GROUP_PRODUCER string = "group_producer"
 
 type GetDataNodeSDKItem struct {
-	GroupId string `param:"group_id" validate:"required"`
-	ReqType string
-	Req     []byte
+	GroupId string `param:"group_id" json:"-" validate:"required"`
+	ReqType string `json:"ReqType" validate:"required,oneof=auth_type auth_allowlist auth_denylist appconfig_listlist appconfig_item_bykey announced_producer announced_user group_producer group_info"`
+	Req     []byte `json:"Req" validate:"required" swaggertype:"primitive,string"` // base64 encoded req
 }
 
 type GrpInfo struct {
@@ -81,6 +81,15 @@ type GrpInfoNodeSDK struct {
 	Singature    string
 }
 
+// @Tags NodeAPI
+// @Summary GetDataNSdk
+// @Description get chain data
+// @Accept  json
+// @Produce json
+// @Param   group_id path string true "Group Id"
+// @Param   get_data_params  body GetDataNodeSDKItem true  "get chain data params"
+// @Success 200 {object} interface{}
+// @Router  /v1/node/getchaindata/{group_id} [post]
 func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 

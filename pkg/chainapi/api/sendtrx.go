@@ -24,15 +24,24 @@ type NodeSDKTrxItem struct {
 }
 
 type NodeSDKSendTrxItem struct {
-	GroupId string `param:"group_id" validate:"required"`
-	TrxItem []byte
+	GroupId string `param:"group_id" json:"-" validate:"required" example:"630a545b-1ff4-4b9e-9a5d-bb13b6f6a629"`
+	TrxItem []byte `json:"TrxItem" validate:"required" swaggertype:"primitive,string"` // base64 encoded trx data
 }
 
-//discuss with wanming
+// discuss with wanming
 func is_user_blocked(c echo.Context) bool {
 	return false
 }
 
+// @Tags NodeAPI
+// @Summary SendTrx
+// @Description send trx
+// @Produce json
+// @Accept  json
+// @Param   group_id path string true "Group Id"
+// @Param   send_trx_params  body NodeSDKSendTrxItem true  "send trx params"
+// @Success 200 {object} SendTrxResult
+// @Router /api/v1/node/trx/{group_id} [post]
 func (h *Handler) SendTrx(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 
