@@ -20,6 +20,7 @@ type GrpProducerResult struct {
 	TrxId     string `json:"trx_id" validate:"required"`
 	GroupId   string `json:"group_id" validate:"required"`
 	Producers []*quorumpb.ProducerItem
+	Failable  int    `json:"failable_producers" validate:"required"`
 	Memo      string `json:"memo"`
 }
 
@@ -42,14 +43,22 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, rumerrors.ErrOnlyGroupOwner
 	} else {
-		if len(params.ProducerPubkey)%2 != 0 {
-			return nil, errors.New("for group use BFT consensus, you can only update group producers in even number(2,4,6...) each time")
+		if len(params.ProducerPubkey) == 0 {
+			return nil, errors.New("producer pubkey list empty")
 		}
+
+		//check if pubkey in producer list are unique
+		bundle := make(map[string]bool)
 
 		bftProducerBundle := &quorumpb.BFTProducerBundleItem{}
 		producers := []*quorumpb.ProducerItem{}
 
 		for _, producerPubkey := range params.ProducerPubkey {
+
+			if ok := bundle[producerPubkey]; ok {
+				return nil, errors.New(fmt.Errorf("producer pubkey should be unique").Error())
+			}
+			bundle[producerPubkey] = true
 
 			isAnnounced, err := chainapidb.IsProducerAnnounced(group.Item.GroupId, producerPubkey, group.ChainCtx.GetNodeName())
 			if err != nil {
@@ -100,7 +109,10 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 			return nil, err
 		}
 
-		blockGrpUserResult := &GrpProducerResult{GroupId: group.Item.GroupId, Producers: bftProducerBundle.Producers, Memo: params.Memo, TrxId: trxId}
+		totalProducers := len(bundle) + 1    /* owner*/
+		failable := (totalProducers - 1) / 3 /* 3F < N */
+
+		blockGrpUserResult := &GrpProducerResult{GroupId: group.Item.GroupId, Producers: bftProducerBundle.Producers, Failable: failable, Memo: params.Memo, TrxId: trxId}
 		return blockGrpUserResult, nil
 	}
 }

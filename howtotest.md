@@ -8,50 +8,10 @@
 | Owner node          | "owner"   | fullnode |
 | Producer node 1     | "p1"      | producernode |
 | Producer node 2     | "p2"      | producernode |
+| Producer node 3     | "p3"      | producernode |
 | User node 1         | "u1"      | fullnode |
 
-**Tips**: it's ok to have all five nodes/roles running on one computer.
-
-## Roles and node type explain
-
-When start a node, a "working mode" should be given, there are 3 types of node:
-
-1. bootstrapnode
-2. fullnode
-3. producernode 
-
-The following rules needs to be followed:
-
-1. only fullnode can create a new group
-2. producer node can only join group created by other fullnode
-3. producer node can only work as a "producer", therefor API like post-to-group is not provided
-4. producer node only apply "producer" related trxs, such as appconfig, chainconfig, announce, user, producer; trx with POST type will *NOT* be applied
-5. all "normal" group user (user like to use the data and app provided by the group) should run a node as "fullnode" to join the group
-
-A producer node needs to:
-
-1. Start node as a "producernode"
-2. Join a group by using group seed
-3. Wait block sync finished
-4. Self announce as a "producer" by using announce API
-5. Wait group owner approve as producer
-6. Start work as a producer, handle trx, finish BFT consensus with other producers, build and broadcast new block
-
-What will happen after a fullnode (not for owner) offline and back:
-
-1. Start epoch(block) sync with all producers
-2. Till get a "BLOCK_NOT_FOUND" response, then finish epoch sync
-3. work normally
-
-what will happen after a producer node (include owner) offline and back:
-
-1. Start consensus sync with all other producers
-2. If consensus sync successful, it means the chain still has enough producers and work normally
-3. If needed(chain epoch is large than local epoch), then start epoch sync
-4. Till get a "BLOCK_NOT_FOUND" response, then finish epoch sync
-5. work normally
-
-# How to test step by step
+**Tips**: it's ok to have all 6 nodes/roles running on one computer (API port should be different)
 
 ## build quorum binary
 
@@ -68,9 +28,9 @@ check the version and get help:
 ./quorum --help
 ```
 
-## Start all 5 nodes
+## Start all 6 nodes
 
-### 1. start a bootstrap node:
+### 1. start "bootstrap" node:
 
 ```sh
 ./quorum bootstrapnode \
@@ -99,9 +59,9 @@ curl http://127.0.0.1:50513/api/v1/node
 
 ```
 
-so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi83RrkHmATjc44obJ7YN3AnZvGNA8NP` , it will be used in other 4 nodes as param peer.
+so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi83RrkHmATjc44obJ7YN3AnZvGNA8NP` , it will be used in other 5 nodes as param peer.
 
-### 2. start a fullnode as group owner
+### 2. start fullnode "owner" as group owner
 
 ```sh
 ./quorum fullnode \
@@ -126,8 +86,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --loglevel=debug
 ```
 
-### 3. start a fullnode as group user:
-
+### 3. start fullnode "n1" as group user:
 
 ```sh
 ./quorum fullnode \
@@ -152,7 +111,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --loglevel=debug
 ```
 
-### 4. start a producer node p1:
+### 4. start producer node "p1":
 
 ```sh
 ./quorum producernode \
@@ -176,7 +135,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
 
 ```
 
-### 5. start a producer node p2:
+### 5. start producer node "p2":
 
 ```sh
 ./quorum producernode \
@@ -199,6 +158,30 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --loglevel=debug
     
 ```
+### 5. start producer node "p3":
+
+```sh
+./quorum producernode \
+    --peername=peer \
+    --keystoredir=mynodes/producernode2/keystore \
+    --keystorename=default \
+    --keystorepass=myproducer333 \
+    --configdir=mynodes/producernode3/config \
+    --datadir=mynodes/producernode3/data \
+    --certdir=mynodes/producernode3/certs \
+    --peer=/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi83RrkHmATjc44obJ7YN3AnZvGNA8NP \
+    --listen=/ip4/0.0.0.0/tcp/50720 \
+    --listen=/ip4/0.0.0.0/tcp/50721/ws \
+    --apiport=50733 \
+    --log-compress=true \
+    --log-max-age=7 \
+    --log-max-backups=3 \
+    --log-max-size=10 \
+    --logfile=mynodes/producernode3/logs/quorum.log \
+    --loglevel=debug
+    
+```
+
 
 ### 6. check node status
 
@@ -215,6 +198,8 @@ curl http://127.0.0.1:50623/api/v1/node
 curl http://127.0.0.1:50713/api/v1/node 
 # producer2
 curl http://127.0.0.1:50723/api/v1/node 
+# producer3
+curl http://127.0.0.1:50733/api/v1/node 
 ```
 
 ### 7. check the network of nodes
@@ -230,6 +215,9 @@ curl http://127.0.0.1:50623/api/v1/network
 curl http://127.0.0.1:50713/api/v1/network 
 # producer2
 curl http://127.0.0.1:50723/api/v1/network 
+# producer3
+curl http://127.0.0.1:50733/api/v1/network 
+
 
 ```
 
@@ -253,7 +241,7 @@ returns:
 
 the seed-url is used for others nodes to join.
 
-### 2. p1, p2 and u1 join the Group with seed url
+### 2. p1, p2, p3 and u1 join the Group with seed url
 
 ```bash
 # usernode join the group
@@ -265,6 +253,8 @@ curl -X POST -H 'Content-Type: application/json' -d '{"seed":"rum://seed?v=1\u00
 # producernode 2 join the group
 curl -X POST -H 'Content-Type: application/json' -d '{"seed":"rum://seed?v=1\u0026e=0\u0026n=0\u0026c=_sCLLReWZ3vE8hFs9-EBA4x71uidvH_hU0WQVFplAoM\u0026g=eFjiGAnBQwOh3ZoWNqqabg\u0026k=A9MSO6MW0m-m-h7GQlH6fk34jsxNOzoUayJlws3lRTqF\u0026s=IMbZvWwgz7moq5sohajEwXMCecGw_mc-5xp__qKVbmFLT2Ri7TYOaMtOICVCo_nTrdk_yxbNB72sQBS3sxJ1hgE\u0026t=FywI0LkbS5Q\u0026a=my_test_group\u0026y=group_timeline\u0026u=http%3A%2F%2F127.0.0.1%3A50613%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI3ODU4ZTIxOC0wOWMxLTQzMDMtYTFkZC05YTE2MzZhYTlhNmUiXSwiZXhwIjoxODI3Mzk5MjU1LCJuYW1lIjoiYWxsb3ctNzg1OGUyMTgtMDljMS00MzAzLWExZGQtOWExNjM2YWE5YTZlIiwicm9sZSI6Im5vZGUifQ.ng2FAlbvnUz7M3lLoxpJA-rI8Dbui849DJAgxo5Acg4"}' http://127.0.0.1:50723/api/v2/group/join
 
+# producernode 2 join the group
+curl -X POST -H 'Content-Type: application/json' -d '{"seed":"rum://seed?v=1\u0026e=0\u0026n=0\u0026c=_sCLLReWZ3vE8hFs9-EBA4x71uidvH_hU0WQVFplAoM\u0026g=eFjiGAnBQwOh3ZoWNqqabg\u0026k=A9MSO6MW0m-m-h7GQlH6fk34jsxNOzoUayJlws3lRTqF\u0026s=IMbZvWwgz7moq5sohajEwXMCecGw_mc-5xp__qKVbmFLT2Ri7TYOaMtOICVCo_nTrdk_yxbNB72sQBS3sxJ1hgE\u0026t=FywI0LkbS5Q\u0026a=my_test_group\u0026y=group_timeline\u0026u=http%3A%2F%2F127.0.0.1%3A50613%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI3ODU4ZTIxOC0wOWMxLTQzMDMtYTFkZC05YTE2MzZhYTlhNmUiXSwiZXhwIjoxODI3Mzk5MjU1LCJuYW1lIjoiYWxsb3ctNzg1OGUyMTgtMDljMS00MzAzLWExZGQtOWExNjM2YWE5YTZlIiwicm9sZSI6Im5vZGUifQ.ng2FAlbvnUz7M3lLoxpJA-rI8Dbui849DJAgxo5Acg4"}' http://127.0.0.1:50733/api/v2/group/join
 ```
 
 ### 3. check the result
@@ -276,6 +266,7 @@ curl http://127.0.0.1:50613/api/v1/groups
 curl http://127.0.0.1:50623/api/v1/groups
 curl http://127.0.0.1:50713/api/v1/groups
 curl http://127.0.0.1:50723/api/v1/groups
+curl http://127.0.0.1:50733/api/v1/groups
 
 ```
 
@@ -288,7 +279,7 @@ returns:
 
 **TIP**: the value of epoch is import, it should be changed with the following steps.
 
-## only owner working as producer: 
+## owner work as the only producer: 
 
 ### 1. owner or u1 send a POST
 
@@ -321,6 +312,7 @@ curl http://127.0.0.1:50613/api/v1/groups
 curl http://127.0.0.1:50623/api/v1/groups
 curl http://127.0.0.1:50713/api/v1/groups
 curl http://127.0.0.1:50723/api/v1/groups
+curl http://127.0.0.1:50733/api/v1/groups
 
 ```
 
@@ -412,9 +404,9 @@ curl http://127.0.0.1:50613/api/v1/trx/7858e218-09c1-4303-a1dd-9a1636aa9a6e/d248
 ```
 
 
-## add 2 producers nodes 
+## add 3 producers nodes 
 
-### 1. p1 and p2 announce as group producer
+### 1. p1 p2 and p3 announce as group producer
 
 p1 e.g:
 
@@ -436,7 +428,7 @@ curl http://127.0.0.1:50613/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/2
 ### 3. owner approve p1 and p2 as producers
 
 ```sh
-curl -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":["AqSEeptDka8_5jy9Hmen8HJImNPFDxVdkWUOHo3q0UTW","AyeWNbBuM_gXIz5833lkH-0sJ6vTxgMxJbvdPvNPArl5"] ,"group_id":"7858e218-09c1-4303-a1dd-9a1636aa9a6e", "action":"add"}' http://127.0.0.1:50613/api/v1/group/producer/false
+curl -X POST -H 'Content-Type: application/json' -d '{"producer_pubkey":["AqSEeptDka8_5jy9Hmen8HJImNPFDxVdkWUOHo3q0UTW","AyeWNbBuM_gXIz5833lkH-0sJ6vTxgMxJbvdPvNPArl5", "pubkey_of_p3"] ,"group_id":"7858e218-09c1-4303-a1dd-9a1636aa9a6e", "action":"add"}' http://127.0.0.1:50613/api/v1/group/producer/false
 
 ```
 
@@ -446,7 +438,6 @@ check the approve trx is applied:
 curl http://127.0.0.1:50613/api/v1/groups
 curl http://127.0.0.1:50613/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/3
 ```
-
 
 ### 4. owner or u1 send a POST
 
@@ -472,7 +463,8 @@ curl http://127.0.0.1:50613/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4
 curl http://127.0.0.1:50613/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4 
 curl http://127.0.0.1:50623/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4 
 curl http://127.0.0.1:50713/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4 
-curl http://127.0.0.1:50723/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4 
+curl http://127.0.0.1:50723/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4
+curl http://127.0.0.1:50733/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4  
 ```
 
 ### 6. verify trx is ONLY applied at node owner and u1 and can be get by using trx API
@@ -505,7 +497,13 @@ curl http://127.0.0.1:50613/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/4
 e.g: `curl http://127.0.0.1:50613/api/v1/trx/:group_id/:trx_id`
 
 
-### 5. start owner node again
+### 5. owner node quit
+
+### 6. u1 send several trxs to producer some new blocks
+
+### 7. verify all 4 nodes (p1, p2, p3, n1) have same blocks
+
+### 8. start owner node again
 
 check the node staus is NODE_ONLINE:
 
@@ -513,7 +511,7 @@ check the node staus is NODE_ONLINE:
 curl http://127.0.0.1:50613/api/v1/node
 ```
 
-### 6. owner node should sync the missing block
+### 6. owner node should start sync and get all missing blocks
 
 check the value of group epoch of nodes:
 
@@ -522,6 +520,7 @@ curl http://127.0.0.1:50613/api/v1/groups
 curl http://127.0.0.1:50623/api/v1/groups
 curl http://127.0.0.1:50713/api/v1/groups
 curl http://127.0.0.1:50723/api/v1/groups
+curl http://127.0.0.1:50733/api/v1/groups
 ```
 
 check the block api of owner node:
@@ -530,8 +529,10 @@ check the block api of owner node:
 curl http://127.0.0.1:50613/api/v1/block/7858e218-09c1-4303-a1dd-9a1636aa9a6e/5
 ```
 
+### verify chain still working
 
-### 7. verify chain still working
+
+------------------------ DONT TEST BELOW SCENES------------------------------
 
 chain should be able to recovery from total failure
 

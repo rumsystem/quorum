@@ -74,7 +74,7 @@ func (psync *MolassesPSync) createBftConfig() (*Config, error) {
 	}
 
 	n := len(nodes)
-	f := (n - 1) / 2
+	f := (n - 1) / 3
 
 	molaproducer_log.Debugf("Failable node %d", f)
 

@@ -56,6 +56,10 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 		dataShards   = cfg.N - parityShards //N - 2f
 	)
 
+	if parityShards == 0 {
+		parityShards = 1
+	}
+
 	// initial reed solomon codec
 	enc, err := reedsolomon.New(dataShards, parityShards) //(N-2f, N) erasure coding schema
 	if err != nil {
@@ -228,24 +232,9 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 
 	//check if get enough ready
 	trx_rbc_log.Debugf("<%s> Recvived ReadyMsg: %d", r.proposerPubkey, len(r.recvReadys))
-	if len(r.recvReadys) == r.f+1 {
-		if !r.readySent {
-			//send ready out
+	trx_rbc_log.Debugf("f %d", r.f)
 
-			trx_rbc_log.Debugf("<%s> get f + 1 READY, READY not send,broadcast ready msg", r.proposerPubkey)
-			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, ready.RootHash, ready.ProposerPubkey)
-			if err != nil {
-				return err
-			}
-
-			err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "")
-			if err != nil {
-				return err
-			}
-
-			r.readySent = true
-		}
-	} else if len(r.recvReadys) == 2*r.f+1 {
+	if len(r.recvReadys) == 2*r.f+1 {
 		trx_rbc_log.Debugf("<%s> get 2f + 1 READY", r.proposerPubkey)
 		if len(r.recvProofs) >= r.N-2*r.f {
 			//already receive (N-2f) echo messages, try decode it
@@ -263,10 +252,27 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 			trx_rbc_log.Debugf("<%s> wait for more proof MSG", r.proposerPubkey)
 			r.waitMoreEcho = true
 		}
+	} else if len(r.recvReadys) == r.f+1 {
+		if !r.readySent {
+			//send ready out
+			trx_rbc_log.Debugf("<%s> get f + 1 READY, READY not send,broadcast ready msg", r.proposerPubkey)
+			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, ready.RootHash, ready.ProposerPubkey)
+			if err != nil {
+				return err
+			}
+
+			err = SendHbbRBC(r.groupId, readyMsg, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "")
+			if err != nil {
+				return err
+			}
+
+			r.readySent = true
+		}
+	} else {
+		//wait till get enough READY
+		trx_rbc_log.Debugf("<%s> wait for more READY_MSG", r.proposerPubkey)
 	}
 
-	//wait till enough
-	trx_rbc_log.Debugf("<%s> wait for more READY_MSG", r.proposerPubkey)
 	return nil
 }
 
