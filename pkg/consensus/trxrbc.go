@@ -234,8 +234,12 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	trx_rbc_log.Debugf("<%s> Recvived ReadyMsg: %d", r.proposerPubkey, len(r.recvReadys))
 	trx_rbc_log.Debugf("f %d", r.f)
 
-	if len(r.recvReadys) == 2*r.f+1 {
-		trx_rbc_log.Debugf("<%s> get 2f + 1 READY", r.proposerPubkey)
+	if (r.f != 0 && len(r.recvReadys) == 2*r.f+1) || (r.f == 0 && len(r.recvReadys) == r.N) {
+		if r.f != 0 {
+			trx_rbc_log.Debugf("<%s> get 2f + 1 (%d) READY", r.proposerPubkey, 2*r.f+1)
+		} else {
+			trx_rbc_log.Debugf("<%s> get N (%d) READY", r.proposerPubkey, r.N)
+		}
 		if len(r.recvProofs) >= r.N-2*r.f {
 			//already receive (N-2f) echo messages, try decode it
 			trx_rbc_log.Debugf("<%s> has enough proof, try decode", r.proposerPubkey)
