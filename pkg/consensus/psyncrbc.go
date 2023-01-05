@@ -90,7 +90,8 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 	}
 
 	//create RBC msg for each shards
-	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, shards)
+	originalDataSize := len(data)
+	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.PSyncer.nodename, r.MySignPubkey, shards, originalDataSize)
 	if err != nil {
 		return err
 	}

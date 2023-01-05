@@ -329,12 +329,13 @@ message BroadcastMsg {
 }
 
 message Proof{ 
-    bytes          RootHash       = 1;
-    repeated bytes Proof          = 2;
-    int64          Index          = 3;
-    int64          Leaves         = 4;
-    string         ProposerPubkey = 5;
-    bytes          ProposerSign   = 6;
+    bytes          RootHash         = 1;
+    repeated bytes Proof            = 2;
+    int64          Index            = 3;
+    int64          Leaves           = 4;
+    string         ProposerPubkey   = 5;
+    bytes          ProposerSign     = 6;
+    int64          OriginalDataSize = 7;
 }
 
 message Ready {

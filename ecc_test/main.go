@@ -28,27 +28,34 @@ func main() {
 	originb := []byte(str)
 	fmt.Println(originb)
 
+	originalDataSize := len(originb)
+
 	shards, err := MakeShards(ecc, originb)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
+	//set any shards to nil
+	shards[0] = nil
+
 	afterb, err := TryDecodeValue(shards, ecc, parityShards, datashards)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	strb := string(afterb)
-	fmt.Println(strb)
 
+	//before cut
 	fmt.Println(afterb)
 
-	if strb != str {
-		fmt.Println("Bing~~~")
-		return
-	}
+	//cut tail 0
+	diff := len(afterb) - originalDataSize
+	afterb = afterb[:len(afterb)-diff]
 
+	//after cut
+	fmt.Println(afterb)
+	strb := string(afterb)
+	fmt.Println(strb)
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

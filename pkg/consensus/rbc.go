@@ -17,7 +17,7 @@ func (p Proofs) Len() int           { return len(p) }
 func (p Proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p Proofs) Less(i, j int) bool { return p[i].Index < p[j].Index }
 
-func MakeRBCProofMessages(groupId, nodename, proposerPubkey string, shards [][]byte) ([]*quorumpb.BroadcastMsg, error) {
+func MakeRBCProofMessages(groupId, nodename, proposerPubkey string, shards [][]byte, originalDataSize int) ([]*quorumpb.BroadcastMsg, error) {
 	msgs := make([]*quorumpb.BroadcastMsg, len(shards))
 
 	for i := 0; i < len(msgs); i++ {
@@ -26,15 +26,16 @@ func MakeRBCProofMessages(groupId, nodename, proposerPubkey string, shards [][]b
 		for j := 0; j < len(shards); j++ {
 			tree.Push(shards[i])
 		}
-		root, proof, proofIndex, n := tree.Prove()
 
+		root, proof, proofIndex, n := tree.Prove()
 		payload := &quorumpb.Proof{
-			RootHash:       root,
-			Proof:          proof,
-			Index:          int64(proofIndex),
-			Leaves:         int64(n),
-			ProposerPubkey: proposerPubkey,
-			ProposerSign:   nil,
+			RootHash:         root,
+			Proof:            proof,
+			Index:            int64(proofIndex),
+			Leaves:           int64(n),
+			ProposerPubkey:   proposerPubkey,
+			ProposerSign:     nil,
+			OriginalDataSize: int64(originalDataSize),
 		}
 
 		bbytes, err := proto.Marshal(payload)
@@ -108,11 +109,13 @@ func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numD
 	//sort proof by indexId
 	sort.Sort(proofs)
 
+	//any not received index will be marked as nil, which meet the requirement of ecc (mark unavialble shards as nil)
 	shards := make([][]byte, numPShards+numDShards)
 	for _, p := range proofs {
 		shards[p.Index] = p.Proof[0]
 	}
 
+	//try reconstruct it
 	if err := enc.Reconstruct(shards); err != nil {
 		return nil, err
 	}
@@ -122,6 +125,22 @@ func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numD
 		value = append(value, data...)
 	}
 
+	/* IMPORTANT
+	   An important thing to note is that you have to keep track of the exact input size.
+	   If the size of the input isn't divisible by the number of data shards,
+	   extra zeros will be inserted in the last shard.
+	*/
+
+	//cut the external 0
+	//just get teh originalDataSize from proof[0]
+	originalDataSize := proofs[0].OriginalDataSize
+	receivedDataSize := len(value)
+	//diff
+	diff := receivedDataSize - int(originalDataSize)
+	if diff != 0 {
+		trx_rbc_log.Debugf("ECC size different: diff <%d>, fixed", diff)
+		value = value[:len(value)-diff]
+	}
 	return value, nil
 }
 

@@ -98,8 +98,9 @@ func (r *TrxRBC) InputValue(data []byte) error {
 		return err
 	}
 
+	originalDataSize := len(data)
 	//create RBC msg for each shards
-	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, shards)
+	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, shards, originalDataSize)
 	if err != nil {
 		return err
 	}

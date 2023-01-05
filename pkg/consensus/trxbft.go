@@ -87,14 +87,8 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 		trxBundle := &quorumpb.HBTrxBundle{}
 		err := proto.Unmarshal(value, trxBundle)
 		if err != nil {
-			//trx_bft_log.Warningf("decode trxs failed for rbc inst %s, err %s", key, err.Error())
-			//TBD need verify the reason
-			value = value[:len(value)-1]
-			err := proto.Unmarshal(value, trxBundle)
-			if err != nil {
-				trx_bft_log.Warningf("decode trxs still failed for rbc inst %s, err %s", key, err.Error())
-				return
-			}
+			trx_bft_log.Warningf("decode trxs failed for rbc inst %s, err %s", key, err.Error())
+			return
 		}
 
 		for _, trx := range trxBundle.Trxs {
