@@ -39,7 +39,8 @@ func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 
 	found := false
 	f := func(key, value any) bool {
-		if key == bft.producer.grpItem.Epoch {
+		TopEpoch := bft.producer.grpItem.Epoch + 1 //proposed but not finished epoch is current group epoch + 1 (next epoch)
+		if key == TopEpoch {
 			found = true
 		}
 		return true
