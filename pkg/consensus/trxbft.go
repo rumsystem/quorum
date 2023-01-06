@@ -19,9 +19,8 @@ var trx_bft_log = logging.Logger("tbft")
 type TrxBft struct {
 	Config
 	producer *MolassesProducer
-	acsInsts map[int64]*TrxACS //map key is epoch
+	acsInsts sync.Map //[int64]*TrxACS //map key is epoch
 	txBuffer *TrxBuffer
-	mutex    sync.Mutex
 }
 
 func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
@@ -29,24 +28,28 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 	return &TrxBft{
 		Config:   cfg,
 		producer: producer,
-		acsInsts: make(map[int64]*TrxACS),
 		txBuffer: NewTrxBuffer(producer.groupId),
+		//acsInsts: make(map[int64]*TrxACS),
 	}
 }
 
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> AddTrx called", bft.producer.groupId)
-	bft.mutex.Lock()
 	bft.txBuffer.Push(tx)
 
-	//check if any current epoch is proposed
-	for key := range bft.acsInsts {
+	found := false
+	f := func(key, value any) bool {
 		if key == bft.producer.grpItem.Epoch {
-			trx_bft_log.Debugf("<%s> Trx saved to TrxBuffer")
-			return nil
+			found = true
 		}
+		return true
 	}
-	bft.mutex.Unlock()
+
+	bft.acsInsts.Range(f)
+	if found {
+		trx_bft_log.Debugf("<%s> Trx saved to TrxBuffer, wait to be propose")
+		return nil
+	}
 
 	//try propose
 	newEpoch := bft.producer.grpItem.Epoch + 1
@@ -76,7 +79,8 @@ func (bft *TrxBft) AddSudoTrx(tx *quorumpb.Trx) error {
 
 func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	trx_bft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.producer.groupId, hbmsg.Epoch)
-	acs, ok := bft.acsInsts[hbmsg.Epoch]
+	var acs *TrxACS
+	inst, ok := bft.acsInsts.Load(hbmsg.Epoch)
 
 	if !ok {
 		if hbmsg.Epoch <= bft.producer.grpItem.Epoch {
@@ -84,8 +88,11 @@ func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 			return nil
 		}
 		acs = NewTrxACS(bft.Config, bft, hbmsg.Epoch)
-		bft.acsInsts[hbmsg.Epoch] = acs
+		bft.acsInsts.Store(hbmsg.Epoch, acs) //cast TrxACS to any automatically
 		trx_bft_log.Debugf("Create new ACS %d", hbmsg.Epoch)
+	} else {
+		//cast any to TrxAcs
+		acs = inst.(*TrxACS)
 	}
 
 	return acs.HandleMessage(hbmsg)
@@ -124,9 +131,9 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	}
 
 	//clear acs for finished epoch
+
 	trx_bft_log.Debugf("<%s> remove acs inst <%d>", bft.producer.groupId, epoch)
-	bft.acsInsts[epoch] = nil
-	delete(bft.acsInsts, epoch)
+	bft.acsInsts.Delete(epoch)
 
 	if buildBlockDone {
 		//remove outputed trxs from buffer
@@ -163,12 +170,6 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	trx_bft_log.Infof("<%s> buildBlock for epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
 	trxToPackage := bft.sortTrx(trxs)
-
-	/*for trxId, trx := range trxs {
-		trx_bft_log.Infof(">>> package trx : <%s>", trxId)
-		trxToPackage = append(trxToPackage, trx)
-	}
-	*/
 
 	parentEpoch := epoch - 1
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
@@ -275,12 +276,10 @@ func (bft *TrxBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 func (bft *TrxBft) propose(epoch int64) error {
 	trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, epoch)
 
-	bft.mutex.Lock()
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
 		return err
 	}
-	bft.mutex.Unlock()
 
 	//nothing to propose
 	if len(trxs) == 0 {
@@ -296,11 +295,14 @@ func (bft *TrxBft) propose(epoch int64) error {
 		return err
 	}
 
-	_, ok := bft.acsInsts[epoch]
+	var acs *TrxACS
+	inst, ok := bft.acsInsts.Load(epoch)
 	if !ok {
-		acs := NewTrxACS(bft.Config, bft, epoch)
-		bft.acsInsts[epoch] = acs
+		acs = NewTrxACS(bft.Config, bft, epoch)
+		bft.acsInsts.Store(epoch, acs)
+	} else {
+		acs = inst.(*TrxACS)
 	}
 
-	return bft.acsInsts[epoch].InputValue(datab)
+	return acs.InputValue(datab)
 }
