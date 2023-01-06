@@ -76,8 +76,10 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 
 	molaproducer_log.Debugf("Failable node %d", f)
 
+	//use fixed scalar size
 	scalar := 20
-	batchSize := (len(nodes) * 2) * scalar
+	//batchSize := (len(nodes) * 2) * scalar
+	batchSize := scalar
 
 	molaproducer_log.Debugf("batchSize %d", batchSize)
 

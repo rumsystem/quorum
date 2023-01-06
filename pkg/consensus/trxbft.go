@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -20,6 +21,7 @@ type TrxBft struct {
 	producer *MolassesProducer
 	acsInsts map[int64]*TrxACS //map key is epoch
 	txBuffer *TrxBuffer
+	mutex    sync.Mutex
 }
 
 func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
@@ -34,8 +36,19 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> AddTrx called", bft.producer.groupId)
-	//bft_log.Debugf("IsSudoTrx : <%v>", tx.SudoTrx)
+	bft.mutex.Lock()
 	bft.txBuffer.Push(tx)
+
+	//check if any current epoch is proposed
+	for key := range bft.acsInsts {
+		if key == bft.producer.grpItem.Epoch {
+			trx_bft_log.Debugf("<%s> Trx saved to TrxBuffer")
+			return nil
+		}
+	}
+	bft.mutex.Unlock()
+
+	//try propose
 	newEpoch := bft.producer.grpItem.Epoch + 1
 	trx_bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
 	bft.propose(newEpoch)
@@ -261,10 +274,13 @@ func (bft *TrxBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 
 func (bft *TrxBft) propose(epoch int64) error {
 	trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, epoch)
+
+	bft.mutex.Lock()
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
 		return err
 	}
+	bft.mutex.Unlock()
 
 	//nothing to propose
 	if len(trxs) == 0 {
