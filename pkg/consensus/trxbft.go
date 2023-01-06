@@ -48,7 +48,7 @@ func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 
 	bft.acsInsts.Range(f)
 	if found {
-		trx_bft_log.Debugf("<%s> Trx saved to TrxBuffer, wait to be propose")
+		trx_bft_log.Debugf("<%s> Trx saved to TrxBuffer, wait to be propose", tx.TrxId)
 		return nil
 	}
 
