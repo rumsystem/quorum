@@ -162,7 +162,7 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	//start next round
 	if trxBufLen != 0 {
 		newEpoch := bft.producer.grpItem.Epoch + 1
-		trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", newEpoch)
+		trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, newEpoch)
 		bft.propose(newEpoch)
 	}
 }
@@ -175,7 +175,7 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	parentEpoch := epoch - 1
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
 	if err != nil {
-		trx_acs_log.Warnf("?????????????????????????? %s", err.Error())
+		trx_acs_log.Warnf("XXXXXXXXXXXX?????????????????????????? %s", err.Error())
 		return err
 	}
 
@@ -204,18 +204,23 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	}
 
 	//if run as producer node
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		trx_bft_log.Info("PRODUCER_NODE handle block")
-		bft.producer.cIface.ApplyTrxsProducerNode(trxToPackage, bft.producer.nodename)
-		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.producer.nodename)
-		if err != nil {
-			return err
-		}
-	} else {
-		// if run in FULL_NODE, no need to handle this block here
-		// local user will receive this block via producer channel, local user will handle it
-		trx_bft_log.Info("FULL_NODE(Owner) handle block, do nothing, wait for molassuser to handle it")
+	//if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+	trx_bft_log.Info("molassproducer handle block just built")
+	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.producer.nodename)
+	if err != nil {
+		return err
 	}
+
+	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+		bft.producer.cIface.ApplyTrxsProducerNode(trxToPackage, bft.producer.nodename)
+	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+		bft.producer.cIface.ApplyTrxsFullNode(trxToPackage, bft.producer.nodename)
+	}
+	//} else {
+	// if run in FULL_NODE, no need to handle this block here
+	// local user will receive this block via producer channel, local user will handle it
+	//	trx_bft_log.Info("FULL_NODE(Owner) handle block, do nothing, wait for molassuser to handle it")
+	//}
 
 	return nil
 }
