@@ -23,7 +23,7 @@ type PubkeyToEthaddrResult struct {
 // @Accept json
 // @Produce json
 // @Param data body PubkeyParam true "PubkeyParam"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} PubkeyToEthaddrResult
 // @Router /api/v1/tools/pubkeytoaddr [post]
 func (h *Handler) PubkeyToEthaddr(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
