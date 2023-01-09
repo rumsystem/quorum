@@ -9,12 +9,12 @@ import (
 )
 
 type AnnouncedUserListItem struct {
-	AnnouncedSignPubkey    string
-	AnnouncedEncryptPubkey string
-	AnnouncerSign          string
-	Result                 string
-	Memo                   string
-	TimeStamp              int64
+	AnnouncedSignPubkey    string `example:"CAISIQIWQX/5Nmy2/YoBbdO9jn4tDgn22prqOWMYusBR6axenw=="`
+	AnnouncedEncryptPubkey string `example:"age1a68u5gafkt3yfsz7pr45j5ku3tyyk4xh9ydp3xwpaphksz54kgns99me0g"`
+	AnnouncerSign          string `example:"30450221009974a5e0f3ea114de8469a806894410d12b5dc5d6d7ee21e49b5482cb062f1740220168185ad84777675ba29773942596f2db0fa5dd810185d2b8113ac0eaf4d7603"`
+	Result                 string `example:"ANNOUNCED"`
+	Memo                   string `example:"Memo"`
+	TimeStamp              int64  `example:"1642609852758917000"`
 }
 
 func GetAnnouncedGroupUsers(chainapidb def.APIHandlerIface, groupid string) ([]*AnnouncedUserListItem, error) {

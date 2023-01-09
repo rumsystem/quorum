@@ -25,14 +25,14 @@ const (
 )
 
 type TokenItem struct {
-	Token string `json:"token"`
+	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI1MTNiZDNmMi1hMGJjLTQ3MGItODA2My1lYzk1NDlmMzRiN2QiXSwiZXhwIjoxODI2MTA4MzA5LCJuYW1lIjoiYWxsb3ctNTEzYmQzZjItYTBiYy00NzBiLTgwNjMtZWM5NTQ5ZjM0YjdkIiwicm9sZSI6Im5vZGUifQ.CZQB2jzvY3lB_XgAd8izAQaunsHZFh1qN0tmSdYkce8"`
 }
 
 type CreateJWTParams struct {
-	Name        string    `json:"name" validate:"required"`
-	Role        string    `json:"role" validate:"required,oneof=node chain"`
-	AllowGroups []string  `json:"allow_groups"`
-	ExpiresAt   time.Time `json:"expires_at" validate:"required"`
+	Name        string    `json:"name" validate:"required" example:"allow-513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	Role        string    `json:"role" validate:"required,oneof=node chain" example:"node"`
+	AllowGroups []string  `json:"allow_groups" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	ExpiresAt   time.Time `json:"expires_at" validate:"required" example:"2022-12-28T08:10:36.675204+00:00"`
 }
 
 func getJWTKey() (string, error) {

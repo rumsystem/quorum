@@ -11,36 +11,36 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 type ChainConfigParams struct {
-	GroupId string `from:"group_id" json:"group_id"  validate:"required,uuid4"`
-	Type    string `from:"type"     json:"type"      validate:"required,oneof=set_trx_auth_mode upd_alw_list upd_dny_list"`
-	Config  string `from:"config"   json:"config"    validate:"required"`
-	Memo    string `from:"memo"     json:"memo"`
+	GroupId string `from:"group_id" json:"group_id"  validate:"required,uuid4" example:"ac0eea7c-2f3c-4c67-80b3-136e46b924a8"`
+	Type    string `from:"type"     json:"type"      validate:"required,oneof=set_trx_auth_mode upd_alw_list upd_dny_list" example:"upd_alw_list"`
+	Config  string `from:"config"   json:"config"    validate:"required" example:"{\"action\":\"add\",  \"pubkey\":\"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ==\", \"trx_type\":[\"post\", \"announce\", \"req_block_forward\", \"req_block_backward\", \"ask_peerid\"]}"`
+	Memo    string `from:"memo"     json:"memo" example:"comment/remark"`
 }
 
 type TrxAuthModeParams struct {
-	TrxType     string `from:"trx_type"      json:"trx_type"     validate:"required,oneof=POST ANNOUNCE REQ_BLOCK_FORWARD REQ_BLOCK_BACKWARD BLOCK_SYNCED BLOCK_PRODUCED ASK_PEERID"`
-	TrxAuthMode string `from:"trx_auth_mode" json:"trx_auth_mode" validate:"required,oneof=follow_alw_list follow_dny_list"`
+	TrxType     string `from:"trx_type"      json:"trx_type"     validate:"required,oneof=POST ANNOUNCE REQ_BLOCK_FORWARD REQ_BLOCK_BACKWARD BLOCK_SYNCED BLOCK_PRODUCED ASK_PEERID" example:"POST"`
+	TrxAuthMode string `from:"trx_auth_mode" json:"trx_auth_mode" validate:"required,oneof=follow_alw_list follow_dny_list" example:"follow_alw_list"`
 }
 type ChainSendTrxRuleListItemParams struct {
-	Action  string   `from:"action"   json:"action"   validate:"required,oneof=add remove"`
-	Pubkey  string   `from:"pubkey"   json:"pubkey"   validate:"required"`
-	TrxType []string `from:"trx_type" json:"trx_type" validate:"required"`
+	Action  string   `from:"action"   json:"action"   validate:"required,oneof=add remove" example:"add"`
+	Pubkey  string   `from:"pubkey"   json:"pubkey"   validate:"required" example:"CAISIQNGAO67UTFSuWzySHKdy4IjBI/Q5XDMELPUSxHpBwQDcQ=="`
+	TrxType []string `from:"trx_type" json:"trx_type" validate:"required"` // Example: ["POST", "ANNOUNCE"]
 }
 
 type ChainConfigResult struct {
-	GroupId          string `json:"group_id"     validate:"required,uuid4"`
-	GroupOwnerPubkey string `json:"owner_pubkey" validate:"required"`
-	Sign             string `json:"signature"    validate:"required"`
-	TrxId            string `json:"trx_id"       validate:"required"`
+	GroupId          string `json:"group_id"     validate:"required,uuid4" example:"b3e1800a-af6e-4c67-af89-4ddcf831b6f7"`
+	GroupOwnerPubkey string `json:"owner_pubkey" validate:"required" example:"CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA=="`
+	Sign             string `json:"signature"    validate:"required" example:"30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73"`
+	TrxId            string `json:"trx_id"       validate:"required" example:"90e9818a-2e23-4248-93e3-d4ba1b100f4f"`
 }
 
 func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {

@@ -15,21 +15,21 @@ import (
 )
 
 type ReqRelayParam struct {
-	GroupId    string `from:"group_id" json:"group_id" validate:"required"`
-	UserPubkey string `from:"user_pubkey" json:"user_pubkey"`
-	RelayType  string `from:"relay_type" json:"relay_type" validate:"required,oneof=user group"`
-	Duration   int64  `from:"duration" json:"duration" validate:"required"`
-	SenderSign string `json:"signature" validate:"required"`
+	GroupId    string `from:"group_id" json:"group_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
+	UserPubkey string `from:"user_pubkey" json:"user_pubkey" example:"CAISIQO7ury6x7aWpwUVn6mj2dZFqme3BAY5xDkYjqW/EbFFcA=="`
+	RelayType  string `from:"relay_type" json:"relay_type" validate:"required,oneof=user group" example:"user"`
+	Duration   int64  `from:"duration" json:"duration" validate:"required" example:"600"`
+	SenderSign string `json:"signature" validate:"required" example:"30450221009634af1636bf7374453cd73088ff992d9020777eb617795e3c93ea5d5008f56d022035342a852e87afa87b5e038147dedf10bb847f60808ec78a470b92dfbff91504"`
 }
 
 type RelayResult struct {
-	Result bool `from:"result" json:"result" validate:"required"`
+	Result bool `from:"result" json:"result" validate:"required" example:"true"`
 	//ReqId string `from:"req_id"      json:"req_id"      validate:"required"`
 }
 
 type RelayApproveResult struct {
-	ReqId  string `from:"req_id"      json:"req_id"      validate:"required"`
-	Result bool   `from:"result"      json:"result"      validate:"required"`
+	ReqId  string `from:"req_id"      json:"req_id"      validate:"required" example:""`
+	Result bool   `from:"result"      json:"result"      validate:"required" example:"true"`
 }
 
 type RelayList struct {

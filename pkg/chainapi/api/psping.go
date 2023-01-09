@@ -14,7 +14,7 @@ import (
 )
 
 type PSPingParam struct {
-	PeerId string `from:"peer_id"      json:"peer_id"      validate:"required,max=53,min=53"`
+	PeerId string `from:"peer_id"      json:"peer_id"      validate:"required,max=53,min=53" example:"16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM"`
 }
 
 // @Tags Node

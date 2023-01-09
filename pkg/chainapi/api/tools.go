@@ -1,19 +1,20 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	"net/http"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type PubkeyParam struct {
-	EncodedPubkey string `from:"encoded_pubkey" json:"encoded_pubkey" validate:"required"`
+	EncodedPubkey string `from:"encoded_pubkey" json:"encoded_pubkey" validate:"required" example:"CAISIQPPewVN6uF9kAPmPl3XvDufBNGQhazxqk+nRnvBVFQgcw=="`
 }
 
 type PubkeyToEthaddrResult struct {
-	Addr string `json:"addr"`
+	Addr string `json:"addr" example:"0xC90B320afad63d82Fa2c888C47B54ADd5CDD2452"`
 }
 
 // @Tags Tools
@@ -22,7 +23,7 @@ type PubkeyToEthaddrResult struct {
 // @Accept json
 // @Produce json
 // @Param data body PubkeyParam true "PubkeyParam"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} PubkeyToEthaddrResult
 // @Router /api/v1/tools/pubkeytoaddr [post]
 func (h *Handler) PubkeyToEthaddr(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)

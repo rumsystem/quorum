@@ -8,7 +8,7 @@ import (
 )
 
 type AddRelayServersResp struct {
-	Ok bool `json:"ok"`
+	Ok bool `json:"ok" example:"true"`
 }
 
 // @Tags Node
