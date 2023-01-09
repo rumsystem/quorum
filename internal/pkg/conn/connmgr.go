@@ -200,7 +200,9 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
 				conn_log.Debugf("<%s> time up, close producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 				psconn := connMgr.PsConns[connMgr.ProducerChannelId]
-				psconn.LeaveChannel()
+				if psconn != nil {
+					psconn.LeaveChannel()
+				}
 				delete(connMgr.PsConns, connMgr.ProducerChannelId)
 			})
 		}
