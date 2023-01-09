@@ -12,6 +12,8 @@ import (
 // @Summary ClearGroupData
 // @Description Clear group data
 // @Produce json
+// @Accept json
+// @Param data body handlers.ClearGroupDataParam true "ClearGroupParam"
 // @Success 200 {object} handlers.ClearGroupDataResult
 // @Router /api/v1/group/clear [post]
 func (h *Handler) ClearGroupData(c echo.Context) (err error) {

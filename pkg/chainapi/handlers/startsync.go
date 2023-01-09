@@ -7,8 +7,8 @@ import (
 )
 
 type StartSyncResult struct {
-	GroupId string `validate:"required"`
-	Error   string
+	GroupId string `validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	Error   string `example:""`
 }
 
 func StartSync(groupid string) (*StartSyncResult, error) {

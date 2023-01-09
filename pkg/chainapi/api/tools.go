@@ -10,11 +10,11 @@ import (
 )
 
 type PubkeyParam struct {
-	EncodedPubkey string `from:"encoded_pubkey" json:"encoded_pubkey" validate:"required"`
+	EncodedPubkey string `from:"encoded_pubkey" json:"encoded_pubkey" validate:"required" example:"CAISIQPPewVN6uF9kAPmPl3XvDufBNGQhazxqk+nRnvBVFQgcw=="`
 }
 
 type PubkeyToEthaddrResult struct {
-	Addr string `json:"addr"`
+	Addr string `json:"addr" example:"0xC90B320afad63d82Fa2c888C47B54ADd5CDD2452"`
 }
 
 // @Tags Tools

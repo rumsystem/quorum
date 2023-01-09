@@ -9,11 +9,11 @@ import (
 )
 
 type ProducerListItem struct {
-	ProducerPubkey string
-	OwnerPubkey    string
-	OwnerSign      string
-	TimeStamp      int64
-	BlockWithness  int64
+	ProducerPubkey string `example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
+	OwnerPubkey    string `example:"CAISIQNVGW0jrrKvo9/40lAyz/uICsyBbk465PmDKdWfcCM4JA=="`
+	OwnerSign      string `example:"304402202cbca750600cd0aeb3a1076e4aa20e9d1110fe706a553df90d0cd69289628eed022042188b48fa75d0197d9f5ce03499d3b95ffcdfb0ace707cf3eda9f12473db0ea"`
+	TimeStamp      int64  `example:"1634756661280204800"`
+	BlockWithness  int64  `example:"0"`
 }
 
 func GetGroupProducers(chainapidb def.APIHandlerIface, groupid string) ([]*ProducerListItem, error) {

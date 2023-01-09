@@ -18,20 +18,20 @@ import (
 )
 
 type GrpUserResult struct {
-	GroupId       string `json:"group_id"`
-	UserPubkey    string `json:"user_pubkey"`
-	EncryptPubkey string `json:"encrypt_pubkey"`
-	OwnerPubkey   string `json:"owner_pubkey"`
-	Sign          string `json:"sign"`
-	TrxId         string `json:"trx_id"`
+	GroupId       string `from:"group_id"        json:"group_id" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	UserPubkey    string `from:"user_pubkey"     json:"user_pubkey" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
+	EncryptPubkey string `json:"encrypt_pubkey" example:"age1fx3ju9a2f3kpdh76375dect95wmvk084p8wxczeqdw8q2m0jtfks2k8pm9"`
+	OwnerPubkey   string `json:"owner_pubkey" example:"CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg=="`
+	Sign          string `json:"sign" example:"304402206a68e3393f4382c9978a19751496e730de94136a15ab77e30bab2f184bcb5646022041a9898bb5ff563a"`
+	TrxId         string `json:"trx_id" example:"8a4ae55d-d576-490a-9b9a-80a21c761cef"`
 	Memo          string `json:"memo"`
-	Action        string `json:"action"`
+	Action        string `json:"action" example:"ADD"`
 }
 
 type GrpUserParam struct {
-	Action     string `from:"action"          json:"action"       validate:"required,oneof=add remove"`
-	UserPubkey string `from:"user_pubkey"     json:"user_pubkey"  validate:"required"`
-	GroupId    string `from:"group_id"        json:"group_id"     validate:"required"`
+	Action     string `from:"action"          json:"action"       validate:"required,oneof=add remove" example:"add"`
+	UserPubkey string `from:"user_pubkey"     json:"user_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
+	GroupId    string `from:"group_id"        json:"group_id"     validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Memo       string `from:"memo"            json:"memo"`
 }
 

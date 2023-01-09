@@ -6,12 +6,14 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
-type AddPeerParam []string
+// AddPeerParam list of multiaddr
+type AddPeerParam []string // Example: ["/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u", "/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM"]
 
 type AddPeerResult struct {
-	SuccCount int               `json:"succ_count"`
-	ErrCount  int               `json:"err_count"`
-	Errs      map[string]string `json:"error"`
+	SuccCount int               `json:"succ_count" example:"100"`
+	ErrCount  int               `json:"err_count" example:"20"`
+	Errs      map[string]string `json:"error"` // Example: {"/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM": "error info"}
+
 }
 
 func AddPeers(input AddPeerParam) (*AddPeerResult, error) {
