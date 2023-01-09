@@ -6,20 +6,27 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 type GroupContentObjectItem struct {
-	TrxId     string
-	Publisher string
+	TrxId     string `example:"da2aaf30-39a8-4fe4-a0a0-44ceb71ac013"`
+	Publisher string `example:"CAISIQOlA37+ghb05D5ZAKExjsto/H7eeCmkagcZ+BY/pjSOKw=="`
+	/* Content Example:
+		{
+	        "type": "Note",
+	        "content": "simple note by aa",
+	        "name": "A simple Node id1"
+	    }
+	*/
 	Content   proto.Message
-	TypeUrl   string
-	TimeStamp int64
+	TypeUrl   string `example:"quorum.pb.Object"`
+	TimeStamp int64  `example:"1629748212762123400"`
 }
 
 type SenderList struct {

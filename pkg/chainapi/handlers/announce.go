@@ -7,28 +7,28 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type AnnounceResult struct {
-	GroupId                string `json:"group_id" validate:"required,uuid4"`
-	AnnouncedSignPubkey    string `json:"sign_pubkey" validate:"required"`
-	AnnouncedEncryptPubkey string `json:"encrypt_pubkey"`
-	Type                   string `json:"type" validate:"required"`
-	Action                 string `json:"action" validate:"required"`
-	Sign                   string `json:"sign" validate:"required"`
-	TrxId                  string `json:"trx_id" validate:"required"`
+	GroupId                string `json:"group_id" validate:"required,uuid4" example:"17a598a0-274b-45e7-a4b5-b81f9f274d50"`
+	AnnouncedSignPubkey    string `json:"sign_pubkey" validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
+	AnnouncedEncryptPubkey string `json:"encrypt_pubkey" example:"age1fx3ju9a2f3kpdh76375dect95wmvk084p8wxczeqdw8q2m0jtfks2k8pm9"`
+	Type                   string `json:"type" validate:"required" example:"AS_USER"`
+	Action                 string `json:"action" validate:"required" example:"ADD"`
+	Sign                   string `json:"sign" validate:"required" example:"3046022100a853ca31f6f6719be213231b6428cecf64de5b1042dd8af1e140499507c85c40022100abd6828478f56da213ec10d361be8709333ff44cd0fa037409af9c0b67e6d0f5"`
+	TrxId                  string `json:"trx_id" validate:"required" example:"2e86c7fb-908e-4528-8f87-d3548e0137ab"`
 }
 
 type AnnounceParam struct {
-	GroupId string `from:"group_id"    json:"group_id"    validate:"required,uuid4"`
-	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove"`
-	Type    string `from:"type"        json:"type"        validate:"required,oneof=user producer"`
-	Memo    string `from:"memo"        json:"memo"`
+	GroupId string `from:"group_id"    json:"group_id"    validate:"required,uuid4" example:"17a598a0-274b-45e7-a4b5-b81f9f274d50"`
+	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove" example:"add"`
+	Type    string `from:"type"        json:"type"        validate:"required,oneof=user producer" example:"user"`
+	Memo    string `from:"memo"        json:"memo" example:"comment/remark"`
 }
 
 func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
