@@ -33,7 +33,7 @@ type Chain interface {
 	HandleBlockWithRex(block *quorumpb.Block, from peer.ID) error
 }
 
-type RumHandlerFunc func(msg *quorumpb.RumMsg, s network.Stream) error
+type RumHandlerFunc func(msg *quorumpb.RumDataMsg, s network.Stream) error
 
 type RumHandler struct {
 	Handler RumHandlerFunc
@@ -109,7 +109,7 @@ func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataSyncIfa
 	}
 }
 
-func (r *RexService) PublishToStream(msg *quorumpb.RumMsg, s network.Stream) error {
+func (r *RexService) PublishToStream(msg *quorumpb.RumDataMsg, s network.Stream) error {
 	//TODO:  add a timeout ctx to close the steam after timeout
 	remotePeer := s.Conn().RemotePeer()
 	rumexchangelog.Debugf("PublishResponse msg to peer: %s", remotePeer)
@@ -131,7 +131,7 @@ func (r *RexService) PublishToStream(msg *quorumpb.RumMsg, s network.Stream) err
 	return nil
 }
 
-func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
+func (r *RexService) PublishToPeerId(msg *quorumpb.RumDataMsg, to string) error {
 	rumexchangelog.Debugf("PublishResponse msg to peer: %s", to)
 
 	toid, err := peer.Decode(to)
@@ -169,7 +169,7 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumMsg, to string) error {
 }
 
 // Publish to 1 random connected peers
-func (r *RexService) Publish(groupid string, channelpeers []peer.ID, msg *quorumpb.RumMsg) error {
+func (r *RexService) Publish(groupid string, channelpeers []peer.ID, msg *quorumpb.RumDataMsg) error {
 	//TODO: save good peers?
 	ctx := context.Background()
 	connectedpeers := r.Host.Network().Peers()
@@ -200,10 +200,10 @@ func (r *RexService) Publish(groupid string, channelpeers []peer.ID, msg *quorum
 	return rumerrors.ErrNoPeersAvailable
 }
 
-func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumMsg, s network.Stream) {
+func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumDataMsg, s network.Stream) {
 	rumMsgSize := float64(metric.GetProtoSize(rummsg))
 	switch rummsg.MsgType {
-	case quorumpb.RumMsgType_CHAIN_DATA:
+	case quorumpb.RumDataMsgType_CHAIN_DATA:
 		metric.SuccessCount.WithLabelValues(metric.ActionType.RumChainData).Inc()
 		metric.InBytes.WithLabelValues(metric.ActionType.RumChainData).Set(rumMsgSize)
 		metric.InBytesTotal.WithLabelValues(metric.ActionType.RumChainData).Add(rumMsgSize)
@@ -248,7 +248,7 @@ func (r *RexService) HandlerProcessStream(ctx context.Context, s network.Stream)
 				return
 			}
 		}
-		var rummsg quorumpb.RumMsg
+		var rummsg quorumpb.RumDataMsg
 		if err = proto.Unmarshal(msgdata, &rummsg); err == nil {
 			r.HandleRumExchangeMsg(&rummsg, s)
 		}
