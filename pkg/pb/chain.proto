@@ -14,27 +14,9 @@ message Package {
     bytes       Data = 2;
 }
 
-enum TrxType {
-  POST               = 0; // post to group
-  SCHEMA             = 2; // group schema
-  PRODUCER           = 3; // update group producer
-  ANNOUNCE           = 4; // self announce, producer or user)  
-  REQ_BLOCK_FORWARD  = 5; // request next block 
-  REQ_BLOCK_BACKWARD = 6; // request previous block
-  REQ_BLOCK_RESP     = 7; // response request next block
-  BLOCK_SYNCED       = 8; // block for producer to sync (old block)
-  BLOCK_PRODUCED     = 9; // block for producer to merge (newly produced block)
-  USER               = 10; // update group user
-  ASK_PEERID         = 11; // ask owner/producer peerid
-  ASK_PEERID_RESP    = 12; // response ask peerid
-  CHAIN_CONFIG       = 13; // predefined chain configuration
-  APP_CONFIG         = 14; // group app customized configuration
-}
-
 enum AnnounceType {
    AS_USER     = 0;
    AS_PRODUCER = 1;
-   AS_USER_ENCRYPT  = 2;
 }
 
 enum ApproveType {
@@ -53,20 +35,31 @@ enum TrxStroageType {
     CACHE = 1;
 }
 
+enum TrxType {
+    POST               = 0; // post to group
+    ANNOUNCE           = 1; // producer or user self announce
+    PRODUCER           = 2; // owner update group producer
+    USER               = 3; // owner update group user
+    REQ_BLOCK          = 4; // request block 
+    REQ_BLOCK_RESP     = 5; // response request block
+    CHAIN_CONFIG       = 6; // chain configuration
+    APP_CONFIG         = 7; // app configuration
+}
+
 message Trx {
-    string  TrxId        = 1;
-    TrxType Type         = 2;    
-    string  GroupId      = 3;
-    bytes   Data         = 4; 
-    int64   TimeStamp    = 5;
-    string  Version      = 6;
-    int64   Expired      = 7;
-    int64   ResendCount  = 8;
-    int64   Nonce        = 9;
-    string  SenderPubkey = 10;  
-    bytes   SenderSign   = 11;
-    TrxStroageType StorageType = 12;
-    bool    SudoTrx      = 13;
+    string         TrxId        = 1;
+    TrxType        Type         = 2;    
+    string         GroupId      = 3;
+    bytes          Data         = 4; 
+    int64          TimeStamp    = 5;
+    string         Version      = 6;
+    int64          Expired      = 7;
+    int64          ResendCount  = 8;
+    int64          Nonce        = 9;
+    string         SenderPubkey = 10;  
+    bytes          SenderSign   = 11;
+    TrxStroageType StorageType  = 12;
+    bool           Sudo         = 13;
 }
 
 message Witnesses {
@@ -74,21 +67,21 @@ message Witnesses {
     int64    epoch         = 2;
     bytes    TrxHash       = 3;
     string   WitnessPubkey = 4;
-    bytes    Signature     = 5;
+    bytes    WitnessSign   = 5;
 }
 
 message Block {
-    string      GroupId              = 1;       
-    int64       Epoch                = 2;  
-    bytes       PrevEpochHash        = 3;
-    repeated    Trx Trxs             = 4; 
-    bytes       EpochHash            = 5; 
-    repeated    Witnesses Witesses   = 6;
-    int64       TimeStamp            = 7;     
-    bytes       BlockHash            = 8;
-    string      BookkeepingPubkey    = 9;   
-    bytes       BookkeepingSignature = 10;
-    bool        SudoBlock            = 11;
+    string      GroupId            = 1;       
+    int64       Epoch              = 2;  
+    bytes       PrevEpochHash      = 3;
+    repeated    Trx Trxs           = 4; 
+    bytes       EpochHash          = 5; 
+    repeated    Witnesses Witesses = 6;
+    int64       TimeStamp          = 7;     
+    bytes       BlockHash          = 8;
+    string      BookkeepingPubkey  = 9;   
+    bytes       BookkeepingSign    = 10;
+    bool        Sudo               = 11;
 }
 
 message ReqBlock {
@@ -114,16 +107,16 @@ message ReqBlockResp {
     string       RequesterPubkey = 3;
     string       ProviderPubkey  = 4;
     int64        FromEpoch       = 5;
-    int64        BlksRequested  = 6;     
-    int64        BlksProvided   = 7;
-    BlocksBundle Blocks         = 8;
+    int64        BlksRequested   = 6;     
+    int64        BlksProvided    = 7;
+    BlocksBundle Blocks          = 8;
 }
 
 message PostItem {
-    string TrxId           = 1;
-    string PublisherPubkey = 2;
-    bytes  Content         = 3;
-    int64  TimeStamp       = 4;
+    string TrxId        = 1;
+    string SenderPubkey = 2;
+    bytes  Content      = 3;
+    int64  TimeStamp    = 4;
 }
 
 message ProducerItem {
@@ -167,28 +160,27 @@ message AnnounceItem {
 }
 
 enum GroupEncryptType {
-    PUBLIC   = 0; //public group
-    PRIVATE  = 1; //private group
+    PUBLIC   = 0;
+    PRIVATE  = 1;
 }
 
 enum GroupConsenseType {
-    POA = 0;    //proof of authen
+    POA = 0;
     POS = 1;
 }
 
 message GroupItem {
-    string GroupId                 = 1;
-    string GroupName               = 2;
-    string OwnerPubKey             = 3;
-    string UserSignPubkey          = 4;
-    string UserEncryptPubkey       = 5;
-    int64  LastUpdate              = 6;
-    int64  Epoch                   = 7;
-    Block  GenesisBlock            = 8;
-    GroupEncryptType EncryptType   = 9;
-    GroupConsenseType ConsenseType = 10;
-    string CipherKey               = 11;
-    string AppKey                  = 12;
+    string            GroupId                 = 1;
+    string            GroupName               = 2;
+    string            OwnerPubKey             = 3;
+    string            UserSignPubkey          = 4;
+    string            UserEncryptPubkey       = 5;
+    int64             LastUpdate              = 6;
+    Block             GenesisBlock            = 7;
+    GroupEncryptType  EncryptType   = 8;
+    GroupConsenseType ConsenseType = 9;
+    string            CipherKey               = 10;
+    string            AppKey                  = 11;
 }
 
 enum RoleV0 {
@@ -233,23 +225,6 @@ message SetTrxAuthModeItem {
     TrxAuthMode Mode = 2;
 }
 
-message GroupItemV0 {
-    string GroupId                 = 1;
-    string GroupName               = 2;
-    string OwnerPubKey             = 3;
-    string UserSignPubkey          = 4;
-    string UserEncryptPubkey       = 5;
-    RoleV0 UserRole                = 6;
-    int64  LastUpdate              = 7;
-    int64  HighestHeight           = 8;
-    string HighestBlockId          = 9;
-    Block  GenesisBlock            = 10;
-    GroupEncryptType EncryptType   = 11;
-    GroupConsenseType ConsenseType = 12;
-    string CipherKey               = 13;
-    string AppKey                  = 14;
-}
-
 enum AppConfigType {
     INT    = 0;
     BOOL   = 1;
@@ -268,13 +243,6 @@ message AppConfigItem{
     int64         TimeStamp   = 9;
 }
 
-message PSPing {
-    int32 Seqnum        = 1;
-    bool  IsResp        = 2;
-    int64 TimeStamp     = 3;
-    bytes Payload       = 4;
-}
-
 message GroupSeed {
     Block  GenesisBlock   = 1;
     string GroupId        = 2;
@@ -287,6 +255,7 @@ message GroupSeed {
     string Signature      = 9;
 }
 
+//for NodeSDK
 message NodeSDKGroupItem {
     GroupItem Group          = 1;
     string    EncryptAlias   = 2;
@@ -295,6 +264,7 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
+//for consensus
 enum HBBMsgType {
     BROADCAST = 0;    
     AGREEMENT = 1; //not used
@@ -397,6 +367,24 @@ message ConsensusResp {
     PSyncProducerItem    CurProducer    = 2;
     repeated   Witnesses Witesses       = 3;
     Trx                  ProducerProof  = 4;
+}
+
+//old proto msg
+message GroupItemV0 {
+    string GroupId                 = 1;
+    string GroupName               = 2;
+    string OwnerPubKey             = 3;
+    string UserSignPubkey          = 4;
+    string UserEncryptPubkey       = 5;
+    RoleV0 UserRole                = 6;
+    int64  LastUpdate              = 7;
+    int64  HighestHeight           = 8;
+    string HighestBlockId          = 9;
+    Block  GenesisBlock            = 10;
+    GroupEncryptType EncryptType   = 11;
+    GroupConsenseType ConsenseType = 12;
+    string CipherKey               = 13;
+    string AppKey                  = 14;
 }
 
 

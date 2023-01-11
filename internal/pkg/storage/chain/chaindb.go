@@ -150,7 +150,7 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 	ctnItem := &quorumpb.PostItem{}
 
 	ctnItem.TrxId = trx.TrxId
-	ctnItem.PublisherPubkey = trx.SenderPubkey
+	ctnItem.SenderPubkey = trx.SenderPubkey
 	ctnItem.Content = trx.Data
 	ctnItem.TimeStamp = trx.TimeStamp
 	ctnBytes, err := proto.Marshal(ctnItem)
@@ -159,4 +159,14 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 	}
 
 	return cs.dbmgr.Db.Set([]byte(key), ctnBytes)
+}
+
+// TBD
+func (cs *Storage) SaveChainInfo(currEpoch, lastUpdate int64, groupId string, prefix ...string) error {
+	return nil
+}
+
+// TBD
+func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currEpoch int64, lastUpdate int64, err error) {
+	return 0, 0, nil
 }

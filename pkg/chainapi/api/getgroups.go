@@ -61,7 +61,10 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.CipherKey = value.Item.CipherKey
 		group.AppKey = value.Item.AppKey
 		group.LastUpdated = value.Item.LastUpdate
-		group.Epoch = value.Item.Epoch
+
+		//get chainInfo (lastUpdate, currEpoch)
+		//TBD
+		group.Epoch = -1 //value.Item.Epoch
 
 		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
 		if err != nil {

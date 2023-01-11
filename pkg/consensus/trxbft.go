@@ -133,12 +133,9 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 
 	//clear acs for finished epoch
 
-	trx_bft_log.Debugf("<%s> remove acs inst <%d>", bft.producer.groupId, epoch)
-	bft.acsInsts.Delete(epoch)
-
 	if buildBlockDone {
 		//remove outputed trxs from buffer
-		for trxId, _ := range trxs {
+		for trxId := range trxs {
 			err := bft.txBuffer.Delete(trxId)
 			if err != nil {
 				trx_bft_log.Warnf(err.Error())
@@ -165,6 +162,9 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 		trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, newEpoch)
 		bft.propose(newEpoch)
 	}
+
+	trx_bft_log.Debugf("<%s> remove acs inst <%d>", bft.producer.groupId, epoch)
+	bft.acsInsts.Delete(epoch)
 }
 
 func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
@@ -192,17 +192,6 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 		return err
 	}
 
-	//broadcast new block
-	trx_bft_log.Infof("<%s> broadcast new block to user channel", bft.producer.groupId)
-	connMgr, err := conn.GetConn().GetConnMgr(bft.producer.groupId)
-	if err != nil {
-		return err
-	}
-	err = connMgr.BroadcastBlock(newBlock)
-	if err != nil {
-		trx_acs_log.Warnf("<%s> <%s>", bft.producer.groupId, err.Error())
-	}
-
 	//if run as producer node
 	//if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 	trx_bft_log.Info("molassproducer handle block just built")
@@ -221,6 +210,17 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	// local user will receive this block via producer channel, local user will handle it
 	//	trx_bft_log.Info("FULL_NODE(Owner) handle block, do nothing, wait for molassuser to handle it")
 	//}
+
+	//broadcast new block
+	trx_bft_log.Infof("<%s> broadcast new block to user channel", bft.producer.groupId)
+	connMgr, err := conn.GetConn().GetConnMgr(bft.producer.groupId)
+	if err != nil {
+		return err
+	}
+	err = connMgr.BroadcastBlock(newBlock)
+	if err != nil {
+		trx_acs_log.Warnf("<%s> <%s>", bft.producer.groupId, err.Error())
+	}
 
 	return nil
 }

@@ -14,69 +14,33 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var group_log = logging.Logger("group")
+
 type Group struct {
 	//Group Item
 	Item     *quorumpb.GroupItem
 	ChainCtx *Chain
+	GroupId  string
+	Nodename string
 }
 
-var group_log = logging.Logger("group")
-
-func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
-	group_log.Debugf("<%s> Init called", item.GroupId)
-	grp.Item = item
+func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
+	group_log.Debugf("<%s> NewGroup called", item.GroupId)
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.NewChain(grp)
 
-	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
-	if opk != "" {
-		item.OwnerPubKey = opk
-	}
-	upk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserSignPubkey)
-	if upk != "" {
-		item.UserSignPubkey = upk
-	}
+	//set epoch for new group to 0
+	grp.ChainCtx.SetCurrEpoch(0)
 
-	//reload all announced user(if private)
-	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		group_log.Debugf("<%s> Private group load announced user key", item.GroupId)
-		grp.ChainCtx.UpdUserList()
-	}
-
-	//register chainctx with conn
-	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
-	//reload producers
-	grp.ChainCtx.UpdProducerList()
-	grp.ChainCtx.UpdConnMgrProducer()
-	grp.ChainCtx.CreateConsensus()
-
-	group_log.Infof("Group <%s> initialed", grp.Item.GroupId)
-}
-
-// teardown group
-func (grp *Group) Teardown() {
-	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
-	//unregisted chainctx with conn
-	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
-	group_log.Infof("Group <%s> teardown", grp.Item.GroupId)
-}
-
-func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
-	group_log.Debugf("<%s> CreateGrp called", item.GroupId)
-	grp.Item = item
-
-	//create and initial chain
-	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(grp)
-
-	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, false, grp.ChainCtx.nodename)
+	//save group genesis block
+	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, false, grp.Nodename)
 	if err != nil {
 		return err
 	}
 
-	//add owner as the first producer
+	//add group owner as the first group producer
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	pItem := &quorumpb.ProducerItem{}
 	pItem.GroupId = item.GroupId
@@ -94,42 +58,114 @@ func (grp *Group) CreateGrp(item *quorumpb.GroupItem) error {
 	if err != nil {
 		return err
 	}
-
 	pItem.GroupOwnerSign = hex.EncodeToString(signature)
-	pItem.Memo = "Owner Registated as the first oroducer"
+	pItem.Memo = "Owner Registated as the first group producer"
 	pItem.TimeStamp = time.Now().UnixNano()
 
-	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.ChainCtx.nodename)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
 	if err != nil {
 		return err
 	}
 
+	//load and update group producers
+	grp.ChainCtx.updProducerList()
+
+	//create and register ConnMgr for chainctx
+	conn.GetConn().RegisterChainCtx(item.GroupId,
+		item.OwnerPubKey,
+		item.UserSignPubkey,
+		grp.ChainCtx)
+
+	//update producer list for ConnMgr just created
+	grp.ChainCtx.UpdConnMgrProducer()
+
+	//create group consensus
+	grp.ChainCtx.CreateConsensus()
+
+	grp.Item = item
+
+	//save groupItem to db
 	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
 	if err != nil {
 		return err
 	}
 
-	//register chainctx with conn
-	conn.GetConn().RegisterChainCtx(item.GroupId, item.OwnerPubKey, item.UserSignPubkey, grp.ChainCtx)
-
-	//load producers
-	grp.ChainCtx.UpdProducerList()
-	grp.ChainCtx.UpdConnMgrProducer()
-	grp.ChainCtx.CreateConsensus()
-
 	group_log.Debugf("Group <%s> created", grp.Item.GroupId)
 	return nil
 }
 
+func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
+	group_log.Debugf("<%s> NewGroup called", item.GroupId)
+
+	grp.GroupId = item.GroupId
+	grp.Nodename = nodectx.GetNodeCtx().Name
+
+	//create and initial chain
+	grp.ChainCtx = &Chain{}
+	grp.ChainCtx.NewChain(grp)
+
+	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
+	if opk != "" {
+		item.OwnerPubKey = opk
+	}
+
+	upk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserSignPubkey)
+	if upk != "" {
+		item.UserSignPubkey = upk
+	}
+
+	//reload all announced user(if private)
+	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		group_log.Debugf("<%s> Private group load announced user key", grp.GroupId)
+		grp.ChainCtx.updUserList()
+	}
+
+	//reload producers
+	grp.ChainCtx.updProducerList()
+
+	//create and register ConnMgr for chainctx
+	conn.GetConn().RegisterChainCtx(item.GroupId,
+		item.OwnerPubKey,
+		item.UserSignPubkey,
+		grp.ChainCtx)
+
+	//update producer list for ConnMgr just created
+	grp.ChainCtx.UpdConnMgrProducer()
+
+	//create group consensus
+	grp.ChainCtx.CreateConsensus()
+
+	//save groupItem
+	grp.Item = item
+
+	group_log.Infof("Group <%s> loaded", grp.Item.GroupId)
+}
+
+// teardown group
+func (grp *Group) Teardown() {
+	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
+
+	//unregisted chainctx with conn
+	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+
+	group_log.Infof("Group <%s> teardown peacefully", grp.Item.GroupId)
+}
+
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
+
+	//unregisted chainctx with conn
 	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+
+	//remove group from local db
 	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)
 }
 
 func (grp *Group) ClearGroupData() error {
 	group_log.Debugf("<%s> ClearGroupData called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.ChainCtx.nodename)
+
+	//remove group data from local db
+	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.Nodename)
 }
 
 func (grp *Group) StartSync(restart bool) error {
@@ -143,50 +179,55 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
+func (grp *Group) GetNodeName() string {
+	return grp.Nodename
+}
+
 func (grp *Group) GetSyncerStatus() int8 {
 	return grp.ChainCtx.GetSyncerStatus()
 }
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
-	group_log.Debugf("<%s> GetBlock called epoch: %d", grp.Item.GroupId, epoch)
-	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.ChainCtx.nodename)
+	group_log.Debugf("<%s> GetBlock called, epoch: <%d>", grp.Item.GroupId, epoch)
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.Nodename)
 }
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
-	group_log.Debugf("<%s> GetTrx called trx: %s", grp.Item.GroupId, trxId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.ChainCtx.nodename)
+	group_log.Debugf("<%s> GetTrx called trxId: <%s>", grp.Item.GroupId, trxId)
+	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.Nodename)
 }
 
 func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) {
-	group_log.Debugf("<%s> GetTrx called trx: %s", grp.Item.GroupId, trxId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.ChainCtx.nodename)
+	group_log.Debugf("<%s> GetTrxFromCache called trxId: <%s>", grp.Item.GroupId, trxId)
+	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.Nodename)
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	group_log.Debugf("<%s> GetProducers called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.Nodename)
 }
 
 func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.Nodename)
 }
 
 func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error) {
 	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.Nodename)
 }
 
 func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, err error) {
 	group_log.Debugf("<%s> GetAppConfigKeyList called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigKey(grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigKey(grp.Item.GroupId, grp.Nodename)
 }
 
 func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, error) {
 	group_log.Debugf("<%s> GetAppConfigItem called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigItem(keyName, grp.Item.GroupId, grp.ChainCtx.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigItem(keyName, grp.Item.GroupId, grp.Nodename)
 }
 
+// send update announce trx
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetAnnounceTrx("", item)
@@ -196,6 +237,7 @@ func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
+// send POST trx
 func (grp *Group) PostToGroup(content proto.Message, sudo bool) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
@@ -209,7 +251,7 @@ func (grp *Group) PostToGroup(content proto.Message, sudo bool) (string, error) 
 			return "", err
 		}
 
-		trx.SudoTrx = sudo
+		trx.Sudo = sudo
 		return grp.sendTrx(trx, conn.ProducerChannel)
 	}
 
@@ -217,25 +259,19 @@ func (grp *Group) PostToGroup(content proto.Message, sudo bool) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	trx.SudoTrx = sudo
+	trx.Sudo = sudo
 
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) TryGetChainConsensus() (string, error) {
-	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
-
-	return grp.ChainCtx.GetConsensus()
-}
-
-func (grp *Group) UpdProducerBundle(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {
+func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
 	if err != nil {
 		return "", nil
 	}
 
-	trx.SudoTrx = sudo
+	trx.Sudo = sudo
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
@@ -245,21 +281,7 @@ func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	trx.SudoTrx = sudo
-	return grp.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool) (string, error) {
-	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
-	if err != nil {
-		return "", nil
-	}
-	trx.SudoTrx = sudo
-	return grp.sendTrx(trx, conn.ProducerChannel)
-}
-
-func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
+	trx.Sudo = sudo
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
@@ -272,8 +294,20 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) SetRumExchangeTestMode() {
-	grp.ChainCtx.SetRumExchangeTestMode()
+// send update appconfig trx
+func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool) (string, error) {
+	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
+	if err != nil {
+		return "", nil
+	}
+	trx.Sudo = sudo
+	return grp.sendTrx(trx, conn.ProducerChannel)
+}
+
+// send raw trx, for light node API
+func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
+	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
 func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
@@ -292,4 +326,9 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 	}
 
 	return trx.TrxId, nil
+}
+
+func (grp *Group) TryGetChainConsensus() (string, error) {
+	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
+	return grp.ChainCtx.GetConsensus()
 }

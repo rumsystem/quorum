@@ -65,7 +65,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return rumerrors.NewBadRequestError(rumerrors.ErrOnlyGroupOwner)
 	} else {
-		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.ChainCtx.GetNodeName())
+		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.Nodename)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

@@ -28,7 +28,7 @@ func (user *MolassesUser) NewUser(item *quorumpb.GroupItem, nodename string, ifa
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
-	molauser_log.Debugf("<%s> AddBlock called", user.groupId)
+	molauser_log.Debugf("<%s> AddBlock called, epoch <%d>", user.groupId, block.Epoch)
 	var blocks []*quorumpb.Block
 
 	//check if block exist

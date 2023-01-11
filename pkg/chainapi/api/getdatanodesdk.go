@@ -229,21 +229,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 				grpInfo.Owner = grp.Item.OwnerPubKey
 				grpInfo.Provider = grp.Item.UserSignPubkey
 				grpInfo.LatestUpdate = grp.Item.LastUpdate
-				grpInfo.Epoch = grp.Item.Epoch
-				//grpInfo.HighestBlockId = grp.Item.HighestBlockId
-				//grpInfo.HighestHeight = grp.Item.HighestHeight
-
-				/*
-					//Did we really need a sign from fullnode ?
-					Sign hash with fullnode pubkey
-					groInfoBytes, err := json.Marshal(grpInfo)
-					if err != nil {
-						output[ERROR_INFO] = "INTERNAL_ERROR"
-						return c.JSON(http.StatusBadRequest, output)
-					}
-					hash := localcrypto.Hash(groInfoBytes)
-					grpInfo.Singature = "FAKE_SIGN"
-				*/
+				//grpInfo.Epoch = grp.Item.Epoch
 
 				return c.JSON(http.StatusOK, grpInfo)
 			} else {

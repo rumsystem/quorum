@@ -169,16 +169,13 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
 		}
 
-		item.Epoch = 0 // Epoch means the highest epoch from block
 		item.LastUpdate = seed.GenesisBlock.TimeStamp
 		item.GenesisBlock = seed.GenesisBlock
 
 		//create the group
 		group := &chain.Group{}
-		err = group.CreateGrp(item)
-		if nodeoptions.IsRexTestMode {
-			group.SetRumExchangeTestMode()
-		}
+		err = group.NewGroup(item)
+
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
