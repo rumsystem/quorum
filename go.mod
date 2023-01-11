@@ -14,7 +14,7 @@ replace github.com/dgraph-io/ristretto => github.com/chux0519/ristretto v0.1.1
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5
 	code.rocketnine.space/tslocum/cview v1.5.6
-	filippo.io/age v1.0.0
+	filippo.io/age v1.1.1
 	github.com/BurntSushi/toml v1.1.0
 	github.com/NebulousLabs/merkletree v0.0.0-20181203152040-08d5d54b07f5
 	github.com/Press-One/go-update v1.0.0
@@ -63,8 +63,8 @@ require (
 	github.com/thomaso-mirodin/intmath v0.0.0-20160323211736-5dc6d854e46e
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/zap v1.23.0
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	golang.org/x/crypto v0.4.0
+	golang.org/x/term v0.3.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
@@ -216,10 +216,10 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/net v0.0.0-20220920183852-bf014ff85ad5 // indirect
+	golang.org/x/net v0.3.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect

@@ -200,7 +200,9 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
 				conn_log.Debugf("<%s> time up, close producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
 				psconn := connMgr.PsConns[connMgr.ProducerChannelId]
-				psconn.LeaveChannel()
+				if psconn != nil {
+					psconn.LeaveChannel()
+				}
 				delete(connMgr.PsConns, connMgr.ProducerChannelId)
 			})
 		}
@@ -257,7 +259,7 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	pkg := &quorumpb.Package{}
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
-	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 
 	psconn := connMgr.getUserConn()
 	channelpeers := psconn.Topic.ListPeers()
@@ -281,7 +283,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 	pkg := &quorumpb.Package{}
 	pkg.Type = quorumpb.PackageType_TRX
 	pkg.Data = pbBytes
-	rummsg := &quorumpb.RumMsg{MsgType: quorumpb.RumMsgType_CHAIN_DATA, DataPackage: pkg}
+	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 	//TODO:  add a timeout ctx to close the steam after timeout
 
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
