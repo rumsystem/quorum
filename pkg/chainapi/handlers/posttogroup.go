@@ -52,7 +52,7 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 }
 
 type TrxResult struct {
-	TrxId string `json:"trx_id" validate:"required"`
+	TrxId string `json:"trx_id" validate:"required" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
 }
 
 func PostToGroup(paramspb *quorumpb.Activity, sudo bool) (*TrxResult, error) {

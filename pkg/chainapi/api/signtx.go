@@ -16,31 +16,31 @@ import (
 
 type (
 	SignTxParam struct {
-		Keyalias string `json:"keyalias"`
-		Keyname  string `json:"keyname"`
-		Nonce    uint64 `json:"nonce"`
-		To       string `json:"to" validate:"required,eth_addr"` // To eth address, e.g.: 0xab...
-		Value    string `json:"value"`                           // Value string, the number prefix determines the actual base
-		GasLimit uint64 `json:"gas_limit"`
-		GasPrice string `json:"gas_price"`                    // GasPrice string, the number prefix determines the actual base
-		Data     string `json:"data" validate:"required"`     // Data hex encode string, include prefix string "0x"
-		ChainID  string `json:"chain_id" validate:"required"` // ChainID string, the number prefix determines the actual base
+		Keyalias string `json:"keyalias" example:"alias name"`
+		Keyname  string `json:"keyname" example:"key name"`
+		Nonce    uint64 `json:"nonce" example:"0"`
+		To       string `json:"to" validate:"required,eth_addr" example:"0xC90B320afad63d82Fa2c888C47B54ADd5CDD2452"` // eth address
+		Value    string `json:"value" example:"1000000000"`                                                           // Value string, the number prefix determines the actual base
+		GasLimit uint64 `json:"gas_limit" example:"21000"`
+		GasPrice string `json:"gas_price" example:"13.070446545"`                    // GasPrice string, the number prefix determines the actual base
+		Data     string `json:"data" validate:"required" example:"0x9a1fc3a7000..."` // Data hex encode string, include prefix string "0x"
+		ChainID  string `json:"chain_id" validate:"required" example:"56"`           // ChainID string, the number prefix determines the actual base
 	}
 
 	FmtSignTxParam struct {
-		Keyalias string         `json:"keyalias"`
-		Keyname  string         `json:"keyname"`
-		Nonce    uint64         `json:"nonce" validate:"required"`
-		To       common.Address `json:"to" validate:"required"` // To eth address, e.g.: 0xab...
-		Value    *big.Int       `json:"value" validate:"required"`
-		GasLimit uint64         `json:"gas_limit" validate:"required"`
-		GasPrice *big.Int       `json:"gas_price" validate:"required"`
-		Data     []byte         `json:"data" validate:"required"` // Data base64 encoded string
-		ChainID  *big.Int       `json:"chain_id" validate:"required"`
+		Keyalias string         `json:"keyalias" example:"alias name"`
+		Keyname  string         `json:"keyname" example:"key name"`
+		Nonce    uint64         `json:"nonce" validate:"required" example:"0"`
+		To       common.Address `json:"to" validate:"required" example:"0xC90B320afad63d82Fa2c888C47B54ADd5CDD2452"` // To eth address, e.g.: 0xab...
+		Value    *big.Int       `json:"value" validate:"required" example:"1000000000"`
+		GasLimit uint64         `json:"gas_limit" validate:"required" example:"13.070446545"`
+		GasPrice *big.Int       `json:"gas_price" validate:"required" example:"21000"`
+		Data     []byte         `json:"data" validate:"required" example:"base64 encoded string"` // Data base64 encoded string
+		ChainID  *big.Int       `json:"chain_id" validate:"required" example:"56"`
 	}
 
 	SignTxResult struct {
-		Data string `json:"data" validate:"required"`
+		Data string `json:"data" validate:"required" example:"0x12ab.."`
 	}
 )
 

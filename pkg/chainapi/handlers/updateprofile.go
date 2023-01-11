@@ -49,7 +49,7 @@ func (cv *CustomValidatorProfile) Validate(i interface{}) error {
 }
 
 type UpdateProfileResult struct {
-	TrxID string `json:"trx_id" validate:"required"`
+	TrxID string `json:"trx_id" validate:"required" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
 }
 
 func UpdateProfile(paramspb *quorumpb.Activity, sudo bool) (*UpdateProfileResult, error) {

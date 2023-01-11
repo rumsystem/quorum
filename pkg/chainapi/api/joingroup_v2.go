@@ -23,16 +23,16 @@ import (
 )
 
 type JoinGroupResult struct {
-	GroupId           string `json:"group_id" validate:"required"`
-	GroupName         string `json:"group_name" validate:"required"`
-	OwnerPubkey       string `json:"owner_pubkey" validate:"required"`
-	UserPubkey        string `json:"user_pubkey" validate:"required"`
-	UserEncryptPubkey string `json:"user_encryptpubkey" validate:"required"`
-	ConsensusType     string `json:"consensus_type" validate:"required"`
-	EncryptionType    string `json:"encryption_type" validate:"required"`
-	CipherKey         string `json:"cipher_key" validate:"required"`
-	AppKey            string `json:"app_key" validate:"required"`
-	Signature         string `json:"signature" validate:"required"`
+	GroupId           string `json:"group_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
+	GroupName         string `json:"group_name" validate:"required" example:"demo group"`
+	OwnerPubkey       string `json:"owner_pubkey" validate:"required" example:"CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg=="`
+	UserPubkey        string `json:"user_pubkey" validate:"required" example:"CAISIQO7ury6x7aWpwUVn6mj2dZFqme3BAY5xDkYjqW/EbFFcA=="`
+	UserEncryptPubkey string `json:"user_encryptpubkey" validate:"required" example:"age1774tul0j5wy5y39saeg6enyst4gru2dwp7sjwgd4w9ahl6fkusxq3f8dcm"`
+	ConsensusType     string `json:"consensus_type" validate:"required" example:"poa"`
+	EncryptionType    string `json:"encryption_type" validate:"required" example:"public"`
+	CipherKey         string `json:"cipher_key" validate:"required" example:"076a3cee50f3951744fbe6d973a853171139689fb48554b89f7765c0c6cbf15a"`
+	AppKey            string `json:"app_key" validate:"required" example:"test_app"`
+	Signature         string `json:"signature" validate:"required" example:"3045022100a819a627237e0bb0de1e69e3b29119efbf8677173f7e4d3a20830fc366c5bfd702200ad71e34b53da3ac5bcf3f8a46f1964b058ef36c2687d3b8effe4baec2acd2a6"`
 }
 
 // @Tags Groups

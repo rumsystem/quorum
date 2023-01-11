@@ -13,7 +13,7 @@ import (
 // @Description Connect to peers
 // @Accept json
 // @Produce json
-// @Param data body []string true "Peers List"
+// @Param data body handlers.AddPeerParam true "AddPeerParam"
 // @Success 200 {object} handlers.AddPeerResult
 // @Router /api/v1/network/peers [post]
 func (h *Handler) AddPeers(c echo.Context) (err error) {
