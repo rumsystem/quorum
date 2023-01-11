@@ -71,7 +71,7 @@ install-swag:
 	go install github.com/swaggo/swag/cmd/swag@v1.8.4
 
 gen-doc: install-swag
-	$(shell which swag) init -g main.go --parseDependency --parseInternal --parseDepth 3 --parseGoList=false
+	$(shell which swag) init -g main.go --parseDependency --parseInternal --parseDepth 3 --parseGoList=true
 
 serve-doc: gen-doc
 	go run ./docs.go
