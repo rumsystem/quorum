@@ -17,7 +17,7 @@ func GetChainTrxDenyList(chainapidb def.APIHandlerIface, groupid string) ([]*Cha
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		chainConfigItem, denyItemList, err := chainapidb.GetSendTrxAuthListByGroupId(group.Item.GroupId, quorumpb.AuthListType_DENY_LIST, group.ChainCtx.GetNodeName())
+		chainConfigItem, denyItemList, err := chainapidb.GetSendTrxAuthListByGroupId(group.GroupId, quorumpb.AuthListType_DENY_LIST, group.Nodename)
 		if err != nil {
 			return nil, err
 		}

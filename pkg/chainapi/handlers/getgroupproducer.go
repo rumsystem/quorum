@@ -23,7 +23,7 @@ func GetGroupProducers(chainapidb def.APIHandlerIface, groupid string) ([]*Produ
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		prdList, err := chainapidb.GetProducers(group.Item.GroupId, group.ChainCtx.GetNodeName())
+		prdList, err := chainapidb.GetProducers(group.GroupId, group.Nodename)
 		if err != nil {
 			return nil, err
 		}

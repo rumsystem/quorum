@@ -60,7 +60,7 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	witness := []*quorumpb.Witnesses{}
 
 	resp := &quorumpb.ConsensusResp{
-		CurChainEpoch: pbft.PSyncer.grpItem.Epoch,
+		CurChainEpoch: pbft.PSyncer.cIface.GetCurrEpoch(),
 		CurProducer:   prds,
 		Witesses:      witness,
 		ProducerProof: trx,

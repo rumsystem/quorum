@@ -35,19 +35,19 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	blockExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, false, user.nodename)
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
-		// maybe saved by local producer or during sync, receive this block from someone else
 		molauser_log.Debugf("Block exist")
 		blocks = append(blocks, block)
-	} else { //block not exist, we don't have local producer
-		//check if parent of block exist
+	} else {
 		molauser_log.Debugf("Block not exist")
-		parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch-1, false, user.nodename)
+		//check if parent exist
+		parentEpoch := block.Epoch - 1
+		parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentEpoch, false, user.nodename)
 		if err != nil {
 			return err
 		}
 
 		if !parentExist {
-			molauser_log.Debugf("<%s> parent of block <%d> is not exist", user.groupId, block.Epoch-1)
+			molauser_log.Debugf("<%s> parent block <%d> is not exist", user.groupId, parentEpoch)
 
 			//check if block is in cache
 			isCached, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, true, user.nodename)
@@ -112,10 +112,12 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		}
 	}
 
-	if block.Epoch > user.grpItem.Epoch {
+	if block.Epoch > user.cIface.GetCurrEpoch() {
 		//update latest group epoch
-		molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.grpItem.Epoch, block.Epoch)
-		user.cIface.UpdChainInfo(block.Epoch)
+		molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.cIface.GetCurrEpoch(), block.Epoch)
+		user.cIface.SetCurrEpoch(block.Epoch)
+		user.cIface.SetLastUpdate(block.TimeStamp)
+		user.cIface.SaveChainInfoToDb()
 	} else {
 		molauser_log.Debugf("<%s> No need to update highest Epoch", user.groupId)
 	}

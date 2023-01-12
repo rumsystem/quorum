@@ -38,7 +38,7 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 
 func (producer *MolassesProducer) TryPropose() {
 	molaproducer_log.Debug("TryPropose called")
-	newEpoch := producer.grpItem.Epoch + 1
+	newEpoch := producer.cIface.GetCurrEpoch() + 1
 	producer.bft.propose(newEpoch)
 }
 
@@ -181,8 +181,10 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//update latest epoch only if epoch of block is larger than current group epoch
-	if block.Epoch > producer.grpItem.Epoch {
-		producer.cIface.UpdChainInfo(block.Epoch)
+	if block.Epoch > producer.cIface.GetCurrEpoch() {
+		producer.cIface.SetCurrEpoch(block.Epoch)
+		producer.cIface.SetLastUpdate(block.TimeStamp)
+		producer.cIface.SaveChainInfoToDb()
 	}
 
 	//get all trxs from blocks

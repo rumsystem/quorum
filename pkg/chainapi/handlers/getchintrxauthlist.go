@@ -33,7 +33,7 @@ func GetChainTrxAuthMode(chainapidb def.APIHandlerIface, groupid string, trxType
 		return nil, err
 	}
 
-	trxAuthType, err := chainapidb.GetTrxAuthModeByGroupId(group.Item.GroupId, trxTypeProto, group.ChainCtx.GetNodeName())
+	trxAuthType, err := chainapidb.GetTrxAuthModeByGroupId(group.GroupId, trxTypeProto, group.Nodename)
 	if err != nil {
 		return nil, err
 	}

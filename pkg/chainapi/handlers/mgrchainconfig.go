@@ -184,24 +184,14 @@ func getTrxTypeByString(typ string) (quorumpb.TrxType, error) {
 	switch strings.ToUpper(typ) {
 	case "POST":
 		return quorumpb.TrxType_POST, nil
-	case "SCHEMA":
-		return -1, errors.New("this trx type can not be configured")
-	case "PRODUCER":
-		return -1, errors.New("this trx type can not be configured")
 	case "ANNOUNCE":
 		return quorumpb.TrxType_ANNOUNCE, nil
-	case "REQ_BLOCK_FORWARD":
-		return quorumpb.TrxType_REQ_BLOCK_FORWARD, nil
-	case "REQ_BLOCK_BACKWARD":
-		return quorumpb.TrxType_REQ_BLOCK_BACKWARD, nil
-	case "BLOCK_SYNCED":
-		return quorumpb.TrxType_BLOCK_SYNCED, nil
-	case "BLOCK_PRODUCED":
-		return quorumpb.TrxType_BLOCK_PRODUCED, nil
+	case "PRODUCER":
+		return -1, errors.New("this trx type can not be configured")
+	case "REQ_BLOCK":
+		return quorumpb.TrxType_REQ_BLOCK, nil
 	case "USER":
 		return -1, errors.New("this trx type can not be configured")
-	case "ASK_PEERID":
-		return quorumpb.TrxType_ASK_PEERID, nil
 	case "CHAIN_CONFIG":
 		return -1, errors.New("this trx type can not be configured")
 	case "APP_CONFIG":

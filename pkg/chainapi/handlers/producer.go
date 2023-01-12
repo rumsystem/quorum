@@ -60,7 +60,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 			}
 			bundle[producerPubkey] = true
 
-			isAnnounced, err := chainapidb.IsProducerAnnounced(group.Item.GroupId, producerPubkey, group.ChainCtx.GetNodeName())
+			isAnnounced, err := chainapidb.IsProducerAnnounced(group.GroupId, producerPubkey, group.Nodename)
 			if err != nil {
 				return nil, err
 			}
@@ -104,7 +104,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 
 		bftProducerBundle.Producers = producers
 
-		trxId, err := group.UpdProducerBundle(bftProducerBundle, sudo)
+		trxId, err := group.UpdProducer(bftProducerBundle, sudo)
 		if err != nil {
 			return nil, err
 		}

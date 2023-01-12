@@ -100,7 +100,7 @@ func (r *PSyncRBC) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, req := range reqs {
-		err := SendHbbRBC(r.groupId, req, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
+		err := SendHbbRBC(r.groupId, req, r.acs.bft.PSyncer.cIface.GetCurrEpoch(), quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
 		if err != nil {
 			return err
 		}
@@ -178,7 +178,7 @@ func (r *PSyncRBC) handleProofMsg(proof *quorumpb.Proof) error {
 			return err
 		}
 
-		err = SendHbbRBC(r.groupId, readyMsg, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
+		err = SendHbbRBC(r.groupId, readyMsg, r.acs.bft.PSyncer.cIface.GetCurrEpoch(), quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,7 @@ func (r *PSyncRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 				return err
 			}
 
-			err = SendHbbRBC(r.groupId, readyMsg, r.acs.bft.PSyncer.grpItem.Epoch, quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
+			err = SendHbbRBC(r.groupId, readyMsg, r.acs.bft.PSyncer.cIface.GetCurrEpoch(), quorumpb.HBMsgPayloadType_HB_PSYNC, r.acs.SessionId)
 			if err != nil {
 				return err
 			}
