@@ -47,16 +47,12 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string) error {
 	chain.groupItem = item
 	chain.nodename = nodename
 
-	chain_log.Debugf("%v", chain.groupItem.GroupId)
-
 	//initial TrxFactory
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename, chain)
 
 	//initial Syncer
 	chain.syncerrunner = NewSyncerRunner(chain.groupItem.GroupId, chain.nodename, chain, chain)
-
-	chain_log.Debugf("%s", chain.groupItem.GroupId)
 
 	//initial chaindata manager
 	chain.chaindata = &ChainData{
@@ -408,7 +404,7 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 
 	//just in case
 	if len(savedResp) != 1 {
-		chain_log.Warningf("<%s> get <%d> saved psync resp msg (should be 1), something goes wrong", len(savedResp), chain.groupItem.GroupId)
+		chain_log.Warningf("<%s> get <%d> saved psync resp msg (should be 1), something goes wrong", chain.groupItem.GroupId, len(savedResp))
 		return fmt.Errorf("psync resp msg mismatch, something goes wrong")
 	}
 
@@ -447,10 +443,9 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.ConsensusResp) (bool, error) {
 	chain_log.Debugf("<%s> verifyProducer called", chain.groupItem.GroupId)
 
-	//TBD, verify signature for ConsensusResp
-
 	//consensusResp from owner, trust it anyway
 	if senderPubkey == chain.groupItem.OwnerPubKey {
+		chain_log.Debugf("consensus sender <%s> is owner", senderPubkey)
 		return true, nil
 	}
 

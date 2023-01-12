@@ -200,7 +200,7 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 	gsyncer_log.Debugf("processTask called, taskId <%s>, retry <%d>", task.TaskId, task.RetryCount)
 	go func() {
 		s.CurrentTask = task //set current task
-		gsyncer_log.Debugf("Set current task %s %d", s.CurrentTask.TaskId, s.CurrentTask.Type)
+		gsyncer_log.Debugf("Set current task <%s>, taskType <%d>", s.CurrentTask.TaskId, s.CurrentTask.Type)
 		switch task.Type {
 		case ConsensusSync:
 			s.Status = CONSENSUS_SYNC

@@ -84,7 +84,7 @@ func (sr *SyncerRunner) Start() error {
 
 	//producer try get consensus before start sync block
 	if sr.chainCtx.isProducer() {
-		groupMgr_log.Debugf("<%s> producer(owner) node try get consensus before sync", sr.groupId)
+		syncerrunner_log.Debugf("<%s> producer(owner) node try get consensus before sync", sr.groupId)
 		task, err = sr.GetConsensusSyncTask()
 		if err != nil {
 			return err
