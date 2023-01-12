@@ -27,14 +27,14 @@ type Group struct {
 func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	group_log.Debugf("<%s> NewGroup called", item.GroupId)
 
+	grp.Item = item
+
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(grp)
-
-	//set epoch for new group to 0
-	grp.ChainCtx.SetCurrEpoch(0)
+	grp.ChainCtx.NewChain(item)
 
 	//save group genesis block
+	group_log.Debugf("<%s> save genesis block", grp.Item.GroupId)
 	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, false, grp.Nodename)
 	if err != nil {
 		return err
@@ -82,8 +82,6 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
 
-	grp.Item = item
-
 	//save groupItem to db
 	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
 	if err != nil {
@@ -95,8 +93,9 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 }
 
 func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
-	group_log.Debugf("<%s> NewGroup called", item.GroupId)
-
+	group_log.Debugf("<%s> LoadGroup called", item.GroupId)
+	//save groupItem
+	grp.Item = item
 	grp.GroupId = item.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
 
@@ -134,9 +133,6 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
-
-	//save groupItem
-	grp.Item = item
 
 	group_log.Infof("Group <%s> loaded", grp.Item.GroupId)
 }

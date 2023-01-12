@@ -62,7 +62,7 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 	newBlock.Witesses = withnesses
 	newBlock.TimeStamp = time.Now().UnixNano()
 	newBlock.BookkeepingPubkey = groupPublicKey
-	newBlock.SudoBlock = sudo
+	newBlock.Sudo = sudo
 
 	bbytes, err := proto.Marshal(&newBlock)
 	if err != nil {
@@ -86,7 +86,7 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 		return nil, errors.New("create signature failed")
 	}
 
-	newBlock.BookkeepingSignature = signature
+	newBlock.BookkeepingSign = signature
 	return &newBlock, nil
 }
 
@@ -109,7 +109,7 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 	genesisBlock.Witesses = witesses
 	genesisBlock.TimeStamp = time.Now().UnixNano()
 	genesisBlock.BookkeepingPubkey = groupPublicKey
-	genesisBlock.SudoBlock = false
+	genesisBlock.Sudo = false
 
 	bbytes, err := proto.Marshal(genesisBlock)
 	if err != nil {
@@ -130,7 +130,7 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 	if len(signature) == 0 {
 		return nil, errors.New("create signature on genesisblock failed")
 	}
-	genesisBlock.BookkeepingSignature = signature
+	genesisBlock.BookkeepingSign = signature
 	return genesisBlock, nil
 }
 
@@ -147,7 +147,7 @@ func BlockHash(block *quorumpb.Block) ([]byte, error) {
 	}
 
 	blockWithoutHash.BlockHash = nil
-	blockWithoutHash.BookkeepingSignature = nil
+	blockWithoutHash.BookkeepingSign = nil
 
 	bbytes, err := proto.Marshal(blockWithoutHash)
 	if err != nil {
@@ -185,7 +185,7 @@ func VerifyBookkeepingSign(block *quorumpb.Block) (bool, error) {
 		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
 		if err == nil {
 			ks := localcrypto.GetKeystore()
-			r := ks.EthVerifySign(bookkeepingHash, block.GetBookkeepingSignature(), ethpubkey)
+			r := ks.EthVerifySign(bookkeepingHash, block.BookkeepingSign, ethpubkey)
 			return r, nil
 		}
 		return false, err

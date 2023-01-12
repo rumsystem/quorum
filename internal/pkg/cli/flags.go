@@ -17,7 +17,6 @@ type FullNodeFlag struct {
 	CertDir          string
 	ZeroAccessKey    string
 	ProtocolID       string
-	IsRexTestMode    bool
 	PeerName         string
 	JsonTracer       string
 	IsDebug          bool
@@ -40,7 +39,6 @@ type BootstrapNodeFlag struct {
 	CertDir          string
 	ZeroAccessKey    string
 	ProtocolID       string
-	IsRexTestMode    bool
 	PeerName         string
 	JsonTracer       string
 	IsDebug          bool

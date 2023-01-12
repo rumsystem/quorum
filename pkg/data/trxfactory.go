@@ -113,15 +113,7 @@ func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, from
 		return nil, err
 	}
 
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK_FORWARD, int64(0), bItemBytes, keyalias)
-}
-
-func (factory *TrxFactory) GetBlockProducedTrx(keyalias string, blk *quorumpb.Block) (*quorumpb.Trx, error) {
-	encodedcontent, err := proto.Marshal(blk)
-	if err != nil {
-		return nil, err
-	}
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_BLOCK_PRODUCED, int64(0), encodedcontent, keyalias)
+	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK, int64(0), bItemBytes, keyalias)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content proto.Message, encryptto ...[]string) (*quorumpb.Trx, error) {
@@ -131,7 +123,7 @@ func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content proto.Message,
 	}
 
 	if binary.Size(encodedcontent) > OBJECT_SIZE_LIMIT {
-		err := errors.New("Content size over 0.9MB")
+		err := errors.New("content size over 0.9MB")
 		return nil, err
 	}
 

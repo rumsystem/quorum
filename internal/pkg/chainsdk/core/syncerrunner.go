@@ -173,7 +173,7 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 			SessionId:    consensusSynctask.SessionId,
 			MsgType:      quorumpb.ConsensusType_REQ,
 			Payload:      cbytes,
-			SenderPubkey: sr.chainCtx.group.Item.UserSignPubkey,
+			SenderPubkey: sr.chainCtx.groupItem.UserSignPubkey,
 			TimeStamp:    time.Now().UnixNano(),
 		}
 
