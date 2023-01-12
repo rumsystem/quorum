@@ -397,38 +397,42 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 		return rumerrors.ErrConsusMismatch
 	}
 
-	savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupItem.GroupId)
-	if err != nil {
-		return err
-	}
+	/*
+		savedResp, err := nodectx.GetNodeCtx().GetChainStorage().GetCurrentPSyncSession(chain.groupItem.GroupId)
+		if err != nil {
+			return err
+		}
 
-	//just in case
-	if len(savedResp) != 1 {
-		chain_log.Warningf("<%s> get <%d> saved psync resp msg (should be 1), something goes wrong", chain.groupItem.GroupId, len(savedResp))
-		return fmt.Errorf("psync resp msg mismatch, something goes wrong")
-	}
 
-	respItem := savedResp[0]
-	if respItem.CurChainEpoch > resp.CurChainEpoch {
-		chain_log.Debugf("resp from old epoch, do nothing, ignore")
-		return fmt.Errorf("resp from old epoch, ignore")
-	}
+		//just in case
+		if len(savedResp) != 1 {
+			chain_log.Warningf("<%s> get <%d> saved psync resp msg (should be 1), something goes wrong", chain.groupItem.GroupId, len(savedResp))
+			return fmt.Errorf("psync resp msg mismatch, something goes wrong")
+		}
+
+		respItem := savedResp[0]
+		if respItem.CurChainEpoch > resp.CurChainEpoch {
+			chain_log.Debugf("resp from old epoch, do nothing, ignore")
+			return fmt.Errorf("resp from old epoch, ignore")
+		}
+
+
+
+		//TBD check and update producer according to psync resp
+		/*
+			trx, _, err := nodectx.GetNodeCtx().GetChainStorage().GetTrx(chain.GroupId, resp.ProducerProof.TrxId, sdef.Chain, chain.nodename)
+			if err != nil && trx != nil {
+				chain_log.Debugf("No need to upgrade producer list")
+			} else {
+				//TBD update producers list and regerate all consensus
+				// user
+				// producer
+				// psync
+			}
+	*/
 
 	//save ConsensusResp
-	nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupItem.GroupId, sessionId, resp)
-
-	//TBD check and update producer according to psync resp
-	/*
-		trx, _, err := nodectx.GetNodeCtx().GetChainStorage().GetTrx(chain.GroupId, resp.ProducerProof.TrxId, sdef.Chain, chain.nodename)
-		if err != nil && trx != nil {
-			chain_log.Debugf("No need to upgrade producer list")
-		} else {
-			//TBD update producers list and regerate all consensus
-			// user
-			// producer
-			// psync
-		}
-	*/
+	//nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupItem.GroupId, sessionId, resp)
 
 	if resp.CurChainEpoch == chain.GetCurrEpoch() {
 		chain_log.Debugf("node local epoch == current chain epoch, No need to sync")
@@ -682,6 +686,8 @@ func (chain *Chain) applyBlocks(blocks []*quorumpb.Block) error {
 				return err
 			}
 		}
+
+		return nil
 	}
 
 	//FULLNODE (include owner) Add synced Block
@@ -692,6 +698,7 @@ func (chain *Chain) applyBlocks(blocks []*quorumpb.Block) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
