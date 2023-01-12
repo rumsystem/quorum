@@ -14,45 +14,45 @@ type CustomValidatorPost struct {
 }
 
 func (cv *CustomValidatorPost) Validate(i interface{}) error {
-	switch i.(type) {
-	case *quorumpb.Activity:
-		inputobj := i.(*quorumpb.Activity)
-		if inputobj.Type == Add {
-			if inputobj.Object != nil && inputobj.Target != nil {
-				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Object.Type == Note && (inputobj.Object.Content != "" || len(inputobj.Object.Image) > 0) {
-						return nil
-					} else if inputobj.Object.Type == File && inputobj.Object.File != nil {
-						return nil
-					}
-					return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
-				}
-				return errors.New(fmt.Sprintf("Target Group must not be nil"))
-			}
-			return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
-		} else if inputobj.Type == Like || inputobj.Type == Dislike {
-			if inputobj.Object != nil && inputobj.Target != nil {
-				if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-					if inputobj.Object.Id != "" {
-						return nil
-					}
-					return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
-				}
-				return errors.New(fmt.Sprintf("Target Group must not be nil"))
-			}
-			return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
-		}
-		return errors.New(fmt.Sprintf("unknown type of Actitity: %s", inputobj.Type))
-	default:
-		if err := cv.Validator.Struct(i); err != nil {
-			return err
-		}
-	}
+	//switch i.(type) {
+	//case *quorumpb.Activity:
+	//	inputobj := i.(*quorumpb.Activity)
+	//	if inputobj.Type == Add {
+	//		if inputobj.Object != nil && inputobj.Target != nil {
+	//			if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
+	//				if inputobj.Object.Type == Note && (inputobj.Object.Content != "" || len(inputobj.Object.Image) > 0) {
+	//					return nil
+	//				} else if inputobj.Object.Type == File && inputobj.Object.File != nil {
+	//					return nil
+	//				}
+	//				return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
+	//			}
+	//			return errors.New(fmt.Sprintf("Target Group must not be nil"))
+	//		}
+	//		return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
+	//	} else if inputobj.Type == Like || inputobj.Type == Dislike {
+	//		if inputobj.Object != nil && inputobj.Target != nil {
+	//			if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
+	//				if inputobj.Object.Id != "" {
+	//					return nil
+	//				}
+	//				return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
+	//			}
+	//			return errors.New(fmt.Sprintf("Target Group must not be nil"))
+	//		}
+	//		return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
+	//	}
+	//	return errors.New(fmt.Sprintf("unknown type of Actitity: %s", inputobj.Type))
+	//default:
+	//	if err := cv.Validator.Struct(i); err != nil {
+	//		return err
+	//	}
+	//}
 	return nil
 }
 
 type TrxResult struct {
-	TrxId string `json:"trx_id" validate:"required"`
+	TrxId string `json:"trx_id" validate:"required" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
 }
 
 func PostToGroup(paramspb *quorumpb.Activity, sudo bool) (*TrxResult, error) {

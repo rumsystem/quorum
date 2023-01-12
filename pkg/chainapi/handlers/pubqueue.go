@@ -5,7 +5,7 @@ import (
 )
 
 type PubQueueInfo struct {
-	GroupId string
+	GroupId string `example:"c8795b55-90bf-4b58-aaa0-86d11fe4e16a"`
 	Data    []*chain.PublishQueueItem
 }
 

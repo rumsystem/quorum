@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 
 	"time"
 
@@ -16,14 +15,27 @@ import (
 
 type PublishQueueItem struct {
 	// also stored in the key for quick indexing
-	GroupId string
+	GroupId string `example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 
 	// in value only
-	State       string
-	RetryCount  int
-	UpdateAt    int64 `json:"UpdateAt,string"`
+	State      string `example:"SUCCESS"`
+	RetryCount int    `example:"0"`
+	UpdateAt   int64  `json:"UpdateAt,string" example:"1650786473293614500"`
+	/* Trx Example:
+		{
+	        "TrxId": "b5433111-f3a1-41e2-a03f-648e47a04dad",
+	        "GroupId": "6bd70de8-addc-4b03-8271-a5a5b02d1ebd",
+	        "Data": "jvFEEhBuwRpu7or2IUt8NdTZ1R/qzlXeJeseU7csZi+XYC28Fufj3aORoKVCAXyxBxZCuHe7kp6tKAScNxClqEX82+As+fKsBK6zTpB9gyO+fn2y",
+	        "TimeStamp": "1650532131665550100",
+	        "Version": "1.0.0",
+	        "Expired": 1650532161665550000,
+	        "Nonce": 24000,
+	        "SenderPubkey": "CAISIQMrNsVK8/ZrJylBFJZEe6BnslK7B5wAygbxde+RG9Hafg==",
+	        "SenderSign": "MEQCIDZlG/ILNC89z/OYEuADqYpHfx81pqA3RnOlLSCeypP3AiAFKLSD8M8TyNr6quYFCnuL1nzMwUlHWiEiVimDFCHlmQ=="
+	      }
+	*/
 	Trx         *quorumpb.Trx
-	StorageType string
+	StorageType string `example:"CHAIN"`
 }
 
 const (
@@ -34,9 +46,9 @@ const (
 	MAX_RETRY_COUNT              = 10
 )
 
-var mu sync.Mutex
-
-var autoAck bool = false
+var (
+	autoAck bool = false
+)
 
 func SetAutoAck(ack bool) {
 	autoAck = ack

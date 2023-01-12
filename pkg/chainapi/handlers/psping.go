@@ -12,7 +12,7 @@ import (
 )
 
 type PingResp struct {
-	TTL [10]int64 `json:"ttl"`
+	TTL [10]int64 `json:"ttl" example:"10,11,12,13,15,20,10,20,9,30"`
 }
 
 // pubsub ping
@@ -30,7 +30,7 @@ func Ping(ps *pubsub.PubSub, id peer.ID, remote string) (*PingResp, error) {
 }
 
 type P2PPingResp struct {
-	TTL [10]int64 `json:"ttl"`
+	TTL [10]int64 `json:"ttl" example:"10,11,12,13,15,20,10,20,9,30"`
 }
 
 var pingLogger = logging.Logger("ping")

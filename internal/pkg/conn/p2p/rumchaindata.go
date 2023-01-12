@@ -16,7 +16,7 @@ func NewRexChainData(rex *RexService) *RexChainData {
 	return &RexChainData{rex: rex}
 }
 
-func (r *RexChainData) Handler(rummsg *quorumpb.RumMsg, s network.Stream) error {
+func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) error {
 	frompeerid := s.Conn().RemotePeer()
 	pkg := rummsg.DataPackage
 

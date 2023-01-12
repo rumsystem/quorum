@@ -14,6 +14,7 @@ import (
 // @Summary MgrAppConfig
 // @Description set app config
 // @Produce json
+// @Accept json
 // @Param data body handlers.AppConfigParam true "AppConfigParam"
 // @Success 200 {object} handlers.AppConfigResult
 // @Router /api/v1/group/appconfig [post]
