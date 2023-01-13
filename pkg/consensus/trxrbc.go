@@ -16,23 +16,23 @@ const TRXS_TOTAL_SIZE int = 900 * 1024
 type TrxRBC struct {
 	Config
 
-	groupId        string
-	proposerPubkey string //proposerPubkey is pubkey for participated witnesses node
-
-	acs *TrxACS //for callback when finished
+	groupId       string
+	rbcInstPubkey string
 
 	numParityShards int
 	numDataShards   int
 	ecc             reedsolomon.Encoder
 
-	recvProofs Proofs
-	recvReadys map[string]*quorumpb.Ready
+	recvProofs map[string]*Proofs           //key is string(roothash)
+	recvReadys map[string][]*quorumpb.Ready //key is string(roothash)
 
 	output []byte
 
 	readySent    bool
 	waitMoreEcho bool
 	consenusDone bool
+
+	acs *TrxACS //for callback when finished
 }
 
 // f : maximum failable node
@@ -45,33 +45,16 @@ type TrxRBC struct {
 //	10 producers node (owner included), 3 * 3 < 10, 3 failable node
 //
 // ecc will encode data bytes into (N) pieces, each node needs (N - 2f) pieces to recover data
-func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC, error) {
-	trx_rbc_log.Infof("NewTrxRBC called, witnesses pubkey %s, epoch %d", proposerPubkey, acs.epoch)
+func NewTrxRBC(cfg Config, acs *TrxACS, groupId, rbcInstPubkey string) (*TrxRBC, error) {
+	trx_rbc_log.Infof("NewTrxRBC called, EPOCH <%d>, RBC Instance pubkey <%s>", acs.epoch, rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
 		dataShards   = cfg.N - parityShards //N - 2f
 	)
 
-	ds := "vFbwrLArDK"
-	data := []byte(ds)
-
-	fmt.Println(data)
-	trx_rbc_log.Debugf("%v", data)
-	var ecctest reedsolomon.Encoder
-	ecctest, _ = reedsolomon.New(1, 0)
-
-	shards, err := ecctest.Split(data)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := ecctest.Encode(shards); err != nil {
-		return nil, err
-	}
-
 	// initial reed solomon codec
-	ecc, err := reedsolomon.New(dataShards, 0) //DataShards N-2f parityShards: 2f , totally N pieces
+	ecc, err := reedsolomon.New(dataShards, parityShards) //DataShards N-2f parityShards: 2f , totally N pieces
 	if err != nil {
 		return nil, err
 	}
@@ -82,10 +65,10 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 		Config:          cfg,
 		acs:             acs,
 		groupId:         groupId,
-		proposerPubkey:  proposerPubkey,
+		rbcInstPubkey:   rbcInstPubkey,
 		ecc:             ecc,
-		recvProofs:      Proofs{},
-		recvReadys:      make(map[string]*quorumpb.Ready),
+		recvProofs:      make(map[string]*Proofs),
+		recvReadys:      make(map[string][]*quorumpb.Ready),
 		numParityShards: parityShards,
 		numDataShards:   dataShards,
 		readySent:       false,
@@ -101,23 +84,25 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 // 2. make proofReq for each pieces
 // 3. broadcast all proofReq via pubsub
 func (r *TrxRBC) InputValue(data []byte) error {
-	trx_rbc_log.Infof("<%s>Input value called, data length %d", r.proposerPubkey, len(data))
+	trx_rbc_log.Infof("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
+
+	//create shards
 	shards, err := MakeShards(r.ecc, data)
 	if err != nil {
 		return err
 	}
 
+	//create InitPropoeMsgs
 	originalDataSize := len(data)
-	//create RBC msg for each shards
-	reqs, err := MakeRBCProofMessages(r.groupId, r.acs.bft.producer.nodename, r.MySignPubkey, shards, originalDataSize)
+	initProposeMsgs, err := MakeRBCInitProposeMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, shards, r.Config.Nodes, originalDataSize)
 	if err != nil {
 		return err
 	}
 
-	trx_rbc_log.Infof("<%s> ProofMsg length %d", r.proposerPubkey, len(reqs))
+	trx_rbc_log.Infof("<%s> create <%d> InitProposeMsg", r.rbcInstPubkey, len(initProposeMsgs))
 
 	// broadcast RBC msg out via pubsub
-	for _, req := range reqs {
+	for _, req := range initProposeMsgs {
 		err := SendHbbRBC(r.groupId, req, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "") //sessionId is used by psync
 		if err != nil {
 			return err

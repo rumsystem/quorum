@@ -264,110 +264,136 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
-//for consensus
-enum HBBMsgType {
-    BROADCAST = 0;    
-    AGREEMENT = 1; //not used
-}
 
-enum BroadcastMsgType {
-    PROOF = 0;
-    READY = 1;
-}
+//HBMsgV1 ->  HB_BLOCK ->  HBBlockMsg -> RBC -> RBCMsg -> INIT_PROPOSE -> InitPropose
+//                                                     -> PROOF        -> Proof
+//                                                     -> READY        -> Ready
+//                                    -> BBA -> BBAMsg -> BVAL         -> Bval
+//                                                     -> AUX          -> Aux
+//        ->  HB_PSYNC -> 
 
-enum HBMsgPayloadType {
-    HB_TRX   = 0;
-    HB_PSYNC = 1;
-}
+//for block build
+message HBTrxBundle {
+    repeated Trx Trxs = 1;
+}  
 
 message HBMsgv1 {
     string           MsgId       = 1;
     string           SessionId   = 2;    
-    HBBMsgType       MsgType     = 3;
-    int64            Epoch       = 4;
-    HBMsgPayloadType PayloadType = 5;
-    bytes            Payload     = 6;
+    int64            Epoch       = 3;
+    HBMsgPayloadType PayloadType = 4;   //HB_BLOCK or HB_PSYNC
+    bytes            Payload     = 5;   //HBBlockMsg or HBPSyncMsg
 }
 
-message HBTrxBundle {
-    repeated Trx Trxs = 1;
+enum HBMsgPayloadType {
+    HB_BLOCK = 0;
+    HB_PSYNC = 1;
 }
 
-message BroadcastMsg {
-    BroadcastMsgType Type         = 2;
-    bytes            Payload      = 4;
+message HBBlockMsg {
+    HBBlockMsgType MsgType = 1;   //RBC or BBA
+    bytes          Payload = 2;   //RBC msg or 
 }
 
-message Proof{ 
+enum HBBlockMsgType {
+    RBC = 0;    
+    BBA = 1;
+}
+
+message RBCMsg {
+    RBCMsgType Type    = 1;   //INIT_PROPOSE / PROOF / READY
+    bytes      Payload = 2;
+}
+
+enum RBCMsgType {
+    INIT_PROPOSE = 0;
+    PROOF        = 1;
+    READY        = 2;
+}
+
+message InitPropose {
     bytes          RootHash         = 1;
     repeated bytes Proof            = 2;
     int64          Index            = 3;
     int64          Leaves           = 4;
-    string         ProposerPubkey   = 5;
-    bytes          ProposerSign     = 6;
-    int64          OriginalDataSize = 7;
+    int64          OriginalDataSize = 5;    
+    string         RecvNodePubkey   = 6;    //producer which should handle this ecc data shard
+    string         ProposerPubkey   = 7;    //producer which make this propose (part of ecc shards)
+    bytes          ProposerSign     = 8;    //signature of producer made this propose
+}
+
+message Proof{ 
+    bytes          RootHash               = 1;
+    repeated bytes Proof                  = 2;
+    int64          Index                  = 3;
+    int64          Leaves                 = 4;
+    int64          OriginalDataSize       = 5;   
+    string         OriginalProposerPubkey = 6;  //producer make this original inputval propose 
+    string         ProofProviderPubkey    = 7;  //producer which broadcast this Proof
+    bytes          ProofProviderSign      = 8;  //signature of producer broadcast this Proof
 }
 
 message Ready {
-    bytes  RootHash             = 1;
-    string ProofProviderPubkey  = 2;
-    string ProposerPubkey       = 3;
-    bytes  ProposerSign         = 4;
+    bytes  RootHash               = 1;
+    string OriginalProposerPubkey = 2;
+    string ReadyProviderPubkey    = 3;
+    bytes  ReadyProviderSign      = 4;
 }
 
-enum AgreementMsgType {
+message BBAMsg {
+    BBAMsgType Type       = 1; //BVAL or AUX
+    bytes      Payload    = 2;
+}
+
+enum BBAMsgType {
     BVAL  = 0;
     AUX   = 1;
 }
 
-message AgreementMsg {
-    AgreementMsgType  Type       = 1;
-    string            ProposerId = 2;
-    string            SenderId   = 3;
-    int64             Epoch      = 4;
-    bytes             Payload    = 5;
-}
-
 message Bval {
-    bool Value = 1;
+    string     ProposerId = 1;
+    string     SenderId   = 2;
+    int64      Epoch      = 3;
+    bool       Value      = 4;
 }
 
 message Aux {
-    bool Value = 1;
+    string     ProposerId = 1;
+    string     SenderId   = 2;
+    int64      Epoch      = 3;    
+    bool       Value      = 4;
+}
+
+message HBPSyncMsg {
+    PSyncMsgType MsgType = 1; //PSYNC_REQ or PSYNC_RESP
+    bytes        Payload = 2;
+}
+
+enum PSyncMsgType {
+    PSYNC_REQ  = 0;
+    PSYNC_RESP = 1;
+}
+
+message PSyncReq {
+    string GroupId      = 1;
+    string SessionId    = 2;
+    string SenderPubkey = 3;      
+    int64  MyEpoch      = 4;
+    bytes  SenderSign   = 5;
+}
+
+message PSyncResp {
+    string               GroupId       = 1;
+    string               SessionId     = 2;    
+    int64                MyCurEpoch    = 3;
+    PSyncProducerItem    MyCurProducer = 4;
+    Trx                  ProducerProof = 5;
 }
 
 message PSyncProducerItem {
     repeated string Producers = 1;
 }
 
-enum ConsensusType {
-    REQ  = 0;
-    RESP = 1;
-}
-
-message ConsensusMsg {
-    string        GroupId       = 1;
-    string        SessionId     = 2;
-    ConsensusType MsgType       = 3;
-    bytes         Payload       = 4;
-    string        SenderPubkey  = 5;
-    int64         TimeStamp     = 6;
-    bytes         MsgHash       = 7;
-    bytes         SenderSign    = 8;
-}
-
-//for CONSENSE_REQ
-message ConsensusReq {
-    int64        MyEpoch             = 1;
-}
-
-//for CONSENSE_RESULT
-message ConsensusResp {
-    int64                CurChainEpoch  = 1;
-    PSyncProducerItem    CurProducer    = 2;
-    repeated   Witnesses Witesses       = 3;
-    Trx                  ProducerProof  = 4;
-}
 
 //old proto msg
 message GroupItemV0 {
