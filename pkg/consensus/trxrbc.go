@@ -23,7 +23,7 @@ type TrxRBC struct {
 
 	numParityShards int
 	numDataShards   int
-	enc             reedsolomon.Encoder
+	ecc             reedsolomon.Encoder
 
 	recvProofs Proofs
 	recvReadys map[string]*quorumpb.Ready
@@ -48,20 +48,30 @@ type TrxRBC struct {
 func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC, error) {
 	trx_rbc_log.Infof("NewTrxRBC called, witnesses pubkey %s, epoch %d", proposerPubkey, acs.epoch)
 
-	if cfg.f == 0 {
-		cfg.f = (cfg.N - 1) / 3
-	}
 	var (
 		parityShards = 2 * cfg.f            //2f
 		dataShards   = cfg.N - parityShards //N - 2f
 	)
 
-	if parityShards == 0 {
-		parityShards = 1
+	ds := "vFbwrLArDK"
+	data := []byte(ds)
+
+	fmt.Println(data)
+	trx_rbc_log.Debugf("%v", data)
+	var ecctest reedsolomon.Encoder
+	ecctest, _ = reedsolomon.New(1, 0)
+
+	shards, err := ecctest.Split(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ecctest.Encode(shards); err != nil {
+		return nil, err
 	}
 
 	// initial reed solomon codec
-	enc, err := reedsolomon.New(dataShards, parityShards) //(N-2f, N) erasure coding schema
+	ecc, err := reedsolomon.New(dataShards, 0) //DataShards N-2f parityShards: 2f , totally N pieces
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +83,7 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 		acs:             acs,
 		groupId:         groupId,
 		proposerPubkey:  proposerPubkey,
-		enc:             enc,
+		ecc:             ecc,
 		recvProofs:      Proofs{},
 		recvReadys:      make(map[string]*quorumpb.Ready),
 		numParityShards: parityShards,
@@ -92,8 +102,7 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, proposerPubkey string) (*TrxRBC
 // 3. broadcast all proofReq via pubsub
 func (r *TrxRBC) InputValue(data []byte) error {
 	trx_rbc_log.Infof("<%s>Input value called, data length %d", r.proposerPubkey, len(data))
-	//rbc_log.Infof("raw trxBundle %v", data)
-	shards, err := MakeShards(r.enc, data)
+	shards, err := MakeShards(r.ecc, data)
 	if err != nil {
 		return err
 	}
@@ -165,7 +174,7 @@ func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
 	if r.waitMoreEcho && r.recvProofs.Len() == r.N-2*r.f {
 		//already get 2F + 1 ready, try decode data
 		trx_rbc_log.Debugf("<%s> try decode", r.proposerPubkey)
-		output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
+		output, err := TryDecodeValue(r.recvProofs, r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
 		}
@@ -244,7 +253,7 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 		if len(r.recvProofs) >= r.N-2*r.f {
 			//already receive (N-2f) echo messages, try decode it
 			trx_rbc_log.Debugf("<%s> has enough proof, try decode", r.proposerPubkey)
-			output, err := TryDecodeValue(r.recvProofs, r.enc, r.numParityShards, r.numDataShards)
+			output, err := TryDecodeValue(r.recvProofs, r.ecc, r.numParityShards, r.numDataShards)
 			if err != nil {
 				return err
 			}

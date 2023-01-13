@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	datashards := 3
-	parityShards := 1
+	datashards := 1
+	parityShards := 0
 
 	var ecc reedsolomon.Encoder
 	ecc, err := reedsolomon.New(datashards, parityShards)
@@ -35,9 +35,6 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-
-	//set any shards to nil
-	shards[0] = nil
 
 	afterb, err := TryDecodeValue(shards, ecc, parityShards, datashards)
 	if err != nil {
@@ -70,6 +67,8 @@ func randSeq(n int) string {
 
 func MakeShards(enc reedsolomon.Encoder, data []byte) ([][]byte, error) {
 	shards, err := enc.Split(data)
+
+	fmt.Println(shards)
 	if err != nil {
 		return nil, err
 	}

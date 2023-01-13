@@ -272,7 +272,7 @@ func (bft *TrxBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 }
 
 func (bft *TrxBft) propose(epoch int64) error {
-	trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, epoch)
+	trx_bft_log.Debugf("<%s> propose called, epoch <%d>", bft.producer.groupId, epoch)
 
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
