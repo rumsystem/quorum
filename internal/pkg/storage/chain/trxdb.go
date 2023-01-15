@@ -3,13 +3,27 @@ package chainstorage
 import (
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+
+	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
+var logger = logging.Logger("chainstorage")
+
 // save trx
 func (cs *Storage) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
+	// compress trx.Data
+	/*
+		compressedContent := new(bytes.Buffer)
+		if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+			return err
+		}
+		trx.Data = compressedContent.Bytes()
+	*/
+
 	key := s.GetTrxKey(trx.GroupId, trx.TrxId, trx.Nonce, prefix...)
 	value, err := proto.Marshal(trx)
 	if err != nil {
@@ -33,10 +47,12 @@ func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStora
 		key = s.GetTrxPrefix(groupId, trxId, prefix...)
 		err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 			if err != nil {
+				logger.Errorf("cs.dbmgr.Db.PrefixForeach failed: %s", err)
 				return err
 			}
 			perr := proto.Unmarshal(v, &trx)
 			if perr != nil {
+				logger.Errorf("proto.Unmarshal trx failed: %s", perr)
 				return perr
 			}
 			nonces = append(nonces, trx.Nonce)
@@ -47,11 +63,13 @@ func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStora
 		key = s.GetCachedBlockPrefix(groupId, prefix...)
 		err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 			if err != nil {
+				logger.Errorf("cs.dbmgr.Db.PrefixForeach failed: %s", err)
 				return err
 			}
 			block := quorumpb.Block{}
 			perr := proto.Unmarshal(v, &block)
 			if perr != nil {
+				logger.Errorf("proto.Unmarshal chunk failed: %s", err)
 				return perr
 			}
 			if block.Trxs != nil {
@@ -62,6 +80,7 @@ func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStora
 						clonedtrxbuff, _ := proto.Marshal(blocktrx)
 						perr = proto.Unmarshal(clonedtrxbuff, &trx)
 						if perr != nil {
+							logger.Errorf("proto.Unmarshal clonedtrxbuff failed: %s", err)
 							return perr
 						}
 						trx.StorageType = quorumpb.TrxStroageType_CACHE
@@ -72,11 +91,21 @@ func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStora
 
 			return nil
 		})
-
 	}
 
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
 	trx.SenderPubkey = pk
+
+	// decompress
+	/*
+		content := new(bytes.Buffer)
+		if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+			logger.Errorf("utils.Decompress failed: %s", err)
+			return nil, nil, err
+		}
+		trx.Data = content.Bytes()
+	*/
+
 	return &trx, nonces, err
 }
 

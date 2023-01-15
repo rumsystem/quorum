@@ -17,7 +17,7 @@ type TrxFactory struct {
 }
 
 type ChainNonce interface {
-	GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error)
+	GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error)
 }
 
 func (factory *TrxFactory) Init(version string, groupItem *quorumpb.GroupItem, nodename string, chainnonce ChainNonce) {
@@ -29,7 +29,7 @@ func (factory *TrxFactory) Init(version string, groupItem *quorumpb.GroupItem, n
 }
 
 func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	nonce, err := factory.chainNonce.GetNextNouce(factory.groupItem.GroupId, factory.nodename)
+	nonce, err := factory.chainNonce.GetNextNonce(factory.groupItem.GroupId, factory.nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -124,16 +124,11 @@ func (factory *TrxFactory) GetBlockProducedTrx(keyalias string, blk *quorumpb.Bl
 	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_BLOCK_PRODUCED, int64(0), encodedcontent, keyalias)
 }
 
-func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content proto.Message, encryptto ...[]string) (*quorumpb.Trx, error) {
-	encodedcontent, err := quorumpb.ContentToBytes(content)
-	if err != nil {
+func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
+	if binary.Size(content) > OBJECT_SIZE_LIMIT {
+		err := errors.New("Content size over 200Kb")
 		return nil, err
 	}
 
-	if binary.Size(encodedcontent) > OBJECT_SIZE_LIMIT {
-		err := errors.New("Content size over 0.9MB")
-		return nil, err
-	}
-
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_POST, encodedcontent, keyalias, encryptto...)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_POST, content, keyalias, encryptto...)
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 type ContentInnerStruct map[string]interface{}
@@ -34,9 +33,8 @@ type GroupContentObjectItem struct {
 	        "name": "A simple Node id1"
 	    }
 	*/
-	Content   proto.Message
-	TypeUrl   string `example:"quorum.pb.Object"`
-	TimeStamp int64  `example:"1629748212762123400"`
+	Content   []byte
+	TimeStamp int64 `example:"1629748212762123400"`
 }
 
 type SenderList struct {
@@ -55,7 +53,7 @@ type SenderList struct {
 // @Param nonce query int false "the nonce of trx, the default value is the latest"
 // @Param data body SenderList true "SenderList"
 // @Success 200 {array} GroupContentObjectItem
-// @Router /app/api/v1/group/{group_id}/content [post]
+// @Router /app/api/v1/group/{group_id}/content [get]
 func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	num, _ := strconv.Atoi(c.QueryParam("num"))
@@ -123,12 +121,8 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			trx.Data = decryptData
 		}
 
-		ctnobj, typeurl, errum := quorumpb.BytesToMessage(trx.TrxId, trx.Data)
-		if errum != nil {
-			c.Logger().Errorf("Unmarshal trx.Data %s Err: %s", trx.TrxId, errum)
-		}
 		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
-		ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: pk, Content: ctnobj, TimeStamp: trx.TimeStamp, TypeUrl: typeurl}
+		ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: pk, Content: trx.Data, TimeStamp: trx.TimeStamp}
 		ctnobjList = append(ctnobjList, ctnobjitem)
 	}
 	return c.JSON(http.StatusOK, ctnobjList)

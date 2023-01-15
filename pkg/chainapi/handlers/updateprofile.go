@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type CustomValidatorProfile struct {
@@ -59,30 +60,34 @@ func UpdateProfile(paramspb *quorumpb.Activity, sudo bool) (*UpdateProfileResult
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
+	group, ok := groupmgr.Groups[paramspb.Target.Id]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("Group %s not exist", paramspb.Target.Id))
+	}
 
-		if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
-			return nil, errors.New("Only group owner can run sudo")
-		}
+	if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
+		return nil, errors.New("Only group owner can run sudo")
+	}
 
-		if paramspb.Person.Image != nil {
-			_, formatname, err := image.Decode(bytes.NewReader(paramspb.Person.Image.Content))
-			if err != nil {
-				return nil, err
-			}
-			if fmt.Sprintf("image/%s", formatname) != strings.ToLower(paramspb.Person.Image.MediaType) {
-				return nil, errors.New(fmt.Sprintf("image format don't match, mediatype is %s but the file is %s", strings.ToLower(paramspb.Person.Image.MediaType), fmt.Sprintf("image/%s", formatname)))
-			}
-		}
-
-		trxId, err := group.PostToGroup(paramspb.Person, sudo)
-
+	if paramspb.Person.Image != nil {
+		_, formatname, err := image.Decode(bytes.NewReader(paramspb.Person.Image.Content))
 		if err != nil {
 			return nil, err
 		}
-		result := &UpdateProfileResult{TrxID: trxId}
-		return result, nil
-	} else {
-		return nil, errors.New(fmt.Sprintf("Group %s not exist", paramspb.Target.Id))
+		if fmt.Sprintf("image/%s", formatname) != strings.ToLower(paramspb.Person.Image.MediaType) {
+			return nil, errors.New(fmt.Sprintf("image format don't match, mediatype is %s but the file is %s", strings.ToLower(paramspb.Person.Image.MediaType), fmt.Sprintf("image/%s", formatname)))
+		}
 	}
+
+	content, err := proto.Marshal(paramspb.Person)
+	if err != nil {
+		return nil, err
+	}
+
+	trxId, err := group.PostToGroup(content, sudo)
+	if err != nil {
+		return nil, err
+	}
+	result := &UpdateProfileResult{TrxID: trxId}
+	return result, nil
 }
