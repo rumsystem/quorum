@@ -2,7 +2,6 @@ package def
 
 import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 type TrxFactoryIface interface {
@@ -13,7 +12,7 @@ type TrxFactoryIface interface {
 	GetRegProducerTrx(keyalias string, item *quorumpb.ProducerItem) (*quorumpb.Trx, error)
 	GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
 	GetRegUserTrx(keyalias string, item *quorumpb.UserItem) (*quorumpb.Trx, error)
-	GetPostAnyTrx(keyalias string, content proto.Message, encryptto ...[]string) (*quorumpb.Trx, error)
+	GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error)
 	GetReqBlockForwardTrx(keyalias string, block *quorumpb.Block) (*quorumpb.Trx, error)
 	GetReqBlockBackwardTrx(keyalias string, block *quorumpb.Block) (*quorumpb.Trx, error)
 }

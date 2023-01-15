@@ -177,7 +177,7 @@ func (user *MolassesUser) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) 
 	return trx.TrxId, nil
 }
 
-//resend all trx in the list
+// resend all trx in the list
 func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	molauser_log.Debugf("<%s> resendTrx called", user.groupId)
 	for _, trx := range trxs {
@@ -187,7 +187,7 @@ func (user *MolassesUser) resendTrx(trxs []*quorumpb.Trx) error {
 	return nil
 }
 
-//update resend count (+1) for all trxs
+// update resend count (+1) for all trxs
 func UpdateResendCount(trxs []*quorumpb.Trx) ([]*quorumpb.Trx, error) {
 	for _, trx := range trxs {
 		trx.ResendCount++

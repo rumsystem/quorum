@@ -1,12 +1,12 @@
 package chain
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -14,6 +14,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/consensus"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -843,9 +844,9 @@ func (chain *Chain) StopSnapshot() {
 	}
 }
 
-func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
+func (chain *Chain) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	n, err := nodectx.GetDbMgr().GetNextNouce(groupId, nodeprefix)
+	n, err := nodectx.GetDbMgr().GetNextNonce(groupId, nodeprefix)
 	return n, err
 }
 
@@ -991,6 +992,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 
 			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
 			if err != nil {
+				chain_log.Debugf("localcrypto.AesDecode trx.Data failed: %s, base64 encoded trx.Data: %s", err, base64.StdEncoding.EncodeToString(trx.Data))
 				return err
 			}
 
@@ -1042,7 +1044,7 @@ func (chain *Chain) ApplyProducerTrxs(trxs []*quorumpb.Trx, nodename string) err
 	return nil
 }
 
-//addBlock for producer
+// addBlock for producer
 func (chain *Chain) AddBlock(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> AddBlock called", chain.groupId)
 

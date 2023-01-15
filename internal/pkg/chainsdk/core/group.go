@@ -5,13 +5,12 @@ import (
 	"encoding/hex"
 	"time"
 
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -229,7 +228,7 @@ func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	return grp.sendTrx(trx, conn.ProducerChannel)
 }
 
-func (grp *Group) PostToGroup(content proto.Message) (string, error) {
+func (grp *Group) PostToGroup(content []byte) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
@@ -243,6 +242,7 @@ func (grp *Group) PostToGroup(content proto.Message) (string, error) {
 		}
 		return grp.sendTrx(trx, conn.ProducerChannel)
 	}
+
 	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content)
 	if err != nil {
 		return "", err

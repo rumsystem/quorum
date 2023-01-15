@@ -12,8 +12,8 @@ import (
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -82,7 +82,12 @@ func (h *NodeSDKHandler) UpdProfile(c echo.Context) (err error) {
 	trxFactory := &rumchaindata.TrxFactory{}
 	trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name, nodesdkctx.GetCtx())
 
-	trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, paramspb.Person)
+	data, err := proto.Marshal(paramspb.Person)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, data)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

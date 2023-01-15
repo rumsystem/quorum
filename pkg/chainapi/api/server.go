@@ -54,7 +54,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		r.POST("/v2/group/join", h.JoinGroupV2())
 		r.POST("/v1/group/leave", h.LeaveGroup)
 		r.POST("/v1/group/clear", h.ClearGroupData)
-		r.POST("/v1/group/content", h.PostToGroup)
+		r.POST("/v1/group/:group_id/content", h.PostToGroup)
 		r.POST("/v1/group/profile", h.UpdateProfile)
 		r.POST("/v1/network/peers", h.AddPeers)
 		if nodeopt.EnableRelay {
@@ -88,7 +88,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 		r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 		r.GET("/v1/group/:group_id/pubqueue", h.GetPubQueue)
-		a.POST("/v1/group/:group_id/content", apph.ContentByPeers)
+		a.GET("/v1/group/:group_id/content", apph.ContentByPeers)
 		a.POST("/v1/token/refresh", apph.RefreshToken)
 		a.POST("/v1/token/create", apph.CreateToken)
 

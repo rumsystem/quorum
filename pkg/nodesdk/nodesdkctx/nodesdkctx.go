@@ -54,8 +54,8 @@ func (ctx *NodeSdkCtx) GetChainStorage() *chainstorage.Storage {
 	return nodesdkCtx.chaindb
 }
 
-func (ctx *NodeSdkCtx) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
-	n, err := dbMgr.GetNextNouce(groupId)
+func (ctx *NodeSdkCtx) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
+	n, err := dbMgr.GetNextNonce(groupId)
 	return n, err
 }
 

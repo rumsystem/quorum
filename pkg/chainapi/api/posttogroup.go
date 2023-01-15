@@ -7,7 +7,6 @@ import (
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 // @Tags Groups
@@ -15,17 +14,18 @@ import (
 // @Description Post object to a group
 // @Accept json
 // @Produce json
-// @Param data body quorumpb.Activity true "Activity object"
+// @Param group_id path string  true "Group Id"
+// @Param data body handlers.PostToGroupParam true "payload"
 // @Success 200 {object} handlers.TrxResult
-// @Router /api/v1/group/content [post]
+// @Router /api/v1/group/{group_id}/content [post]
 func (h *Handler) PostToGroup(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	paramspb := new(quorumpb.Activity)
-	if err := cc.BindAndValidate(paramspb); err != nil {
+	payload := handlers.PostToGroupParam{}
+	if err := cc.BindAndValidate(&payload); err != nil {
 		return err
 	}
 
-	res, err := handlers.PostToGroup(paramspb)
+	res, err := handlers.PostToGroup(&payload)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

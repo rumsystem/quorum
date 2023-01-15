@@ -125,7 +125,7 @@ func (sssender *MolassesSnapshotSender) sendSnapshot() error {
 		snapshotpackage = &quorumpb.Snapshot{}
 		snapshotpackage.SnapshotId = guuid.NewString()
 		snapshotpackage.GroupId = sssender.groupId
-		nonce, err := nodectx.GetDbMgr().GetNextNouce(sssender.groupId, sssender.nodename)
+		nonce, err := nodectx.GetDbMgr().GetNextNonce(sssender.groupId, sssender.nodename)
 		if err != nil {
 			return err
 		}
@@ -182,7 +182,7 @@ func (sssender *MolassesSnapshotSender) sendSnapshot() error {
 		item.SnapshotPackageId = snapshotPackageId
 
 		//for a bundle of snapshots, use same nonce
-		nonce, err := nodectx.GetDbMgr().GetNextNouce(sssender.groupId, sssender.nodename)
+		nonce, err := nodectx.GetDbMgr().GetNextNonce(sssender.groupId, sssender.nodename)
 		if err != nil {
 			return err
 		}

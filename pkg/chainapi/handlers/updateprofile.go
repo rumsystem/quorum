@@ -13,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type CustomValidatorProfile struct {
@@ -70,7 +71,11 @@ func UpdateProfile(paramspb *quorumpb.Activity) (*UpdateProfileResult, error) {
 			}
 		}
 
-		trxId, err := group.PostToGroup(paramspb.Person)
+		content, err := proto.Marshal(paramspb.Person)
+		if err != nil {
+			return nil, err
+		}
+		trxId, err := group.PostToGroup(content)
 
 		if err != nil {
 			return nil, err
