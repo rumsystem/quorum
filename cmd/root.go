@@ -69,6 +69,7 @@ func initConfig() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
 	logging.SetAllLoggers(lvl)
 	logging.SetLogLevel("dht", "error")
 	logging.SetLogLevel("basichost", "error")
