@@ -144,21 +144,9 @@ func isInGroup(api string, groupID string) (bool, error) {
 	return false, nil
 }
 
-type PostObject struct {
-	Type    string `json:"type" validate:"required"`
-	Content string `json:"content" validate:"required"`
-	Name    string `json:"name" validate:"required"`
-}
-
-type PostTarget struct {
-	Type string `json:"type" validate:"required"`
-	ID   string `json:"id" validate:"required"`
-}
-
 type PostGroupParam struct {
-	Type   string     `json:"type" validate:"required"`
-	Object PostObject `json:"object" validate:"required"`
-	Target PostTarget `json:"target" validate:"required"`
+	GroupID string                 `json:"group_id" validate:"required"`
+	Data    map[string]interface{} `json:"data" validate:"required"`
 }
 
 func postToGroup(api string, payload PostGroupParam) (*handlers.TrxResult, error) {
@@ -167,7 +155,8 @@ func postToGroup(api string, payload PostGroupParam) (*handlers.TrxResult, error
 		return nil, err
 	}
 	payloadStr := string(payloadByte[:])
-	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/content", "POST", payloadStr)
+	path := fmt.Sprintf("/api/v1/group/%s/content", payload.GroupID)
+	_, resp, err := testnode.RequestAPI(api, path, "POST", payloadStr)
 	if err != nil {
 		return nil, err
 	}
@@ -188,26 +177,17 @@ func postToGroup(api string, payload PostGroupParam) (*handlers.TrxResult, error
 	return &result, nil
 }
 
-type ContentInnerStruct struct {
-	Type    string `json:"type" validate:"required"`
-	Content string `json:"content" validate:"required"`
-	Name    string `json:"name" validate:"required"`
-}
-
 type GroupContentItem struct {
-	TrxId     string             `json:"TrxId" validate:"required"`
-	Publisher string             `json:"Publisher" validate:"required"`
-	Content   ContentInnerStruct `json:"Content" validate:"required"`
-	TypeUrl   string             `json:"TypeUrl" validate:"required"`
-	TimeStamp int64              `json:"TimeStamp" validate:"required"`
+	TrxId     string                 `json:"TrxId" validate:"required"`
+	Publisher string                 `json:"Publisher" validate:"required"`
+	Content   map[string]interface{} `json:"Content" validate:"required"`
+	TimeStamp int64                  `json:"TimeStamp" validate:"required"`
 }
 
 func getGroupContent(api string, groupID string) ([]GroupContentItem, error) {
 
-	//curl -v -X POST -H 'Content-Type: application/json' -d '{"senders":[ "CAISIQP8dKlMcBXzqKrnQSDLiSGWH+bRsUCmzX42D9F41CPzag=="]}' "http://localhost:8002/app/api/v1/group/5a3224cc-40b0-4491-bfc7-9b76b85b5dd8/content?starttrx=95f74d77-b15a-4cf5-a964-1c367c1b1909&num=20"
-
 	urlSuffix := fmt.Sprintf("/app/api/v1/group/%s/content", groupID)
-	_, resp, err := testnode.RequestAPI(api, urlSuffix, "POST", "{\"senders\":[]}")
+	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
 	if err != nil {
 		return nil, err
 	}

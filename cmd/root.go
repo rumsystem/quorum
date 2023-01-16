@@ -71,16 +71,15 @@ func initConfig() {
 	}
 
 	logging.SetAllLoggers(lvl)
-	logging.SetLogLevel("dht", "error")
-	logging.SetLogLevel("basichost", "error")
 	logging.SetLogLevel("swarm2", "error")
-	logging.SetLogLevel("conn", "error")
-	logging.SetLogLevel("dht/RtRefreshManager", "error")
-	logging.SetLogLevel("net", "error")
+	logging.SetLogLevel("basichost", "error")
+	logging.SetLogLevel("dht", "error")
 	logging.SetLogLevel("net/identify", "error")
-	logging.SetLogLevel("reuseport-transport", "error")
-	logging.SetLogLevel("network", "error")
 	logging.SetLogLevel("pubsub", "error")
+	logging.SetLogLevel("dht", "error")
+	logging.SetLogLevel("dht/RtRefreshManager", "error")
+	logging.SetLogLevel("reuseport-transport", "error")
+	logging.SetLogLevel("upgrader", "error")
 
 	if logFile != "" {
 		w := zapcore.AddSync(&lumberjack.Logger{

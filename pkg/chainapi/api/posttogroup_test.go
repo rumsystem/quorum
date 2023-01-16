@@ -29,16 +29,12 @@ func TestPostToGroup(t *testing.T) {
 
 	// post to group
 	postGroupParam := PostGroupParam{
-		Type: "Add",
-		Object: PostObject{
-			Type:    "Note",
-			Content: "Hello World",
-			Name:    "post to group testing",
+		Data: map[string]interface{}{
+			"type":    "Note",
+			"content": "Hello World",
+			"name":    "post to group testing",
 		},
-		Target: PostTarget{
-			Type: "Group",
-			ID:   group.GroupId,
-		},
+		GroupID: group.GroupId,
 	}
 
 	postResult, err := postToGroup(peerapi, postGroupParam)
