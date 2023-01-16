@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -17,13 +18,11 @@ var logger = logging.Logger("chainstorage")
 // save trx
 func (cs *Storage) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
 	// compress trx.Data
-	/*
-		compressedContent := new(bytes.Buffer)
-		if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
-			return err
-		}
-		trx.Data = compressedContent.Bytes()
-	*/
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+		return err
+	}
+	trx.Data = compressedContent.Bytes()
 
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + s.TRX_PREFIX + "_" + trx.TrxId + "_" + fmt.Sprint(trx.Nonce)
@@ -101,14 +100,12 @@ func (cs *Storage) GetTrx(trxId string, storagetype def.TrxStorageType, prefix .
 	trx.SenderPubkey = pk
 
 	// decompress
-	/*
-		content := new(bytes.Buffer)
-		if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
-			logger.Errorf("utils.Decompress failed: %s", err)
-			return nil, nil, err
-		}
-		trx.Data = content.Bytes()
-	*/
+	content := new(bytes.Buffer)
+	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+		logger.Errorf("utils.Decompress failed: %s", err)
+		return nil, nil, err
+	}
+	trx.Data = content.Bytes()
 
 	return &trx, nonces, err
 }
