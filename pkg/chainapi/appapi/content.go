@@ -2,6 +2,7 @@ package appapi
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -33,8 +34,8 @@ type GroupContentObjectItem struct {
 	        "name": "A simple Node id1"
 	    }
 	*/
-	Content   []byte
-	TimeStamp int64 `example:"1629748212762123400"`
+	Content   map[string]interface{} // json object
+	TimeStamp int64                  `example:"1629748212762123400"`
 }
 
 type SenderList struct {
@@ -121,8 +122,12 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			trx.Data = decryptData
 		}
 
+		var content map[string]interface{}
+		if err := json.Unmarshal(trx.Data, &content); err != nil {
+			return err
+		}
 		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
-		ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: pk, Content: trx.Data, TimeStamp: trx.TimeStamp}
+		ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: pk, Content: content, TimeStamp: trx.TimeStamp}
 		ctnobjList = append(ctnobjList, ctnobjitem)
 	}
 	return c.JSON(http.StatusOK, ctnobjList)

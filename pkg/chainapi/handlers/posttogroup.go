@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -21,7 +21,7 @@ type PostToGroupParam struct {
 		}
 	}
 	*/
-	Data string `json:"data" validate:"required"`
+	Data map[string]interface{} `json:"data" validate:"required"` // json object
 }
 
 type TrxResult struct {
@@ -29,15 +29,14 @@ type TrxResult struct {
 }
 
 func PostToGroup(payload *PostToGroupParam, sudo bool) (*TrxResult, error) {
-	data, err := base64.StdEncoding.DecodeString(payload.Data)
-	if err != nil {
-		return nil, err
-	}
-
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[payload.GroupId]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("Group %s not exist", payload.GroupId))
+	}
+	data, err := json.Marshal(payload.Data)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Invalid Data field, not json object, json.Marshal failed: %s", err))
 	}
 
 	if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
