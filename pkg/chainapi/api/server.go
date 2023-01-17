@@ -107,6 +107,7 @@ func StartAPIServer(config StartAPIParam, signalch chan os.Signal, h *Handler, a
 		r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)
 		r.POST("/v1/node/getchaindata/:group_id", h.GetDataNSdk)
 		r.GET("/v1/node/getencryptpubkeys/:group_id", h.GetUserEncryptPubKeys)
+		r.POST("/v1/node/announce/:group_id", h.AnnounceNodeSDK)
 
 	} else {
 		r.GET("/v1/node", h.GetBootstrapNodeInfo)
