@@ -934,9 +934,9 @@ func (chain *Chain) IsSyncerIdle() bool {
 	return false
 }
 
-func (chain *Chain) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
+func (chain *Chain) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
 	nodeprefix := utils.GetPrefix(prefix...)
-	n, err := nodectx.GetDbMgr().GetNextNouce(groupId, nodeprefix)
+	n, err := nodectx.GetDbMgr().GetNextNonce(groupId, nodeprefix)
 	return n, err
 }
 
