@@ -212,6 +212,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/node/trx/:group_id", h.SendTrx)
 	r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)
 	r.POST("/v1/node/getchaindata/:group_id", h.GetDataNSdk)
+	r.GET("/v1/node/getencryptpubkeys/:group_id", h.GetUserEncryptPubKeys)
 
 	// start https or http server
 	host := config.APIHost

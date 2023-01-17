@@ -46,11 +46,9 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 			if err != nil {
 				return &trx, []byte(""), err
 			}
-
 		} else {
 			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", groupItem.GroupId)
 		}
-
 	} else {
 		var err error
 		ciperKey, err := hex.DecodeString(groupItem.CipherKey)
@@ -78,10 +76,10 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 
 func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
 	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, int64(nonce), data, encryptto...)
-
 	if err != nil {
 		return trx, err
 	}
+
 	ks := localcrypto.GetKeystore()
 	var signature []byte
 	if keyalias == "" {
@@ -90,10 +88,10 @@ func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.Grou
 	} else {
 		signature, err = ks.EthSignByKeyAlias(keyalias, hash)
 	}
-
 	if err != nil {
 		return trx, err
 	}
+
 	trx.SenderSign = signature
 	return trx, nil
 }
