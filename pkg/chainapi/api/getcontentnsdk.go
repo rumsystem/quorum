@@ -59,11 +59,6 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
 
-	//private group is NOT supported
-	if group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		return rumerrors.NewBadRequestError(rumerrors.ErrPrivateGroupNotSupported)
-	}
-
 	ciperKey, err := hex.DecodeString(group.Item.CipherKey)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)

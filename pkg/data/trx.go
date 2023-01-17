@@ -47,11 +47,9 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 			if err != nil {
 				return &trx, []byte(""), err
 			}
-
 		} else {
 			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", groupItem.GroupId)
 		}
-
 	} else {
 		var err error
 		ciperKey, err := hex.DecodeString(groupItem.CipherKey)
@@ -96,8 +94,8 @@ func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.Grou
 		return trx, err
 	}
 	trx.SenderSign = signature
-	return trx, nil
 
+	return trx, nil
 }
 
 // set TimeStamp and Expired for trx
