@@ -486,6 +486,10 @@ github.com/klauspost/reedsolomon v1.11.1 h1:0gCWQXOB8pVe1Y5SGozDA5t2qoVxX3prsV+q
 github.com/klauspost/reedsolomon v1.11.1/go.mod h1:FXLZzlJIdfqEnQLdUKWNRuMZg747hZ4oYp2Ml60Lb/k=
 github.com/klauspost/reedsolomon v1.11.3 h1:rX9UNNvDhJ0Bq45y6uBy/eYehcjyz5faokTuZmu1Q9U=
 github.com/klauspost/reedsolomon v1.11.3/go.mod h1:FXLZzlJIdfqEnQLdUKWNRuMZg747hZ4oYp2Ml60Lb/k=
+github.com/klauspost/reedsolomon v1.11.4-0.20230112090754-e4bf56114a5a h1:PZ9intQ+wgwQ4Jm4ySvSyw4UnGVpaWl4e3SZzXor8DM=
+github.com/klauspost/reedsolomon v1.11.4-0.20230112090754-e4bf56114a5a/go.mod h1:FXLZzlJIdfqEnQLdUKWNRuMZg747hZ4oYp2Ml60Lb/k=
+github.com/klauspost/reedsolomon v1.11.5 h1:8ebqrZbby2dplht2gUPplizNlvYGCghRRfq5F9SFYKM=
+github.com/klauspost/reedsolomon v1.11.5/go.mod h1:lbYSjK96uTl22BD+PzgzlsCal+PW/0yLKlQP4MMT+i4=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/koron/go-ssdp v0.0.0-20191105050749-2e1c40ed0b5d/go.mod h1:5Ky9EC2xfoUKUor0Hjgi2BJhCSXJfMOFlmyYrVKGQMk=
