@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	datashards := 1
-	parityShards := 0
+	datashards := 2
+	parityShards := 1
 
 	var ecc reedsolomon.Encoder
 	ecc, err := reedsolomon.New(datashards, parityShards)
@@ -22,7 +22,7 @@ func main() {
 
 	//initial generate seed
 	rand.Seed(time.Now().UnixNano())
-	str := randSeq(10)
+	str := randSeq(100)
 	fmt.Println(str)
 
 	originb := []byte(str)
@@ -35,6 +35,11 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+
+	//set parityShards to nil
+	//shards[0] = nil
+	shards[1] = nil
+	//shards[2] = nil
 
 	afterb, err := TryDecodeValue(shards, ecc, parityShards, datashards)
 	if err != nil {

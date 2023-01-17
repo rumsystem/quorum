@@ -274,7 +274,7 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 		return nil
 	}
 
-	if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_TRX {
+	if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_BLOCK {
 		if chain.Consensus.Producer() == nil {
 			chain_log.Warningf("<%s> Consensus Producer is null", chain.groupItem.GroupId)
 			return nil

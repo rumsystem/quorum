@@ -88,11 +88,13 @@ func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 			trx_bft_log.Warnf("message from old epoch, ignore")
 			return nil
 		}
+		//create newTrxAcs and save it
 		acs = NewTrxACS(bft.Config, bft, hbmsg.Epoch)
-		bft.acsInsts.Store(hbmsg.Epoch, acs) //cast TrxACS to any automatically
+		//TrxACS will be cast by syncmap to type ANY automatically
+		bft.acsInsts.Store(hbmsg.Epoch, acs)
 		trx_bft_log.Debugf("Create new ACS %d", hbmsg.Epoch)
 	} else {
-		//cast any to TrxAcs
+		//get acs from syncmap, cast from type ANY back to TrxAcs
 		acs = inst.(*TrxACS)
 	}
 

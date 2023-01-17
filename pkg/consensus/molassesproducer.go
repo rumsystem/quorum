@@ -84,11 +84,11 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	molaproducer_log.Debugf("batchSize %d", batchSize)
 
 	config := &Config{
-		N:            N,
-		f:            f,
-		Nodes:        nodes,
-		BatchSize:    batchSize,
-		MySignPubkey: producer.grpItem.UserSignPubkey,
+		N:         N,
+		f:         f,
+		Nodes:     nodes,
+		BatchSize: batchSize,
+		MyPubkey:  producer.grpItem.UserSignPubkey,
 	}
 
 	return config, nil
@@ -237,6 +237,6 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molaproducer_log.Debugf("<%s> HandleHBMsg %s, %d", producer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
+	//molaproducer_log.Debugf("<%s> HandleHBMsg <%s>", producer.groupId, hbmsg.Epoch)
 	return producer.bft.HandleMessage(hbmsg)
 }

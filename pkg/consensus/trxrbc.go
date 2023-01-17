@@ -53,7 +53,15 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, rbcInstPubkey string) (*TrxRBC,
 		dataShards   = cfg.N - parityShards //N - 2f
 	)
 
-	// initial reed solomon codec
+	//a work around of ECC encoder, when failable node number is 0, parity shards will be 0, that will cause a crash for ecc encoder
+	//we set it to 1 to avoid this, but to make the conesnsus protocl work correctly, the generated parity shards will not be sent out.
+	//only cgf.N (since parityShards is 0!) data shards will be sent out.
+	if parityShards == 0 {
+		parityShards = 1
+	}
+
+	//initial reed solomon codec
+	//when set parityShards to 1, totally N + 1 shards will be created.
 	ecc, err := reedsolomon.New(dataShards, parityShards) //DataShards N-2f parityShards: 2f , totally N pieces
 	if err != nil {
 		return nil, err
@@ -67,6 +75,7 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, rbcInstPubkey string) (*TrxRBC,
 		groupId:         groupId,
 		rbcInstPubkey:   rbcInstPubkey,
 		ecc:             ecc,
+		recvInitPs       make(map[string]*quorumpb.InitPropose)
 		recvProofs:      make(map[string]*Proofs),
 		recvReadys:      make(map[string][]*quorumpb.Ready),
 		numParityShards: parityShards,
@@ -102,8 +111,8 @@ func (r *TrxRBC) InputValue(data []byte) error {
 	trx_rbc_log.Infof("<%s> create <%d> InitProposeMsg", r.rbcInstPubkey, len(initProposeMsgs))
 
 	// broadcast RBC msg out via pubsub
-	for _, req := range initProposeMsgs {
-		err := SendHbbRBC(r.groupId, req, r.acs.epoch, quorumpb.HBMsgPayloadType_HB_TRX, "") //sessionId is used by psync
+	for _, initMsg := range initProposeMsgs {
+		err := SendHBBlockRBCMsg(r.groupId, initMsg, r.acs.Epoch)
 		if err != nil {
 			return err
 		}
@@ -112,8 +121,16 @@ func (r *TrxRBC) InputValue(data []byte) error {
 	return nil
 }
 
+func (r *TrxRBC) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
+	trx_rbc_log.Infof("<%s> handle INIT_PROPOSE: Proposer Pubkey <%s>, epoch <%d>", initp.ProposerPubkey, r.acs.Epoch)
+	if !r.IsProducer(initp.ProposerPubkey) {
+		return fmt.Errorf("<%s> receive proof from non producer node <%s>", initp.ProposerPubkey)
+	}
+
+}
+
 func (r *TrxRBC) handleProofMsg(proof *quorumpb.Proof) error {
-	trx_rbc_log.Infof("<%s> handle PROOF_MSG: ProofProviderPubkey <%s>, epoch <%d>", r.proposerPubkey, proof.ProposerPubkey, r.acs.epoch)
+	trx_rbc_log.Infof("<%s> handle PROOF: ProofProviderPubkey <%s>, epoch <%d>", r.proposerPubkey, proof.ProposerPubkey, r.acs.epoch)
 
 	/*
 		if r.consenusDone {
@@ -282,4 +299,14 @@ func (r *TrxRBC) Output() []byte {
 		return output
 	}
 	return nil
+}
+
+func (r *TrxRBC) IsProducer(pubkey string) bool {
+	for _, nodePubkey := range r.Nodes {
+		if nodePubkey == pubkey {
+			return true
+		}
+	}
+	return false
+
 }
