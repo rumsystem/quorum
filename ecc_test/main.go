@@ -22,7 +22,7 @@ func main() {
 
 	//initial generate seed
 	rand.Seed(time.Now().UnixNano())
-	str := randSeq(10)
+	str := randSeq(512)
 	fmt.Println(str)
 
 	originb := []byte(str)

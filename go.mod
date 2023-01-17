@@ -36,7 +36,7 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
-	github.com/klauspost/reedsolomon v1.11.3
+	github.com/klauspost/reedsolomon v1.11.5
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/labstack/gommon v0.3.1
 	github.com/libp2p/go-libp2p v0.23.2
