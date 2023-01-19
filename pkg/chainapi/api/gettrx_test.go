@@ -54,16 +54,12 @@ func TestGetTrx(t *testing.T) {
 	content := fmt.Sprintf("%s hello world", RandString(4))
 	name := fmt.Sprintf("%s post to group testing", RandString(4))
 	postGroupParam := PostGroupParam{
-		Type: "Add",
-		Object: PostObject{
-			Type:    "Note",
-			Content: content,
-			Name:    name,
+		Data: map[string]interface{}{
+			"type":    "Note",
+			"content": content,
+			"name":    name,
 		},
-		Target: PostTarget{
-			Type: "Group",
-			ID:   group.GroupId,
-		},
+		GroupID: group.GroupId,
 	}
 
 	postResult, err := postToGroup(peerapi, postGroupParam)

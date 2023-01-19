@@ -1,82 +1,51 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
-	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-type CustomValidatorPost struct {
-	Validator *validator.Validate
-}
-
-func (cv *CustomValidatorPost) Validate(i interface{}) error {
-	//switch i.(type) {
-	//case *quorumpb.Activity:
-	//	inputobj := i.(*quorumpb.Activity)
-	//	if inputobj.Type == Add {
-	//		if inputobj.Object != nil && inputobj.Target != nil {
-	//			if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-	//				if inputobj.Object.Type == Note && (inputobj.Object.Content != "" || len(inputobj.Object.Image) > 0) {
-	//					return nil
-	//				} else if inputobj.Object.Type == File && inputobj.Object.File != nil {
-	//					return nil
-	//				}
-	//				return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
-	//			}
-	//			return errors.New(fmt.Sprintf("Target Group must not be nil"))
-	//		}
-	//		return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
-	//	} else if inputobj.Type == Like || inputobj.Type == Dislike {
-	//		if inputobj.Object != nil && inputobj.Target != nil {
-	//			if inputobj.Target.Type == Group && inputobj.Target.Id != "" {
-	//				if inputobj.Object.Id != "" {
-	//					return nil
-	//				}
-	//				return errors.New(fmt.Sprintf("unsupported object type: %s", inputobj.Object.Type))
-	//			}
-	//			return errors.New(fmt.Sprintf("Target Group must not be nil"))
-	//		}
-	//		return errors.New(fmt.Sprintf("Object and Target Object must not be nil"))
-	//	}
-	//	return errors.New(fmt.Sprintf("unknown type of Actitity: %s", inputobj.Type))
-	//default:
-	//	if err := cv.Validator.Struct(i); err != nil {
-	//		return err
-	//	}
-	//}
-	return nil
+type PostToGroupParam struct {
+	GroupId string `param:"group_id" json:"group_id" validate:"required" example:"ac0eea7c-2f3c-4c67-80b3-136e46b924a8"`
+	Sudo    bool   `json:"sudo" example:"false"`
+	/* Example:
+	{
+		"type": "Create",
+		"object": {
+			"type": "Note",
+			"id": 1,
+			"content": "hello world"
+		}
+	}
+	*/
+	Data map[string]interface{} `json:"data" validate:"required"` // json object
 }
 
 type TrxResult struct {
 	TrxId string `json:"trx_id" validate:"required" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
 }
 
-func PostToGroup(paramspb *quorumpb.Activity, sudo bool) (*TrxResult, error) {
-	validate := &CustomValidatorPost{Validator: validator.New()}
-	if err := validate.Validate(paramspb); err != nil {
+func PostToGroup(payload *PostToGroupParam, sudo bool) (*TrxResult, error) {
+	groupmgr := chain.GetGroupMgr()
+	group, ok := groupmgr.Groups[payload.GroupId]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("Group %s not exist", payload.GroupId))
+	}
+	data, err := json.Marshal(payload.Data)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Invalid Data field, not json object, json.Marshal failed: %s", err))
+	}
+
+	if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
+		return nil, errors.New("Only group owner can run sudo")
+	}
+
+	trxId, err := group.PostToGroup(data, sudo)
+	if err != nil {
 		return nil, err
 	}
-
-	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[paramspb.Target.Id]; ok {
-		if sudo && (group.Item.UserSignPubkey != group.Item.OwnerPubKey) {
-			return nil, errors.New("Only group owner can run sudo")
-		}
-
-		if paramspb.Object.Type == "" {
-			paramspb.Object.Type = paramspb.Type
-		}
-		trxId, err := group.PostToGroup(paramspb.Object, sudo)
-
-		if err != nil {
-			return nil, err
-		}
-		return &TrxResult{trxId}, nil
-	} else {
-		return nil, errors.New(fmt.Sprintf("Group %s not exist", paramspb.Target.Id))
-	}
+	return &TrxResult{trxId}, nil
 }

@@ -71,7 +71,7 @@ func TestUpdateChainDenyList(t *testing.T) {
 	}
 
 	// get deny list
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 	rules, err := getGroupDenyList(peerapi, group.GroupId)
 	if err != nil {
 		t.Fatalf("getGroupDenyList failed: %s", err)

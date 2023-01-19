@@ -91,7 +91,12 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			paramspb.Object.Type = paramspb.Type
 		}
 
-		trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, paramspb.Object)
+		data, err := proto.Marshal(paramspb.Object)
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
+
+		trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, data)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

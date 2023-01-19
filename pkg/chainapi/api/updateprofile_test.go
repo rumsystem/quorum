@@ -27,6 +27,11 @@ type Person struct {
 	Wallet []*Payment `json:"wallet,omitempty"`
 }
 
+type PostTarget struct {
+	Type string `json:"type" validate:"required"`
+	ID   string `json:"id" validate:"required"`
+}
+
 type updateProfileParam struct {
 	Type   string     `json:"type" validate:"required,oneof=Update"`
 	Person Person     `json:"person" validate:"required"`

@@ -195,7 +195,7 @@ func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (p
 }
 
 // get next nonce
-func (dbMgr *DbMgr) GetNextNouce(groupId string, prefix ...string) (uint64, error) {
+func (dbMgr *DbMgr) GetNextNonce(groupId string, prefix ...string) (uint64, error) {
 	key := GetNonceKey(groupId, prefix...)
 	nonceseq, succ := dbMgr.seq.Load(key)
 	if succ == false {

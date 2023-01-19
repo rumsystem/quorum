@@ -18,7 +18,7 @@ type TestNonce struct {
 	nonce uint64
 }
 
-func (tn *TestNonce) GetNextNouce(groupId string, prefix ...string) (nonce uint64, err error) {
+func (tn *TestNonce) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
 	tn.nonce++
 	return tn.nonce, nil
 }

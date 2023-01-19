@@ -156,8 +156,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	//r.POST("/v1/group/join", h.JoinGroup())
 
 	//POST API support sudo
-	r.POST("/v1/group/content", h.PostToGroup)
-	r.POST("/v1/group/content/:sudo", h.PostToGroup)
+	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 
 	r.POST("/v1/group/profile", h.UpdateProfile)
 	r.POST("/v1/group/profile/:sudo", h.UpdateProfile)
@@ -199,7 +198,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	//app api
 	a.POST("/v1/token/refresh", apph.RefreshToken)
 	a.POST("/v1/token/create", apph.CreateToken)
-	a.POST("/v1/group/:group_id/content", apph.ContentByPeers) //actually a "GET" API
+	a.GET("/v1/group/:group_id/content", apph.ContentByPeers)
 
 	if nodeopt.EnableRelay {
 		r.POST("/v1/network/relay", h.AddRelayServers)
@@ -212,6 +211,8 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/node/trx/:group_id", h.SendTrx)
 	r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)
 	r.POST("/v1/node/getchaindata/:group_id", h.GetDataNSdk)
+	r.GET("/v1/node/getencryptpubkeys/:group_id", h.GetUserEncryptPubKeys)
+	r.POST("/v1/node/announce/:group_id", h.AnnounceNodeSDK)
 
 	// start https or http server
 	host := config.APIHost
