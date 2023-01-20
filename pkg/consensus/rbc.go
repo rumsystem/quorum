@@ -11,11 +11,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Proofs []*quorumpb.Proof
+type Echos []*quorumpb.Echo
 
-func (p Proofs) Len() int           { return len(p) }
-func (p Proofs) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p Proofs) Less(i, j int) bool { return p[i].Index < p[j].Index }
+func (p Echos) Len() int                   { return len(p) }
+func (p Echos) Swap(i, j int)              { p[i], p[j] = p[j], p[i] }
+func (p Echos) Less(i, j int) bool         { return p[i].Index < p[j].Index }
+func (p Echos) Append(echo *quorumpb.Echo) { p = append(p, echo) }
 
 func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards [][]byte, producerList []string, originalDataSize int) ([]*quorumpb.RBCMsg, error) {
 	msgs := make([]*quorumpb.RBCMsg, len(shards))
@@ -27,6 +28,7 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 			tree.Push(shards[i])
 		}
 
+		///?????? TBD need verify this part
 		root, proof, proofIndex, n := tree.Prove()
 		payload := &quorumpb.InitPropose{
 			RootHash:         root,
@@ -71,17 +73,17 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 	return msgs, nil
 }
 
-func MakeRBCProofMessage(groupId, nodename, proofProviderPubkey string, initP *quorumpb.InitPropose, originalDataSize int) (*quorumpb.RBCMsg, error) {
+func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey string, initP *quorumpb.InitPropose, originalDataSize int) (*quorumpb.RBCMsg, error) {
 	//just dump my part of InitPropose to ProofMsg and sign it
-	payload := &quorumpb.Proof{
+	payload := &quorumpb.Echo{
 		RootHash:               initP.RootHash,
 		Proof:                  initP.Proof,
 		Index:                  initP.Index,
 		Leaves:                 initP.Leaves,
 		OriginalDataSize:       initP.OriginalDataSize,
 		OriginalProposerPubkey: initP.ProposerPubkey,
-		ProofProviderPubkey:    proofProviderPubkey,
-		ProofProviderSign:      nil,
+		EchoProviderPubkey:     echoProviderPubkey,
+		EchoProviderSign:       nil,
 	}
 
 	//get hash
@@ -99,7 +101,7 @@ func MakeRBCProofMessage(groupId, nodename, proofProviderPubkey string, initP *q
 		return nil, err
 	}
 
-	payload.ProofProviderSign = signature
+	payload.EchoProviderSign = signature
 
 	payloadb, err := proto.Marshal(payload)
 	if err != nil {
@@ -107,7 +109,7 @@ func MakeRBCProofMessage(groupId, nodename, proofProviderPubkey string, initP *q
 	}
 
 	return &quorumpb.RBCMsg{
-		Type:    quorumpb.RBCMsgType_PROOF,
+		Type:    quorumpb.RBCMsgType_ECHO,
 		Payload: payloadb,
 	}, nil
 }
@@ -149,13 +151,13 @@ func MakeRBCReadyMessage(groupId, nodename, providerPubkey, originalProposerPubk
 
 }
 
-func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numDShards int) ([]byte, error) {
+func TryDecodeValue(echos Echos, enc reedsolomon.Encoder, numPShards int, numDShards int) ([]byte, error) {
 	//sort proof by indexId
-	sort.Sort(proofs)
+	sort.Sort(echos)
 
 	//any not received index will be marked as nil, which meet the requirement of ecc (mark unavialble shards as nil)
 	shards := make([][]byte, numPShards+numDShards)
-	for _, p := range proofs {
+	for _, p := range echos {
 		shards[p.Index] = p.Proof[0]
 	}
 
@@ -177,7 +179,7 @@ func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numD
 
 	//cut the external 0
 	//just get teh originalDataSize from proof[0]
-	originalDataSize := proofs[0].OriginalDataSize
+	originalDataSize := echos[0].OriginalDataSize
 	receivedDataSize := len(value)
 	//diff
 	diff := receivedDataSize - int(originalDataSize)
@@ -188,7 +190,16 @@ func TryDecodeValue(proofs Proofs, enc reedsolomon.Encoder, numPShards int, numD
 	return value, nil
 }
 
-func ValidateProof(req *quorumpb.Proof) bool {
+func ValidateInitPropose(initp *quorumpb.InitPropose) bool {
+	return merkletree.VerifyProof(
+		sha256.New(),
+		initp.RootHash,
+		initp.Proof,
+		uint64(initp.Index),
+		uint64(initp.Leaves))
+}
+
+func ValidateEcho(req *quorumpb.Echo) bool {
 	return merkletree.VerifyProof(
 		sha256.New(),
 		req.RootHash,

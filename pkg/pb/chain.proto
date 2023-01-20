@@ -307,7 +307,7 @@ message RBCMsg {
 
 enum RBCMsgType {
     INIT_PROPOSE = 0;
-    PROOF        = 1;
+    ECHO         = 1;
     READY        = 2;
 }
 
@@ -322,15 +322,15 @@ message InitPropose {
     bytes          ProposerSign     = 8;    //signature of producer made this propose
 }
 
-message Proof{ 
+message Echo { 
     bytes          RootHash               = 1;
     repeated bytes Proof                  = 2;
     int64          Index                  = 3;
     int64          Leaves                 = 4;
     int64          OriginalDataSize       = 5;   
-    string         OriginalProposerPubkey = 6;  //producer make this original inputval propose 
-    string         ProofProviderPubkey    = 7;  //producer which broadcast this Proof
-    bytes          ProofProviderSign      = 8;  //signature of producer broadcast this Proof
+    string         OriginalProposerPubkey = 6;  //producer make this original input
+    string         EchoProviderPubkey     = 7;  //producer which broadcast this Echo
+    bytes          EchoProviderSign       = 8;  //signature of producer broadcast this Echo
 }
 
 message Ready {

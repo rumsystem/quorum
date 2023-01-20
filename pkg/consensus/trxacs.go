@@ -114,17 +114,18 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 			return fmt.Errorf("could not find rbc instance to handle InitPropose form <%s>", initp.ProposerPubkey)
 		}
 		return rbc.handleInitProposeMsg(initp)
-	case quorumpb.RBCMsgType_PROOF:
-		proof := &quorumpb.Proof{}
-		err := proto.Unmarshal(rbcMsg.Payload, proof)
+	case quorumpb.RBCMsgType_ECHO:
+		echo := &quorumpb.Echo{}
+		err := proto.Unmarshal(rbcMsg.Payload, echo)
 		if err != nil {
 			return err
 		}
-		rbc, ok := a.rbcInstances[proof.ProofProviderPubkey]
+		//give the ECHO msg to original proposer
+		rbc, ok := a.rbcInstances[echo.OriginalProposerPubkey]
 		if !ok {
-			return fmt.Errorf("could not find rbc instance to handle proof from <%s>", proof.ProofProviderPubkey)
+			return fmt.Errorf("could not find rbc instance to handle proof from <%s>, original propose <%d>", echo.EchoProviderPubkey, echo.OriginalProposerPubkey)
 		}
-		return rbc.handleProofMsg(proof)
+		return rbc.handleEchoMsg(echo)
 	case quorumpb.RBCMsgType_READY:
 		ready := &quorumpb.Ready{}
 		err := proto.Unmarshal(rbcMsg.Payload, ready)
