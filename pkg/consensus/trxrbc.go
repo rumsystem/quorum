@@ -105,7 +105,7 @@ func (r *TrxRBC) InputValue(data []byte) error {
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
 		trx_rbc_log.Infof("<%s> try broadcast InitProposeMsg", r.rbcInstPubkey)
-		err := SendHBBlockRBCMsg(r.groupId, initMsg, r.acs.Epoch)
+		err := SendHBRBCMsg(r.groupId, initMsg, r.acs.Epoch)
 		if err != nil {
 			return err
 		}
@@ -115,16 +115,9 @@ func (r *TrxRBC) InputValue(data []byte) error {
 }
 
 func (r *TrxRBC) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
-	trx_rbc_log.Infof("<%s> handleInitProposeMsg: Proposer Pubkey <%s>, epoch <%d>", r.rbcInstPubkey, initp.ProposerPubkey, r.acs.Epoch)
+	trx_rbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>, epoch <%d>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey, r.acs.Epoch)
 	if !r.IsProducer(initp.ProposerPubkey) {
 		return fmt.Errorf("<%s> receive proof from non producer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	}
-
-	//check if the initP msg is for me
-	if r.rbcInstPubkey != initp.RecvNodePubkey {
-		//receive initpropose msg but not for me, do nothing
-		//return fmt.Errorf("<%s> receive InitPropose from producer <%s> but not for me", r.rbcInstPubkey, initp.ProposerPubkey)
-		return nil
 	}
 
 	if !r.VerifySign() {
@@ -143,7 +136,7 @@ func (r *TrxRBC) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	trx_rbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return SendHBBlockRBCMsg(r.groupId, proofMsg, r.acs.Epoch)
+	return SendHBRBCMsg(r.groupId, proofMsg, r.acs.Epoch)
 }
 
 func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
@@ -163,9 +156,11 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 
 	roothashS := string(echo.RootHash)
 	//save echo by using roothash
-	trx_rbc_log.Debugf("<%s> Save ECHO with roothash <%s>", r.rbcInstPubkey, echo.RootHash)
-	r.recvEchos[roothashS].Append(echo)
-	trx_rbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> ECHO", r.rbcInstPubkey, r.recvEchos[roothashS].Len())
+	trx_rbc_log.Debugf("<%s> Save ECHO with roothash <%v>", r.rbcInstPubkey, echo.RootHash[:8])
+
+	r.recvEchos[roothashS] = append(r.recvEchos[roothashS], echo)
+
+	trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> ECHO", r.rbcInstPubkey, echo.RootHash[:8], r.recvEchos[roothashS].Len())
 
 	if len(r.recvReadys[roothashS]) == 2*r.f+1 && r.recvEchos[roothashS].Len() >= r.N-2*r.f {
 		trx_rbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, roothashS, len(r.recvReadys))
@@ -192,9 +187,10 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 		– if READY(h) has not yet been sent, multicast READY(h)
 	*/
 	if r.recvEchos[roothashS].Len() == r.N-r.f {
-		trx_rbc_log.Debugf("<%s> get N-F echo for rootHash <%s>, try decode", r.rbcInstPubkey, roothashS)
+		trx_rbc_log.Debugf("<%s> get N-F echo for rootHash <%v>, try decode", r.rbcInstPubkey, echo.RootHash[:8])
 		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
+			trx_rbc_log.Debug("111111")
 			return err
 		}
 
@@ -205,6 +201,8 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 			return nil
 		}
 
+		trx_rbc_log.Debug("222222")
+
 		//multicast READY msg
 		trx_rbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
 		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
@@ -212,10 +210,11 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 			return err
 		}
 
-		err = SendHBBlockRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
+		err = SendHBRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
 		if err != nil {
 			return err
 		}
+		trx_rbc_log.Debug("111111")
 
 		//set ready sent
 		r.readySent[roothashS] = true
@@ -259,7 +258,7 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 				return err
 			}
 
-			err = SendHBBlockRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
+			err = SendHBRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
 			if err != nil {
 				return err
 			}

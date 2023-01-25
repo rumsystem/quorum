@@ -309,16 +309,15 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) BroadcastConsensusMsg(msg *quorumpb.ConsensusMsg) error {
-	conn_log.Debugf("<%s> BroadcastConsensusMsg called", connMgr.GroupId)
+func (connMgr *ConnMgr) BroadcastPSyncMsg(psync *quorumpb.PSyncMsg) error {
 	pkg := &quorumpb.Package{}
 
-	pbBytes, err := proto.Marshal(msg)
+	pbBytes, err := proto.Marshal(psync)
 	if err != nil {
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_CONSENSUS
+	pkg.Type = quorumpb.PackageType_PSYNC
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)
@@ -326,14 +325,11 @@ func (connMgr *ConnMgr) BroadcastConsensusMsg(msg *quorumpb.ConsensusMsg) error 
 		return err
 	}
 
-	conn_log.Debugf("<%s> Send ConsensusReq via Producer_Channel", connMgr.GroupId)
 	psconn := connMgr.getProducerPsConn()
 	return psconn.Publish(pkgBytes)
-
 }
 
 func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
-	conn_log.Debugf("<%s> SendBlockPsconn called", connMgr.GroupId)
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
 		return err
@@ -347,7 +343,6 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 		return err
 	}
 
-	conn_log.Debugf("<%s> Send block via User_Channel", connMgr.GroupId)
 	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
 }

@@ -23,7 +23,7 @@ type EpochSyncTask struct {
 	Epoch int64
 }
 
-type ConsensusSyncTask struct {
+type PSyncTask struct {
 	SessionId string
 }
 
@@ -31,7 +31,7 @@ type TaskType uint
 
 const (
 	GetEpoch TaskType = iota
-	ConsensusSync
+	PSync
 )
 
 type SyncTask struct {
@@ -202,10 +202,10 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 		s.CurrentTask = task //set current task
 		gsyncer_log.Debugf("Set current task <%s>, taskType <%d>", s.CurrentTask.TaskId, s.CurrentTask.Type)
 		switch task.Type {
-		case ConsensusSync:
-			s.Status = CONSENSUS_SYNC
+		case PSync:
+			s.Status = PSYNC
 		case GetEpoch:
-			s.Status = SYNCING_FORWARD
+			s.Status = SYNCING_BLOCK
 		}
 		s.tasksender(task)
 	}()
@@ -223,9 +223,9 @@ func (s *Gsyncer) processTask(ctx context.Context, task *SyncTask) error {
 					task.RetryCount++
 					//put same task back to taskq again
 					s.AddTask(task)
-				} else if task.Type == ConsensusSync {
+				} else if task.Type == PSync {
 					//create a new consensus sync task
-					newTask, _ := s.taskGenerators[ConsensusSync]()
+					newTask, _ := s.taskGenerators[PSync]()
 					//keep the retry count
 					newTask.RetryCount = task.RetryCount + 1
 					s.AddTask(newTask)

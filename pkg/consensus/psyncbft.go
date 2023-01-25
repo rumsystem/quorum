@@ -1,8 +1,6 @@
 package consensus
 
 import (
-	"time"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -29,17 +27,21 @@ func NewPSyncBft(cfg Config, psyncer *MolassesPSync) *PSyncBft {
 }
 
 func (pbft *PSyncBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	pbft_log.Debugf("SessionId <%s> HandleMessage called", hbmsg.SessionId)
+	/*
+		pbft_log.Debugf("SessionId <%s> HandleMessage called", hbmsg.SessionId)
 
-	acs, ok := pbft.acsInsts[hbmsg.SessionId]
+		acs, ok := pbft.acsInsts[hbmsg.SessionId]
 
-	if !ok {
-		acs = NewPSyncACS(pbft.Config, pbft, hbmsg.SessionId)
-		pbft.acsInsts[hbmsg.SessionId] = acs
-		pbft_log.Debugf("Create new ACS %d", hbmsg.SessionId)
-	}
+		if !ok {
+			acs = NewPSyncACS(pbft.Config, pbft, hbmsg.SessionId)
+			pbft.acsInsts[hbmsg.SessionId] = acs
+			pbft_log.Debugf("Create new ACS %d", hbmsg.SessionId)
+		}
 
-	return acs.HandleMessage(hbmsg)
+		return acs.HandleMessage(hbmsg)
+	*/
+
+	return nil
 }
 
 func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
@@ -56,39 +58,23 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	prds := &quorumpb.PSyncProducerItem{}
 	prds.Producers = append(prds.Producers, pbft.Config.Nodes...)
 
-	//TBD fill withness
-	witness := []*quorumpb.Witnesses{}
-
-	resp := &quorumpb.ConsensusResp{
-		CurChainEpoch: pbft.PSyncer.cIface.GetCurrEpoch(),
-		CurProducer:   prds,
-		Witesses:      witness,
-		ProducerProof: trx,
+	resp := &quorumpb.PSyncResp{
+		GroupId:           pbft.PSyncer.groupId,
+		SessionId:         sessionId,
+		SenderPubkey:      pbft.MyPubkey,
+		MyCurEpoch:        pbft.PSyncer.cIface.GetCurrEpoch(),
+		MyCurProducerList: prds,
+		ProducerProof:     trx,
 	}
 
-	payload, err := proto.Marshal(resp)
+	bbytes, err := proto.Marshal(resp)
 	if err != nil {
 		pbft_log.Debugf(err.Error())
 		return
 	}
 
-	consusResp := &quorumpb.ConsensusMsg{
-		GroupId:      pbft.PSyncer.groupId,
-		SessionId:    sessionId,
-		MsgType:      quorumpb.ConsensusType_RESP,
-		Payload:      payload,
-		SenderPubkey: pbft.MySignPubkey,
-		TimeStamp:    time.Now().UnixNano(),
-	}
-
-	bbytes, err := proto.Marshal(consusResp)
-	if err != nil {
-		pbft_log.Debugf(err.Error())
-		return
-	}
-
+	//sign it
 	msgHash := localcrypto.Hash(bbytes)
-
 	var signature []byte
 	ks := localcrypto.GetKeystore()
 	signature, err = ks.EthSignByKeyName(pbft.PSyncer.groupId, msgHash, pbft.PSyncer.nodename)
@@ -103,11 +89,8 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 		return
 	}
 
-	//save hash and signature
-	consusResp.MsgHash = msgHash
-	consusResp.SenderSign = signature
-
-	pbft_log.Debugf("ConsensusResp for Session <%s> created", sessionId)
+	resp.SenderSign = signature
+	pbft_log.Debugf("PSyncResp for Session <%s> created", sessionId)
 
 	//send consensusResp out
 	connMgr, err := conn.GetConn().GetConnMgr(pbft.PSyncer.groupId)
@@ -116,8 +99,19 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 		return
 	}
 
+	payload, err := proto.Marshal(resp)
+	if err != nil {
+		pbft_log.Debugf(err.Error())
+		return
+	}
+
+	pmsg := &quorumpb.PSyncMsg{
+		MsgType: quorumpb.PSyncMsgType_PSYNC_RESP,
+		Payload: payload,
+	}
+
 	pbft_log.Debugf("Send ConsensusResp for Session <%s>", sessionId)
-	err = connMgr.BroadcastConsensusMsg(consusResp)
+	err = connMgr.BroadcastPSyncMsg(pmsg)
 	if err != nil {
 		pbft_log.Debugf(err.Error())
 		return
@@ -129,8 +123,8 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	delete(pbft.acsInsts, sessionId)
 }
 
-func (pbft *PSyncBft) AddConsensusReq(req *quorumpb.ConsensusMsg) error {
-	pbft_log.Debugf("SessionId <%s> AddConsensusReq called", req.SessionId)
+func (pbft *PSyncBft) AddPSyncReq(req *quorumpb.PSyncReq) error {
+	pbft_log.Debugf("AddPSyncReq called, SessionId <%s> ", req.SessionId)
 
 	datab, err := proto.Marshal(req)
 	if err != nil {

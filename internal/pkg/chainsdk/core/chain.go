@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -118,17 +117,16 @@ func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
 }
 
 // ????
-func (chain *Chain) GetConsensus() (string, error) {
-	chain_log.Debugf("<%s> GetConsensus called", chain.groupItem.GroupId)
-	return chain.syncerrunner.GetConsensus()
+func (chain *Chain) ReqPSync() (string, error) {
+	chain_log.Debugf("<%s> ReqPSync called", chain.groupItem.GroupId)
+	return chain.syncerrunner.GetPSync()
 }
 
 // PSConn msg handler
 func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
-	chain_log.Debugf("<%s> HandlePsConnMessage called", chain.groupItem.GroupId)
+	//chain_log.Debugf("<%s> HandlePsConnMessage called, <%s>", chain.groupItem.GroupId, pkg.Type.String())
 	var err error
 	if pkg.Type == quorumpb.PackageType_BLOCK {
-		chain_log.Info("BLOCK msg")
 		blk := &quorumpb.Block{}
 		err = proto.Unmarshal(pkg.Data, blk)
 		if err != nil {
@@ -137,7 +135,6 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 			err = chain.HandleBlockPsConn(blk)
 		}
 	} else if pkg.Type == quorumpb.PackageType_TRX {
-		chain_log.Info("TRX msg")
 		trx := &quorumpb.Trx{}
 		err = proto.Unmarshal(pkg.Data, trx)
 		if err != nil {
@@ -146,7 +143,6 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 			err = chain.HandleTrxPsConn(trx)
 		}
 	} else if pkg.Type == quorumpb.PackageType_HBB {
-		chain_log.Info("HBB msg")
 		hb := &quorumpb.HBMsgv1{}
 		err = proto.Unmarshal(pkg.Data, hb)
 		if err != nil {
@@ -154,14 +150,13 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleHBPsConn(hb)
 		}
-	} else if pkg.Type == quorumpb.PackageType_CONSENSUS {
-		chain_log.Info("CONSENSUS msg")
-		cm := &quorumpb.ConsensusMsg{}
-		err = proto.Unmarshal(pkg.Data, cm)
+	} else if pkg.Type == quorumpb.PackageType_PSYNC {
+		psync := &quorumpb.PSyncMsg{}
+		err = proto.Unmarshal(pkg.Data, psync)
 		if err != nil {
 			chain_log.Warnf(err.Error())
 		} else {
-			err = chain.HandlePSyncConsesusPsConn(cm)
+			err = chain.HandlePSyncPsConn(psync)
 		}
 	}
 
@@ -267,32 +262,22 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 
 // handle HBB msg from PsConn
 func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
-	chain_log.Debugf("<%s> HandleHBPsConn called", chain.groupItem.GroupId)
+	//chain_log.Debugf("<%s> HandleHBPsConn called", chain.groupItem.GroupId)
 
 	//only producers(owner) need to handle HBB message
 	if !chain.isProducer() {
 		return nil
 	}
 
-	if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_BLOCK {
-		if chain.Consensus.Producer() == nil {
-			chain_log.Warningf("<%s> Consensus Producer is null", chain.groupItem.GroupId)
-			return nil
-		}
-		return chain.Consensus.Producer().HandleHBMsg(hb)
-	} else if hb.PayloadType == quorumpb.HBMsgPayloadType_HB_PSYNC {
-		if chain.Consensus.PSync() == nil {
-			chain_log.Warningf("<%s> Consensus PSync is null", chain.groupItem.GroupId)
-			return nil
-		}
-		return chain.Consensus.PSync().HandleHBMsg(hb)
+	if chain.Consensus.Producer() == nil {
+		chain_log.Warningf("<%s> Consensus Producer is null", chain.groupItem.GroupId)
+		return nil
 	}
-
-	return fmt.Errorf("unknown hbmsg type %s", hb.PayloadType.String())
+	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
 
 // handle psync consensus req from PsConn
-func (chain *Chain) HandlePSyncConsesusPsConn(c *quorumpb.ConsensusMsg) error {
+func (chain *Chain) HandlePSyncPsConn(psync *quorumpb.PSyncMsg) error {
 	chain_log.Debugf("<%s> HandlePSyncConsesusReqPsConn called", chain.groupItem.GroupId)
 
 	//only producers(owner) need to handle Consensus msg
@@ -305,94 +290,115 @@ func (chain *Chain) HandlePSyncConsesusPsConn(c *quorumpb.ConsensusMsg) error {
 		return nil
 	}
 
-	d := &quorumpb.ConsensusMsg{
-		GroupId:      c.GroupId,
-		SessionId:    c.SessionId,
-		MsgType:      c.MsgType,
-		Payload:      c.Payload,
-		SenderPubkey: c.SenderPubkey,
-		TimeStamp:    c.TimeStamp,
-	}
-
-	db, err := proto.Marshal(d)
-	if err != nil {
-		return err
-	}
-
-	//check hash
-	dhash := localcrypto.Hash(db)
-	if res := bytes.Compare(c.MsgHash, dhash); res != 0 {
-		return fmt.Errorf("msg hash mismatch")
-	}
-
-	//check signature
-	bytespubkey, err := base64.RawURLEncoding.DecodeString(c.SenderPubkey)
-	if err != nil {
-		return err
-	}
-	ethpbukey, err := ethcrypto.DecompressPubkey(bytespubkey)
-	if err == nil {
-		ks := localcrypto.GetKeystore()
-		r := ks.EthVerifySign(c.MsgHash, c.SenderSign, ethpbukey)
-		if !r {
-			return fmt.Errorf("verify signature failed")
+	if psync.MsgType == quorumpb.PSyncMsgType_PSYNC_REQ {
+		//handle psyncReqmsg
+		req := &quorumpb.PSyncReq{}
+		err := proto.Unmarshal(psync.Payload, req)
+		if err != nil {
+			return err
 		}
-	} else {
-		return err
-	}
 
-	if c.MsgType == quorumpb.ConsensusType_REQ {
-		if !chain.isProducerByPubkey(c.SenderPubkey) {
-			chain_log.Warningf("consensusReq from non producer node <%s>, ignore", c.GroupId)
+		if !chain.isProducerByPubkey(req.SenderPubkey) {
+			chain_log.Warningf("<%s> PSyncReq from non producer node <%s>, ignore", chain.groupItem.GroupId, req.SenderPubkey)
 			return nil
 		}
+
+		//verify signature
+		reqWithoutSign := &quorumpb.PSyncReq{
+			GroupId:      req.GroupId,
+			SessionId:    req.SessionId,
+			SenderPubkey: req.SenderPubkey,
+			MyEpoch:      req.MyEpoch,
+		}
+
+		db, _ := proto.Marshal(reqWithoutSign)
+		dhash := localcrypto.Hash(db)
+		verifySign, err := chain.VerifySign(dhash, req.SenderSign, req.SenderPubkey)
+		if err != nil {
+			return err
+		}
+		if !verifySign {
+			return fmt.Errorf("verify signature failed")
+		}
+
 		//let psync handle the req
-		return chain.Consensus.PSync().AddConsensusReq(c)
-	} else if c.MsgType == quorumpb.ConsensusType_RESP {
+		return chain.Consensus.PSync().AddPSyncReq(req)
+	} else if psync.MsgType == quorumpb.PSyncMsgType_PSYNC_RESP {
+		resp := &quorumpb.PSyncResp{}
+		err := proto.Unmarshal(psync.Payload, resp)
+		if err != nil {
+			return err
+		}
+
+		if !chain.isProducerByPubkey(resp.SenderPubkey) {
+			chain_log.Warningf("<%s> PSyncResp from non producer node <%s>, ignore", chain.groupItem.GroupId, resp.SenderPubkey)
+			return nil
+		}
+
 		//check if the resp is from myself
-		if len(chain.producerPool) != 1 && chain.groupItem.UserSignPubkey == c.SenderPubkey {
-			chain_log.Debugf("multiple producer exist, session <%s> consensusResp from myself, ignore", c.SessionId)
+		if len(chain.producerPool) != 1 && chain.groupItem.UserSignPubkey == resp.SenderPubkey {
+			chain_log.Debugf("multiple producer exist, session <%s> consensusResp from myself, ignore", resp.SessionId)
 			return nil
 		}
 
 		//check if psync result with same session_id exist
-		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsPSyncSessionExist(chain.groupItem.GroupId, c.SessionId)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsPSyncSessionExist(chain.groupItem.GroupId, resp.SessionId)
 		if err != nil {
 			return err
 		}
 
 		if isExist {
-			chain_log.Debugf("Session <%s> is handled, ignore", c.SessionId)
+			chain_log.Debugf("Session <%s> is handled, ignore", resp.SessionId)
 			return nil
 		}
 
 		//verify response
-		resp := &quorumpb.ConsensusResp{}
-		err = proto.Unmarshal(c.Payload, resp)
+		respWithoutSign := &quorumpb.PSyncResp{
+			GroupId:           resp.GroupId,
+			SessionId:         resp.SessionId,
+			SenderPubkey:      resp.SenderPubkey,
+			MyCurEpoch:        resp.MyCurEpoch,
+			MyCurProducerList: resp.MyCurProducerList,
+			ProducerProof:     resp.ProducerProof,
+		}
+
+		//get hash
+		db, _ := proto.Marshal(respWithoutSign)
 		if err != nil {
 			return err
 		}
+		dhash := localcrypto.Hash(db)
 
-		ok, err := chain.verifyProducer(c.SenderPubkey, resp)
+		//verify signature
+		verifySign, err := chain.VerifySign(dhash, resp.SenderSign, resp.SenderPubkey)
+		if err != nil {
+			return err
+		}
+		if !verifySign {
+			return fmt.Errorf("verify signature failed")
+		}
+
+		ok, err := chain.verifyProducer(resp.SenderPubkey, resp)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			return fmt.Errorf("invalid consensusResp from producer <%s>", c.SenderPubkey)
+			return fmt.Errorf("invalid consensusResp from producer <%s>", resp.SenderPubkey)
 		}
 
-		return chain.handlePSyncResp(c.SessionId, resp)
-	} else {
-		return fmt.Errorf("unknown msgType %s", c.MsgType)
+		return chain.handlePSyncResp(resp)
 	}
+
+	return fmt.Errorf("unknown msgType <%s>", psync.MsgType.String())
+
 }
 
-func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusResp) error {
-	chain_log.Debugf("<%s> handlePSyncResp called, SessionId <%s>", chain.groupItem.GroupId, sessionId)
+func (chain *Chain) handlePSyncResp(resp *quorumpb.PSyncResp) error {
+	chain_log.Debugf("<%s> handlePSyncResp called, SessionId <%s>", chain.groupItem.GroupId, resp.SessionId)
 
 	//check if the resp is what gsync expected
 	taskId, taskType, _, err := chain.syncerrunner.GetCurrentSyncTask()
-	if err == rumerrors.ErrNoTaskWait || taskType != ConsensusSync || taskId != sessionId {
+	if err == rumerrors.ErrNoTaskWait || taskType != PSync || taskId != resp.SessionId {
 		//not the expected consensus resp
 		return rumerrors.ErrConsusMismatch
 	}
@@ -434,29 +440,29 @@ func (chain *Chain) handlePSyncResp(sessionId string, resp *quorumpb.ConsensusRe
 	//save ConsensusResp
 	//nodectx.GetNodeCtx().GetChainStorage().UpdPSyncResp(chain.groupItem.GroupId, sessionId, resp)
 
-	if resp.CurChainEpoch == chain.GetCurrEpoch() {
+	if resp.MyCurEpoch == chain.GetCurrEpoch() {
 		chain_log.Debugf("node local epoch == current chain epoch, No need to sync")
-		chain.syncerrunner.UpdateConsensusResult(sessionId, uint(SyncDone))
+		chain.syncerrunner.UpdatePSyncResult(resp.SessionId, uint(SyncDone))
 	} else {
-		chain.syncerrunner.UpdateConsensusResult(sessionId, uint(ContinueGetEpoch))
+		chain.syncerrunner.UpdatePSyncResult(resp.SessionId, uint(ContinueGetEpoch))
 	}
 
 	return nil
 }
 
-func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.ConsensusResp) (bool, error) {
+func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.PSyncResp) (bool, error) {
 	chain_log.Debugf("<%s> verifyProducer called", chain.groupItem.GroupId)
 
 	//consensusResp from owner, trust it anyway
 	if senderPubkey == chain.groupItem.OwnerPubKey {
-		chain_log.Debugf("consensus sender <%s> is owner", senderPubkey)
+		chain_log.Debugf("PSyncResp sender <%s> is owner", senderPubkey)
 		return true, nil
 	}
 
 	//conosensusResp form other producer, in this resp,
 	//no other producers approved (owner works as the only Group producer)
 	//no related trx to be verified
-	if len(resp.CurProducer.Producers) == 1 && resp.CurProducer.Producers[0] == chain.groupItem.OwnerPubKey {
+	if len(resp.MyCurProducerList.Producers) == 1 && resp.MyCurProducerList.Producers[0] == chain.groupItem.OwnerPubKey {
 		return true, nil
 	}
 
@@ -500,7 +506,7 @@ func (chain *Chain) verifyProducer(senderPubkey string, resp *quorumpb.Consensus
 	return false, nil
 }
 
-func (chain *Chain) HandleConsesusRex(c *quorumpb.ConsensusMsg) error {
+func (chain *Chain) HandlePSyncRex(c *quorumpb.PSyncMsg) error {
 	return nil
 }
 
@@ -891,9 +897,9 @@ func (chain *Chain) GetSyncerStatus() int8 {
 
 func (chain *Chain) IsSyncerIdle() bool {
 	chain_log.Debugf("IsSyncerIdle called, GroupId <%s>", chain.groupItem.GroupId)
-	if chain.syncerrunner.gsyncer.Status == SYNCING_FORWARD ||
+	if chain.syncerrunner.gsyncer.Status == SYNCING_BLOCK ||
 		chain.syncerrunner.gsyncer.Status == LOCAL_SYNCING ||
-		chain.syncerrunner.gsyncer.Status == CONSENSUS_SYNC ||
+		chain.syncerrunner.gsyncer.Status == PSYNC ||
 		chain.syncerrunner.gsyncer.Status == SYNC_FAILED {
 		chain_log.Debugf("<%s> gsyncer is busy, status: <%d>", chain.groupItem.GroupId, chain.syncerrunner.gsyncer.Status)
 		return true
@@ -1058,6 +1064,26 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 	}
 
 	return nil
+}
+
+func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, error) {
+	//check signature
+	bytespubkey, err := base64.RawURLEncoding.DecodeString(pubkey)
+	if err != nil {
+		return false, err
+	}
+	ethpbukey, err := ethcrypto.DecompressPubkey(bytespubkey)
+	if err == nil {
+		ks := localcrypto.GetKeystore()
+		r := ks.EthVerifySign(hash, signature, ethpbukey)
+		if !r {
+			return false, fmt.Errorf("verify signature failed")
+		}
+	} else {
+		return false, err
+	}
+
+	return true, nil
 }
 
 //local sync

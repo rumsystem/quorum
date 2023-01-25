@@ -46,13 +46,13 @@ func (psync *MolassesPSync) RecreateBft() {
 	psync.bft = NewPSyncBft(*config, psync)
 }
 
-func (psync *MolassesPSync) AddConsensusReq(req *quorumpb.ConsensusMsg) error {
-	molapsyncer_log.Debugf("<%s> AddConsensusReq called", psync.groupId)
-	return psync.bft.AddConsensusReq(req)
+func (psync *MolassesPSync) AddPSyncReq(req *quorumpb.PSyncReq) error {
+	molapsyncer_log.Debugf("<%s> AddPSyncReq called", psync.groupId)
+	return psync.bft.AddPSyncReq(req)
 }
 
 func (psync *MolassesPSync) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molapsyncer_log.Debugf("<%s> PSyncer HandleHBMsg , type <%s>, Epoch <%d>", psync.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
+	//molapsyncer_log.Debugf("<%s> PSyncer HandleHBMsg, Epoch <%d>", psync.groupId, hbmsg.Epoch)
 	return psync.bft.HandleMessage(hbmsg)
 }
 
@@ -76,18 +76,18 @@ func (psync *MolassesPSync) createBftConfig() (*Config, error) {
 	n := len(nodes)
 	f := (n - 1) / 3
 
-	molaproducer_log.Debugf("Failable node %d", f)
+	molaproducer_log.Debugf("Failable node <%d>", f)
 
 	batchSize := 1
 
-	molaproducer_log.Debugf("batchSize %d", batchSize)
+	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
 	config := &Config{
-		N:            n,
-		f:            f,
-		Nodes:        nodes,
-		BatchSize:    batchSize,
-		MySignPubkey: psync.grpItem.UserSignPubkey,
+		N:         n,
+		f:         f,
+		Nodes:     nodes,
+		BatchSize: batchSize,
+		MyPubkey:  psync.grpItem.UserSignPubkey,
 	}
 
 	return config, nil

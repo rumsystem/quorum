@@ -31,8 +31,8 @@ func NewTrxACS(cfg Config, bft *TrxBft, epoch int64) *TrxACS {
 		rbcResults:   make(map[string][]byte),
 	}
 
-	for _, id := range cfg.Nodes {
-		acs.rbcInstances[id], _ = NewTrxRBC(cfg, acs, bft.producer.groupId, id)
+	for _, rbcInstPubkey := range cfg.Nodes {
+		acs.rbcInstances[rbcInstPubkey], _ = NewTrxRBC(cfg, acs, bft.producer.groupId, cfg.MyPubkey, rbcInstPubkey)
 	}
 
 	return acs
@@ -56,7 +56,7 @@ func (a *TrxACS) RbcDone(proposerPubkey string) {
 	a.rbcOutput[proposerPubkey] = true
 	if len(a.rbcOutput) == a.N-a.f {
 		trx_acs_log.Debugf("enough RBC done for consensus <%d>", a.N-a.f)
-		//this only works for 3 nodes!!
+		//this only works when producer nodes equals to 3!!
 		//TBD:should add BBA here
 		//1. set all NOT finished RBC to false
 		//2. start BBA process till finished
@@ -75,20 +75,14 @@ func (a *TrxACS) RbcDone(proposerPubkey string) {
 
 func (a *TrxACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	trx_acs_log.Infof("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
-	//unmarshall BLOCK payload
-	blockMsg := &quorumpb.HBBlockMsg{}
-	err := proto.Unmarshal(hbmsg.Payload, blockMsg)
-	if err != nil {
-		return err
-	}
 
-	switch blockMsg.MsgType {
-	case quorumpb.HBBlockMsgType_RBC:
-		return a.handleRbc(blockMsg.Payload)
-	case quorumpb.HBBlockMsgType_BBA:
-		return a.handleBba(blockMsg.Payload)
+	switch hbmsg.PayloadType {
+	case quorumpb.HBMsgPayloadType_RBC:
+		return a.handleRbc(hbmsg.Payload)
+	case quorumpb.HBMsgPayloadType_BBA:
+		return a.handleBba(hbmsg.Payload)
 	default:
-		return fmt.Errorf("received unknown type BlockMsg <%s>", blockMsg.MsgType.String())
+		return fmt.Errorf("received unknown type BlockMsg <%s>", hbmsg.PayloadType.String())
 	}
 }
 
@@ -109,10 +103,17 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 		if err != nil {
 			return err
 		}
+
+		if initp.RecvNodePubkey != a.MyPubkey {
+			//not for me
+			return nil
+		}
+
 		rbc, ok := a.rbcInstances[initp.ProposerPubkey]
 		if !ok {
 			return fmt.Errorf("could not find rbc instance to handle InitPropose form <%s>", initp.ProposerPubkey)
 		}
+
 		return rbc.handleInitProposeMsg(initp)
 	case quorumpb.RBCMsgType_ECHO:
 		echo := &quorumpb.Echo{}
@@ -123,7 +124,7 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 		//give the ECHO msg to original proposer
 		rbc, ok := a.rbcInstances[echo.OriginalProposerPubkey]
 		if !ok {
-			return fmt.Errorf("could not find rbc instance to handle proof from <%s>, original propose <%d>", echo.EchoProviderPubkey, echo.OriginalProposerPubkey)
+			return fmt.Errorf("could not find rbc instance to handle proof from <%s>, original propose <%s>", echo.EchoProviderPubkey, echo.OriginalProposerPubkey)
 		}
 		return rbc.handleEchoMsg(echo)
 	case quorumpb.RBCMsgType_READY:

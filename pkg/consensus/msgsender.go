@@ -7,23 +7,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SendHBBlockRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch int64) error {
+func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch int64) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
 	}
 
-	msgB, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	rbc := &quorumpb.HBBlockMsg{
-		MsgType: quorumpb.HBBlockMsgType_RBC,
-		Payload: msgB,
-	}
-
-	rbcb, err := proto.Marshal(rbc)
+	rbcb, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -31,15 +21,19 @@ func SendHBBlockRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch int64) error 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
 		Epoch:       epoch,
-		SessionId:   "",
-		PayloadType: quorumpb.HBMsgPayloadType_HB_BLOCK,
+		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
 	}
 
 	return connMgr.BroadcastHBMsg(hbmsg)
 }
 
-func SendHBPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq, epoch int64, sessionId string) error {
+func SendHBAABMsg(groupId string, msg quorumpb.BBAMsg, epoch int64) error {
+	//TBD
+	return nil
+}
+
+func SendPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
@@ -50,28 +44,15 @@ func SendHBPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq, epoch int64, sess
 		return err
 	}
 
-	psyncReq := &quorumpb.HBPSyncMsg{
+	psyncReq := &quorumpb.PSyncMsg{
 		MsgType: quorumpb.PSyncMsgType_PSYNC_REQ,
 		Payload: msgB,
 	}
 
-	syncb, err := proto.Marshal(psyncReq)
-	if err != nil {
-		return err
-	}
-
-	hbmsg := &quorumpb.HBMsgv1{
-		MsgId:       guuid.New().String(),
-		Epoch:       epoch,
-		SessionId:   sessionId,
-		PayloadType: quorumpb.HBMsgPayloadType_HB_PSYNC,
-		Payload:     syncb,
-	}
-
-	return connMgr.BroadcastHBMsg(hbmsg)
+	return connMgr.BroadcastPSyncMsg(psyncReq)
 }
 
-func SendHBPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp, epoch int64, sessionId string) error {
+func SendPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
@@ -82,23 +63,10 @@ func SendHBPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp, epoch int64, se
 		return err
 	}
 
-	psyncResp := &quorumpb.HBPSyncMsg{
+	psyncResp := &quorumpb.PSyncMsg{
 		MsgType: quorumpb.PSyncMsgType_PSYNC_RESP,
 		Payload: msgB,
 	}
 
-	syncb, err := proto.Marshal(psyncResp)
-	if err != nil {
-		return err
-	}
-
-	hbmsg := &quorumpb.HBMsgv1{
-		MsgId:       guuid.New().String(),
-		Epoch:       epoch,
-		SessionId:   sessionId,
-		PayloadType: quorumpb.HBMsgPayloadType_HB_PSYNC,
-		Payload:     syncb,
-	}
-
-	return connMgr.BroadcastHBMsg(hbmsg)
+	return connMgr.BroadcastPSyncMsg(psyncResp)
 }

@@ -68,20 +68,20 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 
 	molaproducer_log.Debugf("Get <%d> producers", len(nodes))
 	for _, producerId := range nodes {
-		molaproducer_log.Debugf(">>> producer_id %s", producerId)
+		molaproducer_log.Debugf(">>> producer_id <%s>", producerId)
 	}
 
 	N := len(nodes)
 	f := (N - 1) / 3 //f * 3 < N
 
-	molaproducer_log.Debugf("Failable node %d", f)
+	molaproducer_log.Debugf("Failable node <%d>", f)
 
 	//use fixed scalar size
 	scalar := 20
 	//batchSize := (len(nodes) * 2) * scalar
 	batchSize := scalar
 
-	molaproducer_log.Debugf("batchSize %d", batchSize)
+	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
 	config := &Config{
 		N:         N,
@@ -237,6 +237,6 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	//molaproducer_log.Debugf("<%s> HandleHBMsg <%s>", producer.groupId, hbmsg.Epoch)
+	//molaproducer_log.Debugf("<%s> HandleHBMsg, Epoch <%d>", producer.groupId, hbmsg.Epoch)
 	return producer.bft.HandleMessage(hbmsg)
 }

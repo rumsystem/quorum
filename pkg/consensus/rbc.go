@@ -13,10 +13,9 @@ import (
 
 type Echos []*quorumpb.Echo
 
-func (p Echos) Len() int                   { return len(p) }
-func (p Echos) Swap(i, j int)              { p[i], p[j] = p[j], p[i] }
-func (p Echos) Less(i, j int) bool         { return p[i].Index < p[j].Index }
-func (p Echos) Append(echo *quorumpb.Echo) { p = append(p, echo) }
+func (p Echos) Len() int           { return len(p) }
+func (p Echos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Echos) Less(i, j int) bool { return p[i].Index < p[j].Index }
 
 func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards [][]byte, producerList []string, originalDataSize int) ([]*quorumpb.RBCMsg, error) {
 	msgs := make([]*quorumpb.RBCMsg, len(shards))
@@ -24,12 +23,13 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 	for i := 0; i < len(msgs); i++ {
 		tree := merkletree.New(sha256.New())
 		tree.SetIndex(uint64(i))
-		for j := 0; j < len(shards); j++ {
-			tree.Push(shards[i])
+		for j := 0; j < len(msgs); j++ {
+			tree.Push(shards[j])
 		}
-
-		///?????? TBD need verify this part
 		root, proof, proofIndex, n := tree.Prove()
+
+		trx_bft_log.Debugf("proofIndex <%d>", proofIndex)
+
 		payload := &quorumpb.InitPropose{
 			RootHash:         root,
 			Proof:            proof,
@@ -68,6 +68,7 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 			Type:    quorumpb.RBCMsgType_INIT_PROPOSE,
 			Payload: payloadb,
 		}
+		trx_bft_log.Debugf("proposer <%s> create InitP <%v>", proposerPubkey, payload)
 	}
 
 	return msgs, nil
@@ -85,6 +86,8 @@ func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey string, initP *quo
 		EchoProviderPubkey:     echoProviderPubkey,
 		EchoProviderSign:       nil,
 	}
+
+	trx_bft_log.Debugf("create Echo with payload <%v>", payload)
 
 	//get hash
 	bbytes, err := proto.Marshal(payload)

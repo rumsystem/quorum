@@ -6,7 +6,7 @@ enum PackageType {
     TRX             = 0;
     BLOCK           = 1;
     HBB             = 2;
-    CONSENSUS       = 3;
+    PSYNC           = 3;
 }
 
 message Package {
@@ -264,42 +264,24 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
-
-//HBMsgV1 ->  HB_BLOCK ->  HBBlockMsg -> RBC -> RBCMsg -> INIT_PROPOSE -> InitPropose
-//                                                     -> PROOF        -> Proof
-//                                                     -> READY        -> Ready
-//                                    -> BBA -> BBAMsg -> BVAL         -> Bval
-//                                                     -> AUX          -> Aux
-//        ->  HB_PSYNC -> 
-
 //for block build
 message HBTrxBundle {
     repeated Trx Trxs = 1;
 }  
 
 message HBMsgv1 {
-    string           MsgId       = 1;
-    string           SessionId   = 2;    
-    int64            Epoch       = 3;
-    HBMsgPayloadType PayloadType = 4;   //HB_BLOCK or HB_PSYNC
-    bytes            Payload     = 5;   //HBBlockMsg or HBPSyncMsg
+    string           MsgId       = 1;   
+    int64            Epoch       = 2;
+    HBMsgPayloadType PayloadType = 3;   // RBC or BBA
+    bytes            Payload     = 4; 
 }
 
 enum HBMsgPayloadType {
-    HB_BLOCK = 0;
-    HB_PSYNC = 1;
-}
-
-message HBBlockMsg {
-    HBBlockMsgType MsgType = 1;   //RBC or BBA
-    bytes          Payload = 2;   //RBC msg or 
-}
-
-enum HBBlockMsgType {
     RBC = 0;    
     BBA = 1;
 }
 
+// RBC
 message RBCMsg {
     RBCMsgType Type    = 1;   //INIT_PROPOSE / PROOF / READY
     bytes      Payload = 2;
@@ -340,6 +322,7 @@ message Ready {
     bytes  ReadyProviderSign      = 4;
 }
 
+// BBA
 message BBAMsg {
     BBAMsgType Type       = 1; //BVAL or AUX
     bytes      Payload    = 2;
@@ -364,7 +347,7 @@ message Aux {
     bool       Value      = 4;
 }
 
-message HBPSyncMsg {
+message PSyncMsg {
     PSyncMsgType MsgType = 1; //PSYNC_REQ or PSYNC_RESP
     bytes        Payload = 2;
 }
@@ -383,11 +366,13 @@ message PSyncReq {
 }
 
 message PSyncResp {
-    string               GroupId       = 1;
-    string               SessionId     = 2;    
-    int64                MyCurEpoch    = 3;
-    PSyncProducerItem    MyCurProducer = 4;
-    Trx                  ProducerProof = 5;
+    string               GroupId           = 1;
+    string               SessionId         = 2; 
+    string               SenderPubkey      = 3;
+    int64                MyCurEpoch        = 4;
+    PSyncProducerItem    MyCurProducerList = 5;
+    Trx                  ProducerProof     = 6;
+    bytes                SenderSign        = 7;
 }
 
 message PSyncProducerItem {

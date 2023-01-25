@@ -326,7 +326,7 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string,
 	return trx.TrxId, nil
 }
 
-func (grp *Group) TryGetChainConsensus() (string, error) {
+func (grp *Group) ReqPSync() (string, error) {
 	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
-	return grp.ChainCtx.GetConsensus()
+	return grp.ChainCtx.ReqPSync()
 }
