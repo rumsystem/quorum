@@ -30,7 +30,6 @@ type TrxRBC struct {
 	output []byte
 
 	readySent    map[string]bool
-	waitMoreEcho map[string]bool
 	consenusDone bool
 
 	acs *TrxACS //for callback when finished
@@ -190,7 +189,6 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 		trx_rbc_log.Debugf("<%s> get N-F echo for rootHash <%v>, try decode", r.rbcInstPubkey, echo.RootHash[:8])
 		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
-			trx_rbc_log.Debug("111111")
 			return err
 		}
 
@@ -200,8 +198,6 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 		if r.readySent[roothashS] {
 			return nil
 		}
-
-		trx_rbc_log.Debug("222222")
 
 		//multicast READY msg
 		trx_rbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
@@ -214,7 +210,6 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 		if err != nil {
 			return err
 		}
-		trx_rbc_log.Debug("111111")
 
 		//set ready sent
 		r.readySent[roothashS] = true
@@ -240,17 +235,17 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	roothashS := string(ready.RootHash)
 
 	//save it
-	trx_rbc_log.Debugf("<%s> Save READY with roothash <%s>", r.rbcInstPubkey, roothashS)
+	trx_rbc_log.Debugf("<%s> Save READY with roothash <%v>", r.rbcInstPubkey, ready.RootHash[:8])
 	r.recvReadys[roothashS] = append(r.recvReadys[roothashS], ready)
 
-	trx_rbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY", r.rbcInstPubkey, len(r.recvReadys))
+	trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys[roothashS]))
 
 	/*
 		upon receiving f +1 matching READY(h) messages, if READY has not yet been sent, multicast READY(h)
 	*/
 
 	if len(r.recvReadys[roothashS]) == r.f+1 {
-		trx_rbc_log.Debugf("<%s> RootHash <%s> get f + 1 <%d> READY", r.rbcInstPubkey, roothashS, r.f+1)
+		trx_rbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
 		if !r.readySent[roothashS] {
 			trx_rbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
 			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.myPubkey, ready.OriginalProposerPubkey, ready.RootHash)
@@ -272,25 +267,30 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 		upon receiving 2 f +1 matching READY(h) messages, wait for (at least) N −2f ECHO messages, then decode v
 	*/
 	if len(r.recvReadys[roothashS]) == 2*r.f+1 && r.recvEchos[roothashS].Len() >= r.N-2*r.f {
-		trx_rbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, roothashS, len(r.recvReadys))
-		trx_rbc_log.Debugf("<%s> RootHash <%s>, Received <%d> ECHO, which is morn than N - 2F", r.rbcInstPubkey, roothashS, r.recvEchos[roothashS].Len())
-		trx_rbc_log.Debugf("<%s> RootHash <%s>, try decode", r.rbcInstPubkey)
+		trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
+		trx_rbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+		//trx_rbc_log.Debugf("<%s> RootHash <%v>, try decode", r.rbcInstPubkey, ready.RootHash[:8])
 
-		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
-		if err != nil {
-			return err
+		if r.output == nil {
+			trx_rbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
+			output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
+			if err != nil {
+				return err
+			}
+			r.output = output
+		} else {
+			trx_rbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
 		}
 
-		trx_rbc_log.Debugf("<%s> RBC for roothash <%s> is done", r.rbcInstPubkey, roothashS)
-		r.acs.RbcDone(r.rbcInstPubkey)
+		trx_rbc_log.Debugf("<%s> RBC for roothash <%v> is done", r.rbcInstPubkey, ready.RootHash[:8])
 		r.consenusDone = true
-		r.output = output
+		r.acs.RbcDone(r.rbcInstPubkey)
 
 		return nil
 	}
 
 	//wait till get enough READY
-	trx_rbc_log.Debugf("<%s> RootHash <%s> wait for more READY", r.rbcInstPubkey, roothashS)
+	trx_rbc_log.Debugf("<%s> RootHash <%v> wait for more READY", r.rbcInstPubkey, ready.RootHash[:8])
 
 	return nil
 }

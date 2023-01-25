@@ -68,7 +68,7 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 			Type:    quorumpb.RBCMsgType_INIT_PROPOSE,
 			Payload: payloadb,
 		}
-		trx_bft_log.Debugf("proposer <%s> create InitP <%v>", proposerPubkey, payload)
+		trx_bft_log.Debugf("proposer <%s> create InitP", proposerPubkey)
 	}
 
 	return msgs, nil
@@ -86,8 +86,6 @@ func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey string, initP *quo
 		EchoProviderPubkey:     echoProviderPubkey,
 		EchoProviderSign:       nil,
 	}
-
-	trx_bft_log.Debugf("create Echo with payload <%v>", payload)
 
 	//get hash
 	bbytes, err := proto.Marshal(payload)

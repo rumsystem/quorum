@@ -22,7 +22,7 @@ payload_create_group = {
 #respString = "Create Group with groupId <%s>" % group_id
 #print(respString)
 
-TRX_COUNT = 100
+TRX_COUNT = 1000
 group_id = 'ef0c809c-2eab-41a2-87fe-ec4de7b5a855'
 trx_id_list = []
 #try post 10000 trxs and verify
