@@ -29,7 +29,6 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 		Config:   cfg,
 		producer: producer,
 		txBuffer: NewTrxBuffer(producer.groupId),
-		//acsInsts: make(map[int64]*TrxACS),
 	}
 }
 
@@ -285,6 +284,10 @@ func (bft *TrxBft) propose(epoch int64) error {
 	if len(trxs) == 0 {
 		trx_acs_log.Infof("trx queue empty, nothing to propose")
 		return nil
+	} else {
+		for _, trx := range trxs {
+			trx_acs_log.Debugf("try packageing trx <%s>", trx.TrxId)
+		}
 	}
 
 	trxBundle := &quorumpb.HBTrxBundle{}

@@ -103,9 +103,9 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 		if err != nil {
 			return err
 		}
-
+		trx_acs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
-			//not for me
+			trx_acs_log.Debugf("not for me")
 			return nil
 		}
 
@@ -133,7 +133,7 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		rbc, ok := a.rbcInstances[ready.ReadyProviderPubkey]
+		rbc, ok := a.rbcInstances[ready.OriginalProposerPubkey]
 		if !ok {
 			return fmt.Errorf("could not find rbc instance to handle ready from <%s>", ready.ReadyProviderPubkey)
 		}

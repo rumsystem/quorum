@@ -99,11 +99,8 @@ func (r *TrxRBC) InputValue(data []byte) error {
 		return err
 	}
 
-	trx_rbc_log.Infof("<%s> create <%d> InitProposeMsg", r.rbcInstPubkey, len(initProposeMsgs))
-
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
-		trx_rbc_log.Infof("<%s> try broadcast InitProposeMsg", r.rbcInstPubkey)
 		err := SendHBRBCMsg(r.groupId, initMsg, r.acs.Epoch)
 		if err != nil {
 			return err
@@ -240,6 +237,11 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 
 	trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys[roothashS]))
 
+	if r.consenusDone {
+		trx_rbc_log.Debugf("<%s> RootHash <%v>, RBC is done, do nothing", r.rbcInstPubkey, ready.RootHash[:8])
+		return nil
+	}
+
 	/*
 		upon receiving f +1 matching READY(h) messages, if READY has not yet been sent, multicast READY(h)
 	*/
@@ -266,32 +268,34 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	/*
 		upon receiving 2 f +1 matching READY(h) messages, wait for (at least) N −2f ECHO messages, then decode v
 	*/
-	if len(r.recvReadys[roothashS]) == 2*r.f+1 && r.recvEchos[roothashS].Len() >= r.N-2*r.f {
-		trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
-		trx_rbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
-		//trx_rbc_log.Debugf("<%s> RootHash <%v>, try decode", r.rbcInstPubkey, ready.RootHash[:8])
-
-		if r.output == nil {
-			trx_rbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
-			output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
-			if err != nil {
-				return err
+	if len(r.recvReadys[roothashS]) >= 2*r.f+1 {
+		trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is more than 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
+		if r.recvEchos[roothashS].Len() >= r.N-2*r.f {
+			trx_rbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+			if r.output == nil {
+				trx_rbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
+				output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
+				if err != nil {
+					return err
+				}
+				r.output = output
+			} else {
+				trx_rbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
 			}
-			r.output = output
+
+			trx_rbc_log.Debugf("<%s> Roothash <%v>, RBC is done", r.rbcInstPubkey, ready.RootHash[:8])
+			r.consenusDone = true
+			r.acs.RbcDone(r.rbcInstPubkey)
+
+			return nil
 		} else {
-			trx_rbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
+			trx_rbc_log.Debugf("<%s> RootHash <%v> get enough READY but wait for more ECHO(now has <%d> ECHO)", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+			return nil
 		}
-
-		trx_rbc_log.Debugf("<%s> RBC for roothash <%v> is done", r.rbcInstPubkey, ready.RootHash[:8])
-		r.consenusDone = true
-		r.acs.RbcDone(r.rbcInstPubkey)
-
-		return nil
 	}
 
 	//wait till get enough READY
 	trx_rbc_log.Debugf("<%s> RootHash <%v> wait for more READY", r.rbcInstPubkey, ready.RootHash[:8])
-
 	return nil
 }
 

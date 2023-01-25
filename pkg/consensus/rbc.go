@@ -28,47 +28,91 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 		}
 		root, proof, proofIndex, n := tree.Prove()
 
-		trx_bft_log.Debugf("proofIndex <%d>", proofIndex)
+		//create ECHO for myself
+		if producerList[i] == proposerPubkey {
+			payload := &quorumpb.Echo{
+				RootHash:               root,
+				Proof:                  proof,
+				Index:                  int64(proofIndex),
+				Leaves:                 int64(n),
+				OriginalDataSize:       int64(originalDataSize),
+				OriginalProposerPubkey: proposerPubkey, //myself
+				EchoProviderPubkey:     proposerPubkey, //myself
+				EchoProviderSign:       nil,
+			}
+			//get hash
+			bbytes, err := proto.Marshal(payload)
+			if err != nil {
+				return nil, err
+			}
+			payloadhash := localcrypto.Hash(bbytes)
 
-		payload := &quorumpb.InitPropose{
-			RootHash:         root,
-			Proof:            proof,
-			Index:            int64(proofIndex),
-			Leaves:           int64(n),
-			OriginalDataSize: int64(originalDataSize),
-			RecvNodePubkey:   producerList[i], //caller should make sure len(producerList) == len(shards)
-			ProposerPubkey:   proposerPubkey,
-			ProposerSign:     nil,
+			//sign it
+			var signature []byte
+			ks := localcrypto.GetKeystore()
+			signature, err = ks.EthSignByKeyName(groupId, payloadhash, nodename)
+			if err != nil {
+				return nil, err
+			}
+
+			payload.EchoProviderSign = signature
+
+			//put msg to container
+			payloadb, err := proto.Marshal(payload)
+			if err != nil {
+				return nil, err
+			}
+
+			msgs[i] = &quorumpb.RBCMsg{
+				Type:    quorumpb.RBCMsgType_ECHO,
+				Payload: payloadb,
+			}
+
+			trx_bft_log.Debugf("proposer <%s> create ECHO for myself", proposerPubkey)
+
+		} else {
+			payload := &quorumpb.InitPropose{
+				RootHash:         root,
+				Proof:            proof,
+				Index:            int64(proofIndex),
+				Leaves:           int64(n),
+				OriginalDataSize: int64(originalDataSize),
+				RecvNodePubkey:   producerList[i], //caller should make sure len(producerList) == len(shards)
+				ProposerPubkey:   proposerPubkey,
+				ProposerSign:     nil,
+			}
+
+			//get hash
+			bbytes, err := proto.Marshal(payload)
+			if err != nil {
+				return nil, err
+			}
+			payloadhash := localcrypto.Hash(bbytes)
+
+			//sign it
+			var signature []byte
+			ks := localcrypto.GetKeystore()
+			signature, err = ks.EthSignByKeyName(groupId, payloadhash, nodename)
+			if err != nil {
+				return nil, err
+			}
+
+			payload.ProposerSign = signature
+
+			//put msg to container
+			payloadb, err := proto.Marshal(payload)
+			if err != nil {
+				return nil, err
+			}
+
+			msgs[i] = &quorumpb.RBCMsg{
+				Type:    quorumpb.RBCMsgType_INIT_PROPOSE,
+				Payload: payloadb,
+			}
+
+			trx_bft_log.Debugf("proposer <%s> create InitP for ", proposerPubkey, producerList[i])
 		}
 
-		//get hash
-		bbytes, err := proto.Marshal(payload)
-		if err != nil {
-			return nil, err
-		}
-		payloadhash := localcrypto.Hash(bbytes)
-
-		//sign it
-		var signature []byte
-		ks := localcrypto.GetKeystore()
-		signature, err = ks.EthSignByKeyName(groupId, payloadhash, nodename)
-		if err != nil {
-			return nil, err
-		}
-
-		payload.ProposerSign = signature
-
-		//put msg to container
-		payloadb, err := proto.Marshal(payload)
-		if err != nil {
-			return nil, err
-		}
-
-		msgs[i] = &quorumpb.RBCMsg{
-			Type:    quorumpb.RBCMsgType_INIT_PROPOSE,
-			Payload: payloadb,
-		}
-		trx_bft_log.Debugf("proposer <%s> create InitP", proposerPubkey)
 	}
 
 	return msgs, nil
