@@ -68,7 +68,8 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 			groupInfo.CipherKey = groupItem.Group.CipherKey
 			groupInfo.AppKey = groupItem.Group.AppKey
 			groupInfo.LastUpdated = groupItem.Group.LastUpdate
-			groupInfo.Epoch = groupItem.Group.Epoch
+			//TBD cuicat
+			//groupInfo.Epoch = groupItem.Group.Epoch
 			groupInfo.ChainApis = groupItem.ApiUrl
 			groups = append(groups, groupInfo)
 		}

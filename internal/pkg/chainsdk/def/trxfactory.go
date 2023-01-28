@@ -5,7 +5,6 @@ import (
 )
 
 type TrxFactoryIface interface {
-	GetBlockProducedTrx(keyalias string, blk *quorumpb.Block) (*quorumpb.Trx, error)
 	GetAnnounceTrx(keyalias string, item *quorumpb.AnnounceItem) (*quorumpb.Trx, error)
 	GetChainConfigTrx(keyalias string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error)
 	GetRegProducerBundleTrx(keyalias string, item *quorumpb.BFTProducerBundleItem) (*quorumpb.Trx, error)

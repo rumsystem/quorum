@@ -29,7 +29,6 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 		Config:   cfg,
 		producer: producer,
 		txBuffer: NewTrxBuffer(producer.groupId),
-		//acsInsts: make(map[int64]*TrxACS),
 	}
 }
 
@@ -39,7 +38,7 @@ func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 
 	found := false
 	f := func(key, value any) bool {
-		TopEpoch := bft.producer.grpItem.Epoch + 1 //proposed but not finished epoch is current group epoch + 1 (next epoch)
+		TopEpoch := bft.producer.cIface.GetCurrEpoch() + 1 //proposed but not finished epoch is current group epoch + 1 (next epoch)
 		if key == TopEpoch {
 			found = true
 		}
@@ -52,8 +51,8 @@ func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 		return nil
 	}
 
-	//try propose
-	newEpoch := bft.producer.grpItem.Epoch + 1
+	//try propose with next epoch
+	newEpoch := bft.producer.cIface.GetCurrEpoch() + 1
 	trx_bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
 	bft.propose(newEpoch)
 	return nil
@@ -84,15 +83,17 @@ func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	inst, ok := bft.acsInsts.Load(hbmsg.Epoch)
 
 	if !ok {
-		if hbmsg.Epoch <= bft.producer.grpItem.Epoch {
+		if hbmsg.Epoch <= bft.producer.cIface.GetCurrEpoch() {
 			trx_bft_log.Warnf("message from old epoch, ignore")
 			return nil
 		}
+		//create newTrxAcs and save it
 		acs = NewTrxACS(bft.Config, bft, hbmsg.Epoch)
-		bft.acsInsts.Store(hbmsg.Epoch, acs) //cast TrxACS to any automatically
+		//TrxACS will be cast by syncmap to type ANY automatically
+		bft.acsInsts.Store(hbmsg.Epoch, acs)
 		trx_bft_log.Debugf("Create new ACS %d", hbmsg.Epoch)
 	} else {
-		//cast any to TrxAcs
+		//get acs from syncmap, cast from type ANY back to TrxAcs
 		acs = inst.(*TrxACS)
 	}
 
@@ -124,29 +125,24 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	//Try build block
 	err := bft.buildBlock(epoch, trxs)
 	if err != nil {
-		trx_bft_log.Warnf("?????????????????????????? %s", err.Error())
-		trx_bft_log.Warnf("?????????????????????????? Build block failed at epoch %d", epoch)
-		//wait for next round
+		trx_bft_log.Warnf("????????????? <%s> Build block failed at epoch %d, error %s", bft.producer.groupId, epoch, err.Error())
 	} else {
 		buildBlockDone = true
 	}
 
 	//clear acs for finished epoch
-
-	trx_bft_log.Debugf("<%s> remove acs inst <%d>", bft.producer.groupId, epoch)
-	bft.acsInsts.Delete(epoch)
-
 	if buildBlockDone {
 		//remove outputed trxs from buffer
-		for trxId, _ := range trxs {
+		for trxId := range trxs {
 			err := bft.txBuffer.Delete(trxId)
+			trx_bft_log.Debugf("<%s> remove packaged trx <%s>", bft.producer.groupId, trxId)
 			if err != nil {
 				trx_bft_log.Warnf(err.Error())
 			}
 		}
 
-		//update group info
-		bft.producer.grpItem.Epoch = epoch
+		//update chain epoch
+		bft.producer.cIface.IncCurrEpoch()
 		bft.producer.grpItem.LastUpdate = time.Now().UnixNano()
 		nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
 		trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
@@ -158,10 +154,13 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 		trx_bft_log.Warnf(err.Error())
 	}
 
+	trx_bft_log.Debugf("<%s> remove finished acs inst <%d>", bft.producer.groupId, epoch)
+	bft.acsInsts.Delete(epoch)
+
 	trx_bft_log.Debugf("<%s> After propose, trx buffer length <%d>", bft.producer.groupId, trxBufLen)
 	//start next round
 	if trxBufLen != 0 {
-		newEpoch := bft.producer.grpItem.Epoch + 1
+		newEpoch := bft.producer.cIface.GetCurrEpoch() + 1
 		trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, newEpoch)
 		bft.propose(newEpoch)
 	}
@@ -175,7 +174,7 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	parentEpoch := epoch - 1
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
 	if err != nil {
-		trx_acs_log.Warnf("XXXXXXXXXXXX?????????????????????????? %s", err.Error())
+		trx_acs_log.Warnf("?????????????????????????? GetBlock failed <%s>", err.Error())
 		return err
 	}
 
@@ -187,9 +186,23 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	sudo := false
 	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, witnesses, ks, "", bft.producer.nodename)
 	if err != nil {
-		trx_bft_log.Warnf("?????????????????????????? %s", err.Error())
-		trx_bft_log.Warnf("?????????????????????????? parent block %v", parent)
+		trx_bft_log.Warnf("?????????????????????????? CreateBlockByEthKey failed <%s>", err.Error())
+		trx_bft_log.Warnf("?????????????????????????? parent block <%v>", parent)
 		return err
+	}
+
+	trx_bft_log.Info("molassproducer handle block just built")
+	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.producer.nodename)
+	if err != nil {
+		return err
+	}
+
+	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+		//approved producers
+		bft.producer.cIface.ApplyTrxsProducerNode(trxToPackage, bft.producer.nodename)
+	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+		//owner
+		bft.producer.cIface.ApplyTrxsFullNode(trxToPackage, bft.producer.nodename)
 	}
 
 	//broadcast new block
@@ -200,33 +213,13 @@ func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error 
 	}
 	err = connMgr.BroadcastBlock(newBlock)
 	if err != nil {
-		trx_acs_log.Warnf("<%s> <%s>", bft.producer.groupId, err.Error())
+		trx_acs_log.Warnf("<%s> BroadcastBlock failed <%s>", bft.producer.groupId, err.Error())
 	}
-
-	//if run as producer node
-	//if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-	trx_bft_log.Info("molassproducer handle block just built")
-	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.producer.nodename)
-	if err != nil {
-		return err
-	}
-
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		bft.producer.cIface.ApplyTrxsProducerNode(trxToPackage, bft.producer.nodename)
-	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-		bft.producer.cIface.ApplyTrxsFullNode(trxToPackage, bft.producer.nodename)
-	}
-	//} else {
-	// if run in FULL_NODE, no need to handle this block here
-	// local user will receive this block via producer channel, local user will handle it
-	//	trx_bft_log.Info("FULL_NODE(Owner) handle block, do nothing, wait for molassuser to handle it")
-	//}
 
 	return nil
 }
 
 // sort trxs by using timestamp
-
 type TrxSlice []*quorumpb.Trx
 
 func (a TrxSlice) Len() int {
@@ -280,7 +273,7 @@ func (bft *TrxBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 }
 
 func (bft *TrxBft) propose(epoch int64) error {
-	trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, epoch)
+	trx_bft_log.Debugf("<%s> propose called, epoch <%d>", bft.producer.groupId, epoch)
 
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
@@ -291,6 +284,10 @@ func (bft *TrxBft) propose(epoch int64) error {
 	if len(trxs) == 0 {
 		trx_acs_log.Infof("trx queue empty, nothing to propose")
 		return nil
+	} else {
+		for _, trx := range trxs {
+			trx_acs_log.Debugf("try packageing trx <%s>", trx.TrxId)
+		}
 	}
 
 	trxBundle := &quorumpb.HBTrxBundle{}

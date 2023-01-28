@@ -7,6 +7,6 @@ import (
 type PSync interface {
 	NewPSync(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	RecreateBft()
-	AddConsensusReq(req *quorumpb.ConsensusMsg) error
+	AddPSyncReq(req *quorumpb.PSyncReq) error
 	HandleHBMsg(msg *quorumpb.HBMsgv1) error
 }

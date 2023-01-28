@@ -161,9 +161,10 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 		return nil, err
 	}
 
+	//commented by cuicat
 	// enable pubsub ping
-	psPing := NewPSPingService(ctx, ps, host.ID())
-	psPing.EnablePing()
+	//psPing := NewPSPingService(ctx, ps, host.ID())
+	//psPing.EnablePing()
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
 

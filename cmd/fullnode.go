@@ -65,7 +65,6 @@ func init() {
 	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
 	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
 	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	//flags.BoolVar(&fnodeFlag.IsRexTestMode, "rextest", false, "RumExchange Test Mode")
 	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
 	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
@@ -96,7 +95,6 @@ func runFullnode(config cli.FullNodeFlag) {
 	}
 
 	// overwrite by cli flags
-	nodeoptions.IsRexTestMode = config.IsRexTestMode
 	nodeoptions.EnableRelay = config.EnableRelay
 
 	keystoreParam := InitKeystoreParam{

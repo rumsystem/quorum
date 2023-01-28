@@ -25,7 +25,7 @@ type GrpProducerResult struct {
 }
 
 type GrpProducerParam struct {
-	ProducerPubkey []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ==,CAISIQNaJGBzRlL6ApIqHduqfhA6T8VS52Am6MNFrlFLNICWdQ=="`
+	ProducerPubkey []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
 	GroupId        string   `json:"group_id" validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Memo           string   `from:"memo"            json:"memo" example:"comment/remark"`
 }
@@ -60,7 +60,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 			}
 			bundle[producerPubkey] = true
 
-			isAnnounced, err := chainapidb.IsProducerAnnounced(group.Item.GroupId, producerPubkey, group.ChainCtx.GetNodeName())
+			isAnnounced, err := chainapidb.IsProducerAnnounced(group.GroupId, producerPubkey, group.Nodename)
 			if err != nil {
 				return nil, err
 			}
@@ -104,7 +104,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 
 		bftProducerBundle.Producers = producers
 
-		trxId, err := group.UpdProducerBundle(bftProducerBundle, sudo)
+		trxId, err := group.UpdProducer(bftProducerBundle, sudo)
 		if err != nil {
 			return nil, err
 		}

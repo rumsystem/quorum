@@ -25,7 +25,7 @@ func ReqPSyncHandler(params *ReqPSyncParam) (*ReqPSyncResult, error) {
 		return nil, rumerrors.ErrGroupNotFound
 	} else {
 
-		sessionId, err := group.TryGetChainConsensus()
+		sessionId, err := group.ReqPSync()
 		if err != nil {
 			return nil, err
 		}

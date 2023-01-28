@@ -24,7 +24,7 @@ type ChainData struct {
 const MAX_BLOCK_IN_RESP_BYTES = 10485760 //10MB
 
 func (d *ChainData) GetReqBlocks(trx *quorumpb.Trx) (requester string, fromEpoch int64, reqBlocks int64, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult, err error) {
-	chain_log.Debugf("<%s> GetBlockForward called", d.groupId)
+	chain_log.Debugf("<%s> GetReqBlocks called", d.groupId)
 
 	var reqBlockItem quorumpb.ReqBlock
 	ciperKey, err := hex.DecodeString(d.groupCipherKey)
@@ -46,13 +46,13 @@ func (d *ChainData) GetReqBlocks(trx *quorumpb.Trx) (requester string, fromEpoch
 		return "", -1, -1, nil, -1, errors.New("trx sender/block requester mismatch")
 	}
 
-	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD, d.nodename)
+	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK, d.nodename)
 	if err != nil {
 		return "", -1, -1, nil, -1, err
 	}
 
 	if !isAllow {
-		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", d.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK_FORWARD.String())
+		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", d.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK.String())
 		return "", -1, -1, nil, -1, errors.New("requester don't have sufficient privileges")
 	}
 

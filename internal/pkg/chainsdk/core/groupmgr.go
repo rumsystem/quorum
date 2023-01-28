@@ -61,6 +61,7 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
 		grp.StartSync(false)
 	}
+
 	return nil
 }
 

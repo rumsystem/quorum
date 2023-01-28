@@ -79,7 +79,6 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	}
 
 	// overwrite by cli flags
-	nodeoptions.IsRexTestMode = config.IsRexTestMode
 	nodeoptions.EnableRelay = config.EnableRelay
 
 	keystoreParam := InitKeystoreParam{

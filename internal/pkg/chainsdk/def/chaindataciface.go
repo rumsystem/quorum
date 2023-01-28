@@ -6,17 +6,17 @@ import (
 )
 
 type ChainDataSyncIface interface {
-	HandlePackageMessage(pkg *quorumpb.Package) error
+	HandlePsConnMessage(pkg *quorumpb.Package) error
 	HandleTrxPsConn(trx *quorumpb.Trx) error
 	HandleBlockPsConn(block *quorumpb.Block) error
 	HandleTrxRex(trx *quorumpb.Trx, fromstream network.Stream) error
 	HandleBlockRex(block *quorumpb.Block, fromstream network.Stream) error
 	HandleHBPsConn(hb *quorumpb.HBMsgv1) error
 	HandleHBRex(hb *quorumpb.HBMsgv1) error
-	HandleConsesusPsConn(c *quorumpb.ConsensusMsg) error
-	HandleConsesusRex(c *quorumpb.ConsensusMsg) error
+	HandlePSyncPsConn(c *quorumpb.PSyncMsg) error
+	HandlePSyncRex(c *quorumpb.PSyncMsg) error
 	StartSync() error
 	StopSync()
 	IsSyncerIdle() bool
-	GetCurrentChainEpoch() int64
+	GetCurrEpoch() int64
 }

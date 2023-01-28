@@ -7,30 +7,33 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SendHbbRBC(groupId string, msg *quorumpb.BroadcastMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType, sessionId string) error {
+func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch int64) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
 	}
 
-	msgB, err := proto.Marshal(msg)
+	rbcb, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
-		SessionId:   sessionId,
-		MsgType:     quorumpb.HBBMsgType_BROADCAST,
 		Epoch:       epoch,
-		PayloadType: payloadType,
-		Payload:     msgB,
+		PayloadType: quorumpb.HBMsgPayloadType_RBC,
+		Payload:     rbcb,
 	}
 
 	return connMgr.BroadcastHBMsg(hbmsg)
 }
 
-func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, payloadType quorumpb.HBMsgPayloadType, sessionId string) error {
+func SendHBAABMsg(groupId string, msg quorumpb.BBAMsg, epoch int64) error {
+	//TBD
+	return nil
+}
+
+func SendPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err
@@ -41,14 +44,29 @@ func SendHbbAgreement(groupId string, msg *quorumpb.AgreementMsg, epoch int64, p
 		return err
 	}
 
-	hbmsg := &quorumpb.HBMsgv1{
-		MsgId:       guuid.New().String(),
-		SessionId:   sessionId,
-		MsgType:     quorumpb.HBBMsgType_AGREEMENT,
-		Epoch:       epoch,
-		PayloadType: payloadType,
-		Payload:     msgB,
+	psyncReq := &quorumpb.PSyncMsg{
+		MsgType: quorumpb.PSyncMsgType_PSYNC_REQ,
+		Payload: msgB,
 	}
 
-	return connMgr.BroadcastHBMsg(hbmsg)
+	return connMgr.BroadcastPSyncMsg(psyncReq)
+}
+
+func SendPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp) error {
+	connMgr, err := conn.GetConn().GetConnMgr(groupId)
+	if err != nil {
+		return err
+	}
+
+	msgB, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	psyncResp := &quorumpb.PSyncMsg{
+		MsgType: quorumpb.PSyncMsgType_PSYNC_RESP,
+		Payload: msgB,
+	}
+
+	return connMgr.BroadcastPSyncMsg(psyncResp)
 }

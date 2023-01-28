@@ -16,7 +16,6 @@ type NodeOptions struct {
 	EnableDevNetwork  bool
 	EnableSnapshot    bool
 	EnablePubQue      bool
-	IsRexTestMode     bool
 	MaxPeers          int
 	ConnsHi           int
 	NetworkName       string

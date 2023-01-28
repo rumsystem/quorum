@@ -1,7 +1,6 @@
 package appdata
 
 import (
-	"strconv"
 	"time"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
@@ -81,11 +80,15 @@ func (appsync *AppSync) Start(interval int) {
 					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupitem.GroupId, err)
 					break
 				}
-				lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
+
+				//commented by cuicat
+				//lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
 				if err == nil {
-					if groupitem.Epoch > lastSyncEpoch {
+
+					/*if groupitem.Epoch > lastSyncEpoch {
 						appsync.RunSync(groupitem.GroupId, lastSyncEpoch, groupitem.Epoch)
 					}
+					*/
 				} else {
 					appsynclog.Errorf("sync group : %s Get Group last sync Epoch err %s", groupitem.GroupId, err)
 				}

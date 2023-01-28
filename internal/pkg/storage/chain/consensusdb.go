@@ -102,7 +102,7 @@ func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) 
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
 
-func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.ConsensusResp) error {
+func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.PSyncResp) error {
 	//remove all current group PSync Session
 	key_prefix := s.GetPSyncPrefix(groupId)
 	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
@@ -120,24 +120,28 @@ func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.Consen
 	}
 }
 
-func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.ConsensusResp, error) {
+func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.PSyncResp, error) {
 
-	resps := []*quorumpb.ConsensusResp{}
-	key := s.GetPSyncPrefix(groupId)
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
+	/*
+		resps := []*quorumpb.PSyncResp{}
+		key := s.GetPSyncPrefix(groupId)
+		err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+			if err != nil {
+				return err
+			}
 
-		resp := &quorumpb.ConsensusResp{}
-		if err := proto.Unmarshal(v, resp); err != nil {
-			return err
-		}
+			resp := &quorumpb.ConsensusResp{}
+			if err := proto.Unmarshal(v, resp); err != nil {
+				return err
+			}
 
-		//should be only 1 (or no) resp item, otherwise something goes wrong
-		resps = append(resps, resp)
-		return nil
-	})
+			//should be only 1 (or no) resp item, otherwise something goes wrong
+			resps = append(resps, resp)
+			return nil
+		})
 
-	return resps, err
+		return resps, err
+	*/
+
+	return nil, nil
 }

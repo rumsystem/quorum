@@ -61,7 +61,10 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		group.CipherKey = value.Item.CipherKey
 		group.AppKey = value.Item.AppKey
 		group.LastUpdated = value.Item.LastUpdate
-		group.Epoch = value.Item.Epoch
+
+		//get chainInfo (lastUpdate, currEpoch)
+		//TBD
+		group.Epoch = -1 //value.Item.Epoch
 
 		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
 		if err != nil {
@@ -76,10 +79,10 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 		}
 
 		switch value.GetSyncerStatus() {
-		case chain.CONSENSUS_SYNC:
-			group.GroupStatus = "CONSENSUS_SYNCING"
-		case chain.SYNCING_FORWARD:
-			group.GroupStatus = "BLOCK_SYNCING"
+		case chain.PSYNC:
+			group.GroupStatus = "PSYNC"
+		case chain.SYNCING_BLOCK:
+			group.GroupStatus = "SYNCING_BLOCK"
 		case chain.SYNC_FAILED:
 			group.GroupStatus = "SYNC_FAILED"
 		case chain.IDLE:

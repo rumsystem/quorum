@@ -24,7 +24,7 @@ func GetAnnouncedGroupUsers(chainapidb def.APIHandlerIface, groupid string) ([]*
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		usrList, err := chainapidb.GetAnnounceUsersByGroup(group.Item.GroupId, group.ChainCtx.GetNodeName())
+		usrList, err := chainapidb.GetAnnounceUsersByGroup(group.GroupId, group.Nodename)
 		if err != nil {
 			return nil, err
 		}

@@ -147,15 +147,14 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/clear", h.ClearGroupData)
 	r.POST("/v1/network/peers", h.AddPeers)
 	r.POST("/v1/group/:group_id/startsync", h.StartSync)
-	r.POST("/v1/psping", h.PSPingPeer(node))
-	r.POST("/v1/ping", h.P2PPingPeer(node))
+	//r.POST("/v1/psping", h.PSPingPeer(node))
+	//r.POST("/v1/ping", h.P2PPingPeer(node))
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
 	r.POST("/v1/trx/ack", h.PubQueueAck)
 	r.POST("/v1/group/reqpsync", h.ReqPSync)
 	//r.POST("/v1/group/join", h.JoinGroup())
 
-	//POST API support sudo
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 
 	r.POST("/v1/group/profile", h.UpdateProfile)
@@ -179,7 +178,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 	//r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
-	r.GET("/v1/network/peers/ping", h.PingPeers(node))
+	//r.GET("/v1/network/peers/ping", h.PingPeers(node))
 	r.GET("/v1/block/:group_id/:epoch", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 	r.GET("/v1/groups", h.GetGroups)

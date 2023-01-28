@@ -125,7 +125,7 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 				metric.SuccessCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
 				metric.InBytes.WithLabelValues(metric.ActionType.ReceiveFromTopic).Set(size)
 				metric.InBytesTotal.WithLabelValues(metric.ActionType.ReceiveFromTopic).Add(size)
-				psconn.chain.HandlePackageMessage(&pkg)
+				psconn.chain.HandlePsConnMessage(&pkg)
 
 			} else {
 				metric.FailedCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()

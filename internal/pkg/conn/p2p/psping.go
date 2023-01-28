@@ -1,5 +1,6 @@
 package p2p
 
+/*
 import (
 	"context"
 	"crypto/rand"
@@ -190,3 +191,5 @@ func (p *PSPing) handlePingResponse(pingresult *map[[32]byte]*PingResult, errCh 
 		}
 	}
 }
+
+*/

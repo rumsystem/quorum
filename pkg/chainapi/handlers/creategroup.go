@@ -111,19 +111,15 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 
 	item.CipherKey = hex.EncodeToString(cipherKey)
 	item.AppKey = params.AppKey
-	item.Epoch = 0 //Epoch means the current highest block epoch
 	item.LastUpdate = time.Now().UnixNano()
 	item.GenesisBlock = genesisBlock
 
 	group := &chain.Group{}
-	err = group.CreateGrp(item)
+	err = group.NewGroup(item)
 	if err != nil {
 		return nil, err
 	}
 
-	if nodeoptions.IsRexTestMode == true {
-		group.SetRumExchangeTestMode()
-	}
 	groupmgr := chain.GetGroupMgr()
 	groupmgr.Groups[group.Item.GroupId] = group
 

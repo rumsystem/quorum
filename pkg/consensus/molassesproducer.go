@@ -38,7 +38,7 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 
 func (producer *MolassesProducer) TryPropose() {
 	molaproducer_log.Debug("TryPropose called")
-	newEpoch := producer.grpItem.Epoch + 1
+	newEpoch := producer.cIface.GetCurrEpoch() + 1
 	producer.bft.propose(newEpoch)
 }
 
@@ -68,27 +68,27 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 
 	molaproducer_log.Debugf("Get <%d> producers", len(nodes))
 	for _, producerId := range nodes {
-		molaproducer_log.Debugf(">>> producer_id %s", producerId)
+		molaproducer_log.Debugf(">>> producer_id <%s>", producerId)
 	}
 
 	N := len(nodes)
 	f := (N - 1) / 3 //f * 3 < N
 
-	molaproducer_log.Debugf("Failable node %d", f)
+	molaproducer_log.Debugf("Failable node <%d>", f)
 
 	//use fixed scalar size
 	scalar := 20
 	//batchSize := (len(nodes) * 2) * scalar
 	batchSize := scalar
 
-	molaproducer_log.Debugf("batchSize %d", batchSize)
+	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
 	config := &Config{
-		N:            N,
-		f:            f,
-		Nodes:        nodes,
-		BatchSize:    batchSize,
-		MySignPubkey: producer.grpItem.UserSignPubkey,
+		N:         N,
+		f:         f,
+		Nodes:     nodes,
+		BatchSize: batchSize,
+		MyPubkey:  producer.grpItem.UserSignPubkey,
 	}
 
 	return config, nil
@@ -181,8 +181,10 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	}
 
 	//update latest epoch only if epoch of block is larger than current group epoch
-	if block.Epoch > producer.grpItem.Epoch {
-		producer.cIface.UpdChainInfo(block.Epoch)
+	if block.Epoch > producer.cIface.GetCurrEpoch() {
+		producer.cIface.SetCurrEpoch(block.Epoch)
+		producer.cIface.SetLastUpdate(block.TimeStamp)
+		producer.cIface.SaveChainInfoToDb()
 	}
 
 	//get all trxs from blocks
@@ -235,6 +237,6 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 }
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molaproducer_log.Debugf("<%s> HandleHBMsg %s, %d", producer.groupId, hbmsg.MsgType.String(), hbmsg.Epoch)
+	//molaproducer_log.Debugf("<%s> HandleHBMsg, Epoch <%d>", producer.groupId, hbmsg.Epoch)
 	return producer.bft.HandleMessage(hbmsg)
 }

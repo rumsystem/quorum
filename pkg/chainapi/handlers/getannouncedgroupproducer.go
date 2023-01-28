@@ -25,7 +25,7 @@ func GetAnnouncedGroupProducer(chainapidb def.APIHandlerIface, groupid string) (
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		prdList, err := chainapidb.GetAnnounceProducersByGroup(group.Item.GroupId, group.ChainCtx.GetNodeName())
+		prdList, err := chainapidb.GetAnnounceProducersByGroup(group.GroupId, group.Nodename)
 		if err != nil {
 			return nil, err
 		}

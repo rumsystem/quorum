@@ -53,7 +53,7 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	b64cipher := base64.RawURLEncoding.EncodeToString(cipherkeybytes)
 
 	//b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
-	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.BookkeepingSignature)
+	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.BookkeepingSign)
 
 	//new eth key: is the compressed base64 RawURLEncoding
 	//old libp2p key: base64.StdEncoding
@@ -153,7 +153,7 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	}
 
 	genesisBlock.BlockHash = bookkeepingHash
-	genesisBlock.BookkeepingSignature = b64signbyte
+	genesisBlock.BookkeepingSign = b64signbyte
 
 	consensustype := "poa"
 	if q.Get("n") == "1" {
@@ -179,7 +179,7 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		//OwnerPubkey:    genesisBlock.ProducerPubKey,
 		//Signature:      hex.EncodeToString(genesisBlock.Signature),
 		OwnerPubkey: genesisBlock.BookkeepingPubkey,
-		Signature:   hex.EncodeToString(genesisBlock.BookkeepingSignature),
+		Signature:   hex.EncodeToString(genesisBlock.BookkeepingSign),
 		AppKey:      appkey,
 	}
 

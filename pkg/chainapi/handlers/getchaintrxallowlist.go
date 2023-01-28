@@ -24,7 +24,7 @@ func GetChainTrxAllowList(chainapidb def.APIHandlerIface, groupid string) ([]*Ch
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		chainConfigItemList, allowItemList, err := chainapidb.GetSendTrxAuthListByGroupId(group.Item.GroupId, quorumpb.AuthListType_ALLOW_LIST, group.ChainCtx.GetNodeName())
+		chainConfigItemList, allowItemList, err := chainapidb.GetSendTrxAuthListByGroupId(group.GroupId, quorumpb.AuthListType_ALLOW_LIST, group.Nodename)
 
 		if err != nil {
 			return nil, err

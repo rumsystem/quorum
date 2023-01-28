@@ -1,11 +1,8 @@
 package consensus
 
 import (
-	"fmt"
-
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 var psync_acs_log = logging.Logger("pacs")
@@ -42,12 +39,17 @@ func NewPSyncACS(cfg Config, bft *PSyncBft, sid string) *PSyncACS {
 func (a *PSyncACS) InputValue(val []byte) error {
 	psync_acs_log.Debugf("SessionId <%s> InputValue called", a.SessionId)
 
-	rbc, ok := a.rbcInstances[a.MySignPubkey]
-	if !ok {
-		return fmt.Errorf("could not find rbc instance <%s>", a.MySignPubkey)
-	}
+	/*
+		rbc, ok := a.rbcInstances[a.MySignPubkey]
+		if !ok {
+			return fmt.Errorf("could not find rbc instance <%s>", a.MySignPubkey)
+		}
 
-	return rbc.InputValue(val)
+		return rbc.InputValue(val)
+
+	*/
+
+	return nil
 }
 
 // rbc for proposerIs finished
@@ -73,44 +75,57 @@ func (a *PSyncACS) RbcDone(proposerPubkey string) {
 	}
 }
 
-func (a *PSyncACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	psync_acs_log.Debugf("SessionId <%s> HandleMessage called", hbmsg.SessionId)
-
-	switch hbmsg.MsgType {
-	case quorumpb.HBBMsgType_BROADCAST:
-		broadcastMsg := &quorumpb.BroadcastMsg{}
-		err := proto.Unmarshal(hbmsg.Payload, broadcastMsg)
-		if err != nil {
-			return err
-		}
-		switch broadcastMsg.Type {
-		case quorumpb.BroadcastMsgType_PROOF:
-			proof := &quorumpb.Proof{}
-			err := proto.Unmarshal(broadcastMsg.Payload, proof)
+func (a *PSyncACS) HandleMessage(msg *quorumpb.HBMsgv1) error {
+	/*
+		psync_acs_log.Debugf("HandleMessage called, SessionId <%s>", hbmsg.SessionId)
+			psyncMsg := &quorumpb.PSyncMsg{}
+			err := proto.Unmarshal(hbmsg.Payload, psyncMsg)
 			if err != nil {
 				return err
 			}
-			rbc, ok := a.rbcInstances[proof.ProposerPubkey]
-			if !ok {
-				return fmt.Errorf("could not find rbc instance to handle proof for (%s)", proof.ProposerPubkey)
-			}
-			return rbc.handleProofMsg(proof)
-		case quorumpb.BroadcastMsgType_READY:
-			ready := &quorumpb.Ready{}
-			err := proto.Unmarshal(broadcastMsg.Payload, ready)
-			if err != nil {
-				return err
-			}
-			rbc, ok := a.rbcInstances[ready.ProofProviderPubkey]
-			if !ok {
-				return fmt.Errorf("could not find rbc instance to handle ready for (%s)", ready.ProofProviderPubkey)
-			}
-			return rbc.handleReadyMsg(ready)
 
-		default:
-			return fmt.Errorf("received unknown broadcast message (%v)", broadcastMsg.Type)
-		}
-	default:
-		return fmt.Errorf("received unknown hbmsg <%s> type (%v)", hbmsg.MsgId, hbmsg.MsgType)
-	}
+			switch psyncMsg.MsgType {
+				case quorumpb.HBPS
+
+
+			case quorumpb.HBBMsgType_BROADCAST:
+				broadcastMsg := &quorumpb.BroadcastMsg{}
+				err := proto.Unmarshal(hbmsg.Payload, broadcastMsg)
+				if err != nil {
+					return err
+				}
+				switch broadcastMsg.Type {
+				case quorumpb.BroadcastMsgType_PROOF:
+					proof := &quorumpb.Proof{}
+					err := proto.Unmarshal(broadcastMsg.Payload, proof)
+					if err != nil {
+						return err
+					}
+					rbc, ok := a.rbcInstances[proof.ProposerPubkey]
+					if !ok {
+						return fmt.Errorf("could not find rbc instance to handle proof for (%s)", proof.ProposerPubkey)
+					}
+					return rbc.handleProofMsg(proof)
+				case quorumpb.BroadcastMsgType_READY:
+					ready := &quorumpb.Ready{}
+					err := proto.Unmarshal(broadcastMsg.Payload, ready)
+					if err != nil {
+						return err
+					}
+					rbc, ok := a.rbcInstances[ready.ProofProviderPubkey]
+					if !ok {
+						return fmt.Errorf("could not find rbc instance to handle ready for (%s)", ready.ProofProviderPubkey)
+					}
+					return rbc.handleReadyMsg(ready)
+
+				default:
+					return fmt.Errorf("received unknown broadcast message (%v)", broadcastMsg.Type)
+				}
+			default:
+				return fmt.Errorf("received unknown hbmsg <%s> type (%v)", hbmsg.MsgId, hbmsg.MsgType)
+			}
+
+	*/
+
+	return nil
 }
