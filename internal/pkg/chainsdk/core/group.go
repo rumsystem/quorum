@@ -176,6 +176,14 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
+func (grp *Group) GetCurrentEpoch() int64 {
+	return grp.ChainCtx.GetCurrEpoch()
+}
+
+func (grp *Group) GetLatestUpdate() int64 {
+	return grp.ChainCtx.GetLastUpdate()
+}
+
 func (grp *Group) GetNodeName() string {
 	return grp.Nodename
 }
