@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -217,15 +219,23 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 
 func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
-	pkg := &quorumpb.Package{}
+
+	// compress trx.Data
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+		return err
+	}
+	trx.Data = compressedContent.Bytes()
 
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_TRX
-	pkg.Data = pbBytes
+	pkg := &quorumpb.Package{
+		Type: quorumpb.PackageType_TRX,
+		Data: pbBytes,
+	}
 
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
@@ -276,13 +286,21 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 		return errors.New("Resp peer steam can't be nil")
 	}
 
+	// compress trx.Data
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+		return err
+	}
+	trx.Data = compressedContent.Bytes()
+
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
 		return err
 	}
-	pkg := &quorumpb.Package{}
-	pkg.Type = quorumpb.PackageType_TRX
-	pkg.Data = pbBytes
+	pkg := &quorumpb.Package{
+		Type: quorumpb.PackageType_TRX,
+		Data: pbBytes,
+	}
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 	//TODO:  add a timeout ctx to close the steam after timeout
 
