@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -40,7 +41,7 @@ type Chain struct {
 	LatestUpdate int64
 }
 
-func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string) error {
+func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChainInfo bool) error {
 	chain_log.Debugf("<%s> NewChain called", item.GroupId)
 
 	chain.groupItem = item
@@ -61,13 +62,23 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string) error {
 		userSignPubkey: chain.groupItem.UserSignPubkey,
 		dbmgr:          nodectx.GetDbMgr()}
 
-	//load and initial CurrEpoch/lastUpdate
-	currEpoch, lastUpdate, _ := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
-
-	chain_log.Debugf("<%s> Set epoch <%d>, set lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, lastUpdate)
-
-	chain.SetCurrEpoch(currEpoch)
-	chain.SetLastUpdate(lastUpdate)
+	if loadChainInfo {
+		//load and initial CurrEpoch/lastUpdate
+		currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
+		if err != nil {
+			return err
+		}
+		chain_log.Debugf("<%s> Set epoch <%d>, set lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, lastUpdate)
+		chain.SetCurrEpoch(currEpoch)
+		chain.SetLastUpdate(lastUpdate)
+	} else {
+		currEpoch := int64(0)
+		lastUpdate := time.Now().UnixNano()
+		chain_log.Debugf("<%s> Set epoch <%d>, set lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, lastUpdate)
+		chain.SetCurrEpoch(currEpoch)
+		chain.SetLastUpdate(lastUpdate)
+		chain.SaveChainInfoToDb()
+	}
 
 	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
 

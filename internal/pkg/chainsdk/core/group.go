@@ -32,7 +32,7 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(item, grp.Nodename)
+	grp.ChainCtx.NewChain(item, grp.Nodename, false)
 
 	//save group genesis block
 	group_log.Debugf("<%s> save genesis block", grp.Item.GroupId)
@@ -102,7 +102,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(item, grp.Nodename)
+	grp.ChainCtx.NewChain(item, grp.Nodename, true)
 
 	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
 	if opk != "" {

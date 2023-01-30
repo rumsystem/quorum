@@ -62,6 +62,11 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		//TBD check if group already exist
+		groupmgr := chain.GetGroupMgr()
+		if _, ok := groupmgr.Groups[seed.GroupId]; ok {
+			msg := fmt.Sprintf("group with group_id <%s> already exist", seed.GroupId)
+			return rumerrors.NewBadRequestError(msg)
+		}
 
 		nodeoptions := options.GetNodeOptions()
 
@@ -187,7 +192,6 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		//add group to context
-		groupmgr := chain.GetGroupMgr()
 		groupmgr.Groups[group.Item.GroupId] = group
 
 		var bufferResult bytes.Buffer

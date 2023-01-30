@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -163,10 +164,43 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 
 // TBD
 func (cs *Storage) SaveChainInfo(currEpoch, lastUpdate int64, groupId string, prefix ...string) error {
+
+	key := s.GetChainInfoEpoch(groupId, prefix...)
+	chaindb_log.Debugf("Save ChainInfo, Epoch <%d>", currEpoch)
+	c := make([]byte, 8)
+	binary.LittleEndian.PutUint64(c, uint64(currEpoch))
+	cs.dbmgr.Db.Set([]byte(key), c)
+
+	key = s.GetChainInfoLastUpdate(groupId, prefix...)
+	chaindb_log.Debugf("Save ChainInfo, LastUpdate <%d>", lastUpdate)
+
+	l := make([]byte, 8)
+	binary.LittleEndian.PutUint64(l, uint64(lastUpdate))
+	cs.dbmgr.Db.Set([]byte(key), l)
+
 	return nil
 }
 
 // TBD
 func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currEpoch int64, lastUpdate int64, err error) {
-	return 0, 0, nil
+	key := s.GetChainInfoEpoch(groupId, prefix...)
+
+	c, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return -1, -1, err
+	}
+
+	epoch := int64(binary.LittleEndian.Uint64(c))
+	chaindb_log.Debugf("Load ChainInfo, currEpoch <%d>", epoch)
+
+	key = s.GetChainInfoLastUpdate(groupId, prefix...)
+	l, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return -1, -1, err
+	}
+
+	last := int64(binary.LittleEndian.Uint64(l))
+	chaindb_log.Debugf("Load ChainInfo, LastUpdate <%d>", last)
+
+	return epoch, last, nil
 }
