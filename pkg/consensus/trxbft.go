@@ -143,9 +143,11 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 
 		//update chain epoch
 		bft.producer.cIface.IncCurrEpoch()
-		bft.producer.grpItem.LastUpdate = time.Now().UnixNano()
-		nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
+		bft.producer.cIface.SetLastUpdate(time.Now().UnixNano())
+		bft.producer.cIface.SaveChainInfoToDb()
 		trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
+
+		//nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
 	}
 
 	//check if need continue propose

@@ -13,6 +13,7 @@ const (
 	TRX_PREFIX           = "trx"       //trx
 	BLK_PREFIX           = "blk"       //block
 	GRP_PREFIX           = "grp"       //group
+	CHNINFO_PREFIX       = "chain"     //chaininfo
 	CNT_PREFIX           = "cnt"       //content
 	PRD_PREFIX           = "prd"       //producer
 	USR_PREFIX           = "usr"       //user
@@ -83,6 +84,16 @@ func GetGroupItemPrefix() string {
 
 func GetGroupItemKey(groupId string) string {
 	return GetGroupItemPrefix() + groupId
+}
+
+func GetChainInfoEpoch(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + CHNINFO_PREFIX + "_" + groupId + "_" + "epoch"
+}
+
+func GetChainInfoLastUpdate(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + CHNINFO_PREFIX + "_" + groupId + "_" + "lastupdate"
 }
 
 func GetPostPrefix(groupId string, prefix ...string) string {
