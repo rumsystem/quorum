@@ -189,6 +189,14 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		return fmt.Errorf("trx Version mismatch")
 	}
 
+	// decompress
+	content := new(bytes.Buffer)
+	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+		chain_log.Errorf("utils.Decompress failed: %s", err)
+		return fmt.Errorf("utils.Decompress failed: %s", err)
+	}
+	trx.Data = content.Bytes()
+
 	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
 		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
@@ -528,6 +536,15 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		chain_log.Warningf("HandleTrxRex called, Trx Version mismatch, trxid <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return fmt.Errorf("trx Version mismatch")
 	}
+
+	// decompress
+	content := new(bytes.Buffer)
+	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+		e := fmt.Errorf("utils.Decompress failed: %s", err)
+		chain_log.Error(e)
+		return e
+	}
+	trx.Data = content.Bytes()
 
 	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
