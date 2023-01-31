@@ -261,14 +261,22 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
 
+	// compress trx.Data
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+		return err
+	}
+	trx.Data = compressedContent.Bytes()
+
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
 		return err
 	}
 
-	pkg := &quorumpb.Package{}
-	pkg.Type = quorumpb.PackageType_TRX
-	pkg.Data = pbBytes
+	pkg := &quorumpb.Package{
+		Type: quorumpb.PackageType_TRX,
+		Data: pbBytes,
+	}
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 
 	psconn := connMgr.getUserConn()
