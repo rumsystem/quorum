@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -166,7 +167,13 @@ func (grp *Group) ClearGroupData() error {
 }
 
 func (grp *Group) StartSync(restart bool) error {
+
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
+	if nodectx.GetNodeCtx().IsConsensusTest {
+		group_log.Debugf("<%s> Consensus Test Mode, no need to sync", grp.Item.GroupId)
+		return nil
+	}
+
 	return grp.ChainCtx.StartSync()
 }
 
@@ -199,6 +206,17 @@ func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
 	group_log.Debugf("<%s> GetTrx called trxId: <%s>", grp.Item.GroupId, trxId)
+	if nodectx.GetNodeCtx().IsConsensusTest {
+		if grp.ChainCtx.crunner.IsTrxPackaged(trxId) {
+			dummytrx := &quorumpb.Trx{
+				TrxId: trxId,
+			}
+			return dummytrx, nil, nil
+		} else {
+			return nil, nil, fmt.Errorf("trx <%s> is not packaged", trxId)
+		}
+	}
+
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.Nodename)
 }
 

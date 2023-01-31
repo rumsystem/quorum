@@ -38,18 +38,20 @@ type NodeCtx struct {
 	Version   string
 	Status    NodeStatus
 	chaindb   *chainstorage.Storage
+
+	IsConsensusTest bool
 }
 
 var nodeCtx *NodeCtx
 
 var dbMgr *storage.DbMgr
 
-//singlaton
+// singlaton
 func GetNodeCtx() *NodeCtx {
 	return nodeCtx
 }
 
-//singlaton
+// singlaton
 func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }

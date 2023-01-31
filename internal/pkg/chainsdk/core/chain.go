@@ -40,6 +40,8 @@ type Chain struct {
 	Consensus    def.Consensus
 	CurrEpoch    int64
 	LatestUpdate int64
+
+	crunner *consensus.CRunner
 }
 
 func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChainInfo bool) error {
@@ -179,6 +181,10 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> HandleTrxPsConn called", chain.groupItem.GroupId)
 
+	if nodectx.GetNodeCtx().IsConsensusTest {
+		chain.crunner.AddTrx(trx)
+	}
+
 	//only producer(owner) need handle trx msg from psconn (to build trxs into block)
 	if !chain.isProducer() {
 		//chain_log.Infof("non producer(owner) ignore incoming trx from psconn")
@@ -283,6 +289,11 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 // handle HBB msg from PsConn
 func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 	//chain_log.Debugf("<%s> HandleHBPsConn called", chain.groupItem.GroupId)
+
+	//CRunner
+	if nodectx.GetNodeCtx().IsConsensusTest {
+		return chain.crunner.HandleHBMsg(hb)
+	}
 
 	//only producers(owner) need to handle HBB message
 	if !chain.isProducer() {
@@ -870,6 +881,13 @@ func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
 
 func (chain *Chain) CreateConsensus() error {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupItem.GroupId)
+
+	if nodectx.GetNodeCtx().IsConsensusTest {
+		chain_log.Debugf(">>>>>>>>>> <%s> In Consensus test mode <<<<<<<<<<", chain.groupItem.GroupId)
+		chain.crunner = &consensus.CRunner{}
+		chain.crunner.NewCRunner(chain.groupItem, chain.nodename, chain)
+		return nil
+	}
 
 	var user def.User
 	var producer def.Producer

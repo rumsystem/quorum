@@ -67,6 +67,8 @@ func init() {
 	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
 	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
+
+	flags.BoolVar(&fnodeFlag.IsConsensusTest, "ctest", false, "consensus test mode")
 }
 
 func runFullnode(config cli.FullNodeFlag) {
@@ -161,6 +163,7 @@ func runFullnode(config cli.FullNodeFlag) {
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
 
+	nodectx.GetNodeCtx().IsConsensusTest = config.IsConsensusTest
 	//initial conn
 	conn.InitConn()
 

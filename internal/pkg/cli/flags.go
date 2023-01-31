@@ -27,6 +27,8 @@ type FullNodeFlag struct {
 	KeyStorePwd      string
 	AutoAck          bool
 	EnableRelay      bool
+
+	IsConsensusTest bool
 }
 
 // TBD remove unused flags
@@ -95,6 +97,8 @@ type ProducerNodeFlag struct {
 	KeyStoreDir      string
 	KeyStoreName     string
 	KeyStorePwd      string
+
+	IsConsensusTest bool
 }
 
 func (al *AddrList) String() string {

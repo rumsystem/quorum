@@ -61,6 +61,8 @@ func init() {
 	flags.Var(&producerNodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
 	flags.StringVar(&producerNodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	flags.BoolVar(&producerNodeFlag.IsDebug, "debug", false, "show debug log")
+
+	flags.BoolVar(&producerNodeFlag.IsConsensusTest, "ctest", false, "consensus test mode")
 }
 
 func runProducerNode(config cli.ProducerNodeFlag) {
@@ -142,6 +144,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
+	nodectx.GetNodeCtx().IsConsensusTest = config.IsConsensusTest
 
 	//initial conn
 	conn.InitConn()
