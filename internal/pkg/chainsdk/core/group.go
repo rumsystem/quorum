@@ -239,7 +239,7 @@ func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
 // send POST trx
@@ -257,7 +257,7 @@ func (grp *Group) PostToGroup(content []byte, sudo bool) (string, error) {
 		}
 
 		trx.Sudo = sudo
-		return grp.sendTrx(trx, conn.ProducerChannel)
+		return grp.sendTrx(trx)
 	}
 
 	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content)
@@ -266,7 +266,7 @@ func (grp *Group) PostToGroup(content []byte, sudo bool) (string, error) {
 	}
 	trx.Sudo = sudo
 
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
 func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {
@@ -277,7 +277,7 @@ func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem, sudo bool) (
 	}
 
 	trx.Sudo = sudo
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool) (string, error) {
@@ -287,7 +287,7 @@ func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool) (string, error) {
 		return "", nil
 	}
 	trx.Sudo = sudo
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
 func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
@@ -296,7 +296,7 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 	if err != nil {
 		return "", err
 	}
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
 // send update appconfig trx
@@ -307,20 +307,20 @@ func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool) (string,
 		return "", nil
 	}
 	trx.Sudo = sudo
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
 // send raw trx, for light node API
 func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
-	return grp.sendTrx(trx, conn.ProducerChannel)
+	return grp.sendTrx(trx)
 }
 
-func (grp *Group) sendTrx(trx *quorumpb.Trx, channel conn.PsConnChanel) (string, error) {
+func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
 	if err != nil {
 		return "", err
 	}
-	err = connMgr.SendTrxPubsub(trx, channel)
+	err = connMgr.SendTrxPubsub(trx, conn.UserChannel)
 	if err != nil {
 		return "", err
 	}

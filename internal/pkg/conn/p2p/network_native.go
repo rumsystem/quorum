@@ -120,12 +120,14 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	pubsubblocklist := pubsub.NewMapBlacklist()
 
 	for _, sp := range skippeers {
-		spid, err := peer.Decode(sp)
-		if err != nil {
-			fmt.Println("===decode peerid err:", err)
+		if len(sp) > 0 {
+			spid, err := peer.Decode(sp)
+			if err != nil {
+				continue
+			} else {
+				pubsubblocklist.Add(spid)
+			}
 		}
-		fmt.Println("===add black list:", spid)
-		pubsubblocklist.Add(spid)
 	}
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
