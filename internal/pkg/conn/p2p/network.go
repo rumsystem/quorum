@@ -29,6 +29,7 @@ type Node struct {
 	Host             host.Host
 	NodeName         string
 	NetworkName      string
+	SkipPeers        []string
 	Pubsub           *pubsub.PubSub
 	RumExchange      *RexService
 	Ddht             *dual.DHT

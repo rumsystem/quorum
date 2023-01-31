@@ -39,7 +39,7 @@ func GetRelayPeerChan() chan peer.AddrInfo {
 	return peerChan
 }
 
-func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, jsontracerfile string) (*Node, error) {
+func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions, isBootstrap bool, key *ethkeystore.Key, cmgr *connmgr.BasicConnMgr, listenAddresses []maddr.Multiaddr, skippeers []string, jsontracerfile string) (*Node, error) {
 	var ddht *dual.DHT
 	var routingDiscovery *discoveryrouting.RoutingDiscovery
 	var err error
@@ -118,6 +118,17 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	host.SetStreamHandler(PingID, pingService.PingHandler)
 
 	pubsubblocklist := pubsub.NewMapBlacklist()
+
+	for _, sp := range skippeers {
+		if len(sp) > 0 {
+			spid, err := peer.Decode(sp)
+			if err != nil {
+				continue
+			} else {
+				pubsubblocklist.Add(spid)
+			}
+		}
+	}
 	options := []pubsub.Option{pubsub.WithPeerExchange(true), pubsub.WithPeerOutboundQueueSize(128), pubsub.WithBlacklist(pubsubblocklist)}
 
 	networklog.Infof("Network Name %s", nodenetworkname)
@@ -167,11 +178,7 @@ func NewNode(ctx context.Context, nodename string, nodeopt *options.NodeOptions,
 	//psPing.EnablePing()
 
 	info := &NodeInfo{NATType: network.ReachabilityUnknown}
-
-	//psconnmgr := pubsubconn.InitPubSubConnMgr(ctx, ps, nodename)
-
-	//newnode := &Node{NetworkName: nodenetworkname, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, PubSubConnMgr: psconnmgr, Nodeopt: nodeopt}
-	newnode := &Node{NetworkName: nodenetworkname, NodeName: nodename, Host: host, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, Nodeopt: nodeopt}
+	newnode := &Node{NetworkName: nodenetworkname, NodeName: nodename, Host: host, SkipPeers: skippeers, Pubsub: ps, Ddht: ddht, RoutingDiscovery: routingDiscovery, Info: info, Nodeopt: nodeopt}
 
 	go newnode.eventhandler(ctx)
 	return newnode, nil
@@ -218,6 +225,15 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 				}
 				for _, peer := range peers {
 					if peer.ID == node.Host.ID() {
+						continue
+					}
+					skip := false
+					for _, sp := range node.SkipPeers {
+						if sp == peer.ID.Pretty() {
+							skip = true
+						}
+					}
+					if skip == true {
 						continue
 					}
 					pctx, cancel := context.WithTimeout(ctx, time.Second*10)

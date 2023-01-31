@@ -121,7 +121,7 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	bootstrapNode, err = p2p.NewNode(ctx, "", nodeoptions, true, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	bootstrapNode, err = p2p.NewNode(ctx, "", nodeoptions, true, defaultkey, cm, config.ListenAddresses, []string{}, config.JsonTracer)
 
 	if err != nil {
 		logger.Fatalf(err.Error())
