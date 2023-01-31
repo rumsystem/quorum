@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -64,6 +65,7 @@ func init() {
 	flags.StringVar(&fnodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
 	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
 	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.StringVar(&fnodeFlag.SkipPeers, "skippeers", "", "peer id lists, will be skipped in the pubsub connection")
 	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
 	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
 	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
@@ -145,7 +147,9 @@ func runFullnode(config cli.FullNodeFlag) {
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+
+	SkipPeerIdList := strings.Split(config.SkipPeers, ",")
+	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, SkipPeerIdList, config.JsonTracer)
 	//fullnode must enable rumexchange for sync block
 	if err == nil {
 		fullNode.SetRumExchange(ctx)

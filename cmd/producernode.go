@@ -133,7 +133,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
-	producerNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, config.JsonTracer)
+	producerNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, []string{}, config.JsonTracer)
 	if err == nil {
 		producerNode.SetRumExchange(ctx)
 	}

@@ -12,6 +12,7 @@ type FullNodeFlag struct {
 	RendezvousString string
 	BootstrapPeers   AddrList
 	ListenAddresses  AddrList
+	SkipPeers        string
 	APIHost          string
 	APIPort          uint
 	CertDir          string
