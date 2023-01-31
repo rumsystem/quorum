@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
