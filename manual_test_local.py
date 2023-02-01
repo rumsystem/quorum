@@ -7,7 +7,7 @@ import json
 heads = {'Content-Type': 'application/json'}
 url_create_group = 'http://127.0.0.1:8002/api/v1/group'
 url_get_groups =  'http://127.0.0.1:8002/api/v1/groups'
-url_post_to_group = 'http://127.0.0.1:8002/api/v1/group/content/false'
+url_post_to_group = 'http://127.0.0.1:8002/api/v1/group/ef0c809c-2eab-41a2-87fe-ec4de7b5a855/content'
 
 payload_create_group = {
   "group_name": "my_test_group",
@@ -22,18 +22,12 @@ payload_create_group = {
 #respString = "Create Group with groupId <%s>" % group_id
 #print(respString)
 
-TRX_COUNT = 100
-group_id = 'ef0c809c-2eab-41a2-87fe-ec4de7b5a855'
+TRX_COUNT = 1000
 trx_id_list = []
 #try post 10000 trxs and verify
 for i in range (0, TRX_COUNT):
     payload_post_to_group = {
-        "type":"Add",
-        "object":{"type":"Note",
-                "content":"10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
-                "name":"A simple Node id1"},
-        "target":{"id": group_id,
-                "type":"Group"}              
+       "data":{"type":"Note","content":"simple note by aa1","name":"A simple Node id1"}             
     }
     
     response = requests.post(url_post_to_group, headers=heads, json=payload_post_to_group)
@@ -41,7 +35,6 @@ for i in range (0, TRX_COUNT):
     a = "Post with trxId <%s>" % trx_id
     trx_id_list.append(trx_id)
     print(a) 
-
 
 
 # #wait 2s

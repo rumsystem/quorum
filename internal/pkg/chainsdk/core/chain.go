@@ -258,9 +258,9 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
 		err := chain.Consensus.Producer().AddBlock(block)
 		if err != nil {
-			chain_log.Warningf("<%s> producer node add block error <%s>", chain.groupItem.GroupId, err.Error())
+			chain_log.Warningf("<%s> announced producer add block error <%s>", chain.groupItem.GroupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Warningf("<%s> TBD parent not exist, block epoch <%d>, currEpoch <%d>",
+				chain_log.Debugf("<%s> announced producer add block, parent not exist, block epoch <%d>, currEpoch <%d>",
 					chain.groupItem.GroupId, block.Epoch, chain.GetCurrEpoch())
 			}
 		}
@@ -272,7 +272,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	if err != nil {
 		chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
 		if err.Error() == "PARENT_NOT_EXIST" {
-			chain_log.Infof("<%s> TBD parent not exist, block epoch <%s>, currEpoch <%d>",
+			chain_log.Infof("<%s> block parent not exist, block epoch <%s>, currEpoch <%d>",
 				chain.groupItem.GroupId, block.Epoch, chain.GetCurrEpoch())
 		}
 	}
