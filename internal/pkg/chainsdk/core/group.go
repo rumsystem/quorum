@@ -320,7 +320,7 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = connMgr.SendTrxPubsub(trx, conn.UserChannel)
+	err = connMgr.SendUserTrxPubsub(trx)
 	if err != nil {
 		return "", err
 	}
