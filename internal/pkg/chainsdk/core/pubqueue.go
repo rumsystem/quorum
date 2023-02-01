@@ -309,7 +309,7 @@ func doRefresh() {
 
 				connMgr, err := conn.GetConn().GetConnMgr(item.GroupId)
 				if err == nil {
-					err := connMgr.SendTrxPubsub(item.Trx, conn.UserChannel)
+					err := connMgr.SendUserTrxPubsub(item.Trx)
 					if err != nil {
 						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
 					} else {

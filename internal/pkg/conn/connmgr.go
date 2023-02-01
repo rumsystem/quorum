@@ -41,8 +41,6 @@ type ConnMgr struct {
 	UserSignPubkey     string
 	ProviderPeerIdPool map[string]string // key: group owner PubKey; value: group owner peerId
 	ProducerPool       map[string]string // key: group producer Pubkey; value: group producer Pubkey
-	StableProdPsConn   bool
-	producerChannTimer *time.Timer
 	DataHandlerIface   chaindef.ChainDataSyncIface
 	//TODO: sync.map
 	ps *pubsub.PubSub
@@ -149,13 +147,8 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 
 	if _, ok := connMgr.ProducerPool[pk]; ok {
 		conn_log.Debugf("I am producer, create producer psconn, groupId <%s>", connMgr.GroupId)
-		connMgr.StableProdPsConn = true
 		connMgr.getProducerPsConn()
-	} else {
-		conn_log.Debugf("I am NOT producer, create producer psconn only when needed, groupId <%s>", connMgr.GroupId)
-		connMgr.StableProdPsConn = false
 	}
-
 	return nil
 }
 
@@ -183,31 +176,10 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 	connMgr.pscounsmu.Lock()
 	defer connMgr.pscounsmu.Unlock()
 	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
-		if !connMgr.StableProdPsConn { //is user, no need to keep producer psconn
-			conn_log.Debugf("<%s> reset connection timer for producer psconn <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-			connMgr.producerChannTimer.Stop()
-			connMgr.producerChannTimer.Reset(CLOSE_PRD_CHANN_TIMER)
-		} else {
-			if connMgr.producerChannTimer != nil {
-				conn_log.Debugf("<%s> stop producer psconn timer <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-				connMgr.producerChannTimer.Stop()
-			}
-		}
 		return psconn
 	} else {
 		producerPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.ProducerChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
 		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsconn
-		if !connMgr.StableProdPsConn {
-			conn_log.Debugf("<%s> create close_conn timer for producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-			connMgr.producerChannTimer = time.AfterFunc(CLOSE_PRD_CHANN_TIMER, func() {
-				conn_log.Debugf("<%s> time up, close producer channel <%s>", connMgr.GroupId, connMgr.ProducerChannelId)
-				psconn := connMgr.PsConns[connMgr.ProducerChannelId]
-				if psconn != nil {
-					psconn.LeaveChannel()
-				}
-				delete(connMgr.PsConns, connMgr.ProducerChannelId)
-			})
-		}
 		return producerPsconn
 	}
 }
@@ -217,7 +189,7 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 	return connMgr.PsConns[connMgr.UserChannelId]
 }
 
-func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel, channelId ...string) error {
+func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
 
 	// compress trx.Data
@@ -242,17 +214,9 @@ func (connMgr *ConnMgr) SendTrxPubsub(trx *quorumpb.Trx, psChannel PsConnChanel,
 		return err
 	}
 
-	if psChannel == ProducerChannel {
-		conn_log.Debugf("<%s> Send trx via Producer_Channel", connMgr.GroupId)
-		psconn := connMgr.getProducerPsConn()
-		return psconn.Publish(pkgBytes)
-	} else if psChannel == UserChannel {
-		conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
-		psconn := connMgr.getUserConn()
-		return psconn.Publish(pkgBytes)
-	}
-
-	return fmt.Errorf("can not find psChannel")
+	conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+	psconn := connMgr.getUserConn()
+	return psconn.Publish(pkgBytes)
 }
 
 func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
@@ -310,8 +274,6 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 		Data: pbBytes,
 	}
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
-	//TODO:  add a timeout ctx to close the steam after timeout
-
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 
