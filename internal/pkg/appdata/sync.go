@@ -1,6 +1,7 @@
 package appdata
 
 import (
+	"strconv"
 	"time"
 
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
@@ -70,29 +71,33 @@ func (appsync *AppSync) Start(interval int) {
 		for {
 			groups := appsync.GetGroups()
 			for _, groupitem := range groups {
+				groupId := groupitem.GroupId
+				group, ok := appsync.groupmgr.Groups[groupId]
+				if !ok {
+					appsynclog.Errorf("can not find group : %s", groupId)
+					continue
+				}
 
-				epochstr, err := appsync.appdb.GetGroupStatus(groupitem.GroupId, "Epoch")
+				epochstr, err := appsync.appdb.GetGroupStatus(groupId, "Epoch")
 				if err == nil {
 					if epochstr == "" { //init, set to 0
 						epochstr = "0"
 					}
 				} else {
-					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupitem.GroupId, err)
-					break
+					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupId, err)
+					continue
 				}
 
-				//commented by cuicat
-				//lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
+				lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
 				if err == nil {
-
-					/*if groupitem.Epoch > lastSyncEpoch {
-						appsync.RunSync(groupitem.GroupId, lastSyncEpoch, groupitem.Epoch)
+					if group.GetCurrentEpoch() > lastSyncEpoch {
+						appsync.RunSync(groupId, lastSyncEpoch, group.GetCurrentEpoch())
 					}
-					*/
 				} else {
-					appsynclog.Errorf("sync group : %s Get Group last sync Epoch err %s", groupitem.GroupId, err)
+					appsynclog.Errorf("sync group : %s Get Group last sync Epoch err %s", groupId, err)
 				}
 			}
+
 			time.Sleep(time.Duration(interval) * time.Second)
 		}
 	}()
