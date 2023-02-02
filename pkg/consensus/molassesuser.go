@@ -27,21 +27,20 @@ func (user *MolassesUser) NewUser(item *quorumpb.GroupItem, nodename string, ifa
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called, epoch <%d>", user.groupId, block.Epoch)
-	var blocks []*quorumpb.Block
 
 	//check if block exist
 	blockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, false, user.nodename)
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
-		molauser_log.Debugf("Block exist")
-		blocks = append(blocks, block)
+		molauser_log.Debugf("Block exist, ignore")
+
 	} else {
 		//check if block cached
 		isBlockCatched, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, true, user.nodename)
 
 		//check if block parent exist
 		parentEpoch := block.Epoch - 1
-		parentExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentEpoch, false, user.nodename)
+		parentExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentEpoch, false, user.nodename)
 
 		if !parentExist {
 			if isBlockCatched {
@@ -50,7 +49,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			} else {
 				molauser_log.Debugf("parent of block <%d> is not exist and block not catched, catch it.", block.Epoch)
 				//add this block to cache
-				err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
+				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
 				if err != nil {
 					return err
 				}
@@ -73,21 +72,21 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			}
 
 			//add this block to cache
-			err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
-			if err != nil {
-				return err
+			if !isBlockCatched {
+				err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
+				if err != nil {
+					return err
+				}
 			}
 
-			//search cache, gather all blocks can be connected with this block
+			//search cache, gather all blocks can be connected with this block (this block is the first one in the returned block list)
 			blockfromcache, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, user.nodename)
 			if err != nil {
 				return err
 			}
 
-			blocks = append(blocks, blockfromcache...)
-
 			//move collected blocks from cache to chain
-			for _, block := range blocks {
+			for _, block := range blockfromcache {
 				molauser_log.Debugf("<%s> move block <%d> from cache to chain", user.groupId, block.Epoch)
 				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, user.nodename)
 				if err != nil {
@@ -99,26 +98,28 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 					return err
 				}
 			}
+
+			if block.Epoch > user.cIface.GetCurrEpoch() {
+				//update latest group epoch
+				molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.cIface.GetCurrEpoch(), block.Epoch)
+				user.cIface.SetCurrEpoch(block.Epoch)
+				user.cIface.SetLastUpdate(block.TimeStamp)
+				user.cIface.SaveChainInfoToDb()
+			} else {
+				molauser_log.Debugf("<%s> No need to update highest Epoch", user.groupId)
+			}
+
+			//get all trxs from blocks
+			var trxs []*quorumpb.Trx
+			trxs, err = rumchaindata.GetAllTrxs(blockfromcache)
+			if err != nil {
+				return err
+			}
+
+			//apply trxs
+			return user.cIface.ApplyTrxsFullNode(trxs, user.nodename)
 		}
 	}
+	return nil
 
-	if block.Epoch > user.cIface.GetCurrEpoch() {
-		//update latest group epoch
-		molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.cIface.GetCurrEpoch(), block.Epoch)
-		user.cIface.SetCurrEpoch(block.Epoch)
-		user.cIface.SetLastUpdate(block.TimeStamp)
-		user.cIface.SaveChainInfoToDb()
-	} else {
-		molauser_log.Debugf("<%s> No need to update highest Epoch", user.groupId)
-	}
-
-	//get all trxs from blocks
-	var trxs []*quorumpb.Trx
-	trxs, err := rumchaindata.GetAllTrxs(blocks)
-	if err != nil {
-		return err
-	}
-
-	//apply trxs
-	return user.cIface.ApplyTrxsFullNode(trxs, user.nodename)
 }

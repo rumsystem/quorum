@@ -722,6 +722,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) { //taskId,error
 			chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_IN_RESP_ON_TOP from group owner, apply blocks and stop sync", chain.groupItem.GroupId)
 			taskId := strconv.Itoa(int(reqBlockResp.FromEpoch))
 			chain.syncerrunner.UpdateGetEpochResult(taskId, uint(SyncDone))
+			return
 		}
 
 		chain.syncerrunner.UpdateGetEpochResult(gsyncerTaskId, uint(ContinueGetEpoch))
