@@ -106,15 +106,18 @@ type PublishQueueWatcher struct {
 
 func (watcher *PublishQueueWatcher) UpsertItem(item *PublishQueueItem) error {
 	if watcher.db == nil {
+		chain_log.Error("watcher.db is nil")
 		return nil
 	}
 	newK, err := item.GetKey()
 	if err != nil {
+		chain_log.Error("can not get db key for item")
 		return err
 	}
 	item.UpdateAt = time.Now().UnixNano()
 	newV, err := item.GetValue()
 	if err != nil {
+		chain_log.Error("can not get db value for item")
 		return err
 	}
 	return publishQueueWatcher.db.Set(newK, newV)
@@ -337,7 +340,7 @@ func doRefresh() {
 }
 
 func (watcher *PublishQueueWatcher) TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
-	//chain_log.Debugf("<pubqueue>: %v to group(%s)", trx.TrxId, groupId)
+	chain_log.Debugf("<TrxEnqueue>: %s to group %s", trx.TrxId, groupId)
 	item := PublishQueueItem{groupId, PublishQueueItemStatePending, 0, time.Now().UnixNano(), trx, ""}
 	return watcher.UpsertItem(&item)
 }
