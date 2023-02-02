@@ -22,7 +22,7 @@ payload_create_group = {
 #respString = "Create Group with groupId <%s>" % group_id
 #print(respString)
 
-TRX_COUNT = 1000
+TRX_COUNT = 500
 trx_id_list = []
 #try post 10000 trxs and verify
 for i in range (0, TRX_COUNT):

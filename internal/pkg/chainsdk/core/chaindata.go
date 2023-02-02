@@ -71,7 +71,7 @@ func (d *ChainData) GetReqBlocks(trx *quorumpb.Trx) (requester string, fromEpoch
 	totalBlockBytes := 0
 	totalBlockPackaged := 0
 
-	for totalBlockPackaged <= int(reqBlockItem.BlksRequested) {
+	for totalBlockPackaged < int(reqBlockItem.BlksRequested) {
 		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(reqBlockItem.GroupId, currEpoch, false, d.nodename)
 		if err != nil {
 			return "", -1, -1, nil, -1, err

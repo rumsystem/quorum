@@ -67,5 +67,6 @@ func (cs *Storage) GatherBlocksFromCache(block *quorumpb.Block, prefix ...string
 	if err == nil || err.Error() == "NO_MORE_BLOCK" {
 		return blocks, nil
 	}
+
 	return nil, err
 }
