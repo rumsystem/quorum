@@ -11,6 +11,6 @@ type TrxFactoryIface interface {
 	GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
 	GetRegUserTrx(keyalias string, item *quorumpb.UserItem) (*quorumpb.Trx, error)
 	GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error)
-	GetReqBlocksTrx(keyalias string, groupId string, fromEpoch int64, blkReq int64) (*quorumpb.Trx, error)
-	GetReqBlocksRespTrx(keyalias string, groupId string, requester string, blkReq int64, fromEpoch int64, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error)
+	GetReqBlocksTrx(keyalias string, groupId string, sessionId string, fromEpoch int64, blkReq int64) (*quorumpb.Trx, error)
+	GetReqBlocksRespTrx(keyalias string, groupId string, sessionId string, requester string, blkReq int64, fromEpoch int64, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error)
 }

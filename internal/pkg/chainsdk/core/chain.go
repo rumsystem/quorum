@@ -590,16 +590,16 @@ func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsgv1) error {
 
 func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
-	requester, fromEpoch, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
+	requester, sessionId, fromEpoch, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
 	if err != nil {
 		return err
 	}
 
 	chain_log.Debugf("<%s> send REQ_BLOCKS_RESP", chain.groupItem.GroupId)
-	chain_log.Debugf("-- requester <%s>, from Epoch <%d>, request <%d>", requester, fromEpoch, blkReqs)
+	chain_log.Debugf("-- requester <%s>, session <%s> from Epoch <%d>, request <%d>", requester, sessionId, fromEpoch, blkReqs)
 	chain_log.Debugf("-- send fromEpoch <%d>, total <%d> blocks, status <%s>", fromEpoch, len(blocks), result.String())
 
-	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, blkReqs, fromEpoch, blocks, result)
+	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, sessionId, requester, blkReqs, fromEpoch, blocks, result)
 	if err != nil {
 		return err
 	}
@@ -924,7 +924,37 @@ func (chain *Chain) TrxEnqueue(GroupId string, trx *quorumpb.Trx) error {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
-	return chain.syncerrunner.Start()
+
+	//check what kind of sync is needed here
+	/*
+		//producer try get consensus before start sync block
+		if sr.chainCtx.isProducer() {
+			syncerrunner_log.Debugf("<%s> producer(owner) node try get latest chain info before start sync", sr.groupId)
+
+			task, err = sr.GetPSyncTask()
+			if err != nil {
+				return err
+			}
+
+		} else {
+			//user node start sync directly
+			groupMgr_log.Debugf("<%s> user node start epoch (block) sync", sr.groupId)
+			task, err = sr.GetNextEpochTask()
+			if err != nil {
+				return err
+			}
+		}
+	*/
+
+	// since current implementation only support 1 producer (owner), no psync will be prefered
+	// all node (except owner) start sync after start up, and finish sync till owner told NO_MORE_BLOCK
+	if chain.isOwner() {
+		chain_log.Debugf("<%s> Owner no need to sync", chain.groupItem.GroupId)
+		return nil
+	}
+
+	//TBD check if other sync is ongoing and decide what to do next
+	return chain.syncerrunner.StartBlockSync()
 }
 
 func (chain *Chain) isProducer() bool {

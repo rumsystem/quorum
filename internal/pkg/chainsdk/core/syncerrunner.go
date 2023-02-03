@@ -3,37 +3,53 @@ package chain
 import (
 	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 var syncerrunner_log = logging.Logger("syncerrunner")
-var RETRY_LIMIT = 30 //retry times
-var REQ_BLOCKS = 10  //request 1 blocks each time
+
+var RETRY_LIMIT = 30            //retry times
+var REQ_BLOCKS = 10             //request 1 blocks each time
+var SYNC_BLOCK_TASK_TIMEOUT = 4 //seconds
+
+type TaskType uint
 
 const (
-	IDLE          = 1
-	SYNCING_BLOCK = 2
-	LOCAL_SYNCING = 3
-	PSYNC         = 4
-	SYNC_FAILED   = 5
-	CLOSE         = 6
+	SYNC_TYPE_LOCAL TaskType = iota
+	SYNC_TYPE_BLOCK
+	SYNC_TYPE_CNSUS
 )
 
+type SyncSession struct {
+	SessionId string
+	Type      TaskType
+	GSyncer   *GSyncer
+}
+
+type SyncBlockMeta struct {
+	FromEpoch int64
+	Request   int
+}
+
+type SyncCnsusMeta struct {
+}
+
+type SyncLocalMeta struct {
+}
+
 type SyncerRunner struct {
-	groupId  string
-	nodename string
-	cdnIface def.ChainDataSyncIface
-	gsyncer  *Gsyncer
-	chainCtx *Chain
+	groupId            string
+	nodename           string
+	cdnIface           def.ChainDataSyncIface
+	chainCtx           *Chain
+	SyncSessionsById   map[string]*SyncSession   //map[SessionID]
+	SyncSessionsByType map[TaskType]*SyncSession //map[TaskType], can have only 1 task type at once
 }
 
 func NewSyncerRunner(groupId string, nodename string, cdnIface def.ChainDataSyncIface, chainCtx *Chain) *SyncerRunner {
@@ -43,134 +59,143 @@ func NewSyncerRunner(groupId string, nodename string, cdnIface def.ChainDataSync
 	sr.nodename = nodename
 	sr.cdnIface = cdnIface
 	sr.chainCtx = chainCtx
+	sr.SyncSessionsById = make(map[string]*SyncSession)
+	sr.SyncSessionsByType = make(map[TaskType]*SyncSession)
 
-	//create and initial Get Task Apis
-	taskGenerators := make(map[TaskType]func(args ...interface{}) (*SyncTask, error))
-	taskGenerators[GetEpoch] = sr.GetNextEpochTask
-	taskGenerators[PSync] = sr.GetPSyncTask
+	/*
+		//create and initial Get Task Apis
+		taskGenerators := make(map[TaskType]func(args ...interface{}) (*SyncTask, error))
+		taskGenerators[GetEpoch] = sr.GetNextEpochTask
+		taskGenerators[PSync] = sr.GetPSyncTask
 
-	gs := NewGsyncer(groupId, taskGenerators, sr.TaskSender)
-	gs.SetRetryWithNext(false)
-	sr.gsyncer = gs
+		gs := NewGsyncer(groupId, taskGenerators, sr.TaskSender)
+		sr.gsyncer = gs
+
+	*/
 
 	return sr
 }
 
-func (sr *SyncerRunner) GetCurrentSyncTask() (string, TaskType, uint, error) {
-	syncerrunner_log.Debugf("<%s> GetCurrentSyncTask called", sr.groupId)
-	return sr.gsyncer.GetCurrentTask()
+func (sr *SyncerRunner) StartBlockSync() error {
+	syncerrunner_log.Debugf("<%s> StartBlockSync", sr.groupId)
+
+	//check if other sync in ongoing
+	if _, ok := sr.SyncSessionsByType[SYNC_TYPE_LOCAL]; ok {
+		return fmt.Errorf("local sync ongoing, wait")
+	}
+
+	if _, ok := sr.SyncSessionsByType[SYNC_TYPE_BLOCK]; ok {
+		return fmt.Errorf("another block syncing is running")
+	}
+
+	sessionId := uuid.NewString()
+	syncerrunner_log.Debugf("<%s> start epoch (block) sync with sessionId <%s>", sr.groupId, sessionId)
+
+	gsyncer := NewGsyncer(sr.groupId, sr.syncBlockTaskGenerator, sr.syncBlockTaskSender, sr.syncBlockMsgHandler, SYNC_BLOCK_TASK_TIMEOUT)
+
+	//save current session
+	session := &SyncSession{
+		SessionId: sessionId,
+		Type:      SYNC_TYPE_BLOCK,
+		GSyncer:   gsyncer,
+	}
+
+	//create reference
+	sr.SyncSessionsById[sessionId] = session
+	sr.SyncSessionsByType[SYNC_TYPE_BLOCK] = session
+
+	//start syncer and add the first task
+	gsyncer.Start()
+	gsyncer.Next()
+	return nil
 }
 
-// define how to get next task, for example, taskid+1
-func (sr *SyncerRunner) GetNextEpochTask(args ...interface{}) (*SyncTask, error) {
+func (sr *SyncerRunner) Stop() {
+	syncerrunner_log.Debugf("<%s> Stop called", sr.groupId)
+	//shutdown all syncsession peacefully
+	for _, session := range sr.SyncSessionsById {
+		syncerrunner_log.Debugf("<%s> try stop session <%s>", sr.groupId, session.SessionId)
+		session.GSyncer.Stop()
+	}
+}
+
+// task generators
+func (sr *SyncerRunner) syncBlockTaskGenerator(args ...interface{}) *SyncTask {
 	syncerrunner_log.Debugf("<%s> GetEpochTask called", sr.groupId)
 	nextEpoch := sr.cdnIface.GetCurrEpoch() + 1
-	taskmeta := EpochSyncTask{Epoch: nextEpoch}
-	taskid := strconv.FormatUint(uint64(nextEpoch), 10)
-	return &SyncTask{TaskId: taskid, Type: GetEpoch, RetryCount: 0, Meta: taskmeta}, nil
+	taskId := uuid.NewString()
+	sessionId := args[0].(string)
+	taskmeta := SyncBlockMeta{FromEpoch: nextEpoch, Request: REQ_BLOCKS}
+	return &SyncTask{SessionId: sessionId, TaskId: taskId, RetryCount: 0, Meta: taskmeta}
 }
 
-func (sr *SyncerRunner) GetPSyncTask(args ...interface{}) (*SyncTask, error) {
+func (sr *SyncerRunner) syncBlockTaskSender(task *SyncTask) error {
+	syncerrunner_log.Debugf("<%s> syncBlockTaskSender called", sr.groupId)
+
+	var trx *quorumpb.Trx
+	var trxerr error
+
+	syncmeta := task.Meta.(SyncBlockMeta)
+
+	trx, trxerr = sr.chainCtx.GetTrxFactory().GetReqBlocksTrx("", sr.groupId, task.SessionId, syncmeta.FromEpoch, int64(syncmeta.Request))
+	if trxerr != nil {
+		return trxerr
+	}
+
+	connMgr, err := conn.GetConn().GetConnMgr(sr.groupId)
+	if err != nil {
+		return err
+	}
+
+	v := rand.Intn(500)
+	time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
+	return connMgr.SendReqTrxRex(trx)
+}
+
+func (sr *SyncerRunner) syncBlockMsgHandler(msg *SyncMsg) error {
+	return nil
+}
+
+func (sr *SyncerRunner) HandleSyncMsg(sessionId string, msg *SyncMsg) error {
+	if _, ok := sr.SyncSessionsById[sessionId]; !ok {
+		return fmt.Errorf("can not find related sync session with id <%d>", sessionId)
+	}
+	sr.SyncSessionsById[sessionId].GSyncer.AddMsg(msg)
+	return nil
+}
+
+/*
+func (sr *SyncerRunner) UpdateGetEpochResult(taskId string, nextAction uint) {
+	syncerrunner_log.Debugf("<%s> UpdateGetEpochResult called", sr.groupId)
+	if sr.gsyncer.Status == SYNCING_BLOCK {
+		result := &SyncResult{TaskId: taskId, Type: GetEpoch, nextAction: SyncerAction(nextAction)}
+		sr.gsyncer.AddResult(result)
+	}
+}
+
+func (sr *SyncerRunner) UpdatePSyncResult(taskId string, nextAction uint) {
+	syncerrunner_log.Debugf("<%s> UpdatePSyncResult called", sr.gsyncer.GroupId)
+	if sr.gsyncer.Status == PSYNC {
+		result := &SyncResult{TaskId: taskId, Type: PSync, nextAction: SyncerAction(nextAction)}
+		sr.gsyncer.AddResult(result)
+	}
+}
+
+
+func (sr *SyncerRunner) GetSyncCnsusTask(args ...interface{}) (*SyncTask, error) {
 	syncerrunner_log.Debugf("<%s> GetConsensusSyncTask called", sr.groupId)
 	taskmate := PSyncTask{SessionId: uuid.NewString()}
 	return &SyncTask{TaskId: taskmate.SessionId, Type: PSync, RetryCount: 0, Meta: taskmate}, nil
 }
 
-func (sr *SyncerRunner) Start() error {
-	syncerrunner_log.Debugf("<%s> Start called", sr.groupId)
 
-	var task *SyncTask
-	var err error
-
-	/*
-		//producer try get consensus before start sync block
-		if sr.chainCtx.isProducer() {
-			syncerrunner_log.Debugf("<%s> producer(owner) node try get latest chain info before start sync", sr.groupId)
-
-			task, err = sr.GetPSyncTask()
-			if err != nil {
-				return err
-			}
-
-		} else {
-			//user node start sync directly
-			groupMgr_log.Debugf("<%s> user node start epoch (block) sync", sr.groupId)
-			task, err = sr.GetNextEpochTask()
-			if err != nil {
-				return err
-			}
-		}
-
-	*/
-
-	// since current implementation only support 1 producer (owner), no psync will be prefered
-	// all node start sync after start up, and finish sync till owner told NO_MORE_BLOCK
-
-	if sr.chainCtx.isOwner() {
-		syncerrunner_log.Debugf("<%s> Owner no need to sync", sr.groupId)
-		return nil
-	}
-
-	syncerrunner_log.Debugf("<%s> start epoch (block) sync", sr.groupId)
-	task, err = sr.GetNextEpochTask()
-	if err != nil {
-		return err
-	}
-
-	//start syncer and add the first task
-	sr.gsyncer.Start()
-	sr.gsyncer.AddTask(task)
-
-	return nil
+func (sr *SyncerRunner) GetSyncLocalTask(args ...interface{}) (*SyncTask, error) {
+	return nil, nil
 }
+*/
 
-func (sr *SyncerRunner) GetPSync() (sessionId string, err error) {
-	syncerrunner_log.Debugf("<%s> GetPSync called", sr.groupId)
-	if sr.chainCtx.isProducer() {
-		task, err := sr.GetPSyncTask()
-		if err != nil {
-			return "", err
-		}
-		sr.gsyncer.AddTask(task)
-		return task.TaskId, nil
-	} else {
-		return "", fmt.Errorf("user node can not call get psync")
-	}
-}
-
-func (sr *SyncerRunner) Stop() {
-	syncerrunner_log.Debugf("<%s> Stop called", sr.groupId)
-	sr.gsyncer.Stop()
-}
-
-func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
-	syncerrunner_log.Debugf("<%s> TaskSender called", sr.groupId)
-
-	if task.Type == GetEpoch {
-		epochSyncTask, ok := task.Meta.(EpochSyncTask)
-		if !ok {
-			gsyncer_log.Errorf("<%s> Unsupported task %s", sr.groupId, task.TaskId)
-			return fmt.Errorf("<%s> Unsupported task %s", sr.groupId, task.TaskId)
-		}
-		syncerrunner_log.Debugf("<%s> TaskSender with GetEpoch Task, Epoch <%d>", sr.groupId, epochSyncTask.Epoch)
-		var trx *quorumpb.Trx
-		var trxerr error
-
-		trx, trxerr = sr.chainCtx.GetTrxFactory().GetReqBlocksTrx("", sr.groupId, epochSyncTask.Epoch, int64(REQ_BLOCKS))
-		if trxerr != nil {
-			return trxerr
-		}
-
-		connMgr, err := conn.GetConn().GetConnMgr(sr.groupId)
-		if err != nil {
-			return err
-		}
-
-		v := rand.Intn(500)
-		time.Sleep(time.Duration(v) * time.Millisecond) // add some random delay
-
-		return connMgr.SendReqTrxRex(trx)
-	} else if task.Type == PSync {
+/*
+else if task.Type == PSync {
 		psynctask, ok := task.Meta.(PSyncTask)
 		if !ok {
 			gsyncer_log.Errorf("<%s> Unsupported task %s", sr.groupId, task.TaskId)
@@ -229,20 +254,4 @@ func (sr *SyncerRunner) TaskSender(task *SyncTask) error {
 	}
 
 	return fmt.Errorf("<%s> Unsupported task type %s", sr.groupId, task.TaskId)
-}
-
-func (sr *SyncerRunner) UpdateGetEpochResult(taskId string, nextAction uint) {
-	syncerrunner_log.Debugf("<%s> UpdateGetEpochResult called", sr.groupId)
-	if sr.gsyncer.Status == SYNCING_BLOCK {
-		result := &SyncResult{TaskId: taskId, Type: GetEpoch, nextAction: SyncerAction(nextAction)}
-		sr.gsyncer.AddResult(result)
-	}
-}
-
-func (sr *SyncerRunner) UpdatePSyncResult(taskId string, nextAction uint) {
-	syncerrunner_log.Debugf("<%s> UpdatePSyncResult called", sr.gsyncer.GroupId)
-	if sr.gsyncer.Status == PSYNC {
-		result := &SyncResult{TaskId: taskId, Type: PSync, nextAction: SyncerAction(nextAction)}
-		sr.gsyncer.AddResult(result)
-	}
-}
+*/
