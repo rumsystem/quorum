@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	autoAck bool = false
+	autoAck bool = true
 )
 
 func SetAutoAck(ack bool) {
