@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"time"
@@ -8,8 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 var syncerrunner_log = logging.Logger("syncerrunner")
@@ -33,8 +37,8 @@ type SyncSession struct {
 }
 
 type SyncBlockMeta struct {
-	FromEpoch int64
-	Request   int
+	FromEpoch       int64
+	RequestBlockNum int
 }
 
 type SyncCnsusMeta struct {
@@ -91,7 +95,7 @@ func (sr *SyncerRunner) StartBlockSync() error {
 	sessionId := uuid.NewString()
 	syncerrunner_log.Debugf("<%s> start epoch (block) sync with sessionId <%s>", sr.groupId, sessionId)
 
-	gsyncer := NewGsyncer(sr.groupId, sr.syncBlockTaskGenerator, sr.syncBlockTaskSender, sr.syncBlockMsgHandler, SYNC_BLOCK_TASK_TIMEOUT)
+	gsyncer := NewGsyncer(sr.groupId, sessionId, sr.SyncBlockTaskGenerator, sr.SyncBlockTaskSender, sr.SyncBlockMsgHandler, SYNC_BLOCK_TASK_TIMEOUT)
 
 	//save current session
 	session := &SyncSession{
@@ -105,7 +109,6 @@ func (sr *SyncerRunner) StartBlockSync() error {
 	sr.SyncSessionsByType[SYNC_TYPE_BLOCK] = session
 
 	//start syncer and add the first task
-	gsyncer.Start()
 	gsyncer.Next()
 	return nil
 }
@@ -120,16 +123,16 @@ func (sr *SyncerRunner) Stop() {
 }
 
 // task generators
-func (sr *SyncerRunner) syncBlockTaskGenerator(args ...interface{}) *SyncTask {
+func (sr *SyncerRunner) SyncBlockTaskGenerator(args ...interface{}) *SyncTask {
 	syncerrunner_log.Debugf("<%s> GetEpochTask called", sr.groupId)
 	nextEpoch := sr.cdnIface.GetCurrEpoch() + 1
 	taskId := uuid.NewString()
 	sessionId := args[0].(string)
-	taskmeta := SyncBlockMeta{FromEpoch: nextEpoch, Request: REQ_BLOCKS}
+	taskmeta := SyncBlockMeta{FromEpoch: nextEpoch, RequestBlockNum: REQ_BLOCKS}
 	return &SyncTask{SessionId: sessionId, TaskId: taskId, RetryCount: 0, Meta: taskmeta}
 }
 
-func (sr *SyncerRunner) syncBlockTaskSender(task *SyncTask) error {
+func (sr *SyncerRunner) SyncBlockTaskSender(task *SyncTask) error {
 	syncerrunner_log.Debugf("<%s> syncBlockTaskSender called", sr.groupId)
 
 	var trx *quorumpb.Trx
@@ -137,7 +140,7 @@ func (sr *SyncerRunner) syncBlockTaskSender(task *SyncTask) error {
 
 	syncmeta := task.Meta.(SyncBlockMeta)
 
-	trx, trxerr = sr.chainCtx.GetTrxFactory().GetReqBlocksTrx("", sr.groupId, task.SessionId, syncmeta.FromEpoch, int64(syncmeta.Request))
+	trx, trxerr = sr.chainCtx.GetTrxFactory().GetReqBlocksTrx("", sr.groupId, task.SessionId, task.TaskId, syncmeta.FromEpoch, int64(syncmeta.RequestBlockNum))
 	if trxerr != nil {
 		return trxerr
 	}
@@ -152,15 +155,145 @@ func (sr *SyncerRunner) syncBlockTaskSender(task *SyncTask) error {
 	return connMgr.SendReqTrxRex(trx)
 }
 
-func (sr *SyncerRunner) syncBlockMsgHandler(msg *SyncMsg) error {
+func (sr *SyncerRunner) SyncBlockMsgHandler(msg *SyncMsg, gsyncer *GSyncer) error {
+	syncerrunner_log.Debugf("<%s> SyncBlockMsgHandler called", sr.groupId)
+	reqBlockResp := msg.Data.(*quorumpb.ReqBlockResp)
+
+	//if not asked by me, ignore it
+	if reqBlockResp.RequesterPubkey != sr.chainCtx.groupItem.UserSignPubkey {
+		//chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.Group.GroupId, rumerrors.ErrSenderMismatch.Error())
+		return rumerrors.ErrNotAskedByMe
+	}
+
+	//check if the resp is what we are waiting for
+	if reqBlockResp.TaskId != gsyncer.CurrentTask.TaskId {
+		//chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, rumerrors.ErrEpochMismatch)
+		return rumerrors.ErrTaskIdMismatch
+	}
+
+	syncerrunner_log.Debugf("- Receive valid reqBlockResp, provider <%s> result <%s> from epoch <%d> total blocks provided <%d>",
+		reqBlockResp.ProviderPubkey,
+		reqBlockResp.Result.String(),
+		reqBlockResp.FromEpoch,
+		len(reqBlockResp.Blocks.Blocks))
+
+	//Since a valid response is retrieved, finish current task anyway
+	gsyncer.CurrentTaskDone()
+
+	//isFromProducer := chain.isProducerByPubkey(reqBlockResp.ProviderPubkey)
+	// since only 1 producer (owner) is supported in this version
+	// node should only accept BLOCK_NOT_FOUND from group owner
+	isOwner := sr.chainCtx.isOwnerByPubkey(reqBlockResp.ProviderPubkey)
+
+	switch reqBlockResp.Result {
+	case quorumpb.ReqBlkResult_BLOCK_NOT_FOUND:
+		/*
+			//user node say BLOCK_NOT_FOUND, ignore
+			if !isFromProducer {
+				chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_NOT_FOUND from user node <%s>, ignore", chain.groupItem.GroupId, reqBlockResp.ProviderPubkey)
+				return
+			}
+
+			//TBD, stop only when received BLOCK_NOT_FOUND from F + 1 producers, otherwise continue sync
+			chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_NOT_FOUND from producer node <%s>, process it", chain.groupItem.GroupId, reqBlockResp.ProviderPubkey)
+		*/
+		// since only 1 producer (owner) is supported in this version
+		// node should only accept BLOCK_NOT_FOUND from group owner
+		// and ignore all other BLOCK_NOT_FOUND msg
+		if isOwner {
+			chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_NOT_FOUND from group owner, stop sync", sr.groupId)
+			gsyncer.Stop()
+			//remove syncer and reference from
+			delete(sr.SyncSessionsById, gsyncer.SessionId)
+			delete(sr.SyncSessionsByType, SYNC_TYPE_BLOCK)
+
+			return nil
+		}
+
+		gsyncer.Next()
+
+	case quorumpb.ReqBlkResult_BLOCK_IN_RESP_ON_TOP:
+		sr.chainCtx.ApplyBlocks(reqBlockResp.Blocks.Blocks)
+		/*
+
+			if !isFromProducer {
+				chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_IN_RESP_ON_TOP from user node <%s>, apply all blocks and  ignore ON_TOP", chain.groupItem.GroupId, reqBlockResp.ProviderPubkey)
+				return
+			}
+
+			chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_IN_RESP_ON_TOP from producer node <%s>, process it", chain.groupItem.GroupId, reqBlockResp.ProviderPubkey)
+			//ignore on_top msg, run another round of sync, till get F + 1 BLOCK_NOT_FOUND from producers
+
+		*/
+
+		if isOwner {
+			chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_IN_RESP_ON_TOP from group owner, apply blocks and stop sync", sr.groupId)
+			gsyncer.Stop()
+			//remove syncer and reference from
+			delete(sr.SyncSessionsById, gsyncer.SessionId)
+			delete(sr.SyncSessionsByType, SYNC_TYPE_BLOCK)
+
+			return nil
+		}
+
+		gsyncer.Next()
+		return nil
+	case quorumpb.ReqBlkResult_BLOCK_IN_RESP:
+		chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_IN_RESP from node <%s>, apply all blocks", sr.groupId, reqBlockResp.ProviderPubkey)
+		sr.chainCtx.ApplyBlocks(reqBlockResp.Blocks.Blocks)
+		gsyncer.Next()
+		return nil
+	default:
+		//do nothing
+	}
+
 	return nil
 }
 
-func (sr *SyncerRunner) HandleSyncMsg(sessionId string, msg *SyncMsg) error {
-	if _, ok := sr.SyncSessionsById[sessionId]; !ok {
-		return fmt.Errorf("can not find related sync session with id <%d>", sessionId)
+func (sr *SyncerRunner) HandleSyncResp(trx *quorumpb.Trx, typ TaskType) error {
+	syncerrunner_log.Debugf("<%s> HandleSyncResp called", sr.groupId)
+	//decode resp
+	var err error
+	ciperKey, err := hex.DecodeString(sr.chainCtx.chaindata.groupCipherKey)
+	if err != nil {
+		syncerrunner_log.Warningf("<%s> HandleSyncResp error <%s>", sr.groupId, err.Error())
+		return err
 	}
-	sr.SyncSessionsById[sessionId].GSyncer.AddMsg(msg)
+
+	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		syncerrunner_log.Warningf("<%s> HandleSyncResp error <%s>", sr.groupId, err.Error())
+		return err
+	}
+
+	switch typ {
+	case SYNC_TYPE_BLOCK:
+		reqBlockResp := &quorumpb.ReqBlockResp{}
+		if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
+			chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", sr.groupId, err.Error())
+			return err
+		}
+
+		if _, ok := sr.SyncSessionsById[reqBlockResp.SessionId]; !ok {
+			return fmt.Errorf("can not find related sync session with id <%s>", reqBlockResp.SessionId)
+		}
+
+		syncmsg := &SyncMsg{
+			TaskId: reqBlockResp.TaskId,
+			Data:   reqBlockResp,
+		}
+
+		sr.SyncSessionsById[reqBlockResp.SessionId].GSyncer.AddMsg(syncmsg)
+		return nil
+
+	case SYNC_TYPE_CNSUS:
+		//case it to consusSync type
+		syncerrunner_log.Debugf("<%s> HandleSyncResp CNSUS, TBD", sr.groupId)
+	default:
+		chain_log.Debugf("<%s> Unknown SyncResp type, ignore", sr.groupId)
+		return fmt.Errorf("unknown syncresp type")
+	}
+
 	return nil
 }
 

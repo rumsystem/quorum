@@ -76,16 +76,21 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 			}
 		}
 
-		switch value.GetSyncerStatus() {
-		case chain.PSYNC:
-			group.GroupStatus = "PSYNC"
-		case chain.SYNCING_BLOCK:
-			group.GroupStatus = "SYNCING_BLOCK"
-		case chain.SYNC_FAILED:
-			group.GroupStatus = "SYNC_FAILED"
-		case chain.IDLE:
-			group.GroupStatus = "IDLE"
-		}
+		/*
+			switch value.GetSyncerStatus() {
+			case chain.PSYNC:
+				group.GroupStatus = "PSYNC"
+			case chain.SYNCING_BLOCK:
+				group.GroupStatus = "SYNCING_BLOCK"
+			case chain.SYNC_FAILED:
+				group.GroupStatus = "SYNC_FAILED"
+			case chain.IDLE:
+				group.GroupStatus = "IDLE"
+			}
+
+		*/
+
+		group.GroupStatus = "TBD (added by cuicat)"
 
 		groups = append(groups, group)
 	}

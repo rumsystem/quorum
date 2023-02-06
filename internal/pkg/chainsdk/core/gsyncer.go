@@ -18,7 +18,7 @@ type SyncTask struct {
 
 type SyncMsg struct {
 	TaskId string
-	Msg    interface{}
+	Data   interface{}
 }
 
 type SyncerStatus uint
@@ -45,14 +45,14 @@ type GSyncer struct {
 
 	taskGenerator func(args ...interface{}) *SyncTask
 	taskSender    func(task *SyncTask) error
-	msgHandler    func(msg *SyncMsg) error
+	msgHandler    func(msg *SyncMsg, syncer *GSyncer) error
 }
 
 func NewGsyncer(groupid string,
 	sessionId string,
 	taskGenerator func(args ...interface{}) *SyncTask,
 	taskSender func(task *SyncTask) error,
-	msgHandler func(msg *SyncMsg) error,
+	msgHandler func(msg *SyncMsg, syncer *GSyncer) error,
 	taskTimeout int) *GSyncer {
 	gsyncer_log.Debugf("<%s> NewGSyncer called", groupid)
 
@@ -66,15 +66,7 @@ func NewGsyncer(groupid string,
 	s.taskSender = taskSender
 	s.msgHandler = msgHandler
 
-	return s
-}
-
-func (s *GSyncer) GetCurrentTask() SyncTask {
-	return *s.CurrentTask
-}
-
-func (s *GSyncer) Start() {
-	gsyncer_log.Debugf("<%s> Start called", s.GroupId)
+	gsyncer_log.Debugf("<%s> Init gsyncer channels", s.GroupId)
 	s.taskq = make(chan *SyncTask)
 	s.msgq = make(chan *SyncMsg, 3)
 	s.taskdone = make(chan struct{})
@@ -97,6 +89,18 @@ func (s *GSyncer) Start() {
 		}
 		s.stopnotify <- struct{}{}
 	}()
+
+	return s
+}
+
+func (s *GSyncer) GetCurrentTask() SyncTask {
+	return *s.CurrentTask
+}
+
+func (s *GSyncer) Next() {
+	gsyncer_log.Debugf("<%s> Next called, gsyncer session <%s>", s.GroupId, s.SessionId)
+	nextTask := s.taskGenerator(s.SessionId)
+	s.AddTask(nextTask)
 }
 
 func (s *GSyncer) Stop() {
@@ -118,10 +122,9 @@ func (s *GSyncer) Stop() {
 	}
 }
 
-func (s *GSyncer) Next() {
-	gsyncer_log.Debugf("<%s> GSyncer Next", s.GroupId)
-	nextTask := s.taskGenerator(s.SessionId)
-	s.AddTask(nextTask)
+func (s *GSyncer) CurrentTaskDone() {
+	s.taskdone <- struct{}{}
+	s.CurrentTask = nil
 }
 
 func safeClose(ch chan struct{}) (recovered bool) {
@@ -188,6 +191,8 @@ func (s *GSyncer) runTask(ctx context.Context, task *SyncTask) error {
 
 func (s *GSyncer) handleMsg(msg *SyncMsg) {
 	gsyncer_log.Debugf("<%s> handleMsg called, taskId <%s>", s.GroupId, msg.TaskId)
+	s.msgHandler(msg, s)
+
 	/*
 		switch result.nextAction {
 		case SyncDone:
@@ -215,10 +220,10 @@ func (s *GSyncer) AddTask(task *SyncTask) {
 	}()
 }
 
-func (s *GSyncer) AddMsg(result *SyncMsg) {
+func (s *GSyncer) AddMsg(msg *SyncMsg) {
 	go func() {
 		if s.Status != CLOSED {
-			s.msgq <- result
+			s.msgq <- msg
 		}
 	}()
 }

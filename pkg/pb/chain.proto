@@ -87,9 +87,10 @@ message Block {
 message ReqBlock {
     string GroupId       = 1; //group id
     string SessionId     = 2; //Req Session id
-    int64  FromEpoch     = 3; //from which epoch 
-    int64  BlksRequested = 4; //how many blocks requested, "-1" means many as possible
-    string ReqPubkey     = 5; //requester pubkey
+    string TaskId        = 3; //Req Task id
+    int64  FromEpoch     = 4; //from which epoch 
+    int64  BlksRequested = 5; //how many blocks requested, "-1" means many as possible
+    string ReqPubkey     = 6; //requester pubkey
 }
 
 message BlocksBundle {
@@ -105,13 +106,14 @@ enum ReqBlkResult {
 message ReqBlockResp {
     string       GroupId         = 1;
     string       SessionId       = 2;
-    ReqBlkResult Result          = 3;       
-    string       RequesterPubkey = 4;
-    string       ProviderPubkey  = 5;
-    int64        FromEpoch       = 6;
-    int64        BlksRequested   = 7;     
-    int64        BlksProvided    = 8;
-    BlocksBundle Blocks          = 9;
+    string       TaskId          = 3;
+    ReqBlkResult Result          = 4;       
+    string       RequesterPubkey = 5;
+    string       ProviderPubkey  = 6;
+    int64        FromEpoch       = 7;
+    int64        BlksRequested   = 8;     
+    int64        BlksProvided    = 9;
+    BlocksBundle Blocks          = 10;
 }
 
 message PostItem {
