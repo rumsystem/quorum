@@ -38,6 +38,8 @@ func getNodePublicKey(api string) (string, error) {
 }
 
 func TestGetNodeInfo(t *testing.T) {
+	t.Parallel()
+
 	if _, err := getNodeInfo(peerapi); err != nil {
 		t.Fatalf("getNodeInfo failed: %s", err)
 	}

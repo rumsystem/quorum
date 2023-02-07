@@ -80,33 +80,31 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 	}
 
 	bootstrapNode := &NodeInfo{
-		NodeName:    "bootstrap",
-		NodeType:    BootstrapNode,
-		ListenPort:  BOOTSTRAP_LISTEN_PORT,
-		APIPort:     BOOTSTRAP_API_PORT,
-		DataDir:     testdatadir,
-		ConfigDir:   testconfdir,
-		KeystoreDir: testkeystoredir,
+		NodeName:   "bootstrap",
+		NodeType:   BootstrapNode,
+		ListenPort: BOOTSTRAP_LISTEN_PORT,
+		APIPort:    BOOTSTRAP_API_PORT,
 	}
+	bootstrapNode.ConfigDir = filepath.Join(testconfdir, bootstrapNode.NodeName)
+	bootstrapNode.DataDir = filepath.Join(testdatadir, bootstrapNode.NodeName)
+	bootstrapNode.KeystoreDir = filepath.Join(testkeystoredir, bootstrapNode.NodeName)
 
 	nodes = append(nodes, bootstrapNode)
 
 	listenPort := NODE_LISTEN_PORT_INIT_VAL
 	apiPort := NODE_API_PORT_INIT_VAL
-	i := 0
 
+	i := 0
 	for i < fullnodenum {
-		nodename := fmt.Sprintf("fullnode_%d", i)
-		nodekeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", nodename)
 		fullNode := &NodeInfo{
-			NodeName:    nodename,
-			NodeType:    FullNode,
-			ListenPort:  listenPort,
-			APIPort:     apiPort,
-			DataDir:     testdatadir,
-			ConfigDir:   testconfdir,
-			KeystoreDir: nodekeystoredir,
+			NodeName:   fmt.Sprintf("fullnode_%d", i),
+			NodeType:   FullNode,
+			ListenPort: listenPort,
+			APIPort:    apiPort,
 		}
+		fullNode.ConfigDir = filepath.Join(testconfdir, fullNode.NodeName)
+		fullNode.DataDir = filepath.Join(testdatadir, fullNode.NodeName)
+		fullNode.KeystoreDir = filepath.Join(testkeystoredir, fullNode.NodeName)
 		nodes = append(nodes, fullNode)
 		listenPort += 1
 		apiPort += 1
@@ -115,17 +113,15 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 
 	i = 0
 	for i < bpnodenum {
-		nodename := fmt.Sprintf("producernode_%d", i)
-		nodekeystoredir := fmt.Sprintf("%s/%s_peer%s", testtempdir, "keystore", nodename)
 		producerNode := &NodeInfo{
-			NodeName:    nodename,
-			NodeType:    ProducerNode,
-			ListenPort:  listenPort,
-			APIPort:     apiPort,
-			DataDir:     testdatadir,
-			ConfigDir:   testconfdir,
-			KeystoreDir: nodekeystoredir,
+			NodeName:   fmt.Sprintf("producernode_%d", i),
+			NodeType:   ProducerNode,
+			ListenPort: listenPort,
+			APIPort:    apiPort,
 		}
+		producerNode.ConfigDir = filepath.Join(testconfdir, producerNode.NodeName)
+		producerNode.DataDir = filepath.Join(testdatadir, producerNode.NodeName)
+		producerNode.KeystoreDir = filepath.Join(testkeystoredir, producerNode.NodeName)
 		nodes = append(nodes, producerNode)
 		listenPort += 1
 		apiPort += 1
@@ -180,7 +176,6 @@ func RunNodesWithBootstrap(ctx context.Context, cli Nodecliargs, pidch chan int,
 
 		node.Addr = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", node.ListenPort, peerId)
 		logger.Debugf("Node <%s> addr: <%s>, started", node.NodeName, node.Addr)
-
 		if node.NodeType == BootstrapNode {
 			bootstrapAddr = node.Addr
 		}

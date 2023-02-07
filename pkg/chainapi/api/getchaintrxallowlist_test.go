@@ -14,6 +14,8 @@ import (
 )
 
 func TestUpdateChainAllowList(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	payload := handlers.CreateGroupParam{
 		AppKey:         "default",
@@ -71,7 +73,7 @@ func TestUpdateChainAllowList(t *testing.T) {
 	}
 
 	// get allow list
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
 	rules, err := getGroupAllowList(peerapi, group.GroupId)
 	if err != nil {
 		t.Fatalf("getGroupAllowList failed: %s", err)

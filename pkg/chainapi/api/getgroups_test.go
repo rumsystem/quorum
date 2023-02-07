@@ -9,6 +9,8 @@ import (
 )
 
 func TestGetGroups(t *testing.T) {
+	t.Parallel()
+
 	appKey := "default"
 	consensusType := "poa"
 	encryptionTypes := []string{"public", "private"}

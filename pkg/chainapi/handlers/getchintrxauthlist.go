@@ -13,7 +13,7 @@ type TrxAuthItem struct {
 
 type TrxAuthParams struct {
 	GroupId string `param:"group_id" validate:"required,uuid4" example:"b3e1800a-af6e-4c67-af89-4ddcf831b6f7"`
-	TrxType string `param:"trx_type" validate:"required,oneof=POST ANNOUNCE REQ_BLOCK_FORWARD REQ_BLOCK_BACKWARD BLOCK_SYNCED BLOCK_PRODUCED ASK_PEERID" example:"POST"`
+	TrxType string `param:"trx_type" validate:"required,oneof=POST ANNOUNCE REQ_BLOCK" example:"POST"`
 }
 
 func GetChainTrxAuthMode(chainapidb def.APIHandlerIface, groupid string, trxType string) (*TrxAuthItem, error) {

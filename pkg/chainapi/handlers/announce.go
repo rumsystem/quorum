@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -32,12 +31,6 @@ type AnnounceParam struct {
 }
 
 func AnnounceHandler(params *AnnounceParam, sudo bool) (*AnnounceResult, error) {
-	validate := validator.New()
-
-	if err := validate.Struct(params); err != nil {
-		return nil, err
-	}
-
 	item := &quorumpb.AnnounceItem{}
 	item.GroupId = params.GroupId
 
@@ -112,8 +105,15 @@ func AnnounceHandler(params *AnnounceParam, sudo bool) (*AnnounceResult, error) 
 			return nil, err
 		}
 
-		var announceResult *AnnounceResult
-		announceResult = &AnnounceResult{GroupId: item.GroupId, AnnouncedSignPubkey: item.SignPubkey, AnnouncedEncryptPubkey: item.EncryptPubkey, Type: item.Type.String(), Action: item.Action.String(), Sign: hex.EncodeToString(signature), TrxId: trxId}
+		announceResult := &AnnounceResult{
+			GroupId:                item.GroupId,
+			AnnouncedSignPubkey:    item.SignPubkey,
+			AnnouncedEncryptPubkey: item.EncryptPubkey,
+			Type:                   item.Type.String(),
+			Action:                 item.Action.String(),
+			Sign:                   hex.EncodeToString(signature),
+			TrxId:                  trxId,
+		}
 
 		return announceResult, nil
 	}

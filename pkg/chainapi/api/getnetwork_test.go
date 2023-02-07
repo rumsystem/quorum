@@ -10,6 +10,8 @@ import (
 )
 
 func TestGetNetwork(t *testing.T) {
+	t.Parallel()
+
 	_, resp, err := testnode.RequestAPI(peerapi, "/api/v1/network", "GET", "")
 	if err != nil {
 		t.Errorf("get network failed: %s", err)

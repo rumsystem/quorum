@@ -7,6 +7,8 @@ import (
 )
 
 func TestPostToGroup(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-post",
