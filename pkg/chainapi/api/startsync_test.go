@@ -35,6 +35,8 @@ func startSync(api, groupID string) (*StartSyncResult, error) {
 }
 
 func TestStartSync(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-sync",

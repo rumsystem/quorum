@@ -45,6 +45,8 @@ func joinGroup(api string, payload handlers.JoinGroupParamV2) (*JoinGroupResult,
 }
 
 func TestJoinGroup(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-join-group",

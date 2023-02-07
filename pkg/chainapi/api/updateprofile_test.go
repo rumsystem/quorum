@@ -77,6 +77,8 @@ func updateProfile(api string, payload updateProfileParam) (*handlers.UpdateProf
 }
 
 func TestUpdateAvatar(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "update-avatar",
@@ -109,6 +111,8 @@ func TestUpdateAvatar(t *testing.T) {
 }
 
 func TestUpdateNickname(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "update-nickname",

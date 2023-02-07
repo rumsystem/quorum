@@ -34,7 +34,6 @@ func (h *Handler) Announce(c echo.Context) (err error) {
 	}
 
 	res, err := handlers.AnnounceHandler(params, sudo)
-
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

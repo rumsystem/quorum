@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	"github.com/rumsystem/quorum/testnode"
 )
 
 func TestSetChainTrxAuthMode(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	payload := handlers.CreateGroupParam{
 		AppKey:         "default",
@@ -49,8 +49,7 @@ func TestSetChainTrxAuthMode(t *testing.T) {
 				t.Errorf("update chain config with payload: %+v failed: %s", payload, err)
 			}
 
-			// wait 10 seconds
-			time.Sleep(15 * time.Second)
+			time.Sleep(5 * time.Second)
 			authItem, err := getChainTrxAuthMode(peerapi, handlers.TrxAuthParams{GroupId: group.GroupId, TrxType: trxType})
 			if err != nil {
 				t.Errorf("get chain trx auth mode failed: %s", err)
@@ -62,32 +61,11 @@ func TestSetChainTrxAuthMode(t *testing.T) {
 	}
 }
 func updateChainConfig(api string, payload handlers.ChainConfigParams) (*handlers.ChainConfigResult, error) {
-	payloadByte, err := json.Marshal(payload)
-	if err != nil {
-		e := fmt.Errorf("json.Marshal failed, payload: %+v error: %s", payload, err)
-		return nil, e
-	}
-	payloadStr := string(payloadByte[:])
-
-	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/chainconfig", "POST", payloadStr)
+	var result handlers.ChainConfigResult
+	_, _, err := requestAPI(api, "/api/v1/group/chainconfig", "POST", payload, &result)
 	if err != nil {
 		e := fmt.Errorf("update group chain config failed: %s", err)
 		return nil, e
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
-	var result handlers.ChainConfigResult
-	if err := json.Unmarshal(resp, &result); err != nil {
-		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
-		return nil, e
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(result); err != nil {
-		return nil, err
 	}
 
 	return &result, nil

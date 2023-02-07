@@ -20,7 +20,7 @@ type GrpProducerResult struct {
 	TrxId     string `json:"trx_id" validate:"required" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
 	GroupId   string `json:"group_id" validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Producers []*quorumpb.ProducerItem
-	Failable  int    `json:"failable_producers" validate:"required" example:"1"`
+	Failable  *int   `json:"failable_producers" validate:"required" example:"1"`
 	Memo      string `json:"memo" example:"comment/remark"`
 }
 
@@ -112,7 +112,12 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam, sud
 		totalProducers := len(bundle) + 1    /* owner*/
 		failable := (totalProducers - 1) / 3 /* 3F < N */
 
-		blockGrpUserResult := &GrpProducerResult{GroupId: group.Item.GroupId, Producers: bftProducerBundle.Producers, Failable: failable, Memo: params.Memo, TrxId: trxId}
+		blockGrpUserResult := &GrpProducerResult{
+			GroupId:   group.Item.GroupId,
+			Producers: bftProducerBundle.Producers,
+			Failable:  &failable,
+			Memo:      params.Memo, TrxId: trxId,
+		}
 		return blockGrpUserResult, nil
 	}
 }

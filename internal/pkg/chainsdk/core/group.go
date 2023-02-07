@@ -152,7 +152,9 @@ func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
 
 	//unregisted chainctx with conn
-	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+	if err := conn.GetConn().UnregisterChainCtx(grp.Item.GroupId); err != nil {
+		return err
+	}
 
 	//remove group from local db
 	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)

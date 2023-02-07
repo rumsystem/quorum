@@ -1,44 +1,29 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	"github.com/rumsystem/quorum/testnode"
 )
 
 var (
 	trxTypes = []string{
-		"POST", "ANNOUNCE", "REQ_BLOCK_FORWARD", "REQ_BLOCK_BACKWARD", "BLOCK_SYNCED",
-		"BLOCK_PRODUCED", "ASK_PEERID",
+		"POST", "ANNOUNCE", "REQ_BLOCK",
+
+		// NOTE: this trx type can not be configured
+		// "PRODUCER",  "USER", "CHAIN_CONFIG", "APP_CONFIG",
 	}
 )
 
 func getChainTrxAuthMode(api string, payload handlers.TrxAuthParams) (*handlers.TrxAuthItem, error) {
-	url := fmt.Sprintf("/api/v1/group/%s/trx/auth/%s", payload.GroupId, payload.TrxType)
-	_, resp, err := testnode.RequestAPI(api, url, "GET", "")
+	path := fmt.Sprintf("/api/v1/group/%s/trx/auth/%s", payload.GroupId, payload.TrxType)
+	var authItem handlers.TrxAuthItem
+	_, _, err := requestAPI(api, path, "GET", nil, &authItem)
 	if err != nil {
 		e := fmt.Errorf("get chain trx auth mode for (%s, %s) failed: %s", payload.GroupId, payload.TrxType, err)
 		return nil, e
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
-	var authItem handlers.TrxAuthItem
-	if err := json.Unmarshal(resp, &authItem); err != nil {
-		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
-		return nil, e
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(authItem); err != nil {
-		return nil, err
 	}
 
 	if authItem.TrxType != payload.TrxType {
