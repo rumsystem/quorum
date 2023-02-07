@@ -75,23 +75,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 				group.UserEthaddr = ethaddr.Hex()
 			}
 		}
-
-		/*
-			switch value.GetSyncerStatus() {
-			case chain.PSYNC:
-				group.GroupStatus = "PSYNC"
-			case chain.SYNCING_BLOCK:
-				group.GroupStatus = "SYNCING_BLOCK"
-			case chain.SYNC_FAILED:
-				group.GroupStatus = "SYNC_FAILED"
-			case chain.IDLE:
-				group.GroupStatus = "IDLE"
-			}
-
-		*/
-
-		group.GroupStatus = "TBD (added by cuicat)"
-
+		group.GroupStatus = value.GetRexSyncerStatus()
 		groups = append(groups, group)
 	}
 

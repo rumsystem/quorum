@@ -33,7 +33,7 @@ type Chain struct {
 	producerPool map[string]*quorumpb.ProducerItem
 	userPool     map[string]*quorumpb.UserItem
 	trxFactory   *rumchaindata.TrxFactory
-	syncerrunner *SyncerRunner
+	rexSyncer    *RexSyncer
 	chaindata    *ChainData
 	Consensus    def.Consensus
 	CurrEpoch    int64
@@ -51,7 +51,7 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename, chain)
 
 	//initial Syncer
-	chain.syncerrunner = NewSyncerRunner(chain.groupItem.GroupId, chain.nodename, chain, chain)
+	chain.rexSyncer = NewRexSyncer(chain.groupItem.GroupId, chain.nodename, chain, chain)
 
 	//initial chaindata manager
 	chain.chaindata = &ChainData{
@@ -593,16 +593,16 @@ func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsgv1) error {
 
 func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
-	requester, sessionId, taskId, fromEpoch, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
+	requester, fromEpoch, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
 	if err != nil {
 		return err
 	}
 
 	chain_log.Debugf("<%s> send REQ_BLOCKS_RESP", chain.groupItem.GroupId)
-	chain_log.Debugf("-- requester <%s>, session <%s> from Epoch <%d>, request <%d>", requester, sessionId, fromEpoch, blkReqs)
+	chain_log.Debugf("-- requester <%s>, from Epoch <%d>, request <%d> blocks", requester, fromEpoch, blkReqs)
 	chain_log.Debugf("-- send fromEpoch <%d>, total <%d> blocks, status <%s>", fromEpoch, len(blocks), result.String())
 
-	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, sessionId, taskId, requester, blkReqs, fromEpoch, blocks, result)
+	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, blkReqs, fromEpoch, blocks, result)
 	if err != nil {
 		return err
 	}
@@ -615,9 +615,46 @@ func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
 }
 
 func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
-	chain_log.Debugf("<%s> HandleReqBlockResp called", chain.groupItem.GroupId)
-	//TBD check if response from blocked pubkey
-	chain.syncerrunner.HandleSyncResp(trx, SYNC_TYPE_BLOCK)
+	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupItem.GroupId)
+
+	//decode resp
+	var err error
+	ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
+	if err != nil {
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
+		return
+	}
+
+	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
+		return
+	}
+
+	reqBlockResp := &quorumpb.ReqBlockResp{}
+	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
+		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
+		return
+	}
+
+	//if not asked by me, ignore it
+	if reqBlockResp.RequesterPubkey != chain.groupItem.UserSignPubkey {
+		//chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.Group.GroupId, rumerrors.ErrSenderMismatch.Error())
+		return
+	}
+
+	//check trx sender
+	if trx.SenderPubkey != reqBlockResp.ProviderPubkey {
+		chain_log.Debugf("<%s> HandleReqBlockResp - Trx Sender/blocks providers mismatch <%s>", chain.groupItem.GroupId)
+		return
+	}
+
+	result := &SyncResult{
+		TaskId: reqBlockResp.FromEpoch,
+		Data:   reqBlockResp,
+	}
+
+	chain.rexSyncer.AddResult(result)
 }
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
@@ -626,7 +663,7 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 		for _, block := range blocks {
 			err := chain.Consensus.Producer().AddBlock(block)
 			if err != nil {
-				chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
+				chain_log.Warningf("<%s> ApplyBlocks error <%s>", chain.groupItem.GroupId, err.Error())
 				return err
 			}
 		}
@@ -638,7 +675,7 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 	for _, block := range blocks {
 		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
-			chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
+			chain_log.Warningf("<%s> ApplyBlocks error <%s>", chain.groupItem.GroupId, err.Error())
 			return err
 		}
 	}
@@ -839,7 +876,8 @@ func (chain *Chain) StartSync() error {
 	}
 
 	//TBD check if other sync is ongoing and decide what to do next
-	return chain.syncerrunner.StartBlockSync()
+	chain.rexSyncer.Start()
+	return nil
 }
 
 func (chain *Chain) isProducer() bool {
@@ -862,33 +900,28 @@ func (chain *Chain) isOwner() bool {
 
 func (chain *Chain) StopSync() {
 	chain_log.Debugf("<%s> StopSync called", chain.groupItem.GroupId)
-	if chain.syncerrunner != nil {
-		chain.syncerrunner.Stop()
+	if chain.rexSyncer != nil {
+		chain.rexSyncer.Stop()
 	}
 }
 
-func (chain *Chain) GetSyncerStatus() int8 {
-	//return chain.syncerrunner.gsyncer.Status
+func (chain *Chain) GetRexSyncerStatus() string {
+	status := chain.rexSyncer.GetSyncerStatus()
+	statusStr := ""
 
-	return -1
-}
+	//cast status to string
 
-func (chain *Chain) IsSyncerIdle() bool {
-	/*
-			chain_log.Debugf("IsSyncerIdle called, GroupId <%s>", chain.groupItem.GroupId)
-			if chain.syncerrunner.gsyncer.Status == SYNCING_BLOCK ||
-				chain.syncerrunner.gsyncer.Status == LOCAL_SYNCING ||
-				chain.syncerrunner.gsyncer.Status == PSYNC ||
-				chain.syncerrunner.gsyncer.Status == SYNC_FAILED {
-				chain_log.Debugf("<%s> gsyncer is busy, status: <%d>", chain.groupItem.GroupId, chain.syncerrunner.gsyncer.Status)
-				return true
-			}
+	switch status {
+	case IDLE:
+		statusStr = "IDLE"
+	case SYNCING:
+		statusStr = "SYNCING"
+	case CLOSED:
+		statusStr = "CLOSED"
+	default:
 
-		chain_log.Debugf("<%s> syncer is IDLE", chain.groupItem.GroupId)
-	*/
-
-	chain_log.Debugf("<%s> TBD ~~~~~~~~~~~~~~ check every gsyncer inside synger runner", chain.groupItem.GroupId)
-	return false
+	}
+	return statusStr
 }
 
 func (chain *Chain) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
