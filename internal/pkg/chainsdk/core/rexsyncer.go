@@ -257,6 +257,10 @@ func (rs *RexSyncer) syncBlockTaskSender(task *SyncTask) error {
 func (rs *RexSyncer) handleResult(result *SyncResult) error {
 	rex_syncer_log.Debugf("<%s> handleResult called", rs.GroupId)
 	//check if the resp is what we are waiting for
+	if rs.CurrentTask == nil {
+		rex_syncer_log.Debugf("DEBUG: wrong status, CurrentTask is nil <%d> ", rs.GroupId)
+		return rumerrors.ErrTaskIdMismatch
+	}
 	if result.TaskId != rs.CurrentTask.TaskId {
 		//chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", sr.groupId, rumerrors.ErrEpochMismatch)
 		return rumerrors.ErrTaskIdMismatch
