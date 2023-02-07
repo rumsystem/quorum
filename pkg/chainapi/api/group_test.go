@@ -240,6 +240,8 @@ func TestGetNullGroups(t *testing.T) {
 */
 
 func TestCreateAndGetGroups(t *testing.T) {
+	t.Parallel()
+
 	appKey := "default"
 	consensusType := "poa"
 	encryptionTypes := []string{"public", "private"}

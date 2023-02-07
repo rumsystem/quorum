@@ -8,6 +8,8 @@ import (
 )
 
 func TestGetBootstrapNodeInfo(t *testing.T) {
+	t.Parallel()
+
 	urlSuffix := "/api/v1/node"
 	_, resp, err := testnode.RequestAPI(bootstrapapi, urlSuffix, "GET", "")
 	if err != nil {

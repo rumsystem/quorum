@@ -38,6 +38,8 @@ func getTrx(api string, groupID string, trxID string) (*pb.Trx, error) {
 }
 
 func TestGetTrx(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-get-trx",
@@ -71,7 +73,7 @@ func TestGetTrx(t *testing.T) {
 	}
 
 	// FIXME: wait for trx to be confirmed
-	time.Sleep(time.Second * 25)
+	time.Sleep(time.Second * 5)
 
 	// get trx
 	trx, err := getTrx(peerapi, group.GroupId, postResult.TrxId)

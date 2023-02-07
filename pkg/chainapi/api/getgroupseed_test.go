@@ -45,6 +45,8 @@ func getGroupSeed(api string, groupID string) (*handlers.GetGroupSeedResult, err
 }
 
 func TestGetGroupSeed(t *testing.T) {
+	t.Parallel()
+
 	payload := handlers.CreateGroupParam{
 		AppKey:         "default",
 		ConsensusType:  "poa",

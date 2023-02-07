@@ -11,6 +11,8 @@ import (
 )
 
 func TestSetChainTrxAuthMode(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	payload := handlers.CreateGroupParam{
 		AppKey:         "default",
@@ -47,8 +49,7 @@ func TestSetChainTrxAuthMode(t *testing.T) {
 				t.Errorf("update chain config with payload: %+v failed: %s", payload, err)
 			}
 
-			// wait 10 seconds
-			time.Sleep(15 * time.Second)
+			time.Sleep(5 * time.Second)
 			authItem, err := getChainTrxAuthMode(peerapi, handlers.TrxAuthParams{GroupId: group.GroupId, TrxType: trxType})
 			if err != nil {
 				t.Errorf("get chain trx auth mode failed: %s", err)

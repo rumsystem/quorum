@@ -8,6 +8,7 @@ import (
 
 func TestLeaveGroup(t *testing.T) {
 	t.Skip()
+	t.Parallel()
 
 	// create group
 	createGroupParam := handlers.CreateGroupParam{

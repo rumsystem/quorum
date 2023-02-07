@@ -9,6 +9,8 @@ import (
 )
 
 func TestGetGroupContent(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-group-content",
@@ -50,7 +52,7 @@ func TestGetGroupContent(t *testing.T) {
 	}
 
 	// FIXME
-	time.Sleep(time.Second * 30)
+	time.Sleep(time.Second * 20)
 
 	// check peerapi received content
 	for _, api := range []string{peerapi, peerapi2} {

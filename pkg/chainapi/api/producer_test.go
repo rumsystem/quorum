@@ -136,6 +136,8 @@ func addProducer(api string, payload handlers.GrpProducerParam) (*handlers.GrpPr
 }
 
 func TestAnnounceProducer(t *testing.T) {
+	t.Parallel()
+
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
 		GroupName:      "test-announce-prd",
@@ -169,7 +171,7 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// group owner should be able to get announced producers
-	time.Sleep(time.Second * 30)
+	time.Sleep(time.Second * 5)
 	announcedProducers, err := getAnnouncedProducers(bpnode1.APIBaseUrl, group.GroupId)
 	if err != nil {
 		t.Fatalf("getAnnouncedProducers failed: %s", err)
@@ -200,7 +202,7 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// check approved status
-	time.Sleep(time.Second * 15)
+	time.Sleep(time.Second * 5)
 	approvedProducers, err := getAnnouncedProducers(peerapi, group.GroupId)
 	if err != nil {
 		t.Errorf("getAnnouncedProducers failed: %s", err)

@@ -41,6 +41,8 @@ func addPeers(api string, payload handlers.AddPeerParam) (*handlers.AddPeerResul
 }
 
 func TestAddPeers(t *testing.T) {
+	t.Parallel()
+
 	payload := handlers.AddPeerParam{"/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u"}
 
 	if _, err := addPeers(peerapi, payload); err != nil {
