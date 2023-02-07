@@ -27,7 +27,7 @@ type ChainConfigParams struct {
 }
 
 type TrxAuthModeParams struct {
-	TrxType     string `from:"trx_type"      json:"trx_type"     validate:"required,oneof=POST ANNOUNCE REQ_BLOCK_FORWARD REQ_BLOCK_BACKWARD BLOCK_SYNCED BLOCK_PRODUCED ASK_PEERID" example:"POST"`
+	TrxType     string `from:"trx_type"      json:"trx_type"     validate:"required,oneof=POST ANNOUNCE PRODUCER REQ_BLOCK USER CHAIN_CONFIG APP_CONFIG" example:"POST"`
 	TrxAuthMode string `from:"trx_auth_mode" json:"trx_auth_mode" validate:"required,oneof=follow_alw_list follow_dny_list" example:"follow_alw_list"`
 }
 type ChainSendTrxRuleListItemParams struct {

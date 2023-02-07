@@ -2,27 +2,31 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math/rand"
 	"os"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/testnode"
 )
 
 var (
-	pidlist                                   []int
-	bootstrapapi, peerapi, peerapi2           string
-	peerapilist, groupIds                     []string
-	timerange, nodes, groups, posts, synctime int
+	pidlist                                       []int
+	bootstrapapi, peerapi, peerapi2               string
+	peerapilist, groupIds                         []string
+	bpnode1, bpnode2                              *testnode.NodeInfo
+	timerange, fullnodes, groups, posts, synctime int
 
 	logger = logging.Logger("api")
 )
 
 func TestMain(m *testing.M) {
-	nodes = 2
+	fullnodes = 2
 	pidch := make(chan int)
 
 	go func() {
@@ -41,14 +45,24 @@ func TestMain(m *testing.M) {
 	var tempdatadir string
 	ctx := context.Background()
 	cliargs := testnode.Nodecliargs{Rextest: false}
-	bootstrapapi, peerapilist, tempdatadir, _ = testnode.RunNodesWithBootstrap(ctx, cliargs, pidch, nodes)
-	logger.Debug("peers: ", peerapilist)
-	peerapi = peerapilist[0]
-	peerapi2 = peerapilist[1]
+	var nodeInfos []*testnode.NodeInfo
+	var err error
+	nodeInfos, tempdatadir, err = testnode.RunNodesWithBootstrap(ctx, cliargs, pidch, fullnodes, 2)
+	if err != nil {
+		panic(err)
+	}
+
+	logger.Debugf("nodeInfos: %+v", nodeInfos)
+	bootstrapapi = nodeInfos[0].APIBaseUrl
+	peerapi = nodeInfos[1].APIBaseUrl
+	peerapi2 = nodeInfos[2].APIBaseUrl
+	peerapilist = []string{peerapi, peerapi2}
+	bpnode1 = nodeInfos[len(nodeInfos)-2]
+	bpnode2 = nodeInfos[len(nodeInfos)-1]
 
 	exitVal := m.Run()
 	logger.Debug("after tests clean:", tempdatadir)
-	testnode.Cleanup(tempdatadir, peerapilist)
+	testnode.Cleanup(tempdatadir, nodeInfos)
 	os.Exit(exitVal)
 }
 
@@ -102,4 +116,38 @@ func RandString(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+func requestAPI(baseUrl string, endpoint string, method string, payload interface{}, result interface{}) (int, []byte, error) {
+	payloadByte := []byte("")
+	if payload != nil {
+		var err error
+		payloadByte, err = json.Marshal(payload)
+		if err != nil {
+			logger.Errorf("json.Marshal %+v failed: %s", payload, err)
+			return 0, nil, err
+		}
+	}
+
+	statusCode, resp, err := testnode.RequestAPI(baseUrl, endpoint, method, string(payloadByte))
+	if err != nil || statusCode >= 400 {
+		logger.Errorf("%s %s failed: %s, payload: %s, response: %s", method, endpoint, err, string(payloadByte), resp)
+		return statusCode, resp, err
+	}
+
+	if result != nil {
+		if err := json.Unmarshal(resp, result); err != nil {
+			logger.Errorf("json.Unmarshal %+v failed: %s", resp, err)
+			return statusCode, resp, err
+		}
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(result); err != nil {
+		e := fmt.Errorf("validate.Struct failed: %s, result: %+v", err, result)
+		logger.Error(e)
+		return statusCode, resp, e
+	}
+
+	return statusCode, resp, nil
 }

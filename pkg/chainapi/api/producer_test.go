@@ -13,30 +13,10 @@ import (
 )
 
 func announceProducer(api string, payload handlers.AnnounceParam) (*handlers.AnnounceResult, error) {
-	payloadByte, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	payloadStr := string(payloadByte)
-	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/announce", "POST", payloadStr)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
 	var result handlers.AnnounceResult
-	if err := json.Unmarshal(resp, &result); err != nil {
+	_, _, err := requestAPI(api, "/api/v1/group/announce", "POST", payload, &result)
+	if err != nil {
 		return nil, err
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(result); err != nil {
-		e := fmt.Errorf("validate.Struct failed: %s, result: %+v", err, result)
-		return nil, e
 	}
 
 	action := strings.ToUpper(payload.Action)
@@ -168,29 +148,29 @@ func TestAnnounceProducer(t *testing.T) {
 		t.Fatalf("createGroup failed: %s", err)
 	}
 
-	// peer2 join group
+	// bpnode1 join group
 	joinGroupParam := handlers.JoinGroupParamV2{
 		Seed: group.Seed,
 	}
-	if _, err := joinGroup(peerapi2, joinGroupParam); err != nil {
+	if _, err := joinGroup(bpnode1.APIBaseUrl, joinGroupParam); err != nil {
 		t.Fatalf("joinGroup failed: %s, payload: %+v", err, joinGroupParam)
 	}
 
-	// peer2 announce as producer
+	// bpnode2 announce as producer
 	announcePayload := handlers.AnnounceParam{
 		GroupId: group.GroupId,
 		Action:  "add",
 		Type:    "producer",
-		Memo:    "producer p1, realiable and cheap, online 24hr",
+		Memo:    "producer p2, realiable and cheap, online 24hr",
 	}
-	announceResult, err := announceProducer(peerapi2, announcePayload)
+	announceResult, err := announceProducer(bpnode1.APIBaseUrl, announcePayload)
 	if err != nil {
 		t.Fatalf("announceProducer failed: %s, payload: %+v", err, announcePayload)
 	}
 
 	// group owner should be able to get announced producers
 	time.Sleep(time.Second * 30)
-	announcedProducers, err := getAnnouncedProducers(peerapi, group.GroupId)
+	announcedProducers, err := getAnnouncedProducers(bpnode1.APIBaseUrl, group.GroupId)
 	if err != nil {
 		t.Fatalf("getAnnouncedProducers failed: %s", err)
 	}
@@ -209,10 +189,9 @@ func TestAnnounceProducer(t *testing.T) {
 	}
 
 	// group owner approve producer
-	peer2PublicKey := announcedProducers[0].AnnouncedPubkey
+	bpnode1PublicKey := announcedProducers[0].AnnouncedPubkey
 	producerParam := handlers.GrpProducerParam{
-		Action:         "add",
-		ProducerPubkey: peer2PublicKey,
+		ProducerPubkey: []string{bpnode1PublicKey},
 		GroupId:        group.GroupId,
 		Memo:           "owner-approve",
 	}
@@ -229,8 +208,8 @@ func TestAnnounceProducer(t *testing.T) {
 	if approvedProducers == nil || len(approvedProducers) != 1 {
 		t.Errorf("approvedProducers should only have one item.")
 	}
-	if approvedProducers[0].AnnouncedPubkey != peer2PublicKey {
-		t.Errorf("approvedProducers[0].AnnouncedPubkey != peer2PublicKey, approvedProducers: %+v", approvedProducers)
+	if approvedProducers[0].AnnouncedPubkey != bpnode1PublicKey {
+		t.Errorf("approvedProducers[0].AnnouncedPubkey != bpnode1PublicKey, approvedProducers: %+v", approvedProducers)
 	}
 	if approvedProducers[0].Result != "APPROVED" {
 		t.Errorf("approvedProducers[0].Result != APPROVED, approvedProducers: %+v", approvedProducers)
@@ -248,7 +227,7 @@ func TestAnnounceProducer(t *testing.T) {
 	// check if the producer is in the producers list
 	foundProducer := false
 	for _, producer := range producers {
-		if producer.ProducerPubkey == peer2PublicKey {
+		if producer.ProducerPubkey == bpnode1PublicKey {
 			foundProducer = true
 			break
 		}
