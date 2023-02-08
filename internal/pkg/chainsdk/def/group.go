@@ -10,3 +10,12 @@ type GroupIface interface {
 	GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error)
 	GetRexSyncerStatus() string
 }
+
+type RexSyncResult struct {
+	Provider              string
+	FromEpoch             int64
+	BlockProvided         int64
+	SyncResult            string
+	LastSyncTaskTimestamp int64
+	NextSyncTaskTimeStamp int
+}

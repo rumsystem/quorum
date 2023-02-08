@@ -23,14 +23,6 @@ var MAXIMUM_DELAY_DURATION = 60 * 1000 // is millseconds
 
 var rex_syncer_log = logging.Logger("rsyncer")
 
-type SyncTask struct {
-	TaskId      int64 //epoch
-	RetryCount  uint
-	ReqBlockNum int
-	DelayTime   int
-	TriggerTime int64
-}
-
 type SyncResult struct {
 	TaskId int64
 	Data   interface{}
@@ -43,6 +35,14 @@ const (
 	SYNCING
 	CLOSED
 )
+
+type SyncTask struct {
+	TaskId      int64 //epoch
+	RetryCount  uint
+	ReqBlockNum int
+	DelayTime   int
+	TriggerTime int64
+}
 
 type RexSyncer struct {
 	GroupId  string
@@ -60,16 +60,7 @@ type RexSyncer struct {
 	CurrentDely int
 	CurrentTask *SyncTask
 
-	LastSyncResult *RexSyncResult
-}
-
-type RexSyncResult struct {
-	Provider              string
-	FromEpoch             int64
-	BlockProvided         int64
-	SyncResult            string
-	LastSyncTaskTimestamp int64
-	NextSyncTaskTimeStamp int
+	LastSyncResult *def.RexSyncResult
 }
 
 func NewRexSyncer(groupid string, nodename string, cdnIface def.ChainDataSyncIface, chainCtx *Chain) *RexSyncer {
@@ -155,7 +146,7 @@ func (rs *RexSyncer) Stop() {
 		}
 	}
 }
-func (rs *RexSyncer) GetLastRexSyncResult() (*RexSyncResult, error) {
+func (rs *RexSyncer) GetLastRexSyncResult() (*def.RexSyncResult, error) {
 	if rs.LastSyncResult == nil {
 		return nil, fmt.Errorf("no valid rex sync result yet")
 	}
@@ -334,7 +325,7 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 
 	}
 
-	rs.LastSyncResult = &RexSyncResult{
+	rs.LastSyncResult = &def.RexSyncResult{
 		Provider:              reqBlockResp.ProviderPubkey,
 		FromEpoch:             reqBlockResp.FromEpoch,
 		BlockProvided:         reqBlockResp.BlksProvided,

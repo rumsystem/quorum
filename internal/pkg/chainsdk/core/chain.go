@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -924,18 +923,8 @@ func (chain *Chain) GetRexSyncerStatus() string {
 	return statusStr
 }
 
-func (chain *Chain) GetLastRexSyncResult() (string, error) {
-	result, err := chain.rexSyncer.GetLastRexSyncResult()
-	if err != nil {
-		return "", err
-	}
-
-	b, err := json.Marshal(result)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
+func (chain *Chain) GetLastRexSyncResult() (*chaindef.RexSyncResult, error) {
+	return chain.rexSyncer.GetLastRexSyncResult()
 }
 
 func (chain *Chain) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
