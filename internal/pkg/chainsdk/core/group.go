@@ -194,6 +194,14 @@ func (grp *Group) GetRexSyncerStatus() string {
 	return grp.ChainCtx.GetRexSyncerStatus()
 }
 
+func (grp *Group) GetRexSyncerResult() string {
+	result, err := grp.ChainCtx.GetLastRexSyncResult()
+	if err != nil {
+		return "INVALID"
+	}
+	return result
+}
+
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
 	group_log.Debugf("<%s> GetBlock called, epoch: <%d>", grp.Item.GroupId, epoch)
 	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.Nodename)

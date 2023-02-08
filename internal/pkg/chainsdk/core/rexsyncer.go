@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -27,6 +28,7 @@ type SyncTask struct {
 	RetryCount  uint
 	ReqBlockNum int
 	DelayTime   int
+	TriggerTime int64
 }
 
 type SyncResult struct {
@@ -57,6 +59,17 @@ type RexSyncer struct {
 	Status      SyncerStatus
 	CurrentDely int
 	CurrentTask *SyncTask
+
+	LastSyncResult *RexSyncResult
+}
+
+type RexSyncResult struct {
+	Provider              string
+	FromEpoch             int64
+	BlockProvided         int64
+	SyncResult            string
+	LastSyncTaskTimestamp int64
+	NextSyncTaskTimeStamp int
 }
 
 func NewRexSyncer(groupid string, nodename string, cdnIface def.ChainDataSyncIface, chainCtx *Chain) *RexSyncer {
@@ -78,6 +91,7 @@ func NewRexSyncer(groupid string, nodename string, cdnIface def.ChainDataSyncIfa
 	rs.CurrentTask = nil
 	rs.CurrentDely = 0
 
+	rs.LastSyncResult = nil
 	return rs
 }
 
@@ -101,6 +115,7 @@ func (rs *RexSyncer) Start() {
 				task.DelayTime = MAXIMUM_DELAY_DURATION
 			}
 
+			task.TriggerTime = time.Now().Unix() + int64(task.DelayTime)/1000
 			taskTimeout := task.DelayTime + SYNC_BLOCK_TASK_TIMEOUT
 			rex_syncer_log.Debugf("<%s> get task <%d> from taskq, set task timeout to <%d>", rs.GroupId, task.TaskId, taskTimeout)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(taskTimeout)*time.Millisecond)
@@ -139,6 +154,19 @@ func (rs *RexSyncer) Stop() {
 			}
 		}
 	}
+}
+func (rs *RexSyncer) GetLastRexSyncResult() (*RexSyncResult, error) {
+	if rs.LastSyncResult == nil {
+		return nil, fmt.Errorf("no valid rex sync result yet")
+	}
+
+	if rs.CurrentTask != nil {
+		rs.LastSyncResult.NextSyncTaskTimeStamp = int(rs.CurrentTask.TriggerTime)
+	} else {
+		return nil, fmt.Errorf("try again")
+	}
+
+	return rs.LastSyncResult, nil
 }
 
 func safeClose(ch chan struct{}) (recovered bool) {
@@ -304,6 +332,15 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 		rs.chainCtx.ApplyBlocks(reqBlockResp.Blocks.Blocks)
 	default:
 
+	}
+
+	rs.LastSyncResult = &RexSyncResult{
+		Provider:              reqBlockResp.ProviderPubkey,
+		FromEpoch:             reqBlockResp.FromEpoch,
+		BlockProvided:         reqBlockResp.BlksProvided,
+		SyncResult:            reqBlockResp.Result.String(),
+		LastSyncTaskTimestamp: time.Now().Unix(),
+		NextSyncTaskTimeStamp: -1,
 	}
 
 	rs.taskdone <- struct{}{}
