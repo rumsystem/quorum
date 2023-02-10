@@ -154,27 +154,27 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 			}
 
 			//move collected blocks from cache to chain
-			for _, block := range blockfromcache {
-				molaproducer_log.Debugf("<%s> move block <%d> from cache to chain", producer.groupId, block.Epoch)
-				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, producer.nodename)
+			for _, blk := range blockfromcache {
+				molaproducer_log.Debugf("<%s> move block <%d> from cache to chain", producer.groupId, blk.Epoch)
+				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(blk, false, producer.nodename)
 				if err != nil {
 					return err
 				}
 
-				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.Epoch, true, producer.nodename)
+				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(blk.GroupId, blk.Epoch, true, producer.nodename)
 				if err != nil {
 					return err
 				}
-			}
 
-			if block.Epoch > producer.cIface.GetCurrEpoch() {
-				//update latest group epoch
-				molaproducer_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", producer.groupId, producer.cIface.GetCurrEpoch(), block.Epoch)
-				producer.cIface.SetCurrEpoch(block.Epoch)
-				producer.cIface.SetLastUpdate(block.TimeStamp)
-				producer.cIface.SaveChainInfoToDb()
-			} else {
-				molaproducer_log.Debugf("<%s> No need to update highest Epoch", producer.groupId)
+				if blk.Epoch > producer.cIface.GetCurrEpoch() {
+					//update latest group epoch
+					molaproducer_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", producer.groupId, producer.cIface.GetCurrEpoch(), blk.Epoch)
+					producer.cIface.SetCurrEpoch(blk.Epoch)
+					producer.cIface.SetLastUpdate(blk.TimeStamp)
+					producer.cIface.SaveChainInfoToDb()
+				} else {
+					molaproducer_log.Debugf("<%s> No need to update highest Epoch", producer.groupId)
+				}
 			}
 
 			//get all trxs from blocks
