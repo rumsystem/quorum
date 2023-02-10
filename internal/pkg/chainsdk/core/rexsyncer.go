@@ -38,7 +38,6 @@ const (
 
 type SyncTask struct {
 	TaskId      int64 //epoch
-	RetryCount  uint
 	ReqBlockNum int
 	DelayTime   int
 	TriggerTime int64
@@ -56,9 +55,10 @@ type RexSyncer struct {
 	taskdone   chan struct{}
 	stopnotify chan struct{}
 
-	Status      SyncerStatus
-	CurrentDely int
-	CurrentTask *SyncTask
+	Status         SyncerStatus
+	CurrRetryCount uint
+	CurrentDely    int
+	CurrentTask    *SyncTask
 
 	LastSyncResult *def.RexSyncResult
 }
@@ -101,7 +101,7 @@ func (rs *RexSyncer) Start() {
 	go func() {
 		for task := range rs.taskq {
 			//calculate current delay
-			task.DelayTime += int(task.RetryCount)*SYNC_BLOCK_FREQ_ADJ + rs.CurrentDely
+			task.DelayTime += int(rs.CurrRetryCount)*SYNC_BLOCK_FREQ_ADJ + rs.CurrentDely
 			if task.DelayTime > MAXIMUM_DELAY_DURATION {
 				task.DelayTime = MAXIMUM_DELAY_DURATION
 			}
@@ -136,7 +136,7 @@ func (rs *RexSyncer) Stop() {
 	safeClose(rs.taskdone)
 	if rs.stopnotify != nil {
 		signcount := 0
-		for _ = range rs.stopnotify {
+		for range rs.stopnotify {
 			signcount++
 			//wait stop sign and set idle
 			if signcount == 2 { // taskq and resultq stopped
@@ -201,7 +201,7 @@ func safeCloseResultQ(ch chan *SyncResult) (recovered bool) {
 
 func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
-	rex_syncer_log.Debugf("runTask called, taskId <%d>, retry <%d>", task.TaskId, task.RetryCount)
+	rex_syncer_log.Debugf("runTask called, taskId <%d>, retry <%d>", task.TaskId, rs.CurrRetryCount)
 	go func() {
 		rs.CurrentTask = task //set current task
 		rs.syncBlockTaskSender(task)
@@ -215,8 +215,16 @@ func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask) error {
 			//a workround, should cancel the ctx for current task
 			if rs.CurrentTask != nil {
 				rex_syncer_log.Debugf("task <%d> timeout", task.TaskId)
-				task.RetryCount += 1
-				rex_syncer_log.Debugf("retry <%d>", task.RetryCount)
+				rs.CurrRetryCount += 1
+				rex_syncer_log.Debugf("CurrRetryCount <%d>", rs.CurrRetryCount)
+
+				//close current task
+				rs.taskdone <- struct{}{}
+				rs.CurrentTask = nil
+				rs.Status = IDLE
+
+				//start next round with highest epoch
+				task := rs.newSyncBlockTask()
 				rs.AddTask(task)
 			}
 		}
@@ -246,7 +254,7 @@ func (rs *RexSyncer) newSyncBlockTask() *SyncTask {
 	rex_syncer_log.Debugf("<%s> newSyncBlockTask called", rs.GroupId)
 	nextEpoch := rs.cdnIface.GetCurrEpoch() + 1
 	randDelay := rand.Intn(500)
-	return &SyncTask{TaskId: nextEpoch, RetryCount: 0, ReqBlockNum: REQ_BLOCKS_PER_REQUEST, DelayTime: randDelay}
+	return &SyncTask{TaskId: nextEpoch, ReqBlockNum: REQ_BLOCKS_PER_REQUEST, DelayTime: randDelay}
 }
 
 func (rs *RexSyncer) syncBlockTaskSender(task *SyncTask) error {
@@ -277,7 +285,7 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 	rex_syncer_log.Debugf("<%s> handleResult called", rs.GroupId)
 	//check if the resp is what we are waiting for
 	if rs.CurrentTask == nil {
-		rex_syncer_log.Debugf("DEBUG: wrong status, CurrentTask is nil <%d> ", rs.GroupId)
+		rex_syncer_log.Debugf("<%s> CurrentTask is nil, ignore", rs.GroupId)
 		return rumerrors.ErrTaskIdMismatch
 	}
 	if result.TaskId != rs.CurrentTask.TaskId {
@@ -324,6 +332,9 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 	default:
 
 	}
+
+	//received something, reset current retry count
+	rs.CurrRetryCount = 0
 
 	rs.LastSyncResult = &def.RexSyncResult{
 		Provider:              reqBlockResp.ProviderPubkey,

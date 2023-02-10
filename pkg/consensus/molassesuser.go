@@ -86,27 +86,27 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			}
 
 			//move collected blocks from cache to chain
-			for _, block := range blockfromcache {
-				molauser_log.Debugf("<%s> move block <%d> from cache to chain", user.groupId, block.Epoch)
-				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, user.nodename)
+			for _, b := range blockfromcache {
+				molauser_log.Debugf("<%s> move block <%d> from cache to chain", user.groupId, b.Epoch)
+				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(b, false, user.nodename)
 				if err != nil {
 					return err
 				}
 
-				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.Epoch, true, user.nodename)
+				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(b.GroupId, b.Epoch, true, user.nodename)
 				if err != nil {
 					return err
 				}
-			}
 
-			if block.Epoch > user.cIface.GetCurrEpoch() {
-				//update latest group epoch
-				molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.cIface.GetCurrEpoch(), block.Epoch)
-				user.cIface.SetCurrEpoch(block.Epoch)
-				user.cIface.SetLastUpdate(block.TimeStamp)
-				user.cIface.SaveChainInfoToDb()
-			} else {
-				molauser_log.Debugf("<%s> No need to update highest Epoch", user.groupId)
+				if block.Epoch > user.cIface.GetCurrEpoch() {
+					//update latest group epoch
+					molauser_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", user.groupId, user.cIface.GetCurrEpoch(), b.Epoch)
+					user.cIface.SetCurrEpoch(b.Epoch)
+					user.cIface.SetLastUpdate(b.TimeStamp)
+					user.cIface.SaveChainInfoToDb()
+				} else {
+					molauser_log.Debugf("<%s> No need to update highest Epoch", user.groupId)
+				}
 			}
 
 			//get all trxs from blocks
