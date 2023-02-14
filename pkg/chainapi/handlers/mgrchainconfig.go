@@ -40,7 +40,7 @@ type ChainConfigResult struct {
 	GroupId          string `json:"group_id"     validate:"required,uuid4" example:"b3e1800a-af6e-4c67-af89-4ddcf831b6f7"`
 	GroupOwnerPubkey string `json:"owner_pubkey" validate:"required" example:"CAISIQPLW/J9xgdMWoJxFttChoGOOld8TpChnGFFyPADGL+0JA=="`
 	Sign             string `json:"signature"    validate:"required" example:"30440220089276796ceeef3a2c413bd89249475c2ecd8be4f2cb0ee3d19903fc45a7386b02206561bfdfb0338a9d022619dd8064e9a3496c1ea768f344e3c3850f8a907cdc73"`
-	TrxId            string `json:"trx_id"       validate:"required" example:"90e9818a-2e23-4248-93e3-d4ba1b100f4f"`
+	TrxId            string `json:"trx_id"       validate:"required,uuid4" example:"90e9818a-2e23-4248-93e3-d4ba1b100f4f"`
 }
 
 func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, error) {

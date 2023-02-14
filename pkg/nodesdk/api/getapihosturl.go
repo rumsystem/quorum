@@ -10,7 +10,7 @@ import (
 )
 
 type GetApiHostParams struct {
-	GroupId string `param:"group_id" validate:"required"`
+	GroupId string `param:"group_id" validate:"required,uuid4"`
 }
 
 type GetApiHostResult struct {

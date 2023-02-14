@@ -14,7 +14,7 @@ type JoinGroupParamV2 struct {
 }
 
 type JoinGroupResult struct {
-	GroupId        string `json:"group_id" validate:"required"`
+	GroupId        string `json:"group_id" validate:"required,uuid4"`
 	GroupName      string `json:"group_name" validate:"required"`
 	OwnerPubkey    string `json:"owner_pubkey" validate:"required"`
 	SignAlias      string `json:"sign_alias" validate:"required"`

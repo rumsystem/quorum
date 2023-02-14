@@ -31,7 +31,7 @@ type GrpUserResult struct {
 type GrpUserParam struct {
 	Action     string `from:"action"          json:"action"       validate:"required,oneof=add remove" example:"add"`
 	UserPubkey string `from:"user_pubkey"     json:"user_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
-	GroupId    string `from:"group_id"        json:"group_id"     validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	GroupId    string `from:"group_id"        json:"group_id"     validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Memo       string `from:"memo"            json:"memo"`
 }
 
