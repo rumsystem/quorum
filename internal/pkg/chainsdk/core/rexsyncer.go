@@ -218,8 +218,7 @@ func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask) error {
 				rs.CurrRetryCount += 1
 				rex_syncer_log.Debugf("CurrRetryCount <%d>", rs.CurrRetryCount)
 
-				//close current task
-				rs.taskdone <- struct{}{}
+				//remove current task
 				rs.CurrentTask = nil
 				rs.Status = IDLE
 
