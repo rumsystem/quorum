@@ -33,47 +33,8 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 }
 
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
-	trx_bft_log.Debugf("<%s> AddTrx called", bft.producer.groupId)
+	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.producer.groupId, tx.TrxId)
 	bft.txBuffer.Push(tx)
-
-	found := false
-	f := func(key, value any) bool {
-		TopEpoch := bft.producer.cIface.GetCurrEpoch() + 1 //proposed but not finished epoch is current group epoch + 1 (next epoch)
-		if key == TopEpoch {
-			found = true
-		}
-		return true
-	}
-
-	bft.acsInsts.Range(f)
-	if found {
-		trx_bft_log.Debugf("<%s> Trx saved to TrxBuffer, wait to be propose", tx.TrxId)
-		return nil
-	}
-
-	//try propose with next epoch
-	newEpoch := bft.producer.cIface.GetCurrEpoch() + 1
-	trx_bft_log.Debugf("Try propose with new Epoch <%d>", newEpoch)
-	bft.propose(newEpoch)
-	return nil
-}
-
-func (bft *TrxBft) AddSudoTrx(tx *quorumpb.Trx) error {
-	trx_bft_log.Debugf("AddSudoTrx called")
-
-	//check if sudotrx is from group owner
-	if bft.producer.grpItem.OwnerPubKey != tx.SenderPubkey {
-		trx_bft_log.Warnf("SudoTrx <%s> from non owner <%s>, ignore", tx.TrxId, tx.SenderPubkey)
-		return nil
-	}
-
-	//check if I am owner
-	if bft.producer.grpItem.OwnerPubKey != bft.producer.grpItem.UserSignPubkey {
-		trx_bft_log.Warnf("Ignore by me, owner node will handle sudotrx <%s>", tx.SenderPubkey)
-		return nil
-	}
-
-	//SudoTrx will bypass consensus, owner node will generate SudoBlock by itself
 	return nil
 }
 
@@ -120,102 +81,90 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 		}
 	}
 
-	buildBlockDone := false
+	if len(trxs) == 0 {
+		//nothing to package
+		return
+	}
 
 	//Try build block
 	err := bft.buildBlock(epoch, trxs)
 	if err != nil {
 		trx_bft_log.Warnf("????????????? <%s> Build block failed at epoch %d, error %s", bft.producer.groupId, epoch, err.Error())
-	} else {
-		buildBlockDone = true
 	}
-
-	//clear acs for finished epoch
-	if buildBlockDone {
-		//remove outputed trxs from buffer
-		for trxId := range trxs {
-			err := bft.txBuffer.Delete(trxId)
-			trx_bft_log.Debugf("<%s> remove packaged trx <%s>", bft.producer.groupId, trxId)
-			if err != nil {
-				trx_bft_log.Warnf(err.Error())
-			}
+	//remove outputed trxs from buffer
+	for trxId := range trxs {
+		err := bft.txBuffer.Delete(trxId)
+		trx_bft_log.Debugf("<%s> remove packaged trx <%s>", bft.producer.groupId, trxId)
+		if err != nil {
+			trx_bft_log.Warnf(err.Error())
 		}
-
-		//update chain epoch
-		bft.producer.cIface.IncCurrEpoch()
-		bft.producer.cIface.SetLastUpdate(time.Now().UnixNano())
-		bft.producer.cIface.SaveChainInfoToDb()
-		trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
-
-		//nodectx.GetNodeCtx().GetChainStorage().UpdGroup(bft.producer.grpItem)
 	}
 
-	//check if need continue propose
-	trxBufLen, err := bft.txBuffer.GetBufferLen()
-	if err != nil {
-		trx_bft_log.Warnf(err.Error())
-	}
+	//update chain epoch
+	bft.producer.cIface.IncCurrEpoch()
+	bft.producer.cIface.SetLastUpdate(time.Now().UnixNano())
+	bft.producer.cIface.SaveChainInfoToDb()
+	trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
 
-	trx_bft_log.Debugf("<%s> remove finished acs inst <%d>", bft.producer.groupId, epoch)
-	bft.acsInsts.Delete(epoch)
-
-	trx_bft_log.Debugf("<%s> After propose, trx buffer length <%d>", bft.producer.groupId, trxBufLen)
-	//start next round
-	if trxBufLen != 0 {
-		newEpoch := bft.producer.cIface.GetCurrEpoch() + 1
-		trx_bft_log.Debugf("<%s> try propose with new Epoch <%d>", bft.producer.groupId, newEpoch)
-		bft.propose(newEpoch)
-	}
+	bft.propose()
 }
 
 func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
-	trx_bft_log.Infof("<%s> buildBlock for epoch <%d>", bft.producer.groupId, epoch)
+	trx_bft_log.Infof("<%s> buildBlock called, epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
 	trxToPackage := bft.sortTrx(trxs)
-
-	parentEpoch := epoch - 1
-	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
-	if err != nil {
-		trx_acs_log.Warnf("?????????????????????????? GetBlock failed <%s>", err.Error())
-		return err
-	}
 
 	//TBD fill withnesses
 	witnesses := []*quorumpb.Witnesses{}
 
-	//create block
-	ks := localcrypto.GetKeystore()
-	sudo := false
-	newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, witnesses, ks, "", bft.producer.nodename)
-	if err != nil {
-		trx_bft_log.Warnf("?????????????????????????? CreateBlockByEthKey failed <%s>", err.Error())
-		trx_bft_log.Warnf("?????????????????????????? parent block <%v>", parent)
-		return err
-	}
+	trx_bft_log.Info("TrxBft try get block parent")
+	parentEpoch := epoch - 1
+	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, parentEpoch, false, bft.producer.nodename)
 
-	trx_bft_log.Info("molassproducer handle block just built")
-	err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.producer.nodename)
 	if err != nil {
-		return err
-	}
+		//create block without parent
+		trx_bft_log.Info("TrxBft build block without parent")
+		ks := localcrypto.GetKeystore()
+		sudo := false
+		newBlock, _ := rumchaindata.CreateBlockWithoutParent(bft.producer.groupId, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, witnesses, ks, "", bft.producer.nodename)
 
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		//approved producers
-		bft.producer.cIface.ApplyTrxsProducerNode(trxToPackage, bft.producer.nodename)
-	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-		//owner
-		bft.producer.cIface.ApplyTrxsFullNode(trxToPackage, bft.producer.nodename)
-	}
+		if err != nil {
+			trx_bft_log.Info("TrxBft get block parent failed, save block just built to cache and wait sync finished")
+			err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, true, bft.producer.nodename)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		//create block without parent
+		trx_bft_log.Info("TrxBft build block with parent")
+		ks := localcrypto.GetKeystore()
+		sudo := false
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, witnesses, ks, "", bft.producer.nodename)
 
-	//broadcast new block
-	trx_bft_log.Infof("<%s> broadcast new block to user channel", bft.producer.groupId)
-	connMgr, err := conn.GetConn().GetConnMgr(bft.producer.groupId)
-	if err != nil {
-		return err
-	}
-	err = connMgr.BroadcastBlock(newBlock)
-	if err != nil {
-		trx_acs_log.Warnf("<%s> BroadcastBlock failed <%s>", bft.producer.groupId, err.Error())
+		if err != nil {
+			trx_bft_log.Debugf("TrxBft create block failed <should not happened>, something wrong")
+			return err
+		}
+
+		//apply trxs
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+			bft.producer.cIface.ApplyTrxsProducerNode(trxToPackage, bft.producer.nodename)
+		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+			bft.producer.cIface.ApplyTrxsFullNode(trxToPackage, bft.producer.nodename)
+		}
+
+		//broadcast new block
+		trx_bft_log.Infof("<%s> broadcast new block to user channel", bft.producer.groupId)
+		connMgr, err := conn.GetConn().GetConnMgr(bft.producer.groupId)
+		if err != nil {
+			return err
+		}
+		err = connMgr.BroadcastBlock(newBlock)
+		if err != nil {
+			trx_acs_log.Warnf("<%s> BroadcastBlock failed <%s>", bft.producer.groupId, err.Error())
+		}
+
 	}
 
 	return nil
@@ -274,22 +223,12 @@ func (bft *TrxBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 	return result
 }
 
-func (bft *TrxBft) propose(epoch int64) error {
-	trx_bft_log.Debugf("<%s> propose called, epoch <%d>", bft.producer.groupId, epoch)
+func (bft *TrxBft) propose() error {
+	trx_bft_log.Debugf("<%s> propose called", bft.producer.groupId)
 
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
 		return err
-	}
-
-	//nothing to propose
-	if len(trxs) == 0 {
-		trx_acs_log.Infof("trx queue empty, nothing to propose")
-		return nil
-	} else {
-		for _, trx := range trxs {
-			trx_acs_log.Debugf("try packageing trx <%s>", trx.TrxId)
-		}
 	}
 
 	trxBundle := &quorumpb.HBTrxBundle{}

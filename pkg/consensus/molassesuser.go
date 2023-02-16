@@ -33,7 +33,6 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
 		molauser_log.Debugf("Block exist, ignore")
-
 	} else {
 		//check if block cached
 		isBlockCatched, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, true, user.nodename)
