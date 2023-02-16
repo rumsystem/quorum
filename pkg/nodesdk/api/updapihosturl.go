@@ -9,7 +9,7 @@ import (
 )
 
 type UpdApiHostUrlParams struct {
-	GroupId      string   `json:"group_id" validate:"required"`
+	GroupId      string   `json:"group_id" validate:"required,uuid4"`
 	ChainAPIUrls []string `json:"urls" validate:"required,gte=1,unique,dive,required,url"`
 }
 

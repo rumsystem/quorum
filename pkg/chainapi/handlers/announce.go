@@ -20,7 +20,7 @@ type AnnounceResult struct {
 	Type                   string `json:"type" validate:"required" example:"AS_USER"`
 	Action                 string `json:"action" validate:"required" example:"ADD"`
 	Sign                   string `json:"sign" validate:"required" example:"3046022100a853ca31f6f6719be213231b6428cecf64de5b1042dd8af1e140499507c85c40022100abd6828478f56da213ec10d361be8709333ff44cd0fa037409af9c0b67e6d0f5"`
-	TrxId                  string `json:"trx_id" validate:"required" example:"2e86c7fb-908e-4528-8f87-d3548e0137ab"`
+	TrxId                  string `json:"trx_id" validate:"required,uuid4" example:"2e86c7fb-908e-4528-8f87-d3548e0137ab"`
 }
 
 type AnnounceParam struct {
