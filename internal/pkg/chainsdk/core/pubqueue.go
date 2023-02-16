@@ -101,6 +101,7 @@ func ParsePublishQueueItem(k, v []byte) (*PublishQueueItem, error) {
 type PublishQueueWatcher struct {
 	db            storage.QuorumStorage
 	groupMgrIface chaindef.GroupMgrIface
+	ch            chan *PublishQueueItem
 	running       bool
 }
 
@@ -195,10 +196,17 @@ func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIfac
 			for {
 				select {
 				case <-done:
+					close(publishQueueWatcher.ch)
 					return
 				case <-ticker.C:
 					doRefresh()
 				}
+			}
+		}()
+
+		go func() {
+			for item := range publishQueueWatcher.ch {
+				resendTrx(item)
 			}
 		}()
 	}
@@ -310,22 +318,8 @@ func doRefresh() {
 					break
 				}
 
-				connMgr, err := conn.GetConn().GetConnMgr(item.GroupId)
-				if err == nil {
-					err := connMgr.SendUserTrxPubsub(item.Trx)
-					if err != nil {
-						chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
-					} else {
-						//FIX: don't update trx time
-						//rumchaindata.UpdateTrxTimeLimit(item.Trx)
-						item.State = PublishQueueItemStatePending
-						item.RetryCount += 1
+				publishQueueWatcher.ch <- item
 
-						chain_log.Debugf("<pubqueue>: trx %s resent(%d)", item.Trx.TrxId, item.RetryCount)
-					}
-				} else {
-					chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
-				}
 			default:
 			}
 
@@ -347,4 +341,27 @@ func (watcher *PublishQueueWatcher) TrxEnqueue(groupId string, trx *quorumpb.Trx
 
 func TrxEnqueue(groupId string, trx *quorumpb.Trx) error {
 	return publishQueueWatcher.TrxEnqueue(groupId, trx)
+}
+
+func resendTrx(item *PublishQueueItem) {
+	connMgr, err := conn.GetConn().GetConnMgr(item.GroupId)
+	if err != nil {
+		chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
+		return
+	}
+
+	if err := connMgr.SendUserTrxPubsub(item.Trx); err != nil {
+		chain_log.Errorf("<pubqueue>: trx %s resend failed; error: %s", item.Trx.TrxId, err.Error())
+		return
+	}
+
+	chain_log.Debugf("<pubqueue>: trx %s resent(%d)", item.Trx.TrxId, item.RetryCount)
+	//FIX: don't update trx time
+	//rumchaindata.UpdateTrxTimeLimit(item.Trx)
+	item.State = PublishQueueItemStatePending
+	item.RetryCount += 1
+
+	if err := publishQueueWatcher.UpsertItem(item); err != nil {
+		chain_log.Errorf("upsert resend trx item failed: %s", err)
+	}
 }
