@@ -50,15 +50,16 @@ type RexSyncer struct {
 	chainCtx *Chain
 
 	//chan signals
-	taskq      chan *SyncTask
-	resultq    chan *SyncResult
-	taskdone   chan struct{}
+	taskq   chan *SyncTask
+	resultq chan *SyncResult
+	//taskdone   chan struct{}
 	stopnotify chan struct{}
 
-	Status         SyncerStatus
-	CurrRetryCount uint
-	CurrentDely    int
-	CurrentTask    *SyncTask
+	Status            SyncerStatus
+	CurrRetryCount    uint
+	CurrentDely       int
+	CurrentTask       *SyncTask
+	CurrentTaskCancel context.CancelFunc
 
 	LastSyncResult *def.RexSyncResult
 }
@@ -75,7 +76,7 @@ func NewRexSyncer(groupid string, nodename string, cdnIface def.ChainDataSyncIfa
 	rex_syncer_log.Debugf("<%s> Init rex syncer channels", rs.GroupId)
 	rs.taskq = make(chan *SyncTask)
 	rs.resultq = make(chan *SyncResult)
-	rs.taskdone = make(chan struct{})
+	//rs.taskdone = make(chan struct{})
 	rs.stopnotify = make(chan struct{})
 
 	rs.Status = IDLE
@@ -110,8 +111,7 @@ func (rs *RexSyncer) Start() {
 			taskTimeout := task.DelayTime + SYNC_BLOCK_TASK_TIMEOUT
 			rex_syncer_log.Debugf("<%s> get task <%d> from taskq, set task timeout to <%d>", rs.GroupId, task.TaskId, taskTimeout)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(taskTimeout)*time.Millisecond)
-			defer cancel()
-			rs.runTask(ctx, task)
+			rs.runTask(ctx, task, cancel)
 		}
 		rs.stopnotify <- struct{}{}
 	}()
@@ -133,7 +133,7 @@ func (rs *RexSyncer) Stop() {
 	rs.Status = CLOSED
 	safeCloseTaskQ(rs.taskq)
 	safeCloseResultQ(rs.resultq)
-	safeClose(rs.taskdone)
+	//safeClose(rs.taskdone)
 	if rs.stopnotify != nil {
 		signcount := 0
 		for range rs.stopnotify {
@@ -199,33 +199,44 @@ func safeCloseResultQ(ch chan *SyncResult) (recovered bool) {
 	return false
 }
 
-func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask) error {
+func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask, cancel context.CancelFunc) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
 	rex_syncer_log.Debugf("runTask called, taskId <%d>, retry <%d>", task.TaskId, rs.CurrRetryCount)
 	go func() {
 		rs.CurrentTask = task //set current task
-		rs.syncBlockTaskSender(task)
+		rs.CurrentTaskCancel = cancel
+		err := rs.syncBlockTaskSender(task)
+		if err != nil {
+			rex_syncer_log.Debugf("todo add retry task <%d>", task.TaskId)
+			//retry
+		}
 	}()
 
 	select {
-	case <-rs.taskdone:
-		return nil
+	//case <-rs.taskdone:
+	//	return nil
 	case <-ctx.Done():
-		if rs.Status != CLOSED {
-			//a workround, should cancel the ctx for current task
-			if rs.CurrentTask != nil {
-				rex_syncer_log.Debugf("task <%d> timeout", task.TaskId)
-				rs.CurrRetryCount += 1
-				rex_syncer_log.Debugf("CurrRetryCount <%d>", rs.CurrRetryCount)
+		switch ctx.Err() {
+		case context.DeadlineExceeded:
+			if rs.Status != CLOSED {
+				//a workround, should cancel the ctx for current task
+				if rs.CurrentTask != nil {
+					rex_syncer_log.Debugf("task <%d> timeout", task.TaskId)
+					rs.CurrRetryCount += 1
+					rex_syncer_log.Debugf("CurrRetryCount <%d>", rs.CurrRetryCount)
 
-				//remove current task
-				rs.CurrentTask = nil
-				rs.Status = IDLE
+					//remove current task
+					rs.CurrentTask = nil
+					rs.CurrentTaskCancel = nil
+					rs.Status = IDLE
 
-				//start next round with highest epoch
-				task := rs.newSyncBlockTask()
-				rs.AddTask(task)
+					//start next round with highest epoch
+					task := rs.newSyncBlockTask()
+					rs.AddTask(task)
+				}
 			}
+		case context.Canceled:
+			rex_syncer_log.Debugf("task <%d> done", task.TaskId)
 		}
 		return nil
 	}
@@ -344,7 +355,11 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 		NextSyncTaskTimeStamp: -1,
 	}
 
-	rs.taskdone <- struct{}{}
+	//rs.taskdone <- struct{}{}
+	if rs.CurrentTaskCancel != nil {
+		rs.CurrentTaskCancel()
+	}
+	rs.CurrentTaskCancel = nil
 	rs.CurrentTask = nil
 	rs.Status = IDLE
 
