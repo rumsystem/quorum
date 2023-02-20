@@ -15,7 +15,7 @@ import (
 // @Param group_id path string true "Group Id"
 // @Param key path string true "itemKey"
 // @Success 200 {object} handlers.AppConfigKeyItem
-// @Router /api/v1/group/{group_id}/config/{key} [get]
+// @Router /api/v1/group/{group_id}/appconfig/{key} [get]
 func (h *Handler) GetAppConfigItem(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
 	itemKey := c.Param("key")

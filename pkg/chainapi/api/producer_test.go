@@ -14,7 +14,7 @@ import (
 
 func announceProducer(api string, payload handlers.AnnounceParam) (*handlers.AnnounceResult, error) {
 	var result handlers.AnnounceResult
-	_, _, err := requestAPI(api, "/api/v1/group/announce", "POST", payload, &result)
+	_, _, err := requestAPI(api, "/api/v1/group/announce", "POST", payload, nil, &result, false)
 	if err != nil {
 		return nil, err
 	}

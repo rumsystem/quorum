@@ -14,7 +14,7 @@ import (
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Success 200 {array} handlers.AppConfigKeyListItem
-// @Router /api/v1/group/{group_id}/config/keylist [get]
+// @Router /api/v1/group/{group_id}/appconfig/keylist [get]
 func (h *Handler) GetAppConfigKey(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	res, err := handlers.GetAppConfigKeyList(groupid)

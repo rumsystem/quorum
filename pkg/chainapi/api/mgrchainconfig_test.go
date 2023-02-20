@@ -60,9 +60,10 @@ func TestSetChainTrxAuthMode(t *testing.T) {
 		}
 	}
 }
+
 func updateChainConfig(api string, payload handlers.ChainConfigParams) (*handlers.ChainConfigResult, error) {
 	var result handlers.ChainConfigResult
-	_, _, err := requestAPI(api, "/api/v1/group/chainconfig", "POST", payload, &result)
+	_, _, err := requestAPI(api, "/api/v1/group/chainconfig", "POST", payload, nil, &result, false)
 	if err != nil {
 		e := fmt.Errorf("update group chain config failed: %s", err)
 		return nil, e
