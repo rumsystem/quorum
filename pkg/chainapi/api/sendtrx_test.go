@@ -44,13 +44,6 @@ func nodesdkSendTrx(urls []string, payload *NodeSDKSendTrxItem) (*SendTrxResult,
 		return nil, err
 	}
 
-	/* xxxxxxx
-	time.Sleep(6 * time.Second)
-	if _, err := getTrx(api, payload.GroupId, result.TrxId); err != nil {
-		return nil, err
-	}
-	*/
-
 	return &result, nil
 }
 
