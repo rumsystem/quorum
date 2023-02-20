@@ -25,11 +25,11 @@ func GetAppConfigKeyList(groupId string) ([]*AppConfigKeyListItem, error) {
 			return nil, err
 		}
 		for i := range nameList {
-			var item *AppConfigKeyListItem
-			item = &AppConfigKeyListItem{}
+			item := &AppConfigKeyListItem{
+				Name: nameList[i],
+				Type: typeList[i],
+			}
 
-			item.Name = nameList[i]
-			item.Type = typeList[i]
 			result = append(result, item)
 		}
 		return result, nil

@@ -20,7 +20,7 @@ var (
 func getChainTrxAuthMode(api string, payload handlers.TrxAuthParams) (*handlers.TrxAuthItem, error) {
 	path := fmt.Sprintf("/api/v1/group/%s/trx/auth/%s", payload.GroupId, payload.TrxType)
 	var authItem handlers.TrxAuthItem
-	_, _, err := requestAPI(api, path, "GET", nil, &authItem)
+	_, _, err := requestAPI(api, path, "GET", nil, nil, &authItem, false)
 	if err != nil {
 		e := fmt.Errorf("get chain trx auth mode for (%s, %s) failed: %s", payload.GroupId, payload.TrxType, err)
 		return nil, e

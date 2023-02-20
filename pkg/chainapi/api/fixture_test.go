@@ -2,16 +2,22 @@ package api
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"testing"
 	"time"
 
+	"filippo.io/age"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -21,6 +27,9 @@ var (
 	peerapilist, groupIds                         []string
 	bpnode1, bpnode2                              *testnode.NodeInfo
 	timerange, fullnodes, groups, posts, synctime int
+	ethPrivkey                                    *ecdsa.PrivateKey
+	ethPubkey                                     string
+	ageIdentity                                   *age.X25519Identity
 
 	logger = logging.Logger("api")
 )
@@ -59,6 +68,19 @@ func TestMain(m *testing.M) {
 	peerapilist = []string{peerapi, peerapi2}
 	bpnode1 = nodeInfos[len(nodeInfos)-2]
 	bpnode2 = nodeInfos[len(nodeInfos)-1]
+
+	// eth key
+	ethPrivkey, err = ethcrypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	ethPubkey = ethcrypto.PubkeyToAddress(ethPrivkey.PublicKey).Hex()
+
+	// age private key
+	ageIdentity, err = age.GenerateX25519Identity()
+	if err != nil {
+		panic(err)
+	}
 
 	exitVal := m.Run()
 	logger.Debug("after tests clean:", tempdatadir)
@@ -118,21 +140,17 @@ func RandString(n int) string {
 	return string(b)
 }
 
-func requestAPI(baseUrl string, endpoint string, method string, payload interface{}, result interface{}) (int, []byte, error) {
-	payloadByte := []byte("")
-	if payload != nil {
-		var err error
-		payloadByte, err = json.Marshal(payload)
-		if err != nil {
-			logger.Errorf("json.Marshal %+v failed: %s", payload, err)
-			return 0, nil, err
-		}
+func requestAPI(baseUrl string, endpoint string, method string, payload interface{}, headers http.Header, result interface{}, isSkipValidate bool) (int, []byte, error) {
+	_url, err := url.JoinPath(baseUrl, endpoint)
+	if err != nil {
+		return 0, nil, fmt.Errorf("url.JoinPath(%s, %s) failed: %s", baseUrl, endpoint, err)
 	}
 
-	statusCode, resp, err := testnode.RequestAPI(baseUrl, endpoint, method, string(payloadByte))
+	statusCode, resp, err := utils.RequestAPI(_url, method, payload, headers, result)
 	if err != nil || statusCode >= 400 {
-		logger.Errorf("%s %s failed: %s, payload: %s, response: %s", method, endpoint, err, string(payloadByte), resp)
-		return statusCode, resp, err
+		e := fmt.Errorf("%s %s failed: %s, payload: %+v, response: %s", method, endpoint, err, payload, resp)
+		logger.Error(e)
+		return statusCode, resp, e
 	}
 
 	if result != nil {
@@ -142,12 +160,34 @@ func requestAPI(baseUrl string, endpoint string, method string, payload interfac
 		}
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(result); err != nil {
-		e := fmt.Errorf("validate.Struct failed: %s, result: %+v", err, result)
-		logger.Error(e)
-		return statusCode, resp, e
+	if !isSkipValidate {
+		validate := validator.New()
+		if err := validate.Struct(result); err != nil {
+			e := fmt.Errorf("validate.Struct failed: %s, response: %s", err, resp)
+			logger.Error(e)
+			return statusCode, resp, e
+		}
 	}
 
 	return statusCode, resp, nil
+}
+
+func requestNSdk(urls []string, endpoint string, method string, payload interface{}, headers http.Header, result interface{}, isSkipValidate bool) (int, []byte, error) {
+	apiUrl, err := url.Parse(urls[0])
+	if err != nil {
+		return 0, nil, fmt.Errorf("url.Parse(%s) failed: %s", urls[0], err)
+	}
+
+	baseUrl := fmt.Sprintf("%s://%s%s", apiUrl.Scheme, apiUrl.Host, apiUrl.Path)
+	token := apiUrl.Query().Get("jwt")
+	if token == "" {
+		return 0, nil, fmt.Errorf("invalid jwt token: %s", token)
+	}
+
+	if headers == nil {
+		headers = http.Header{}
+	}
+	headers.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	return requestAPI(baseUrl, endpoint, method, payload, headers, result, isSkipValidate)
 }

@@ -175,9 +175,13 @@ func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, e
 		return nil, err
 	}
 
-	result := &ChainConfigResult{GroupId: configItem.GroupId, GroupOwnerPubkey: base64key, Sign: hex.EncodeToString(signature), TrxId: trxId}
+	result := &ChainConfigResult{
+		GroupId:          configItem.GroupId,
+		GroupOwnerPubkey: base64key,
+		Sign:             hex.EncodeToString(signature),
+		TrxId:            trxId,
+	}
 	return result, nil
-
 }
 
 func getTrxTypeByString(typ string) (quorumpb.TrxType, error) {

@@ -23,6 +23,7 @@ type AppConfigParam struct {
 	Type    string `from:"type"     json:"type"     validate:"required,oneof=int string bool" example:"bool"`
 	Value   string `from:"value"    json:"value"    validate:"required" example:"false"`
 	Memo    string `from:"memo"     json:"memo" example:"add test_bool to group"`
+	Sudo    bool   `from:"sudo" json:"sudo" example:"false"`
 }
 
 type AppConfigResult struct {
@@ -31,7 +32,7 @@ type AppConfigResult struct {
 	TrxId   string `json:"trx_id" validate:"required,uuid4" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
 }
 
-func MgrAppConfig(params *AppConfigParam, sudo bool) (*AppConfigResult, error) {
+func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -100,13 +101,17 @@ func MgrAppConfig(params *AppConfigParam, sudo bool) (*AppConfigResult, error) {
 		item.OwnerPubkey = group.Item.OwnerPubKey
 		item.OwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdAppConfig(item, sudo)
 
+		trxId, err := group.UpdAppConfig(item, params.Sudo)
 		if err != nil {
 			return nil, err
 		}
 
-		result := &AppConfigResult{GroupId: item.GroupId, Sign: hex.EncodeToString(signature), TrxId: trxId}
+		result := &AppConfigResult{
+			GroupId: item.GroupId,
+			Sign:    hex.EncodeToString(signature),
+			TrxId:   trxId,
+		}
 
 		return result, nil
 	}

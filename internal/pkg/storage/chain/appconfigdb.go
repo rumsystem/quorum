@@ -8,16 +8,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) UpdateAppConfigTrx(trx *quorumpb.Trx, Prefix ...string) (err error) {
-	return cs.UpdateAppConfig(trx.Data, Prefix...)
+func (cs *Storage) UpdateAppConfigTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
+	return cs.UpdateAppConfig(trx.Data, prefix...)
 }
 
-func (cs *Storage) UpdateAppConfig(data []byte, Prefix ...string) (err error) {
+func (cs *Storage) UpdateAppConfig(data []byte, prefix ...string) (err error) {
 	item := &quorumpb.AppConfigItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
 		return err
 	}
-	key := s.GetAppConfigKey(item.GroupId, item.Name, Prefix...) + item.Name
+	key := s.GetAppConfigKey(item.GroupId, item.Name, prefix...)
 
 	if item.Action == quorumpb.ActionType_ADD {
 		chaindb_log.Infof("Add AppConfig item")
@@ -61,8 +61,8 @@ func (cs *Storage) GetAppConfigKey(groupId string, prefix ...string) ([]string, 
 	return itemName, itemType, err
 }
 
-func (cs *Storage) GetAppConfigItem(itemKey string, groupId string, Prefix ...string) (*quorumpb.AppConfigItem, error) {
-	key := s.GetAppConfigKey(groupId, itemKey, Prefix...)
+func (cs *Storage) GetAppConfigItem(itemKey string, groupId string, prefix ...string) (*quorumpb.AppConfigItem, error) {
+	key := s.GetAppConfigKey(groupId, itemKey, prefix...)
 	value, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
@@ -77,9 +77,9 @@ func (cs *Storage) GetAppConfigItem(itemKey string, groupId string, Prefix ...st
 	return &config, nil
 }
 
-func (cs *Storage) GetAllAppConfigInBytes(groupId string, Prefix ...string) ([][]byte, error) {
+func (cs *Storage) GetAllAppConfigInBytes(groupId string, prefix ...string) ([][]byte, error) {
 	var appConfigByteList [][]byte
-	key := s.GetAppConfigPrefix(groupId, Prefix...)
+	key := s.GetAppConfigPrefix(groupId, prefix...)
 
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
