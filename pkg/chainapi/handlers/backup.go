@@ -4,14 +4,9 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"filippo.io/age"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -19,9 +14,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 
-	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/rumsystem/quorum/pkg/crypto"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
@@ -61,123 +53,8 @@ func getKeystoreBackupPath(dstPath string) string {
 	return filepath.Join(dstPath, "keystore")
 }
 
-// for wasm side
-func getWasmBackupPath(dstPath string) string {
-	return filepath.Join(dstPath, "wasm/backup.json")
-}
-
 func getBlockPrefixKey() string {
 	return nodename + "_" + storage.BLK_PREFIX + "_"
-}
-
-// BackupForWasm will backup keystore in wasm known format
-func BackupForWasm(param BackupParam) {
-	// get keystore password
-	password, err := GetKeystorePassword(param.Password)
-	if err != nil {
-		logger.Fatalf("handlers.GetKeystorePassword failed: %s", err)
-	}
-
-	// check keystore signature and encrypt
-	if err := CheckSignAndEncryptWithKeystore(param.KeystoreName, param.KeystoreDir, param.ConfigDir, param.Peername, password); err != nil {
-		logger.Fatalf("check keystore failed: %s", err)
-	}
-
-	dstPath := param.BackupFile
-	// check dst path
-	if utils.DirExist(dstPath) || utils.FileExist(dstPath) {
-		logger.Fatalf("backup directory %s is exists", dstPath)
-	}
-
-	/*
-			   wasm need a single file in json format
-
-			   ```
-		     {"keystore": [], "seeds": []}
-			   ```
-	*/
-	wasmDstPath := getWasmBackupPath(dstPath)
-	wasmKeystoreContent := []string{}
-	if err := filepath.Walk(param.KeystoreDir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
-		}
-		r, err := age.NewScryptRecipient(password)
-		if err != nil {
-			return err
-		}
-
-		keyBytes, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		pair := make(map[string]interface{})
-		key := filepath.Base(path)
-		pair["key"] = key
-		pair["value"] = base64.StdEncoding.EncodeToString(keyBytes)
-		if err != nil {
-			return err
-		}
-		if strings.HasPrefix(key, crypto.Sign.Prefix()) {
-			key, err := ethkeystore.DecryptKey(keyBytes, password)
-			if err != nil {
-				return err
-			}
-			privKey := key.PrivateKey
-			addr := ethcrypto.PubkeyToAddress(privKey.PublicKey)
-			// Make sure we're really operating on the requested key (no swap attacks)
-			if key.Address != addr {
-				return fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
-			}
-			pair["addr"] = addr.String()
-		}
-		kvBytes, err := json.Marshal(pair)
-
-		output := new(bytes.Buffer)
-		if err := crypto.AgeEncrypt([]age.Recipient{r}, bytes.NewReader(kvBytes), output); err != nil {
-			return err
-		}
-		encryptedKvBytes, err := ioutil.ReadAll(output)
-		if err != nil {
-			return err
-		}
-		res := base64.StdEncoding.EncodeToString(encryptedKvBytes)
-		wasmKeystoreContent = append(wasmKeystoreContent, res)
-		return nil
-	}); err != nil {
-		logger.Fatalf("export keystore to wasm failed: %s", err)
-	}
-
-	backupObj := QuorumWasmExportObject{}
-	backupObj.Keystore = wasmKeystoreContent
-
-	// ExportAllGroupSeeds
-	dataPath := GetDataPath(param.DataDir, param.Peername)
-	appdb, err := appdata.CreateAppDb(dataPath)
-	if err != nil {
-		logger.Fatalf("appdata.CreateAppDb failed: %s", err)
-	}
-	defer appdb.Db.Close()
-
-	seeds, err := GetAllGroupSeeds(appdb)
-	backupObj.Seeds = seeds
-
-	if err := os.MkdirAll(filepath.Dir(wasmDstPath), 0770); err != nil {
-		logger.Fatalf("create wasm keystore path failed: %s", err)
-	}
-
-	f, err := os.Create(wasmDstPath)
-	if err != nil {
-		logger.Fatalf("create wasm keystore file failed: %s", err)
-	}
-	defer f.Close()
-
-	backupBytes, err := json.Marshal(backupObj)
-
-	f.Write(backupBytes)
-
-	logger.Infof("success! backup file: %s", wasmDstPath)
 }
 
 // Backup backup block from data db and {config,keystore,seeds} directory

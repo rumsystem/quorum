@@ -1,7 +1,6 @@
 PROTOC_GEN_GO = $(GOPATH)/bin/protoc-gen-go
 PROTOC = $(shell which protoc)
 QUORUM_BIN_NAME=quorum
-QUORUM_WASMLIB_NAME=lib.wasm
 CLI_BIN_NAME=rumcli
 GIT_COMMIT=$(shell git rev-list -1 HEAD)
 LDFLAGS = -ldflags "-s -w -X main.GitCommit=${GIT_COMMIT}"
@@ -12,10 +11,6 @@ export GO111MODULE = on
 
 define build-quorum
 go build ${LDFLAGS} -o dist/${GOOS}_${GOARCH}/${QUORUM_BIN_NAME} main.go
-endef
-
-define build-wasm
-go build ${LDFLAGS} -o dist/${GOOS}_${GOARCH}/${QUORUM_WASMLIB_NAME} cmd/wasm/lib.go
 endef
 
 define build-cli
@@ -39,11 +34,6 @@ windows: QUORUM_BIN_NAME = quorum.exe
 windows:
 	$(build-quorum)
 
-wasm: export GOOS = js
-wasm: export GOARCH = wasm
-wasm:
-	$(build-wasm)
-
 cli_linux: export GOOS = linux
 cli_linux:
 	$(build-cli)
@@ -63,7 +53,7 @@ cli_windows:
 
 buildcli: cli_linux cli_freebsd cli_darwin cli_windows
 
-build: linux freebsd darwin windows wasm
+build: linux freebsd darwin windows
 
 buildall: build buildcli
 

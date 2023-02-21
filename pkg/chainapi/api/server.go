@@ -157,9 +157,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 
-	r.POST("/v1/group/profile", h.UpdateProfile)
-	r.POST("/v1/group/profile/:sudo", h.UpdateProfile)
-
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 	r.POST("/v1/group/appconfig/:sudo", h.MgrAppConfig)
 
