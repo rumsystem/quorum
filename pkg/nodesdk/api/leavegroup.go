@@ -10,11 +10,11 @@ import (
 )
 
 type LeaveGroupParams struct {
-	GroupId string `json:"group_id" validate:"required"`
+	GroupId string `json:"group_id" validate:"required,uuid4"`
 }
 
 type LeaveGroupResult struct {
-	GroupId string `json:"group_id" validate:"required"`
+	GroupId string `json:"group_id" validate:"required,uuid4"`
 }
 
 func (h *NodeSDKHandler) LeaveGroup() echo.HandlerFunc {

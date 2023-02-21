@@ -37,7 +37,6 @@ You can try:
     - Content with inreplyto
     - Content with images
     - Like/Dislike
-  - [Update user profile of a group](#api-group-profile) 
 - [Block](#test-block)
   - [Get block info](#api-get-block)
 - [Trx](#test-trx)
@@ -227,19 +226,6 @@ RUM_KSPASSWD=secret go run main.go backup --peername mypeer --file /tmp/quorum-b
 ```bash
 restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run main.go restore --peername mypeer --file /tmp/quorum-backup.zip.enc --configdir $restoreDir/config --datadir $restoreDir/data --keystoredir $restoreDir/keystore --seeddir $restoreDir/seeds
 ```
-
-> backup for wasm
-
-```bash
-RUM_KSPASSWD=secret go run main.go backup --wasm --peername mypeer --file /tmp/quorum-backup
-```
-
-> restore from wasm
-
-```bash
-restoreDir=/tmp/restore; RUM_KSPASSWD=secret go run main.go restore --wasm --peername mypeer --file /tmp/wasm.backup.json --configdir $restoreDir/config --datadir $restoreDir/data --keystoredir $restoreDir/keystore --seeddir $restoreDir/seeds
-```
-
 
 [>>> Back to Top](#top)
 
@@ -956,53 +942,6 @@ curl -X POST -H 'Content-Type: application/json' -d '{"type":"Like","object":{"i
     "type": "Like",
     "object": {
         "id": "578e65d0-9b61-4937-8e7c-f00e2b262753"
-    },
-    "target": {
-        "id": "c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55",
-        "type": "Group"
-    }
-}
-```
-
-[>>> Back to Top](#top)
-
-<span id="api-group-profile"></span>
-
-## Update user profile of a group
-
-any group has its own profile to set.
-
-**API**: ```*/api/v1/group/profile```
-
-- Method: POST
-- Usage : update profile of a group
-- Params :
-  - type
-  - object
-  - target
-- API return value:
-  - [trx_id](#param-trx_id)
-
-**Example**:
-
-**Params**:
-
-```json
-{
-    "type": "Update",
-    "person": {
-        "name": "nickname",
-        "image": {
-            "mediaType": "image/png",
-            "content": "there will be bytes content of images"
-        },
-        "wallet": [
-            {
-                "id": "bae95683-eabb-211f-9588-12dadffd0323",
-                "type": "mixin",
-                "name": "mixin messenger"
-            }
-        ]
     },
     "target": {
         "id": "c0c8dc7d-4b61-4366-9ac3-fd1c6df0bf55",

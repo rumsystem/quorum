@@ -11,7 +11,7 @@ import (
 
 type (
 	GetUserEncryptPubKeysParam struct {
-		GroupId string `param:"group_id" json:"group_id" validate:"required" example:"78cbab65-17e7-49d2-892a-311cec77c120"`
+		GroupId string `param:"group_id" json:"group_id" validate:"required,uuid4" example:"78cbab65-17e7-49d2-892a-311cec77c120"`
 	}
 
 	GetUserEncryptPubKeysResult struct {

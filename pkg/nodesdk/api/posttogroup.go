@@ -20,7 +20,7 @@ type CustomValidatorPost struct {
 }
 
 type TrxResult struct {
-	TrxId string `json:"trx_id" validate:"required"`
+	TrxId string `json:"trx_id" validate:"required,uuid4"`
 }
 
 func (cv *CustomValidatorPost) Validate(i interface{}) error {

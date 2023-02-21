@@ -30,32 +30,10 @@ func getResponseError(resp []byte) error {
 }
 
 func createGroup(api string, payload handlers.CreateGroupParam) (*handlers.CreateGroupResult, error) {
-	payloadByte, err := json.Marshal(payload)
-	if err != nil {
-		e := fmt.Errorf("json.Marshal failed, payload: %+v error: %s", payload, err)
-		return nil, e
-	}
-	payloadStr := string(payloadByte[:])
-
-	_, resp, err := testnode.RequestAPI(api, "/api/v1/group", "POST", payloadStr)
-	if err != nil {
+	var group handlers.CreateGroupResult
+	if _, _, err := requestAPI(api, "/api/v1/group", "POST", payload, nil, &group, false); err != nil {
 		e := fmt.Errorf("create group %s failed: %s", payload.GroupName, err)
 		return nil, e
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
-	var group handlers.CreateGroupResult
-	if err := json.Unmarshal(resp, &group); err != nil {
-		e := fmt.Errorf("response Unmarshal failed: %s, response: %s", err, resp)
-		return nil, e
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(group); err != nil {
-		return nil, err
 	}
 
 	if group.GroupId == "" {

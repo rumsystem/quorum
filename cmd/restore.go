@@ -39,7 +39,7 @@ var restoreCmd = &cobra.Command{
 			DataDir:     dataDir,
 			SeedDir:     seedDir,
 		}
-		restore(params, isWasm)
+		restore(params)
 	},
 }
 
@@ -55,12 +55,11 @@ func init() {
 	flags.StringVar(&seedDir, "seeddir", "seeds", "seeds directory")
 	flags.StringVar(&keystorePassword, "keystorepass", "", "keystore password")
 	flags.StringVar(&backupFile, "file", "", "backup file path")
-	flags.BoolVar(&isWasm, "wasm", false, "is wasm")
 
 	restoreCmd.MarkFlagRequired("file")
 }
 
-func restore(params handlers.RestoreParam, isWasm bool) {
+func restore(params handlers.RestoreParam) {
 	var err error
 	params.BackupFile, err = filepath.Abs(params.BackupFile)
 	if err != nil {
@@ -97,11 +96,7 @@ func restore(params handlers.RestoreParam, isWasm bool) {
 	os.Chdir(restoreDir)
 	defer os.Chdir(currentDir)
 
-	if isWasm {
-		handlers.RestoreFromWasm(params)
-	} else {
-		handlers.Restore(params)
-	}
+	handlers.Restore(params)
 
 	var pidch chan int
 	process := os.Args[0]
