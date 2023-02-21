@@ -29,11 +29,13 @@ import (
 // get hash again, this is bookkeepingHash
 // bookkeeping node will sigh this hash with to guarantee everything in this block is bookkeeping correctly.
 
-func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	var newBlock quorumpb.Block
 
-	newBlock.Epoch = epoch
 	newBlock.GroupId = oldBlock.GroupId
+	newBlock.BlockId = oldBlock.BlockId + 1
+	newBlock.Epoch = epoch
+
 	newBlock.PrevEpochHash = oldBlock.EpochHash
 	for _, trx := range trxs {
 		trxclone := &quorumpb.Trx{}
@@ -90,7 +92,7 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 	return &newBlock, nil
 }
 
-func CreateBlockWithoutParent(groupId string, epoch int64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockWithoutParent(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	//create a block without parents
 	var newBlock quorumpb.Block
 

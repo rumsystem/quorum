@@ -46,7 +46,7 @@ var (
 	ErrNotAccept      = errors.New("Error The Result had been rejected")
 	ErrIgnore         = errors.New("Ignore")
 	ErrTaskIdMismatch = errors.New("Error taskId mismatch with what syncer expected")
-	ErrSyncerStatus   = errors.New("Error Get GetEpoch response but syncer status mismatch")
+	ErrSyncerStatus   = errors.New("Error get GetBlock response but syncer status mismatch")
 
 	//app
 	ErrNotFound = errors.New("not found")

@@ -16,19 +16,39 @@ import (
 
 var trx_bft_log = logging.Logger("tbft")
 
+type ProposeTask struct {
+	Epoch          uint64
+	ProposedData   []*quorumpb.Trx
+	DelayStartTime int
+}
+
+type ProposeResult struct {
+	Epoch        uint64
+	ProposedData []*quorumpb.Trx
+}
+
 type TrxBft struct {
 	Config
 	producer *MolassesProducer
 	acsInsts sync.Map //[int64]*TrxACS //map key is epoch
 	txBuffer *TrxBuffer
+
+	//add task queue here
+	taskq chan *ProposeTask
+
+	taskdone   chan struct{}
+	stopnotify chan struct{}
 }
 
 func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 	trx_bft_log.Debugf("<%s> NewTrxBft called", producer.groupId)
 	return &TrxBft{
-		Config:   cfg,
-		producer: producer,
-		txBuffer: NewTrxBuffer(producer.groupId),
+		Config:     cfg,
+		producer:   producer,
+		txBuffer:   NewTrxBuffer(producer.groupId),
+		taskq:      make(chan *ProposeTask),
+		taskdone:   make(chan struct{}),
+		stopnotify: make(chan struct{}),
 	}
 }
 
@@ -61,7 +81,7 @@ func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	return acs.HandleMessage(hbmsg)
 }
 
-func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
+func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 	trx_bft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.producer.groupId, epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 
@@ -109,7 +129,7 @@ func (bft *TrxBft) AcsDone(epoch int64, result map[string][]byte) {
 	bft.propose()
 }
 
-func (bft *TrxBft) buildBlock(epoch int64, trxs map[string]*quorumpb.Trx) error {
+func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {
 	trx_bft_log.Infof("<%s> buildBlock called, epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
 	trxToPackage := bft.sortTrx(trxs)

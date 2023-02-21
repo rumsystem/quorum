@@ -11,10 +11,12 @@ type ChainMolassesIface interface {
 	SaveChainInfoToDb() error
 	ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error
 	ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error
-	SetCurrEpoch(currEpoch int64)
+	SetCurrEpoch(currEpoch uint64)
 	IncCurrEpoch()
-	DecrCurrEpoch()
-	GetCurrEpoch() int64
+	GetCurrEpoch() uint64
+	SetCurrBlockId(currBlock uint64)
+	IncCurrBlockId()
+	GetCurrBlockId() uint64
 	SetLastUpdate(lastUpdate int64)
 	GetLastUpdate() int64
 }

@@ -211,7 +211,7 @@ func getKey(prefix string, seqid uint64, tailing string) ([]byte, error) {
 	return orderedcode.Append(nil, prefix, "-", orderedcode.Infinity, uint64(seqid), "_", tailing)
 }
 
-func (appdb *AppDb) AddMetaByTrx(epoch int64, groupid string, trxs []*quorumpb.Trx) error {
+func (appdb *AppDb) AddMetaByTrx(blockId uint64, groupid string, trxs []*quorumpb.Trx) error {
 	var err error
 
 	seqkey := SEQ_PREFIX + CNT_PREFIX + GRP_PREFIX + groupid
@@ -249,10 +249,10 @@ func (appdb *AppDb) AddMetaByTrx(epoch int64, groupid string, trxs []*quorumpb.T
 		values = append(values, nil)
 	}
 
-	valuename := "Epoch"
+	valuename := "Block"
 	groupLastestBlockidkey := fmt.Sprintf("%s%s_%s", STATUS_PREFIX, groupid, valuename)
 	keys = append(keys, []byte(groupLastestBlockidkey))
-	values = append(values, []byte(strconv.FormatInt(epoch, 10)))
+	values = append(values, []byte(strconv.FormatUint(blockId, 10)))
 	err = appdb.Db.BatchWrite(keys, values)
 
 	return err

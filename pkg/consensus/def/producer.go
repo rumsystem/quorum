@@ -7,8 +7,8 @@ import (
 type Producer interface {
 	NewProducer(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	RecreateBft()
-	TryPropose()
 	AddBlock(block *quorumpb.Block) error
 	AddTrx(trx *quorumpb.Trx)
 	HandleHBMsg(hb *quorumpb.HBMsgv1) error
+	StartPropose()
 }

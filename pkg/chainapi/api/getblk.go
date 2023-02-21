@@ -25,21 +25,21 @@ func (h *Handler) GetBlock(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError("group_id can't be nil.")
 	}
 
-	epoch := c.Param("epoch")
+	blockIdStr := c.Param("block")
 	// verify epoch is valid
 	/*
 		if epoch < 0  {
 			return rumerrors.NewBadRequestError("block_id can't be nil.")
 		}
 	*/
-	epocnInt64, err := strconv.ParseInt(epoch, 10, 64)
+	blockId, err := strconv.ParseUint(blockIdStr, 10, 64)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[groupid]; ok {
-		block, err := group.GetBlock(epocnInt64)
+		block, err := group.GetBlock(blockId)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

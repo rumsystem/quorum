@@ -13,9 +13,9 @@ type GroupIface interface {
 
 type RexSyncResult struct {
 	Provider              string
-	FromEpoch             int64
-	BlockProvided         int64
+	FromBlock             uint64
+	BlockProvided         int32
 	SyncResult            string
 	LastSyncTaskTimestamp int64
-	NextSyncTaskTimeStamp int
+	NextSyncTaskTimeStamp int64
 }

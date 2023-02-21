@@ -178,12 +178,16 @@ func (grp *Group) StopSync() error {
 	return nil
 }
 
-func (grp *Group) GetCurrentEpoch() int64 {
+func (grp *Group) GetCurrentEpoch() uint64 {
 	return grp.ChainCtx.GetCurrEpoch()
 }
 
 func (grp *Group) GetLatestUpdate() int64 {
 	return grp.ChainCtx.GetLastUpdate()
+}
+
+func (grp *Group) GetCurrentBlockId() uint64 {
+	return grp.ChainCtx.GetCurrBlockId()
 }
 
 func (grp *Group) GetNodeName() string {
@@ -194,9 +198,9 @@ func (grp *Group) GetRexSyncerStatus() string {
 	return grp.ChainCtx.GetRexSyncerStatus()
 }
 
-func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
-	group_log.Debugf("<%s> GetBlock called, epoch: <%d>", grp.Item.GroupId, epoch)
-	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, epoch, false, grp.Nodename)
+func (grp *Group) GetBlock(blockId uint64) (*quorumpb.Block, error) {
+	group_log.Debugf("<%s> GetBlock called, blockId: <%d>", grp.Item.GroupId, blockId)
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, blockId, false, grp.Nodename)
 }
 
 func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
@@ -257,8 +261,6 @@ func (grp *Group) PostToGroup(content []byte, sudo bool) (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		trx.Sudo = sudo
 		return grp.sendTrx(trx)
 	}
 
@@ -266,7 +268,6 @@ func (grp *Group) PostToGroup(content []byte, sudo bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	trx.Sudo = sudo
 
 	return grp.sendTrx(trx)
 }
@@ -277,22 +278,19 @@ func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem, sudo bool) (
 	if err != nil {
 		return "", nil
 	}
-
-	trx.Sudo = sudo
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool) (string, error) {
+func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool /* behindBlock uint64 */) (string, error) {
 	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx("", item)
 	if err != nil {
 		return "", nil
 	}
-	trx.Sudo = sudo
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
+func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem, sudo bool /* behindBlock uint64 */) (string, error) {
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
 	if err != nil {
@@ -302,13 +300,12 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 }
 
 // send update appconfig trx
-func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool) (string, error) {
+func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool /* behindBlock uint64 */) (string, error) {
 	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
 	if err != nil {
 		return "", nil
 	}
-	trx.Sudo = sudo
 	return grp.sendTrx(trx)
 }
 

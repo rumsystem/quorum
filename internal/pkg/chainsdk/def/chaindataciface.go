@@ -17,5 +17,5 @@ type ChainDataSyncIface interface {
 	HandlePSyncRex(c *quorumpb.PSyncMsg) error
 	StartSync() error
 	StopSync()
-	GetCurrEpoch() int64
+	GetCurrBlock() uint64
 }

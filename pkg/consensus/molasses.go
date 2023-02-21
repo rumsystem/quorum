@@ -43,8 +43,8 @@ func (m *Molasses) SetPSync(s def.PSync) {
 	m.psync = s
 }
 
-func (m *Molasses) TryProposeTrx() {
+func (m *Molasses) StartPropose() {
 	if m.producer != nil {
-		m.producer.TryPropose()
+		m.producer.StartPropose()
 	}
 }

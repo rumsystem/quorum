@@ -170,7 +170,7 @@ func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, e
 	configItem.TimeStamp = time.Now().UnixNano()
 	configItem.OwnerPubkey = group.Item.OwnerPubKey
 	configItem.OwnerSignature = hex.EncodeToString(signature)
-	trxId, err := group.UpdChainConfig(&configItem)
+	trxId, err := group.UpdChainConfig(&configItem, false)
 	if err != nil {
 		return nil, err
 	}
