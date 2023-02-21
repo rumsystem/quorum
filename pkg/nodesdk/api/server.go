@@ -18,7 +18,7 @@ type StartAPIParam struct {
 	APIPort uint
 }
 
-//StartAPIServer : Start local web server
+// StartAPIServer : Start local web server
 func StartNodeSDKServer(config StartAPIParam, signalch chan os.Signal, h *NodeSDKHandler, nodeopt *options.NodeOptions) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
@@ -29,7 +29,6 @@ func StartNodeSDKServer(config StartAPIParam, signalch chan os.Signal, h *NodeSD
 	r.POST("/v1/group/leave", h.LeaveGroup())
 	r.POST("/v1/group/content", h.PostToGroup())
 	r.POST("/v1/group/getctn", h.GetGroupCtn())
-	r.POST("/v1/group/profile", h.UpdProfile)
 	r.POST("/v1/group/apihosts", h.UpdApiHostUrl)
 	r.GET("/v1/group/:group_id/apihosts", h.GetApiHostUrl)
 	r.POST("/v1/keystore/create", h.CreateNewKeyWithAlias())
