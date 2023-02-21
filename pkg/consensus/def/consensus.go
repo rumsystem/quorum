@@ -8,5 +8,5 @@ type Consensus interface {
 	SetProducer(p Producer)
 	SetUser(u User)
 	SetPSync(s PSync)
-	TryProposeTrx()
+	StartPropose()
 }

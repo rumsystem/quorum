@@ -90,8 +90,8 @@ func (appsync *AppSync) Start(interval int) {
 
 				lastSyncBlock, err := strconv.ParseUint(blockIdStr, 10, 64)
 				if err == nil {
-					if group.GetCurrentBlock() > lastSyncBlock {
-						appsync.RunSync(groupId, lastSyncBlock, group.GetCurrentBlock())
+					if group.GetCurrentBlockId() > lastSyncBlock {
+						appsync.RunSync(groupId, lastSyncBlock, group.GetCurrentBlockId())
 					}
 				} else {
 					appsynclog.Errorf("sync group : %s Get Group last sync block err %s", groupId, err)

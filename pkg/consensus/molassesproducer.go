@@ -36,7 +36,7 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 
 func (producer *MolassesProducer) StartPropose() {
 	molaproducer_log.Debug("StartPropose called")
-	producer.bft.propose()
+	producer.bft.StartPropose()
 }
 
 func (producer *MolassesProducer) RecreateBft() {

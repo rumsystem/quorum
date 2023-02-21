@@ -146,6 +146,7 @@ func (rs *RexSyncer) Stop() {
 		}
 	}
 }
+
 func (rs *RexSyncer) GetLastRexSyncResult() (*def.RexSyncResult, error) {
 	if rs.LastSyncResult == nil {
 		return nil, fmt.Errorf("no valid rex sync result yet")
@@ -251,7 +252,7 @@ func (rs *RexSyncer) AddResult(result *SyncResult) {
 // task generators
 func (rs *RexSyncer) newSyncBlockTask() *SyncTask {
 	rex_syncer_log.Debugf("<%s> newSyncBlockTask called", rs.GroupId)
-	nextBlock := rs.cdnIface.GetCurrBlock() + uint64(1)
+	nextBlock := rs.cdnIface.GetCurrBlockId() + uint64(1)
 	randDelay := rand.Intn(500)
 	return &SyncTask{TaskId: nextBlock, ReqBlockNum: REQ_BLOCKS_PER_REQUEST, DelayTime: randDelay}
 }
