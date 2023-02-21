@@ -50,7 +50,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.37.0
-	github.com/prometheus/prom2json v1.3.1
+	github.com/prometheus/prom2json v1.3.2
 	github.com/prysmaticlabs/prysm/v3 v3.1.1
 	github.com/rumsystem/ip-cert v0.0.0-20220802012323-cebacb66b383
 	github.com/sirupsen/logrus v1.8.1
