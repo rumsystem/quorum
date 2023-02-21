@@ -45,8 +45,7 @@ var (
 	ErrNoTaskWait     = errors.New("Error No Task Waiting Result")
 	ErrNotAccept      = errors.New("Error The Result had been rejected")
 	ErrIgnore         = errors.New("Ignore")
-	ErrEpochMismatch  = errors.New("Error Epoch mismatch with what syncer expected")
-	ErrConsusMismatch = errors.New("Error consensus session mismatch")
+	ErrTaskIdMismatch = errors.New("Error taskId mismatch with what syncer expected")
 	ErrSyncerStatus   = errors.New("Error Get GetEpoch response but syncer status mismatch")
 
 	//app

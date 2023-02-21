@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kevinms/leakybucket-go"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p/peerdata"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p/scorers"
 	"github.com/rumsystem/quorum/internal/pkg/utils"

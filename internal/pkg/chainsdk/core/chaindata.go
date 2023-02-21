@@ -62,7 +62,7 @@ func (d *ChainData) GetReqBlocks(trx *quorumpb.Trx) (requester string, fromEpoch
 		return "", -1, -1, nil, -1, err
 	}
 
-	if exist == false {
+	if !exist {
 		return reqBlockItem.ReqPubkey, reqBlockItem.FromEpoch, reqBlockItem.BlksRequested, nil, quorumpb.ReqBlkResult_BLOCK_NOT_FOUND, nil
 	}
 

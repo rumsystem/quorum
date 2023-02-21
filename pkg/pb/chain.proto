@@ -102,10 +102,10 @@ enum ReqBlkResult {
 }
 
 message ReqBlockResp {
-    string       GroupId         = 1;
-    ReqBlkResult Result          = 2;       
-    string       RequesterPubkey = 3;
-    string       ProviderPubkey  = 4;
+    string       GroupId         = 1;   
+    string       RequesterPubkey = 2;
+    string       ProviderPubkey  = 3;
+    ReqBlkResult Result          = 4;        
     int64        FromEpoch       = 5;
     int64        BlksRequested   = 6;     
     int64        BlksProvided    = 7;

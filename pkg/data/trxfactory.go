@@ -79,12 +79,27 @@ func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.Announ
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_ANNOUNCE, encodedcontent, keyalias)
 }
 
+func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, fromEpoch int64, blkReq int64) (*quorumpb.Trx, error) {
+	var reqBlockItem quorumpb.ReqBlock
+	reqBlockItem.GroupId = groupId
+	reqBlockItem.FromEpoch = int64(fromEpoch)
+	reqBlockItem.BlksRequested = int64(blkReq)
+	reqBlockItem.ReqPubkey = factory.groupItem.UserSignPubkey
+
+	bItemBytes, err := proto.Marshal(&reqBlockItem)
+	if err != nil {
+		return nil, err
+	}
+
+	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK, int64(0), bItemBytes, keyalias)
+}
+
 func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, requester string, blkReq int64, fromEpoch int64, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error) {
 	var reqBlockRespItem quorumpb.ReqBlockResp
 	reqBlockRespItem.GroupId = groupId
-	reqBlockRespItem.Result = result
 	reqBlockRespItem.RequesterPubkey = requester
 	reqBlockRespItem.ProviderPubkey = factory.groupItem.UserSignPubkey
+	reqBlockRespItem.Result = result
 	reqBlockRespItem.FromEpoch = fromEpoch
 	reqBlockRespItem.BlksRequested = int64(blkReq)
 	reqBlockRespItem.BlksProvided = int64(len(blocks))
@@ -99,21 +114,6 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 
 	//send ask next block trx out
 	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK_RESP, int64(0), bItemBytes, keyalias)
-}
-
-func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, fromEpoch int64, blkReq int64) (*quorumpb.Trx, error) {
-	var reqBlockItem quorumpb.ReqBlock
-	reqBlockItem.GroupId = groupId
-	reqBlockItem.FromEpoch = int64(fromEpoch)
-	reqBlockItem.BlksRequested = int64(blkReq)
-	reqBlockItem.ReqPubkey = factory.groupItem.UserSignPubkey
-
-	bItemBytes, err := proto.Marshal(&reqBlockItem)
-	if err != nil {
-		return nil, err
-	}
-
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK, int64(0), bItemBytes, keyalias)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {

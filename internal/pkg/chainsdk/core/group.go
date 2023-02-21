@@ -190,8 +190,8 @@ func (grp *Group) GetNodeName() string {
 	return grp.Nodename
 }
 
-func (grp *Group) GetSyncerStatus() int8 {
-	return grp.ChainCtx.GetSyncerStatus()
+func (grp *Group) GetRexSyncerStatus() string {
+	return grp.ChainCtx.GetRexSyncerStatus()
 }
 
 func (grp *Group) GetBlock(epoch int64) (*quorumpb.Block, error) {
