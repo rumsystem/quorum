@@ -20,11 +20,8 @@ var backupCmd = &cobra.Command{
 			SeedDir:      seedDir,
 			BackupFile:   backupFile,
 		}
-		if isWasm {
-			handlers.BackupForWasm(params)
-		} else {
-			handlers.Backup(params)
-		}
+
+		handlers.Backup(params)
 	},
 }
 
@@ -43,8 +40,6 @@ func init() {
 	flags.StringVar(&dataDir, "datadir", "data", "data dir")
 	flags.StringVar(&seedDir, "seeddir", "seeds", "seed dir")
 	flags.StringVar(&backupFile, "file", "", "backup filename")
-
-	flags.BoolVar(&isWasm, "wasm", false, "is wasm")
 
 	backupCmd.MarkFlagRequired("file")
 }

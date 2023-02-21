@@ -32,10 +32,11 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
-	github.com/hack-pad/go-indexeddb v0.2.0
+	github.com/h2non/filetype v1.1.3
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
+	github.com/klauspost/compress v1.15.10
 	github.com/klauspost/reedsolomon v1.11.5
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/labstack/gommon v0.3.1
@@ -79,7 +80,6 @@ require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
-	github.com/cbergoon/merkletree v0.2.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
@@ -132,7 +132,6 @@ require (
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.15.10 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/koron/go-ssdp v0.0.3 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
