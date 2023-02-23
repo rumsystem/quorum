@@ -15,7 +15,7 @@ import (
 
 var trx_bft_log = logging.Logger("tbft")
 
-var DEFAULE_PROPOSE_PULSE = 1 * 1000 // 1s
+var DEFAULT_PROPOSE_PULSE = 5 * 1000 // 1s
 
 type ProposeTask struct {
 	Epoch          uint64
@@ -91,7 +91,9 @@ func (bft *TrxBft) runTask(task *ProposeTask) error {
 	trx_bft_log.Debugf("<%s> runTask called, epoch <%d>", bft.groupId, task.Epoch)
 	go func() {
 		//create new acs and try propose something
-		time.Sleep(time.Duration(task.DelayStartTime))
+		trx_bft_log.Debugf("<%s> delay start %d", bft.groupId, task.DelayStartTime)
+		time.Sleep(time.Duration(task.DelayStartTime) * time.Millisecond)
+
 		bft.acsInsts = NewTrxACS(bft.Config, bft, task.Epoch)
 		bft.acsInsts.InputValue(task.ProposedData)
 
@@ -125,13 +127,17 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 		return nil, err
 	}
 
+	if len(datab) == 0 {
+		datab = []byte("EMPTY")
+	}
+
 	currEpoch := bft.producer.cIface.GetCurrEpoch()
 	proposedEpoch := currEpoch + 1
 
 	task := &ProposeTask{
 		Epoch:          proposedEpoch,
 		ProposedData:   datab,
-		DelayStartTime: DEFAULE_PROPOSE_PULSE,
+		DelayStartTime: DEFAULT_PROPOSE_PULSE,
 	}
 
 	return task, nil
@@ -218,6 +224,11 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 
 	//decode trxs
 	for key, value := range result {
+		//check if result empty
+		if string(value) == "EMPTY" {
+			continue
+		}
+
 		trxBundle := &quorumpb.HBTrxBundle{}
 		err := proto.Unmarshal(value, trxBundle)
 		if err != nil {
@@ -247,12 +258,6 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 				trx_bft_log.Warnf(err.Error())
 			}
 		}
-
-		//update chain epoch
-		bft.producer.cIface.IncCurrEpoch()
-		bft.producer.cIface.SetLastUpdate(time.Now().UnixNano())
-		bft.producer.cIface.SaveChainInfoToDb()
-		trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
 	}
 
 	//finish current task
@@ -265,6 +270,12 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 	if err != nil {
 		trx_bft_log.Warnf("<%s> delete msgs for epoch <%d> failed", bft.groupId, epoch)
 	}
+
+	//update and save local epoch
+	bft.producer.cIface.IncCurrEpoch()
+	bft.producer.cIface.SetLastUpdate(time.Now().UnixNano())
+	bft.producer.cIface.SaveChainInfoToDb()
+	trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
 
 	task, _ := bft.NewProposeTask()
 	bft.addTask(task)
