@@ -35,7 +35,6 @@ var (
 	dataDir          string
 	seedDir          string
 	backupFile       string
-	isWasm           bool
 )
 
 // rootCmd represents the base command when called without any subcommands

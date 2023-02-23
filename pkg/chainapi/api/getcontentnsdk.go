@@ -15,7 +15,7 @@ import (
 )
 
 type GetGroupCtnPrarms struct {
-	GroupId         string   `json:"group_id" validate:"required"`
+	GroupId         string   `json:"group_id" validate:"required,uuid4"`
 	Num             int      `json:"num" validate:"required"`
 	Nonce           string   `json:"nonce"`
 	StartTrx        string   `json:"start_trx" validate:"required"`

@@ -23,7 +23,7 @@ import (
 )
 
 type JoinGroupResult struct {
-	GroupId           string `json:"group_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
+	GroupId           string `json:"group_id" validate:"required,uuid4" example:"c0020941-e648-40c9-92dc-682645acd17e"`
 	GroupName         string `json:"group_name" validate:"required" example:"demo group"`
 	OwnerPubkey       string `json:"owner_pubkey" validate:"required" example:"CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg=="`
 	UserPubkey        string `json:"user_pubkey" validate:"required" example:"CAISIQO7ury6x7aWpwUVn6mj2dZFqme3BAY5xDkYjqW/EbFFcA=="`

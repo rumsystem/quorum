@@ -10,7 +10,7 @@ import (
 )
 
 type GetGroupSeedParams struct {
-	GroupId string `json:"group_id" validate:"required"`
+	GroupId string `json:"group_id" validate:"required,uuid4"`
 }
 
 func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {

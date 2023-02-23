@@ -18,20 +18,21 @@ import (
 
 type AppConfigParam struct {
 	Action  string `from:"action"   json:"action"   validate:"required,oneof=add del" example:"add"`
-	GroupId string `from:"group_id" json:"group_id" validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	GroupId string `from:"group_id" json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Name    string `from:"name"     json:"name"     validate:"required" example:"test_bool"`
 	Type    string `from:"type"     json:"type"     validate:"required,oneof=int string bool" example:"bool"`
 	Value   string `from:"value"    json:"value"    validate:"required" example:"false"`
 	Memo    string `from:"memo"     json:"memo" example:"add test_bool to group"`
+	Sudo    bool   `from:"sudo" json:"sudo" example:"false"`
 }
 
 type AppConfigResult struct {
-	GroupId string `json:"group_id" validate:"required" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	GroupId string `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Sign    string `json:"signature" validate:"required" example:"3045022100e1375e48cfbd51cb78afc413fcca084deae9eb7f8454c54832feb9ae00fada7702203ee6fe2292ea3a87d687ae3369012b7518010e555b913125b8a7bf54f211502a"`
-	TrxId   string `json:"trx_id" validate:"required" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
+	TrxId   string `json:"trx_id" validate:"required,uuid4" example:"9e54c173-c1dd-429d-91fa-a6b43c14da77"`
 }
 
-func MgrAppConfig(params *AppConfigParam, sudo bool) (*AppConfigResult, error) {
+func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -100,13 +101,17 @@ func MgrAppConfig(params *AppConfigParam, sudo bool) (*AppConfigResult, error) {
 		item.OwnerPubkey = group.Item.OwnerPubKey
 		item.OwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdAppConfig(item, sudo)
 
+		trxId, err := group.UpdAppConfig(item, params.Sudo)
 		if err != nil {
 			return nil, err
 		}
 
-		result := &AppConfigResult{GroupId: item.GroupId, Sign: hex.EncodeToString(signature), TrxId: trxId}
+		result := &AppConfigResult{
+			GroupId: item.GroupId,
+			Sign:    hex.EncodeToString(signature),
+			TrxId:   trxId,
+		}
 
 		return result, nil
 	}

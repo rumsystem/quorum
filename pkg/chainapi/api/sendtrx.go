@@ -16,7 +16,7 @@ import (
 )
 
 type SendTrxResult struct {
-	TrxId string `json:"trx_id"   validate:"required"`
+	TrxId string `json:"trx_id"   validate:"required,uuid4"`
 }
 
 type NodeSDKTrxItem struct {
