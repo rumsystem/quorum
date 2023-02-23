@@ -13,13 +13,13 @@ var trx_acs_log = logging.Logger("tacs")
 type TrxACS struct {
 	Config
 	bft          *TrxBft
-	Epoch        int64
+	Epoch        uint64
 	rbcInstances map[string]*TrxRBC
 	rbcOutput    map[string]bool
 	rbcResults   map[string][]byte
 }
 
-func NewTrxACS(cfg Config, bft *TrxBft, epoch int64) *TrxACS {
+func NewTrxACS(cfg Config, bft *TrxBft, epoch uint64) *TrxACS {
 	trx_acs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 
 	acs := &TrxACS{

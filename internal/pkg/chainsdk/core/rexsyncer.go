@@ -16,7 +16,7 @@ import (
 )
 
 var TASK_RETRY_NUM = 30                // task retry times
-var REQ_BLOCKS_PER_REQUEST = 10        // ask for n blocks per request
+var REQ_BLOCKS_PER_REQUEST = int32(10) // ask for n blocks per request
 var SYNC_BLOCK_TASK_TIMEOUT = 4 * 1000 // in millseconds
 var SYNC_BLOCK_FREQ_ADJ = 5 * 1000     // in millseconds
 var MAXIMUM_DELAY_DURATION = 60 * 1000 // is millseconds
@@ -24,7 +24,7 @@ var MAXIMUM_DELAY_DURATION = 60 * 1000 // is millseconds
 var rex_syncer_log = logging.Logger("rsyncer")
 
 type SyncResult struct {
-	TaskId int64
+	TaskId uint64
 	Data   interface{}
 }
 
@@ -37,8 +37,8 @@ const (
 )
 
 type SyncTask struct {
-	TaskId      int64 //epoch
-	ReqBlockNum int
+	TaskId      uint64 //block
+	ReqBlockNum int32
 	DelayTime   int
 	TriggerTime int64
 }
@@ -146,13 +146,14 @@ func (rs *RexSyncer) Stop() {
 		}
 	}
 }
+
 func (rs *RexSyncer) GetLastRexSyncResult() (*def.RexSyncResult, error) {
 	if rs.LastSyncResult == nil {
 		return nil, fmt.Errorf("no valid rex sync result yet")
 	}
 
 	if rs.CurrentTask != nil {
-		rs.LastSyncResult.NextSyncTaskTimeStamp = int(rs.CurrentTask.TriggerTime)
+		rs.LastSyncResult.NextSyncTaskTimeStamp = rs.CurrentTask.TriggerTime
 	} else {
 		return nil, fmt.Errorf("try again")
 	}
@@ -262,9 +263,9 @@ func (rs *RexSyncer) AddResult(result *SyncResult) {
 // task generators
 func (rs *RexSyncer) newSyncBlockTask() *SyncTask {
 	rex_syncer_log.Debugf("<%s> newSyncBlockTask called", rs.GroupId)
-	nextEpoch := rs.cdnIface.GetCurrEpoch() + 1
+	nextBlock := rs.cdnIface.GetCurrBlockId() + uint64(1)
 	randDelay := rand.Intn(500)
-	return &SyncTask{TaskId: nextEpoch, ReqBlockNum: REQ_BLOCKS_PER_REQUEST, DelayTime: randDelay}
+	return &SyncTask{TaskId: nextBlock, ReqBlockNum: REQ_BLOCKS_PER_REQUEST, DelayTime: randDelay}
 }
 
 func (rs *RexSyncer) syncBlockTaskSender(task *SyncTask) error {
@@ -273,7 +274,7 @@ func (rs *RexSyncer) syncBlockTaskSender(task *SyncTask) error {
 	var trx *quorumpb.Trx
 	var trxerr error
 
-	trx, trxerr = rs.chainCtx.GetTrxFactory().GetReqBlocksTrx("", rs.GroupId, task.TaskId, int64(task.ReqBlockNum))
+	trx, trxerr = rs.chainCtx.GetTrxFactory().GetReqBlocksTrx("", rs.GroupId, task.TaskId, task.ReqBlockNum)
 	if trxerr != nil {
 		return trxerr
 	}
@@ -305,10 +306,10 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 
 	reqBlockResp := result.Data.(*quorumpb.ReqBlockResp)
 
-	rex_syncer_log.Debugf("- Receive valid reqBlockResp, provider <%s> result <%s> from epoch <%d> total blocks provided <%d>",
+	rex_syncer_log.Debugf("- Receive valid reqBlockResp, provider <%s> result <%s> from block <%d> total <%d> blocks provided",
 		reqBlockResp.ProviderPubkey,
 		reqBlockResp.Result.String(),
-		reqBlockResp.FromEpoch,
+		reqBlockResp.FromBlock,
 		len(reqBlockResp.Blocks.Blocks))
 
 	//Since a valid response is retrieved, finish current task
@@ -348,7 +349,7 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 
 	rs.LastSyncResult = &def.RexSyncResult{
 		Provider:              reqBlockResp.ProviderPubkey,
-		FromEpoch:             reqBlockResp.FromEpoch,
+		FromBlock:             reqBlockResp.FromBlock,
 		BlockProvided:         reqBlockResp.BlksProvided,
 		SyncResult:            reqBlockResp.Result.String(),
 		LastSyncTaskTimestamp: time.Now().Unix(),

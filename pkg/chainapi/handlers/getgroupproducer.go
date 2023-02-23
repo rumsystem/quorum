@@ -36,7 +36,7 @@ func GetGroupProducers(chainapidb def.APIHandlerIface, groupid string) ([]*Produ
 			item.OwnerPubkey = prd.GroupOwnerPubkey
 			item.OwnerSign = prd.GroupOwnerSign
 			item.TimeStamp = prd.TimeStamp
-			item.BlockWithness = prd.WithnessBlockNum
+			item.BlockWithness = prd.WithnessBlocks
 			prdResultList = append(prdResultList, item)
 		}
 

@@ -34,10 +34,9 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 	producer.bft = NewTrxBft(*config, producer)
 }
 
-func (producer *MolassesProducer) TryPropose() {
-	molaproducer_log.Debug("TryPropose called")
-	newEpoch := producer.cIface.GetCurrEpoch() + 1
-	producer.bft.propose(newEpoch)
+func (producer *MolassesProducer) StartPropose() {
+	molaproducer_log.Debug("StartPropose called")
+	producer.bft.StartPropose()
 }
 
 func (producer *MolassesProducer) RecreateBft() {
@@ -169,7 +168,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 				if blk.Epoch > producer.cIface.GetCurrEpoch() {
 					//update latest group epoch
 					molaproducer_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", producer.groupId, producer.cIface.GetCurrEpoch(), blk.Epoch)
-					producer.cIface.SetCurrEpoch(blk.Epoch)
+					producer.cIface.SetCurrBlockId(blk.BlockId)
 					producer.cIface.SetLastUpdate(blk.TimeStamp)
 					producer.cIface.SaveChainInfoToDb()
 				} else {

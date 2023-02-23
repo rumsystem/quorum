@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch int64) error {
+func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch uint64) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
 		return err

@@ -22,7 +22,8 @@ type groupInfo struct {
 	EncryptionType  string             `json:"encryption_type" validate:"required" example:"PUBLIC"`
 	CipherKey       string             `json:"cipher_key" validate:"required" example:"58044622d48c4d91932583a05db3ff87f29acacb62e701916f7f0bbc6e446e5d"`
 	AppKey          string             `json:"app_key" validate:"required" example:"test_app"`
-	CurrtEpoch      int64              `json:"currt_epoch" validate:"required" example:"0"`
+	CurrtEpoch      uint64             `json:"currt_epoch" validate:"required" example:"0"`
+	CurrtTopBlock   uint64             `json:"currt_top_block" validate:"required" example:"0"`
 	LastUpdated     int64              `json:"last_updated" validate:"required" example:"1633022375303983600"`
 	RexSyncerStatus string             `json:"rex_syncer_status" validate:"required" example:"IDLE"`
 	RexSyncerResult *def.RexSyncResult `json:"rex_Syncer_result" validate:"required"`
@@ -65,6 +66,7 @@ func (h *Handler) GetGroups(c echo.Context) (err error) {
 
 		group.LastUpdated = value.GetLatestUpdate()
 		group.CurrtEpoch = value.GetCurrentEpoch()
+		group.CurrtTopBlock = value.GetCurrentBlockId()
 
 		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
 		if err != nil {

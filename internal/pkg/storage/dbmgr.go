@@ -33,12 +33,12 @@ func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
 }
 
 // get block
-func (dbMgr *DbMgr) GetBlock(groupId string, epoch int64, cached bool, prefix ...string) (*quorumpb.Block, error) {
+func (dbMgr *DbMgr) GetBlock(groupId string, blockId uint64, cached bool, prefix ...string) (*quorumpb.Block, error) {
 	var key string
 	if cached {
-		key = GetCachedBlockKey(groupId, epoch, prefix...)
+		key = GetCachedBlockKey(groupId, blockId, prefix...)
 	} else {
-		key = GetBlockKey(groupId, epoch, prefix...)
+		key = GetBlockKey(groupId, blockId, prefix...)
 	}
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
@@ -80,12 +80,12 @@ func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...stri
 	return dbMgr.Db.Set([]byte(key), value)
 }
 
-func (dbMgr *DbMgr) RmBlock(groupId string, epoch int64, cached bool, prefix ...string) error {
+func (dbMgr *DbMgr) RmBlock(groupId string, blockId uint64, cached bool, prefix ...string) error {
 	var key string
 	if cached {
-		key = GetCachedBlockKey(groupId, epoch, prefix...)
+		key = GetCachedBlockKey(groupId, blockId, prefix...)
 	} else {
-		key = GetBlockKey(groupId, epoch, prefix...)
+		key = GetBlockKey(groupId, blockId, prefix...)
 	}
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
 	if err != nil {
@@ -99,12 +99,12 @@ func (dbMgr *DbMgr) RmBlock(groupId string, epoch int64, cached bool, prefix ...
 	return dbMgr.Db.Delete([]byte(key))
 }
 
-func (dbMgr *DbMgr) IsBlockExist(groupId string, epoch int64, cached bool, prefix ...string) (bool, error) {
+func (dbMgr *DbMgr) IsBlockExist(groupId string, blockId uint64, cached bool, prefix ...string) (bool, error) {
 	var key string
 	if cached {
-		key = GetCachedBlockKey(groupId, epoch, prefix...)
+		key = GetCachedBlockKey(groupId, blockId, prefix...)
 	} else {
-		key = GetBlockKey(groupId, epoch, prefix...)
+		key = GetBlockKey(groupId, blockId, prefix...)
 	}
 	return dbMgr.Db.IsExist([]byte(key))
 }
@@ -198,7 +198,7 @@ func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (p
 func (dbMgr *DbMgr) GetNextNonce(groupId string, prefix ...string) (uint64, error) {
 	key := GetNonceKey(groupId, prefix...)
 	nonceseq, succ := dbMgr.seq.Load(key)
-	if succ == false {
+	if !succ {
 		newseq, err := dbMgr.Db.GetSequence([]byte(key), 1)
 		if err != nil {
 			return 0, err

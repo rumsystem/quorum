@@ -36,22 +36,22 @@ func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
 }
 
 func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) error {
-	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s epoch %d", len(block.Trxs), groupid, block.Epoch)
-	err := appsync.appdb.AddMetaByTrx(block.Epoch, groupid, block.Trxs)
+	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s blockId <%d>", len(block.Trxs), groupid, block.BlockId)
+	err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
 	if err != nil {
 		appsynclog.Errorf("ParseBlockTrxs on group %s err:  ", groupid, err)
 	}
 	return err
 }
 
-func (appsync *AppSync) RunSync(groupid string, lastSyncEpoch int64, highestepoch int64) {
+func (appsync *AppSync) RunSync(groupid string, lastSyncBlock uint64, highestBlock uint64) {
 
 	for {
-		if lastSyncEpoch >= highestepoch {
+		if lastSyncBlock >= highestBlock {
 			break
 		}
-		lastSyncEpoch++
-		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(groupid, lastSyncEpoch, false, appsync.nodename)
+		lastSyncBlock++
+		block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(groupid, lastSyncBlock, false, appsync.nodename)
 		if err == nil {
 			err := appsync.ParseBlockTrxs(groupid, block)
 			if err != nil {
@@ -60,7 +60,7 @@ func (appsync *AppSync) RunSync(groupid string, lastSyncEpoch int64, highestepoc
 			}
 
 		} else {
-			appsynclog.Errorf("db read err: %s, groupid: %s, lastSyncEpoch : %d, HighestEpoch: %d", err, groupid, lastSyncEpoch, highestepoch)
+			appsynclog.Errorf("db read err: %s, groupid: %s, lastSyncEpoch : %d, HighestEpoch: %d", err, groupid, lastSyncBlock, highestBlock)
 			break
 		}
 	}
@@ -78,23 +78,23 @@ func (appsync *AppSync) Start(interval int) {
 					continue
 				}
 
-				epochstr, err := appsync.appdb.GetGroupStatus(groupId, "Epoch")
+				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "BlockId")
 				if err == nil {
-					if epochstr == "" { //init, set to 0
-						epochstr = "0"
+					if blockIdStr == "" { //init, set to 0
+						blockIdStr = "0"
 					}
 				} else {
 					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupId, err)
 					continue
 				}
 
-				lastSyncEpoch, err := strconv.ParseInt(epochstr, 10, 64)
+				lastSyncBlock, err := strconv.ParseUint(blockIdStr, 10, 64)
 				if err == nil {
-					if group.GetCurrentEpoch() > lastSyncEpoch {
-						appsync.RunSync(groupId, lastSyncEpoch, group.GetCurrentEpoch())
+					if group.GetCurrentBlockId() > lastSyncBlock {
+						appsync.RunSync(groupId, lastSyncBlock, group.GetCurrentBlockId())
 					}
 				} else {
-					appsynclog.Errorf("sync group : %s Get Group last sync Epoch err %s", groupId, err)
+					appsynclog.Errorf("sync group : %s Get Group last sync block err %s", groupId, err)
 				}
 			}
 

@@ -29,11 +29,13 @@ import (
 // get hash again, this is bookkeepingHash
 // bookkeeping node will sigh this hash with to guarantee everything in this block is bookkeeping correctly.
 
-func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	var newBlock quorumpb.Block
 
-	newBlock.Epoch = epoch
 	newBlock.GroupId = oldBlock.GroupId
+	newBlock.BlockId = oldBlock.BlockId + 1
+	newBlock.Epoch = epoch
+
 	newBlock.PrevEpochHash = oldBlock.EpochHash
 	for _, trx := range trxs {
 		trxclone := &quorumpb.Trx{}
@@ -88,6 +90,41 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch int64, trxs []*quorumpb
 
 	newBlock.BookkeepingSign = signature
 	return &newBlock, nil
+}
+
+func CreateBlockWithoutParent(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+	//create a block without parents
+	var newBlock quorumpb.Block
+
+	newBlock.Epoch = epoch
+	newBlock.GroupId = groupId
+	newBlock.PrevEpochHash = nil
+	for _, trx := range trxs {
+		trxclone := &quorumpb.Trx{}
+		clonedtrxbuff, err := proto.Marshal(trx)
+		if err != nil {
+			return nil, err
+		}
+
+		err = proto.Unmarshal(clonedtrxbuff, trxclone)
+		if err != nil {
+			return nil, err
+		}
+		newBlock.Trxs = append(newBlock.Trxs, trxclone)
+	}
+
+	//add withnesses and calcualte hash again
+	newBlock.Witesses = withnesses
+	newBlock.TimeStamp = time.Now().UnixNano()
+	newBlock.BookkeepingPubkey = groupPublicKey
+	newBlock.Sudo = sudo
+
+	return &newBlock, nil
+}
+
+// regenerate block with parent info
+func RegenrateBlockWithParent(parentBlock *quorumpb.Block, block *quorumpb.Block) (*quorumpb.Block, error) {
+	return nil, nil
 }
 
 func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
