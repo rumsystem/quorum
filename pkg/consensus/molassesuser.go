@@ -61,7 +61,7 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 			}
 
 			//valid block with parent block
-			valid, err := rumchaindata.IsBlockValid(block, parentBlock)
+			valid, err := rumchaindata.ValidBlockWithParent(block, parentBlock)
 			if !valid {
 				molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
 				molauser_log.Debugf("<%s> remove invalid block <%d> from cache", user.groupId, block.Epoch)

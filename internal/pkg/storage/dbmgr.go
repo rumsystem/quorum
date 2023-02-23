@@ -55,14 +55,13 @@ func (dbMgr *DbMgr) GetBlock(groupId string, blockId uint64, cached bool, prefix
 
 // save block chunk
 func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
-	dbmgr_log.Debug("SaveBlock called")
 	var key string
 	if cached {
-		key = GetCachedBlockKey(block.GroupId, block.Epoch, prefix...)
+		key = GetCachedBlockKey(block.GroupId, block.BlockId, prefix...)
 	} else {
-		key = GetBlockKey(block.GroupId, block.Epoch, prefix...)
+		key = GetBlockKey(block.GroupId, block.BlockId, prefix...)
 	}
-	dbmgr_log.Debugf("KEY %s", key)
+	dbmgr_log.Debug("try save block with key <%s>", key)
 
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
 	if err != nil {

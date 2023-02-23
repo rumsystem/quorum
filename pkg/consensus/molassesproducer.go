@@ -100,7 +100,6 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
 		molaproducer_log.Debugf("Block exist, ignore")
-
 	} else {
 		//check if block cached
 		isBlockCatched, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, true, producer.nodename)
@@ -129,7 +128,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 			}
 
 			//valid block with parent block
-			valid, err := rumchaindata.IsBlockValid(block, parentBlock)
+			valid, err := rumchaindata.ValidBlockWithParent(block, parentBlock)
 			if !valid {
 				molaproducer_log.Warningf("<%s> invalid block <%s>", producer.groupId, err.Error())
 				molaproducer_log.Debugf("<%s> remove invalid block <%d> from cache", producer.groupId, block.Epoch)

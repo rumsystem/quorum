@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
@@ -14,70 +15,31 @@ import (
 	"time"
 )
 
-// Each block has 2 hashs, trxHash and bookkeepingHash
-// trxHash includes the following items
-// - Epoch
-// - GroupId
-// - PrevHash
-// - all trxs
-// since each round of acs between different producers will make an "agreement" which trxs to be included in this round of epoch
-// hash those info will guarantee the consensused info are correct.
-// After add
-// - withness info
-// - bookkeeping pubkey
-// - timestamp
-// get hash again, this is bookkeepingHash
-// bookkeeping node will sigh this hash with to guarantee everything in this block is bookkeeping correctly.
-
-func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
-	var newBlock quorumpb.Block
-
-	newBlock.GroupId = oldBlock.GroupId
-	newBlock.BlockId = oldBlock.BlockId + 1
-	newBlock.Epoch = epoch
-
-	newBlock.PrevEpochHash = oldBlock.EpochHash
-	for _, trx := range trxs {
-		trxclone := &quorumpb.Trx{}
-		clonedtrxbuff, err := proto.Marshal(trx)
-		if err != nil {
-			return nil, err
-		}
-
-		err = proto.Unmarshal(clonedtrxbuff, trxclone)
-		if err != nil {
-			return nil, err
-		}
-		newBlock.Trxs = append(newBlock.Trxs, trxclone)
+func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+	newBlock := &quorumpb.Block{
+		GroupId:        parentBlk.GroupId,
+		BlockId:        parentBlk.BlockId + 1,
+		Epoch:          epoch,
+		PrevHash:       parentBlk.BlockHash,
+		ProducerPubkey: groupPublicKey,
+		Trxs:           trxs,
+		Sudo:           sudo,
+		TimeStamp:      time.Now().UnixNano(),
 	}
 
-	tbytes, err := proto.Marshal(&newBlock)
-
+	tbytes, err := proto.Marshal(newBlock)
 	if err != nil {
 		return nil, err
 	}
 
-	epochHash := localcrypto.Hash(tbytes)
-	newBlock.EpochHash = epochHash
-
-	//add withnesses and calcualte hash again
-	newBlock.Witesses = withnesses
-	newBlock.TimeStamp = time.Now().UnixNano()
-	newBlock.BookkeepingPubkey = groupPublicKey
-	newBlock.Sudo = sudo
-
-	bbytes, err := proto.Marshal(&newBlock)
-	if err != nil {
-		return nil, err
-	}
-	blockHash := localcrypto.Hash(bbytes)
-	newBlock.BlockHash = blockHash
+	hash := localcrypto.Hash(tbytes)
+	newBlock.BlockHash = hash
 
 	var signature []byte
 	if keyalias == "" {
-		signature, err = keystore.EthSignByKeyName(newBlock.GroupId, blockHash, opts...)
+		signature, err = keystore.EthSignByKeyName(newBlock.GroupId, hash, opts...)
 	} else {
-		signature, err = keystore.EthSignByKeyAlias(keyalias, blockHash, opts...)
+		signature, err = keystore.EthSignByKeyAlias(keyalias, hash, opts...)
 	}
 
 	if err != nil {
@@ -88,73 +50,77 @@ func CreateBlockByEthKey(oldBlock *quorumpb.Block, epoch uint64, trxs []*quorump
 		return nil, errors.New("create signature failed")
 	}
 
-	newBlock.BookkeepingSign = signature
-	return &newBlock, nil
+	newBlock.ProducerSign = signature
+	return newBlock, nil
 }
 
-func CreateBlockWithoutParent(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, withnesses []*quorumpb.Witnesses, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateOrphanBlock(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	//create a block without parents
-	var newBlock quorumpb.Block
-
-	newBlock.Epoch = epoch
-	newBlock.GroupId = groupId
-	newBlock.PrevEpochHash = nil
-	for _, trx := range trxs {
-		trxclone := &quorumpb.Trx{}
-		clonedtrxbuff, err := proto.Marshal(trx)
-		if err != nil {
-			return nil, err
-		}
-
-		err = proto.Unmarshal(clonedtrxbuff, trxclone)
-		if err != nil {
-			return nil, err
-		}
-		newBlock.Trxs = append(newBlock.Trxs, trxclone)
+	orphanBlock := &quorumpb.Block{
+		GroupId:        groupId,
+		BlockId:        0,
+		Epoch:          epoch,
+		PrevHash:       nil,
+		ProducerPubkey: groupPublicKey,
+		Trxs:           trxs,
+		Sudo:           sudo,
+		TimeStamp:      time.Now().UnixNano(),
 	}
-
-	//add withnesses and calcualte hash again
-	newBlock.Witesses = withnesses
-	newBlock.TimeStamp = time.Now().UnixNano()
-	newBlock.BookkeepingPubkey = groupPublicKey
-	newBlock.Sudo = sudo
-
-	return &newBlock, nil
+	return orphanBlock, nil
 }
 
 // regenerate block with parent info
-func RegenrateBlockWithParent(parentBlock *quorumpb.Block, block *quorumpb.Block) (*quorumpb.Block, error) {
-	return nil, nil
-}
+func RegenrateBlockWithParent(parentBlock *quorumpb.Block, orphanBlock *quorumpb.Block, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+	orphanBlock.PrevHash = parentBlock.BlockHash
+	orphanBlock.BlockId = parentBlock.BlockId + 1
 
-func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
-	genesisBlock := &quorumpb.Block{}
-	genesisBlock.Epoch = 0
-	genesisBlock.GroupId = groupId
-	genesisBlock.PrevEpochHash = nil
-	genesisBlock.Trxs = nil
-
-	tbytes, err := proto.Marshal(genesisBlock)
+	tbytes, err := proto.Marshal(orphanBlock)
 	if err != nil {
 		return nil, err
 	}
 
-	epochHash := localcrypto.Hash(tbytes)
-	genesisBlock.EpochHash = epochHash
+	hash := localcrypto.Hash(tbytes)
+	orphanBlock.BlockHash = hash
 
-	witesses := []*quorumpb.Witnesses{}
-	genesisBlock.Witesses = witesses
-	genesisBlock.TimeStamp = time.Now().UnixNano()
-	genesisBlock.BookkeepingPubkey = groupPublicKey
-	genesisBlock.Sudo = false
+	var signature []byte
+	if keyalias == "" {
+		signature, err = keystore.EthSignByKeyName(orphanBlock.GroupId, hash, opts...)
+	} else {
+		signature, err = keystore.EthSignByKeyAlias(keyalias, hash, opts...)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(signature) == 0 {
+		return nil, errors.New("create signature failed")
+	}
+
+	orphanBlock.ProducerSign = signature
+	return orphanBlock, nil
+}
+
+func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
+	genesisBlock := &quorumpb.Block{
+		GroupId:        groupId,
+		BlockId:        0,
+		Epoch:          0,
+		PrevHash:       nil,
+		ProducerPubkey: groupPublicKey,
+		Trxs:           nil,
+		Sudo:           true,
+		TimeStamp:      time.Now().UnixNano(),
+	}
 
 	bbytes, err := proto.Marshal(genesisBlock)
 	if err != nil {
 		return nil, err
 	}
-	blockHash := localcrypto.Hash(bbytes)
 
+	blockHash := localcrypto.Hash(bbytes)
 	genesisBlock.BlockHash = blockHash
+
 	var signature []byte
 	if keyalias == "" {
 		signature, err = keystore.EthSignByKeyName(genesisBlock.GroupId, blockHash)
@@ -167,98 +133,115 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 	if len(signature) == 0 {
 		return nil, errors.New("create signature on genesisblock failed")
 	}
-	genesisBlock.BookkeepingSign = signature
+
+	genesisBlock.ProducerSign = signature
 	return genesisBlock, nil
 }
 
-func BlockHash(block *quorumpb.Block) ([]byte, error) {
-	clonedblockbuff, err := proto.Marshal(block)
-	if err != nil {
-		return nil, err
-	}
-	blockWithoutHash := &quorumpb.Block{}
+func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 
-	err = proto.Unmarshal(clonedblockbuff, blockWithoutHash)
-	if err != nil {
-		return nil, err
-	}
+	//step 1, check hash for newBlock
 
-	blockWithoutHash.BlockHash = nil
-	blockWithoutHash.BookkeepingSign = nil
-
-	bbytes, err := proto.Marshal(blockWithoutHash)
-	if err != nil {
-		return nil, err
+	blkWithOutHashAndSign := &quorumpb.Block{
+		GroupId:        newBlock.GroupId,
+		BlockId:        newBlock.BlockId,
+		Epoch:          newBlock.Epoch,
+		PrevHash:       newBlock.PrevHash,
+		ProducerPubkey: newBlock.ProducerPubkey,
+		Trxs:           newBlock.Trxs,
+		Sudo:           newBlock.Sudo,
+		TimeStamp:      newBlock.TimeStamp,
+		BlockHash:      nil,
+		ProducerSign:   nil,
 	}
 
-	hash := localcrypto.Hash(bbytes)
-	return hash, nil
-}
-
-func BlockEpochHash(block *quorumpb.Block) ([]byte, error) {
-	blockWithoutHash := &quorumpb.Block{
-		GroupId:       block.GroupId,
-		Epoch:         block.Epoch,
-		PrevEpochHash: block.PrevEpochHash,
-		Trxs:          block.Trxs,
-	}
-
-	tbytes, err := proto.Marshal(blockWithoutHash)
-	if err != nil {
-		return nil, err
-	}
-	hash := localcrypto.Hash(tbytes)
-	return hash, nil
-}
-
-func VerifyBookkeepingSign(block *quorumpb.Block) (bool, error) {
-	bookkeepingHash, err := BlockHash(block)
+	tbytes, err := proto.Marshal(blkWithOutHashAndSign)
 	if err != nil {
 		return false, err
 	}
 
-	bytespubkey, err := base64.RawURLEncoding.DecodeString(block.BookkeepingPubkey)
+	hash := localcrypto.Hash(tbytes)
+	if !bytes.Equal(hash, newBlock.BlockHash) {
+		return false, fmt.Errorf("hash for new block is invalid")
+	}
+
+	if newBlock.BlockId != parentBlock.BlockId+1 {
+		return false, fmt.Errorf("blockid mismatch with parent block")
+	}
+
+	if !bytes.Equal(newBlock.PrevHash, parentBlock.BlockHash) {
+		return false, errors.New("prevhash mismatch with parent block")
+	}
+
+	bytespubkey, err := base64.RawURLEncoding.DecodeString(newBlock.ProducerPubkey)
 	if err == nil { //try eth key
 		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
 		if err == nil {
 			ks := localcrypto.GetKeystore()
-			r := ks.EthVerifySign(bookkeepingHash, block.BookkeepingSign, ethpubkey)
+			r := ks.EthVerifySign(hash, newBlock.ProducerSign, ethpubkey)
 			return r, nil
 		}
 		return false, err
 	}
-	return false, err
+
+	return true, nil
 }
 
-func IsBlockValid(newBlock, oldBlock *quorumpb.Block) (bool, error) {
+func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
+	if genesisBlock.BlockId != 0 {
+		return false, fmt.Errorf("blockId for genesis block must be 0")
+	}
 
-	epochHash, err := BlockEpochHash(newBlock)
+	if genesisBlock.Epoch != 0 {
+		return false, fmt.Errorf("epoch for genesis block must be 0")
+	}
+
+	if genesisBlock.PrevHash != nil {
+		return false, fmt.Errorf("prevhash for genesis block must be nil")
+	}
+
+	genesisBlockWithoutHashAndSign := &quorumpb.Block{
+		GroupId:        genesisBlock.GroupId,
+		BlockId:        genesisBlock.BlockId,
+		Epoch:          genesisBlock.Epoch,
+		PrevHash:       genesisBlock.PrevHash,
+		ProducerPubkey: genesisBlock.ProducerPubkey,
+		Trxs:           genesisBlock.Trxs,
+		Sudo:           genesisBlock.Sudo,
+		TimeStamp:      genesisBlock.TimeStamp,
+		BlockHash:      nil,
+		ProducerSign:   nil,
+	}
+
+	bts, err := proto.Marshal(genesisBlockWithoutHashAndSign)
 	if err != nil {
 		return false, err
 	}
 
-	if res := bytes.Compare(epochHash, newBlock.EpochHash); res != 0 {
-		return false, errors.New("TrxHash for new block is invalid")
+	hash := localcrypto.Hash(bts)
+	if !bytes.Equal(hash, genesisBlock.BlockHash) {
+		return false, fmt.Errorf("hash for new block is invalid")
 	}
 
-	if res := bytes.Compare(newBlock.PrevEpochHash, oldBlock.EpochHash); res != 0 {
-		return false, errors.New("PreviousHash mismatch")
+	bytespubkey, err := base64.RawURLEncoding.DecodeString(genesisBlock.ProducerPubkey)
+	if err == nil { //try eth key
+		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
+		if err == nil {
+			ks := localcrypto.GetKeystore()
+			r := ks.EthVerifySign(hash, genesisBlock.ProducerSign, ethpubkey)
+			return r, nil
+		}
+		return false, err
 	}
 
-	if newBlock.Epoch != oldBlock.Epoch+1 {
-		return false, errors.New("Previous epoch mismatch")
-	}
-
-	return VerifyBookkeepingSign(newBlock)
+	return true, nil
 }
 
 // get all trx from the block list
 func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
 	var trxs []*quorumpb.Trx
 	for _, block := range blocks {
-		for _, trx := range block.Trxs {
-			trxs = append(trxs, trx)
-		}
+		trxs = append(trxs, block.Trxs...)
 	}
 	return trxs, nil
 }

@@ -25,13 +25,7 @@ func (h *Handler) GetBlock(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError("group_id can't be nil.")
 	}
 
-	blockIdStr := c.Param("block")
-	// verify epoch is valid
-	/*
-		if epoch < 0  {
-			return rumerrors.NewBadRequestError("block_id can't be nil.")
-		}
-	*/
+	blockIdStr := c.Param("block_id")
 	blockId, err := strconv.ParseUint(blockIdStr, 10, 64)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err.Error())
