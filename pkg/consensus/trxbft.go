@@ -78,6 +78,18 @@ func (bft *TrxBft) StartPropose() {
 	bft.addTask(task)
 }
 
+func (bft *TrxBft) KillAndRunNextRound() {
+	trx_bft_log.Debugf("<%s> KillCurrentTask called", bft.groupId)
+
+	//finish current task
+	bft.taskdone <- struct{}{}
+	bft.CurrTask = nil
+	bft.acsInsts = nil
+
+	task, _ := bft.NewProposeTask()
+	bft.addTask(task)
+}
+
 func (bft *TrxBft) addTask(task *ProposeTask) {
 	trx_bft_log.Debugf("<%s> bft addTask called", bft.groupId)
 	go func() {
