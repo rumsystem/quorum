@@ -61,7 +61,7 @@ func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...stri
 	} else {
 		key = GetBlockKey(block.GroupId, block.BlockId, prefix...)
 	}
-	dbmgr_log.Debug("try save block with key <%s>", key)
+	dbmgr_log.Debugf("try save block with key <%s>", key)
 
 	isExist, err := dbMgr.Db.IsExist([]byte(key))
 	if err != nil {

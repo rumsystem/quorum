@@ -83,8 +83,9 @@ func (bft *TrxBft) KillAndRunNextRound() {
 
 	//finish current task
 	bft.taskdone <- struct{}{}
-	bft.CurrTask = nil
-	bft.acsInsts = nil
+
+	//bft.CurrTask = nil
+	//bft.acsInsts = nil
 
 	task, _ := bft.NewProposeTask()
 	bft.addTask(task)
@@ -106,6 +107,7 @@ func (bft *TrxBft) runTask(task *ProposeTask) error {
 		trx_bft_log.Debugf("<%s> delay start %d", bft.groupId, task.DelayStartTime)
 		time.Sleep(time.Duration(task.DelayStartTime) * time.Millisecond)
 
+		bft.CurrTask = task
 		bft.acsInsts = NewTrxACS(bft.Config, bft, task.Epoch)
 		bft.acsInsts.InputValue(task.ProposedData)
 
@@ -209,7 +211,7 @@ func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	trx_bft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
 
-	if hbmsg.Epoch < bft.acsInsts.Epoch {
+	if bft.acsInsts != nil && hbmsg.Epoch < bft.acsInsts.Epoch {
 		trx_bft_log.Warnf("message from old epoch, ignore")
 		return nil
 	}
@@ -220,8 +222,7 @@ func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 		return err
 	}
 
-	//from later epoch, save it and wait till the epoch is coming
-	if hbmsg.Epoch > bft.acsInsts.Epoch {
+	if bft.acsInsts != nil && hbmsg.Epoch > bft.acsInsts.Epoch {
 		trx_bft_log.Debugf("message from future epoch <%d>, buffered", hbmsg.Epoch)
 		return nil
 	}
@@ -289,8 +290,9 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 
 	//finish current task
 	bft.taskdone <- struct{}{}
-	bft.CurrTask = nil
-	bft.acsInsts = nil
+
+	//bft.CurrTask = nil
+	//bft.acsInsts = nil
 
 	task, _ := bft.NewProposeTask()
 	bft.addTask(task)

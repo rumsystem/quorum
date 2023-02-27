@@ -36,7 +36,23 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 
 func (producer *MolassesProducer) StartPropose() {
 	molaproducer_log.Debug("StartPropose called")
-	producer.bft.StartPropose()
+	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
+	if err != nil {
+		return
+	}
+
+	isProducer := false
+	for _, p := range producer_nodes {
+		if producer.grpItem.UserSignPubkey == p.ProducerPubkey {
+			isProducer = true
+			break
+
+		}
+	}
+
+	if isProducer {
+		producer.bft.StartPropose()
+	}
 }
 
 func (producer *MolassesProducer) RecreateBft() {
@@ -167,18 +183,19 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 				if blk.BlockId > producer.cIface.GetCurrBlockId() {
 					//update latest group info
 					molaproducer_log.Debugf("<%s> UpdChainInfo, blockId from <%d> to <%d>",
-						producer.groupId, producer.cIface.GetCurrBlockId())
+						producer.groupId, producer.cIface.GetCurrBlockId(), blk.BlockId)
 					producer.cIface.SetCurrBlockId(blk.BlockId)
 					producer.cIface.SetLastUpdate(blk.TimeStamp)
-					if blk.Epoch > producer.cIface.GetCurrEpoch() {
-						molaproducer_log.Debugf("<%s> UpdChainInfo, Epoch from <%d> to <%d>",
-							blk.BlockId, producer.cIface.GetCurrEpoch(), blk.Epoch)
-						if producer.bft.CurrTask.Epoch <= blk.Epoch {
-							producer.cIface.SetCurrEpoch(blk.Epoch)
-							producer.bft.KillAndRunNextRound()
-						}
-					}
+				}
+
+				if blk.Epoch > producer.cIface.GetCurrEpoch() {
+					molaproducer_log.Debugf("<%s> UpdChainInfo, Epoch from <%d> to <%d>",
+						producer.groupId, producer.cIface.GetCurrEpoch(), blk.Epoch)
+					producer.cIface.SetCurrEpoch(blk.Epoch)
 					producer.cIface.SaveChainInfoToDb()
+					if producer.bft.CurrTask != nil && producer.bft.CurrTask.Epoch <= blk.Epoch {
+						producer.bft.KillAndRunNextRound()
+					}
 				}
 			}
 

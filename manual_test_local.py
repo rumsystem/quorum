@@ -7,7 +7,7 @@ import json
 heads = {'Content-Type': 'application/json'}
 url_create_group = 'http://127.0.0.1:8002/api/v1/group'
 url_get_groups =  'http://127.0.0.1:8002/api/v1/groups'
-url_post_to_group = 'http://127.0.0.1:8002/api/v1/group/0a58dd81-6677-4c5d-a24e-3db284a77a9e/content'
+url_post_to_group = 'http://127.0.0.1:8002/api/v1/group/bc758322-2810-4869-b62d-c95f3193a215/content'
 
 payload_create_group = {
   "group_name": "my_test_group",
@@ -22,7 +22,7 @@ payload_create_group = {
 #respString = "Create Group with groupId <%s>" % group_id
 #print(respString)
 
-TRX_COUNT = 500
+TRX_COUNT = 100
 trx_id_list = []
 #try post 10000 trxs and verify
 for i in range (0, TRX_COUNT):
