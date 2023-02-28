@@ -246,7 +246,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	return nil
 }
 
-// handle BLOCK msg from PSconn
+// handle block msg from PSconn
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlockPsConn called", chain.groupItem.GroupId)
 
@@ -257,11 +257,14 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		return nil
 	}
 
+	//DONT CHECK THIS
 	//check if block is from approved producer
-	if !chain.isProducerByPubkey(block.BookkeepingPubkey) {
-		chain_log.Warningf("<%s> received block <%d> from unapproved producer <%s>, reject it", chain.groupItem.GroupId, block.Epoch, block.BookkeepingPubkey)
-		return nil
-	}
+	/*
+		if !chain.isProducerByPubkey(block.ProducerPubkey) {
+			chain_log.Warningf("<%s> received block <%d> from unapproved producer <%s>, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
+			return nil
+		}
+	*/
 
 	//for all node run as PRODUCER_NODE but not approved by owner (yet)
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
@@ -834,6 +837,7 @@ func (chain *Chain) CreateConsensus() error {
 		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
 		producer = &consensus.MolassesProducer{}
 		producer.NewProducer(chain.groupItem, chain.nodename, chain)
+		producer.StartPropose()
 	}
 
 	if shouldCreateUser {

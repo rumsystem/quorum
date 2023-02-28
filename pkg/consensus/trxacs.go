@@ -74,7 +74,7 @@ func (a *TrxACS) RbcDone(proposerPubkey string) {
 }
 
 func (a *TrxACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	trx_acs_log.Infof("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
+	trx_acs_log.Debugf("HandleMessage called, Epoch <%d>", hbmsg.Epoch)
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
@@ -87,7 +87,12 @@ func (a *TrxACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (a *TrxACS) handleRbc(payload []byte) error {
-	trx_acs_log.Infof("handleRbc called, Epoch <%d>", a.Epoch)
+	if a == nil {
+		trx_acs_log.Debugf("?????????????????????")
+		return nil
+	}
+
+	trx_acs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
 
 	//cast payload to RBC message
 	rbcMsg := &quorumpb.RBCMsg{}

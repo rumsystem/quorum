@@ -61,27 +61,27 @@ message Trx {
     TrxStroageType StorageType  = 12;
 }
 
-message Witnesses {
-    string   groupId       = 1;
-    int64    epoch         = 2;
-    bytes    TrxHash       = 3;
-    string   WitnessPubkey = 4;
-    bytes    WitnessSign   = 5;
-}
+//message Witnesses {
+//string   groupId       = 1;
+//int64    epoch         = 2;
+//    bytes    TrxHash       = 3;
+//string   WitnessPubkey = 4;
+//bytes    WitnessSign   = 5;
+//}
+//  repeated    Witnesses Witesses = 7;
 
-message Block {
-    string      GroupId            = 1; 
-    uint64      BlockId            = 2;      
+
+message Block {    
+    string      GroupId            = 1;     
+    uint64      BlockId            = 2;     
     uint64      Epoch              = 3;  
-    bytes       PrevEpochHash      = 4;
-    repeated    Trx Trxs           = 5; 
-    bytes       EpochHash          = 6; 
-    repeated    Witnesses Witesses = 7;
-    int64       TimeStamp          = 8;     
+    bytes       PrevHash           = 4;  
+    string      ProducerPubkey     = 5;
+    repeated    Trx Trxs           = 6;    
+    bool        Sudo               = 7;    
+    int64       TimeStamp          = 8;       
     bytes       BlockHash          = 9;
-    string      BookkeepingPubkey  = 10;   
-    bytes       BookkeepingSign    = 11;
-    bool        Sudo               = 12;
+    bytes       ProducerSign       = 10;        
 }
 
 message ReqBlock {
