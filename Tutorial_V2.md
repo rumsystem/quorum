@@ -80,8 +80,6 @@ RUM implement RBC part of the HBBFT protocol.
 
 ## number of producers
 in current implementation, if there are not enough "alive" or "reachable" producers to finish consensus, the group (chain) is consider "death"
-TBD:
-owner can send a "sudo" trx (bypass all consensus) to fix the chain (e.g remove all dead producers)
 
 ## How to set up test env and test
  Check howtotest.md

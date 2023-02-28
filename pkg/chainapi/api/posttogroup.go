@@ -25,7 +25,7 @@ func (h *Handler) PostToGroup(c echo.Context) (err error) {
 		return err
 	}
 
-	res, err := handlers.PostToGroup(&payload, payload.Sudo)
+	res, err := handlers.PostToGroup(&payload)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

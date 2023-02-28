@@ -140,7 +140,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
-	//POST API does not support sudo
 	r.POST("/v1/group", h.CreateGroupUrl())
 	r.POST("/v2/group/join", h.JoinGroupV2())
 	r.POST("/v1/group/leave", h.LeaveGroup)
@@ -158,19 +157,14 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
-	r.POST("/v1/group/appconfig/:sudo", h.MgrAppConfig)
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-	r.POST("/v1/group/chainconfig/:sudo", h.MgrChainConfig)
 
 	r.POST("/v1/group/producer", h.GroupProducer)
-	r.POST("/v1/group/producer/:sudo", h.GroupProducer)
 
 	r.POST("/v1/group/user", h.GroupUser)
-	r.POST("/v1/group/user/:sudo", h.GroupUser)
 
 	r.POST("/v1/group/announce", h.Announce)
-	r.POST("/v1/group/announce/:sudo", h.Announce)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))

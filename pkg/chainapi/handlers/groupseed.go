@@ -138,7 +138,6 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		PrevHash:       nil,
 		ProducerPubkey: b64producerpubkey,
 		Trxs:           nil,
-		Sudo:           true,
 		TimeStamp:      timestamp,
 	}
 

@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	newBlock := &quorumpb.Block{
 		GroupId:        parentBlk.GroupId,
 		BlockId:        parentBlk.BlockId + 1,
@@ -23,7 +23,6 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorum
 		PrevHash:       parentBlk.BlockHash,
 		ProducerPubkey: groupPublicKey,
 		Trxs:           trxs,
-		Sudo:           sudo,
 		TimeStamp:      time.Now().UnixNano(),
 	}
 
@@ -54,7 +53,7 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorum
 	return newBlock, nil
 }
 
-func CreateOrphanBlock(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateOrphanBlock(groupId string, epoch uint64, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	//create a block without parents
 	orphanBlock := &quorumpb.Block{
 		GroupId:        groupId,
@@ -63,7 +62,6 @@ func CreateOrphanBlock(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo 
 		PrevHash:       nil,
 		ProducerPubkey: groupPublicKey,
 		Trxs:           trxs,
-		Sudo:           sudo,
 		TimeStamp:      time.Now().UnixNano(),
 	}
 	return orphanBlock, nil
@@ -109,7 +107,6 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 		PrevHash:       nil,
 		ProducerPubkey: groupPublicKey,
 		Trxs:           nil,
-		Sudo:           true,
 		TimeStamp:      time.Now().UnixNano(),
 	}
 
@@ -149,7 +146,6 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 		PrevHash:       newBlock.PrevHash,
 		ProducerPubkey: newBlock.ProducerPubkey,
 		Trxs:           newBlock.Trxs,
-		Sudo:           newBlock.Sudo,
 		TimeStamp:      newBlock.TimeStamp,
 		BlockHash:      nil,
 		ProducerSign:   nil,
@@ -207,7 +203,6 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 		PrevHash:       genesisBlock.PrevHash,
 		ProducerPubkey: genesisBlock.ProducerPubkey,
 		Trxs:           genesisBlock.Trxs,
-		Sudo:           genesisBlock.Sudo,
 		TimeStamp:      genesisBlock.TimeStamp,
 		BlockHash:      nil,
 		ProducerSign:   nil,

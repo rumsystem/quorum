@@ -77,8 +77,7 @@ message Block {
     uint64      Epoch              = 3;  
     bytes       PrevHash           = 4;  
     string      ProducerPubkey     = 5;
-    repeated    Trx Trxs           = 6;    
-    bool        Sudo               = 7;    
+    repeated    Trx Trxs           = 6;
     int64       TimeStamp          = 8;       
     bytes       BlockHash          = 9;
     bytes       ProducerSign       = 10;        

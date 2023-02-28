@@ -16,6 +16,7 @@ import (
 var trx_bft_log = logging.Logger("tbft")
 
 var DEFAULT_PROPOSE_PULSE = 5 * 1000 // 1s
+var EMPTY_TRX_BUNDLE = "EMPTY_TRX_BUNDLE"
 
 type ProposeTask struct {
 	Epoch          uint64
@@ -108,7 +109,8 @@ func (bft *TrxBft) runTask(task *ProposeTask) error {
 		time.Sleep(time.Duration(task.DelayStartTime) * time.Millisecond)
 
 		bft.CurrTask = task
-		bft.acsInsts = NewTrxACS(bft.Config, bft, task.Epoch)
+		acs := NewTrxACS(bft.Config, bft, task.Epoch)
+		bft.acsInsts = acs
 		bft.acsInsts.InputValue(task.ProposedData)
 
 		//try get buffered msg for this epoch and give it to new acs
@@ -120,6 +122,7 @@ func (bft *TrxBft) runTask(task *ProposeTask) error {
 
 	select {
 	case <-bft.taskdone:
+		trx_bft_log.Debugf("<%s> task <%d> done", bft.groupId, task.Epoch)
 		return nil
 	}
 }
@@ -142,7 +145,7 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 	}
 
 	if len(datab) == 0 {
-		datab = []byte("EMPTY")
+		datab = []byte(EMPTY_TRX_BUNDLE)
 	}
 
 	currEpoch := bft.producer.cIface.GetCurrEpoch()
@@ -238,7 +241,7 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 	//decode trxs
 	for key, value := range result {
 		//check if result empty
-		if string(value) == "EMPTY" {
+		if string(value) == EMPTY_TRX_BUNDLE {
 			continue
 		}
 
@@ -315,8 +318,7 @@ func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error
 		trx_bft_log.Debugf("<%s> start build block with parent <%d> ", bft.producer.groupId, parent.BlockId)
 		ks := localcrypto.GetKeystore()
 
-		sudo := false
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, ks, "", bft.producer.nodename)
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, bft.producer.grpItem.UserSignPubkey, ks, "", bft.producer.nodename)
 
 		if err != nil {
 			trx_bft_log.Debugf("<%s> build block failed <%s>", bft.producer.groupId, err.Error())
