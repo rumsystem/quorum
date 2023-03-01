@@ -78,7 +78,7 @@ func (appsync *AppSync) Start(interval int) {
 					continue
 				}
 
-				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "BlockId")
+				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "Block")
 				if err == nil {
 					if blockIdStr == "" { //init, set to 0
 						blockIdStr = "0"
