@@ -20,6 +20,7 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0
 	github.com/dgraph-io/badger/v3 v3.2103.2
+	github.com/edwingeng/deque/v2 v2.1.1
 	github.com/ethereum/go-ethereum v1.10.23
 	github.com/gdamore/tcell/v2 v2.4.0
 	github.com/go-playground/locales v0.14.0
@@ -30,6 +31,8 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/websocket v1.5.0
+	github.com/h2non/filetype v1.1.3
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
@@ -38,6 +41,7 @@ require (
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/labstack/gommon v0.3.1
 	github.com/libp2p/go-libp2p v0.25.1
+	github.com/libp2p/go-libp2p-core v0.17.0
 	github.com/libp2p/go-libp2p-kad-dht v0.21.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.2
 	github.com/libp2p/go-msgio v0.3.0
@@ -137,7 +141,6 @@ require (
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.3.0 // indirect
-	github.com/libp2p/go-libp2p-core v0.17.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.5.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.4.0 // indirect
