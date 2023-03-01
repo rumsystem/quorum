@@ -7,36 +7,48 @@ import (
 
 	"time"
 
+	"github.com/edwingeng/deque/v2"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-type PublishQueueItem struct {
-	// also stored in the key for quick indexing
-	GroupId string `example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+const (
+	maxTrxMsgQueueLength = 2000
+)
 
-	// in value only
-	State      string `example:"SUCCESS"`
-	RetryCount int    `example:"0"`
-	UpdateAt   int64  `json:"UpdateAt,string" example:"1650786473293614500"`
-	/* Trx Example:
-		{
-	        "TrxId": "b5433111-f3a1-41e2-a03f-648e47a04dad",
-	        "GroupId": "6bd70de8-addc-4b03-8271-a5a5b02d1ebd",
-	        "Data": "jvFEEhBuwRpu7or2IUt8NdTZ1R/qzlXeJeseU7csZi+XYC28Fufj3aORoKVCAXyxBxZCuHe7kp6tKAScNxClqEX82+As+fKsBK6zTpB9gyO+fn2y",
-	        "TimeStamp": "1650532131665550100",
-	        "Version": "1.0.0",
-	        "Expired": 1650532161665550000,
-	        "Nonce": 24000,
-	        "SenderPubkey": "CAISIQMrNsVK8/ZrJylBFJZEe6BnslK7B5wAygbxde+RG9Hafg==",
-	        "SenderSign": "MEQCIDZlG/ILNC89z/OYEuADqYpHfx81pqA3RnOlLSCeypP3AiAFKLSD8M8TyNr6quYFCnuL1nzMwUlHWiEiVimDFCHlmQ=="
-	      }
-	*/
-	Trx         *quorumpb.Trx
-	StorageType string `example:"CHAIN"`
-}
+type (
+	PublishQueueItem struct {
+		// also stored in the key for quick indexing
+		GroupId string `example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+
+		// in value only
+		State      string `example:"SUCCESS"`
+		RetryCount int    `example:"0"`
+		UpdateAt   int64  `json:"UpdateAt,string" example:"1650786473293614500"`
+		/* Trx Example:
+			{
+		        "TrxId": "b5433111-f3a1-41e2-a03f-648e47a04dad",
+		        "GroupId": "6bd70de8-addc-4b03-8271-a5a5b02d1ebd",
+		        "Data": "jvFEEhBuwRpu7or2IUt8NdTZ1R/qzlXeJeseU7csZi+XYC28Fufj3aORoKVCAXyxBxZCuHe7kp6tKAScNxClqEX82+As+fKsBK6zTpB9gyO+fn2y",
+		        "TimeStamp": "1650532131665550100",
+		        "Version": "1.0.0",
+		        "Expired": 1650532161665550000,
+		        "Nonce": 24000,
+		        "SenderPubkey": "CAISIQMrNsVK8/ZrJylBFJZEe6BnslK7B5wAygbxde+RG9Hafg==",
+		        "SenderSign": "MEQCIDZlG/ILNC89z/OYEuADqYpHfx81pqA3RnOlLSCeypP3AiAFKLSD8M8TyNr6quYFCnuL1nzMwUlHWiEiVimDFCHlmQ=="
+		      }
+		*/
+		Trx         *quorumpb.Trx
+		StorageType string `example:"CHAIN"`
+	}
+
+	OnChainTrxEvent struct {
+		GroupId string `json:"group_id"`
+		TrxID   string `json:"trx_id"`
+	}
+)
 
 const (
 	PublishQueueItemStatePending = "PENDING"
@@ -185,7 +197,7 @@ func GetPubQueueWatcher() *PublishQueueWatcher {
 	return &publishQueueWatcher
 }
 
-func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
+func InitPublishQueueWatcher(done chan bool, trxMsgQueue *deque.Deque[*OnChainTrxEvent], groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
 	publishQueueWatcher.db = db
 	publishQueueWatcher.running = false
 	publishQueueWatcher.groupMgrIface = groupMgrIface
@@ -199,7 +211,7 @@ func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIfac
 					close(publishQueueWatcher.ch)
 					return
 				case <-ticker.C:
-					doRefresh()
+					doRefresh(trxMsgQueue)
 				}
 			}
 		}()
@@ -212,7 +224,15 @@ func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIfac
 	}
 }
 
-func doRefresh() {
+func pushOnChainTrxEvent(trxMsgQueue *deque.Deque[*OnChainTrxEvent], item *PublishQueueItem) {
+	if trxMsgQueue.Len() >= maxTrxMsgQueueLength {
+		chain_log.Warnf("clear trxMsgQueue ...")
+	}
+	chain_log.Debugf("onchain trx event, groupid: %s trxid: %s", item.GroupId, item.Trx.TrxId)
+	trxMsgQueue.PushFront(&OnChainTrxEvent{GroupId: item.GroupId, TrxID: item.Trx.TrxId})
+}
+
+func doRefresh(trxMsgQueue *deque.Deque[*OnChainTrxEvent]) {
 	if publishQueueWatcher.db == nil || publishQueueWatcher.running == true {
 		return
 	}
@@ -283,6 +303,9 @@ func doRefresh() {
 						chain_log.Debugf("<pubqueue>: trx %s success", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
 						item.StorageType = trx.StorageType.String()
+
+						pushOnChainTrxEvent(trxMsgQueue, item)
+
 						break
 					}
 
@@ -296,6 +319,9 @@ func doRefresh() {
 						chain_log.Debugf("<pubqueue>: trx %s success(from cache)", trx.TrxId)
 						item.State = PublishQueueItemStateSuccess
 						item.StorageType = trx.StorageType.String()
+
+						pushOnChainTrxEvent(trxMsgQueue, item)
+
 						break
 					}
 					// failed or still pending, check the expire time

@@ -93,6 +93,12 @@ func NewEcho(debug bool) *echo.Echo {
 
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 5, // hardcode
+		Skipper: func(c echo.Context) bool {
+			if strings.HasPrefix(c.Request().URL.Path, "/api/v1/ws/") {
+				return true
+			}
+			return false
+		},
 	}))
 
 	return e
