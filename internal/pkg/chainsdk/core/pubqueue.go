@@ -46,7 +46,7 @@ type (
 
 	OnChainTrxEvent struct {
 		GroupId string `json:"group_id"`
-		TrxID   string `json:"trx_id"`
+		TrxId   string `json:"trx_id"`
 	}
 )
 
@@ -229,7 +229,7 @@ func pushOnChainTrxEvent(trxMsgQueue *deque.Deque[*OnChainTrxEvent], item *Publi
 		chain_log.Warnf("clear trxMsgQueue ...")
 	}
 	chain_log.Debugf("onchain trx event, groupid: %s trxid: %s", item.GroupId, item.Trx.TrxId)
-	trxMsgQueue.PushFront(&OnChainTrxEvent{GroupId: item.GroupId, TrxID: item.Trx.TrxId})
+	trxMsgQueue.PushFront(&OnChainTrxEvent{GroupId: item.GroupId, TrxId: item.Trx.TrxId})
 }
 
 func doRefresh(trxMsgQueue *deque.Deque[*OnChainTrxEvent]) {

@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 const (
@@ -30,10 +31,6 @@ var (
 )
 
 type (
-	TrxOnChainEvent struct {
-		TrxID string `json:"trx_id"`
-	}
-
 	WebsocketManager struct {
 		Lock        sync.Mutex
 		Clients     map[string]*Client
@@ -43,10 +40,9 @@ type (
 	}
 
 	Client struct {
-		Id            string
-		Socket        *websocket.Conn
-		OnChainTrxs   chan *chain.OnChainTrxEvent
-		HeartbeatTime int64
+		Id              string
+		Socket          *websocket.Conn
+		OnChainTrxChann chan *quorumpb.Trx
 	}
 )
 
@@ -88,12 +84,26 @@ func (manager *WebsocketManager) register() {
 }
 
 func (manager *WebsocketManager) checkAndSend() {
+	groupmgr := chain.GetGroupMgr()
 	for {
 		for !manager.OnChainTrxs.IsEmpty() {
 			event := manager.OnChainTrxs.PopBack()
+
+			group, ok := groupmgr.Groups[event.GroupId]
+			if !ok {
+				wsLogger.Errorf("can not find group: %s", event.GroupId)
+				continue
+			}
+
+			trx, _, err := group.GetTrx(event.TrxId)
+			if err != nil {
+				wsLogger.Errorf("get trx failed: %s, groupid: %s trxid: %s", err, event.GroupId, event.TrxId)
+				continue
+			}
+
 			for _, c := range manager.Clients {
 				wsLogger.Debugf("put event %+v to client: %s", event, c.Id)
-				c.OnChainTrxs <- event
+				c.OnChainTrxChann <- trx
 			}
 		}
 
@@ -152,7 +162,7 @@ func (c *Client) Write() error {
 
 	for {
 		select {
-		case event, ok := <-c.OnChainTrxs:
+		case event, ok := <-c.OnChainTrxChann:
 			if !ok {
 				return c.Socket.WriteMessage(websocket.CloseMessage, []byte{})
 			}
@@ -173,10 +183,9 @@ func (manager *WebsocketManager) WsConnect(c echo.Context) error {
 	}
 
 	client := &Client{
-		Id:            guuid.NewString(),
-		Socket:        ws,
-		OnChainTrxs:   make(chan *chain.OnChainTrxEvent, maxOnChainTrxs),
-		HeartbeatTime: time.Now().Unix(),
+		Id:              guuid.NewString(),
+		Socket:          ws,
+		OnChainTrxChann: make(chan *quorumpb.Trx, maxOnChainTrxs),
 	}
 
 	manager.RegisterClient(client)
