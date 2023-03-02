@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/edwingeng/deque/v2"
 	guuid "github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -32,11 +31,10 @@ var (
 
 type (
 	WebsocketManager struct {
-		Lock        sync.Mutex
-		Clients     map[string]*Client
-		Register    chan *Client
-		UnRegister  chan *Client
-		OnChainTrxs *deque.Deque[*chain.OnChainTrxEvent]
+		Lock       sync.Mutex
+		Clients    map[string]*Client
+		Register   chan *Client
+		UnRegister chan *Client
 	}
 
 	Client struct {
@@ -48,10 +46,9 @@ type (
 
 func NewWebsocketManager() *WebsocketManager {
 	return &WebsocketManager{
-		Register:    make(chan *Client, maxChanBufferRegister),
-		UnRegister:  make(chan *Client, maxChanBufferUnregister),
-		Clients:     make(map[string]*Client),
-		OnChainTrxs: deque.NewDeque[*chain.OnChainTrxEvent](),
+		Register:   make(chan *Client, maxChanBufferRegister),
+		UnRegister: make(chan *Client, maxChanBufferUnregister),
+		Clients:    make(map[string]*Client),
 	}
 }
 
@@ -84,30 +81,40 @@ func (manager *WebsocketManager) register() {
 }
 
 func (manager *WebsocketManager) checkAndSend() {
-	groupmgr := chain.GetGroupMgr()
 	for {
-		for !manager.OnChainTrxs.IsEmpty() {
-			event := manager.OnChainTrxs.PopBack()
+		for !chain.GetPubqueueOnChainTrxQueue().IsEmpty() {
+			event := chain.GetPubqueueOnChainTrxQueue().PopBack()
+			manager.handleEvent(event)
+		}
 
-			group, ok := groupmgr.Groups[event.GroupId]
-			if !ok {
-				wsLogger.Errorf("can not find group: %s", event.GroupId)
-				continue
-			}
-
-			trx, _, err := group.GetTrx(event.TrxId)
-			if err != nil {
-				wsLogger.Errorf("get trx failed: %s, groupid: %s trxid: %s", err, event.GroupId, event.TrxId)
-				continue
-			}
-
-			for _, c := range manager.Clients {
-				wsLogger.Debugf("put event %+v to client: %s", event, c.Id)
-				c.OnChainTrxChann <- trx
-			}
+		for !chain.GetRexOnChainTrxQueue().IsEmpty() {
+			event := chain.GetRexOnChainTrxQueue().PopBack()
+			manager.handleEvent(event)
 		}
 
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func (manager *WebsocketManager) handleEvent(event *chain.OnChainTrxEvent) {
+	groupmgr := chain.GetGroupMgr()
+	group, ok := groupmgr.Groups[event.GroupId]
+	if !ok {
+		wsLogger.Errorf("can not find group: %s", event.GroupId)
+		return
+	}
+	trx, _, err := group.GetTrx(event.TrxId)
+	if err != nil {
+		wsLogger.Errorf("get trx failed: %s, groupid: %s trxid: %s", err, event.GroupId, event.TrxId)
+		return
+	}
+	if trx == nil {
+		return
+	}
+
+	for _, c := range manager.Clients {
+		wsLogger.Debugf("put event %+v to client: %s", event, c.Id)
+		c.OnChainTrxChann <- trx
 	}
 }
 
@@ -116,7 +123,7 @@ func (manager *WebsocketManager) Start() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				wsLogger.Debugf("r: %+v", r)
+				wsLogger.Errorf("r: %+v", r)
 			}
 		}()
 
@@ -127,7 +134,7 @@ func (manager *WebsocketManager) Start() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				wsLogger.Debugf("r: %+v", r)
+				wsLogger.Errorf("r: %+v", r)
 			}
 		}()
 

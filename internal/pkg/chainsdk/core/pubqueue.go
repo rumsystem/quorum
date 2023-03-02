@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"time"
 
@@ -16,6 +17,11 @@ import (
 
 const (
 	maxTrxMsgQueueLength = 2000
+)
+
+var (
+	pubqueueOnChainTrxQueue     *deque.Deque[*OnChainTrxEvent]
+	pubqueueOnChainTrxQueueOnce sync.Once
 )
 
 type (
@@ -64,6 +70,14 @@ var (
 
 func SetAutoAck(ack bool) {
 	autoAck = ack
+}
+
+func GetPubqueueOnChainTrxQueue() *deque.Deque[*OnChainTrxEvent] {
+	pubqueueOnChainTrxQueueOnce.Do(func() {
+		pubqueueOnChainTrxQueue = deque.NewDeque[*OnChainTrxEvent]()
+	})
+
+	return pubqueueOnChainTrxQueue
 }
 
 func (item *PublishQueueItem) GetKey() ([]byte, error) {
@@ -197,7 +211,7 @@ func GetPubQueueWatcher() *PublishQueueWatcher {
 	return &publishQueueWatcher
 }
 
-func InitPublishQueueWatcher(done chan bool, trxMsgQueue *deque.Deque[*OnChainTrxEvent], groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
+func InitPublishQueueWatcher(done chan bool, groupMgrIface chaindef.GroupMgrIface, db storage.QuorumStorage) {
 	publishQueueWatcher.db = db
 	publishQueueWatcher.running = false
 	publishQueueWatcher.groupMgrIface = groupMgrIface
@@ -211,7 +225,7 @@ func InitPublishQueueWatcher(done chan bool, trxMsgQueue *deque.Deque[*OnChainTr
 					close(publishQueueWatcher.ch)
 					return
 				case <-ticker.C:
-					doRefresh(trxMsgQueue)
+					doRefresh()
 				}
 			}
 		}()
@@ -224,15 +238,16 @@ func InitPublishQueueWatcher(done chan bool, trxMsgQueue *deque.Deque[*OnChainTr
 	}
 }
 
-func pushOnChainTrxEvent(trxMsgQueue *deque.Deque[*OnChainTrxEvent], item *PublishQueueItem) {
-	if trxMsgQueue.Len() >= maxTrxMsgQueueLength {
-		chain_log.Warnf("clear trxMsgQueue ...")
+func pushPubqueueOnChainTrxQueue(item *PublishQueueItem) {
+	q := GetPubqueueOnChainTrxQueue()
+	if q.Len() >= maxTrxMsgQueueLength {
+		chain_log.Warnf("clear pubqueueOnChainTrxQueue ...")
 	}
 	chain_log.Debugf("onchain trx event, groupid: %s trxid: %s", item.GroupId, item.Trx.TrxId)
-	trxMsgQueue.PushFront(&OnChainTrxEvent{GroupId: item.GroupId, TrxId: item.Trx.TrxId})
+	q.PushFront(&OnChainTrxEvent{GroupId: item.GroupId, TrxId: item.Trx.TrxId})
 }
 
-func doRefresh(trxMsgQueue *deque.Deque[*OnChainTrxEvent]) {
+func doRefresh() {
 	if publishQueueWatcher.db == nil || publishQueueWatcher.running == true {
 		return
 	}
@@ -304,7 +319,7 @@ func doRefresh(trxMsgQueue *deque.Deque[*OnChainTrxEvent]) {
 						item.State = PublishQueueItemStateSuccess
 						item.StorageType = trx.StorageType.String()
 
-						pushOnChainTrxEvent(trxMsgQueue, item)
+						pushPubqueueOnChainTrxQueue(item)
 
 						break
 					}
@@ -320,7 +335,7 @@ func doRefresh(trxMsgQueue *deque.Deque[*OnChainTrxEvent]) {
 						item.State = PublishQueueItemStateSuccess
 						item.StorageType = trx.StorageType.String()
 
-						pushOnChainTrxEvent(trxMsgQueue, item)
+						pushPubqueueOnChainTrxQueue(item)
 
 						break
 					}

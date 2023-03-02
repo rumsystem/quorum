@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
+	"github.com/edwingeng/deque/v2"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -15,13 +17,19 @@ import (
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 )
 
-var TASK_RETRY_NUM = 30                // task retry times
-var REQ_BLOCKS_PER_REQUEST = int32(10) // ask for n blocks per request
-var SYNC_BLOCK_TASK_TIMEOUT = 4 * 1000 // in millseconds
-var SYNC_BLOCK_FREQ_ADJ = 5 * 1000     // in millseconds
-var MAXIMUM_DELAY_DURATION = 60 * 1000 // is millseconds
+var (
+	TASK_RETRY_NUM          = 30        // task retry times
+	REQ_BLOCKS_PER_REQUEST  = int32(10) // ask for n blocks per request
+	SYNC_BLOCK_TASK_TIMEOUT = 4 * 1000  // in millseconds
+	SYNC_BLOCK_FREQ_ADJ     = 5 * 1000  // in millseconds
+	MAXIMUM_DELAY_DURATION  = 60 * 1000 // is millseconds
 
-var rex_syncer_log = logging.Logger("rsyncer")
+	rex_syncer_log = logging.Logger("rsyncer")
+
+	rexOnChainTrxQueueOnce  sync.Once
+	rexOnChainTrxQueue      *deque.Deque[*OnChainTrxEvent]
+	maxRexOnChainTrxsLength = 2000
+)
 
 type SyncResult struct {
 	TaskId uint64
@@ -62,6 +70,31 @@ type RexSyncer struct {
 	CurrentTaskCancel context.CancelFunc
 
 	LastSyncResult *def.RexSyncResult
+}
+
+func GetRexOnChainTrxQueue() *deque.Deque[*OnChainTrxEvent] {
+	rexOnChainTrxQueueOnce.Do(func() {
+		rexOnChainTrxQueue = deque.NewDeque[*OnChainTrxEvent]()
+	})
+
+	return rexOnChainTrxQueue
+}
+
+func pushRexOnChainTrxQueue(blocks []*quorumpb.Block) {
+	q := GetRexOnChainTrxQueue()
+	for _, block := range blocks {
+		for _, trx := range block.Trxs {
+			item := OnChainTrxEvent{
+				GroupId: trx.GroupId,
+				TrxId:   trx.TrxId,
+			}
+			rex_syncer_log.Debugf("put on chain trx event: %+v to queue", item)
+			if q.Len() >= maxRexOnChainTrxsLength {
+				q.Clear()
+			}
+			q.PushFront(&item)
+		}
+	}
 }
 
 func NewRexSyncer(groupid string, nodename string, cdnIface def.ChainDataSyncIface, chainCtx *Chain) *RexSyncer {
@@ -331,6 +364,7 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 
 	case quorumpb.ReqBlkResult_BLOCK_IN_RESP_ON_TOP:
 		rs.chainCtx.ApplyBlocks(reqBlockResp.Blocks.Blocks)
+		pushRexOnChainTrxQueue(reqBlockResp.Blocks.Blocks)
 		if isOwner {
 			rs.CurrentDely = MAXIMUM_DELAY_DURATION
 			chain_log.Debugf("<%s> receive BLOCK_IN_RESP_ON_TOP from group owner, apply blocks, set task delay to <%d>", rs.GroupId, rs.CurrentDely)
@@ -340,6 +374,7 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 		rs.CurrentDely = 0
 		chain_log.Debugf("<%s> HandleReqBlockResp - receive BLOCK_IN_RESP from node <%s>, apply all blocks and reset syncer timer to <%d>", rs.GroupId, reqBlockResp.ProviderPubkey, rs.CurrentDely)
 		rs.chainCtx.ApplyBlocks(reqBlockResp.Blocks.Blocks)
+		pushRexOnChainTrxQueue(reqBlockResp.Blocks.Blocks)
 	default:
 
 	}

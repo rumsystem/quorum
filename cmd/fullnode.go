@@ -201,7 +201,7 @@ func runFullnode(config cli.FullNodeFlag) {
 	doneCh := make(chan bool)
 	websocketManager := api.NewWebsocketManager()
 	go websocketManager.Start()
-	chain.InitPublishQueueWatcher(doneCh, websocketManager.OnChainTrxs, chain.GetGroupMgr(), appdb.Db)
+	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
 
 	//start sync all groups
 	err = chain.GetGroupMgr().StartSyncAllGroups()
