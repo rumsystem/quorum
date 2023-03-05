@@ -2,8 +2,6 @@ module github.com/rumsystem/quorum
 
 go 1.19
 
-//replace github.com/libp2p/go-libp2p-autonat => github.com/huo-ju/go-libp2p-autonat v0.4.3
-
 replace github.com/dgraph-io/badger/v3 => github.com/chux0519/badger/v3 v3.2103.3
 
 replace github.com/dgraph-io/ristretto => github.com/chux0519/ristretto v0.1.1
@@ -39,9 +37,9 @@ require (
 	github.com/klauspost/reedsolomon v1.11.5
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/labstack/gommon v0.3.1
-	github.com/libp2p/go-libp2p v0.26.1
+	github.com/libp2p/go-libp2p v0.25.1
 	github.com/libp2p/go-libp2p-kad-dht v0.21.0
-	github.com/libp2p/go-libp2p-pubsub v0.9.1
+	github.com/libp2p/go-libp2p-pubsub v0.9.2
 	github.com/libp2p/go-msgio v0.3.0
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/open-policy-agent/opa v0.39.0
@@ -187,7 +185,6 @@ require (
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7 // indirect
 	github.com/prysmaticlabs/gohashtree v0.0.2-alpha // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-18 v0.2.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.2.1 // indirect
 	github.com/quic-go/qtls-go1-20 v0.1.1 // indirect
 	github.com/quic-go/quic-go v0.33.0 // indirect
