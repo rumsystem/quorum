@@ -34,10 +34,25 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 	producer.bft = NewTrxBft(*config, producer)
 }
 
-func (producer *MolassesProducer) TryPropose() {
-	molaproducer_log.Debug("TryPropose called")
-	newEpoch := producer.cIface.GetCurrEpoch() + 1
-	producer.bft.propose(newEpoch)
+func (producer *MolassesProducer) StartPropose() {
+	molaproducer_log.Debug("StartPropose called")
+	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
+	if err != nil {
+		return
+	}
+
+	isProducer := false
+	for _, p := range producer_nodes {
+		if producer.grpItem.UserSignPubkey == p.ProducerPubkey {
+			isProducer = true
+			break
+
+		}
+	}
+
+	if isProducer {
+		producer.bft.StartPropose()
+	}
 }
 
 func (producer *MolassesProducer) RecreateBft() {
@@ -94,28 +109,27 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 
 // Add Block will be called when producer sync with other producer node
 func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
-	molaproducer_log.Debugf("<%s> AddBlock called, epoch <%d>", producer.groupId, block.Epoch)
+	molaproducer_log.Debugf("<%s> AddBlock called, BlockId <%d>", producer.groupId, block.BlockId)
 
 	//check if block exist
-	blockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, false, producer.nodename)
+	blockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.BlockId, false, producer.nodename)
 	if blockExist { // check if we need to apply trxs again
 		// block already saved
 		molaproducer_log.Debugf("Block exist, ignore")
-
 	} else {
 		//check if block cached
-		isBlockCatched, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.Epoch, true, producer.nodename)
+		isBlockCatched, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.BlockId, true, producer.nodename)
 
 		//check if block parent exist
-		parentEpoch := block.Epoch - 1
-		parentExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentEpoch, false, producer.nodename)
+		parentBlockId := block.BlockId - 1
+		parentExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentBlockId, false, producer.nodename)
 
 		if !parentExist {
 			if isBlockCatched {
-				molaproducer_log.Debugf("Block already catched but parent not exist, wait more block")
+				molaproducer_log.Debugf("Block already catched but parent is not exist, wait more block to fill the gap")
 				return nil
 			} else {
-				molaproducer_log.Debugf("parent of block <%d> is not exist and block not catched, catch it.", block.Epoch)
+				molaproducer_log.Debugf("parent of block <%d> is not exist and block not catched, catch it.", block.BlockId)
 				//add this block to cache
 				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, producer.nodename)
 				if err != nil {
@@ -124,17 +138,17 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 			}
 		} else {
 			//get parent block
-			parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.GroupId, parentEpoch, false, producer.nodename)
+			parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.GroupId, parentBlockId, false, producer.nodename)
 			if err != nil {
 				return err
 			}
 
 			//valid block with parent block
-			valid, err := rumchaindata.IsBlockValid(block, parentBlock)
+			valid, err := rumchaindata.ValidBlockWithParent(block, parentBlock)
 			if !valid {
 				molaproducer_log.Warningf("<%s> invalid block <%s>", producer.groupId, err.Error())
 				molaproducer_log.Debugf("<%s> remove invalid block <%d> from cache", producer.groupId, block.Epoch)
-				return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.Epoch, true, producer.nodename)
+				return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.BlockId, true, producer.nodename)
 			} else {
 				molaproducer_log.Debugf("block is validated")
 			}
@@ -155,25 +169,33 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 
 			//move collected blocks from cache to chain
 			for _, blk := range blockfromcache {
-				molaproducer_log.Debugf("<%s> move block <%d> from cache to chain", producer.groupId, blk.Epoch)
+				molaproducer_log.Debugf("<%s> move block <%d> from cache to chain", producer.groupId, blk.BlockId)
 				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(blk, false, producer.nodename)
 				if err != nil {
 					return err
 				}
 
-				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(blk.GroupId, blk.Epoch, true, producer.nodename)
+				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(blk.GroupId, blk.BlockId, true, producer.nodename)
 				if err != nil {
 					return err
 				}
 
-				if blk.Epoch > producer.cIface.GetCurrEpoch() {
-					//update latest group epoch
-					molaproducer_log.Debugf("<%s> UpdChainInfo, upd highest epoch from <%d> to <%d>", producer.groupId, producer.cIface.GetCurrEpoch(), blk.Epoch)
-					producer.cIface.SetCurrEpoch(blk.Epoch)
+				if blk.BlockId > producer.cIface.GetCurrBlockId() {
+					//update latest group info
+					molaproducer_log.Debugf("<%s> UpdChainInfo, blockId from <%d> to <%d>",
+						producer.groupId, producer.cIface.GetCurrBlockId(), blk.BlockId)
+					producer.cIface.SetCurrBlockId(blk.BlockId)
 					producer.cIface.SetLastUpdate(blk.TimeStamp)
+				}
+
+				if blk.Epoch > producer.cIface.GetCurrEpoch() {
+					molaproducer_log.Debugf("<%s> UpdChainInfo, Epoch from <%d> to <%d>",
+						producer.groupId, producer.cIface.GetCurrEpoch(), blk.Epoch)
+					producer.cIface.SetCurrEpoch(blk.Epoch)
 					producer.cIface.SaveChainInfoToDb()
-				} else {
-					molaproducer_log.Debugf("<%s> No need to update highest Epoch", producer.groupId)
+					if producer.bft.CurrTask != nil && producer.bft.CurrTask.Epoch <= blk.Epoch {
+						producer.bft.KillAndRunNextRound()
+					}
 				}
 			}
 

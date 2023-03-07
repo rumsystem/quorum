@@ -36,7 +36,8 @@ type Chain struct {
 	rexSyncer    *RexSyncer
 	chaindata    *ChainData
 	Consensus    def.Consensus
-	CurrEpoch    int64
+	CurrBlock    uint64
+	CurrEpoch    uint64
 	LatestUpdate int64
 }
 
@@ -62,19 +63,21 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 		dbmgr:          nodectx.GetDbMgr()}
 
 	if loadChainInfo {
-		//load and initial CurrEpoch/lastUpdate
-		currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
+		currBlockId, currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
 		if err != nil {
 			return err
 		}
 		chain_log.Debugf("<%s> Set epoch <%d>, set lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, lastUpdate)
 		chain.SetCurrEpoch(currEpoch)
 		chain.SetLastUpdate(lastUpdate)
+		chain.SetCurrBlockId(currBlockId)
 	} else {
-		currEpoch := int64(0)
+		currEpoch := uint64(0)
+		currBlock := uint64(0)
 		lastUpdate := time.Now().UnixNano()
 		chain_log.Debugf("<%s> Set epoch <%d>, set lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, lastUpdate)
 		chain.SetCurrEpoch(currEpoch)
+		chain.SetCurrBlockId(currBlock)
 		chain.SetLastUpdate(lastUpdate)
 		chain.SaveChainInfoToDb()
 	}
@@ -85,20 +88,29 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 }
 
 // atomic opt for currEpoch
-func (chain *Chain) SetCurrEpoch(currEpoch int64) {
-	atomic.StoreInt64(&chain.CurrEpoch, currEpoch)
+func (chain *Chain) SetCurrEpoch(currEpoch uint64) {
+	atomic.StoreUint64(&chain.CurrEpoch, currEpoch)
 }
 
 func (chain *Chain) IncCurrEpoch() {
-	atomic.AddInt64(&chain.CurrEpoch, 1)
+	atomic.AddUint64(&chain.CurrEpoch, 1)
 }
 
-func (chain *Chain) DecrCurrEpoch() {
-	atomic.AddInt64(&chain.CurrEpoch, -1)
+func (chain *Chain) GetCurrEpoch() uint64 {
+	return atomic.LoadUint64(&chain.CurrEpoch)
 }
 
-func (chain *Chain) GetCurrEpoch() int64 {
-	return atomic.LoadInt64(&chain.CurrEpoch)
+// atomic opt for currBlock
+func (chain *Chain) SetCurrBlockId(currBlock uint64) {
+	atomic.StoreUint64(&chain.CurrBlock, currBlock)
+}
+
+func (chain *Chain) IncCurrBlockId() {
+	atomic.AddUint64(&chain.CurrBlock, 1)
+}
+
+func (chain *Chain) GetCurrBlockId() uint64 {
+	return atomic.LoadUint64(&chain.CurrBlock)
 }
 
 // atomic opt for lastUpdate
@@ -113,7 +125,7 @@ func (chain *Chain) GetLastUpdate() int64 {
 func (chain *Chain) SaveChainInfoToDb() error {
 	chain_log.Debugf("<%s> SaveChainInfoToDb called", chain.groupItem.GroupId)
 	chain_log.Debugf("<%s> Current Epoch <%d>, lastUpdate <%d>", chain.groupItem.GroupId, chain.GetCurrEpoch(), chain.GetLastUpdate())
-	return nodectx.GetNodeCtx().GetChainStorage().SaveChainInfo(chain.GetCurrEpoch(), chain.GetLastUpdate(), chain.groupItem.GroupId, chain.nodename)
+	return nodectx.GetNodeCtx().GetChainStorage().SaveChainInfo(chain.GetCurrBlockId(), chain.GetCurrEpoch(), chain.GetLastUpdate(), chain.groupItem.GroupId, chain.nodename)
 }
 
 func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
@@ -234,7 +246,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	return nil
 }
 
-// handle BLOCK msg from PSconn
+// handle block msg from PSconn
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlockPsConn called", chain.groupItem.GroupId)
 
@@ -245,11 +257,14 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		return nil
 	}
 
+	//DONT CHECK THIS
 	//check if block is from approved producer
-	if !chain.isProducerByPubkey(block.BookkeepingPubkey) {
-		chain_log.Warningf("<%s> received block <%d> from unapproved producer <%s>, reject it", chain.groupItem.GroupId, block.Epoch, block.BookkeepingPubkey)
-		return nil
-	}
+	/*
+		if !chain.isProducerByPubkey(block.ProducerPubkey) {
+			chain_log.Warningf("<%s> received block <%d> from unapproved producer <%s>, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
+			return nil
+		}
+	*/
 
 	//for all node run as PRODUCER_NODE but not approved by owner (yet)
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
@@ -258,8 +273,8 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		if err != nil {
 			chain_log.Warningf("<%s> announced producer add block error <%s>", chain.groupItem.GroupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Debugf("<%s> announced producer add block, parent not exist, block epoch <%d>, currEpoch <%d>",
-					chain.groupItem.GroupId, block.Epoch, chain.GetCurrEpoch())
+				chain_log.Debugf("<%s> announced producer add block, parent not exist, blockId <%d>, currBlockId <%d>",
+					chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
 			}
 		}
 		return err
@@ -270,8 +285,8 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	if err != nil {
 		chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
 		if err.Error() == "PARENT_NOT_EXIST" {
-			chain_log.Infof("<%s> block parent not exist, block epoch <%s>, currEpoch <%d>",
-				chain.groupItem.GroupId, block.Epoch, chain.GetCurrEpoch())
+			chain_log.Infof("<%s> block parent not exist, blockId <%s>, currBlockId <%d>",
+				chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
 		}
 	}
 
@@ -593,16 +608,16 @@ func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsgv1) error {
 
 func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
-	requester, fromEpoch, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
+	requester, fromBlock, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
 	if err != nil {
 		return err
 	}
 
 	chain_log.Debugf("<%s> send REQ_BLOCKS_RESP", chain.groupItem.GroupId)
-	chain_log.Debugf("-- requester <%s>, from Epoch <%d>, request <%d> blocks", requester, fromEpoch, blkReqs)
-	chain_log.Debugf("-- send fromEpoch <%d>, total <%d> blocks, status <%s>", fromEpoch, len(blocks), result.String())
+	chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", requester, fromBlock, blkReqs)
+	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", fromBlock, len(blocks), result.String())
 
-	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, blkReqs, fromEpoch, blocks, result)
+	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
 	if err != nil {
 		return err
 	}
@@ -650,7 +665,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
 	}
 
 	result := &SyncResult{
-		TaskId: reqBlockResp.FromEpoch,
+		TaskId: reqBlockResp.FromBlock,
 		Data:   reqBlockResp,
 	}
 
@@ -822,6 +837,7 @@ func (chain *Chain) CreateConsensus() error {
 		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
 		producer = &consensus.MolassesProducer{}
 		producer.NewProducer(chain.groupItem, chain.nodename, chain)
+		producer.StartPropose()
 	}
 
 	if shouldCreateUser {

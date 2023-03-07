@@ -24,24 +24,24 @@ func (cs *Storage) AddGensisBlock(block *quorumpb.Block, cached bool, prefix ...
 }
 
 // remove block
-func (cs *Storage) RmBlock(groupId string, epoch int64, cached bool, prefix ...string) error {
-	return cs.dbmgr.RmBlock(groupId, epoch, cached, prefix...)
+func (cs *Storage) RmBlock(groupId string, blockId uint64, cached bool, prefix ...string) error {
+	return cs.dbmgr.RmBlock(groupId, blockId, cached, prefix...)
 }
 
 // get block by block_id
-func (cs *Storage) GetBlock(groupId string, epoch int64, cached bool, prefix ...string) (*quorumpb.Block, error) {
-	return cs.dbmgr.GetBlock(groupId, epoch, cached, prefix...)
+func (cs *Storage) GetBlock(groupId string, blockId uint64, cached bool, prefix ...string) (*quorumpb.Block, error) {
+	return cs.dbmgr.GetBlock(groupId, blockId, cached, prefix...)
 }
 
 // check if block exist
-func (cs *Storage) IsBlockExist(groupId string, epoch int64, cached bool, prefix ...string) (bool, error) {
-	return cs.dbmgr.IsBlockExist(groupId, epoch, cached, prefix...)
+func (cs *Storage) IsBlockExist(groupId string, blockId uint64, cached bool, prefix ...string) (bool, error) {
+	return cs.dbmgr.IsBlockExist(groupId, blockId, cached, prefix...)
 }
 
 func (cs *Storage) GatherBlocksFromCache(block *quorumpb.Block, prefix ...string) ([]*quorumpb.Block, error) {
 	var blocks []*quorumpb.Block
 	blocks = append(blocks, block)
-	epoch := block.Epoch
+	currBlockId := block.BlockId
 	pre := s.GetCachedBlockPrefix(block.GroupId, prefix...)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(pre), func(k []byte, v []byte, err error) error {
 		if err != nil {
@@ -54,8 +54,8 @@ func (cs *Storage) GatherBlocksFromCache(block *quorumpb.Block, prefix ...string
 			return perr
 		}
 
-		epoch++
-		if b.GroupId == block.GroupId && b.Epoch == epoch {
+		currBlockId += 1
+		if b.GroupId == block.GroupId && b.BlockId == currBlockId {
 			blocks = append(blocks, b)
 			return nil
 		} else {

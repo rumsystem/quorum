@@ -57,8 +57,8 @@ func GetBlockPrefix(groupId string, prefix ...string) string {
 	return key
 }
 
-func GetBlockKey(groupId string, epoch int64, prefix ...string) string {
-	epochSD := strconv.FormatInt(epoch, 10)
+func GetBlockKey(groupId string, blockID uint64, prefix ...string) string {
+	epochSD := strconv.FormatUint(blockID, 10)
 	_prefix := GetBlockPrefix(groupId, prefix...)
 	return _prefix + epochSD
 }
@@ -72,8 +72,8 @@ func GetCachedBlockPrefix(groupId string, prefix ...string) string {
 	return key
 }
 
-func GetCachedBlockKey(groupId string, epoch int64, prefix ...string) string {
-	epochSD := strconv.FormatInt(epoch, 10)
+func GetCachedBlockKey(groupId string, blockId uint64, prefix ...string) string {
+	epochSD := strconv.FormatUint(blockId, 10)
 	_prefix := GetCachedBlockPrefix(groupId, prefix...)
 	return _prefix + epochSD
 }
@@ -88,12 +88,17 @@ func GetGroupItemKey(groupId string) string {
 
 func GetChainInfoEpoch(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + CHNINFO_PREFIX + "_" + groupId + "_" + "epoch"
+	return nodeprefix + CHNINFO_PREFIX + "_" + groupId + "_" + "currepoch"
 }
 
 func GetChainInfoLastUpdate(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	return nodeprefix + CHNINFO_PREFIX + "_" + groupId + "_" + "lastupdate"
+}
+
+func GetChainInfoBlock(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + CHNINFO_PREFIX + "_" + groupId + "_" + "currblock"
 }
 
 func GetPostPrefix(groupId string, prefix ...string) string {
@@ -240,6 +245,22 @@ func GetTrxHBBPrefix(queueId string) string {
 func GetTrxHBBKey(queueId string, trxId string) string {
 	prefix := GetTrxHBBPrefix(queueId)
 	return prefix + trxId
+}
+
+func GetHBMsgBufferPrefix(queueId string) string {
+	return CNS_BUFD_MSG + "_" + queueId + "_"
+}
+
+func GetHBMsgBufferKeyEpoch(queueId string, epoch uint64) string {
+	prefix := GetHBMsgBufferPrefix(queueId)
+	epochStr := strconv.FormatUint(epoch, 10)
+	return prefix + epochStr
+}
+
+func GetHBMsgBufferKeyFull(queueId string, epoch uint64, msgId string) string {
+	prefix := GetHBMsgBufferPrefix(queueId)
+	epochStr := strconv.FormatUint(epoch, 10)
+	return prefix + epochStr + "_" + msgId
 }
 
 func GetPSyncPrefix(groupId string) string {

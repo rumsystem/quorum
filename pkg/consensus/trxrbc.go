@@ -84,7 +84,7 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, myPubkey, rbcInstPubkey string)
 // 2. make InitPropose for each nodes
 // 3. broadcast all InitPropose
 func (r *TrxRBC) InputValue(data []byte) error {
-	trx_rbc_log.Infof("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
+	trx_rbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
 
 	//create shards
 	shards, err := MakeShards(r.ecc, data)
@@ -95,7 +95,9 @@ func (r *TrxRBC) InputValue(data []byte) error {
 	//create InitPropoeMsgs
 	originalDataSize := len(data)
 	initProposeMsgs, err := MakeRBCInitProposeMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, shards, r.Config.Nodes, originalDataSize)
+
 	if err != nil {
+		trx_rbc_log.Debugf(err.Error())
 		return err
 	}
 

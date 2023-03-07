@@ -59,35 +59,35 @@ message Trx {
     string         SenderPubkey = 10;  
     bytes          SenderSign   = 11;
     TrxStroageType StorageType  = 12;
-    bool           Sudo         = 13;
 }
 
-message Witnesses {
-    string   groupId       = 1;
-    int64    epoch         = 2;
-    bytes    TrxHash       = 3;
-    string   WitnessPubkey = 4;
-    bytes    WitnessSign   = 5;
-}
+//message Witnesses {
+//string   groupId       = 1;
+//int64    epoch         = 2;
+//    bytes    TrxHash       = 3;
+//string   WitnessPubkey = 4;
+//bytes    WitnessSign   = 5;
+//}
+//  repeated    Witnesses Witesses = 7;
 
-message Block {
-    string      GroupId            = 1;       
-    int64       Epoch              = 2;  
-    bytes       PrevEpochHash      = 3;
-    repeated    Trx Trxs           = 4; 
-    bytes       EpochHash          = 5; 
-    repeated    Witnesses Witesses = 6;
-    int64       TimeStamp          = 7;     
-    bytes       BlockHash          = 8;
-    string      BookkeepingPubkey  = 9;   
-    bytes       BookkeepingSign    = 10;
-    bool        Sudo               = 11;
+
+message Block {    
+    string      GroupId            = 1;     
+    uint64      BlockId            = 2;     
+    uint64      Epoch              = 3;  
+    bytes       PrevHash           = 4;  
+    string      ProducerPubkey     = 5;
+    repeated    Trx Trxs           = 6;    
+    bool        Sudo               = 7;    
+    int64       TimeStamp          = 8;       
+    bytes       BlockHash          = 9;
+    bytes       ProducerSign       = 10;        
 }
 
 message ReqBlock {
     string GroupId       = 1; //group id
-    int64  FromEpoch     = 2; //from which epoch 
-    int64  BlksRequested = 3; //how many blocks requested, "-1" means many as possible
+    uint64 FromBlock     = 2; //from which block
+    int32  BlksRequested = 3; //how many blocks requested, "-1" means many as possible
     string ReqPubkey     = 4; //requester pubkey
 }
 
@@ -106,9 +106,9 @@ message ReqBlockResp {
     string       RequesterPubkey = 2;
     string       ProviderPubkey  = 3;
     ReqBlkResult Result          = 4;        
-    int64        FromEpoch       = 5;
-    int64        BlksRequested   = 6;     
-    int64        BlksProvided    = 7;
+    uint64       FromBlock       = 5;
+    int32        BlksRequested   = 6;     
+    int32        BlksProvided    = 7;
     BlocksBundle Blocks          = 8;
 }
 
@@ -124,9 +124,9 @@ message ProducerItem {
    string     ProducerPubkey      = 2;
    string     GroupOwnerPubkey    = 3;   
    string     GroupOwnerSign      = 4;
-   int64      TimeStamp           = 5;    
-   ActionType Action              = 6;
-   int64      WithnessBlockNum    = 7;
+   ActionType Action              = 5;
+   int64      WithnessBlocks      = 6;
+   int64      TimeStamp           = 7;       
    string     Memo                = 8;
 }
 
@@ -271,7 +271,7 @@ message HBTrxBundle {
 
 message HBMsgv1 {
     string           MsgId       = 1;   
-    int64            Epoch       = 2;
+    uint64           Epoch       = 2;
     HBMsgPayloadType PayloadType = 3;   // RBC or BBA
     bytes            Payload     = 4; 
 }
@@ -334,17 +334,17 @@ enum BBAMsgType {
 }
 
 message Bval {
-    string     ProposerId = 1;
-    string     SenderId   = 2;
-    int64      Epoch      = 3;
-    bool       Value      = 4;
+    string     ProposerId   = 1;
+    string     SenderPubkey = 2;
+    int64      Epoch        = 3;
+    bool       Value        = 4;
 }
 
 message Aux {
-    string     ProposerId = 1;
-    string     SenderId   = 2;
-    int64      Epoch      = 3;    
-    bool       Value      = 4;
+    string     ProposerId   = 1;
+    string     SenderPubkey = 2;
+    uint64     Epoch        = 3;    
+    bool       Value        = 4;
 }
 
 message PSyncMsg {
@@ -361,7 +361,7 @@ message PSyncReq {
     string GroupId      = 1;
     string SessionId    = 2;
     string SenderPubkey = 3;      
-    int64  MyEpoch      = 4;
+    uint64 MyEpoch      = 4;
     bytes  SenderSign   = 5;
 }
 
@@ -369,7 +369,7 @@ message PSyncResp {
     string               GroupId           = 1;
     string               SessionId         = 2; 
     string               SenderPubkey      = 3;
-    int64                MyCurEpoch        = 4;
+    uint64               MyCurEpoch        = 4;
     PSyncProducerItem    MyCurProducerList = 5;
     Trx                  ProducerProof     = 6;
     bytes                SenderSign        = 7;

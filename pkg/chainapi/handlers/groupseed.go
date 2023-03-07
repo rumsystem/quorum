@@ -8,13 +8,14 @@ import (
 	"fmt"
 
 	guuid "github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 
 	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
 
-	rumchaindata "github.com/rumsystem/quorum/pkg/data"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -53,13 +54,13 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	b64cipher := base64.RawURLEncoding.EncodeToString(cipherkeybytes)
 
 	//b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.Signature)
-	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.BookkeepingSign)
+	b64sign := base64.RawURLEncoding.EncodeToString(seed.GenesisBlock.ProducerSign)
 
 	//new eth key: is the compressed base64 RawURLEncoding
 	//old libp2p key: base64.StdEncoding
 	var b64producerpubkey string
 	//b64producerpubkey = seed.GenesisBlock.ProducerPubKey
-	b64producerpubkey = seed.GenesisBlock.BookkeepingPubkey
+	b64producerpubkey = seed.GenesisBlock.GetProducerPubkey()
 
 	values := url.Values{}
 	//values.Add("e", b64bstr)
@@ -131,29 +132,23 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 
 	//recreate genesis block
 	genesisBlock := &pb.Block{
-		Epoch:         0,
-		GroupId:       b64guuid.String(),
-		PrevEpochHash: nil,
-		Trxs:          nil,
+		GroupId:        b64guuid.String(),
+		BlockId:        0,
+		Epoch:          0,
+		PrevHash:       nil,
+		ProducerPubkey: b64producerpubkey,
+		Trxs:           nil,
+		Sudo:           true,
+		TimeStamp:      timestamp,
 	}
 
-	trxHash, err := rumchaindata.BlockEpochHash(genesisBlock)
-	if err != nil {
-		return nil, nil, err
-	}
-	genesisBlock.EpochHash = trxHash
-
-	genesisBlock.Witesses = nil
-	genesisBlock.BookkeepingPubkey = b64producerpubkey
-	genesisBlock.TimeStamp = timestamp
-
-	bookkeepingHash, err := rumchaindata.BlockHash(genesisBlock)
+	bbytes, err := proto.Marshal(genesisBlock)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	genesisBlock.BlockHash = bookkeepingHash
-	genesisBlock.BookkeepingSign = b64signbyte
+	genesisBlock.BlockHash = localcrypto.Hash(bbytes)
+	genesisBlock.ProducerSign = b64signbyte
 
 	consensustype := "poa"
 	if q.Get("n") == "1" {
@@ -178,8 +173,8 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		GroupId:        genesisBlock.GroupId,
 		//OwnerPubkey:    genesisBlock.ProducerPubKey,
 		//Signature:      hex.EncodeToString(genesisBlock.Signature),
-		OwnerPubkey: genesisBlock.BookkeepingPubkey,
-		Signature:   hex.EncodeToString(genesisBlock.BookkeepingSign),
+		OwnerPubkey: genesisBlock.ProducerPubkey,
+		Signature:   hex.EncodeToString(genesisBlock.ProducerSign),
 		AppKey:      appkey,
 	}
 

@@ -48,7 +48,10 @@ func (cs *Storage) GetAllTrxHBB(queueId string) ([]*quorumpb.Trx, error) {
 
 func (cs *Storage) GeBufferedTrxLenHBB(queueId string) (int, error) {
 	trxs, err := cs.GetAllTrxHBB(queueId)
-	return len(trxs), err
+	if err != nil {
+		return -1, err
+	}
+	return len(trxs), nil
 }
 
 func (cs *Storage) RemoveTrxHBB(trxId, queueId string) error {
@@ -81,7 +84,7 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 	}
 
 	if !exist {
-		return nil, errors.New("Trx is not exist")
+		return nil, errors.New("trx is not exist")
 	}
 
 	trxInBytes, err := cs.dbmgr.Db.Get([]byte(key))
@@ -95,6 +98,89 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 	}
 
 	return trx, nil
+}
+
+func (cs *Storage) AddMsgHBB(msg *quorumpb.HBMsgv1, queueId string) error {
+	key := s.GetHBMsgBufferKeyFull(queueId, msg.Epoch, msg.MsgId)
+	exist, err := cs.dbmgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	if exist {
+		return errors.New("HBMsg exist")
+	}
+
+	if value, err := proto.Marshal(msg); err != nil {
+		return err
+	} else {
+		return cs.dbmgr.Db.Set([]byte(key), value)
+	}
+}
+
+func (cs *Storage) GetAllMsgHBB(queueId string) ([]*quorumpb.HBMsgv1, error) {
+	var msgs []*quorumpb.HBMsgv1
+	key := s.GetHBMsgBufferPrefix(queueId)
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+
+		msg := &quorumpb.HBMsgv1{}
+		if err := proto.Unmarshal(v, msg); err != nil {
+			return err
+		}
+
+		msgs = append(msgs, msg)
+		return nil
+	})
+	return msgs, err
+}
+
+func (cs *Storage) GeBufferedMsgLenHBB(queueId string) (int, error) {
+	msgs, err := cs.GetAllMsgHBB(queueId)
+	if err != nil {
+		return -1, err
+	}
+	return len(msgs), nil
+}
+
+func (cs *Storage) GetMsgsByEpochHBB(queueId string, epoch uint64) ([]*quorumpb.HBMsgv1, error) {
+	key := s.GetHBMsgBufferKeyEpoch(queueId, epoch)
+	var msgs []*quorumpb.HBMsgv1
+
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+
+		msg := &quorumpb.HBMsgv1{}
+		if err := proto.Unmarshal(v, msg); err != nil {
+			return err
+		}
+
+		msgs = append(msgs, msg)
+		return nil
+	})
+
+	return msgs, err
+}
+
+func (cs *Storage) RemoveAllMsgHBB(queueId string) error {
+	key_prefix := s.GetHBMsgBufferPrefix(queueId)
+	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
+	return err
+}
+
+func (cs *Storage) RemoveMsgByEpochHBB(queueId string, epoch uint64) error {
+	key_prefix := s.GetHBMsgBufferKeyEpoch(queueId, epoch)
+	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
+	return err
+}
+
+func (cs *Storage) RemoveMsgByMsgId(queueId string, epoch uint64, msgId string) error {
+	key := s.GetHBMsgBufferKeyFull(queueId, epoch, msgId)
+	return cs.dbmgr.Db.Delete([]byte(key))
 }
 
 func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) {

@@ -104,7 +104,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(msg)
 		}
 
-		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.BookkeepingPubkey)
+		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubkey)
 		if err != nil {
 			msg := "Decode OwnerPubkey failed: " + err.Error()
 			return rumerrors.NewBadRequestError(msg)
@@ -126,13 +126,13 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 			}
 		}
 
-		r, err := rumchaindata.VerifyBookkeepingSign(seed.GenesisBlock)
+		r, err := rumchaindata.ValidGenesisBlock(seed.GenesisBlock)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
 		if !r {
-			msg := "Join Group failed, can not verify signature"
+			msg := "Join Group failed, verify genesis block failed"
 			return rumerrors.NewBadRequestError(msg)
 		}
 

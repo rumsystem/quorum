@@ -79,11 +79,11 @@ func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.Announ
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_ANNOUNCE, encodedcontent, keyalias)
 }
 
-func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, fromEpoch int64, blkReq int64) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, fromBlock uint64, blkReq int32) (*quorumpb.Trx, error) {
 	var reqBlockItem quorumpb.ReqBlock
 	reqBlockItem.GroupId = groupId
-	reqBlockItem.FromEpoch = int64(fromEpoch)
-	reqBlockItem.BlksRequested = int64(blkReq)
+	reqBlockItem.FromBlock = fromBlock
+	reqBlockItem.BlksRequested = blkReq
 	reqBlockItem.ReqPubkey = factory.groupItem.UserSignPubkey
 
 	bItemBytes, err := proto.Marshal(&reqBlockItem)
@@ -94,15 +94,15 @@ func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, from
 	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK, int64(0), bItemBytes, keyalias)
 }
 
-func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, requester string, blkReq int64, fromEpoch int64, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, requester string, fromBlock uint64, blkReq int32, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error) {
 	var reqBlockRespItem quorumpb.ReqBlockResp
 	reqBlockRespItem.GroupId = groupId
 	reqBlockRespItem.RequesterPubkey = requester
 	reqBlockRespItem.ProviderPubkey = factory.groupItem.UserSignPubkey
 	reqBlockRespItem.Result = result
-	reqBlockRespItem.FromEpoch = fromEpoch
-	reqBlockRespItem.BlksRequested = int64(blkReq)
-	reqBlockRespItem.BlksProvided = int64(len(blocks))
+	reqBlockRespItem.FromBlock = fromBlock
+	reqBlockRespItem.BlksRequested = blkReq
+	reqBlockRespItem.BlksProvided = int32(len(blocks))
 	blockBundles := &quorumpb.BlocksBundle{}
 	blockBundles.Blocks = blocks
 	reqBlockRespItem.Blocks = blockBundles
