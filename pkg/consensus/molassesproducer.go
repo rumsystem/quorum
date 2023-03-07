@@ -52,19 +52,32 @@ func (producer *MolassesProducer) StartPropose() {
 	if isProducer {
 		molaproducer_log.Debug("approved producer start propose")
 		producer.bft.StartPropose()
+	} else {
+		molaproducer_log.Debug("unapproved producer do nothing")
+	}
+}
+
+func (producer *MolassesProducer) StopPropose() {
+	molaproducer_log.Debug("StopPropose called")
+	if producer.bft != nil {
+		producer.bft.StopPropose()
 	}
 }
 
 func (producer *MolassesProducer) RecreateBft() {
 	molaproducer_log.Debug("RecreateBft called")
+
+	//stop current bft
+	if producer.bft != nil {
+		producer.bft.StopPropose()
+	}
+
 	config, err := producer.createBftConfig()
 	if err != nil {
 		molaproducer_log.Errorf("recreate bft failed")
 		molaproducer_log.Error(err.Error())
 		return
 	}
-
-	producer.bft.StopPropose()
 
 	producer.bft = NewTrxBft(*config, producer)
 	producer.bft.StartPropose()

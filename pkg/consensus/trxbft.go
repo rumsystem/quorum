@@ -15,7 +15,7 @@ import (
 
 var trx_bft_log = logging.Logger("tbft")
 
-var DEFAULT_PROPOSE_PULSE = 1 * 1000 // 1s
+var DEFAULT_PROPOSE_PULSE = 5 * 1000 // 1s
 var EMPTY_TRX_BUNDLE = "EMPTY_TRX_BUNDLE"
 
 type ProposeTask struct {
@@ -79,7 +79,6 @@ func (bft *TrxBft) StartPropose() {
 			case <-bft.ticker.C:
 				trx_bft_log.Debugf("<%s> ticker called at <%d>", bft.groupId, time.Now().Nanosecond())
 				bft.ProposeTask()
-				//return
 			}
 		}
 	}()

@@ -11,4 +11,5 @@ type Producer interface {
 	AddTrx(trx *quorumpb.Trx)
 	HandleHBMsg(hb *quorumpb.HBMsgv1) error
 	StartPropose()
+	StopPropose()
 }

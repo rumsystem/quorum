@@ -1006,7 +1006,6 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 			chain.updProducerList()
 			chain.updAnnouncedProducerStatus()
 			chain.updProducerConfig()
-			//chain.UpdConnMgrProducer()
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateUserTrx(trx, nodename)
