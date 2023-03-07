@@ -15,13 +15,13 @@ import (
 
 var trx_bft_log = logging.Logger("tbft")
 
-var DEFAULT_PROPOSE_PULSE = 5 * 1000 // 1s
+var DEFAULT_PROPOSE_PULSE = 1 * 1000 // 1s
 var EMPTY_TRX_BUNDLE = "EMPTY_TRX_BUNDLE"
 
 type ProposeTask struct {
-	Epoch          uint64
-	ProposedData   []byte
-	DelayStartTime int
+	Epoch        uint64
+	ProposedData []byte
+	acsInsts     *TrxACS
 }
 
 type ProposeStatus uint
@@ -34,18 +34,15 @@ const (
 
 type TrxBft struct {
 	Config
-	groupId   string
-	producer  *MolassesProducer
-	CurrTask  *ProposeTask
-	acsInsts  *TrxACS
-	txBuffer  *TrxBuffer
-	msgBuffer *HBMsgBuffer
-	taskq     chan *ProposeTask
+	groupId  string
+	producer *MolassesProducer
+	CurrTask *ProposeTask
+	txBuffer *TrxBuffer
+	status   ProposeStatus
 
-	taskdone   chan struct{}
-	stopnotify chan struct{}
-
-	status ProposeStatus
+	ticker     *time.Ticker
+	tickerdone chan bool
+	taskdone   chan bool
 }
 
 func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
@@ -55,85 +52,64 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 		groupId:    producer.groupId,
 		producer:   producer,
 		txBuffer:   NewTrxBuffer(producer.groupId),
-		msgBuffer:  NewHBMsgBuffer(producer.groupId),
-		taskq:      make(chan *ProposeTask),
-		taskdone:   make(chan struct{}),
-		stopnotify: make(chan struct{}),
+		CurrTask:   nil,
 		status:     IDLE,
+		ticker:     nil,
+		tickerdone: make(chan bool),
+		taskdone:   make(chan bool),
 	}
+}
+
+func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
+	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
+	bft.txBuffer.Push(tx)
+	return nil
 }
 
 func (bft *TrxBft) StartPropose() {
 	trx_bft_log.Debugf("<%s> StartPropose called", bft.groupId)
-
-	//start taskq
 	go func() {
-		for task := range bft.taskq {
-			bft.runTask(task)
-		}
-		bft.stopnotify <- struct{}{}
-	}()
-
-	//add first task
-	task, _ := bft.NewProposeTask()
-	bft.addTask(task)
-}
-
-func (bft *TrxBft) KillAndRunNextRound() {
-	trx_bft_log.Debugf("<%s> KillCurrentTask called", bft.groupId)
-
-	//finish current task
-	bft.taskdone <- struct{}{}
-
-	//bft.CurrTask = nil
-	//bft.acsInsts = nil
-
-	task, _ := bft.NewProposeTask()
-	bft.addTask(task)
-}
-
-func (bft *TrxBft) addTask(task *ProposeTask) {
-	trx_bft_log.Debugf("<%s> bft addTask called", bft.groupId)
-	go func() {
-		if bft.status != CLOSED {
-			bft.taskq <- task
+		bft.ticker = time.NewTicker(time.Duration(DEFAULT_PROPOSE_PULSE) * time.Millisecond)
+		bft.status = RUNNING
+		for {
+			select {
+			case <-bft.tickerdone:
+				trx_bft_log.Debugf("<%s> TickerDone called", bft.groupId)
+				return
+			case <-bft.ticker.C:
+				trx_bft_log.Debugf("<%s> ticker called at <%d>", bft.groupId, time.Now().Nanosecond())
+				bft.ProposeTask()
+				//return
+			}
 		}
 	}()
 }
 
-func (bft *TrxBft) runTask(task *ProposeTask) error {
-	trx_bft_log.Debugf("<%s> runTask called, epoch <%d>", bft.groupId, task.Epoch)
-	go func() {
-		//create new acs and try propose something
-		trx_bft_log.Debugf("<%s> delay start %d", bft.groupId, task.DelayStartTime)
-		time.Sleep(time.Duration(task.DelayStartTime) * time.Millisecond)
-
-		bft.CurrTask = task
-		acs := NewTrxACS(bft.Config, bft, task.Epoch)
-		bft.acsInsts = acs
-		bft.acsInsts.InputValue(task.ProposedData)
-
-		//try get buffered msg for this epoch and give it to new acs
-		msgs, _ := bft.msgBuffer.GetMsgsByEpoch(task.Epoch)
-		for _, msg := range msgs {
-			bft.HandleMessage(msg)
-		}
-	}()
-
-	select {
-	case <-bft.taskdone:
-		trx_bft_log.Debugf("<%s> task <%d> done", bft.groupId, task.Epoch)
-		return nil
+func (bft *TrxBft) StopPropose() {
+	trx_bft_log.Debugf("<%s> StopPropose called", bft.groupId)
+	if bft.status != RUNNING {
+		trx_bft_log.Debugf("<%s> BFT not RUNNING, can not stop propose", bft.groupId)
+		return
 	}
+
+	bft.status = CLOSED
+
+	//stop current task
+	bft.taskdone <- true
+
+	bft.ticker.Stop()
+	bft.tickerdone <- true
+
+	trx_bft_log.Debugf("<%s> StopPropose done", bft.groupId)
 }
 
-func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
+func (bft *TrxBft) ProposeTask() error {
 	trx_bft_log.Debugf("<%s> NewProposeTask called", bft.groupId)
 
 	//select some trxs from buffer
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	trxBundle := &quorumpb.HBTrxBundle{}
@@ -141,7 +117,7 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 
 	datab, err := proto.Marshal(trxBundle)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if len(datab) == 0 {
@@ -152,86 +128,34 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 	proposedEpoch := currEpoch + 1
 
 	task := &ProposeTask{
-		Epoch:          proposedEpoch,
-		ProposedData:   datab,
-		DelayStartTime: DEFAULT_PROPOSE_PULSE,
+		Epoch:        proposedEpoch,
+		ProposedData: datab,
+		acsInsts:     NewTrxACS(bft.Config, bft, proposedEpoch),
 	}
 
-	return task, nil
+	bft.CurrTask = task
 
-}
-
-func (bft *TrxBft) StopPropose() {
-	trx_bft_log.Debugf("<%s> StopPropose called", bft.groupId)
-	bft.status = CLOSED
-	safeCloseTaskQ(bft.taskq)
-	safeClose(bft.taskdone)
-	if bft.stopnotify != nil {
-		signcount := 1
-		for range bft.stopnotify {
-			signcount++
-			//wait stop sign and set idle
-			if signcount == 1 { // taskq
-				close(bft.stopnotify)
-				trx_bft_log.Debugf("<%s> bft stop propose done.")
-			}
-		}
-	}
-}
-
-func safeClose(ch chan struct{}) (recovered bool) {
-	defer func() {
-		if recover() != nil {
-			recovered = true
-		}
+	//run task
+	go func() {
+		trx_bft_log.Debugf("<%s> task <%d> start", bft.groupId, bft.CurrTask.Epoch)
+		bft.CurrTask.acsInsts.InputValue(task.ProposedData)
 	}()
-	if ch == nil {
-		return false
-	}
-	close(ch)
-	return false
-}
 
-func safeCloseTaskQ(ch chan *ProposeTask) (recovered bool) {
-	defer func() {
-		if recover() != nil {
-			recovered = true
-		}
-	}()
-	if ch == nil {
-		return false
-	}
-	close(ch)
-	return false
-}
+	//wait here till get task done signal
+	<-bft.taskdone
 
-func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
-	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
-	bft.txBuffer.Push(tx)
+	trx_bft_log.Debugf("<%s> task <%d> done", bft.groupId, task.Epoch)
 	return nil
 }
 
 func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	trx_bft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
 
-	if bft.acsInsts != nil && hbmsg.Epoch < bft.acsInsts.Epoch {
-		trx_bft_log.Warnf("message from old epoch, ignore")
-		return nil
+	if bft.CurrTask != nil {
+		return bft.CurrTask.acsInsts.HandleMessage(hbmsg)
 	}
 
-	//save msg to buffer first
-	err := bft.msgBuffer.AddMsg(hbmsg)
-	if err != nil {
-		return err
-	}
-
-	if bft.acsInsts != nil && hbmsg.Epoch > bft.acsInsts.Epoch {
-		trx_bft_log.Debugf("message from future epoch <%d>, buffered", hbmsg.Epoch)
-		return nil
-	}
-
-	//handle msg
-	return bft.acsInsts.HandleMessage(hbmsg)
+	return nil
 }
 
 func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
@@ -285,20 +209,7 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 	bft.producer.cIface.SaveChainInfoToDb()
 	trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
 
-	//clear msgbuffer for this epoch
-	err := bft.msgBuffer.DelMsgsByEpoch(epoch)
-	if err != nil {
-		trx_bft_log.Warnf("<%s> delete msgs for epoch <%d> failed", bft.groupId, epoch)
-	}
-
-	//finish current task
-	bft.taskdone <- struct{}{}
-
-	//bft.CurrTask = nil
-	//bft.acsInsts = nil
-
-	task, _ := bft.NewProposeTask()
-	bft.addTask(task)
+	bft.taskdone <- true
 }
 
 func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {

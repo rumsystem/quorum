@@ -74,7 +74,7 @@ func (a *TrxACS) RbcDone(proposerPubkey string) {
 }
 
 func (a *TrxACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	trx_acs_log.Debugf("HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
+	trx_acs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:

@@ -28,7 +28,7 @@ func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch uint64) error {
 	return connMgr.BroadcastHBMsg(hbmsg)
 }
 
-func SendHBAABMsg(groupId string, msg quorumpb.BBAMsg, epoch int64) error {
+func SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
 	//TBD
 	return nil
 }

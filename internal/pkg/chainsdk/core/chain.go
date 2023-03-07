@@ -837,7 +837,6 @@ func (chain *Chain) CreateConsensus() error {
 		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
 		producer = &consensus.MolassesProducer{}
 		producer.NewProducer(chain.groupItem, chain.nodename, chain)
-		producer.StartPropose()
 	}
 
 	if shouldCreateUser {
@@ -853,6 +852,9 @@ func (chain *Chain) CreateConsensus() error {
 	}
 
 	chain.Consensus = consensus.NewMolasses(producer, user, psync)
+
+	chain.Consensus.StartPropose()
+
 	return nil
 }
 

@@ -46,11 +46,11 @@ func (producer *MolassesProducer) StartPropose() {
 		if producer.grpItem.UserSignPubkey == p.ProducerPubkey {
 			isProducer = true
 			break
-
 		}
 	}
 
 	if isProducer {
+		molaproducer_log.Debug("approved producer start propose")
 		producer.bft.StartPropose()
 	}
 }
@@ -64,7 +64,10 @@ func (producer *MolassesProducer) RecreateBft() {
 		return
 	}
 
+	producer.bft.StopPropose()
+
 	producer.bft = NewTrxBft(*config, producer)
+	producer.bft.StartPropose()
 }
 
 func (producer *MolassesProducer) createBftConfig() (*Config, error) {
@@ -193,9 +196,11 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 						producer.groupId, producer.cIface.GetCurrEpoch(), blk.Epoch)
 					producer.cIface.SetCurrEpoch(blk.Epoch)
 					producer.cIface.SaveChainInfoToDb()
-					if producer.bft.CurrTask != nil && producer.bft.CurrTask.Epoch <= blk.Epoch {
-						producer.bft.KillAndRunNextRound()
-					}
+					/*
+						if producer.bft.CurrTask != nil && producer.bft.CurrTask.Epoch <= blk.Epoch {
+							producer.bft.KillAndRunNextRound()
+						}
+					*/
 				}
 			}
 

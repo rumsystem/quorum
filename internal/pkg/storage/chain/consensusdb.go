@@ -100,6 +100,8 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 	return trx, nil
 }
 
+/*
+
 func (cs *Storage) AddMsgHBB(msg *quorumpb.HBMsgv1, queueId string) error {
 	key := s.GetHBMsgBufferKeyFull(queueId, msg.Epoch, msg.MsgId)
 	exist, err := cs.dbmgr.Db.IsExist([]byte(key))
@@ -182,6 +184,8 @@ func (cs *Storage) RemoveMsgByMsgId(queueId string, epoch uint64, msgId string) 
 	key := s.GetHBMsgBufferKeyFull(queueId, epoch, msgId)
 	return cs.dbmgr.Db.Delete([]byte(key))
 }
+
+*/
 
 func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) {
 	key := s.GetPSyncKey(groupId, sessionId)
