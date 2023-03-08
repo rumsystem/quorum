@@ -5,16 +5,16 @@ jobs:
   doc:
     strategy:
       matrix:
-        go-version: [1.18.x]
+        go-version: [1.19.x, 1.20.x]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Swag
-      run: |
-        make gen-doc
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Swag
+        run: |
+          make gen-doc
