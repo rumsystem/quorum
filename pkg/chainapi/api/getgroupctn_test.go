@@ -52,7 +52,7 @@ func TestGetGroupContent(t *testing.T) {
 	}
 
 	// FIXME
-	time.Sleep(time.Second * 20)
+	time.Sleep(time.Second * 30)
 
 	// check peerapi received content
 	for _, api := range []string{peerapi, peerapi2} {

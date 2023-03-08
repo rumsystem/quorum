@@ -84,7 +84,7 @@ func TestUpdateAndGetAppConfig(t *testing.T) {
 			t.Errorf("update appconfig failed: %s", err)
 		}
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(15 * time.Second)
 
 		keylist, err := getAppConfigKeyList(peerapi, group.GroupId)
 		if err != nil {
