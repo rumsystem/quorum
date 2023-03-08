@@ -2,9 +2,13 @@ on:
   push:
     branches:
       - main
+      - consensus_2_main
+      - consensus_2_preview
   pull_request:
     branches:
       - main
+      - consensus_2_main
+      - consensus_2_preview
 
 name: MainTest
 jobs:
@@ -15,13 +19,13 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: ApiTest
-      run: go test -v pkg/chainapi/api/*
-    - name: MainTest
-      run: go test -timeout 1800s main_test.go -v -nodes=3 -posts=10 -timerange=5 -groups=5 -synctime=20
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: ApiTest
+        run: go test -v pkg/chainapi/api/*
+      - name: MainTest
+        run: go test -timeout 1800s main_test.go -v -nodes=3 -posts=10 -timerange=5 -groups=5 -synctime=20
