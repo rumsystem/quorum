@@ -33,6 +33,8 @@ type TrxRBC struct {
 	consenusDone bool
 
 	acs *TrxACS //for callback when finished
+
+	msgSender *MsgSender
 }
 
 // f : maximum failable node
@@ -46,7 +48,7 @@ type TrxRBC struct {
 //
 // ecc will encode data bytes into (N) pieces, each node needs (N - 2f) pieces to recover data
 func NewTrxRBC(cfg Config, acs *TrxACS, groupId, myPubkey, rbcInstPubkey string) (*TrxRBC, error) {
-	trx_rbc_log.Infof("NewTrxRBC called, EPOCH <%d>, RBC Instance pubkey <%s>", acs.Epoch, rbcInstPubkey)
+	trx_rbc_log.Infof("NewTrxRBC called, epoch <%d> pubkey <%s>", acs.Epoch, rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
@@ -74,6 +76,7 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, myPubkey, rbcInstPubkey string)
 		numDataShards:   dataShards,
 		readySent:       make(map[string]bool),
 		consenusDone:    false,
+		msgSender:       NewMsgSender(groupId, acs.Epoch, myPubkey),
 	}
 
 	return rbc, nil
@@ -103,7 +106,7 @@ func (r *TrxRBC) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
-		err := SendHBRBCMsg(r.groupId, initMsg, r.acs.Epoch)
+		err := r.msgSender.SendHBRBCMsg(initMsg)
 		if err != nil {
 			return err
 		}
@@ -134,7 +137,7 @@ func (r *TrxRBC) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	trx_rbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return SendHBRBCMsg(r.groupId, proofMsg, r.acs.Epoch)
+	return r.msgSender.SendHBRBCMsg(proofMsg)
 }
 
 func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
@@ -205,7 +208,7 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 			return err
 		}
 
-		err = SendHBRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
+		err = r.msgSender.SendHBRBCMsg(readyMsg)
 		if err != nil {
 			return err
 		}
@@ -257,7 +260,7 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 				return err
 			}
 
-			err = SendHBRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
+			err = r.msgSender.SendHBRBCMsg(readyMsg)
 			if err != nil {
 				return err
 			}

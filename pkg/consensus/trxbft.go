@@ -81,6 +81,7 @@ func (bft *TrxBft) StartPropose() {
 				bft.ProposeTask()
 			}
 		}
+		bft.ticker.Stop()
 	}()
 }
 

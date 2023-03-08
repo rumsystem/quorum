@@ -1,17 +1,50 @@
 package consensus
 
 import (
+	"time"
+
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
+	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch uint64) error {
-	connMgr, err := conn.GetConn().GetConnMgr(groupId)
-	if err != nil {
-		return err
+var msg_sender_log = logging.Logger("msender")
+
+const DEFAULT_MSG_SEND_INTEVL = 1 * 1000 //in millseconds
+
+type MsgSender struct {
+	groupId    string
+	interval   int
+	pubkey     string
+	CurrEpoch  uint64
+	CurrHbMsg  *quorumpb.HBMsgv1
+	ticker     *time.Ticker
+	tickerDone chan bool
+}
+
+func NewMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) *MsgSender {
+	msg_sender_log.Debugf("<%s> NewMsgSender called, Epoch <%d>", groupId, epoch)
+
+	sendingInterval := DEFAULT_MSG_SEND_INTEVL
+	if interval != nil {
+		sendingInterval = interval[0]
 	}
+
+	return &MsgSender{
+		groupId:    groupId,
+		interval:   sendingInterval,
+		pubkey:     pubkey,
+		CurrEpoch:  epoch,
+		CurrHbMsg:  nil,
+		ticker:     nil,
+		tickerDone: make(chan bool),
+	}
+}
+
+func (msender *MsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
+	msg_sender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
 
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
@@ -20,12 +53,43 @@ func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch uint64) error {
 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
-		Epoch:       epoch,
+		Epoch:       msender.CurrEpoch,
 		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
 	}
 
-	return connMgr.BroadcastHBMsg(hbmsg)
+	msender.CurrHbMsg = hbmsg
+	msender.startSending()
+
+	return nil
+}
+
+func (msender *MsgSender) startSending() {
+	if msender.ticker != nil {
+		msender.tickerDone <- true
+	}
+
+	//start new sender ticker
+	go func() {
+		msg_sender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrHbMsg.MsgId)
+		msender.ticker = time.NewTicker(time.Duration(msender.interval) * time.Millisecond)
+		for {
+			select {
+			case <-msender.tickerDone:
+				msg_sender_log.Debugf("<%s> old Ticker Done", msender.groupId)
+				return
+			case <-msender.ticker.C:
+				msg_sender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrHbMsg.MsgId, time.Now().UnixMilli())
+				connMgr, err := conn.GetConn().GetConnMgr(msender.groupId)
+				if err != nil {
+					return
+				}
+				connMgr.BroadcastHBMsg(msender.CurrHbMsg)
+			}
+			msender.ticker.Stop()
+		}
+	}()
+
 }
 
 func SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
