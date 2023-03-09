@@ -17,6 +17,12 @@ builds:
       # Ignores failures, this is just best effort.
       post: find dist -name 'quorum*' -type f -print0 | xargs -n 1 -0 upx
 
+dockers:
+  - image_templates:
+      - rumsystem/quorum
+    goos: linux
+    goarch: amd64
+
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of uname.
@@ -37,7 +43,7 @@ snapshot:
   name_template: "{{ incpatch .Version }}-next"
 release:
   github:
-    owner: zhangwm404
+    owner: rumsystem
     name: quorum
   prerelease: auto # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
 changelog:
