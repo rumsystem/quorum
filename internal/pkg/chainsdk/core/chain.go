@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -199,14 +198,6 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		chain_log.Warningf("trx Version mismatch trx_id <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return fmt.Errorf("trx Version mismatch")
 	}
-
-	// decompress
-	content := new(bytes.Buffer)
-	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
-		chain_log.Errorf("utils.Decompress failed: %s", err)
-		return fmt.Errorf("utils.Decompress failed: %s", err)
-	}
-	trx.Data = content.Bytes()
 
 	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
@@ -553,15 +544,6 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 		chain_log.Warningf("HandleTrxRex called, Trx Version mismatch, trxid <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
 		return fmt.Errorf("trx Version mismatch")
 	}
-
-	// decompress
-	content := new(bytes.Buffer)
-	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
-		e := fmt.Errorf("utils.Decompress failed: %s", err)
-		chain_log.Error(e)
-		return e
-	}
-	trx.Data = content.Bytes()
 
 	//TBD should check if requester from block list
 

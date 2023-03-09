@@ -1,7 +1,6 @@
 package conn
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -192,13 +190,6 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
 
-	// compress trx.Data
-	compressedContent := new(bytes.Buffer)
-	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
-		return err
-	}
-	trx.Data = compressedContent.Bytes()
-
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
 		return err
@@ -225,13 +216,6 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
 
-	// compress trx.Data
-	compressedContent := new(bytes.Buffer)
-	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
-		return err
-	}
-	trx.Data = compressedContent.Bytes()
-
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
 		return err
@@ -257,13 +241,6 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 	if s == nil {
 		return errors.New("Resp peer steam can't be nil")
 	}
-
-	// compress trx.Data
-	compressedContent := new(bytes.Buffer)
-	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
-		return err
-	}
-	trx.Data = compressedContent.Bytes()
 
 	pbBytes, err := proto.Marshal(trx)
 	if err != nil {
