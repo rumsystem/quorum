@@ -1,13 +1,23 @@
 PROTOC_GEN_GO = $(GOPATH)/bin/protoc-gen-go
 PROTOC = $(shell which protoc)
 
-build:
-	goreleaser build --snapshot --clean
-
-buildall: build
-
 install-goreleaser:
 	go install github.com/goreleaser/goreleaser@latest
+
+linux: install-goreleaser
+	GOOS=linux GOARCH=amd64 goreleaser build --snapshot --clean --single-target
+
+windows: install-goreleaser
+	GOOS=windows GOARCH=amd64 goreleaser build --snapshot --clean --single-target
+
+freebsd: install-goreleaser
+	GOOS=freebsd GOARCH=amd64 goreleaser build --snapshot --clean --single-target
+
+darwin: install-goreleaser
+	GOOS=darwin GOARCH=amd64 goreleaser build --snapshot --clean --single-target
+
+buildall: install-goreleaser
+	goreleaser build --snapshot --clean
 
 release: install-goreleaser
 	goreleaser release --clean
