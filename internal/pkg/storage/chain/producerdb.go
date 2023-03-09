@@ -47,43 +47,9 @@ func (cs *Storage) UpdateProducer(groupId string, data []byte, prefix ...string)
 		return err
 	}
 
-	groupInfo, err := cs.GetGroupInfo(groupId)
-	if err != nil {
-		return err
-	}
-
-	//Get all current producers (except owner)
-	var cplist []string
+	//remove all producers
 	key := s.GetProducerPrefix(groupId, prefix...)
-	err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := &quorumpb.ProducerItem{}
-		perr := proto.Unmarshal(v, item)
-		if perr != nil {
-			return perr
-		}
-
-		if item.ProducerPubkey != groupInfo.OwnerPubKey {
-			pkey := key + "_" + item.ProducerPubkey
-			cplist = append(cplist, pkey)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	//remove all producers (except owner)
-	for _, pkey := range cplist {
-		err := cs.dbmgr.Db.Delete([]byte(pkey))
-		if err != nil {
-			return err
-		}
-	}
+	_, _ = cs.dbmgr.Db.PrefixDelete([]byte(key))
 
 	//update with new producers list
 	for _, producerItem := range item.Producers {
@@ -98,6 +64,8 @@ func (cs *Storage) UpdateProducer(groupId string, data []byte, prefix ...string)
 		}
 
 		key := s.GetProducerKey(producerItem.GroupId, pk, prefix...)
+		chaindb_log.Infof("add producer <%s>", key)
+
 		err = cs.dbmgr.Db.Set([]byte(key), pdata)
 		if err != nil {
 			return err

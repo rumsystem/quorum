@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"sync"
 	"time"
 
 	guuid "github.com/google/uuid"
@@ -22,6 +23,8 @@ type MsgSender struct {
 	CurrHbMsg  *quorumpb.HBMsgv1
 	ticker     *time.Ticker
 	tickerDone chan bool
+
+	locker sync.Mutex
 }
 
 func NewMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) *MsgSender {
@@ -57,6 +60,9 @@ func (msender *MsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
 	}
+
+	msender.locker.Lock()
+	defer msender.locker.Unlock()
 
 	msender.CurrHbMsg = hbmsg
 	msender.startSending()

@@ -19,4 +19,5 @@ type ChainMolassesIface interface {
 	GetCurrBlockId() uint64
 	SetLastUpdate(lastUpdate int64)
 	GetLastUpdate() int64
+	IsProducer() bool
 }

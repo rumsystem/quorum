@@ -58,24 +58,27 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*G
 			if ok := bundle[producerPubkey]; ok {
 				return nil, errors.New(fmt.Errorf("producer pubkey should be unique").Error())
 			}
+
 			bundle[producerPubkey] = true
 
-			isAnnounced, err := chainapidb.IsProducerAnnounced(group.GroupId, producerPubkey, group.Nodename)
-			if err != nil {
-				return nil, err
-			}
+			if producerPubkey != group.Item.OwnerPubKey {
+				isAnnounced, err := chainapidb.IsProducerAnnounced(group.GroupId, producerPubkey, group.Nodename)
+				if err != nil {
+					return nil, err
+				}
 
-			if !isAnnounced {
-				return nil, errors.New(fmt.Errorf("producer %s is not announced", producerPubkey).Error())
-			}
+				if !isAnnounced {
+					return nil, fmt.Errorf("producer <%s> is not announced", producerPubkey)
+				}
 
-			producer, err := group.GetAnnouncedProducer(producerPubkey)
-			if err != nil {
-				return nil, err
-			}
+				producer, err := group.GetAnnouncedProducer(producerPubkey)
+				if err != nil {
+					return nil, err
+				}
 
-			if producer.Action == quorumpb.ActionType_REMOVE {
-				return nil, errors.New(fmt.Errorf("can not add a non-active producer %s", producerPubkey).Error())
+				if producer.Action == quorumpb.ActionType_REMOVE {
+					return nil, fmt.Errorf("can not add a non-active producer <%s>", producerPubkey)
+				}
 			}
 
 			item := &quorumpb.ProducerItem{}
@@ -109,8 +112,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*G
 			return nil, err
 		}
 
-		totalProducers := len(bundle) + 1    /* owner*/
-		failable := (totalProducers - 1) / 3 /* 3F < N */
+		failable := (len(bundle) - 1) / 3 /* 3F < N */
 
 		blockGrpUserResult := &GrpProducerResult{
 			GroupId:   group.Item.GroupId,

@@ -72,6 +72,12 @@ func (producer *MolassesProducer) RecreateBft() {
 		producer.bft.StopPropose()
 	}
 
+	//check if I am still a valid producer
+	if !producer.cIface.IsProducer() {
+		molaproducer_log.Debug("no longer approved producer, quit bft")
+		return
+	}
+
 	config, err := producer.createBftConfig()
 	if err != nil {
 		molaproducer_log.Errorf("recreate bft failed")
