@@ -81,8 +81,6 @@ func runFullnode(config cli.FullNodeFlag) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	chain.SetAutoAck(config.AutoAck)
-
 	peername := config.PeerName
 
 	if err := utils.EnsureDir(config.DataDir); err != nil {
@@ -197,11 +195,9 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	CheckLockError(err)
 
-	// init the publish queue watcher
-	doneCh := make(chan bool)
+	// init the websocket manager
 	websocketManager := api.NewWebsocketManager()
 	go websocketManager.Start()
-	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
 
 	//start sync all groups
 	err = chain.GetGroupMgr().StartSyncAllGroups()
