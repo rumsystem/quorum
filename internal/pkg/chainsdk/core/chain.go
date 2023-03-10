@@ -132,11 +132,6 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
-	chain_log.Debugf("<%s> GetPubqueueIface called", chain.groupItem.GroupId)
-	return GetPubQueueWatcher()
-}
-
 func (chain *Chain) ReqPSync() (string, error) {
 	chain_log.Debugf("<%s> ReqPSync called, TBD", chain.groupItem.GroupId)
 	//return chain.syncerrunner.GetPSync()
@@ -836,10 +831,6 @@ func (chain *Chain) CreateConsensus() error {
 
 	chain.Consensus = consensus.NewMolasses(producer, user, psync)
 	return nil
-}
-
-func (chain *Chain) TrxEnqueue(GroupId string, trx *quorumpb.Trx) error {
-	return TrxEnqueue(GroupId, trx)
 }
 
 func (chain *Chain) StartSync() error {
