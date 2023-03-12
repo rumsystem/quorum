@@ -197,6 +197,9 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	//utils
 	r.POST("/v1/keystore/signtx", h.SignTx)
 
+	// websocket
+	r.GET("/v1/ws/trx", h.WebsocketManager.WsConnect)
+
 	//for nodesdk
 	r.POST("/v1/node/trx/:group_id", h.SendTrx)
 	r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)

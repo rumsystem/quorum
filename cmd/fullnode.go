@@ -199,6 +199,8 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	// init the publish queue watcher
 	doneCh := make(chan bool)
+	websocketManager := api.NewWebsocketManager()
+	go websocketManager.Start()
 	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
 
 	//start sync all groups
@@ -209,12 +211,13 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	//run local http api service
 	h := &api.Handler{
-		Node:       fullNode,
-		NodeCtx:    nodectx.GetNodeCtx(),
-		Ctx:        ctx,
-		GitCommit:  utils.GitCommit,
-		Appdb:      appdb,
-		ChainAPIdb: newchainstorage,
+		Node:             fullNode,
+		NodeCtx:          nodectx.GetNodeCtx(),
+		Ctx:              ctx,
+		GitCommit:        utils.GitCommit,
+		Appdb:            appdb,
+		ChainAPIdb:       newchainstorage,
+		WebsocketManager: websocketManager,
 	}
 
 	apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)

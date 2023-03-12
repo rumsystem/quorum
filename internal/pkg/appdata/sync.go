@@ -2,8 +2,10 @@ package appdata
 
 import (
 	"strconv"
+	"sync"
 	"time"
 
+	"github.com/edwingeng/deque/v2"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -11,7 +13,18 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var appsynclog = logging.Logger("appsync")
+var (
+	appsynclog = logging.Logger("appsync")
+
+	once                     sync.Once
+	onChainTrxQueue          *deque.Deque[*OnChainTrxEvent]
+	maxOnChainTrxQueueLength = 2000
+)
+
+type OnChainTrxEvent struct {
+	GroupId string `json:"group_id"`
+	TrxId   string `json:"trx_id"`
+}
 
 type AppSync struct {
 	appdb    *AppDb
@@ -19,6 +32,29 @@ type AppSync struct {
 	groupmgr *chain.GroupMgr
 	apiroot  string
 	nodename string
+}
+
+func GetOnChainTrxQueue() *deque.Deque[*OnChainTrxEvent] {
+	once.Do(func() {
+		onChainTrxQueue = deque.NewDeque[*OnChainTrxEvent]()
+	})
+
+	return onChainTrxQueue
+}
+
+func pushOnChainTrxQueue(trxs []*quorumpb.Trx) {
+	q := GetOnChainTrxQueue()
+	for _, trx := range trxs {
+		item := OnChainTrxEvent{
+			GroupId: trx.GroupId,
+			TrxId:   trx.TrxId,
+		}
+		appsynclog.Debugf("put on chain trx event: %+v to queue", item)
+		if q.Len() >= maxOnChainTrxQueueLength {
+			q.Clear()
+		}
+		q.PushFront(&item)
+	}
 }
 
 func NewAppSyncAgent(apiroot string, nodename string, appdb *AppDb, dbmgr *storage.DbMgr) *AppSync {
@@ -40,8 +76,12 @@ func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) er
 	err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
 	if err != nil {
 		appsynclog.Errorf("ParseBlockTrxs on group %s err:  ", groupid, err)
+		return err
 	}
-	return err
+
+	pushOnChainTrxQueue(block.Trxs)
+
+	return nil
 }
 
 func (appsync *AppSync) RunSync(groupid string, lastSyncBlock uint64, highestBlock uint64) {
@@ -78,7 +118,7 @@ func (appsync *AppSync) Start(interval int) {
 					continue
 				}
 
-				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "BlockId")
+				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "Block")
 				if err == nil {
 					if blockIdStr == "" { //init, set to 0
 						blockIdStr = "0"

@@ -1,0 +1,52 @@
+# Make sure to check the documentation at https://goreleaser.com
+builds:
+  - id: quorum
+    env:
+      - CGO_ENABLED=0
+    main: main.go
+    goos:
+      - linux
+      - windows
+      - darwin
+      - freebsd
+    ldflags: >
+      -s
+      -w
+      -X main.GitCommit={{.ShortCommit}}
+    hooks:
+      # Ignores failures, this is just best effort.
+      post: find dist -name 'quorum*' -type f -print0 | xargs -n 1 -0 upx
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of uname.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+release:
+  github:
+    owner: zhangwm404
+    name: quorum
+  prerelease: auto # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+# The lines beneath this are called `modelines`. See `:help modeline`
+# Feel free to remove those if you don't want/use them.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj

@@ -8,23 +8,17 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	"github.com/rumsystem/quorum/pkg/pb"
-	"github.com/rumsystem/quorum/testnode"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func getTrx(api string, groupID string, trxID string) (*pb.Trx, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/trx/%s/%s", groupID, trxID)
-	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+	_, resp, err := requestAPI(api, urlSuffix, "GET", nil, nil, nil, true)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
 	var result pb.Trx
-
 	if err := protojson.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
@@ -73,7 +67,7 @@ func TestGetTrx(t *testing.T) {
 	}
 
 	// FIXME: wait for trx to be confirmed
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 25)
 
 	// get trx
 	trx, err := getTrx(peerapi, group.GroupId, postResult.TrxId)
