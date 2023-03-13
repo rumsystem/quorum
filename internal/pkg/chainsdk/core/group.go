@@ -16,7 +16,6 @@ import (
 var group_log = logging.Logger("group")
 
 type Group struct {
-	//Group Item
 	Item     *quorumpb.GroupItem
 	ChainCtx *Chain
 	GroupId  string
@@ -276,9 +275,10 @@ func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem) (string, err
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
-	return grp.sendTrx(trx)
+
+	return trx.TrxId, grp.startProducerProposal(item, trx)
 }
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
@@ -312,6 +312,11 @@ func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 // send raw trx, for light node API
 func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
 	return grp.sendTrx(trx)
+}
+
+func (grp *Group) startProducerProposal(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx) error {
+	group_log.Debugf("<%s> startProducerProposal called", grp.Item.GroupId)
+	return grp.ChainCtx.ProposalProducer(item, trx)
 }
 
 func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {

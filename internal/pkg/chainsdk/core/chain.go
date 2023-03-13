@@ -144,6 +144,11 @@ func (chain *Chain) ReqPSync() (string, error) {
 	return "", nil
 }
 
+func (chain *Chain) ProposalProducer(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> ProposalProducer called, TBD", chain.groupItem.GroupId)
+	return nil
+}
+
 // PSConn msg handler
 func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 	//chain_log.Debugf("<%s> HandlePsConnMessage called, <%s>", chain.groupItem.GroupId, pkg.Type.String())

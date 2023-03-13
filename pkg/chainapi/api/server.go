@@ -160,7 +160,9 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 
-	r.POST("/v1/group/producer", h.GroupProducer)
+	//r.POST("/v1/group/producer", h.GroupProducer)
+
+	r.POST("/v1/group/producerproposal", h.ProposalProducer)
 
 	r.POST("/v1/group/user", h.GroupUser)
 
