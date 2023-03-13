@@ -61,16 +61,6 @@ message Trx {
     TrxStroageType StorageType  = 12;
 }
 
-//message Witnesses {
-//string   groupId       = 1;
-//int64    epoch         = 2;
-//    bytes    TrxHash       = 3;
-//string   WitnessPubkey = 4;
-//bytes    WitnessSign   = 5;
-//}
-//  repeated    Witnesses Witesses = 7;
-
-
 message Block {    
     string      GroupId            = 1;     
     uint64      BlockId            = 2;     
@@ -81,6 +71,43 @@ message Block {
     int64       TimeStamp          = 8;       
     bytes       BlockHash          = 9;
     bytes       ProducerSign       = 10;        
+}
+
+enum ChannelMsgType {
+    OWNER_BROADCAST           = 0;
+    CHANGE_PRODUCER_PROPOSAL  = 1;
+    CHANGE_PRODUCER_RESP      = 2;
+}
+
+message ChannelMsg {    
+    string         GroupId       = 1;
+    uint64         MsgId         = 2;
+    int64          TimeStamp     = 3;
+    int64          ExpireAt      = 4;
+    ChannelMsgType Type          = 5;
+    bytes          Data          = 6;
+    string         SenderPubkey  = 7;
+    bytes          MsgHash       = 8;
+    bytes          SenderSign    = 9;
+}
+
+message OwnerBroadcast {
+    string Content = 1;
+}
+
+message ChangeProducerProposal {
+    string          ProposalId          = 1;
+    repeated string ProducerPubkeyList  = 2;
+    int64           AgreementTicksCount = 3;
+    uint64          StartFromEpoch      = 4;
+}
+
+message ChangeProducerResp {
+    string  RespId         = 1; 
+    string  RespProposalId = 2;
+    string  ProducerPubkey = 3;
+    bytes   RespHash       = 4;
+    bytes   RespSign       = 5;
 }
 
 message ReqBlock {

@@ -95,7 +95,6 @@ func (msender *MsgSender) startSending() {
 			msender.ticker.Stop()
 		}
 	}()
-
 }
 
 func SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
