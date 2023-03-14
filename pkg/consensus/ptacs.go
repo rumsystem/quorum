@@ -8,41 +8,40 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var trx_acs_log = logging.Logger("tacs")
+var ptacs_log = logging.Logger("ptacs")
 
-type TrxACS struct {
+type PTAcs struct {
 	Config
-	bft          *TrxBft
-	Epoch        uint64
-	rbcInstances map[string]*TrxRBC
-	rbcOutput    map[string]bool
-	rbcResults   map[string][]byte
+	bft        *PTBft
+	Epoch      uint64
+	rbcInsts   map[string]*PTRbc
+	rbcOutput  map[string]bool
+	rbcResults map[string][]byte
 }
 
-func NewTrxACS(cfg Config, bft *TrxBft, epoch uint64) *TrxACS {
-	trx_acs_log.Infof("NewTrxACS called epoch <%d>", epoch)
+func NewPTAcs(cfg Config, bft *PTBft, epoch uint64) *PTAcs {
+	ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 
-	acs := &TrxACS{
-		Config:       cfg,
-		bft:          bft,
-		Epoch:        epoch,
-		rbcInstances: make(map[string]*TrxRBC),
-		rbcOutput:    make(map[string]bool),
-		rbcResults:   make(map[string][]byte),
+	acs := &PTAcs{
+		Config:     cfg,
+		bft:        bft,
+		Epoch:      epoch,
+		rbcInsts:   make(map[string]*PTRbc),
+		rbcOutput:  make(map[string]bool),
+		rbcResults: make(map[string][]byte),
 	}
 
 	for _, rbcInstPubkey := range cfg.Nodes {
-		acs.rbcInstances[rbcInstPubkey], _ = NewTrxRBC(cfg, acs, bft.producer.groupId, cfg.MyPubkey, rbcInstPubkey)
+		acs.rbcInsts[rbcInstPubkey], _ = NewPTRbc(cfg, acs, bft.producer.groupId, cfg.MyPubkey, rbcInstPubkey)
 	}
 
 	return acs
 }
 
-// give input value to
-func (a *TrxACS) InputValue(val []byte) error {
-	trx_acs_log.Info("InputValue called")
+func (a *PTAcs) InputValue(val []byte) error {
+	ptacs_log.Info("InputValue called")
 
-	rbc, ok := a.rbcInstances[a.MyPubkey]
+	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
 		return fmt.Errorf("could not find rbc instance (%s)", a.MyPubkey)
 	}
@@ -51,43 +50,43 @@ func (a *TrxACS) InputValue(val []byte) error {
 }
 
 // rbc for proposerIs finished
-func (a *TrxACS) RbcDone(proposerPubkey string) {
-	trx_acs_log.Infof("RbcDone called, Epoch <%d>", a.Epoch)
+func (a *PTAcs) RbcDone(proposerPubkey string) {
+	ptacs_log.Infof("RbcDone called, Epoch <%d>", a.Epoch)
 	a.rbcOutput[proposerPubkey] = true
 	if len(a.rbcOutput) == a.N-a.f {
-		trx_acs_log.Debugf("enough RBC done for consensus <%d>", a.N-a.f)
+		ptacs_log.Debugf("enough RBC done for consensus <%d>", a.N-a.f)
 		//this only works when producer nodes equals to 3!!
 		//TBD:should add BBA here
 		//1. set all NOT finished RBC to false
 		//2. start BBA process till finished
 		for rbcInst, _ := range a.rbcOutput {
 			//load all valid rbc results
-			a.rbcResults[rbcInst] = a.rbcInstances[rbcInst].Output()
+			a.rbcResults[rbcInst] = a.rbcInsts[rbcInst].Output()
 		}
 
 		//call hbb to get result
 		a.bft.AcsDone(a.Epoch, a.rbcResults)
 	} else {
-		trx_acs_log.Debugf("Wait for enough RBC done")
+		ptacs_log.Debugf("Wait for enough RBC done")
 		return
 	}
 }
 
-func (a *TrxACS) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	trx_acs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
+func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
+	ptacs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
-		return a.handleRbc(hbmsg.Payload)
+		return a.handleRbcMsg(hbmsg.Payload)
 	case quorumpb.HBMsgPayloadType_BBA:
-		return a.handleBba(hbmsg.Payload)
+		return a.handleBbaMsg(hbmsg.Payload)
 	default:
-		return fmt.Errorf("received unknown type BlockMsg <%s>", hbmsg.PayloadType.String())
+		return fmt.Errorf("received unknown type msg <%s>", hbmsg.PayloadType.String())
 	}
 }
 
-func (a *TrxACS) handleRbc(payload []byte) error {
-	//trx_acs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
+func (a *PTAcs) handleRbcMsg(payload []byte) error {
+	//ptacs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
 
 	//cast payload to RBC message
 	rbcMsg := &quorumpb.RBCMsg{}
@@ -103,13 +102,13 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		trx_acs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
+		ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
-			trx_acs_log.Debugf("not for me")
+			ptacs_log.Debugf("not for me")
 			return nil
 		}
 
-		rbc, ok := a.rbcInstances[initp.ProposerPubkey]
+		rbc, ok := a.rbcInsts[initp.ProposerPubkey]
 		if !ok {
 			return fmt.Errorf("could not find rbc instance to handle InitPropose form <%s>", initp.ProposerPubkey)
 		}
@@ -122,7 +121,7 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 			return err
 		}
 		//give the ECHO msg to original proposer
-		rbc, ok := a.rbcInstances[echo.OriginalProposerPubkey]
+		rbc, ok := a.rbcInsts[echo.OriginalProposerPubkey]
 		if !ok {
 			return fmt.Errorf("could not find rbc instance to handle proof from <%s>, original propose <%s>", echo.EchoProviderPubkey, echo.OriginalProposerPubkey)
 		}
@@ -133,7 +132,7 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		rbc, ok := a.rbcInstances[ready.OriginalProposerPubkey]
+		rbc, ok := a.rbcInsts[ready.OriginalProposerPubkey]
 		if !ok {
 			return fmt.Errorf("could not find rbc instance to handle ready from <%s>", ready.ReadyProviderPubkey)
 		}
@@ -144,7 +143,7 @@ func (a *TrxACS) handleRbc(payload []byte) error {
 	}
 }
 
-func (a *TrxACS) handleBba(payload []byte) error {
+func (a *PTAcs) handleBbaMsg(payload []byte) error {
 	//TBD
 	//Implement BBA
 	return nil

@@ -9,22 +9,22 @@ import (
 
 var molapsyncer_log = logging.Logger("psyncer")
 
-type MolassesPSync struct {
+type MolassesProducerProposer struct {
 	grpItem  *quorumpb.GroupItem
+	groupId  string
 	nodename string
 	cIface   def.ChainMolassesIface
-	groupId  string
-	bft      *PSyncBft
+	bft      *PPBft
 }
 
-func (psync *MolassesPSync) NewPSync(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+func (pp *MolassesProducerProposer) NewProducerProposer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
 	molapsyncer_log.Debugf("<%s> NewPSyncer called", item.GroupId)
-	psync.grpItem = item
-	psync.cIface = iface
-	psync.nodename = nodename
-	psync.groupId = item.GroupId
+	pp.grpItem = item
+	pp.groupId = item.GroupId
+	pp.cIface = iface
+	pp.nodename = nodename
 
-	config, err := psync.createBftConfig()
+	config, err := pp.createBftConfig()
 	if err != nil {
 		molapsyncer_log.Error("create bft failed")
 		molapsyncer_log.Error(err.Error)

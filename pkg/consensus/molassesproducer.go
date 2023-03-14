@@ -15,7 +15,7 @@ type MolassesProducer struct {
 	nodename string
 	cIface   def.ChainMolassesIface
 	groupId  string
-	bft      *TrxBft
+	ptbft    *PTBft
 }
 
 func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
@@ -31,7 +31,7 @@ func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename
 		molaproducer_log.Error(err.Error())
 		return
 	}
-	producer.bft = NewTrxBft(*config, producer)
+	producer.ptbft = NewPTBft(*config, producer)
 }
 
 func (producer *MolassesProducer) StartPropose() {
@@ -51,7 +51,7 @@ func (producer *MolassesProducer) StartPropose() {
 
 	if isProducer {
 		molaproducer_log.Debug("approved producer start propose")
-		producer.bft.StartPropose()
+		producer.ptbft.Start()
 	} else {
 		molaproducer_log.Debug("unapproved producer do nothing")
 	}
@@ -59,8 +59,8 @@ func (producer *MolassesProducer) StartPropose() {
 
 func (producer *MolassesProducer) StopPropose() {
 	molaproducer_log.Debug("StopPropose called")
-	if producer.bft != nil {
-		producer.bft.StopPropose()
+	if producer.ptbft != nil {
+		producer.ptbft.Stop()
 	}
 }
 
@@ -68,8 +68,8 @@ func (producer *MolassesProducer) RecreateBft() {
 	molaproducer_log.Debug("RecreateBft called")
 
 	//stop current bft
-	if producer.bft != nil {
-		producer.bft.StopPropose()
+	if producer.ptbft != nil {
+		producer.ptbft.Stop()
 	}
 
 	//check if I am still a valid producer
@@ -85,8 +85,8 @@ func (producer *MolassesProducer) RecreateBft() {
 		return
 	}
 
-	producer.bft = NewTrxBft(*config, producer)
-	producer.bft.StartPropose()
+	producer.ptbft = NewPTBft(*config, producer)
+	producer.ptbft.Start()
 }
 
 func (producer *MolassesProducer) createBftConfig() (*Config, error) {
@@ -259,7 +259,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	}
 
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
-	err = producer.bft.AddTrx(trx)
+	err = producer.ptbft.AddTrx(trx)
 	if err != nil {
 		molaproducer_log.Errorf("add trx failed %s", err.Error())
 	}
@@ -267,5 +267,5 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	//molaproducer_log.Debugf("<%s> HandleHBMsg, Epoch <%d>", producer.groupId, hbmsg.Epoch)
-	return producer.bft.HandleMessage(hbmsg)
+	return producer.ptbft.HandleMessage(hbmsg)
 }

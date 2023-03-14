@@ -16,7 +16,7 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-type ProducerProposalResult struct {
+type ProposeProducerResult struct {
 	TrxId     string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
 	GroupId   string `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	Producers []*quorumpb.ProducerItem
@@ -24,7 +24,7 @@ type ProducerProposalResult struct {
 	Memo      string `json:"memo" example:"comment/remark"`
 }
 
-type ProducerProposalParam struct {
+type ProposeProducerParam struct {
 	ProducerPubkey      []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
 	GroupId             string   `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	NewEpoch            int64    `from:"new_epoch" json:"new_epoch" validate:"required"`
@@ -33,7 +33,7 @@ type ProducerProposalParam struct {
 	Memo                string   `from:"memo"            json:"memo" example:"comment/remark"`
 }
 
-func ProducerProposal(chainapidb def.APIHandlerIface, params *ProducerProposalParam) (*ProducerProposalResult, error) {
+func ProposeProducer(chainapidb def.APIHandlerIface, params *ProposeProducerParam) (*ProposeProducerResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
@@ -110,14 +110,14 @@ func ProducerProposal(chainapidb def.APIHandlerIface, params *ProducerProposalPa
 
 		bftProducerBundle.Producers = producers
 
-		trxId, err := group.UpdProducer(bftProducerBundle)
+		trxId, err := group.ProposeProducer(bftProducerBundle)
 		if err != nil {
 			return nil, err
 		}
 
 		failable := (len(bundle) - 1) / 3 /* 3F < N */
 
-		result := &ProducerProposalResult{
+		result := &ProposeProducerResult{
 			GroupId:   group.Item.GroupId,
 			Producers: bftProducerBundle.Producers,
 			Failable:  &failable,

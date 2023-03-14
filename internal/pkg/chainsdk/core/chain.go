@@ -145,7 +145,7 @@ func (chain *Chain) ReqPSync() (string, error) {
 }
 
 func (chain *Chain) ProposalProducer(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> ProposalProducer called, TBD", chain.groupItem.GroupId)
+	chain_log.Debugf("<%s> ProposalProducer called", chain.groupItem.GroupId)
 	return nil
 }
 

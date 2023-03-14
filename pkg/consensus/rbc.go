@@ -67,9 +67,6 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 				Type:    quorumpb.RBCMsgType_ECHO,
 				Payload: payloadb,
 			}
-
-			trx_bft_log.Debugf("proposer <%s> create ECHO for myself", proposerPubkey)
-
 		} else {
 			payload := &quorumpb.InitPropose{
 				RootHash:         root,
@@ -109,10 +106,7 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 				Type:    quorumpb.RBCMsgType_INIT_PROPOSE,
 				Payload: payloadb,
 			}
-
-			trx_bft_log.Debugf("proposer <%s> create InitP for ", proposerPubkey, producerList[i])
 		}
-
 	}
 
 	return msgs, nil
@@ -229,7 +223,6 @@ func TryDecodeValue(echos Echos, enc reedsolomon.Encoder, numPShards int, numDSh
 	//diff
 	diff := receivedDataSize - int(originalDataSize)
 	if diff != 0 {
-		trx_rbc_log.Debugf("ECC size different: diff <%d>, fixed", diff)
 		value = value[:len(value)-diff]
 	}
 	return value, nil

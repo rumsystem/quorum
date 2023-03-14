@@ -11,22 +11,32 @@ import (
 
 var pbft_log = logging.Logger("pbft")
 
-type PSyncBft struct {
-	Config
-	PSyncer  *MolassesPSync
-	acsInsts map[string]*PSyncACS //map key is sessionId
+var DEFAULT_PRODUCER_PROPOSE_PULSE = 1 * 1000 //1s
+
+type PPTask struct {
+	Epoch       uint64
+	ProposeData []byte
+	acsInsts    *PPAcs
 }
 
-func NewPSyncBft(cfg Config, psyncer *MolassesPSync) *PSyncBft {
+type PPBft struct {
+	Config
+	groupId     string
+	pp          *MolassesProducerProposer
+	currentTask *PPTask
+}
+
+func NewPPBft(cfg Config, pp *MolassesProducerProposer) *PPBft {
 	pbft_log.Debugf("NewPSyncBft called")
-	return &PSyncBft{
-		Config:   cfg,
-		PSyncer:  psyncer,
-		acsInsts: make(map[string]*PSyncACS),
+	return &PPBft{
+		Config:      cfg,
+		groupId:     pp.groupId,
+		pp:          pp,
+		currentTask: nil,
 	}
 }
 
-func (pbft *PSyncBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
+func (ppbft *PPBft) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 	/*
 		pbft_log.Debugf("SessionId <%s> HandleMessage called", hbmsg.SessionId)
 
@@ -44,7 +54,7 @@ func (pbft *PSyncBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	return nil
 }
 
-func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
+func (ppbft *PPBft) AcsDone(sessionId string, result map[string][]byte) {
 	pbft_log.Debugf("SessionId <%s> AcsDone called", sessionId)
 
 	//get producer registered trx
@@ -123,7 +133,7 @@ func (pbft *PSyncBft) AcsDone(sessionId string, result map[string][]byte) {
 	delete(pbft.acsInsts, sessionId)
 }
 
-func (pbft *PSyncBft) AddPSyncReq(req *quorumpb.PSyncReq) error {
+func (ppbft *PPBft) AddProducerProposal(req *quorumpb.ChangeProducerProposal) error {
 	pbft_log.Debugf("AddPSyncReq called, SessionId <%s> ", req.SessionId)
 
 	datab, err := proto.Marshal(req)

@@ -3,10 +3,11 @@ package quorum.pb;
 option go_package = "github.com/rumsystem/quorum/pkg/pb";
 
 enum PackageType {
-    TRX             = 0;
-    BLOCK           = 1;
-    HBB             = 2;
-    PSYNC           = 3;
+    TRX                   = 0;
+    BLOCK                 = 1;
+    HBB                   = 2;
+    PRODUCER_PROPOSAL_REQ = 3;
+    OWNER_BROADCAST       = 4;
 }
 
 message Package {
@@ -73,41 +74,53 @@ message Block {
     bytes       ProducerSign       = 10;        
 }
 
-enum ChannelMsgType {
-    OWNER_BROADCAST           = 0;
-    CHANGE_PRODUCER_PROPOSAL  = 1;
-    CHANGE_PRODUCER_RESP      = 2;
+enum BroadcastType {
+    GENERAL_MSG           = 0;
+    CHANGE_GROUP_PRODUCER = 1;
 }
 
-message ChannelMsg {    
+message Broadcast {
     string         GroupId       = 1;
     uint64         MsgId         = 2;
     int64          TimeStamp     = 3;
     int64          ExpireAt      = 4;
-    ChannelMsgType Type          = 5;
+    BroadcastType  Type          = 5;
     bytes          Data          = 6;
     string         SenderPubkey  = 7;
     bytes          MsgHash       = 8;
     bytes          SenderSign    = 9;
 }
 
-message OwnerBroadcast {
+message BroadcastGeneralMsg {
     string Content = 1;
 }
 
-message ChangeProducerProposal {
-    string          ProposalId          = 1;
-    repeated string ProducerPubkeyList  = 2;
-    int64           AgreementTicksCount = 3;
-    uint64          StartFromEpoch      = 4;
+message BroadcastChangeGroupProducer {
+    string Content = 1;
 }
 
-message ChangeProducerResp {
-    string  RespId         = 1; 
-    string  RespProposalId = 2;
-    string  ProducerPubkey = 3;
-    bytes   RespHash       = 4;
-    bytes   RespSign       = 5;
+message ProducerProposalReq {
+    string          ReqId               = 1;
+    string          GroupId             = 2;
+    int64           TotalProposalCnt    = 3;
+    repeated string ProducerPubkeyList  = 4;
+    int64           AgreementTickLength = 5;
+    int64           AgreementTicksCount = 6;
+    uint64          StartFromEpoch      = 7;
+    string          SenderPubkey        = 8;
+    bytes           MsgHash             = 9;
+    bytes           SenderSign          = 10;
+}
+
+message ProducerProposalResp {
+    uint64         RespId         = 1;
+    string         GroupId        = 2;
+    string         SenderPubkey   = 3;
+    uint64         StartFromEpoch = 4;
+    string         OrigReqId      = 5;    
+    bytes          OrigReqMsgHash = 6;
+    bytes          MsgHash        = 7;
+    bytes          SenderSign     = 8;
 }
 
 message ReqBlock {

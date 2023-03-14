@@ -102,6 +102,7 @@ func SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
 	return nil
 }
 
+/*
 func SendPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq) error {
 	connMgr, err := conn.GetConn().GetConnMgr(groupId)
 	if err != nil {
@@ -139,3 +140,5 @@ func SendPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp) error {
 
 	return connMgr.BroadcastPSyncMsg(psyncResp)
 }
+
+*/

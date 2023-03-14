@@ -107,7 +107,7 @@ func GroupProducer(chainapidb def.APIHandlerIface, params *GrpProducerParam) (*G
 
 		bftProducerBundle.Producers = producers
 
-		trxId, err := group.UpdProducer(bftProducerBundle)
+		trxId, err := group.ProposeProducer(bftProducerBundle)
 		if err != nil {
 			return nil, err
 		}
