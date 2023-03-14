@@ -5,9 +5,10 @@ option go_package = "github.com/rumsystem/quorum/pkg/pb";
 enum PackageType {
     TRX                   = 0;
     BLOCK                 = 1;
-    HBB                   = 2;
-    PRODUCER_PROPOSAL_REQ = 3;
-    OWNER_BROADCAST       = 4;
+    GROUP_BROADCAST       = 3;
+    PP_REQ                = 4;
+    HBB_PT                = 5;  //HBBMsg for propose TRX
+    HBB_PP                = 6;  //HBBMsg for propose PRODUCER
 }
 
 message Package {
@@ -74,21 +75,20 @@ message Block {
     bytes       ProducerSign       = 10;        
 }
 
-enum BroadcastType {
+enum GroupBroadcastType {
     GENERAL_MSG           = 0;
     CHANGE_GROUP_PRODUCER = 1;
 }
 
-message Broadcast {
-    string         GroupId       = 1;
-    uint64         MsgId         = 2;
-    int64          TimeStamp     = 3;
-    int64          ExpireAt      = 4;
-    BroadcastType  Type          = 5;
-    bytes          Data          = 6;
-    string         SenderPubkey  = 7;
-    bytes          MsgHash       = 8;
-    bytes          SenderSign    = 9;
+message GroupBroadcast {
+    string              GroupId       = 1;
+    uint64              MsgId         = 2;
+    int64               Nonce         = 3;
+    GroupBroadcastType  Type          = 4;
+    bytes               Data          = 5;
+    string              SenderPubkey  = 6;
+    bytes               MsgHash       = 7;
+    bytes               SenderSign    = 8;
 }
 
 message BroadcastGeneralMsg {
@@ -102,7 +102,7 @@ message BroadcastChangeGroupProducer {
 message ProducerProposalReq {
     string          ReqId               = 1;
     string          GroupId             = 2;
-    int64           TotalProposalCnt    = 3;
+    int64           Nonce               = 3;
     repeated string ProducerPubkeyList  = 4;
     int64           AgreementTickLength = 5;
     int64           AgreementTicksCount = 6;
@@ -385,39 +385,6 @@ message Aux {
     uint64     Epoch        = 3;    
     bool       Value        = 4;
 }
-
-message PSyncMsg {
-    PSyncMsgType MsgType = 1; //PSYNC_REQ or PSYNC_RESP
-    bytes        Payload = 2;
-}
-
-enum PSyncMsgType {
-    PSYNC_REQ  = 0;
-    PSYNC_RESP = 1;
-}
-
-message PSyncReq {
-    string GroupId      = 1;
-    string SessionId    = 2;
-    string SenderPubkey = 3;      
-    uint64 MyEpoch      = 4;
-    bytes  SenderSign   = 5;
-}
-
-message PSyncResp {
-    string               GroupId           = 1;
-    string               SessionId         = 2; 
-    string               SenderPubkey      = 3;
-    uint64               MyCurEpoch        = 4;
-    PSyncProducerItem    MyCurProducerList = 5;
-    Trx                  ProducerProof     = 6;
-    bytes                SenderSign        = 7;
-}
-
-message PSyncProducerItem {
-    repeated string Producers = 1;
-}
-
 
 //old proto msg
 message GroupItemV0 {

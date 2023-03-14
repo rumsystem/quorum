@@ -31,10 +31,10 @@ func (pp *MolassesProducerProposer) NewProducerProposer(item *quorumpb.GroupItem
 		return
 	}
 
-	psync.bft = NewPSyncBft(*config, psync)
+	pp.bft = NewPPBft(*config, psync)
 }
 
-func (psync *MolassesPSync) RecreateBft() {
+func (pp *MolassesProducerProposer) RecreateBft() {
 	molapsyncer_log.Debugf("<%s> RecreateBft called", psync.groupId)
 	config, err := psync.createBftConfig()
 	if err != nil {
@@ -46,9 +46,10 @@ func (psync *MolassesPSync) RecreateBft() {
 	psync.bft = NewPSyncBft(*config, psync)
 }
 
-func (psync *MolassesPSync) AddPSyncReq(req *quorumpb.PSyncReq) error {
-	molapsyncer_log.Debugf("<%s> AddPSyncReq called", psync.groupId)
-	return psync.bft.AddPSyncReq(req)
+func (psync *MolassesProducerProposer) AddProducerProposalReq(req *quorumpb.ProducerProposalReq) error {
+	molapsyncer_log.Debugf("<%s> AddProducerProposalReq called", psync.groupId)
+
+	return nil
 }
 
 func (psync *MolassesPSync) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {

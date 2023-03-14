@@ -278,7 +278,7 @@ func (grp *Group) ProposeProducer(item *quorumpb.BFTProducerBundleItem) (string,
 		return "", err
 	}
 
-	return trx.TrxId, grp.startProducerProposal(item, trx)
+	return trx.TrxId, grp.ChainCtx.ProposalProducer(item, trx)
 }
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
@@ -314,11 +314,6 @@ func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) startProducerProposal(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx) error {
-	group_log.Debugf("<%s> startProducerProposal called", grp.Item.GroupId)
-	return grp.ChainCtx.ProposalProducer(item, trx)
-}
-
 func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	connMgr, err := conn.GetConn().GetConnMgr(grp.Item.GroupId)
 	if err != nil {
@@ -335,9 +330,4 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	}
 
 	return trx.TrxId, nil
-}
-
-func (grp *Group) ReqPSync() (string, error) {
-	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
-	return grp.ChainCtx.ReqPSync()
 }

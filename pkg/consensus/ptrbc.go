@@ -34,7 +34,7 @@ type PTRbc struct {
 
 	acs *PTAcs //for callback when finished
 
-	msgSender *MsgSender
+	msgSender *HBMsgSender
 }
 
 // f : maximum failable node
@@ -76,7 +76,7 @@ func NewPTRbc(cfg Config, acs *PTAcs, groupId, myPubkey, rbcInstPubkey string) (
 		numDataShards:   dataShards,
 		readySent:       make(map[string]bool),
 		consenusDone:    false,
-		msgSender:       NewMsgSender(groupId, acs.Epoch, myPubkey),
+		msgSender:       NewHBMsgSender(groupId, acs.Epoch, myPubkey),
 	}
 
 	return rbc, nil

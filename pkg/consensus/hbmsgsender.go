@@ -15,7 +15,7 @@ var msg_sender_log = logging.Logger("msender")
 
 const DEFAULT_MSG_SEND_INTEVL = 1 * 1000 //in millseconds
 
-type MsgSender struct {
+type HBMsgSender struct {
 	groupId    string
 	interval   int
 	pubkey     string
@@ -27,7 +27,7 @@ type MsgSender struct {
 	locker sync.Mutex
 }
 
-func NewMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) *MsgSender {
+func NewHBMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) *HBMsgSender {
 	msg_sender_log.Debugf("<%s> NewMsgSender called, Epoch <%d>", groupId, epoch)
 
 	sendingInterval := DEFAULT_MSG_SEND_INTEVL
@@ -35,7 +35,7 @@ func NewMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) 
 		sendingInterval = interval[0]
 	}
 
-	return &MsgSender{
+	return &HBMsgSender{
 		groupId:    groupId,
 		interval:   sendingInterval,
 		pubkey:     pubkey,
@@ -46,7 +46,7 @@ func NewMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) 
 	}
 }
 
-func (msender *MsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
+func (msender *HBMsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 	msg_sender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
 
 	rbcb, err := proto.Marshal(msg)
@@ -70,7 +70,7 @@ func (msender *MsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 	return nil
 }
 
-func (msender *MsgSender) startSending() {
+func (msender *HBMsgSender) startSending() {
 	if msender.ticker != nil {
 		msender.tickerDone <- true
 	}
