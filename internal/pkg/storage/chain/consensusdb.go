@@ -185,7 +185,7 @@ func (cs *Storage) RemoveMsgByMsgId(queueId string, epoch uint64, msgId string) 
 	return cs.dbmgr.Db.Delete([]byte(key))
 }
 
-*/
+
 
 func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) {
 	key := s.GetPSyncKey(groupId, sessionId)
@@ -212,8 +212,7 @@ func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.PSyncR
 
 func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.PSyncResp, error) {
 
-	/*
-		resps := []*quorumpb.PSyncResp{}
+			resps := []*quorumpb.PSyncResp{}
 		key := s.GetPSyncPrefix(groupId)
 		err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 			if err != nil {
@@ -231,7 +230,7 @@ func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.PSyncResp
 		})
 
 		return resps, err
-	*/
-
 	return nil, nil
 }
+
+*/

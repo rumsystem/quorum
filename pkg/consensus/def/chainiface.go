@@ -6,7 +6,6 @@ import (
 )
 
 type ChainMolassesIface interface {
-	GetPubqueueIface() chaindef.PublishQueueIface
 	GetTrxFactory() chaindef.TrxFactoryIface
 	SaveChainInfoToDb() error
 	ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error

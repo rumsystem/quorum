@@ -133,11 +133,6 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) GetPubqueueIface() chaindef.PublishQueueIface {
-	chain_log.Debugf("<%s> GetPubqueueIface called", chain.groupItem.GroupId)
-	return GetPubQueueWatcher()
-}
-
 func (chain *Chain) ProposalProducer(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> ProposalProducer called", chain.groupItem.GroupId)
 	return nil
@@ -663,10 +658,6 @@ func (chain *Chain) CreateConsensus() error {
 	chain.Consensus.StartProposeTrx()
 
 	return nil
-}
-
-func (chain *Chain) TrxEnqueue(GroupId string, trx *quorumpb.Trx) error {
-	return TrxEnqueue(GroupId, trx)
 }
 
 func (chain *Chain) StartSync() error {

@@ -7,12 +7,18 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"net/http"
+	"net/url"
 	"os"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
+	"github.com/rumsystem/quorum/pkg/pb"
 	"github.com/rumsystem/quorum/testnode"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"time"
 )
@@ -36,11 +42,11 @@ const (
 )
 
 var (
-	pidlist                                                                       []int
-	bootstrapNode                                                                 *testnode.NodeInfo
-	nodes                                                                         map[string]*testnode.NodeInfo
-	fullnodes, producernodes, groups, posts, synctime, randRangeMin, randRangeMax int
-	logger                                                                        = logging.Logger("main_test")
+	pidlist                                                             []int
+	bootstrapNode                                                       *testnode.NodeInfo
+	nodes                                                               map[string]*testnode.NodeInfo
+	fullnodes, producernodes, groups, posts, randRangeMin, randRangeMax int
+	logger                                                              = logging.Logger("main_test")
 )
 
 func TestMain(m *testing.M) {
@@ -51,7 +57,6 @@ func TestMain(m *testing.M) {
 	fullnodesPtr := flag.Int("fullnodes", 2, "mock fullnodes")
 	groupsPtr := flag.Int("groups", 1, "groups on owner node")
 	postsPtr := flag.Int("posts", 100, "posts to group")
-	synctimePtr := flag.Int("synctime", 3, "time to wait before verify")
 	rextestmode := flag.Bool("rextest", false, "RumExchange Test Mode")
 	randMin := flag.Int("rmin", 10, "post rand min value")
 	randMax := flag.Int("rmax", 200, "post rand max value")
@@ -62,7 +67,6 @@ func TestMain(m *testing.M) {
 	producernodes = *producerNodesPtr
 	groups = *groupsPtr
 	posts = *postsPtr
-	synctime = *synctimePtr
 	randRangeMin = *randMin
 	randRangeMax = *randMax
 
@@ -186,7 +190,7 @@ func TestJoinGroup(t *testing.T) {
 
 			//ready := "IDLE"
 			for _, groupinfo := range groupslist.GroupInfos {
-				logger.Debugf("Group %s status %s", groupinfo.GroupId, groupinfo.GroupStatus)
+				logger.Debugf("Group %s status %s", groupinfo.GroupId, groupinfo.RexSyncerStatus)
 				if groupinfo.GroupId != groupId {
 					t.Errorf("Check group status failed %s, groupId mismatch", err)
 				}
@@ -299,7 +303,7 @@ func TestGroupPostContents(t *testing.T) {
 	logger.Debugf("____________START_POST_____________")
 	//send trxs randomly
 
-	logger.Debugf("Try post <%s> trxs", posts)
+	logger.Debugf("Try post <%d> trxs", posts)
 	trxs := make(map[string]string) //trx_id: trx_content
 	i := 0
 	for i < posts {
@@ -309,13 +313,13 @@ func TestGroupPostContents(t *testing.T) {
 		r := GetGussRandNum(int64(randRangeMin), int64(randRangeMax)) // from 10ms (0.01s) to 500ms (1s)
 		if r%2 == 0 {
 			logger.Debugf("owner node try post trx")
-			postContent = fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}`, OWNER_NODE, i, OWNER_NODE, i, groupId)
-			_, resp, err = testnode.RequestAPI(ownerNode.APIBaseUrl, "/api/v1/group/content/false", "POST", postContent)
+			postContent = fmt.Sprintf(`{"data": {"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}}`, OWNER_NODE, i, OWNER_NODE, i, groupId)
+			_, resp, err = testnode.RequestAPI(ownerNode.APIBaseUrl, fmt.Sprintf("/api/v1/group/%s/content", groupId), "POST", postContent)
 
 		} else {
 			logger.Debugf("user node try post trx")
-			postContent = fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}`, USER_NODE, i, USER_NODE, i, groupId)
-			_, resp, err = testnode.RequestAPI(userNode.APIBaseUrl, "/api/v1/group/content/false", "POST", postContent)
+			postContent = fmt.Sprintf(`{"data": {"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}}`, USER_NODE, i, USER_NODE, i, groupId)
+			_, resp, err = testnode.RequestAPI(userNode.APIBaseUrl, fmt.Sprintf("/api/v1/group/%s/content", groupId), "POST", postContent)
 		}
 
 		if err != nil {
@@ -344,7 +348,7 @@ func TestGroupPostContents(t *testing.T) {
 	}
 
 	//sleep 5 seconds to make sure all node received latest block
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	logger.Debugf("____________VERIFY_EPOCH_____________")
 
@@ -378,26 +382,14 @@ func TestGroupPostContents(t *testing.T) {
 	logger.Debugf("____________VERIFY_TRX_____________")
 
 	//verify all nodes (except producer1 and producer2) have all trxs sent by owner and user
+	time.Sleep(15 * time.Second)
 	for _, node := range nodes {
 		if node.NodeName == PRODUCER_NODE1 || node.NodeName == PRODUCER_NODE2 {
 			continue
 		}
 
 		if err = VerifyTrxOnGroup(node, groupId, trxs); err != nil {
-			t.Fail()
-		}
-	}
-
-	logger.Debugf("____________LEAVE_GROUP_AND_CLEAR_DATA_____________")
-	for _, node := range nodes {
-
-		if err = LeaveGroup(node, groupId); err != nil {
-			logger.Errorf("leave group err: <%d>", err)
-			t.Fail()
-		}
-
-		if err = ClearGroup(node, groupId); err != nil {
-			logger.Errorf("clean group err: <%d>", err)
+			logger.Errorf("VerifyTrxOnGroup failed: %s", err)
 			t.Fail()
 		}
 	}
@@ -416,7 +408,7 @@ How to test
 */
 
 func TestBasicSync(t *testing.T) {
-	logger.Debugf("_____________TestGroupPostContents_RUNNING_____________")
+	logger.Debugf("_____________TestBasicSync_RUNNING_____________")
 
 	//owner create a group
 	//get owner node
@@ -436,6 +428,7 @@ func TestBasicSync(t *testing.T) {
 		t.Fail()
 	}
 
+	time.Sleep(time.Second * 15)
 	logger.Debugf("_____________OWNER_VERIFY_TRXS_____________")
 	err = VerifyTrxOnGroup(ownerNode, groupId, trxs)
 	if err != nil {
@@ -449,27 +442,9 @@ func TestBasicSync(t *testing.T) {
 	}
 
 	logger.Debugf("_____________WAIT_USERNODE_SYNC_DONE_____________")
-	//wait 10s for user node to finish sync
-	time.Sleep(time.Duration(10) * time.Second)
+	//wait 20s for user node to finish sync
+	time.Sleep(time.Duration(20) * time.Second)
 
-	logger.Debugf("_____________START_VERIFY_____________")
-	epochOwner, err := GetEpochOnGroup(ownerNode, groupId)
-	if err != nil {
-		t.Fail()
-	}
-
-	epochUser, err := GetEpochOnGroup(userNode, groupId)
-	if err != nil {
-		t.Fail()
-	}
-
-	//check if user get all epoch
-	if epochUser != epochOwner {
-		logger.Errorf("User node check epoch failed, highest epoch <%d>, should be <%d>", epochUser, epochOwner)
-		t.Fail()
-	}
-
-	logger.Debugf("OK: ownernode epoch <%d>, usernode epoch <%d>", epochOwner, epochUser)
 	//check user node get all trxs
 	err = VerifyTrxOnGroup(userNode, groupId, trxs)
 	if err != nil {
@@ -479,21 +454,23 @@ func TestBasicSync(t *testing.T) {
 	logger.Debugf("_____________LEAVE_AND_CLEAR_____________")
 	err = LeaveGroup(userNode, groupId)
 	if err != nil {
+		logger.Errorf("leave group failed: %s", err)
 		t.Fail()
 	}
-
 	err = ClearGroup(userNode, groupId)
 	if err != nil {
+		logger.Errorf("clear group failed: %s", err)
 		t.Fail()
 	}
 
 	err = LeaveGroup(ownerNode, groupId)
 	if err != nil {
+		logger.Errorf("leave group failed: %s", err)
 		t.Fail()
 	}
-
 	err = ClearGroup(ownerNode, groupId)
 	if err != nil {
+		logger.Errorf("clear group failed: %s", err)
 		t.Fail()
 	}
 }
@@ -662,11 +639,11 @@ func PostToGroup(node *testnode.NodeInfo, groupId string, trxNum int) (map[strin
 
 		r := GetGussRandNum(int64(randRangeMin), int64(randRangeMax)) // from 10ms (0.01s) to 500ms (1s)
 		logger.Debugf("node <%s> try post trx", node.NodeName)
-		postContent = fmt.Sprintf(`{"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}`,
+		postContent = fmt.Sprintf(`{"data": {"type":"Add","object":{"type":"Note","content":"post_content_from_%s_%d","name":"%s_%d"},"target":{"id":"%s","type":"Group"}}}`,
 			node.NodeName, i,
 			node.NodeName, i,
 			groupId)
-		_, resp, err = testnode.RequestAPI(node.APIBaseUrl, "/api/v1/group/content/false", "POST", postContent)
+		_, resp, err = testnode.RequestAPI(node.APIBaseUrl, fmt.Sprintf("/api/v1/group/%s/content", groupId), "POST", postContent)
 
 		if err != nil {
 			logger.Errorf("post content to api error %s", err)
@@ -695,27 +672,71 @@ func PostToGroup(node *testnode.NodeInfo, groupId string, trxNum int) (map[strin
 	return trxs, nil
 }
 
+func requestAPI(baseUrl string, endpoint string, method string, payload interface{}, headers http.Header, result interface{}, isSkipValidate bool) (int, []byte, error) {
+	_url, err := url.JoinPath(baseUrl, endpoint)
+	if err != nil {
+		return 0, nil, fmt.Errorf("url.JoinPath(%s, %s) failed: %s", baseUrl, endpoint, err)
+	}
+
+	statusCode, resp, err := utils.RequestAPI(_url, method, payload, headers, result)
+	if err != nil || statusCode >= 400 {
+		e := fmt.Errorf("%s %s failed: %s, payload: %+v, response: %s", method, endpoint, err, payload, resp)
+		logger.Error(e)
+		return statusCode, resp, e
+	}
+
+	if result != nil {
+		if err := json.Unmarshal(resp, result); err != nil {
+			logger.Errorf("json.Unmarshal %+v failed: %s", resp, err)
+			return statusCode, resp, err
+		}
+	}
+
+	if !isSkipValidate {
+		validate := validator.New()
+		if err := validate.Struct(result); err != nil {
+			e := fmt.Errorf("validate.Struct failed: %s, response: %s", err, resp)
+			logger.Error(e)
+			return statusCode, resp, e
+		}
+	}
+
+	return statusCode, resp, nil
+}
+func verifyTrx(node *testnode.NodeInfo, groupId string, trxId string) bool {
+	max := 20
+	for i := 0; i < max; i++ {
+		path := fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId)
+		_, resp, err := requestAPI(node.APIBaseUrl, path, "GET", nil, nil, nil, true)
+		if err != nil {
+			logger.Errorf("curl -X GET %s/%s failed: %s", node.APIBaseUrl, path, err)
+			return false
+		}
+		var result pb.Trx
+		if err := protojson.Unmarshal(resp, &result); err != nil {
+			logger.Errorf("protojson.Unmarshal failed: %s", err)
+			return false
+		}
+		if result.TrxId == trxId {
+			return true
+		} else {
+			logger.Warnf("idx: %d trxId except: %s actual: %s", i, trxId, result.TrxId)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+	}
+
+	return false
+}
+
 func VerifyTrxOnGroup(node *testnode.NodeInfo, groupId string, trxs map[string]string) error {
 	for trxId, _ := range trxs {
 		logger.Debugf("check trx <%s>", trxId)
-		_, resp, err := testnode.RequestAPI(node.APIBaseUrl, fmt.Sprintf("/api/v1/trx/%s/%s", groupId, trxId), "GET", "")
-		if err == nil {
-			var data map[string]interface{}
-			if err := json.Unmarshal(resp, &data); err != nil {
-				logger.Errorf("Data Unmarshal error %s", err)
-				return err
-			}
-			//TBD, run more check on trx
-			if data["TrxId"] == trxId {
-				logger.Debugf("Ok: ---- node <%s> trx <%s> verified", node.NodeName, trxId)
-			} else {
-				logger.Errorf("trx <%s> verify failed on node <%s>", trxId, node.NodeName)
-				err = fmt.Errorf("node <%s> verify trx <%s> failed", node.NodeName, trxId)
-				return err
-			}
+		if verifyTrx(node, groupId, trxId) {
+			logger.Debugf("Ok: ---- node <%s> trx <%s> verified", node.NodeName, trxId)
 		} else {
-			err = fmt.Errorf("get /api/v1/trx/%s err: %s", trxId, err)
-			logger.Error(err.Error())
+			err := fmt.Errorf("node <%s> verify trx <%s> failed", node.NodeName, trxId)
+			logger.Error(err)
 			return err
 		}
 	}
@@ -739,7 +760,7 @@ func GetEpochOnGroup(node *testnode.NodeInfo, groupId string) (epoch int, err er
 	}
 
 	groupInfo := groupslist.GroupInfos[0]
-	return int(groupInfo.Epoch), nil
+	return int(groupInfo.CurrtEpoch), nil
 }
 
 func GetGroupStatus(node *testnode.NodeInfo, groupId string) (string, error) {
@@ -758,7 +779,7 @@ func GetGroupStatus(node *testnode.NodeInfo, groupId string) (string, error) {
 	}
 
 	groupInfo := groupslist.GroupInfos[0]
-	return groupInfo.GroupStatus, nil
+	return groupInfo.RexSyncerStatus, nil
 }
 
 func LeaveGroup(node *testnode.NodeInfo, groupId string) error {

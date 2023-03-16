@@ -324,10 +324,5 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 		return "", err
 	}
 
-	err = grp.ChainCtx.GetPubqueueIface().TrxEnqueue(grp.Item.GroupId, trx)
-	if err != nil {
-		return "", err
-	}
-
 	return trx.TrxId, nil
 }
