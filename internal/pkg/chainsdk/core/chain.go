@@ -133,9 +133,14 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) ProposalProducer(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx) error {
+func (chain *Chain) ProposeProducer(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx, agrmTickCount, agrmTickLength, fromNewEpoch uint64) error {
 	chain_log.Debugf("<%s> ProposalProducer called", chain.groupItem.GroupId)
-	return nil
+
+	if chain.Consensus.ProducerProposer() != nil {
+		return chain.Consensus.ProducerProposer().AddProposerItem(item, trx, agrmTickCount, agrmTickLength, fromNewEpoch)
+	}
+
+	return fmt.Errorf("producer proposer is nil")
 }
 
 // PSConn msg handler

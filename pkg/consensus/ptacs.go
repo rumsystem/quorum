@@ -43,7 +43,7 @@ func (a *PTAcs) InputValue(val []byte) error {
 
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
-		return fmt.Errorf("could not find rbc instance (%s)", a.MyPubkey)
+		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)
 	}
 
 	return rbc.InputValue(val)
@@ -51,10 +51,10 @@ func (a *PTAcs) InputValue(val []byte) error {
 
 // rbc for proposerIs finished
 func (a *PTAcs) RbcDone(proposerPubkey string) {
-	ptacs_log.Infof("RbcDone called, Epoch <%d>", a.Epoch)
+	ptacs_log.Infof("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 	if len(a.rbcOutput) == a.N-a.f {
-		ptacs_log.Debugf("enough RBC done for consensus <%d>", a.N-a.f)
+		ptacs_log.Debugf("enough RBC done, consensus needed<%d>", a.N-a.f)
 		//this only works when producer nodes equals to 3!!
 		//TBD:should add BBA here
 		//1. set all NOT finished RBC to false

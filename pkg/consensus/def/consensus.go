@@ -9,5 +9,5 @@ type Consensus interface {
 	SetUser(u User)
 	SetProducerProposer(pp ProducerProposer)
 	StartProposeTrx()
-	StartProposeProducer()
+	StopProposeTrx()
 }

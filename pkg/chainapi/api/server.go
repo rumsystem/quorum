@@ -150,7 +150,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	//r.POST("/v1/ping", h.P2PPingPeer(node))
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
-	r.POST("/v1/group/reqpsync", h.ReqPSync)
 	//r.POST("/v1/group/join", h.JoinGroup())
 
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
@@ -161,7 +160,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	//r.POST("/v1/group/producer", h.GroupProducer)
 
-	r.POST("/v1/group/producerproposal", h.ProposalProducer)
+	r.POST("/v1/group/proposeproducers", h.ProposeProducers)
 
 	r.POST("/v1/group/user", h.GroupUser)
 

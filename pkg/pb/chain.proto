@@ -102,14 +102,15 @@ message BroadcastChangeGroupProducer {
 message ProducerProposalReq {
     string          ReqId               = 1;
     string          GroupId             = 2;
-    int64           Nonce               = 3;
+    uint64          Nonce               = 3;
     repeated string ProducerPubkeyList  = 4;
-    int64           AgreementTickLength = 5;
-    int64           AgreementTicksCount = 6;
-    uint64          StartFromEpoch      = 7;
-    string          SenderPubkey        = 8;
-    bytes           MsgHash             = 9;
-    bytes           SenderSign          = 10;
+    Trx             Trx                 = 5;   
+    int64           AgreementTickLength = 6;
+    int64           AgreementTicksCount = 7;
+    uint64          StartFromEpoch      = 8;
+    string          SenderPubkey        = 9;
+    bytes           MsgHash             = 10; 
+    bytes           SenderSign          = 11;
 }
 
 message ProducerProposalResp {

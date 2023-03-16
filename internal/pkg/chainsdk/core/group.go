@@ -271,14 +271,14 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) ProposeProducer(item *quorumpb.BFTProducerBundleItem) (string, error) {
+func (grp *Group) ProposeProducer(item *quorumpb.BFTProducerBundleItem, agrmTickCount, agrmTickLength, fromNewEpoch uint64) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
 	if err != nil {
 		return "", err
 	}
 
-	return trx.TrxId, grp.ChainCtx.ProposalProducer(item, trx)
+	return trx.TrxId, grp.ChainCtx.ProposeProducer(item, trx, agrmTickCount, agrmTickLength, fromNewEpoch)
 }
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {

@@ -1,131 +1,148 @@
 package consensus
 
 import (
+	"fmt"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
-var psync_acs_log = logging.Logger("pacs")
+var ppacs_log = logging.Logger("ppacs")
 
-type PSyncACS struct {
+type PPAcs struct {
 	Config
-	bft          *PSyncBft
-	SessionId    string
-	rbcInstances map[string]*PSyncRBC
-	rbcOutput    map[string]bool
-	rbcResults   map[string][]byte
+	bft        *PPBft
+	Epoch      uint64
+	rbcInsts   map[string]*PPRbc
+	rbcOutput  map[string]bool
+	rbcResults map[string][]byte
 }
 
-func NewPSyncACS(cfg Config, bft *PSyncBft, sid string) *PSyncACS {
-	psync_acs_log.Debugf("SessionId <%s> NewPSyncACS called", sid)
+func NewPPAcs(cfg Config, bft *PPBft, epoch uint64) *PPAcs {
+	ppacs_log.Debugf("NewPPAcs called, epoch <%d>", epoch)
 
-	acs := &PSyncACS{
-		Config:       cfg,
-		bft:          bft,
-		SessionId:    sid,
-		rbcInstances: make(map[string]*PSyncRBC),
-		rbcOutput:    make(map[string]bool),
-		rbcResults:   make(map[string][]byte),
+	acs := &PPAcs{
+		Config:     cfg,
+		bft:        bft,
+		Epoch:      epoch,
+		rbcInsts:   make(map[string]*PPRbc),
+		rbcOutput:  make(map[string]bool),
+		rbcResults: make(map[string][]byte),
 	}
 
 	for _, id := range cfg.Nodes {
-		acs.rbcInstances[id], _ = NewPSyncRBC(cfg, acs, bft.PSyncer.groupId, id)
+		acs.rbcInsts[id], _ = NewPPRbc(cfg, acs, bft.pp.groupId, cfg.MyPubkey, id)
 	}
 
 	return acs
 }
 
 // give input value to
-func (a *PSyncACS) InputValue(val []byte) error {
-	psync_acs_log.Debugf("SessionId <%s> InputValue called", a.SessionId)
+func (a *PPAcs) InputValue(val []byte) error {
+	ppacs_log.Debug("InputValue called")
 
-	/*
-		rbc, ok := a.rbcInstances[a.MySignPubkey]
-		if !ok {
-			return fmt.Errorf("could not find rbc instance <%s>", a.MySignPubkey)
-		}
+	rbc, ok := a.rbcInsts[a.MyPubkey]
+	if !ok {
+		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)
+	}
 
-		return rbc.InputValue(val)
-
-	*/
-
-	return nil
+	return rbc.InputValue(val)
 }
 
 // rbc for proposerIs finished
-func (a *PSyncACS) RbcDone(proposerPubkey string) {
-	psync_acs_log.Debugf("SessionId <%s> RbcDone called, RBC <%s> finished", a.SessionId, proposerPubkey)
+func (a *PPAcs) RbcDone(proposerPubkey string) {
+	ppacs_log.Debugf("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 
-	//check if all rbc instance output
-	psync_acs_log.Debugf("SessionId <%s> <%d> RBC finished, need <%d>", a.SessionId, len(a.rbcOutput), a.N-a.f)
 	if len(a.rbcOutput) == a.N-a.f {
-		trx_acs_log.Debugf("all RBC done")
-		// all rbc done, get all rbc results, send them back to BFT
+		ptacs_log.Debugf("enough RBC done, consensus needed <%d>", a.N-a.f)
 		for rbcInst, _ := range a.rbcOutput {
 			//load all rbc results
-			a.rbcResults[rbcInst] = a.rbcInstances[rbcInst].Output()
+			a.rbcResults[rbcInst] = a.rbcInsts[rbcInst].Output()
 		}
 
 		//call hbb to get result
-		a.bft.AcsDone(a.SessionId, a.rbcResults)
+		a.bft.AcsDone(a.Epoch, a.rbcResults)
 	} else {
-		psync_acs_log.Debugf("Wait for all RBC to finished")
+		ppacs_log.Debugf("Wait for enough RBC done")
 		return
 	}
 }
 
-func (a *PSyncACS) HandleMessage(msg *quorumpb.HBMsgv1) error {
-	/*
-		psync_acs_log.Debugf("HandleMessage called, SessionId <%s>", hbmsg.SessionId)
-			psyncMsg := &quorumpb.PSyncMsg{}
-			err := proto.Unmarshal(hbmsg.Payload, psyncMsg)
-			if err != nil {
-				return err
-			}
+func (a *PPAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
+	ptacs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
 
-			switch psyncMsg.MsgType {
-				case quorumpb.HBPS
+	switch hbmsg.PayloadType {
+	case quorumpb.HBMsgPayloadType_RBC:
+		return a.handleRbcMsg(hbmsg.Payload)
+	case quorumpb.HBMsgPayloadType_BBA:
+		return a.handleBbaMsg(hbmsg.Payload)
+	default:
+		return fmt.Errorf("received unknown type msg <%s>", hbmsg.PayloadType.String())
+	}
+}
 
+func (a *PPAcs) handleRbcMsg(payload []byte) error {
+	//ptacs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
 
-			case quorumpb.HBBMsgType_BROADCAST:
-				broadcastMsg := &quorumpb.BroadcastMsg{}
-				err := proto.Unmarshal(hbmsg.Payload, broadcastMsg)
-				if err != nil {
-					return err
-				}
-				switch broadcastMsg.Type {
-				case quorumpb.BroadcastMsgType_PROOF:
-					proof := &quorumpb.Proof{}
-					err := proto.Unmarshal(broadcastMsg.Payload, proof)
-					if err != nil {
-						return err
-					}
-					rbc, ok := a.rbcInstances[proof.ProposerPubkey]
-					if !ok {
-						return fmt.Errorf("could not find rbc instance to handle proof for (%s)", proof.ProposerPubkey)
-					}
-					return rbc.handleProofMsg(proof)
-				case quorumpb.BroadcastMsgType_READY:
-					ready := &quorumpb.Ready{}
-					err := proto.Unmarshal(broadcastMsg.Payload, ready)
-					if err != nil {
-						return err
-					}
-					rbc, ok := a.rbcInstances[ready.ProofProviderPubkey]
-					if !ok {
-						return fmt.Errorf("could not find rbc instance to handle ready for (%s)", ready.ProofProviderPubkey)
-					}
-					return rbc.handleReadyMsg(ready)
+	//cast payload to RBC message
+	rbcMsg := &quorumpb.RBCMsg{}
+	err := proto.Unmarshal(payload, rbcMsg)
+	if err != nil {
+		return err
+	}
 
-				default:
-					return fmt.Errorf("received unknown broadcast message (%v)", broadcastMsg.Type)
-				}
-			default:
-				return fmt.Errorf("received unknown hbmsg <%s> type (%v)", hbmsg.MsgId, hbmsg.MsgType)
-			}
+	switch rbcMsg.Type {
+	case quorumpb.RBCMsgType_INIT_PROPOSE:
+		initp := &quorumpb.InitPropose{}
+		err := proto.Unmarshal(rbcMsg.Payload, initp)
+		if err != nil {
+			return err
+		}
+		ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
+		if initp.RecvNodePubkey != a.MyPubkey {
+			ptacs_log.Debugf("not for me")
+			return nil
+		}
 
-	*/
+		rbc, ok := a.rbcInsts[initp.ProposerPubkey]
+		if !ok {
+			return fmt.Errorf("could not find rbc instance to handle InitPropose form <%s>", initp.ProposerPubkey)
+		}
 
+		return rbc.handleInitProposeMsg(initp)
+	case quorumpb.RBCMsgType_ECHO:
+		echo := &quorumpb.Echo{}
+		err := proto.Unmarshal(rbcMsg.Payload, echo)
+		if err != nil {
+			return err
+		}
+		//give the ECHO msg to original proposer
+		rbc, ok := a.rbcInsts[echo.OriginalProposerPubkey]
+		if !ok {
+			return fmt.Errorf("could not find rbc instance to handle proof from <%s>, original propose <%s>", echo.EchoProviderPubkey, echo.OriginalProposerPubkey)
+		}
+		return rbc.handleEchoMsg(echo)
+	case quorumpb.RBCMsgType_READY:
+		ready := &quorumpb.Ready{}
+		err := proto.Unmarshal(rbcMsg.Payload, ready)
+		if err != nil {
+			return err
+		}
+		rbc, ok := a.rbcInsts[ready.OriginalProposerPubkey]
+		if !ok {
+			return fmt.Errorf("could not find rbc instance to handle ready from <%s>", ready.ReadyProviderPubkey)
+		}
+		return rbc.handleReadyMsg(ready)
+
+	default:
+		return fmt.Errorf("received unknown rbc message, type (%s)", rbcMsg.Type)
+	}
+}
+
+func (a *PPAcs) handleBbaMsg(payload []byte) error {
+	//TBD
+	//Implement BBA
 	return nil
 }

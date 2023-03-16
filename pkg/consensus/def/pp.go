@@ -6,8 +6,7 @@ import (
 
 type ProducerProposer interface {
 	NewProducerProposer(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
-	AddProposerItem(producerList *quorumpb.BFTProducerBundleItem, originalTrx *quorumpb.Trx)
-	HandleChannelMsg(msg *quorumpb.ChannelMsg)
-	StartPropose()
-	StopPropse()
+	AddProposerItem(producerList *quorumpb.BFTProducerBundleItem, originalTrx *quorumpb.Trx, agrmTickCount, agrmTickLength, fromNewEpoch uint64) error
+	HandleHBPP(msg *quorumpb.HBMsgv1)
+	HandlePPREQ(req *quorumpb.ProducerProposalReq)
 }

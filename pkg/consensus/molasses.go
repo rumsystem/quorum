@@ -49,8 +49,8 @@ func (m *Molasses) StartProposeTrx() {
 	}
 }
 
-func (m *Molasses) StartProposeProducer() {
-	if m.producerproposer != nil {
-		//do something
+func (m *Molasses) StopProposeTrx() {
+	if m.producer != nil {
+		m.producer.StopPropose()
 	}
 }

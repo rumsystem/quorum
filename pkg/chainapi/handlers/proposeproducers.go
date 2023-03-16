@@ -16,24 +16,24 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-type ProposeProducerResult struct {
-	TrxId     string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
+type ProposeProducersResult struct {
 	GroupId   string `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	TrxId     string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
 	Producers []*quorumpb.ProducerItem
 	Failable  *int   `json:"failable_producers" validate:"required" example:"1"`
 	Memo      string `json:"memo" example:"comment/remark"`
 }
 
-type ProposeProducerParam struct {
-	ProducerPubkey      []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
+type ProposeProducersParam struct {
 	GroupId             string   `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
-	NewEpoch            int64    `from:"new_epoch" json:"new_epoch" validate:"required"`
-	AgreementTickLength int64    `from:"agreement_tick_length" json:"agreement_tick_length" validate:"required"`
-	AgreementTickCount  int64    `from:"agreement_tick_count" json:"agreement_tick_count" validate:"required"`
-	Memo                string   `from:"memo"            json:"memo" example:"comment/remark"`
+	ProducerPubkey      []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
+	FromNewEpoch        uint64   `from:"start_from_epoch" json:"start_from_epoch" validate:"required" example:"100"`
+	AgreementTickLength uint64   `from:"agreement_tick_length" json:"agreement_tick_length" validate:"required"`
+	AgreementTickCount  uint64   `from:"agreement_tick_count" json:"agreement_tick_count" validate:"required"`
+	Memo                string   `from:"memo" json:"memo" example:"comment/remark"`
 }
 
-func ProposeProducer(chainapidb def.APIHandlerIface, params *ProposeProducerParam) (*ProposeProducerResult, error) {
+func ProposeProducer(chainapidb def.APIHandlerIface, params *ProposeProducersParam) (*ProposeProducersResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
@@ -110,14 +110,14 @@ func ProposeProducer(chainapidb def.APIHandlerIface, params *ProposeProducerPara
 
 		bftProducerBundle.Producers = producers
 
-		trxId, err := group.ProposeProducer(bftProducerBundle)
+		trxId, err := group.ProposeProducer(bftProducerBundle, params.AgreementTickCount, params.AgreementTickLength, params.FromNewEpoch)
 		if err != nil {
 			return nil, err
 		}
 
 		failable := (len(bundle) - 1) / 3 /* 3F < N */
 
-		result := &ProposeProducerResult{
+		result := &ProposeProducersResult{
 			GroupId:   group.Item.GroupId,
 			Producers: bftProducerBundle.Producers,
 			Failable:  &failable,

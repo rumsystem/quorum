@@ -21,13 +21,13 @@ type HBMsgSender struct {
 	pubkey     string
 	CurrEpoch  uint64
 	CurrHbMsg  *quorumpb.HBMsgv1
+	CurrMsgTyp quorumpb.PackageType
 	ticker     *time.Ticker
 	tickerDone chan bool
-
-	locker sync.Mutex
+	locker     sync.Mutex
 }
 
-func NewHBMsgSender(groupId string, epoch uint64, pubkey string, interval ...int) *HBMsgSender {
+func NewHBMsgSender(groupId string, epoch uint64, pubkey string, typ quorumpb.PackageType, interval ...int) *HBMsgSender {
 	msg_sender_log.Debugf("<%s> NewMsgSender called, Epoch <%d>", groupId, epoch)
 
 	sendingInterval := DEFAULT_MSG_SEND_INTEVL
@@ -41,6 +41,7 @@ func NewHBMsgSender(groupId string, epoch uint64, pubkey string, interval ...int
 		pubkey:     pubkey,
 		CurrEpoch:  epoch,
 		CurrHbMsg:  nil,
+		CurrMsgTyp: typ,
 		ticker:     nil,
 		tickerDone: make(chan bool),
 	}
@@ -90,7 +91,7 @@ func (msender *HBMsgSender) startSending() {
 				if err != nil {
 					return
 				}
-				connMgr.BroadcastHBMsg(msender.CurrHbMsg)
+				connMgr.BroadcastHBMsg(msender.CurrHbMsg, msender.CurrMsgTyp)
 			}
 			msender.ticker.Stop()
 		}

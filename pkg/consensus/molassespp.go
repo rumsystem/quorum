@@ -2,93 +2,66 @@ package consensus
 
 import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var molapsyncer_log = logging.Logger("psyncer")
+var molapp_log = logging.Logger("pp")
 
 type MolassesProducerProposer struct {
-	grpItem  *quorumpb.GroupItem
-	groupId  string
-	nodename string
-	cIface   def.ChainMolassesIface
-	bft      *PPBft
+	grpItem      *quorumpb.GroupItem
+	groupId      string
+	nodename     string
+	cIface       def.ChainMolassesIface
+	producers    []*quorumpb.ProducerItem
+	trx          *quorumpb.Trx
+	bft          *PPBft
+	currReqId    string
+	currReqNance int64
 }
 
 func (pp *MolassesProducerProposer) NewProducerProposer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
-	molapsyncer_log.Debugf("<%s> NewPSyncer called", item.GroupId)
-	pp.grpItem = item
-	pp.groupId = item.GroupId
-	pp.cIface = iface
-	pp.nodename = nodename
-
-	config, err := pp.createBftConfig()
-	if err != nil {
-		molapsyncer_log.Error("create bft failed")
-		molapsyncer_log.Error(err.Error)
-		return
-	}
-
-	pp.bft = NewPPBft(*config, psync)
+	molapp_log.Debugf("<%s> NewProducerProposer called", item.GroupId)
 }
 
 func (pp *MolassesProducerProposer) RecreateBft() {
-	molapsyncer_log.Debugf("<%s> RecreateBft called", psync.groupId)
-	config, err := psync.createBftConfig()
-	if err != nil {
-		molapsyncer_log.Errorf("recreate bft failed")
-		molapsyncer_log.Error(err.Error())
-		return
-	}
-
-	psync.bft = NewPSyncBft(*config, psync)
+	molapp_log.Debugf("<%s> RecreateBft called", pp.groupId)
 }
 
-func (psync *MolassesProducerProposer) AddProducerProposalReq(req *quorumpb.ProducerProposalReq) error {
-	molapsyncer_log.Debugf("<%s> AddProducerProposalReq called", psync.groupId)
+func (pp *MolassesProducerProposer) HandlePPREQ(req *quorumpb.ProducerProposalReq) {
+	molapp_log.Debugf("<%s> HandlePPREQ called", pp.groupId)
+}
 
+func (pp *MolassesProducerProposer) HandleHBPP(hbmsg *quorumpb.HBMsgv1) {
+	molapp_log.Debugf("<%s> HandleHBPP called", pp.groupId)
+}
+
+func (pp *MolassesProducerProposer) AddProposerItem(producerList *quorumpb.BFTProducerBundleItem, originalTrx *quorumpb.Trx, agrmTickCount, agrmTickLength, fromNewEpoch uint64) error {
+	molapp_log.Debugf("<%s> AddProposerItem called", pp.groupId)
 	return nil
 }
 
-func (psync *MolassesPSync) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	//molapsyncer_log.Debugf("<%s> PSyncer HandleHBMsg, Epoch <%d>", psync.groupId, hbmsg.Epoch)
-	return psync.bft.HandleMessage(hbmsg)
-}
+func (pp *MolassesProducerProposer) createBftConfig() (*Config, error) {
+	molapp_log.Debugf("<%s> createBftConfig called", pp.groupId)
 
-func (psync *MolassesPSync) createBftConfig() (*Config, error) {
-	molapsyncer_log.Debugf("<%s> createBftConfig called", psync.groupId)
-	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(psync.groupId, psync.nodename)
-	if err != nil {
-		return nil, err
+	var producerNodes []string
+	for _, producer := range pp.producers {
+		molaproducer_log.Debugf(">>> producer <%s>", producer.ProducerPubkey)
+		producerNodes = append(producerNodes, producer.ProducerPubkey)
 	}
 
-	var nodes []string
-	for _, producer := range producer_nodes {
-		nodes = append(nodes, producer.ProducerPubkey)
-	}
-
-	molaproducer_log.Debugf("Get <%d> producers", len(nodes))
-	for _, producerId := range nodes {
-		molaproducer_log.Debugf(">>> producer_id %s", producerId)
-	}
-
-	n := len(nodes)
+	n := len(producerNodes)
 	f := (n - 1) / 3
 
-	molaproducer_log.Debugf("Failable node <%d>", f)
-
+	molaproducer_log.Debugf("failable producers <%d>", f)
 	batchSize := 1
-
-	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
 	config := &Config{
 		N:         n,
 		f:         f,
-		Nodes:     nodes,
+		Nodes:     producerNodes,
 		BatchSize: batchSize,
-		MyPubkey:  psync.grpItem.UserSignPubkey,
+		MyPubkey:  pp.grpItem.UserSignPubkey,
 	}
 
 	return config, nil

@@ -277,7 +277,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 
-func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
+func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.PackageType) error {
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)
@@ -285,27 +285,7 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_HBB
-	pkg.Data = pbBytes
-
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	psconn := connMgr.getProducerPsConn()
-	return psconn.Publish(pkgBytes)
-}
-
-func (connMgr *ConnMgr) BroadcastPSyncMsg(psync *quorumpb.PSyncMsg) error {
-	pkg := &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(psync)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_PSYNC
+	pkg.Type = typ
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)
