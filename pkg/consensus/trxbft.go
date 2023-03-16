@@ -15,7 +15,7 @@ import (
 
 var trx_bft_log = logging.Logger("tbft")
 
-var DEFAULT_PROPOSE_PULSE = 5 * 1000 // 1s
+var DEFAULT_PROPOSE_PULSE = 1 * 1000 // 1s
 
 type ProposeTask struct {
 	Epoch          uint64
