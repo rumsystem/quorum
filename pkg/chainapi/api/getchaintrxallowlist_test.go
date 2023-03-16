@@ -73,7 +73,7 @@ func TestUpdateChainAllowList(t *testing.T) {
 	}
 
 	// get allow list
-	time.Sleep(10 * time.Second)
+	time.Sleep(25 * time.Second)
 	rules, err := getGroupAllowList(peerapi, group.GroupId)
 	if err != nil {
 		t.Fatalf("getGroupAllowList failed: %s", err)

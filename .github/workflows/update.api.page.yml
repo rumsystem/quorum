@@ -12,7 +12,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18.x
+          go-version: ">=1.19.0"
 
       - name: Checkout quorum repo
         uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
           go install github.com/swaggo/swag/cmd/swag@v1.7.0
           make gen-doc
 
-      - name: Check swagger.json generated 
+      - name: Check swagger.json generated
         id: check_files
         uses: andstor/file-existence-action@v1.1.0
         with:

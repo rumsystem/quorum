@@ -151,7 +151,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	//r.POST("/v1/ping", h.P2PPingPeer(node))
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
-	r.POST("/v1/trx/ack", h.PubQueueAck)
 	r.POST("/v1/group/reqpsync", h.ReqPSync)
 	//r.POST("/v1/group/join", h.JoinGroup())
 
@@ -189,7 +188,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
-	r.GET("/v1/group/:group_id/pubqueue", h.GetPubQueue)
 
 	//app api
 	a.POST("/v1/token/refresh", apph.RefreshToken)
@@ -202,6 +200,9 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	//utils
 	r.POST("/v1/keystore/signtx", h.SignTx)
+
+	// websocket
+	r.GET("/v1/ws/trx", h.WebsocketManager.WsConnect)
 
 	//for nodesdk
 	r.POST("/v1/node/trx/:group_id", h.SendTrx)

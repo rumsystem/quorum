@@ -81,8 +81,6 @@ func runFullnode(config cli.FullNodeFlag) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	chain.SetAutoAck(config.AutoAck)
-
 	peername := config.PeerName
 
 	if err := utils.EnsureDir(config.DataDir); err != nil {
@@ -197,9 +195,9 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	CheckLockError(err)
 
-	// init the publish queue watcher
-	doneCh := make(chan bool)
-	chain.InitPublishQueueWatcher(doneCh, chain.GetGroupMgr(), appdb.Db)
+	// init the websocket manager
+	websocketManager := api.NewWebsocketManager()
+	go websocketManager.Start()
 
 	//start sync all groups
 	err = chain.GetGroupMgr().StartSyncAllGroups()
@@ -209,12 +207,13 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	//run local http api service
 	h := &api.Handler{
-		Node:       fullNode,
-		NodeCtx:    nodectx.GetNodeCtx(),
-		Ctx:        ctx,
-		GitCommit:  utils.GitCommit,
-		Appdb:      appdb,
-		ChainAPIdb: newchainstorage,
+		Node:             fullNode,
+		NodeCtx:          nodectx.GetNodeCtx(),
+		Ctx:              ctx,
+		GitCommit:        utils.GitCommit,
+		Appdb:            appdb,
+		ChainAPIdb:       newchainstorage,
+		WebsocketManager: websocketManager,
 	}
 
 	apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)

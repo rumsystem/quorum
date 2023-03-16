@@ -15,7 +15,8 @@ import (
 
 var trx_bft_log = logging.Logger("tbft")
 
-var DEFAULT_PROPOSE_PULSE = 5 * 1000 // 1s
+var DEFAULT_PROPOSE_PULSE = 1 * 1000       // 1s
+var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
 
 type ProposeTask struct {
 	Epoch          uint64
@@ -118,10 +119,9 @@ func (bft *TrxBft) runTask(task *ProposeTask) error {
 		}
 	}()
 
-	select {
-	case <-bft.taskdone:
-		return nil
-	}
+	//wait here
+	<-bft.taskdone
+	return nil
 }
 
 func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
@@ -133,16 +133,25 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 		return nil, err
 	}
 
-	trxBundle := &quorumpb.HBTrxBundle{}
-	trxBundle.Trxs = append(trxBundle.Trxs, trxs...)
+	var datab []byte
+	for {
+		trxBundle := &quorumpb.HBTrxBundle{}
+		trxBundle.Trxs = append(trxBundle.Trxs, trxs...)
 
-	datab, err := proto.Marshal(trxBundle)
-	if err != nil {
-		return nil, err
-	}
+		datab, err = proto.Marshal(trxBundle)
+		if err != nil {
+			return nil, err
+		}
 
-	if len(datab) == 0 {
-		datab = []byte("EMPTY")
+		if len(datab) == 0 {
+			datab = []byte("EMPTY")
+			break
+		} else if len(datab) <= MAXIMUM_TRX_BUNDLE_LENGTH {
+			break
+		}
+
+		//remove last trxs from the slice and try again
+		trxs = trxs[:len(trxs)-1]
 	}
 
 	currEpoch := bft.producer.cIface.GetCurrEpoch()
@@ -155,7 +164,6 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 	}
 
 	return task, nil
-
 }
 
 func (bft *TrxBft) StopPropose() {
@@ -302,8 +310,21 @@ func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error
 	trx_bft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
 
-	trx_bft_log.Debugf("<%s> sort trx", bft.producer.groupId)
-	trxToPackage := bft.sortTrx(trxs)
+	trx_bft_log.Debugf("<%s> sort trxs", bft.producer.groupId)
+	sortedTrxs := bft.sortTrx(trxs)
+	var trxToPackage []*quorumpb.Trx
+
+	//check total trxs size
+	totalTrxSizeInBytes := 0
+	for _, trx := range sortedTrxs {
+		datab, _ := proto.Marshal(trx)
+		if totalTrxSizeInBytes+len(datab) <= MAXIMUM_TRX_BUNDLE_LENGTH {
+			trxToPackage = append(trxToPackage, trx)
+			totalTrxSizeInBytes = totalTrxSizeInBytes + len(datab)
+		} else {
+			break
+		}
+	}
 
 	currBlockId := bft.producer.cIface.GetCurrBlockId()
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.producer.groupId, currBlockId, false, bft.producer.nodename)

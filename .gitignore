@@ -27,3 +27,7 @@ jsontracer*.json
 .DS_Store
 keystore
 *.ps1
+
+dist/
+.env
+.envrc

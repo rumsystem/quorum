@@ -50,6 +50,7 @@ func (b *TrxBuffer) GetNRandTrx(n int) ([]*quorumpb.Trx, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	trxs, err := nodectx.GetNodeCtx().GetChainStorage().GetAllTrxHBB(b.queueId)
 
 	if n >= len {

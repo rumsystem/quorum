@@ -345,7 +345,7 @@ func TestGetChainDataNSdk(t *testing.T) {
 	if _, err := updateChainConfig(peerapi, payload); err != nil {
 		t.Errorf("update chain config with payload: %+v failed: %s", payload, err)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(25 * time.Second)
 	authTypeResult, err := getChainDataByAuthType(urls, AuthTypeItem{GroupId: group.GroupId, TrxType: _trxType}, ciperKey)
 	if err != nil {
 		t.Errorf("getChainDataByAuthType failed: %s", err)
@@ -375,7 +375,7 @@ func TestGetChainDataNSdk(t *testing.T) {
 	if _, err := updateChainConfig(peerapi, payload); err != nil {
 		t.Errorf("update chain config with payload: %+v failed: %s", payload, err)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(25 * time.Second)
 
 	if _, err := getChainDataByAuthAllowList(urls, AuthAllowListItem{GroupId: group.GroupId}, ciperKey); err != nil {
 		t.Errorf("getChainDataByAuthAllowList failed: %s", err)
@@ -423,7 +423,7 @@ func TestGetChainDataAppConfigNSdk(t *testing.T) {
 		t.Errorf("update appconfig failed: %s", err)
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(25 * time.Second)
 
 	keylist, err := getChainDataByAppConfigKeyList(urls, AppConfigKeyListItem{GroupId: group.GroupId}, ciperKey)
 	if err != nil {

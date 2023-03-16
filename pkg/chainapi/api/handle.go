@@ -11,11 +11,12 @@ import (
 
 type (
 	Handler struct {
-		Ctx        context.Context
-		Node       *p2p.Node
-		NodeCtx    *nodectx.NodeCtx
-		GitCommit  string
-		Appdb      *appdata.AppDb
-		ChainAPIdb def.APIHandlerIface
+		Ctx              context.Context
+		Node             *p2p.Node
+		NodeCtx          *nodectx.NodeCtx
+		GitCommit        string
+		Appdb            *appdata.AppDb
+		ChainAPIdb       def.APIHandlerIface
+		WebsocketManager *WebsocketManager
 	}
 )

@@ -128,27 +128,10 @@ type PostGroupParam struct {
 }
 
 func postToGroup(api string, payload PostGroupParam) (*handlers.TrxResult, error) {
-	payloadByte, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	payloadStr := string(payloadByte[:])
 	path := fmt.Sprintf("/api/v1/group/%s/content", payload.GroupID)
-	_, resp, err := testnode.RequestAPI(api, path, "POST", payloadStr)
-	if err != nil {
-		return nil, err
-	}
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
 	var result handlers.TrxResult
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(result); err != nil {
+	_, _, err := requestAPI(api, path, "POST", payload, nil, &result, false)
+	if err != nil {
 		return nil, err
 	}
 

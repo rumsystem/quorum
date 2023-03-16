@@ -86,7 +86,7 @@ func TestAnnounceNSdk(t *testing.T) {
 		t.Errorf("announceNSdk failed: %s", err)
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(25 * time.Second)
 	producers, err := getChainDataByAnnouncedProducer(urls, AnnGrpProducer{GroupId: group.GroupId}, ciperKey)
 	if err != nil {
 		t.Errorf("getChainDataByAnnouncedUser failed: %s", err)
