@@ -18,13 +18,15 @@ type MolassesProducerProposer struct {
 	bft          *PPBft
 	currReqId    string
 	currReqNance int64
+
+	HBMsgSender
 }
 
 func (pp *MolassesProducerProposer) NewProducerProposer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
 	molapp_log.Debugf("<%s> NewProducerProposer called", item.GroupId)
 }
 
-func (pp *MolassesProducerProposer) RecreateBft() {
+func (pp *MolassesProducerProposer) RecreateBft(agrmTickCount, agrmTickLength, fromNewEpoch uint64) {
 	molapp_log.Debugf("<%s> RecreateBft called", pp.groupId)
 }
 
@@ -38,6 +40,22 @@ func (pp *MolassesProducerProposer) HandleHBPP(hbmsg *quorumpb.HBMsgv1) {
 
 func (pp *MolassesProducerProposer) AddProposerItem(producerList *quorumpb.BFTProducerBundleItem, originalTrx *quorumpb.Trx, agrmTickCount, agrmTickLength, fromNewEpoch uint64) error {
 	molapp_log.Debugf("<%s> AddProposerItem called", pp.groupId)
+
+	if pp.bft != nil {
+		//pp.bft.Stop()
+	}
+
+	//create bft
+	pp.RecreateBft(agrmTickCount, agrmTickLength, fromNewEpoch)
+
+	//add pubkeys for all producers
+	pp.producers = append(pp.producers, producerList.Producers...)
+
+	//save original trx (to propose new producers)
+	pp.trx = originalTrx
+
+	pp.bft.Start()
+
 	return nil
 }
 

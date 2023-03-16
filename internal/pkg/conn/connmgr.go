@@ -314,3 +314,23 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
 }
+
+func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ProducerProposalReq) error {
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(hbb)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_PP_REQ
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	psconn := connMgr.getProducerPsConn()
+	return psconn.Publish(pkgBytes)
+}

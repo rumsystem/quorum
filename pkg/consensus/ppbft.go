@@ -34,13 +34,14 @@ func NewPPBft(cfg Config, pp *MolassesProducerProposer) *PPBft {
 
 func (bft *PPBft) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 	ppbft_log.Debugf("<%s> HandleHBMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
+	return nil
+}
 
-	/*
-		if bft.CurrTask != nil {
-			return bft.CurrTask.acsInsts.HandleHBMessage(hbmsg)
-		}
-	*/
+func (bft *PPBft) Start() error {
+	return nil
+}
 
+func (bft *PPBft) Stop() error {
 	return nil
 }
 

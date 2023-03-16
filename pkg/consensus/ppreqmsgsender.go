@@ -4,103 +4,80 @@ import (
 	"sync"
 	"time"
 
-	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
-var hbmsgsender_log = logging.Logger("hbmsender")
+var pprmsgsender_log = logging.Logger("pprsender")
 
-const DEFAULT_HB_MSG_SEND_INTEVL = 1 * 1000 //in millseconds
+const DEFAULT_PP_REQ_SEND_INTEVL = 1 * 1000 //in millseconds
 
-type HBMsgSender struct {
+type PPReqSender struct {
 	groupId    string
 	interval   int
 	pubkey     string
-	CurrEpoch  uint64
-	CurrHbMsg  *quorumpb.HBMsgv1
-	CurrMsgTyp quorumpb.PackageType
+	CurrPPReq  *quorumpb.ProducerProposalReq
 	ticker     *time.Ticker
 	tickerDone chan bool
 	locker     sync.Mutex
 }
 
-func NewHBMsgSender(groupId string, epoch uint64, pubkey string, typ quorumpb.PackageType, interval ...int) *HBMsgSender {
-	msg_sender_log.Debugf("<%s> NewMsgSender called, Epoch <%d>", groupId, epoch)
+func NewPPReqSender(groupId string, pubkey string, interval ...int) *PPReqSender {
+	pprmsgsender_log.Debugf("<%s> NewPPReqSender called", groupId)
 
-	sendingInterval := DEFAULT_MSG_SEND_INTEVL
+	sendingInterval := DEFAULT_PP_REQ_SEND_INTEVL
 	if interval != nil {
 		sendingInterval = interval[0]
 	}
 
-	return &HBMsgSender{
+	return &PPReqSender{
 		groupId:    groupId,
 		interval:   sendingInterval,
 		pubkey:     pubkey,
-		CurrEpoch:  epoch,
-		CurrHbMsg:  nil,
-		CurrMsgTyp: typ,
+		CurrPPReq:  nil,
 		ticker:     nil,
 		tickerDone: make(chan bool),
 	}
 }
 
-func (msender *HBMsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
-	msg_sender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
-
-	rbcb, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	hbmsg := &quorumpb.HBMsgv1{
-		MsgId:       guuid.New().String(),
-		Epoch:       msender.CurrEpoch,
-		PayloadType: quorumpb.HBMsgPayloadType_RBC,
-		Payload:     rbcb,
-	}
+func (msender *PPReqSender) SendPPReq(msg *quorumpb.ProducerProposalReq) error {
+	pprmsgsender_log.Debugf("<%s> SendPPReq called", msender.groupId)
 
 	msender.locker.Lock()
 	defer msender.locker.Unlock()
 
-	msender.CurrHbMsg = hbmsg
+	msender.CurrPPReq = msg
 	msender.startSending()
 
 	return nil
 }
 
-func (msender *HBMsgSender) startSending() {
+func (msender *PPReqSender) startSending() {
 	if msender.ticker != nil {
 		msender.tickerDone <- true
 	}
 
 	//start new sender ticker
 	go func() {
-		msg_sender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrHbMsg.MsgId)
+		pprmsgsender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrPPReq.ReqId)
 		msender.ticker = time.NewTicker(time.Duration(msender.interval) * time.Millisecond)
 		for {
 			select {
 			case <-msender.tickerDone:
-				msg_sender_log.Debugf("<%s> old Ticker Done", msender.groupId)
+				pprmsgsender_log.Debugf("<%s> old Ticker Done", msender.groupId)
 				return
 			case <-msender.ticker.C:
-				msg_sender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrHbMsg.MsgId, time.Now().UnixMilli())
+				pprmsgsender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrPPReq.ReqId, time.Now().UnixMilli())
 				connMgr, err := conn.GetConn().GetConnMgr(msender.groupId)
 				if err != nil {
 					return
 				}
-				connMgr.BroadcastHBMsg(msender.CurrHbMsg, msender.CurrMsgTyp)
+				connMgr.BroadcastPPReq(msender.CurrPPReq)
 			}
 			msender.ticker.Stop()
 		}
 	}()
-}
-
-func (msender *HBMsgSender) SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
-	//TBD
-	return nil
 }
 
 /*
