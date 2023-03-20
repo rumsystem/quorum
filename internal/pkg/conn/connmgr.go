@@ -315,7 +315,7 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ProducerProposalReq) error {
+func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ChangeConsensusReq) error {
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)
@@ -323,7 +323,7 @@ func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ProducerProposalReq) error 
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_PP_REQ
+	pkg.Type = quorumpb.PackageType_CHANGE_CONSENSUS_REQ
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)

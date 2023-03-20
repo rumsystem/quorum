@@ -11,6 +11,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+
+	guuid "github.com/google/uuid"
 )
 
 var group_log = logging.Logger("group")
@@ -271,14 +273,11 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) ProposeProducer(item *quorumpb.BFTProducerBundleItem, agrmTickCount, agrmTickLength, fromNewEpoch uint64) (string, error) {
+func (grp *Group) UpdConsensus(item *quorumpb.BFTProducerBundleItem, agrmTickCount, agrmTickLength, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
-	if err != nil {
-		return "", err
-	}
+	trxId := guuid.New().String()
 
-	return trx.TrxId, grp.ChainCtx.ProposeProducer(item, trx, agrmTickCount, agrmTickLength, fromNewEpoch)
+	return trxId, grp.ChainCtx.UpdConsensus(item, trxId, agrmTickCount, agrmTickLength, fromNewEpoch, trxEpochTick)
 }
 
 func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {

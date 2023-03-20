@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) UpdateProducerTrx(trx *quorumpb.Trx, prefix ...string) error {
+func (cs *Storage) UpdateConsensusTrx(trx *quorumpb.Trx, prefix ...string) error {
 	err := cs.UpdateProducer(trx.GroupId, trx.Data, prefix...)
 	if err != nil {
 		return err

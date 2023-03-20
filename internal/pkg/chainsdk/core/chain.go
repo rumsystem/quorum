@@ -133,14 +133,14 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) ProposeProducer(item *quorumpb.BFTProducerBundleItem, trx *quorumpb.Trx, agrmTickCount, agrmTickLength, fromNewEpoch uint64) error {
-	chain_log.Debugf("<%s> ProposalProducer called", chain.groupItem.GroupId)
+func (chain *Chain) UpdConsensus(item *quorumpb.BFTProducerBundleItem, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen uint64) error {
+	chain_log.Debugf("<%s> UpdConsensus called", chain.groupItem.GroupId)
 
-	if chain.Consensus.ProducerProposer() != nil {
-		return chain.Consensus.ProducerProposer().AddProposerItem(item, trx, agrmTickCount, agrmTickLength, fromNewEpoch)
+	if chain.Consensus.ConsensusProposer() == nil {
+		return fmt.Errorf("consensus proposer is nil")
 	}
 
-	return fmt.Errorf("producer proposer is nil")
+	return chain.Consensus.ConsensusProposer().AddCCItem(item, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen)
 }
 
 // PSConn msg handler
@@ -171,21 +171,21 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleHBPTPsConn(hb)
 		}
-	} else if pkg.Type == quorumpb.PackageType_HBB_PP {
+	} else if pkg.Type == quorumpb.PackageType_HBB_PC {
 		hb := &quorumpb.HBMsgv1{}
 		err = proto.Unmarshal(pkg.Data, hb)
 		if err != nil {
 			chain_log.Warnf(err.Error())
 		} else {
-			err = chain.HandleHBPPPsConn(hb)
+			err = chain.HandleHBPCPsConn(hb)
 		}
-	} else if pkg.Type == quorumpb.PackageType_PP_REQ {
-		req := &quorumpb.ProducerProposalReq{}
+	} else if pkg.Type == quorumpb.PackageType_CHANGE_CONSENSUS_REQ {
+		req := &quorumpb.ChangeConsensusReq{}
 		err = proto.Unmarshal(pkg.Data, req)
 		if err != nil {
 			chain_log.Warnf(err.Error())
 		} else {
-			err = chain.HandlePPReqPsConn(req)
+			err = chain.HandleChangeConsensusReqPsConn(req)
 		}
 
 	} else if pkg.Type == quorumpb.PackageType_GROUP_BROADCAST {
@@ -238,7 +238,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	case
 		quorumpb.TrxType_POST,
 		quorumpb.TrxType_ANNOUNCE,
-		quorumpb.TrxType_PRODUCER,
+		quorumpb.TrxType_CONSENSUS,
 		quorumpb.TrxType_USER,
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_CHAIN_CONFIG:
@@ -325,27 +325,30 @@ func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
 }
 
 // handle psync consensus req from PsConn
-func (chain *Chain) HandleHBPPPsConn(hb *quorumpb.HBMsgv1) error {
-	chain_log.Debugf("<%s> HandlePSyncConsesusReqPsConn called", chain.groupItem.GroupId)
+func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
+	chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
 
-	//only producers(owner) need to handle Consensus msg
-	if !chain.IsProducer() {
-		return nil
-	}
-
-	if chain.Consensus.ProducerProposer() == nil {
+	if chain.Consensus.ConsensusProposer() == nil {
 		chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)
 		return nil
 	}
 
-	return nil
+	return chain.Consensus.ConsensusProposer().HandleHBMsg(hb)
 }
 
-func (chain *Chain) HandlePPReqPsConn(req *quorumpb.ProducerProposalReq) error {
-	return nil
+func (chain *Chain) HandleChangeConsensusReqPsConn(req *quorumpb.ChangeConsensusReq) error {
+	chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
+
+	if chain.Consensus.ConsensusProposer() == nil {
+		chain_log.Warningf("<%s> Consensus ConsensusProposer is nil", chain.groupItem.GroupId)
+		return nil
+	}
+	return chain.Consensus.ConsensusProposer().HandleCCReq(req)
 }
 
 func (chain *Chain) HandleGroupBroadcastPsConn(brd *quorumpb.GroupBroadcast) error {
+	chain_log.Debugf("<%s> HandleGroupBroadcastPsConn called", chain.groupItem.GroupId)
+	//save broadcast msg to db
 	return nil
 }
 
@@ -366,8 +369,12 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	}
 	trx.Data = content.Bytes()
 
-	//TBD should check if requester from block list
+	//ignore msg from myself
+	if trx.SenderPubkey == chain.groupItem.UserSignPubkey {
+		return nil
+	}
 
+	//TBD should check if requester from block list
 	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
 		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
@@ -377,11 +384,6 @@ func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
 	if !verified {
 		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
 		return fmt.Errorf("invalid Trx")
-	}
-
-	if trx.SenderPubkey == chain.groupItem.UserSignPubkey {
-		//ignore msg from myself
-		return nil
 	}
 
 	//Rex Channel only support the following trx type
@@ -618,22 +620,22 @@ func (chain *Chain) CreateConsensus() error {
 
 	var user def.User
 	var producer def.Producer
-	var producerProposer def.ProducerProposer
+	var consensusProposer def.ConsensusProposer
 
-	var shouldCreateUser, shouldCreateProducer, shouldCreatePP bool
+	var shouldCreateUser, shouldCreateProducer, shouldCreateConsensusProposer bool
 
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		shouldCreateProducer = true
 		shouldCreateUser = false
-		shouldCreatePP = true
+		shouldCreateConsensusProposer = true
 	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
 		//check if I am owner of the Group
 		if chain.groupItem.UserSignPubkey == chain.groupItem.OwnerPubKey {
 			shouldCreateProducer = true
-			shouldCreatePP = true
+			shouldCreateConsensusProposer = true
 		} else {
 			shouldCreateProducer = false
-			shouldCreatePP = false
+			shouldCreateConsensusProposer = false
 		}
 		shouldCreateUser = true
 	} else {
@@ -652,13 +654,13 @@ func (chain *Chain) CreateConsensus() error {
 		user.NewUser(chain.groupItem, chain.nodename, chain)
 	}
 
-	if shouldCreatePP {
+	if shouldCreateConsensusProposer {
 		chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupItem.GroupId)
-		producerProposer = &consensus.MolassesProducerProposer{}
-		producerProposer.NewProducerProposer(chain.groupItem, chain.nodename, chain)
+		consensusProposer = &consensus.MolassesConsensusProposer{}
+		consensusProposer.NewConsensusProposer(chain.groupItem, chain.nodename, chain)
 	}
 
-	chain.Consensus = consensus.NewMolasses(producer, user, producerProposer)
+	chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)
 
 	chain.Consensus.StartProposeTrx()
 
@@ -803,9 +805,9 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
-		case quorumpb.TrxType_PRODUCER:
-			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateProducerTrx(trx, nodename)
+		case quorumpb.TrxType_CONSENSUS:
+			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateConsensusTrx(trx, nodename)
 			chain.updProducerList()
 			chain.updAnnouncedProducerStatus()
 			chain.updProducerConfig()
@@ -875,9 +877,9 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		chain_log.Debugf("<%s> apply trx <%s>", chain.groupItem.GroupId, trx.TrxId)
 		//apply trx content
 		switch trx.Type {
-		case quorumpb.TrxType_PRODUCER:
-			chain_log.Debugf("<%s> apply PRODUCER trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateProducerTrx(trx, nodename)
+		case quorumpb.TrxType_CONSENSUS:
+			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateConsensusTrx(trx, nodename)
 			chain.updProducerList()
 			chain.updAnnouncedProducerStatus()
 			chain.updProducerConfig()

@@ -5,14 +5,14 @@ import (
 )
 
 type Molasses struct {
-	name             string
-	producer         def.Producer
-	user             def.User
-	producerproposer def.ProducerProposer
+	name              string
+	producer          def.Producer
+	user              def.User
+	consensusProposer def.ConsensusProposer
 }
 
-func NewMolasses(p def.Producer, u def.User, pp def.ProducerProposer) *Molasses {
-	return &Molasses{name: "Molasses", producer: p, user: u, producerproposer: pp}
+func NewMolasses(p def.Producer, u def.User, cp def.ConsensusProposer) *Molasses {
+	return &Molasses{name: "Molasses", producer: p, user: u, consensusProposer: cp}
 }
 
 func (m *Molasses) Name() string {
@@ -27,8 +27,8 @@ func (m *Molasses) User() def.User {
 	return m.user
 }
 
-func (m *Molasses) ProducerProposer() def.ProducerProposer {
-	return m.producerproposer
+func (m *Molasses) ConsensusProposer() def.ConsensusProposer {
+	return m.consensusProposer
 }
 
 func (m *Molasses) SetProducer(p def.Producer) {
@@ -39,8 +39,8 @@ func (m *Molasses) SetUser(u def.User) {
 	m.user = u
 }
 
-func (m *Molasses) SetProducerProposer(pp def.ProducerProposer) {
-	m.producerproposer = pp
+func (m *Molasses) SetConsensusProposer(pp def.ConsensusProposer) {
+	m.consensusProposer = pp
 }
 
 func (m *Molasses) StartProposeTrx() {

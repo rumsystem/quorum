@@ -5,26 +5,26 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var ppbft_log = logging.Logger("ppbft")
+var pcbft_log = logging.Logger("pcbft")
 
-var DEFAULT_PRODUCER_PROPOSE_PULSE = 1 * 1000 //1s
+var DEFAULT_CONSENSUS_PROPOSE_PULSE = 1 * 1000 //1s
 
-type PPTask struct {
+type PCTask struct {
 	Epoch       uint64
 	ProposeData []byte
 	acsInsts    *PPAcs
 }
 
-type PPBft struct {
+type PCBft struct {
 	Config
 	groupId  string
-	pp       *MolassesProducerProposer
-	currTask *PPTask
+	pp       *MolassesConsensusProposer
+	currTask *PCTask
 }
 
-func NewPPBft(cfg Config, pp *MolassesProducerProposer) *PPBft {
-	ppbft_log.Debugf("NewPPBft called")
-	return &PPBft{
+func NewPCBft(cfg Config, pp *MolassesConsensusProposer) *PCBft {
+	pcbft_log.Debugf("NewPCBft called")
+	return &PCBft{
 		Config:   cfg,
 		groupId:  pp.groupId,
 		pp:       pp,
@@ -32,21 +32,21 @@ func NewPPBft(cfg Config, pp *MolassesProducerProposer) *PPBft {
 	}
 }
 
-func (bft *PPBft) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ppbft_log.Debugf("<%s> HandleHBMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
+func (bft *PCBft) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
+	pcbft_log.Debugf("<%s> HandleHBMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
 	return nil
 }
 
-func (bft *PPBft) Start() error {
+func (bft *PCBft) Start() error {
 	return nil
 }
 
-func (bft *PPBft) Stop() error {
+func (bft *PCBft) Stop() error {
 	return nil
 }
 
-func (ppbft *PPBft) AcsDone(epoch uint64, result map[string][]byte) {
-	ppbft_log.Debugf("AcsDone called, epoch <%d>", epoch)
+func (ppbft *PCBft) AcsDone(epoch uint64, result map[string][]byte) {
+	pcbft_log.Debugf("AcsDone called, epoch <%d>", epoch)
 
 	/*
 
@@ -127,8 +127,8 @@ func (ppbft *PPBft) AcsDone(epoch uint64, result map[string][]byte) {
 	*/
 }
 
-func (ppbft *PPBft) AddProducerProposal(req *quorumpb.ProducerProposalReq) error {
-	ppbft_log.Debugf("AddProducerProposal called, SessionId <%s> ", req.ReqId)
+func (ppbft *PCBft) AddReq(req *quorumpb.ChangeConsensusReq) error {
+	pcbft_log.Debugf("AddProducerProposal called, SessionId <%s> ", req.ReqId)
 
 	/*
 		datab, err := proto.Marshal(req)

@@ -95,7 +95,8 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
-	r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
+	//TBD
+	//r.GET("/v1/group/:group_id/conensus", h.GetGroupConsensus)
 	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
 	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
 	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
@@ -160,7 +161,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	//r.POST("/v1/group/producer", h.GroupProducer)
 
-	r.POST("/v1/group/proposeproducers", h.ProposeProducers)
+	r.POST("/v1/group/updconsensus", h.UpdConsensus)
 
 	r.POST("/v1/group/user", h.GroupUser)
 
@@ -176,7 +177,8 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
-	r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
+	//TBD
+	//r.GET("/v1/group/:group_id/consensus", h.GetGroupConsensus)
 	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
 	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
 	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)

@@ -17,14 +17,14 @@ import (
 // @Param data body handlers.GrpProducerParam true "GrpProducerParam"
 // @Success 200 {object} handlers.GrpProducerResult
 // @Router /api/v1/group/producer [post]
-func (h *Handler) ProposeProducers(c echo.Context) (err error) {
+func (h *Handler) UpdConsensus(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	params := new(handlers.ProposeProducersParam)
+	params := new(handlers.UpdConsensusParam)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
 	}
 
-	res, err := handlers.ProposeProducer(h.ChainAPIdb, params)
+	res, err := handlers.UpdConsensus(h.ChainAPIdb, params)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

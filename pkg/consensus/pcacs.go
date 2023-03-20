@@ -8,31 +8,31 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var ppacs_log = logging.Logger("ppacs")
+var pcacs_log = logging.Logger("pcacs")
 
 type PPAcs struct {
 	Config
-	bft        *PPBft
+	bft        *PCBft
 	Epoch      uint64
-	rbcInsts   map[string]*PPRbc
+	rbcInsts   map[string]*PCRbc
 	rbcOutput  map[string]bool
 	rbcResults map[string][]byte
 }
 
-func NewPPAcs(cfg Config, bft *PPBft, epoch uint64) *PPAcs {
-	ppacs_log.Debugf("NewPPAcs called, epoch <%d>", epoch)
+func NewPPAcs(cfg Config, bft *PCBft, epoch uint64) *PPAcs {
+	pcacs_log.Debugf("NewPPAcs called, epoch <%d>", epoch)
 
 	acs := &PPAcs{
 		Config:     cfg,
 		bft:        bft,
 		Epoch:      epoch,
-		rbcInsts:   make(map[string]*PPRbc),
+		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
 	}
 
 	for _, id := range cfg.Nodes {
-		acs.rbcInsts[id], _ = NewPPRbc(cfg, acs, bft.pp.groupId, cfg.MyPubkey, id)
+		acs.rbcInsts[id], _ = NewPCRbc(cfg, acs, bft.pp.groupId, cfg.MyPubkey, id)
 	}
 
 	return acs
@@ -40,7 +40,7 @@ func NewPPAcs(cfg Config, bft *PPBft, epoch uint64) *PPAcs {
 
 // give input value to
 func (a *PPAcs) InputValue(val []byte) error {
-	ppacs_log.Debug("InputValue called")
+	pcacs_log.Debug("InputValue called")
 
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
@@ -52,7 +52,7 @@ func (a *PPAcs) InputValue(val []byte) error {
 
 // rbc for proposerIs finished
 func (a *PPAcs) RbcDone(proposerPubkey string) {
-	ppacs_log.Debugf("RbcDone called, RBC <%s> finished", proposerPubkey)
+	pcacs_log.Debugf("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 
 	if len(a.rbcOutput) == a.N-a.f {
@@ -65,7 +65,7 @@ func (a *PPAcs) RbcDone(proposerPubkey string) {
 		//call hbb to get result
 		a.bft.AcsDone(a.Epoch, a.rbcResults)
 	} else {
-		ppacs_log.Debugf("Wait for enough RBC done")
+		pcacs_log.Debugf("Wait for enough RBC done")
 		return
 	}
 }
@@ -141,8 +141,7 @@ func (a *PPAcs) handleRbcMsg(payload []byte) error {
 	}
 }
 
+// TBD
 func (a *PPAcs) handleBbaMsg(payload []byte) error {
-	//TBD
-	//Implement BBA
 	return nil
 }

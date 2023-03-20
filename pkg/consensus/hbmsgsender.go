@@ -28,9 +28,9 @@ type HBMsgSender struct {
 }
 
 func NewHBMsgSender(groupId string, epoch uint64, pubkey string, typ quorumpb.PackageType, interval ...int) *HBMsgSender {
-	msg_sender_log.Debugf("<%s> NewMsgSender called, Epoch <%d>", groupId, epoch)
+	hbmsgsender_log.Debugf("<%s> NewHBMsgSender called, Epoch <%d>", groupId, epoch)
 
-	sendingInterval := DEFAULT_MSG_SEND_INTEVL
+	sendingInterval := DEFAULT_HB_MSG_SEND_INTEVL
 	if interval != nil {
 		sendingInterval = interval[0]
 	}
@@ -48,7 +48,7 @@ func NewHBMsgSender(groupId string, epoch uint64, pubkey string, typ quorumpb.Pa
 }
 
 func (msender *HBMsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
-	msg_sender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
+	hbmsgsender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
 
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
@@ -78,15 +78,15 @@ func (msender *HBMsgSender) startSending() {
 
 	//start new sender ticker
 	go func() {
-		msg_sender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrHbMsg.MsgId)
+		hbmsgsender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrHbMsg.MsgId)
 		msender.ticker = time.NewTicker(time.Duration(msender.interval) * time.Millisecond)
 		for {
 			select {
 			case <-msender.tickerDone:
-				msg_sender_log.Debugf("<%s> old Ticker Done", msender.groupId)
+				hbmsgsender_log.Debugf("<%s> old Ticker Done", msender.groupId)
 				return
 			case <-msender.ticker.C:
-				msg_sender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrHbMsg.MsgId, time.Now().UnixMilli())
+				hbmsgsender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrHbMsg.MsgId, time.Now().UnixMilli())
 				connMgr, err := conn.GetConn().GetConnMgr(msender.groupId)
 				if err != nil {
 					return
@@ -98,48 +98,7 @@ func (msender *HBMsgSender) startSending() {
 	}()
 }
 
+// TBD
 func (msender *HBMsgSender) SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
-	//TBD
 	return nil
 }
-
-/*
-func SendPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq) error {
-	connMgr, err := conn.GetConn().GetConnMgr(groupId)
-	if err != nil {
-		return err
-	}
-
-	msgB, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	psyncReq := &quorumpb.PSyncMsg{
-		MsgType: quorumpb.PSyncMsgType_PSYNC_REQ,
-		Payload: msgB,
-	}
-
-	return connMgr.BroadcastPSyncMsg(psyncReq)
-}
-
-func SendPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp) error {
-	connMgr, err := conn.GetConn().GetConnMgr(groupId)
-	if err != nil {
-		return err
-	}
-
-	msgB, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	psyncResp := &quorumpb.PSyncMsg{
-		MsgType: quorumpb.PSyncMsgType_PSYNC_RESP,
-		Payload: msgB,
-	}
-
-	return connMgr.BroadcastPSyncMsg(psyncResp)
-}
-
-*/

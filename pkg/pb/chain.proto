@@ -5,10 +5,10 @@ option go_package = "github.com/rumsystem/quorum/pkg/pb";
 enum PackageType {
     TRX                   = 0;
     BLOCK                 = 1;
-    GROUP_BROADCAST       = 3;
-    PP_REQ                = 4;
-    HBB_PT                = 5;  //HBBMsg for propose TRX
-    HBB_PP                = 6;  //HBBMsg for propose PRODUCER
+    GROUP_BROADCAST       = 2;
+    CHANGE_CONSENSUS_REQ  = 3;
+    HBB_PT                = 4;  //HBBMsg for propose TRX
+    HBB_PC                = 5;  //HBBMsg for propose new consensus
 }
 
 message Package {
@@ -40,7 +40,7 @@ enum TrxStroageType {
 enum TrxType {
     POST               = 0; // post to group
     ANNOUNCE           = 1; // producer or user self announce
-    PRODUCER           = 2; // owner update group producer
+    CONSENSUS          = 2; // owner update group consensus
     USER               = 3; // owner update group user
     REQ_BLOCK          = 4; // request block 
     REQ_BLOCK_RESP     = 5; // response request block
@@ -76,8 +76,8 @@ message Block {
 }
 
 enum GroupBroadcastType {
-    GENERAL_MSG           = 0;
-    CHANGE_GROUP_PRODUCER = 1;
+    GENERAL_MSG            = 0;
+    CHANGE_GROUP_CONSENSUS = 1;
 }
 
 message GroupBroadcast {
@@ -95,33 +95,39 @@ message BroadcastGeneralMsg {
     string Content = 1;
 }
 
-message BroadcastChangeGroupProducer {
+message BroadcastChangeGroupConsensus {
     string Content = 1;
 }
 
-message ProducerProposalReq {
-    string          ReqId               = 1;
-    string          GroupId             = 2;
-    uint64          Nonce               = 3;
-    repeated string ProducerPubkeyList  = 4;
-    Trx             Trx                 = 5;   
-    int64           AgreementTickLength = 6;
-    int64           AgreementTicksCount = 7;
-    uint64          StartFromEpoch      = 8;
-    string          SenderPubkey        = 9;
-    bytes           MsgHash             = 10; 
-    bytes           SenderSign          = 11;
+message ChangeConsensusReq {
+    string          ReqId                = 1;
+    string          GroupId              = 2;
+    uint64          Nonce                = 3;
+    repeated string ProducerPubkeyList   = 4;  
+    int64           AgreementTickLenInMs = 6;
+    int64           AgreementTickCount   = 7;
+    uint64          StartFromEpoch       = 8;
+    uint64          TrxEpochTickLenInMs  = 9;
+    string          SenderPubkey         = 10;
+    bytes           MsgHash              = 11; 
+    bytes           SenderSign           = 12;
 }
 
-message ProducerProposalResp {
-    uint64         RespId         = 1;
-    string         GroupId        = 2;
-    string         SenderPubkey   = 3;
-    uint64         StartFromEpoch = 4;
-    string         OrigReqId      = 5;    
-    bytes          OrigReqMsgHash = 6;
-    bytes          MsgHash        = 7;
-    bytes          SenderSign     = 8;
+message ChangeConsensusResp {
+    uint64         RespId              = 1;
+    string         GroupId             = 2;
+    string         SenderPubkey        = 3;
+    uint64         StartFromEpoch      = 4;
+    uint64         TrxEpochTickLenInMs = 5;
+    string         OrigReqId           = 6;    
+    bytes          OrigReqMsgHash      = 7;
+    bytes          MsgHash             = 8;
+    bytes          SenderSign          = 9;
+}
+
+message ConsensusBundle{
+    ChangeConsensusReq           req   = 1;
+    repeated ChangeConsensusResp resps = 2;
 }
 
 message ReqBlock {
