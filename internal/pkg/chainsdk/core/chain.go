@@ -140,7 +140,7 @@ func (chain *Chain) UpdConsensus(item *quorumpb.BFTProducerBundleItem, trxId str
 		return fmt.Errorf("consensus proposer is nil")
 	}
 
-	return chain.Consensus.ConsensusProposer().AddCCItem(item, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen)
+	return chain.Consensus.ConsensusProposer().AddNewConsensusItem(item, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen)
 }
 
 // PSConn msg handler

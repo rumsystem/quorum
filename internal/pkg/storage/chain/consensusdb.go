@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"encoding/binary"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
@@ -100,137 +101,21 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 	return trx, nil
 }
 
-/*
+func (cs *Storage) AddConsensusProposeNonce(queueId string, nonce uint64) error {
+	key := s.GetConsensusNonceKey(queueId)
+	e := make([]byte, 8)
+	binary.LittleEndian.PutUint64(e, nonce)
+	cs.dbmgr.Db.Set([]byte(key), e)
+	return cs.dbmgr.Db.Set([]byte(key), e)
+}
 
-func (cs *Storage) AddMsgHBB(msg *quorumpb.HBMsgv1, queueId string) error {
-	key := s.GetHBMsgBufferKeyFull(queueId, msg.Epoch, msg.MsgId)
-	exist, err := cs.dbmgr.Db.IsExist([]byte(key))
+func (cs *Storage) GetConsensusProposeNonce(queueId string) (uint64, error) {
+	key := s.GetConsensusNonceKey(queueId)
+	nonceInBytes, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	if exist {
-		return errors.New("HBMsg exist")
-	}
-
-	if value, err := proto.Marshal(msg); err != nil {
-		return err
-	} else {
-		return cs.dbmgr.Db.Set([]byte(key), value)
-	}
+	nonce := binary.LittleEndian.Uint64(nonceInBytes)
+	return nonce, nil
 }
-
-func (cs *Storage) GetAllMsgHBB(queueId string) ([]*quorumpb.HBMsgv1, error) {
-	var msgs []*quorumpb.HBMsgv1
-	key := s.GetHBMsgBufferPrefix(queueId)
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-
-		msg := &quorumpb.HBMsgv1{}
-		if err := proto.Unmarshal(v, msg); err != nil {
-			return err
-		}
-
-		msgs = append(msgs, msg)
-		return nil
-	})
-	return msgs, err
-}
-
-func (cs *Storage) GeBufferedMsgLenHBB(queueId string) (int, error) {
-	msgs, err := cs.GetAllMsgHBB(queueId)
-	if err != nil {
-		return -1, err
-	}
-	return len(msgs), nil
-}
-
-func (cs *Storage) GetMsgsByEpochHBB(queueId string, epoch uint64) ([]*quorumpb.HBMsgv1, error) {
-	key := s.GetHBMsgBufferKeyEpoch(queueId, epoch)
-	var msgs []*quorumpb.HBMsgv1
-
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-
-		msg := &quorumpb.HBMsgv1{}
-		if err := proto.Unmarshal(v, msg); err != nil {
-			return err
-		}
-
-		msgs = append(msgs, msg)
-		return nil
-	})
-
-	return msgs, err
-}
-
-func (cs *Storage) RemoveAllMsgHBB(queueId string) error {
-	key_prefix := s.GetHBMsgBufferPrefix(queueId)
-	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
-	return err
-}
-
-func (cs *Storage) RemoveMsgByEpochHBB(queueId string, epoch uint64) error {
-	key_prefix := s.GetHBMsgBufferKeyEpoch(queueId, epoch)
-	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
-	return err
-}
-
-func (cs *Storage) RemoveMsgByMsgId(queueId string, epoch uint64, msgId string) error {
-	key := s.GetHBMsgBufferKeyFull(queueId, epoch, msgId)
-	return cs.dbmgr.Db.Delete([]byte(key))
-}
-
-
-
-func (cs *Storage) IsPSyncSessionExist(groupId, sessionId string) (bool, error) {
-	key := s.GetPSyncKey(groupId, sessionId)
-	return cs.dbmgr.Db.IsExist([]byte(key))
-}
-
-func (cs *Storage) UpdPSyncResp(groupId, sessionId string, resp *quorumpb.PSyncResp) error {
-	//remove all current group PSync Session
-	key_prefix := s.GetPSyncPrefix(groupId)
-	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key_prefix))
-	if err != nil {
-		return err
-	}
-
-	//update group psync session
-	key := s.GetPSyncKey(groupId, sessionId)
-	if value, err := proto.Marshal(resp); err != nil {
-		return err
-	} else {
-		err = cs.dbmgr.Db.Set([]byte(key), value)
-		return err
-	}
-}
-
-func (cs *Storage) GetCurrentPSyncSession(groupId string) ([]*quorumpb.PSyncResp, error) {
-
-			resps := []*quorumpb.PSyncResp{}
-		key := s.GetPSyncPrefix(groupId)
-		err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-			if err != nil {
-				return err
-			}
-
-			resp := &quorumpb.ConsensusResp{}
-			if err := proto.Unmarshal(v, resp); err != nil {
-				return err
-			}
-
-			//should be only 1 (or no) resp item, otherwise something goes wrong
-			resps = append(resps, resp)
-			return nil
-		})
-
-		return resps, err
-	return nil, nil
-}
-
-*/

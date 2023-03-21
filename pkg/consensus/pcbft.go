@@ -148,3 +148,8 @@ func (ppbft *PCBft) AddReq(req *quorumpb.ChangeConsensusReq) error {
 
 	return nil
 }
+
+func (ppbft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
+	pcbft_log.Debugf("HandleHBMsg called, Epoch <%d>", hbmsg.Epoch)
+	return nil
+}

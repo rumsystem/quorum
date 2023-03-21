@@ -14,30 +14,30 @@ var ccrmsgsender_log = logging.Logger("ccrsender")
 const DEFAULT_CC_REQ_SEND_INTEVL = 1 * 1000 //in millseconds
 
 type CCReqSender struct {
-	groupId    string
-	interval   int
-	pubkey     string
-	CurrCCReq  *quorumpb.ChangeConsensusReq
-	ticker     *time.Ticker
-	tickerDone chan bool
-	locker     sync.Mutex
+	groupId      string
+	epochLenInMs uint64
+	epochCnt     uint64
+	CurrCCReq    *quorumpb.ChangeConsensusReq
+	ticker       *time.Ticker
+	tickerDone   chan bool
+	locker       sync.Mutex
+
+	proposer   *MolassesConsensusProposer
+	sendingCnt uint64
 }
 
-func NewCCReqSender(groupId string, pubkey string, interval ...int) *CCReqSender {
+func NewCCReqSender(groupId string, epochLenInMs, epochCnt uint64, proposer *MolassesConsensusProposer) *CCReqSender {
 	ccrmsgsender_log.Debugf("<%s> NewCCReqSender called", groupId)
 
-	sendingInterval := DEFAULT_CC_REQ_SEND_INTEVL
-	if interval != nil {
-		sendingInterval = interval[0]
-	}
-
 	return &CCReqSender{
-		groupId:    groupId,
-		interval:   sendingInterval,
-		pubkey:     pubkey,
-		CurrCCReq:  nil,
-		ticker:     nil,
-		tickerDone: make(chan bool),
+		groupId:      groupId,
+		epochLenInMs: epochLenInMs,
+		epochCnt:     epochCnt,
+		proposer:     proposer,
+		CurrCCReq:    nil,
+		ticker:       nil,
+		tickerDone:   make(chan bool),
+		sendingCnt:   0,
 	}
 }
 
@@ -48,6 +48,7 @@ func (msender *CCReqSender) SendCCReq(req *quorumpb.ChangeConsensusReq) error {
 	defer msender.locker.Unlock()
 
 	msender.CurrCCReq = req
+	msender.sendingCnt = 0
 	msender.startSending()
 
 	return nil
@@ -61,7 +62,7 @@ func (msender *CCReqSender) startSending() {
 	//start new sender ticker
 	go func() {
 		ccrmsgsender_log.Debugf("<%s> create ticker <%s>", msender.groupId, msender.CurrCCReq.ReqId)
-		msender.ticker = time.NewTicker(time.Duration(msender.interval) * time.Millisecond)
+		msender.ticker = time.NewTicker(time.Duration(msender.epochLenInMs) * time.Millisecond)
 		for {
 			select {
 			case <-msender.tickerDone:
@@ -74,6 +75,12 @@ func (msender *CCReqSender) startSending() {
 					return
 				}
 				connMgr.BroadcastPPReq(msender.CurrCCReq)
+				msender.sendingCnt += 1
+
+				if msender.sendingCnt >= msender.epochCnt {
+					ccrmsgsender_log.Debugf("<%s> CCReqSender stop sending <%s> at <%d>", msender.groupId, msender.CurrCCReq.ReqId, time.Now().UnixMilli())
+					msender.tickerDone <- true
+				}
 			}
 			msender.ticker.Stop()
 		}

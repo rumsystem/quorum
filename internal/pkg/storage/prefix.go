@@ -35,8 +35,7 @@ const (
 
 	// consensus db
 	CNS_BUFD_TRX = "cns_bf_trx" //buffered trx (used by acs)
-	CNS_BUFD_MSG = "cns_bf_msg" //buffered message (used by bba & rbc)
-	CNS_PSYNC    = "cns_psync"  //psync resp
+	CNS_NONCE    = "cns_nonce"  //nonce for consensus
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -247,28 +246,8 @@ func GetTrxHBBKey(queueId string, trxId string) string {
 	return prefix + trxId
 }
 
-func GetHBMsgBufferPrefix(queueId string) string {
-	return CNS_BUFD_MSG + "_" + queueId + "_"
-}
-
-func GetHBMsgBufferKeyEpoch(queueId string, epoch uint64) string {
-	prefix := GetHBMsgBufferPrefix(queueId)
-	epochStr := strconv.FormatUint(epoch, 10)
-	return prefix + epochStr
-}
-
-func GetHBMsgBufferKeyFull(queueId string, epoch uint64, msgId string) string {
-	prefix := GetHBMsgBufferPrefix(queueId)
-	epochStr := strconv.FormatUint(epoch, 10)
-	return prefix + epochStr + "_" + msgId
-}
-
-func GetPSyncPrefix(groupId string) string {
-	return CNS_PSYNC + "_" + groupId + "_"
-}
-
-func GetPSyncKey(groupId, sessionId string) string {
-	return GetPSyncPrefix(groupId) + sessionId
+func GetConsensusNonceKey(groupId string) string {
+	return CNS_NONCE + "_" + groupId + "_"
 }
 
 // Relay

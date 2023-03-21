@@ -104,8 +104,8 @@ message ChangeConsensusReq {
     string          GroupId              = 2;
     uint64          Nonce                = 3;
     repeated string ProducerPubkeyList   = 4;  
-    int64           AgreementTickLenInMs = 6;
-    int64           AgreementTickCount   = 7;
+    uint64          AgreementTickLenInMs = 6;
+    uint64          AgreementTickCount   = 7;
     uint64          StartFromEpoch       = 8;
     uint64          TrxEpochTickLenInMs  = 9;
     string          SenderPubkey         = 10;

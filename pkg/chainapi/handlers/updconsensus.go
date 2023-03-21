@@ -87,8 +87,8 @@ func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*U
 				}
 			}
 
-			if params.TrxEpochTick < 1000 {
-				return nil, errors.New("trx epoch tick should be greater than 1000")
+			if params.TrxEpochTick < 500 {
+				return nil, errors.New("trx epoch tick should be greater than 500(ms)")
 			}
 
 			item := &quorumpb.ProducerItem{}
