@@ -91,7 +91,11 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	for _, trxid := range trxids {
 		trx, _, err := h.Trxdb.GetTrx(groupid, trxid.TrxId, def.Chain, h.NodeName)
 		if err != nil {
-			c.Logger().Errorf("GetTrx Err: %s", err)
+			logger.Errorf("GetTrx groupid: %s trxid: %s failed: %s", groupid, trxid.TrxId, err)
+			continue
+		}
+		if trx.TrxId == "" && len(trx.Data) == 0 {
+			logger.Warnf("GetTrx groupid: %s trxid: %s return empty trx, skip ...", groupid, trxid.TrxId)
 			continue
 		}
 
@@ -102,12 +106,12 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			decryptData, err := ks.Decrypt(groupid, trx.Data)
 			if err != nil {
 				//can't decrypt, replace it
-				trx.Data = []byte("")
+				trx.Data = nil
+				logger.Warnf("can not decrypt trx.Data for groupid: %s trxid: %s failed: %s", groupid, trxid.TrxId, err)
 			} else {
 				//set trx.Data to decrypted []byte
 				trx.Data = decryptData
 			}
-
 		} else {
 			//decode trx data
 			ciperKey, err := hex.DecodeString(groupitem.CipherKey)
@@ -122,12 +126,23 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			trx.Data = decryptData
 		}
 
-		var content map[string]interface{}
-		if err := json.Unmarshal(trx.Data, &content); err != nil {
-			return err
+		var content map[string]interface{} = nil
+		if len(trx.Data) > 0 {
+			if err := json.Unmarshal(trx.Data, &content); err != nil {
+				logger.Errorf("groupid: %s trxid: %s json.Unmarshal trx.Data: %q failed: %s", groupid, trxid.TrxId, trx.Data, err)
+				return err
+			}
+		} else {
+			logger.Errorf("groupid: %s trxid: %s trx.Data is empty", groupid, trxid.TrxId)
 		}
+
 		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
-		ctnobjitem := &GroupContentObjectItem{TrxId: trx.TrxId, Publisher: pk, Content: content, TimeStamp: trx.TimeStamp}
+		ctnobjitem := &GroupContentObjectItem{
+			TrxId:     trx.TrxId,
+			Publisher: pk,
+			Content:   content,
+			TimeStamp: trx.TimeStamp,
+		}
 		ctnobjList = append(ctnobjList, ctnobjitem)
 	}
 	return c.JSON(http.StatusOK, ctnobjList)
