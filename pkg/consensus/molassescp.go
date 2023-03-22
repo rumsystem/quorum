@@ -100,6 +100,10 @@ func (cp *MolassesConsensusProposer) AddNewConsensusItem(producerList *quorumpb.
 
 	//create bft config
 	config, err := cp.createBftConfig()
+	if err != nil {
+		molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
+		return err
+	}
 
 	//create bft
 	cp.bft = NewPCBft(*config, cp)
