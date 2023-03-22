@@ -51,14 +51,12 @@ type SenderList struct {
 // @Param reverse query boolean false "reverse = true will return results by most recently"
 // @Param starttrx query string false "returns results from this trxid, but exclude it"
 // @Param includestarttrx query string false "include the start trx"
-// @Param nonce query int false "the nonce of trx, the default value is the latest"
 // @Param data body SenderList true "SenderList"
 // @Success 200 {array} GroupContentObjectItem
 // @Router /app/api/v1/group/{group_id}/content [get]
 func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	num, _ := strconv.Atoi(c.QueryParam("num"))
-	nonce, _ := strconv.ParseInt(c.QueryParam("nonce"), 10, 64)
 	starttrx := c.QueryParam("starttrx")
 	if num == 0 {
 		num = 20
@@ -76,7 +74,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	trxids, err := h.Appdb.GetGroupContentBySenders(groupid, senderlist.Senders, starttrx, nonce, num, reverse, includestarttrx)
+	trxids, err := h.Appdb.GetGroupContentBySenders(groupid, senderlist.Senders, starttrx, num, reverse, includestarttrx)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
@@ -89,13 +87,13 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 
 	ctnobjList := []*GroupContentObjectItem{}
 	for _, trxid := range trxids {
-		trx, _, err := h.Trxdb.GetTrx(groupid, trxid.TrxId, def.Chain, h.NodeName)
+		trx, err := h.Trxdb.GetTrx(groupid, trxid, def.Chain, h.NodeName)
 		if err != nil {
-			logger.Errorf("GetTrx groupid: %s trxid: %s failed: %s", groupid, trxid.TrxId, err)
+			logger.Errorf("GetTrx groupid: %s trxid: %s failed: %s", groupid, trxid, err)
 			continue
 		}
 		if trx.TrxId == "" && len(trx.Data) == 0 {
-			logger.Warnf("GetTrx groupid: %s trxid: %s return empty trx, skip ...", groupid, trxid.TrxId)
+			logger.Warnf("GetTrx groupid: %s trxid: %s return empty trx, skip ...", groupid, trxid)
 			continue
 		}
 
@@ -107,7 +105,7 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			if err != nil {
 				//can't decrypt, replace it
 				trx.Data = nil
-				logger.Warnf("can not decrypt trx.Data for groupid: %s trxid: %s failed: %s", groupid, trxid.TrxId, err)
+				logger.Warnf("can not decrypt trx.Data for groupid: %s trxid: %s failed: %s", groupid, trxid, err)
 			} else {
 				//set trx.Data to decrypted []byte
 				trx.Data = decryptData
@@ -129,11 +127,11 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 		var content map[string]interface{} = nil
 		if len(trx.Data) > 0 {
 			if err := json.Unmarshal(trx.Data, &content); err != nil {
-				logger.Errorf("groupid: %s trxid: %s json.Unmarshal trx.Data: %q failed: %s", groupid, trxid.TrxId, trx.Data, err)
+				logger.Errorf("groupid: %s trxid: %s json.Unmarshal trx.Data: %q failed: %s", groupid, trxid, trx.Data, err)
 				return err
 			}
 		} else {
-			logger.Errorf("groupid: %s trxid: %s trx.Data is empty", groupid, trxid.TrxId)
+			logger.Errorf("groupid: %s trxid: %s trx.Data is empty", groupid, trxid)
 		}
 
 		pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)

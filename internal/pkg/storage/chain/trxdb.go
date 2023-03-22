@@ -14,7 +14,7 @@ var logger = logging.Logger("chainstorage")
 
 // save trx
 func (cs *Storage) AddTrx(trx *quorumpb.Trx, prefix ...string) error {
-	key := s.GetTrxKey(trx.GroupId, trx.TrxId, trx.Nonce, prefix...)
+	key := s.GetTrxKey(trx.GroupId, trx.TrxId, prefix...)
 	value, err := proto.Marshal(trx)
 	if err != nil {
 		return err
@@ -28,26 +28,17 @@ func (cs *Storage) UpdTrx(trx *quorumpb.Trx, prefix ...string) error {
 }
 
 // Get Trx
-func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStorageType, prefix ...string) (t *quorumpb.Trx, n []int64, err error) {
-	var trx quorumpb.Trx
-	var nonces []int64
-
+func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStorageType, prefix ...string) (t *quorumpb.Trx, err error) {
+	trx := &quorumpb.Trx{}
 	var key string
+
 	if storagetype == def.Chain {
-		key = s.GetTrxPrefix(groupId, trxId, prefix...)
-		err = cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-			if err != nil {
-				logger.Errorf("cs.dbmgr.Db.PrefixForeach failed: %s", err)
-				return err
-			}
-			perr := proto.Unmarshal(v, &trx)
-			if perr != nil {
-				logger.Errorf("proto.Unmarshal trx failed: %s", perr)
-				return perr
-			}
-			nonces = append(nonces, trx.Nonce)
-			return nil
-		})
+		key = s.GetTrxKey(groupId, trxId, prefix...)
+		value, err := cs.dbmgr.Db.Get([]byte(key))
+		err = proto.Unmarshal(value, trx)
+		if err != nil {
+			return nil, err
+		}
 		trx.StorageType = quorumpb.TrxStroageType_CHAIN
 	} else if storagetype == def.Cache {
 		key = s.GetCachedBlockPrefix(groupId, prefix...)
@@ -63,16 +54,11 @@ func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStora
 				return perr
 			}
 			if block.Trxs != nil {
-				for _, blocktrx := range block.Trxs {
-					if blocktrx.TrxId == trxId {
-						nonces = append(nonces, blocktrx.Nonce)
-
-						clonedtrxbuff, _ := proto.Marshal(blocktrx)
-						perr = proto.Unmarshal(clonedtrxbuff, &trx)
-						if perr != nil {
-							logger.Errorf("proto.Unmarshal clonedtrxbuff failed: %s", err)
-							return perr
-						}
+				for _, trxInBlock := range block.Trxs {
+					if trxInBlock.TrxId == trxId {
+						//clone trx
+						cloneTrxBytes, _ := proto.Marshal(trxInBlock)
+						proto.Unmarshal(cloneTrxBytes, trx)
 						trx.StorageType = quorumpb.TrxStroageType_CACHE
 						return nil
 					}
@@ -83,13 +69,14 @@ func (cs *Storage) GetTrx(groupId string, trxId string, storagetype def.TrxStora
 		})
 	}
 
+	//convert pubkey to base64
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(trx.SenderPubkey)
 	trx.SenderPubkey = pk
 
-	return &trx, nonces, err
+	return trx, err
 }
 
-func (cs *Storage) IsTrxExist(groupId string, trxId string, nonce int64, prefix ...string) (bool, error) {
-	key := s.GetTrxKey(groupId, trxId, nonce, prefix...)
+func (cs *Storage) IsTrxExist(groupId string, trxId string, prefix ...string) (bool, error) {
+	key := s.GetTrxKey(groupId, trxId, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

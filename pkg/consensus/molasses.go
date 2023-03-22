@@ -8,11 +8,10 @@ type Molasses struct {
 	name     string
 	producer def.Producer
 	user     def.User
-	psync    def.PSync
 }
 
-func NewMolasses(p def.Producer, u def.User, s def.PSync) *Molasses {
-	return &Molasses{name: "Molasses", producer: p, user: u, psync: s}
+func NewMolasses(p def.Producer, u def.User) *Molasses {
+	return &Molasses{name: "Molasses", producer: p, user: u}
 }
 
 func (m *Molasses) Name() string {
@@ -27,20 +26,12 @@ func (m *Molasses) User() def.User {
 	return m.user
 }
 
-func (m *Molasses) PSync() def.PSync {
-	return m.psync
-}
-
 func (m *Molasses) SetProducer(p def.Producer) {
 	m.producer = p
 }
 
 func (m *Molasses) SetUser(u def.User) {
 	m.user = u
-}
-
-func (m *Molasses) SetPSync(s def.PSync) {
-	m.psync = s
 }
 
 func (m *Molasses) StartPropose() {

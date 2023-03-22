@@ -203,12 +203,12 @@ func (grp *Group) GetBlock(blockId uint64) (*quorumpb.Block, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, blockId, false, grp.Nodename)
 }
 
-func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
+func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
 	group_log.Debugf("<%s> GetTrx called trxId: <%s>", grp.Item.GroupId, trxId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.Nodename)
 }
 
-func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) {
+func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, error) {
 	group_log.Debugf("<%s> GetTrxFromCache called trxId: <%s>", grp.Item.GroupId, trxId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.Nodename)
 }
@@ -249,7 +249,7 @@ func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 }
 
 // send POST trx
-func (grp *Group) PostToGroup(content []byte, sudo bool) (string, error) {
+func (grp *Group) PostToGroup(content []byte) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
 	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
 		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
@@ -272,7 +272,7 @@ func (grp *Group) PostToGroup(content []byte, sudo bool) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem, sudo bool) (string, error) {
+func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegProducerBundleTrx("", item)
 	if err != nil {
@@ -281,7 +281,7 @@ func (grp *Group) UpdProducer(item *quorumpb.BFTProducerBundleItem, sudo bool) (
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool /* behindBlock uint64 */) (string, error) {
+func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
 	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx("", item)
 	if err != nil {
@@ -290,7 +290,7 @@ func (grp *Group) UpdUser(item *quorumpb.UserItem, sudo bool /* behindBlock uint
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem, sudo bool /* behindBlock uint64 */) (string, error) {
+func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
 	if err != nil {
@@ -300,7 +300,7 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem, sudo bool /* be
 }
 
 // send update appconfig trx
-func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem, sudo bool /* behindBlock uint64 */) (string, error) {
+func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
 	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
 	if err != nil {

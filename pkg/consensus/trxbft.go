@@ -34,13 +34,12 @@ const (
 
 type TrxBft struct {
 	Config
-	groupId   string
-	producer  *MolassesProducer
-	CurrTask  *ProposeTask
-	acsInsts  *TrxACS
-	txBuffer  *TrxBuffer
-	msgBuffer *HBMsgBuffer
-	taskq     chan *ProposeTask
+	groupId  string
+	producer *MolassesProducer
+	CurrTask *ProposeTask
+	acsInsts *TrxACS
+	txBuffer *TrxBuffer
+	taskq    chan *ProposeTask
 
 	taskdone   chan struct{}
 	stopnotify chan struct{}
@@ -55,7 +54,6 @@ func NewTrxBft(cfg Config, producer *MolassesProducer) *TrxBft {
 		groupId:    producer.groupId,
 		producer:   producer,
 		txBuffer:   NewTrxBuffer(producer.groupId),
-		msgBuffer:  NewHBMsgBuffer(producer.groupId),
 		taskq:      make(chan *ProposeTask),
 		taskdone:   make(chan struct{}),
 		stopnotify: make(chan struct{}),
@@ -105,18 +103,12 @@ func (bft *TrxBft) runTask(task *ProposeTask) error {
 	trx_bft_log.Debugf("<%s> runTask called, epoch <%d>", bft.groupId, task.Epoch)
 	go func() {
 		//create new acs and try propose something
-		trx_bft_log.Debugf("<%s> delay start %d", bft.groupId, task.DelayStartTime)
+		trx_bft_log.Debugf("<%s> wait <%d> ms", bft.groupId, task.DelayStartTime)
 		time.Sleep(time.Duration(task.DelayStartTime) * time.Millisecond)
 
 		bft.CurrTask = task
 		bft.acsInsts = NewTrxACS(bft.Config, bft, task.Epoch)
 		bft.acsInsts.InputValue(task.ProposedData)
-
-		//try get buffered msg for this epoch and give it to new acs
-		msgs, _ := bft.msgBuffer.GetMsgsByEpoch(task.Epoch)
-		for _, msg := range msgs {
-			bft.HandleMessage(msg)
-		}
 	}()
 
 	//wait here
@@ -224,17 +216,6 @@ func (bft *TrxBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 		return nil
 	}
 
-	//save msg to buffer first
-	err := bft.msgBuffer.AddMsg(hbmsg)
-	if err != nil {
-		return err
-	}
-
-	if bft.acsInsts != nil && hbmsg.Epoch > bft.acsInsts.Epoch {
-		trx_bft_log.Debugf("message from future epoch <%d>, buffered", hbmsg.Epoch)
-		return nil
-	}
-
 	//handle msg
 	return bft.acsInsts.HandleMessage(hbmsg)
 }
@@ -253,7 +234,7 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 		trxBundle := &quorumpb.HBTrxBundle{}
 		err := proto.Unmarshal(value, trxBundle)
 		if err != nil {
-			trx_bft_log.Warningf("decode trxs failed for rbc inst %s, err %s", key, err.Error())
+			trx_bft_log.Warningf("decode trxs failed for rbc inst <%s> with error <%s>", key, err.Error())
 			return
 		}
 
@@ -269,7 +250,7 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 		//Try build block and broadcast it
 		err := bft.buildBlock(epoch, trxs)
 		if err != nil {
-			trx_bft_log.Warnf("<%s> Build block failed at epoch %d, error %s", bft.producer.groupId, epoch, err.Error())
+			trx_bft_log.Warnf("<%s> Build block failed at epoch <%d>, error <%s>", bft.producer.groupId, epoch, err.Error())
 			return
 		}
 		//remove outputed trxs from buffer
@@ -290,17 +271,8 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 	bft.producer.cIface.SaveChainInfoToDb()
 	trx_bft_log.Debugf("<%s> ChainInfo updated", bft.producer.groupId)
 
-	//clear msgbuffer for this epoch
-	err := bft.msgBuffer.DelMsgsByEpoch(epoch)
-	if err != nil {
-		trx_bft_log.Warnf("<%s> delete msgs for epoch <%d> failed", bft.groupId, epoch)
-	}
-
 	//finish current task
 	bft.taskdone <- struct{}{}
-
-	//bft.CurrTask = nil
-	//bft.acsInsts = nil
 
 	task, _ := bft.NewProposeTask()
 	bft.addTask(task)
@@ -336,8 +308,7 @@ func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error
 		trx_bft_log.Debugf("<%s> start build block with parent <%d> ", bft.producer.groupId, parent.BlockId)
 		ks := localcrypto.GetKeystore()
 
-		sudo := false
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, sudo, bft.producer.grpItem.UserSignPubkey, ks, "", bft.producer.nodename)
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, false, bft.producer.grpItem.UserSignPubkey, ks, "", bft.producer.nodename)
 
 		if err != nil {
 			trx_bft_log.Debugf("<%s> build block failed <%s>", bft.producer.groupId, err.Error())

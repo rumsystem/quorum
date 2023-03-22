@@ -29,8 +29,7 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 	}
 
-	//should return nonce count to client?
-	trx, _, err := handlers.GetTrx(groupid, trxid)
+	trx, err := handlers.GetTrx(groupid, trxid)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

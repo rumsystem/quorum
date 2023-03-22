@@ -28,10 +28,6 @@ type AppDb struct {
 	seq      map[string]storage.Sequence
 	DataPath string
 }
-type TrxIdNonce struct {
-	TrxId string
-	Nonce int64
-}
 
 func NewAppDb() *AppDb {
 	app := AppDb{}
@@ -70,14 +66,14 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error 
 	return nil
 }
 
-func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, targetnonce int64, num int, reverse bool, starttrxinclude bool) ([]TrxIdNonce, error) {
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool, starttrxinclude bool) (trxidList []string, err error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
 	sendermap := make(map[string]bool)
 	for _, s := range senders {
 		sendermap[s] = true
 	}
 
-	trxidsnonce := []TrxIdNonce{}
+	trxids := []string{}
 	runcollector := false
 
 	if starttrx == "" {
@@ -89,8 +85,6 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 			return err
 		}
 		var trxid, sender string
-		var trxnonce int64
-
 		dataidx := bytes.LastIndexByte(k, byte('_'))
 		start := dataidx
 		seg := 0
@@ -137,7 +131,7 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		err = nil
 	}
 
-	return trxidsnonce, err
+	return trxids, err
 }
 
 func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {

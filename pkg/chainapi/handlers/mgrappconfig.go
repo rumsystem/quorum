@@ -23,7 +23,6 @@ type AppConfigParam struct {
 	Type    string `from:"type"     json:"type"     validate:"required,oneof=int string bool" example:"bool"`
 	Value   string `from:"value"    json:"value"    validate:"required" example:"false"`
 	Memo    string `from:"memo"     json:"memo" example:"add test_bool to group"`
-	Sudo    bool   `from:"sudo" json:"sudo" example:"false"`
 }
 
 type AppConfigResult struct {
@@ -102,7 +101,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 		item.OwnerSign = hex.EncodeToString(signature)
 		item.TimeStamp = time.Now().UnixNano()
 
-		trxId, err := group.UpdAppConfig(item, params.Sudo)
+		trxId, err := group.UpdAppConfig(item)
 		if err != nil {
 			return nil, err
 		}
