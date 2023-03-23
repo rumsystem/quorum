@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const POST_OBJ_SIZE_LIMIT = 200 * 1024 //200Kb
+const POST_OBJ_SIZE_LIMIT = 300 * 1024 //200Kb
 
 type TrxFactory struct {
 	nodename   string

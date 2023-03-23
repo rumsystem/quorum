@@ -167,17 +167,6 @@ func (grp *Group) ClearGroupData() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.Nodename)
 }
 
-func (grp *Group) StartSync(restart bool) error {
-	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	return grp.ChainCtx.StartSync()
-}
-
-func (grp *Group) StopSync() error {
-	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-	grp.ChainCtx.StopSync()
-	return nil
-}
-
 func (grp *Group) GetCurrentEpoch() uint64 {
 	return grp.ChainCtx.GetCurrEpoch()
 }
@@ -327,7 +316,13 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	return trx.TrxId, nil
 }
 
-func (grp *Group) ReqPSync() (string, error) {
-	group_log.Debugf("<%s> TryGetChainConsensus called", grp.Item.GroupId)
-	return grp.ChainCtx.ReqPSync()
+func (grp *Group) StartSync(restart bool) error {
+	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
+	return grp.ChainCtx.StartSync()
+}
+
+func (grp *Group) StopSync() error {
+	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
+	grp.ChainCtx.StopSync()
+	return nil
 }

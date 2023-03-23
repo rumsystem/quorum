@@ -13,7 +13,8 @@ type ChainDataSyncIface interface {
 	HandleBlockRex(block *quorumpb.Block, fromstream network.Stream) error
 	HandleHBPsConn(hb *quorumpb.HBMsgv1) error
 	HandleHBRex(hb *quorumpb.HBMsgv1) error
-	StartSync() error
-	StopSync()
 	GetCurrBlockId() uint64
+
+	//StartSync() error
+	//StopSync()
 }

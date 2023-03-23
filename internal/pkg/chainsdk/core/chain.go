@@ -133,12 +133,6 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) ReqPSync() (string, error) {
-	chain_log.Debugf("<%s> ReqPSync called, TBD", chain.groupItem.GroupId)
-	//return chain.syncerrunner.GetPSync()
-	return "", nil
-}
-
 // PSConn msg handler
 func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 	//chain_log.Debugf("<%s> HandlePsConnMessage called, <%s>", chain.groupItem.GroupId, pkg.Type.String())
@@ -594,18 +588,6 @@ func (chain *Chain) CreateConsensus() error {
 	return nil
 }
 
-func (chain *Chain) StartSync() error {
-	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
-
-	if chain.isOwner() {
-		chain_log.Debugf("<%s> owner no need to sync", chain.groupItem.GroupId)
-		return nil
-	}
-
-	chain.rexSyncer.Start()
-	return nil
-}
-
 func (chain *Chain) isProducer() bool {
 	_, ok := chain.producerPool[chain.groupItem.UserSignPubkey]
 	return ok
@@ -622,13 +604,6 @@ func (chain *Chain) isOwnerByPubkey(pubkey string) bool {
 
 func (chain *Chain) isOwner() bool {
 	return chain.groupItem.OwnerPubKey == chain.groupItem.UserSignPubkey
-}
-
-func (chain *Chain) StopSync() {
-	chain_log.Debugf("<%s> StopSync called", chain.groupItem.GroupId)
-	if chain.rexSyncer != nil {
-		chain.rexSyncer.Stop()
-	}
 }
 
 func (chain *Chain) GetRexSyncerStatus() string {
@@ -826,6 +801,25 @@ func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, err
 	}
 
 	return true, nil
+}
+
+func (chain *Chain) StartSync() error {
+	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
+
+	if chain.isOwner() {
+		chain_log.Debugf("<%s> owner no need to sync", chain.groupItem.GroupId)
+		return nil
+	}
+
+	chain.rexSyncer.Start()
+	return nil
+}
+
+func (chain *Chain) StopSync() {
+	chain_log.Debugf("<%s> StopSync called", chain.groupItem.GroupId)
+	if chain.rexSyncer != nil {
+		chain.rexSyncer.Stop()
+	}
 }
 
 //local sync
