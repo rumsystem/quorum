@@ -253,7 +253,7 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 			trx_bft_log.Warnf("<%s> Build block failed at epoch <%d>, error <%s>", bft.producer.groupId, epoch, err.Error())
 			return
 		}
-		//remove outputed trxs from buffer
+		//remove packaged trxs from buffer
 		for trxId := range trxs {
 			err := bft.txBuffer.Delete(trxId)
 			trx_bft_log.Debugf("<%s> remove packaged trx <%s>", bft.producer.groupId, trxId)

@@ -54,21 +54,6 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorum
 	return newBlock, nil
 }
 
-func CreateOrphanBlock(groupId string, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
-	//create a block without parents
-	orphanBlock := &quorumpb.Block{
-		GroupId:        groupId,
-		BlockId:        0,
-		Epoch:          epoch,
-		PrevHash:       nil,
-		ProducerPubkey: groupPublicKey,
-		Trxs:           trxs,
-		Sudo:           sudo,
-		TimeStamp:      time.Now().UnixNano(),
-	}
-	return orphanBlock, nil
-}
-
 // regenerate block with parent info
 func RegenrateBlockWithParent(parentBlock *quorumpb.Block, orphanBlock *quorumpb.Block, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	orphanBlock.PrevHash = parentBlock.BlockHash
@@ -141,7 +126,6 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 
 	//step 1, check hash for newBlock
-
 	blkWithOutHashAndSign := &quorumpb.Block{
 		GroupId:        newBlock.GroupId,
 		BlockId:        newBlock.BlockId,
@@ -165,6 +149,7 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 		return false, fmt.Errorf("hash for new block is invalid")
 	}
 
+	//step 2, check blockid and prevhash
 	if newBlock.BlockId != parentBlock.BlockId+1 {
 		return false, fmt.Errorf("blockid mismatch with parent block")
 	}
@@ -173,6 +158,7 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 		return false, errors.New("prevhash mismatch with parent block")
 	}
 
+	//step 3, check producer sign
 	bytespubkey, err := base64.RawURLEncoding.DecodeString(newBlock.ProducerPubkey)
 	if err == nil { //try eth key
 		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
@@ -237,7 +223,7 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 	return true, nil
 }
 
-// get all trx from the block list
+// get all trxs from the blocks list
 func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
 	var trxs []*quorumpb.Trx
 	for _, block := range blocks {

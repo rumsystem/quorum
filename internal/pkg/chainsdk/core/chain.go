@@ -239,13 +239,12 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		return nil
 	}
 
-	//check if block is from group owner
+	//check if block is from a valid group producer, currently only check if block is produced by owner
 	if !chain.isOwnerByPubkey(block.ProducerPubkey) {
 		chain_log.Warningf("<%s> received block <%d> from unknown producer, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
 		return nil
 	}
 
-	//for all node run as PRODUCER_NODE but not approved by owner (yet)
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
 		err := chain.Consensus.Producer().AddBlock(block)

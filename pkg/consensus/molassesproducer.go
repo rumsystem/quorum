@@ -107,7 +107,6 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	return config, nil
 }
 
-// Add Block will be called when producer sync with other producer node
 func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	molaproducer_log.Debugf("<%s> AddBlock called, BlockId <%d>", producer.groupId, block.BlockId)
 
