@@ -3,8 +3,10 @@ package appdata
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/google/orderedcode"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -67,10 +69,10 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error 
 
 func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool, starttrxinclude bool) (trxidList []string, err error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
-	//sendermap := make(map[string]bool)
-	//for _, s := range senders {
-	//	sendermap[s] = true
-	//}
+	sendermap := make(map[string]bool)
+	for _, s := range senders {
+		sendermap[s] = true
+	}
 
 	trxids := []string{}
 	runcollector := false
@@ -83,47 +85,33 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		if err != nil {
 			return err
 		}
-		var trxid string
 		dataidx := bytes.LastIndexByte(k, byte('_'))
-		start := dataidx
-		seg := 0
-		for i, c := range k[dataidx:] {
-			if c == ':' {
-				if seg == 0 {
-					//sender = string(k[start+1 : start+i])
-					trxid = string(k[start+1+i : start+i+37])
-					start = i
-					seg = 1
-				}
-				//else if seg == 1 {
-				//	if len(k)-2 > start+i {
-				//		n := string(k[start+i : len(k)-2])
-				//		trxnonce, _ = strconv.ParseInt(n, 10, 64)
-				//	}
-				//}
+		parts := strings.Split(string(k[dataidx+1:]), ":")
+		if len(parts) != 2 {
+			e := fmt.Errorf("can not get sender and trxid from %s", k[dataidx:])
+			return e
+		}
+		sender, trxid := parts[0], parts[1][:36]
+		if len(sender) != 46 {
+			e := fmt.Errorf("invalid sender: %s", sender)
+			return e
+		}
+
+		if runcollector {
+			if len(senders) == 0 || sendermap[sender] == true {
+				trxids = append(trxids, trxid)
 			}
 		}
-		//if runcollector {
-		//	if len(senders) == 0 || sendermap[sender] == true {
-		//		trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
-		//	}
-		//}
 		if trxid == starttrx && !runcollector { //start collecting after this item
-			//if targetnonce > 0 {
-			//	if targetnonce == trxnonce {
-			//		runcollector = true
-			//	}
-			//} else {
 			runcollector = true
-			//}
-			//if starttrxinclude && runcollector {
-			//	trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
-			//}
+			if starttrxinclude && runcollector {
+				trxids = append(trxids, trxid)
+			}
 		}
-		//if len(trxidsnonce) == num {
-		//	// use this to break loop
-		//	return errors.New("OK")
-		//}
+		if len(trxids) == num {
+			// use this to break loop
+			return errors.New("OK")
+		}
 		return nil
 	})
 
