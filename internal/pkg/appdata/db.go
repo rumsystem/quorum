@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/google/orderedcode"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -27,10 +28,6 @@ type AppDb struct {
 	Db       storage.QuorumStorage
 	seq      map[string]storage.Sequence
 	DataPath string
-}
-type TrxIdNonce struct {
-	TrxId string
-	Nonce int64
 }
 
 func NewAppDb() *AppDb {
@@ -70,63 +67,48 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error 
 	return nil
 }
 
-func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, targetnonce int64, num int, reverse bool, starttrxinclude bool) ([]TrxIdNonce, error) {
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool, starttrxinclude bool) (trxidList []string, err error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
 	sendermap := make(map[string]bool)
 	for _, s := range senders {
 		sendermap[s] = true
 	}
 
-	trxidsnonce := []TrxIdNonce{}
+	trxids := []string{}
 	runcollector := false
 
 	if starttrx == "" {
 		runcollector = true //no trxid, start collecting from the first item
 	}
 
-	_, err := appdb.Db.PrefixForeachKey([]byte(prefix), []byte(prefix), reverse, func(k []byte, err error) error {
+	_, err = appdb.Db.PrefixForeachKey([]byte(prefix), []byte(prefix), reverse, func(k []byte, err error) error {
 		if err != nil {
 			return err
 		}
-		var trxid, sender string
-		var trxnonce int64
-
 		dataidx := bytes.LastIndexByte(k, byte('_'))
-		start := dataidx
-		seg := 0
-		for i, c := range k[dataidx:] {
-			if c == ':' {
-				if seg == 0 {
-					sender = string(k[start+1 : start+i])
-					trxid = string(k[start+1+i : start+i+37])
-					start = i
-					seg = 1
-				} else if seg == 1 {
-					if len(k)-2 > start+i {
-						n := string(k[start+i : len(k)-2])
-						trxnonce, _ = strconv.ParseInt(n, 10, 64)
-					}
-				}
-			}
+		parts := strings.Split(string(k[dataidx+1:]), ":")
+		if len(parts) != 2 {
+			e := fmt.Errorf("can not get sender and trxid from %s", k[dataidx:])
+			return e
 		}
+		sender, trxid := parts[0], parts[1][:36]
+		if len(sender) != 46 {
+			e := fmt.Errorf("invalid sender: %s", sender)
+			return e
+		}
+
 		if runcollector {
 			if len(senders) == 0 || sendermap[sender] == true {
-				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
+				trxids = append(trxids, trxid)
 			}
 		}
 		if trxid == starttrx && !runcollector { //start collecting after this item
-			if targetnonce > 0 {
-				if targetnonce == trxnonce {
-					runcollector = true
-				}
-			} else {
-				runcollector = true
-			}
+			runcollector = true
 			if starttrxinclude && runcollector {
-				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
+				trxids = append(trxids, trxid)
 			}
 		}
-		if len(trxidsnonce) == num {
+		if len(trxids) == num {
 			// use this to break loop
 			return errors.New("OK")
 		}
@@ -137,7 +119,7 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		err = nil
 	}
 
-	return trxidsnonce, err
+	return trxids, err
 }
 
 func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {

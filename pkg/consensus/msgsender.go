@@ -28,45 +28,7 @@ func SendHBRBCMsg(groupId string, msg *quorumpb.RBCMsg, epoch uint64) error {
 	return connMgr.BroadcastHBMsg(hbmsg)
 }
 
-func SendHBAABMsg(groupId string, msg quorumpb.BBAMsg, epoch int64) error {
+func SendHBAABMsg(groupId string, msg *quorumpb.BBAMsg, epoch int64) error {
 	//TBD
 	return nil
-}
-
-func SendPSyncReqMsg(groupId string, msg *quorumpb.PSyncReq) error {
-	connMgr, err := conn.GetConn().GetConnMgr(groupId)
-	if err != nil {
-		return err
-	}
-
-	msgB, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	psyncReq := &quorumpb.PSyncMsg{
-		MsgType: quorumpb.PSyncMsgType_PSYNC_REQ,
-		Payload: msgB,
-	}
-
-	return connMgr.BroadcastPSyncMsg(psyncReq)
-}
-
-func SendPSyncRespMsg(groupId string, msg *quorumpb.PSyncResp) error {
-	connMgr, err := conn.GetConn().GetConnMgr(groupId)
-	if err != nil {
-		return err
-	}
-
-	msgB, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	psyncResp := &quorumpb.PSyncMsg{
-		MsgType: quorumpb.PSyncMsgType_PSYNC_RESP,
-		Payload: msgB,
-	}
-
-	return connMgr.BroadcastPSyncMsg(psyncResp)
 }

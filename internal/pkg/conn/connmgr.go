@@ -297,26 +297,6 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) BroadcastPSyncMsg(psync *quorumpb.PSyncMsg) error {
-	pkg := &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(psync)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_PSYNC
-	pkg.Data = pbBytes
-
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	psconn := connMgr.getProducerPsConn()
-	return psconn.Publish(pkgBytes)
-}
-
 func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
