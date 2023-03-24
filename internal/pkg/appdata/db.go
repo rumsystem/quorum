@@ -88,13 +88,13 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		dataidx := bytes.LastIndexByte(k, byte('_'))
 		parts := strings.Split(string(k[dataidx+1:]), ":")
 		if len(parts) != 2 {
-			e := fmt.Errorf("can not get sender and trxid from %s", k[dataidx:])
-			return e
+			appdatalog.Warnf("can not get sender and trxid from %s", k[dataidx:])
+			return nil
 		}
 		sender, trxid := parts[0], parts[1][:36]
 		if len(sender) != 46 {
-			e := fmt.Errorf("invalid sender: %s", sender)
-			return e
+			appdatalog.Warnf("invalid sender: %s", sender)
+			return nil
 		}
 
 		if runcollector {
