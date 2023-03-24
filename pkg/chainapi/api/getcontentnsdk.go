@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
@@ -17,7 +16,6 @@ import (
 type GetGroupCtnPrarms struct {
 	GroupId         string   `json:"group_id" validate:"required,uuid4"`
 	Num             int      `json:"num" validate:"required"`
-	Nonce           string   `json:"nonce"`
 	StartTrx        string   `json:"start_trx" validate:"required"`
 	Reverse         string   `json:"reverse" validate:"required,oneof=true false"`
 	IncludeStartTrx string   `json:"include_start_trx" validate:"required,oneof=true false"`
@@ -72,7 +70,6 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 	}
 
 	num := reqItem.Req.Num
-	nonce, _ := strconv.ParseInt(reqItem.Req.Nonce, 10, 64)
 	starttrx := reqItem.Req.StartTrx
 	if num == 0 {
 		num = 20
@@ -89,7 +86,6 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 	trxids, err := h.Appdb.GetGroupContentBySenders(getGroupCtnReqItem.GroupId,
 		reqItem.Req.Senders,
 		starttrx,
-		nonce,
 		num,
 		reverse,
 		includestarttrx)
@@ -99,7 +95,7 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 
 	trxList := []*quorumpb.Trx{}
 	for _, trxid := range trxids {
-		trx, _, err := group.GetTrx(trxid.TrxId)
+		trx, err := group.GetTrx(trxid)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue

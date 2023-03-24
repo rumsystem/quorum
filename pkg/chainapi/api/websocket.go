@@ -99,7 +99,7 @@ func (manager *WebsocketManager) handleEvent(event *appdata.OnChainTrxEvent) {
 		wsLogger.Errorf("can not find group: %s", event.GroupId)
 		return
 	}
-	trx, _, err := group.GetTrx(event.TrxId)
+	trx, err := group.GetTrx(event.TrxId)
 	if err != nil {
 		wsLogger.Errorf("get trx failed: %s, groupid: %s trxid: %s", err, event.GroupId, event.TrxId)
 		return

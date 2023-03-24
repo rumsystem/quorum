@@ -43,7 +43,7 @@ type ChainConfigResult struct {
 	TrxId            string `json:"trx_id"       validate:"required,uuid4" example:"90e9818a-2e23-4248-93e3-d4ba1b100f4f"`
 }
 
-func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, error) {
+func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -58,16 +58,10 @@ func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, e
 
 	group := groupmgr.Groups[params.GroupId]
 
-	if group.Item.UserSignPubkey != group.Item.OwnerPubKey {
-		return nil, errors.New("Only group owner can run sudo mode")
-	}
-
 	ks := nodectx.GetNodeCtx().Keystore
 	base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 	groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
-	//pubkeybytes, err := hex.DecodeString(hexkey)
-	//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	//groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
+
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
@@ -170,7 +164,7 @@ func MgrChainConfig(params *ChainConfigParams, sudo bool) (*ChainConfigResult, e
 	configItem.TimeStamp = time.Now().UnixNano()
 	configItem.OwnerPubkey = group.Item.OwnerPubKey
 	configItem.OwnerSignature = hex.EncodeToString(signature)
-	trxId, err := group.UpdChainConfig(&configItem, false)
+	trxId, err := group.UpdChainConfig(&configItem)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -49,14 +48,6 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 	params := new(GrpUserParam)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
-	}
-
-	sudo := false
-	if c.Param("sudo") != "" {
-		sudo, err = strconv.ParseBool(c.Param("sudo"))
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
 	}
 
 	groupmgr := chain.GetGroupMgr()
@@ -122,7 +113,7 @@ func (h *Handler) GroupUser(c echo.Context) (err error) {
 
 		item.Memo = params.Memo
 		item.TimeStamp = time.Now().UnixNano()
-		trxId, err := group.UpdUser(item, sudo)
+		trxId, err := group.UpdUser(item)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
