@@ -5,9 +5,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	_ "github.com/rumsystem/quorum/pkg/pb" //import for swaggo
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // @Tags Chain
@@ -19,9 +18,10 @@ import (
 // @Success 200 {object} pb.Trx
 // @Router /api/v1/trx/{group_id}/{trx_id} [get]
 func (h *Handler) GetTrx(c echo.Context) (err error) {
-	groupid := c.Param("group_id")
-	if groupid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
+	cc := c.(*utils.CustomContext)
+	var params handlers.GetTrxParam
+	if err := cc.BindAndValidate(&params); err != nil {
+		return err
 	}
 
 	trxid := c.Param("trx_id")
@@ -34,10 +34,5 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	m := protojson.MarshalOptions{
-		EmitUnpopulated: true,
-	}
-	jsonString := m.Format(trx)
-
-	return c.String(http.StatusOK, jsonString)
+	return c.JSON(http.StatusOK, trx)
 }
