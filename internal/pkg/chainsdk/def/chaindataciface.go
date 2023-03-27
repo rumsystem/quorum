@@ -14,7 +14,4 @@ type ChainDataSyncIface interface {
 	HandleHBPsConn(hb *quorumpb.HBMsgv1) error
 	HandleHBRex(hb *quorumpb.HBMsgv1) error
 	GetCurrBlockId() uint64
-
-	//StartSync() error
-	//StopSync()
 }

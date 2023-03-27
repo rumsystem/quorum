@@ -17,7 +17,6 @@ type Trx struct {
 	Version      string
 	Expired      string
 	ResendCount  string
-	Nonce        string
 	SenderPubkey string
 	SenderSign   string
 	StorageType  string

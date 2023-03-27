@@ -54,7 +54,6 @@ message Trx {
     string         Version      = 6;
     int64          Expired      = 7;
     int64          ResendCount  = 8;
-    int64          Nonce        = 9;
     string         SenderPubkey = 10;  
     bytes          SenderSign   = 11;
     TrxStroageType StorageType  = 12;

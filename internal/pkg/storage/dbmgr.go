@@ -192,19 +192,3 @@ func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (p
 	keys := []string{}
 	return keys, nil
 }
-
-// get next nonce
-func (dbMgr *DbMgr) GetNextNonce(groupId string, prefix ...string) (uint64, error) {
-	key := GetNonceKey(groupId, prefix...)
-	nonceseq, succ := dbMgr.seq.Load(key)
-	if !succ {
-		newseq, err := dbMgr.Db.GetSequence([]byte(key), 1)
-		if err != nil {
-			return 0, err
-		}
-		dbMgr.seq.Store(key, newseq)
-		return newseq.Next()
-	} else {
-		return nonceseq.(Sequence).Next()
-	}
-}
