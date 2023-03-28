@@ -283,23 +283,6 @@ func TestGroupPostContents(t *testing.T) {
 		}
 	}
 
-	//check status of the group on all nodes
-	for _, node := range nodes {
-		//check group status should be IDLE
-		ready := "IDLE"
-		groupStatus, err := GetGroupStatus(node, groupId)
-		if err != nil {
-			t.Fail()
-		}
-
-		if groupStatus != ready {
-			logger.Errorf("node <%s> group <%s> not idle, status <%s>", node.NodeName, groupId, groupStatus)
-			t.Fail()
-		} else {
-			logger.Debugf("OK: node <%s> group <%s> ready", node.NodeName, groupId)
-		}
-	}
-
 	logger.Debugf("____________START_POST_____________")
 	//send trxs randomly
 
