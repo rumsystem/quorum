@@ -57,6 +57,7 @@ message Trx {
     string         SenderPubkey = 10;  
     bytes          SenderSign   = 11;
     TrxStroageType StorageType  = 12;
+    reserved 9; 
 }
 
 message Block {    
