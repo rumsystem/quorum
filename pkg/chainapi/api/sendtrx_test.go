@@ -26,7 +26,6 @@ type (
 		TimeStamp    int64
 		Version      string
 		Expired      int64
-		Nonce        int
 		SenderPubkey string
 	}
 )
@@ -93,7 +92,6 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
 		Expired:      now.Add(5 * time.Minute).UnixNano(),
-		Nonce:        0, // Note: hardcode
 		SenderPubkey: ethPubkey,
 	}
 
@@ -198,7 +196,6 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
 		Expired:      now.Add(5 * time.Minute).UnixNano(),
-		Nonce:        0, // Note: hardcode
 		SenderPubkey: ethPubkey,
 	}
 

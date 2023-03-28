@@ -112,8 +112,7 @@ func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 
 	//check if block exist
 	blockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.BlockId, false, producer.nodename)
-	if blockExist { // check if we need to apply trxs again
-		// block already saved
+	if blockExist {
 		molaproducer_log.Debugf("Block exist, ignore")
 	} else {
 		//check if block cached
@@ -229,7 +228,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	//check if trx with same trxid exist (already packaged)
 	isExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, producer.nodename)
 	if isExist {
-		molaproducer_log.Debugf("<%s> trx <%s> with nonce <%d> already packaged, ignore", producer.groupId, trx.TrxId, trx.Nonce)
+		molaproducer_log.Debugf("<%s> trx <%s> already packaged, ignore", producer.groupId, trx.TrxId)
 		return
 	}
 
