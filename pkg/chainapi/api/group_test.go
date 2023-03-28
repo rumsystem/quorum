@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -145,19 +146,11 @@ type GroupContentItem struct {
 	TimeStamp int64                  `json:"TimeStamp" validate:"required"`
 }
 
-func getGroupContent(api string, groupID string) ([]GroupContentItem, error) {
-
-	urlSuffix := fmt.Sprintf("/app/api/v1/group/%s/content", groupID)
-	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
+func getGroupContent(api string, groupID string) ([]*quorumpb.Trx, error) {
+	path := fmt.Sprintf("/app/api/v1/group/%s/content", groupID)
+	var result []*quorumpb.Trx
+	_, _, err := requestAPI(api, path, "GET", nil, nil, &result, true)
 	if err != nil {
-		return nil, err
-	}
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
-	var result []GroupContentItem
-	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
 
