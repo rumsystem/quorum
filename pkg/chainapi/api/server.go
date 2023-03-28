@@ -92,6 +92,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 
 	r.GET("/v1/groups", h.GetGroups)
+	r.GET("/v1/group/:group_id", h.GetGroupById)
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
@@ -162,6 +163,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 	r.GET("/v1/groups", h.GetGroups)
+	r.GET("/v1/group/:group_id", h.GetGroupById)
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
