@@ -127,7 +127,7 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 	keys = append(keys, key)
 
 	// trx
-	key = s.GetTrxPrefix(groupId, "", prefix...)
+	key = s.GetTrxPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//remove all

@@ -2918,7 +2918,6 @@ func (x *GroupSeed) GetSignature() string {
 	return ""
 }
 
-//for NodeSDK
 type NodeSDKGroupItem struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2998,7 +2997,6 @@ func (x *NodeSDKGroupItem) GetGroupSeed() string {
 	return ""
 }
 
-//for block build
 type HBTrxBundle struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

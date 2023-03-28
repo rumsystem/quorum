@@ -100,6 +100,7 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 
 	return trx, nil
 }
+<<<<<<< HEAD
 
 func (cs *Storage) AddConsensusProposeNonce(queueId string, nonce uint64) error {
 	key := s.GetConsensusNonceKey(queueId)
@@ -119,3 +120,5 @@ func (cs *Storage) GetConsensusProposeNonce(queueId string) (uint64, error) {
 	nonce := binary.LittleEndian.Uint64(nonceInBytes)
 	return nonce, nil
 }
+=======
+>>>>>>> consensus_2_main

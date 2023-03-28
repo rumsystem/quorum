@@ -129,7 +129,6 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	return config, nil
 }
 
-// Add Block will be called when producer sync with other producer node
 func (producer *MolassesProducer) AddBlock(block *quorumpb.Block) error {
 	molaproducer_log.Debugf("<%s> AddBlock called, BlockId <%d>", producer.groupId, block.BlockId)
 
@@ -247,21 +246,21 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 	}
 
 	if !isAllow {
-		molaproducer_log.Debugf("<%s> user <%s> don't has permission on trx type <%s>", producer.groupId, trx.SenderPubkey, trx.Type.String())
+		molaproducer_log.Debugf("<%s> pubkey <%s> don't has permission to send trx with type <%s>", producer.groupId, trx.SenderPubkey, trx.Type.String())
 		return
 	}
 
-	//check if trx with same nonce exist, !!Only applied to client which support nonce
-	isExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, trx.Nonce, producer.nodename)
+	//check if trx with same trxid exist (already packaged)
+	isExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, producer.nodename)
 	if isExist {
-		molaproducer_log.Debugf("<%s> Trx <%s> with nonce <%d> already packaged, ignore", producer.groupId, trx.TrxId, trx.Nonce)
+		molaproducer_log.Debugf("<%s> trx <%s> with nonce <%d> already packaged, ignore", producer.groupId, trx.TrxId, trx.Nonce)
 		return
 	}
 
 	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
 	err = producer.ptbft.AddTrx(trx)
 	if err != nil {
-		molaproducer_log.Errorf("add trx failed %s", err.Error())
+		molaproducer_log.Errorf("add trx failed with error <%s>", err.Error())
 	}
 }
 

@@ -226,12 +226,12 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
 		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-		return fmt.Errorf("verify Trx failed")
+		return fmt.Errorf("verify trx failed")
 	}
 
 	if !verified {
 		chain_log.Warningf("<%s> invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
-		return fmt.Errorf("invalid Trx")
+		return fmt.Errorf("invalid trx, signature verify failed")
 	}
 
 	switch trx.Type {
@@ -253,7 +253,9 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupItem.GroupId)
+
 	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+		chain_log.Warningf("<%s> producerAddTrx failed, consensus or producer is nil", chain.groupItem.GroupId)
 		return nil
 	}
 
@@ -272,16 +274,12 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		return nil
 	}
 
-	//DONT CHECK THIS
-	//check if block is from approved producer
-	/*
-		if !chain.isProducerByPubkey(block.ProducerPubkey) {
-			chain_log.Warningf("<%s> received block <%d> from unapproved producer <%s>, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
-			return nil
-		}
-	*/
+	//check if block is from a valid group producer, currently only check if block is produced by owner
+	if !chain.isOwnerByPubkey(block.ProducerPubkey) {
+		chain_log.Warningf("<%s> received block <%d> from unknown producer, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
+		return nil
+	}
 
-	//for all node run as PRODUCER_NODE but not approved by owner (yet)
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
 		err := chain.Consensus.Producer().AddBlock(block)
@@ -295,7 +293,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		return err
 	}
 
-	//for all node run as FULLNODE (except owner)
+	//for all node run as FULLNODE
 	err := chain.Consensus.User().AddBlock(block)
 	if err != nil {
 		chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
@@ -760,15 +758,14 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 	chain_log.Debugf("<%s> ApplyTrxsFullNode called", chain.groupItem.GroupId)
 	for _, trx := range trxs {
 		//check if trx already applied
-		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, trx.Nonce, nodename)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, nodename)
 		if err != nil {
-			chain_log.Debugf("<%s> %s", chain.groupItem.GroupId, err.Error())
+			chain_log.Warningf("<%s> check trx <%s> exist failed with error <%s>", chain.groupItem.GroupId, trx.TrxId, err.Error())
 			continue
 		}
 
 		if isExist {
-			chain_log.Debugf("<%s> trx <%s> existed, do nothing", chain.groupItem.GroupId, trx.TrxId)
-			//nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
+			chain_log.Debugf("<%s> trx <%s> already applied", chain.groupItem.GroupId, trx.TrxId)
 			continue
 		}
 
@@ -784,7 +781,6 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 				//if decrypt error, set trxdata to empty []
 				trx.Data = []byte("")
 			} else {
-				//set trx.Data to decrypted []byte
 				trx.Data = decryptData
 			}
 		} else {
@@ -847,15 +843,14 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		}
 
 		//check if trx already applied
-		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, trx.Nonce, nodename)
+		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, nodename)
 		if err != nil {
-			chain_log.Debugf("<%s> %s", chain.groupItem.GroupId, err.Error())
+			chain_log.Warningf("<%s> check trx <%s> exist failed with error <%s>", chain.groupItem.GroupId, trx.TrxId, err.Error())
 			continue
 		}
 
 		if isExist {
-			chain_log.Debugf("<%s> trx <%s> existed, do nothing", chain.groupItem.GroupId, trx.TrxId)
-			//nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
+			chain_log.Debugf("<%s> trx <%s> already applied", chain.groupItem.GroupId, trx.TrxId)
 			continue
 		}
 
@@ -925,6 +920,25 @@ func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, err
 	}
 
 	return true, nil
+}
+
+func (chain *Chain) StartSync() error {
+	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
+
+	if chain.isOwner() {
+		chain_log.Debugf("<%s> owner no need to sync", chain.groupItem.GroupId)
+		return nil
+	}
+
+	chain.rexSyncer.Start()
+	return nil
+}
+
+func (chain *Chain) StopSync() {
+	chain_log.Debugf("<%s> StopSync called", chain.groupItem.GroupId)
+	if chain.rexSyncer != nil {
+		chain.rexSyncer.Stop()
+	}
 }
 
 //local sync

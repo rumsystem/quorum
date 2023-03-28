@@ -301,7 +301,6 @@ message GroupSeed {
     string Signature      = 9;
 }
 
-//for NodeSDK
 message NodeSDKGroupItem {
     GroupItem Group          = 1;
     string    EncryptAlias   = 2;
@@ -310,7 +309,6 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
-//for block build
 message HBTrxBundle {
     repeated Trx Trxs = 1;
 }  

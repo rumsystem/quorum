@@ -299,6 +299,7 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.Packa
 
 func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	pbBytes, err := proto.Marshal(blk)
+<<<<<<< HEAD
 	if err != nil {
 		return err
 	}
@@ -319,6 +320,8 @@ func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ChangeConsensusReq) error {
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)
+=======
+>>>>>>> consensus_2_main
 	if err != nil {
 		return err
 	}

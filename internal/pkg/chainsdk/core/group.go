@@ -168,17 +168,6 @@ func (grp *Group) ClearGroupData() error {
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.Nodename)
 }
 
-func (grp *Group) StartSync(restart bool) error {
-	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
-	return grp.ChainCtx.StartSync()
-}
-
-func (grp *Group) StopSync() error {
-	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
-	grp.ChainCtx.StopSync()
-	return nil
-}
-
 func (grp *Group) GetCurrentEpoch() uint64 {
 	return grp.ChainCtx.GetCurrEpoch()
 }
@@ -204,12 +193,12 @@ func (grp *Group) GetBlock(blockId uint64) (*quorumpb.Block, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, blockId, false, grp.Nodename)
 }
 
-func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, []int64, error) {
+func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
 	group_log.Debugf("<%s> GetTrx called trxId: <%s>", grp.Item.GroupId, trxId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.Nodename)
 }
 
-func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, []int64, error) {
+func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, error) {
 	group_log.Debugf("<%s> GetTrxFromCache called trxId: <%s>", grp.Item.GroupId, trxId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.Nodename)
 }

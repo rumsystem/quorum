@@ -31,7 +31,7 @@ func PostToGroup(payload *PostToGroupParam) (*TrxResult, error) {
 	groupmgr := chain.GetGroupMgr()
 	group, ok := groupmgr.Groups[payload.GroupId]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("Group %s not exist", payload.GroupId))
+		return nil, fmt.Errorf("Group %s not exist", payload.GroupId)
 	}
 	data, err := json.Marshal(payload.Data)
 	if err != nil {

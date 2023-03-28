@@ -8,6 +8,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const POST_OBJ_SIZE_LIMIT = 300 * 1024 //200Kb
+
 type TrxFactory struct {
 	nodename   string
 	groupId    string
@@ -29,11 +31,7 @@ func (factory *TrxFactory) Init(version string, groupItem *quorumpb.GroupItem, n
 }
 
 func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	nonce, err := factory.chainNonce.GetNextNonce(factory.groupItem.GroupId, factory.nodename)
-	if err != nil {
-		return nil, err
-	}
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, int64(nonce), data, keyalias, encryptto...)
+	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, 0, data, keyalias, encryptto...)
 }
 
 func (factory *TrxFactory) GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
@@ -93,7 +91,7 @@ func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, from
 		return nil, err
 	}
 
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK, int64(0), bItemBytes, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK, bItemBytes, keyalias)
 }
 
 func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, requester string, fromBlock uint64, blkReq int32, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error) {
@@ -115,11 +113,11 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 	}
 
 	//send ask next block trx out
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, quorumpb.TrxType_REQ_BLOCK_RESP, int64(0), bItemBytes, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, keyalias)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
-	if binary.Size(content) > OBJECT_SIZE_LIMIT {
+	if binary.Size(content) > POST_OBJ_SIZE_LIMIT {
 		err := errors.New("content size over 200Kb")
 		return nil, err
 	}

@@ -35,7 +35,7 @@ const (
 
 	// consensus db
 	CNS_BUFD_TRX = "cns_bf_trx" //buffered trx (used by acs)
-	CNS_NONCE    = "cns_nonce"  //nonce for consensus
+	CNS_BUFD_MSG = "cns_bf_msg" //buffered message (used by bba & rbc)
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -218,19 +218,19 @@ func GetProducerTrxIDKey(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	return nodeprefix + PRD_TRX_ID_PREFIX + "_" + groupId
 }
-
-func GetTrxPrefix(groupId, trxId string, prefix ...string) string {
+func GetTrxPrefix(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + groupId + "_"
-	if trxId != "" {
-		key = key + trxId + "_"
-	}
 	return key
 }
 
-func GetTrxKey(groupId, trxId string, nonce int64, prefix ...string) string {
-	_prefix := GetTrxPrefix(groupId, trxId, prefix...)
-	return _prefix + fmt.Sprint(nonce)
+func GetTrxKey(groupId, trxId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	key := nodeprefix + TRX_PREFIX + "_" + groupId + "_"
+	if trxId != "" {
+		key = key + trxId
+	}
+	return key
 }
 
 func GetSeedKey(groupID string) []byte {
@@ -244,10 +244,6 @@ func GetTrxHBBPrefix(queueId string) string {
 func GetTrxHBBKey(queueId string, trxId string) string {
 	prefix := GetTrxHBBPrefix(queueId)
 	return prefix + trxId
-}
-
-func GetConsensusNonceKey(groupId string) string {
-	return CNS_NONCE + "_" + groupId + "_"
 }
 
 // Relay

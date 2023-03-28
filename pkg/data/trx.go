@@ -21,13 +21,10 @@ const (
 	Sec   = 30
 )
 
-const OBJECT_SIZE_LIMIT = 900 * 1024 //(0.9MB)
-
 func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx
 
-	trxId := guuid.New()
-	trx.TrxId = trxId.String()
+	trx.TrxId = guuid.New().String()
 	trx.Type = msgType
 	trx.GroupId = groupItem.GroupId
 	trx.SenderPubkey = groupItem.UserSignPubkey
@@ -75,7 +72,7 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 }
 
 func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, int64(nonce), data, encryptto...)
+	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, nonce, data, encryptto...)
 	if err != nil {
 		return trx, err
 	}
@@ -133,10 +130,10 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		}
 		sigpubkey, err := ethcrypto.SigToPub(hash, sig)
 		if err == nil {
-			r := ks.EthVerifySign(hash, trx.SenderSign, sigpubkey)
-			if r == true {
+			ok := ks.EthVerifySign(hash, trx.SenderSign, sigpubkey)
+			if ok {
 				addressfrompubkey := ethcrypto.PubkeyToAddress(*sigpubkey).Hex()
-				if strings.ToLower(addressfrompubkey) == strings.ToLower(trx.SenderPubkey) {
+				if strings.EqualFold(addressfrompubkey, trx.SenderPubkey) {
 					return true, nil
 				} else {
 					return false, fmt.Errorf("sig not match with the 0x address")

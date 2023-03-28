@@ -33,7 +33,7 @@ func (cs *Storage) GetUpdProducerListTrx(groupId string, prefix ...string) (*quo
 
 	trxId := string(btrx_id)
 
-	trx, _, err := cs.GetTrx(groupId, trxId, def.Chain, prefix...)
+	trx, err := cs.GetTrx(groupId, trxId, def.Chain, prefix...)
 	if err != nil {
 		return nil, err
 	}

@@ -61,9 +61,7 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 	ks := nodectx.GetNodeCtx().Keystore
 	base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 	groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
-	//pubkeybytes, err := hex.DecodeString(hexkey)
-	//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)
-	//groupSignPubkey, err := p2pcrypto.MarshalPublicKey(p2ppubkey)
+
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
