@@ -206,11 +206,27 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/ws/trx", h.WebsocketManager.WsConnect)
 
 	//for nodesdk
-	r.POST("/v1/node/trx/:group_id", h.SendTrx)
-	r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)
-	r.POST("/v1/node/getchaindata/:group_id", h.GetDataNSdk)
-	r.GET("/v1/node/getencryptpubkeys/:group_id", h.GetUserEncryptPubKeys)
-	r.POST("/v1/node/announce/:group_id", h.AnnounceNodeSDK)
+	{
+		n := e.Group("/api/v1/node")
+
+		n.POST("/:group_id/trx", h.NSdkSendTrx)
+		n.GET("/:group_id/groupctn", h.GetNSdkContent)
+
+		// auth
+		n.GET("/:group_id/auth/by/:trx_type", h.GetNSdkAuthType)
+		n.GET("/:group_id/auth/alwlist", h.GetNSdkAllowList)
+		n.GET("/:group_id/auth/denylist", h.GetNSdkDenyList)
+
+		// appconfig
+		n.GET("/:group_id/appconfig/keylist", h.GetNSdkAppconfigKeylist)
+		n.GET("/:group_id/appconfig/by/:key", h.GetNSdkAppconfigByKey)
+
+		// announce
+		n.POST("/:group_id/announce", h.AnnounceNodeSDK)
+
+		n.GET("/:group_id/info", h.GetNSdkGroupInfo)
+		n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)
+	}
 
 	// start https or http server
 	host := config.APIHost
