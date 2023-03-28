@@ -29,6 +29,11 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 	}
 
+	groupid := c.Param("group_id")
+	if groupid == "" {
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
+	}
+
 	trx, err := handlers.GetTrx(groupid, trxid)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)

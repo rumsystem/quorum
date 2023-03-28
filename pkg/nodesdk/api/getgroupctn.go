@@ -17,7 +17,6 @@ import (
 type GetGroupCtnPrarms struct {
 	GroupId         string   `json:"group_id" validate:"required,uuid4"`
 	Num             int      `json:"num" validate:"required"`
-	Nonce           string   `json:"nonce"`
 	StartTrx        string   `json:"start_trx"`
 	Reverse         string   `json:"reverse" validate:"required,oneof=true false"`
 	IncludeStartTrx string   `json:"include_start_trx" validate:"required,oneof=true false"`

@@ -25,7 +25,6 @@ const (
 	TRX_AUTH_TYPE_PREFIX = "trx_auth"  //trx auth type
 	ALLW_LIST_PREFIX     = "alw_list"  //allow list
 	DENY_LIST_PREFIX     = "dny_list"  //deny list
-	NONCE_PREFIX         = "nonce"     //group trx nonce
 	PRD_TRX_ID_PREFIX    = "prd_trxid" //trxid of latest trx which update group producer list
 
 	// groupinfo db
@@ -207,11 +206,6 @@ func GetAppConfigPrefix(groupId string, prefix ...string) string {
 func GetAppConfigKey(groupId string, name string, prefix ...string) string {
 	_prefix := GetAppConfigPrefix(groupId, prefix...)
 	return _prefix + "_" + name
-}
-
-func GetNonceKey(groupId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + NONCE_PREFIX + "_" + groupId
 }
 
 func GetProducerTrxIDKey(groupId string, prefix ...string) string {

@@ -11,27 +11,21 @@ import (
 const POST_OBJ_SIZE_LIMIT = 300 * 1024 //200Kb
 
 type TrxFactory struct {
-	nodename   string
-	groupId    string
-	groupItem  *quorumpb.GroupItem
-	chainNonce ChainNonce
-	version    string
+	nodename  string
+	groupId   string
+	groupItem *quorumpb.GroupItem
+	version   string
 }
 
-type ChainNonce interface {
-	GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error)
-}
-
-func (factory *TrxFactory) Init(version string, groupItem *quorumpb.GroupItem, nodename string, chainnonce ChainNonce) {
+func (factory *TrxFactory) Init(version string, groupItem *quorumpb.GroupItem, nodename string) {
 	factory.groupItem = groupItem
 	factory.groupId = groupItem.GroupId
 	factory.nodename = nodename
-	factory.chainNonce = chainnonce
 	factory.version = version
 }
 
 func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, 0, data, keyalias, encryptto...)
+	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, data, keyalias, encryptto...)
 }
 
 func (factory *TrxFactory) GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {

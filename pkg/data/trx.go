@@ -21,14 +21,13 @@ const (
 	Sec   = 30
 )
 
-func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
+func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx
 
 	trx.TrxId = guuid.New().String()
 	trx.Type = msgType
 	trx.GroupId = groupItem.GroupId
 	trx.SenderPubkey = groupItem.UserSignPubkey
-	trx.Nonce = nonce
 
 	var encryptdData []byte
 	if msgType == quorumpb.TrxType_POST && groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
@@ -71,8 +70,8 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 	return &trx, hashed, nil
 }
 
-func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, nonce, data, encryptto...)
+func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
+	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, data, encryptto...)
 	if err != nil {
 		return trx, err
 	}
@@ -109,7 +108,6 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		Type:         trx.Type,
 		GroupId:      trx.GroupId,
 		SenderPubkey: trx.SenderPubkey,
-		Nonce:        trx.Nonce,
 		Data:         trx.Data,
 		TimeStamp:    trx.TimeStamp,
 		Version:      trx.Version,

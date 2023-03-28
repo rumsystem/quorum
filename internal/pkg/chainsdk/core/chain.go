@@ -49,7 +49,7 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 
 	//initial TrxFactory
 	chain.trxFactory = &rumchaindata.TrxFactory{}
-	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename, chain)
+	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
 
 	//initial Syncer
 	chain.rexSyncer = NewRexSyncer(chain.groupItem.GroupId, chain.nodename, chain, chain)
@@ -625,12 +625,6 @@ func (chain *Chain) GetRexSyncerStatus() string {
 
 func (chain *Chain) GetLastRexSyncResult() (*chaindef.RexSyncResult, error) {
 	return chain.rexSyncer.GetLastRexSyncResult()
-}
-
-func (chain *Chain) GetNextNonce(groupId string, prefix ...string) (nonce uint64, err error) {
-	nodeprefix := utils.GetPrefix(prefix...)
-	n, err := nodectx.GetDbMgr().GetNextNonce(groupId, nodeprefix)
-	return n, err
 }
 
 func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error {
