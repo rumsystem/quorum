@@ -20,8 +20,7 @@ import (
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Param params query handlers.GetGroupCtnPrarms false "get group contents params"
-// @Param data body SenderList true "SenderList"
-// @Success 200 {array} GroupContentObjectItem
+// @Success 200 {array} []quorumpb.Trx
 // @Router /app/api/v1/group/{group_id}/content [get]
 func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)

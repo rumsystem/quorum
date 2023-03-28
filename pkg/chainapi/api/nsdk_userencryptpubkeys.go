@@ -10,8 +10,8 @@ import (
 )
 
 type (
-	GetUserEncryptPubKeysParam struct {
-		GroupId string `param:"group_id" json:"group_id" validate:"required,uuid4" example:"78cbab65-17e7-49d2-892a-311cec77c120"`
+	GetNSdkUserEncryptPubKeysParams struct {
+		GroupId string `param:"group_id" json:"group_id" url:"group_id" validate:"required,uuid4" example:"78cbab65-17e7-49d2-892a-311cec77c120"`
 	}
 
 	GetUserEncryptPubKeysResult struct {
@@ -20,16 +20,16 @@ type (
 )
 
 // @Tags LightNode
-// @Summary GetUserEncryptPubKeys
+// @Summary GetNSdkUserEncryptPubKeys
 // @Description get user encrypt pub keys
 // @Accept  json
 // @Produce json
 // @Param   group_id path string true "Group Id"
-// @Success 200 {object} interface{}
-// @Router  /api/v1/node/getuserencryptpubkeys/{group_id} [get]
-func (h *Handler) GetUserEncryptPubKeys(c echo.Context) (err error) {
+// @Success 200 {object} GetUserEncryptPubKeysResult
+// @Router  /api/v1/node/{group_id}/userencryptpubkeys [get]
+func (h *Handler) GetNSdkUserEncryptPubKeys(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	param := GetUserEncryptPubKeysParam{}
+	param := GetNSdkUserEncryptPubKeysParams{}
 	if err := cc.BindAndValidate(&param); err != nil {
 		return err
 	}

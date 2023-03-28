@@ -11,8 +11,8 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-// @Tags NodeAPI
-// @Summary GetContentNSdk
+// @Tags LightNode
+// @Summary GetNSdkContent
 // @Description get content
 // @Accept  json
 // @Produce json
@@ -20,7 +20,7 @@ import (
 // @Param   get_content_params  query handlers.GetGroupCtnPrarms  true  "get group content params"
 // @Success 200 {object} []quorumpb.Trx
 // @Router  /api/v1/node/{group_id}/groupctn [get]
-func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
+func (h *Handler) GetNSdkContent(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 	params := new(handlers.GetGroupCtnPrarms)
 	if err := cc.BindAndValidate(params); err != nil {

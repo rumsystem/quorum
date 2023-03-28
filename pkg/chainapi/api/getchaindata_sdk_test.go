@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,55 +9,22 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
-func getChainDataByAuthType(urls []string, payload AuthTypeItem, ciperKey []byte) (*handlers.TrxAuthItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: AUTH_TYPE,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAuthType(urls []string, payload GetNSdkAuthTypeParams) (*handlers.TrxAuthItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/auth/by/%s", payload.GroupId, payload.TrxType)
 	var result handlers.TrxAuthItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, false); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, false); err != nil {
 		return nil, err
 	}
 
 	return &result, nil
 }
 
-func getChainDataByAuthAllowList(urls []string, payload AuthAllowListItem, ciperKey []byte) ([]handlers.ChainSendTrxRuleListItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: AUTH_ALLOWLIST,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAuthAllowList(urls []string, payload GetNSdkAllowListParams) ([]handlers.ChainSendTrxRuleListItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/auth/alwlist", payload.GroupId)
 	var result []handlers.ChainSendTrxRuleListItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, true); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
 		return nil, err
 	}
 
@@ -73,26 +39,10 @@ func getChainDataByAuthAllowList(urls []string, payload AuthAllowListItem, ciper
 	return result, nil
 }
 
-func getChainDataByAuthDenyList(urls []string, payload AuthDenyListItem, ciperKey []byte) ([]*handlers.ChainSendTrxRuleListItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: AUTH_DENYLIST,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAuthDenyList(urls []string, payload GetNSdkDenyListParams) ([]*handlers.ChainSendTrxRuleListItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/auth/denylist", payload.GroupId)
 	var result []*handlers.ChainSendTrxRuleListItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, true); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
 		return nil, err
 	}
 
@@ -107,26 +57,10 @@ func getChainDataByAuthDenyList(urls []string, payload AuthDenyListItem, ciperKe
 	return result, nil
 }
 
-func getChainDataByAppConfigKeyList(urls []string, payload AppConfigKeyListItem, ciperKey []byte) ([]*handlers.AppConfigKeyListItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: APPCONFIG_KEYLIST,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAppConfigKeyList(urls []string, payload GetNSdkAppconfigKeylistParams) ([]*handlers.AppConfigKeyListItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/appconfig/keylist", payload.GroupId)
 	var result []*handlers.AppConfigKeyListItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, true); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
 		return nil, err
 	}
 
@@ -140,52 +74,20 @@ func getChainDataByAppConfigKeyList(urls []string, payload AppConfigKeyListItem,
 	return result, nil
 }
 
-func getChainDataByAppConfigItemByKey(urls []string, payload AppConfigItem, ciperKey []byte) (*handlers.AppConfigKeyItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: APPCONFIG_ITEM_BYKEY,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAppConfigItemByKey(urls []string, payload GetNSdkAppconfigByKeyParams) (*handlers.AppConfigKeyItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/appconfig/by/%s", payload.GroupId, payload.Key)
 	var result handlers.AppConfigKeyItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, false); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, false); err != nil {
 		return nil, err
 	}
 
 	return &result, nil
 }
 
-func getChainDataByAnnouncedProducer(urls []string, payload AnnGrpProducer, ciperKey []byte) ([]*handlers.AnnouncedProducerListItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: ANNOUNCED_PRODUCER,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAnnouncedProducer(urls []string, payload GetNSdkAnnouncedProducerParams) ([]*handlers.AnnouncedProducerListItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/announced/producer", payload.GroupId)
 	var result []*handlers.AnnouncedProducerListItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, true); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
 		return nil, err
 	}
 
@@ -200,26 +102,10 @@ func getChainDataByAnnouncedProducer(urls []string, payload AnnGrpProducer, cipe
 	return result, nil
 }
 
-func getChainDataByAnnouncedUser(urls []string, payload AnnGrpUser, ciperKey []byte) ([]*handlers.AnnouncedUserListItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: ANNOUNCED_USER,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByAnnouncedUser(urls []string, payload GetNSdkAnnouncedUserParams) ([]*handlers.AnnouncedUserListItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/announced/user", payload.GroupId)
 	var result []*handlers.AnnouncedUserListItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, true); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
 		return nil, err
 	}
 
@@ -234,26 +120,10 @@ func getChainDataByAnnouncedUser(urls []string, payload AnnGrpUser, ciperKey []b
 	return result, nil
 }
 
-func getChainDataByGroupProducer(urls []string, payload GrpProducer, ciperKey []byte) ([]*handlers.ProducerListItem, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: GROUP_PRODUCER,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByGroupProducer(urls []string, payload GetNSdkGroupProducersParams) ([]*handlers.ProducerListItem, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/producers", payload.GroupId)
 	var result []*handlers.ProducerListItem
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, true); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
 		return nil, err
 	}
 
@@ -268,26 +138,10 @@ func getChainDataByGroupProducer(urls []string, payload GrpProducer, ciperKey []
 	return result, nil
 }
 
-func getChainDataByGroupInfo(urls []string, payload GrpInfo, ciperKey []byte) (*GrpInfoNodeSDK, error) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(data, ciperKey)
-	if err != nil {
-		return nil, err
-	}
-
-	param := GetDataNodeSDKItem{
-		GroupId: payload.GroupId,
-		ReqType: GROUP_INFO,
-		Req:     encrypted,
-	}
-
-	path := fmt.Sprintf("/api/v1/node/getchaindata/%s", payload.GroupId)
+func getChainDataByGroupInfo(urls []string, payload GetNSdkGroupInfoParams) (*GrpInfoNodeSDK, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/info", payload.GroupId)
 	var result GrpInfoNodeSDK
-	if _, _, err := requestNSdk(urls, path, "POST", param, nil, &result, false); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, false); err != nil {
 		return nil, err
 	}
 
@@ -309,17 +163,12 @@ func TestGetChainDataNSdk(t *testing.T) {
 		t.Fatalf("createGroup failed: %s, payload: %+v", err, createGroupParam)
 	}
 
-	seed, urls, err := handlers.UrlToGroupSeed(group.Seed)
+	_, urls, err := handlers.UrlToGroupSeed(group.Seed)
 	if err != nil {
 		t.Errorf("convert group send url failed: %s", err)
 	}
 
-	ciperKey, err := hex.DecodeString(seed.CipherKey)
-	if err != nil {
-		t.Errorf("convert seed.CipherKey failed: %s", err)
-	}
-
-	if _, err := getChainDataByGroupInfo(urls, GrpInfo{GroupId: group.GroupId}, ciperKey); err != nil {
+	if _, err := getChainDataByGroupInfo(urls, GetNSdkGroupInfoParams{GroupId: group.GroupId}); err != nil {
 		t.Errorf("get group info from chain data failed: %s", err)
 	}
 
@@ -346,7 +195,7 @@ func TestGetChainDataNSdk(t *testing.T) {
 		t.Errorf("update chain config with payload: %+v failed: %s", payload, err)
 	}
 	time.Sleep(25 * time.Second)
-	authTypeResult, err := getChainDataByAuthType(urls, AuthTypeItem{GroupId: group.GroupId, TrxType: _trxType}, ciperKey)
+	authTypeResult, err := getChainDataByAuthType(urls, GetNSdkAuthTypeParams{GroupId: group.GroupId, TrxType: _trxType})
 	if err != nil {
 		t.Errorf("getChainDataByAuthType failed: %s", err)
 	}
@@ -377,7 +226,7 @@ func TestGetChainDataNSdk(t *testing.T) {
 	}
 	time.Sleep(25 * time.Second)
 
-	if _, err := getChainDataByAuthAllowList(urls, AuthAllowListItem{GroupId: group.GroupId}, ciperKey); err != nil {
+	if _, err := getChainDataByAuthAllowList(urls, GetNSdkAllowListParams{GroupId: group.GroupId}); err != nil {
 		t.Errorf("getChainDataByAuthAllowList failed: %s", err)
 	}
 }
@@ -397,14 +246,9 @@ func TestGetChainDataAppConfigNSdk(t *testing.T) {
 		t.Fatalf("createGroup failed: %s, payload: %+v", err, createGroupParam)
 	}
 
-	seed, urls, err := handlers.UrlToGroupSeed(group.Seed)
+	_, urls, err := handlers.UrlToGroupSeed(group.Seed)
 	if err != nil {
 		t.Errorf("convert group send url failed: %s", err)
-	}
-
-	ciperKey, err := hex.DecodeString(seed.CipherKey)
-	if err != nil {
-		t.Errorf("convert seed.CipherKey failed: %s", err)
 	}
 
 	// set appconfig
@@ -425,7 +269,7 @@ func TestGetChainDataAppConfigNSdk(t *testing.T) {
 
 	time.Sleep(25 * time.Second)
 
-	keylist, err := getChainDataByAppConfigKeyList(urls, AppConfigKeyListItem{GroupId: group.GroupId}, ciperKey)
+	keylist, err := getChainDataByAppConfigKeyList(urls, GetNSdkAppconfigKeylistParams{GroupId: group.GroupId})
 	if err != nil {
 		t.Errorf("get appconfig keylist by sdk api failed: %s", err)
 	}
@@ -441,7 +285,7 @@ func TestGetChainDataAppConfigNSdk(t *testing.T) {
 	}
 
 	appconfig, err := getChainDataByAppConfigItemByKey(
-		urls, AppConfigItem{GroupId: group.GroupId, Key: name}, ciperKey,
+		urls, GetNSdkAppconfigByKeyParams{GroupId: group.GroupId, Key: name},
 	)
 	if err != nil {
 		t.Errorf("get appconfig by name: %s failed: %s", err, name)
