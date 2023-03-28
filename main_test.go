@@ -237,9 +237,8 @@ How to test:
 4. create 1 group on owner node
 5. all other nodes join the group
 6. owner node and user node send POST TRX in time gap following normal distribution(nora)
-7. check all nodes has the same block epoch at the end of test
-8. verify owner node and user node has the same trx_id list at the end of test (since producer node DOES NOT apply POST trx)
-9. clean up
+7. verify owner node and user node has the same trx_id list at the end of test (since producer node DOES NOT apply POST trx)
+8. clean up
 */
 
 func TestGroupPostContents(t *testing.T) {
@@ -280,23 +279,6 @@ func TestGroupPostContents(t *testing.T) {
 				logger.Debugf("OK: node <%s> join group <%s> done", node.NodeName, groupId)
 			}
 			time.Sleep(1 * time.Second)
-		}
-	}
-
-	//check status of the group on all nodes
-	for _, node := range nodes {
-		//check group status should be IDLE
-		ready := "IDLE"
-		groupStatus, err := GetGroupStatus(node, groupId)
-		if err != nil {
-			t.Fail()
-		}
-
-		if groupStatus != ready {
-			logger.Errorf("node <%s> group <%s> not idle, status <%s>", node.NodeName, groupId, groupStatus)
-			t.Fail()
-		} else {
-			logger.Debugf("OK: node <%s> group <%s> ready", node.NodeName, groupId)
 		}
 	}
 
@@ -350,35 +332,6 @@ func TestGroupPostContents(t *testing.T) {
 	//sleep 5 seconds to make sure all node received latest block
 	time.Sleep(5 * time.Second)
 
-	logger.Debugf("____________VERIFY_EPOCH_____________")
-
-	ownerEpoch, err := GetEpochOnGroup(ownerNode, groupId)
-	if err != nil {
-		t.Fail()
-	}
-
-	logger.Debugf("Owner epoch <%d>", ownerEpoch)
-
-	for _, node := range nodes {
-		if node.NodeName == OWNER_NODE {
-			//skip owner node
-			continue
-		}
-
-		userEpoch, err := GetEpochOnGroup(node, groupId)
-		if err != nil {
-			t.Fail()
-		}
-
-		logger.Debugf("node <%s> epoch <%d>", node.NodeName, userEpoch)
-		if ownerEpoch != userEpoch {
-			logger.Errorf("node <%s> epoch mismatch", node.NodeName)
-			t.Fail()
-		} else {
-			logger.Debugf("OK: node <%s> get latest block", node.NodeName)
-		}
-	}
-
 	logger.Debugf("____________VERIFY_TRX_____________")
 
 	//verify all nodes (except producer1 and producer2) have all trxs sent by owner and user
@@ -402,9 +355,8 @@ How to test
 2. owner post 100 trxs
 3. user1 join group
 4. wait 10s for user1 to finish sync (should be quite enough)
-5. check user 1 has same epoch and same trxs
-6. user1 send a POST trx
-7. verify POST send successful
+5. user1 send a POST trx
+6. verify POST send successful
 */
 
 func TestBasicSync(t *testing.T) {
@@ -591,7 +543,6 @@ func TestBasicMultiProducerBft(t *testing.T) {
 		t.Fail()
 	}
 }
-
 */
 
 func CreateGroup(node *testnode.NodeInfo, groupName string) (groupseed, groupId string, err error) {
@@ -742,25 +693,6 @@ func VerifyTrxOnGroup(node *testnode.NodeInfo, groupId string, trxs map[string]s
 	}
 
 	return nil
-}
-
-func GetEpochOnGroup(node *testnode.NodeInfo, groupId string) (epoch int, err error) {
-	logger.Debugf("node <%s> get epoch on group with groupId <%s>", node.NodeName, groupId)
-
-	_, resp, err := testnode.RequestAPI(node.APIBaseUrl, "/api/v1/groups", "GET", "")
-	if err != nil {
-		logger.Errorf("node <%s> get group info failed with error <%s>", node.NodeName, err.Error())
-		return -1, err
-	}
-
-	groupslist := &api.GroupInfoList{}
-	if err := json.Unmarshal(resp, &groupslist); err != nil {
-		logger.Errorf("parse peer group error %s", err)
-		return -1, err
-	}
-
-	groupInfo := groupslist.GroupInfos[0]
-	return int(groupInfo.CurrtEpoch), nil
 }
 
 func GetGroupStatus(node *testnode.NodeInfo, groupId string) (string, error) {

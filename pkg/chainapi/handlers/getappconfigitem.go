@@ -17,7 +17,7 @@ type AppConfigKeyItem struct {
 	TimeStamp   int64  `example:"1639518490895535600"`
 }
 
-func GetAppConfigKey(itemKey, groupId string) (*AppConfigKeyItem, error) {
+func GetAppConfigByKey(itemKey, groupId string) (*AppConfigKeyItem, error) {
 	if groupId == "" {
 		return nil, errors.New("group_id can't be nil.")
 	}
