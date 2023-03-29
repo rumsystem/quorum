@@ -49,7 +49,7 @@ allow {
 # Allow access /api/v1/node/:group_id/groupctn
 allow {
   some group_id
-  input.method == "POST"
+  input.method == "GET"
   input.path = ["api", "v1", "node", group_id, "groupctn"]
   input.allow_groups[_] == group_id
 }
