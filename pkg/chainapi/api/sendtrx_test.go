@@ -89,9 +89,9 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		TrxId:        uuid.NewString(),
 		GroupId:      group.GroupId,
 		Data:         encryptData,
-		TimeStamp:    now.UnixNano(),
+		TimeStamp:    now.UnixMilli(),
 		Version:      "2.0.0",
-		Expired:      now.Add(5 * time.Minute).UnixNano(),
+		Expired:      now.Add(5 * time.Minute).UnixMilli(),
 		SenderPubkey: ethPubkey,
 	}
 
@@ -107,8 +107,14 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 	}
 
 	payload := NSdkSendTrxParams{
-		GroupId: group.GroupId,
-		Trx:     &trx,
+		GroupId:      group.GroupId,
+		TrxId:        trx.TrxId,
+		Data:         trx.Data,
+		Version:      trx.Version,
+		SenderPubkey: trx.SenderPubkey,
+		SenderSign:   trx.SenderSign,
+		TimeStamp:    trx.TimeStamp,
+		Expired:      trx.Expired,
 	}
 
 	if _, err := nodesdkSendTrx(urls, &payload); err != nil {
@@ -169,9 +175,9 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		TrxId:        uuid.NewString(),
 		GroupId:      group.GroupId,
 		Data:         encryptData.Bytes(),
-		TimeStamp:    now.UnixNano(),
+		TimeStamp:    now.UnixMilli(),
 		Version:      "2.0.0",
-		Expired:      now.Add(5 * time.Minute).UnixNano(),
+		Expired:      now.Add(5 * time.Minute).UnixMilli(),
 		SenderPubkey: ethPubkey,
 	}
 
@@ -187,8 +193,14 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 	}
 
 	payload := NSdkSendTrxParams{
-		GroupId: group.GroupId,
-		Trx:     &trx,
+		GroupId:      group.GroupId,
+		TrxId:        trx.TrxId,
+		Data:         trx.Data,
+		Version:      trx.Version,
+		SenderPubkey: trx.SenderPubkey,
+		SenderSign:   trx.SenderSign,
+		TimeStamp:    trx.TimeStamp,
+		Expired:      trx.Expired,
 	}
 
 	if _, err := nodesdkSendTrx(urls, &payload); err != nil {
