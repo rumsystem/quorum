@@ -139,7 +139,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
-		Skipper:   rummiddleware.LocalhostSkipper,
+		Skipper:   rummiddleware.JWTSkipper,
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
