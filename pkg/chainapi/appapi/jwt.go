@@ -60,7 +60,7 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
 			return utils.ParseJWTToken(auth, jwtKey)
 		},
-		Skipper: rummiddleware.LocalhostSkipper,
+		Skipper: rummiddleware.JWTSkipper,
 	}
 
 	return config
