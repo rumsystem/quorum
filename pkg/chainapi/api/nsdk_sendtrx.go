@@ -15,13 +15,15 @@ type SendTrxResult struct {
 	TrxId string `json:"trx_id"   validate:"required,uuid4"`
 }
 
-type NodeSDKTrxItem struct {
-	TrxBytes []byte
-}
-
 type NSdkSendTrxParams struct {
-	GroupId string        `json:"-" param:"group_id" validate:"required" example:"630a545b-1ff4-4b9e-9a5d-bb13b6f6a629"`
-	Trx     *quorumpb.Trx `json:"trx" validate:"required"`
+	GroupId      string `json:"-" param:"group_id" validate:"required" example:"630a545b-1ff4-4b9e-9a5d-bb13b6f6a629"`
+	TrxId        string `json:"trx_id" validate:"required" example:"9428e2f7-b585-4c0b-bc8f-835482cb2f26"`
+	Data         []byte `json:"data" validate:"required" swaggertype:"string" format:"base64" example:"eyJ0eXBlIjogIkxpa2UiLCAib2JqZWN0IjogeyJ0eXBlIjogIk5vdGUiLCAiaWQiOiAiN2I2NWViYzgtZTk0ZS00ZjBhLWIxNGUtOTMwYWYyOWQyNDgxIn19"`
+	Version      string `json:"version" validate:"required" example:"2.0.0"`
+	SenderPubkey string `json:"sender_pubkey" validate:"required" example:"A0rTbiviB1KMgrcehCU9uYiEM2oSUigv_qdCJgW_etO3"`
+	SenderSign   []byte `json:"sender_sign" validate:"required" swaggertype:"string" format:"base64" example:"d3DGzZbDZr/exsbHsUK0VRbreIBjKP4bON0+N2Ri3BZdHOn2znf1LXu4QYSkZlr5RVNE946G92gKNlRfuF0/IwE="`
+	TimeStamp    int64  `json:"timestamp" example:"1680066699716"` // millisecond
+	Expired      int64  `json:"expired" example:"1680067046530"`
 }
 
 // @Tags LightNode
@@ -47,8 +49,16 @@ func (h *Handler) NSdkSendTrx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
 
-	//check if trx sender is in group block list
-	trx := payload.Trx
+	trx := &quorumpb.Trx{
+		TrxId:        payload.TrxId,
+		GroupId:      payload.GroupId,
+		Data:         payload.Data,
+		TimeStamp:    payload.TimeStamp,
+		Version:      payload.Version,
+		Expired:      payload.Expired,
+		SenderPubkey: payload.SenderPubkey,
+		SenderSign:   payload.SenderSign,
+	}
 	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, nodectx.GetNodeCtx().Name)
 	if err != nil {
 		return rumerrors.NewUnauthorizedError(err)
