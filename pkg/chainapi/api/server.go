@@ -149,28 +149,12 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/:group_id/startsync", h.StartSync) //deprecated
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
-<<<<<<< HEAD
-	//r.POST("/v1/group/join", h.JoinGroup())
-
-=======
->>>>>>> consensus_2_main
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
-<<<<<<< HEAD
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-
-	//r.POST("/v1/group/producer", h.GroupProducer)
-
 	r.POST("/v1/group/updconsensus", h.UpdConsensus)
-
 	r.POST("/v1/group/user", h.GroupUser)
-
-=======
-	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-	r.POST("/v1/group/producer", h.GroupProducer)
-	r.POST("/v1/group/user", h.GroupUser)
->>>>>>> consensus_2_main
 	r.POST("/v1/group/announce", h.Announce)
 
 	r.GET("/v1/node", h.GetNodeInfo)

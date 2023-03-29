@@ -53,23 +53,6 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorum
 	return newBlock, nil
 }
 
-<<<<<<< HEAD
-func CreateOrphanBlock(groupId string, epoch uint64, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
-	//create a block without parents
-	orphanBlock := &quorumpb.Block{
-		GroupId:        groupId,
-		BlockId:        0,
-		Epoch:          epoch,
-		PrevHash:       nil,
-		ProducerPubkey: groupPublicKey,
-		Trxs:           trxs,
-		TimeStamp:      time.Now().UnixNano(),
-	}
-	return orphanBlock, nil
-}
-
-=======
->>>>>>> consensus_2_main
 // regenerate block with parent info
 func RegenrateBlockWithParent(parentBlock *quorumpb.Block, orphanBlock *quorumpb.Block, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	orphanBlock.PrevHash = parentBlock.BlockHash

@@ -99,18 +99,31 @@ message BroadcastChangeGroupConsensus {
     string Content = 1;
 }
 
+message ConsensusContract {
+    string ContractId   = 1;
+    uint64 Nonce        = 2;
+    string GroupId      = 3;
+    string Contract     = 4;
+    string Version      = 5;
+    uint64 timestamp    = 6;
+    string OwnerPubkey  = 7;
+    bytes  ContractHash = 8;
+    bytes  OwnerSign    = 9;
+}
+
 message ChangeConsensusReq {
-    string          ReqId                = 1;
-    string          GroupId              = 2;
-    uint64          Nonce                = 3;
-    repeated string ProducerPubkeyList   = 4;  
-    uint64          AgreementTickLenInMs = 6;
-    uint64          AgreementTickCount   = 7;
-    uint64          StartFromEpoch       = 8;
-    uint64          TrxEpochTickLenInMs  = 9;
-    string          SenderPubkey         = 10;
-    bytes           MsgHash              = 11; 
-    bytes           SenderSign           = 12;
+    string            ReqId                = 1;
+    string            GroupId              = 2;
+    uint64            Nonce                = 3;
+    repeated string   ProducerPubkeyList   = 4;  
+    uint64            AgreementTickLenInMs = 6;
+    uint64            AgreementTickCount   = 7;
+    uint64            StartFromEpoch       = 8;
+    uint64            TrxEpochTickLenInMs  = 9;
+    ConsensusContract Contract             = 10;
+    string            SenderPubkey         = 11;
+    bytes             MsgHash              = 12; 
+    bytes             SenderSign           = 13;
 }
 
 message ChangeConsensusResp {
@@ -121,8 +134,9 @@ message ChangeConsensusResp {
     uint64         TrxEpochTickLenInMs = 5;
     string         OrigReqId           = 6;    
     bytes          OrigReqMsgHash      = 7;
-    bytes          MsgHash             = 8;
-    bytes          SenderSign          = 9;
+    string         ContractId          = 8;
+    bytes          MsgHash             = 9;
+    bytes          SenderSign          = 10;
 }
 
 message ConsensusBundle{

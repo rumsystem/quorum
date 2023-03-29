@@ -10,23 +10,23 @@ import (
 )
 
 const (
-	TRX_PREFIX           = "trx"       //trx
-	BLK_PREFIX           = "blk"       //block
-	GRP_PREFIX           = "grp"       //group
-	CHNINFO_PREFIX       = "chain"     //chaininfo
-	CNT_PREFIX           = "cnt"       //content
-	PRD_PREFIX           = "prd"       //producer
-	USR_PREFIX           = "usr"       //user
-	ANN_PREFIX           = "ann"       //announce
-	SMA_PREFIX           = "sma"       //schema
-	CHD_PREFIX           = "chd"       //cached
-	APP_CONFIG_PREFIX    = "app_conf"  //group configuration
-	CHAIN_CONFIG_PREFIX  = "chn_conf"  //chain configuration
-	TRX_AUTH_TYPE_PREFIX = "trx_auth"  //trx auth type
-	ALLW_LIST_PREFIX     = "alw_list"  //allow list
-	DENY_LIST_PREFIX     = "dny_list"  //deny list
-	NONCE_PREFIX         = "nonce"     //group trx nonce
-	PRD_TRX_ID_PREFIX    = "prd_trxid" //trxid of latest trx which update group producer list
+	TRX_PREFIX             = "trx"             //trx
+	BLK_PREFIX             = "blk"             //block
+	GRP_PREFIX             = "grp"             //group
+	CHNINFO_PREFIX         = "chain"           //chaininfo
+	CNT_PREFIX             = "cnt"             //content
+	PRD_PREFIX             = "prd"             //producer
+	USR_PREFIX             = "usr"             //user
+	ANN_PREFIX             = "ann"             //announce
+	SMA_PREFIX             = "sma"             //schema
+	CHD_PREFIX             = "chd"             //cached
+	APP_CONFIG_PREFIX      = "app_conf"        //group configuration
+	CHAIN_CONFIG_PREFIX    = "chn_conf"        //chain configuration
+	TRX_AUTH_TYPE_PREFIX   = "trx_auth"        //trx auth type
+	ALLW_LIST_PREFIX       = "alw_list"        //allow list
+	DENY_LIST_PREFIX       = "dny_list"        //deny list
+	CONSENSUS_NONCE_PREFIX = "consensus_nonce" //group consensus nonce
+	PRD_TRX_ID_PREFIX      = "prd_trxid"       //trxid of latest trx which update group producer list
 
 	// groupinfo db
 	GROUPITEM_PREFIX = "grpitem"
@@ -209,9 +209,9 @@ func GetAppConfigKey(groupId string, name string, prefix ...string) string {
 	return _prefix + "_" + name
 }
 
-func GetNonceKey(groupId string, prefix ...string) string {
+func GetConsensusNonceKey(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + NONCE_PREFIX + "_" + groupId
+	return nodeprefix + CONSENSUS_NONCE_PREFIX + "_" + groupId
 }
 
 func GetProducerTrxIDKey(groupId string, prefix ...string) string {

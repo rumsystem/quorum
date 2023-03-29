@@ -314,3 +314,14 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 
 	return trx.TrxId, nil
 }
+
+func (grp *Group) StartSync(restart bool) error {
+	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
+	return grp.ChainCtx.StartSync()
+}
+
+func (grp *Group) StopSync() error {
+	group_log.Debugf("<%s> StopSync called", grp.Item.GroupId)
+	grp.ChainCtx.StopSync()
+	return nil
+}

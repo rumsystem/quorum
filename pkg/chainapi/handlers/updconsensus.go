@@ -18,10 +18,10 @@ import (
 
 type UpdConsensusResult struct {
 	GroupId      string `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
-	TrxId        string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
 	Producers    []*quorumpb.ProducerItem
 	FromEpoch    uint64 `json:"start_from_epoch" validate:"required" example:"100"`
 	TrxEpochTick uint64 `json:"trx_epoch_tick" validate:"required" example:"100"`
+	TrxId        string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
 	Failable     *int   `json:"failable_producers" validate:"required" example:"1"`
 	Memo         string `json:"memo" example:"comment/remark"`
 }
@@ -33,6 +33,7 @@ type UpdConsensusParam struct {
 	TrxEpochTick        uint64   `from:"trx_epoch_tick" json:"trx_epoch_tick" validate:"required" example:"100"`
 	AgreementTickLength uint64   `from:"agreement_tick_length" json:"agreement_tick_length" validate:"required"`
 	AgreementTickCount  uint64   `from:"agreement_tick_count" json:"agreement_tick_count" validate:"required"`
+	Contract            string   `from:"contract" json:"contract" validate:"required" example:"PRS_CONTRACT"`
 	Memo                string   `from:"memo" json:"memo" example:"comment/remark"`
 }
 

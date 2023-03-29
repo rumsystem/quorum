@@ -84,7 +84,7 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 		}
 
 		trxFactory := &rumchaindata.TrxFactory{}
-		trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name, nodesdkctx.GetCtx())
+		trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name)
 
 		//assign type to paramspb.Object
 		if paramspb.Object.Type == "" {
