@@ -22,8 +22,7 @@ type NSdkSendTrxParams struct {
 	Version      string `json:"version" validate:"required" example:"2.0.0"`
 	SenderPubkey string `json:"sender_pubkey" validate:"required" example:"A0rTbiviB1KMgrcehCU9uYiEM2oSUigv_qdCJgW_etO3"`
 	SenderSign   []byte `json:"sender_sign" validate:"required" swaggertype:"string" format:"base64" example:"d3DGzZbDZr/exsbHsUK0VRbreIBjKP4bON0+N2Ri3BZdHOn2znf1LXu4QYSkZlr5RVNE946G92gKNlRfuF0/IwE="`
-	TimeStamp    int64  `json:"timestamp" example:"1680066699716"` // millisecond
-	Expired      int64  `json:"expired" example:"1680067046530"`
+	TimeStamp    int64  `json:"timestamp,string" swaggertype:"string" example:"1680157672961799"` // nanosecond
 }
 
 // @Tags LightNode
@@ -55,7 +54,6 @@ func (h *Handler) NSdkSendTrx(c echo.Context) (err error) {
 		Data:         payload.Data,
 		TimeStamp:    payload.TimeStamp,
 		Version:      payload.Version,
-		Expired:      payload.Expired,
 		SenderPubkey: payload.SenderPubkey,
 		SenderSign:   payload.SenderSign,
 	}

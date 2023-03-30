@@ -59,8 +59,7 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 
 	trx.Data = encryptdData
 	trx.Version = version
-
-	UpdateTrxTimeLimit(&trx)
+	trx.TimeStamp = time.Now().UnixNano()
 
 	bytes, err := proto.Marshal(&trx)
 	if err != nil {
@@ -92,15 +91,6 @@ func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.Grou
 	return trx, nil
 }
 
-// set TimeStamp and Expired for trx
-func UpdateTrxTimeLimit(trx *quorumpb.Trx) {
-	trx.TimeStamp = time.Now().UnixNano()
-	timein := time.Now().Local().Add(time.Hour*time.Duration(Hours) +
-		time.Minute*time.Duration(Mins) +
-		time.Second*time.Duration(Sec))
-	trx.Expired = timein.UnixNano()
-}
-
 func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 	//clone trxMsg to verify
 	clonetrxmsg := &quorumpb.Trx{
@@ -111,7 +101,8 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		Data:         trx.Data,
 		TimeStamp:    trx.TimeStamp,
 		Version:      trx.Version,
-		Expired:      trx.Expired}
+		Expired:      trx.Expired,
+	}
 
 	bytes, err := proto.Marshal(clonetrxmsg)
 	if err != nil {

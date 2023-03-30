@@ -18,18 +18,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type (
-	trxParam struct {
-		TrxId        string
-		GroupId      string
-		Data         []byte
-		TimeStamp    int64
-		Version      string
-		Expired      int64
-		SenderPubkey string
-	}
-)
-
 func nodesdkSendTrx(urls []string, payload *NSdkSendTrxParams) (*SendTrxResult, error) {
 	path := fmt.Sprintf("/api/v1/node/%s/trx", payload.GroupId)
 	var result SendTrxResult
@@ -89,9 +77,8 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		TrxId:        uuid.NewString(),
 		GroupId:      group.GroupId,
 		Data:         encryptData,
-		TimeStamp:    now.UnixMilli(),
+		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
-		Expired:      now.Add(5 * time.Minute).UnixMilli(),
 		SenderPubkey: ethPubkey,
 	}
 
@@ -114,7 +101,6 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		SenderPubkey: trx.SenderPubkey,
 		SenderSign:   trx.SenderSign,
 		TimeStamp:    trx.TimeStamp,
-		Expired:      trx.Expired,
 	}
 
 	if _, err := nodesdkSendTrx(urls, &payload); err != nil {
@@ -175,9 +161,8 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		TrxId:        uuid.NewString(),
 		GroupId:      group.GroupId,
 		Data:         encryptData.Bytes(),
-		TimeStamp:    now.UnixMilli(),
+		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
-		Expired:      now.Add(5 * time.Minute).UnixMilli(),
 		SenderPubkey: ethPubkey,
 	}
 
@@ -200,7 +185,6 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		SenderPubkey: trx.SenderPubkey,
 		SenderSign:   trx.SenderSign,
 		TimeStamp:    trx.TimeStamp,
-		Expired:      trx.Expired,
 	}
 
 	if _, err := nodesdkSendTrx(urls, &payload); err != nil {
