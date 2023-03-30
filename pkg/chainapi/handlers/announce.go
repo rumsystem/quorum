@@ -24,10 +24,11 @@ type AnnounceResult struct {
 }
 
 type AnnounceParam struct {
-	GroupId string `from:"group_id"    json:"group_id"    validate:"required,uuid4" example:"17a598a0-274b-45e7-a4b5-b81f9f274d50"`
-	Action  string `from:"action"      json:"action"      validate:"required,oneof=add remove" example:"add"`
-	Type    string `from:"type"        json:"type"        validate:"required,oneof=user producer" example:"user"`
-	Memo    string `from:"memo"        json:"memo" example:"comment/remark"`
+	GroupId  string `from:"group_id"    json:"group_id"    validate:"required,uuid4" example:"17a598a0-274b-45e7-a4b5-b81f9f274d50"`
+	Action   string `from:"action"      json:"action"      validate:"required,oneof=add remove" example:"add"`
+	Type     string `from:"type"        json:"type"        validate:"required,oneof=user producer" example:"user"`
+	Contract string `from:"contract"    json:"contract"    example:"PRS_CONTACT"`
+	Memo     string `from:"memo"        json:"memo" example:"comment/remark"`
 }
 
 func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
@@ -41,11 +42,11 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 		//check announce type according to node type, see document for more details
 		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 			if params.Type != "producer" {
-				return nil, errors.New("Producer node can only announced as \"producer\"")
+				return nil, errors.New("producer node can only announced as \"producer\"")
 			}
 		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
 			if params.Type == "producer" {
-				return nil, errors.New("Full node can not announce as producer")
+				return nil, errors.New("full node can not announce as producer")
 			}
 		}
 
@@ -54,7 +55,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 		} else if params.Type == "producer" {
 			item.Type = quorumpb.AnnounceType_AS_PRODUCER
 		} else {
-			return nil, errors.New("Unknown type")
+			return nil, errors.New("unknown type")
 		}
 
 		if params.Action == "add" {
@@ -62,7 +63,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 		} else if params.Action == "remove" {
 			item.Action = quorumpb.ActionType_REMOVE
 		} else {
-			return nil, errors.New("Unknown action")
+			return nil, errors.New("unknown action")
 		}
 
 		item.SignPubkey = group.Item.UserSignPubkey

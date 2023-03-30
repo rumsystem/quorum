@@ -159,8 +159,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
-	//r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
-	//r.GET("/v1/network/peers/ping", h.PingPeers(node))
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 	r.GET("/v1/groups", h.GetGroups)

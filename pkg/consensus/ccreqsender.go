@@ -79,6 +79,7 @@ func (msender *CCReqSender) startSending() {
 
 				if msender.sendingCnt >= msender.epochCnt {
 					ccrmsgsender_log.Debugf("<%s> CCReqSender stop sending <%s> at <%d>", msender.groupId, msender.CurrCCReq.ReqId, time.Now().UnixMilli())
+					msender.proposer.HandleCCRResult(msender.CurrCCReq.ReqId, CCRTimeout)
 					msender.tickerDone <- true
 				}
 			}

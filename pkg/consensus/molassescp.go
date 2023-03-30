@@ -16,6 +16,14 @@ import (
 
 var molacp_log = logging.Logger("cp")
 
+type CCRResult uint
+
+const (
+	CCRSuccess CCRResult = iota
+	CCRFail
+	CCRTimeout
+)
+
 type MolassesConsensusProposer struct {
 	grpItem         *quorumpb.GroupItem
 	groupId         string
@@ -40,23 +48,37 @@ func (cp *MolassesConsensusProposer) NewConsensusProposer(item *quorumpb.GroupIt
 	cp.ReqSender = nil
 }
 
-func (cp *MolassesConsensusProposer) AddNewConsensusItem(producerList *quorumpb.BFTProducerBundleItem, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
-	molacp_log.Debugf("<%s> AddNewConsensusItem called", cp.groupId)
+func (cp *MolassesConsensusProposer) StartNewCCRBoradcast(producerList *quorumpb.BFTProducerBundleItem, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
+	molacp_log.Debugf("<%s> StartNewCCRBoradcast called", cp.groupId)
 
 	//stop current bft
 	if cp.bft != nil {
+		molacp_log.Debugf("<%s> Stop current bft", cp.groupId)
 		cp.bft.Stop()
 	}
 
 	cp.trxId = trxId
 
-	//create ChangeConsensusReq
-	//load current group consensus proposer nonce
-	nouce, err := nodectx.GetNodeCtx().GetChainStorage().GetConsensusProposeNonce(cp.groupId)
-	if err != nil {
-		molacp_log.Errorf("<%s> GetConsensusProposeNonce failed", cp.groupId)
-		return err
-	}
+	/*
+		//create ChangeConsensusReq
+		//load current group consensus proposer nonce
+		nouce, err := nodectx.GetNodeCtx().GetChainStorage().GetConsensusProposeNonce(cp.groupId)
+		if err != nil {
+			molacp_log.Errorf("<%s> GetConsensusProposeNonce failed", cp.groupId)
+			return err
+		}
+
+		molacp_log.Debugf("<%s> GetConsensusProposeNonce <%d>", cp.groupId, nouce)
+
+		//update group consensus proposer nonce
+		nouce = nouce + 1
+		err = nodectx.GetNodeCtx().GetChainStorage().UpdConsensusProposeNonce(cp.groupId, nouce)
+		if err != nil {
+			molacp_log.Errorf("<%s> UpdConsensusProposeNonce failed", cp.groupId)
+			return err
+		}
+
+	*/
 
 	var pubkeys []string
 	for _, producer := range producerList.Producers {
@@ -64,9 +86,10 @@ func (cp *MolassesConsensusProposer) AddNewConsensusItem(producerList *quorumpb.
 	}
 
 	req := &quorumpb.ChangeConsensusReq{
-		ReqId:                guuid.New().String(),
-		GroupId:              cp.groupId,
-		Nonce:                nouce + 1,
+		ReqId:   guuid.New().String(),
+		GroupId: cp.groupId,
+		//Nonce:                nouce + 1,
+		Nonce:                0,
 		ProducerPubkeyList:   pubkeys,
 		AgreementTickLenInMs: agrmTickLen,
 		AgreementTickCount:   agrmTickCnt,
@@ -97,16 +120,6 @@ func (cp *MolassesConsensusProposer) AddNewConsensusItem(producerList *quorumpb.
 	for _, producer := range producerList.Producers {
 		cp.producerspubkey = append(cp.producerspubkey, producer.ProducerPubkey)
 	}
-
-	//create bft config
-	config, err := cp.createBftConfig()
-	if err != nil {
-		molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
-		return err
-	}
-
-	//create bft
-	cp.bft = NewPCBft(*config, cp)
 
 	//create req sender and send req
 	sender := NewCCReqSender(cp.groupId, cp.CurrReq.AgreementTickLenInMs, cp.CurrReq.AgreementTickCount, cp)
@@ -177,11 +190,23 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		//add pubkeys for all producers
 		cp.producerspubkey = append(cp.producerspubkey, req.ProducerPubkeyList...)
 
-		cp.createBftConfig()
+		/*
+			//create bft config
+			_, err := cp.createBftConfig()
+			if err != nil {
+				molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
+				return err
+			}
 
-		//verify req
-		//copy req	by value
+			//create bft
+
+				molacp_log.Debugf("<%s> create bft", cp.groupId)
+				cp.bft = NewPCBft(*config, cp)
+				cp.bft.Start()
+
+		*/
 	}
+
 	return nil
 }
 
@@ -192,6 +217,23 @@ func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error 
 		cp.bft.HandleHBMsg(hbmsg)
 	}
 	return nil
+}
+
+func (cp *MolassesConsensusProposer) HandleCCRResult(reqid string, result CCRResult) {
+	if reqid != cp.CurrReq.ReqId {
+		molacp_log.Debugf("<%s> HandleCCRResult reqid <%s> is not same as current reqid <%s>, ignore", cp.groupId, reqid, cp.CurrReq.ReqId)
+		return
+	}
+
+	switch result {
+	case CCRSuccess:
+		molacp_log.Debugf("<%s> HandleCCRResult CCRSuccess", cp.groupId)
+	case CCRFail:
+		molacp_log.Debugf("<%s> HandleCCRResult CCRFail", cp.groupId)
+	case CCRTimeout:
+		molacp_log.Debugf("<%s> HandleCCRResult CCRTimeout", cp.groupId)
+	default:
+	}
 }
 
 func (cp *MolassesConsensusProposer) createBftConfig() (*Config, error) {

@@ -63,7 +63,7 @@ func (cs *Storage) RemoveTrxHBB(trxId, queueId string) error {
 	}
 
 	if !exist {
-		return errors.New("Trx not exist")
+		return errors.New("trx not exist")
 	}
 
 	_, err = cs.dbmgr.Db.PrefixDelete([]byte(key))
@@ -101,7 +101,7 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 	return trx, nil
 }
 
-func (cs *Storage) AddConsensusProposeNonce(queueId string, nonce uint64) error {
+func (cs *Storage) UpdConsensusProposeNonce(queueId string, nonce uint64) error {
 	key := s.GetConsensusNonceKey(queueId)
 	e := make([]byte, 8)
 	binary.LittleEndian.PutUint64(e, nonce)

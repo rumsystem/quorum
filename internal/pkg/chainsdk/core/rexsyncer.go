@@ -320,7 +320,7 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 	*/
 
 	//check if resp is from owner
-	isOwner := rs.chainCtx.isOwnerByPubkey(reqBlockResp.ProviderPubkey)
+	isOwner := rs.chainCtx.IsOwnerByPubkey(reqBlockResp.ProviderPubkey)
 
 	switch reqBlockResp.Result {
 	case quorumpb.ReqBlkResult_BLOCK_NOT_FOUND:

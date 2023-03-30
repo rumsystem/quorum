@@ -140,7 +140,7 @@ func (chain *Chain) UpdConsensus(item *quorumpb.BFTProducerBundleItem, trxId str
 		return fmt.Errorf("consensus proposer is nil")
 	}
 
-	return chain.Consensus.ConsensusProposer().AddNewConsensusItem(item, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen)
+	return chain.Consensus.ConsensusProposer().StartNewCCRBoradcast(item, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen)
 }
 
 // PSConn msg handler
@@ -275,7 +275,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	}
 
 	//check if block is from a valid group producer, currently only check if block is produced by owner
-	if !chain.isOwnerByPubkey(block.ProducerPubkey) {
+	if !chain.IsOwnerByPubkey(block.ProducerPubkey) {
 		chain_log.Warningf("<%s> received block <%d> from unknown producer, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
 		return nil
 	}
@@ -691,7 +691,7 @@ func (chain *Chain) StartSync() error {
 
 	// since current implementation only support 1 producer (owner), no psync will be prefered
 	// all node (except owner) start sync after start up, and finish sync till owner told NO_MORE_BLOCK
-	if chain.isOwner() {
+	if chain.IsOwner() {
 		chain_log.Debugf("<%s> Owner no need to sync", chain.groupItem.GroupId)
 		return nil
 	}
@@ -706,16 +706,16 @@ func (chain *Chain) IsProducer() bool {
 	return ok
 }
 
-func (chain *Chain) isProducerByPubkey(pubkey string) bool {
+func (chain *Chain) IsProducerByPubkey(pubkey string) bool {
 	_, ok := chain.producerPool[pubkey]
 	return ok
 }
 
-func (chain *Chain) isOwner() bool {
+func (chain *Chain) IsOwner() bool {
 	return chain.groupItem.OwnerPubKey == chain.groupItem.UserSignPubkey
 }
 
-func (chain *Chain) isOwnerByPubkey(pubkey string) bool {
+func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
 	return chain.groupItem.OwnerPubKey == pubkey
 }
 

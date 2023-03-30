@@ -33,7 +33,6 @@ type UpdConsensusParam struct {
 	TrxEpochTick        uint64   `from:"trx_epoch_tick" json:"trx_epoch_tick" validate:"required" example:"100"`
 	AgreementTickLength uint64   `from:"agreement_tick_length" json:"agreement_tick_length" validate:"required"`
 	AgreementTickCount  uint64   `from:"agreement_tick_count" json:"agreement_tick_count" validate:"required"`
-	Contract            string   `from:"contract" json:"contract" validate:"required" example:"PRS_CONTRACT"`
 	Memo                string   `from:"memo" json:"memo" example:"comment/remark"`
 }
 
@@ -63,7 +62,7 @@ func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*U
 		for _, producerPubkey := range params.ProducerPubkey {
 
 			if ok := bundle[producerPubkey]; ok {
-				return nil, errors.New(fmt.Errorf("producer pubkey should be unique").Error())
+				return nil, fmt.Errorf("producer pubkey should be unique")
 			}
 
 			bundle[producerPubkey] = true

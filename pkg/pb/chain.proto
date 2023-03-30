@@ -217,6 +217,7 @@ message AnnounceItem {
     int64        TimeStamp          = 9; 
     ActionType   Action             = 10;
     string       Memo               = 11;
+    optional string Contract        = 12;
 }
 
 enum GroupEncryptType {

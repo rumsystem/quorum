@@ -265,7 +265,6 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 func (grp *Group) UpdConsensus(item *quorumpb.BFTProducerBundleItem, agrmTickCount, agrmTickLength, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trxId := guuid.New().String()
-
 	return trxId, grp.ChainCtx.UpdConsensus(item, trxId, agrmTickCount, agrmTickLength, fromNewEpoch, trxEpochTick)
 }
 
