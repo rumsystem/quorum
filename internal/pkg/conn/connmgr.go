@@ -172,7 +172,7 @@ func (connMgr *ConnMgr) InitialPsConn() {
 }
 
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
-	conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
+	//conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
 	defer connMgr.pscounsmu.Unlock()
 	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {

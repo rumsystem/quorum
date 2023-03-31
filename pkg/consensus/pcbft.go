@@ -127,8 +127,8 @@ func (ppbft *PCBft) AcsDone(epoch uint64, result map[string][]byte) {
 	*/
 }
 
-func (ppbft *PCBft) AddReq(req *quorumpb.ChangeConsensusReq) error {
-	pcbft_log.Debugf("AddProducerProposal called, SessionId <%s> ", req.ReqId)
+func (ppbft *PCBft) AddBundle(req *quorumpb.ConsensusBundle) error {
+	//pcbft_log.Debugf("AddProducerProposal called, SessionId <%s> ", req.ReqId)
 
 	/*
 		datab, err := proto.Marshal(req)

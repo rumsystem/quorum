@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 
 	guuid "github.com/google/uuid"
@@ -59,36 +58,18 @@ func (cp *MolassesConsensusProposer) StartNewCCRBoradcast(producerList *quorumpb
 
 	cp.trxId = trxId
 
-	/*
-		//create ChangeConsensusReq
-		//load current group consensus proposer nonce
-		nouce, err := nodectx.GetNodeCtx().GetChainStorage().GetConsensusProposeNonce(cp.groupId)
-		if err != nil {
-			molacp_log.Errorf("<%s> GetConsensusProposeNonce failed", cp.groupId)
-			return err
-		}
-
-		molacp_log.Debugf("<%s> GetConsensusProposeNonce <%d>", cp.groupId, nouce)
-
-		//update group consensus proposer nonce
-		nouce = nouce + 1
-		err = nodectx.GetNodeCtx().GetChainStorage().UpdConsensusProposeNonce(cp.groupId, nouce)
-		if err != nil {
-			molacp_log.Errorf("<%s> UpdConsensusProposeNonce failed", cp.groupId)
-			return err
-		}
-
-	*/
+	//get nonce
 
 	var pubkeys []string
 	for _, producer := range producerList.Producers {
 		pubkeys = append(pubkeys, producer.ProducerPubkey)
 	}
 
+	cp.producerspubkey = append(cp.producerspubkey, pubkeys...)
+
 	req := &quorumpb.ChangeConsensusReq{
-		ReqId:   guuid.New().String(),
-		GroupId: cp.groupId,
-		//Nonce:                nouce + 1,
+		ReqId:                guuid.New().String(),
+		GroupId:              cp.groupId,
 		Nonce:                0,
 		ProducerPubkeyList:   pubkeys,
 		AgreementTickLenInMs: agrmTickLen,
@@ -109,17 +90,10 @@ func (cp *MolassesConsensusProposer) StartNewCCRBoradcast(producerList *quorumpb
 	hash := localcrypto.Hash(byts)
 	hashResult := localcrypto.Hash(hash)
 	signature, _ := ks.EthSignByKeyName(cp.groupId, hashResult)
-	encodedSign := hex.EncodeToString(signature)
-
 	req.MsgHash = hash
-	req.SenderPubkey = encodedSign
+	req.SenderSign = signature
 
 	cp.CurrReq = req
-
-	//add pubkeys for all producers
-	for _, producer := range producerList.Producers {
-		cp.producerspubkey = append(cp.producerspubkey, producer.ProducerPubkey)
-	}
 
 	//create req sender and send req
 	sender := NewCCReqSender(cp.groupId, cp.CurrReq.AgreementTickLenInMs, cp.CurrReq.AgreementTickCount, cp)
@@ -186,25 +160,62 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 
 		//
 		cp.CurrReq = req
-
 		//add pubkeys for all producers
 		cp.producerspubkey = append(cp.producerspubkey, req.ProducerPubkeyList...)
 
-		/*
-			//create bft config
-			_, err := cp.createBftConfig()
-			if err != nil {
-				molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
-				return err
+		bundle := &quorumpb.ConsensusBundle{
+			Req: req,
+		}
+
+		if cp.cIface.IsOwner() {
+			//check if I am in the producer list
+			isInProducerList := false
+			for _, producer := range req.ProducerPubkeyList {
+				if producer == cp.grpItem.UserSignPubkey {
+					isInProducerList = true
+					break
+				}
 			}
 
-			//create bft
+			if isInProducerList {
+				// add my agreement resp to bundle
+				resp := &quorumpb.ChangeConsensusResp{
+					RespId:       guuid.New().String(),
+					GroupId:      req.GroupId,
+					SenderPubkey: cp.grpItem.UserSignPubkey,
+					Req:          req,
+					MsgHash:      nil,
+					SenderSign:   nil,
+				}
 
-				molacp_log.Debugf("<%s> create bft", cp.groupId)
-				cp.bft = NewPCBft(*config, cp)
-				cp.bft.Start()
+				byts, err := proto.Marshal(dumpreq)
+				if err != nil {
+					molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
+					return err
+				}
 
-		*/
+				hash := localcrypto.Hash(byts)
+				ks := nodectx.GetNodeCtx().Keystore
+				signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
+				req.MsgHash = hash
+				req.SenderSign = signature
+				bundle.Resp = resp
+			}
+		}
+
+		//create bft config
+		config, err := cp.createBftConfig()
+		if err != nil {
+			molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
+			return err
+		}
+
+		//create bft
+		molacp_log.Debugf("<%s> create bft", cp.groupId)
+		cp.bft = NewPCBft(*config, cp)
+		cp.bft.Start()
+
+		cp.bft.AddBundle(bundle)
 	}
 
 	return nil
@@ -240,21 +251,9 @@ func (cp *MolassesConsensusProposer) createBftConfig() (*Config, error) {
 	molacp_log.Debugf("<%s> createBftConfig called", cp.groupId)
 
 	var producerNodes []string
-	shouldAddOwner := true
-
-	for _, pubkey := range cp.producerspubkey {
-		if pubkey == cp.grpItem.OwnerPubKey {
-			shouldAddOwner = false
-		}
-		molaproducer_log.Debugf(">>> add producer pubkey <%s>", pubkey)
-	}
-
-	if shouldAddOwner {
-		producerNodes = append(producerNodes, cp.grpItem.OwnerPubKey)
-	}
 
 	n := len(producerNodes)
-	f := (n - 1) / 3
+	f := 0 // all participant producers should agree with the consensus request
 
 	molaproducer_log.Debugf("failable producers <%d>", f)
 	batchSize := 1

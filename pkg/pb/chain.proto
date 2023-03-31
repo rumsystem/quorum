@@ -120,26 +120,27 @@ message ChangeConsensusReq {
     uint64            AgreementTickCount   = 7;
     uint64            StartFromEpoch       = 8;
     uint64            TrxEpochTickLenInMs  = 9;
-    ConsensusContract Contract             = 10;
+    ConsensusContract Contract             = 10;    
     string            SenderPubkey         = 11;
     bytes             MsgHash              = 12; 
     bytes             SenderSign           = 13;
 }
 
 message ChangeConsensusResp {
-    uint64         RespId              = 1;
-    string         GroupId             = 2;
-    string         SenderPubkey        = 3;
-    uint64         StartFromEpoch      = 4;
-    uint64         TrxEpochTickLenInMs = 5;
-    string         OrigReqId           = 6;    
-    bytes          OrigReqMsgHash      = 7;
-    string         ContractId          = 8;
-    bytes          MsgHash             = 9;
-    bytes          SenderSign          = 10;
+    string             RespId       = 1;
+    string             GroupId      = 2;
+    string             SenderPubkey = 3;
+    ChangeConsensusReq Req          = 4;
+    bytes              MsgHash      = 5;
+    bytes              SenderSign   = 6;
 }
 
 message ConsensusBundle{
+    ChangeConsensusReq  Req  = 1;
+    ChangeConsensusResp Resp = 2;
+}
+
+message ConsensusProof{
     ChangeConsensusReq           req   = 1;
     repeated ChangeConsensusResp resps = 2;
 }

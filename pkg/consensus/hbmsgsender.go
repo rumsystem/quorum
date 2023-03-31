@@ -28,7 +28,7 @@ type HBMsgSender struct {
 }
 
 func NewHBMsgSender(groupId string, epoch uint64, pubkey string, typ quorumpb.PackageType, interval ...int) *HBMsgSender {
-	hbmsgsender_log.Debugf("<%s> NewHBMsgSender called, Epoch <%d>", groupId, epoch)
+	//hbmsgsender_log.Debugf("<%s> NewHBMsgSender called, Epoch <%d>", groupId, epoch)
 
 	sendingInterval := DEFAULT_HB_MSG_SEND_INTEVL
 	if interval != nil {
@@ -48,7 +48,7 @@ func NewHBMsgSender(groupId string, epoch uint64, pubkey string, typ quorumpb.Pa
 }
 
 func (msender *HBMsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
-	hbmsgsender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
+	//hbmsgsender_log.Debugf("<%s> SendHBRBCMsg called", msender.groupId)
 
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
@@ -78,15 +78,15 @@ func (msender *HBMsgSender) startSending() {
 
 	//start new sender ticker
 	go func() {
-		hbmsgsender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrHbMsg.MsgId)
+		//hbmsgsender_log.Debugf("<%s> Create ticker <%s>", msender.groupId, msender.CurrHbMsg.MsgId)
 		msender.ticker = time.NewTicker(time.Duration(msender.interval) * time.Millisecond)
 		for {
 			select {
 			case <-msender.tickerDone:
-				hbmsgsender_log.Debugf("<%s> old Ticker Done", msender.groupId)
+				//hbmsgsender_log.Debugf("<%s> old Ticker Done", msender.groupId)
 				return
 			case <-msender.ticker.C:
-				hbmsgsender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrHbMsg.MsgId, time.Now().UnixMilli())
+				//hbmsgsender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrHbMsg.MsgId, time.Now().UnixMilli())
 				connMgr, err := conn.GetConn().GetConnMgr(msender.groupId)
 				if err != nil {
 					return

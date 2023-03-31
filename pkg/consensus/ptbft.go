@@ -59,17 +59,17 @@ func (bft *PTBft) AddTrx(tx *quorumpb.Trx) error {
 }
 
 func (bft *PTBft) Start() {
-	ptbft_log.Debugf("<%s> Start called", bft.groupId)
+	//ptbft_log.Debugf("<%s> Start called", bft.groupId)
 	go func() {
 		bft.ticker = time.NewTicker(time.Duration(DEFAULT_TRX_PROPOSE_PULSE) * time.Millisecond)
 		bft.status = RUNNING
 		for {
 			select {
 			case <-bft.tickerdone:
-				ptbft_log.Debugf("<%s> TickerDone called", bft.groupId)
+				//ptbft_log.Debugf("<%s> TickerDone called", bft.groupId)
 				return
 			case <-bft.ticker.C:
-				ptbft_log.Debugf("<%s> ticker called at <%d>", bft.groupId, time.Now().Nanosecond())
+				//ptbft_log.Debugf("<%s> ticker called at <%d>", bft.groupId, time.Now().Nanosecond())
 				bft.Propose()
 			}
 		}
@@ -96,7 +96,7 @@ func (bft *PTBft) Stop() {
 }
 
 func (bft *PTBft) Propose() error {
-	ptbft_log.Debugf("<%s> NewProposeTask called", bft.groupId)
+	//ptbft_log.Debugf("<%s> NewProposeTask called", bft.groupId)
 
 	//select some trxs from buffer
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
@@ -122,26 +122,26 @@ func (bft *PTBft) Propose() error {
 	task := &PTTask{
 		Epoch:        proposedEpoch,
 		ProposedData: datab,
-		acsInsts:     NewPTAcs(bft.Config, bft, proposedEpoch),
+		acsInsts:     NewPTACS(bft.Config, bft, proposedEpoch),
 	}
 
 	bft.CurrTask = task
 
 	//run task
 	go func() {
-		ptbft_log.Debugf("<%s> task <%d> start", bft.groupId, bft.CurrTask.Epoch)
+		//ptbft_log.Debugf("<%s> task <%d> start", bft.groupId, bft.CurrTask.Epoch)
 		bft.CurrTask.acsInsts.InputValue(task.ProposedData)
 	}()
 
 	//wait here till get task done signal
 	<-bft.taskdone
 
-	ptbft_log.Debugf("<%s> task <%d> done", bft.groupId, task.Epoch)
+	//ptbft_log.Debugf("<%s> task <%d> done", bft.groupId, task.Epoch)
 	return nil
 }
 
 func (bft *PTBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
+	//ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
 
 	if bft.CurrTask != nil {
 		return bft.CurrTask.acsInsts.HandleHBMessage(hbmsg)
@@ -229,7 +229,7 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		}
 
 		//save it
-		ptbft_log.Debugf("<%s> save block just built to local db", bft.producer.groupId)
+		//ptbft_log.Debugf("<%s> save block just built to local db", bft.producer.groupId)
 		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.producer.nodename)
 		if err != nil {
 			return err

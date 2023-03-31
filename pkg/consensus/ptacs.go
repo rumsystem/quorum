@@ -19,7 +19,7 @@ type PTAcs struct {
 	rbcResults map[string][]byte
 }
 
-func NewPTAcs(cfg Config, bft *PTBft, epoch uint64) *PTAcs {
+func NewPTACS(cfg Config, bft *PTBft, epoch uint64) *PTAcs {
 	ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 
 	acs := &PTAcs{
@@ -32,7 +32,7 @@ func NewPTAcs(cfg Config, bft *PTBft, epoch uint64) *PTAcs {
 	}
 
 	for _, rbcInstPubkey := range cfg.Nodes {
-		acs.rbcInsts[rbcInstPubkey], _ = NewPTRbc(cfg, acs, bft.producer.groupId, cfg.MyPubkey, rbcInstPubkey)
+		acs.rbcInsts[rbcInstPubkey], _ = NewPTRBC(cfg, acs, bft.producer.groupId, cfg.MyPubkey, rbcInstPubkey)
 	}
 
 	return acs
@@ -54,7 +54,7 @@ func (a *PTAcs) RbcDone(proposerPubkey string) {
 	ptacs_log.Infof("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 	if len(a.rbcOutput) == a.N-a.f {
-		ptacs_log.Debugf("enough RBC done, consensus needed<%d>", a.N-a.f)
+		//ptacs_log.Debugf("enough RBC done, consensus needed<%d>", a.N-a.f)
 		//this only works when producer nodes equals to 3!!
 		//TBD:should add BBA here
 		//1. set all NOT finished RBC to false
@@ -67,13 +67,13 @@ func (a *PTAcs) RbcDone(proposerPubkey string) {
 		//call hbb to get result
 		a.bft.AcsDone(a.Epoch, a.rbcResults)
 	} else {
-		ptacs_log.Debugf("Wait for enough RBC done")
+		//ptacs_log.Debugf("Wait for enough RBC done")
 		return
 	}
 }
 
 func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ptacs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
+	//	ptacs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
@@ -102,7 +102,7 @@ func (a *PTAcs) handleRbcMsg(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
+		//	ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
 			ptacs_log.Debugf("not for me")
 			return nil
