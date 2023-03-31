@@ -163,10 +163,12 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		//add pubkeys for all producers
 		cp.producerspubkey = append(cp.producerspubkey, req.ProducerPubkeyList...)
 
+		//create resp
 		bundle := &quorumpb.ConsensusBundle{
 			Req: req,
 		}
 
+		shouldCreateResp := true
 		if cp.cIface.IsOwner() {
 			//check if I am in the producer list
 			isInProducerList := false
@@ -177,30 +179,34 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 				}
 			}
 
-			if isInProducerList {
-				// add my agreement resp to bundle
-				resp := &quorumpb.ChangeConsensusResp{
-					RespId:       guuid.New().String(),
-					GroupId:      req.GroupId,
-					SenderPubkey: cp.grpItem.UserSignPubkey,
-					Req:          req,
-					MsgHash:      nil,
-					SenderSign:   nil,
-				}
-
-				byts, err := proto.Marshal(dumpreq)
-				if err != nil {
-					molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
-					return err
-				}
-
-				hash := localcrypto.Hash(byts)
-				ks := nodectx.GetNodeCtx().Keystore
-				signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
-				req.MsgHash = hash
-				req.SenderSign = signature
-				bundle.Resp = resp
+			if !isInProducerList {
+				shouldCreateResp = false
 			}
+		}
+
+		//create resp
+		if shouldCreateResp {
+			resp := &quorumpb.ChangeConsensusResp{
+				RespId:       guuid.New().String(),
+				GroupId:      req.GroupId,
+				SenderPubkey: cp.grpItem.UserSignPubkey,
+				Req:          req,
+				MsgHash:      nil,
+				SenderSign:   nil,
+			}
+
+			byts, err := proto.Marshal(dumpreq)
+			if err != nil {
+				molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
+				return err
+			}
+
+			hash := localcrypto.Hash(byts)
+			ks := nodectx.GetNodeCtx().Keystore
+			signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
+			req.MsgHash = hash
+			req.SenderSign = signature
+			bundle.Resp = resp
 		}
 
 		//create bft config
