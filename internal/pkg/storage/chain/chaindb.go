@@ -162,7 +162,6 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 	return cs.dbmgr.Db.Set([]byte(key), ctnBytes)
 }
 
-// TBD
 func (cs *Storage) SaveChainInfo(currBlock, currEpoch uint64, lastUpdate int64, groupId string, prefix ...string) error {
 
 	key := s.GetChainInfoEpoch(groupId, prefix...)
@@ -186,7 +185,60 @@ func (cs *Storage) SaveChainInfo(currBlock, currEpoch uint64, lastUpdate int64, 
 	return nil
 }
 
-// TBD
+func (cs *Storage) UpdateChangeConsensusResult(groupId string, result *quorumpb.ChangeConsensusResultBundle, prefix ...string) error {
+	key := s.GetChangeConsensusResultKey(groupId, result.Req.ReqId, result.Req.Nonce, prefix...)
+	data, err := proto.Marshal(result)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.Db.Set([]byte(key), data)
+}
+
+func (cs *Storage) GetAllChangeConsensusResult(groupId string, prefix ...string) ([]*quorumpb.ChangeConsensusResultBundle, error) {
+	var rList []*quorumpb.ChangeConsensusResultBundle
+	key := s.GetChangeConsensusResultPrefix(groupId, prefix...)
+
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		item := quorumpb.ChangeConsensusResultBundle{}
+		perr := proto.Unmarshal(v, &item)
+		if perr != nil {
+			return perr
+		}
+		rList = append(rList, &item)
+		return nil
+	})
+
+	return rList, err
+}
+
+func (cs *Storage) GetLastChangeConsensusResult(groupId string, prefix ...string) (*quorumpb.ChangeConsensusResultBundle, error) {
+	key := s.GetChangeConsensusResultPrefix(groupId, prefix...)
+	var lastResult *quorumpb.ChangeConsensusResultBundle
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		item := quorumpb.ChangeConsensusResultBundle{}
+		perr := proto.Unmarshal(v, &item)
+		if perr != nil {
+			return perr
+		}
+		if lastResult == nil {
+			lastResult = &item
+		} else {
+			if item.Req.Nonce > lastResult.Req.Nonce {
+				lastResult = &item
+			}
+		}
+		return nil
+	})
+
+	return lastResult, err
+}
+
 func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, currEpoch uint64, lastUpdate int64, err error) {
 	key := s.GetChainInfoEpoch(groupId, prefix...)
 	e, err := cs.dbmgr.Db.Get([]byte(key))

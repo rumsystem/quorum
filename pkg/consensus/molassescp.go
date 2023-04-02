@@ -164,7 +164,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		cp.producerspubkey = append(cp.producerspubkey, req.ProducerPubkeyList...)
 
 		//create resp
-		bundle := &quorumpb.ConsensusBundle{
+		bundle := &quorumpb.ConsensusProof{
 			Req: req,
 		}
 
@@ -220,8 +220,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		molacp_log.Debugf("<%s> create bft", cp.groupId)
 		cp.bft = NewPCBft(*config, cp)
 		cp.bft.Start()
-
-		cp.bft.AddBundle(bundle)
+		cp.bft.AddProof(bundle)
 	}
 
 	return nil
@@ -236,19 +235,21 @@ func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error 
 	return nil
 }
 
-func (cp *MolassesConsensusProposer) HandleCCRResult(reqid string, result CCRResult) {
-	if reqid != cp.CurrReq.ReqId {
-		molacp_log.Debugf("<%s> HandleCCRResult reqid <%s> is not same as current reqid <%s>, ignore", cp.groupId, reqid, cp.CurrReq.ReqId)
+func (cp *MolassesConsensusProposer) HandleCCRResult(result *quorumpb.ChangeConsensusResultBundle) {
+	if result.Req.ReqId != cp.CurrReq.ReqId {
+		molacp_log.Debugf("<%s> HandleCCRResult reqid <%s> is not same as current reqid <%s>, ignore", cp.groupId, result.Req.ReqId, cp.CurrReq.ReqId)
 		return
 	}
 
-	switch result {
-	case CCRSuccess:
-		molacp_log.Debugf("<%s> HandleCCRResult CCRSuccess", cp.groupId)
-	case CCRFail:
-		molacp_log.Debugf("<%s> HandleCCRResult CCRFail", cp.groupId)
-	case CCRTimeout:
-		molacp_log.Debugf("<%s> HandleCCRResult CCRTimeout", cp.groupId)
+	//save result
+	nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(cp.groupId, result)
+
+	switch result.Result {
+	case quorumpb.ChangeConsensusResult_SUCCESS:
+		//stop current bft
+	case quorumpb.ChangeConsensusResult_FAIL:
+		//stop current bf
+	case quorumpb.ChangeConsensusResult_TIMEOUT:
 	default:
 	}
 }

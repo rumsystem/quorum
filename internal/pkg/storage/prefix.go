@@ -34,8 +34,9 @@ const (
 	RELAY_PREFIX     = "rly" //relay
 
 	// consensus db
-	CNS_BUFD_TRX = "cns_bf_trx" //buffered trx (used by acs)
-	CNS_BUFD_MSG = "cns_bf_msg" //buffered message (used by bba & rbc)
+	CNS_BUFD_TRX          = "cns_bf_trx"     //buffered trx (used by acs)
+	CNS_CCR_RESULT_PREFIX = "cns_ccr_result" //consensus result
+
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -269,4 +270,15 @@ func GetRelayActivityKey(groupId, _type string) string {
 
 func GetRelayApprovedKey(groupId, _type string) string {
 	return GetRelayPrefix() + "_approved_" + groupId + "_" + _type
+}
+
+func GetChangeConsensusResultPrefix(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + CNS_CCR_RESULT_PREFIX + "_" + groupId + "_"
+}
+
+func GetChangeConsensusResultKey(groupId string, reqId string, nonce uint64, prefix ...string) string {
+	nonceSD := strconv.FormatUint(nonce, 10)
+	_prefix := GetChangeConsensusResultPrefix(groupId)
+	return _prefix + nonceSD + "_" + reqId
 }

@@ -135,14 +135,21 @@ message ChangeConsensusResp {
     bytes              SenderSign   = 6;
 }
 
-message ConsensusBundle{
-    ChangeConsensusReq  Req  = 1;
-    ChangeConsensusResp Resp = 2;
+message ConsensusProof{
+    ChangeConsensusReq   req   = 1;
+    ChangeConsensusResp  resp = 2;
 }
 
-message ConsensusProof{
-    ChangeConsensusReq           req   = 1;
-    repeated ChangeConsensusResp resps = 2;
+enum ChangeConsensusResult {
+    SUCCESS = 0;
+    FAIL    = 1;
+    TIMEOUT = 2;
+}
+
+message ChangeConsensusResultBundle{
+    ChangeConsensusResult         Result = 1;
+    ChangeConsensusReq            Req    = 2;
+    repeated ChangeConsensusResp  Resp   = 3;
 }
 
 message ReqBlock {
