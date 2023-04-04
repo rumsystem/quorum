@@ -51,35 +51,13 @@ func (opt *NodeOptions) writeToconfig() error {
 	if err != nil {
 		return err
 	}
+
 	v.Set("EnableNat", opt.EnableNat)
 	v.Set("EnableRumExchange", opt.EnableRumExchange)
 	v.Set("EnableDevNetwork", opt.EnableDevNetwork)
 	v.Set("SignKeyMap", opt.SignKeyMap)
-	v.Set("JWTKey", opt.JWTKey)
-	v.Set("JWTTokenMap", opt.JWTTokenMap)
+	v.Set("JWT", opt.JWT)
 	return v.WriteConfig()
-}
-
-func (opt *NodeOptions) GetJWTTokenMap(name string) string {
-	token, ok := opt.JWTTokenMap[name]
-	if !ok {
-		return ""
-	}
-	return token
-}
-
-func (opt *NodeOptions) SetJWTTokenMap(name, jwtToken string) error {
-	opt.mu.Lock()
-	defer opt.mu.Unlock()
-	opt.JWTTokenMap[name] = jwtToken
-	return opt.writeToconfig()
-}
-
-func (opt *NodeOptions) DelJWTTokenMap(name string) error {
-	opt.mu.Lock()
-	defer opt.mu.Unlock()
-	delete(opt.JWTTokenMap, name)
-	return opt.writeToconfig()
 }
 
 func (opt *NodeOptions) SetSignKeyMap(keyname, addr string) error {
@@ -103,8 +81,12 @@ func writeDefaultToconfig(v *viper.Viper) error {
 	v.Set("NetworkName", defaultNetworkName)
 	v.Set("MaxPeers", defaultMaxPeers)
 	v.Set("ConnsHi", defaultConnsHi)
-	v.Set("JWTKey", utils.GetRandomStr(JWTKeyLength))
 	v.Set("SignKeyMap", map[string]string{})
+	v.Set("JWT", JWT{
+		Key:   utils.GetRandomStr(JWTKeyLength),
+		Chain: &JWTListItem{},
+		Node:  map[string]*JWTListItem{},
+	})
 	return v.SafeWriteConfig()
 }
 
@@ -146,38 +128,34 @@ func load(dir string, keyname string) (*NodeOptions, error) {
 	}
 
 	options := &NodeOptions{}
-	options.EnableRelay = v.GetBool("EnableRelay")
-	options.EnableNat = v.GetBool("EnableNat")
-	options.EnableRumExchange = v.GetBool("EnableRumExchange")
-	options.EnableDevNetwork = v.GetBool("EnableDevNetwork")
-	options.NetworkName = v.GetString("NetworkName")
+	if err := v.Unmarshal(&options); err != nil {
+		panic(err)
+	}
+
+	if options.JWT == nil {
+		options.JWT = &JWT{
+			Key:   utils.GetRandomStr(JWTKeyLength),
+			Chain: &JWTListItem{},
+			Node:  map[string]*JWTListItem{},
+		}
+	}
 	if v.Get("EnableSnapshot") == nil {
 		options.EnableSnapshot = true
-	} else {
-		options.EnableSnapshot = v.GetBool("EnableSnapshot")
 	}
 
 	if v.Get("EnablePubQue") == nil {
 		options.EnablePubQue = true
-	} else {
-		options.EnablePubQue = v.GetBool("EnablePubQue")
 	}
 
 	if options.NetworkName == "" {
 		options.NetworkName = defaultNetworkName
 	}
-	options.MaxPeers = v.GetInt("MaxPeers")
 	if options.MaxPeers == 0 {
 		options.MaxPeers = defaultMaxPeers
 	}
-	options.ConnsHi = v.GetInt("ConnsHi")
 	if options.ConnsHi == 0 {
 		options.ConnsHi = defaultConnsHi
 	}
-
-	options.SignKeyMap = v.GetStringMapString("SignKeyMap")
-	options.JWTKey = v.GetString("JWTKey")
-	options.JWTTokenMap = v.GetStringMapString("JWTTokenMap")
 
 	return options, nil
 }
