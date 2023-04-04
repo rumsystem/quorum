@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"time"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
@@ -17,18 +19,33 @@ type PCTask struct {
 
 type PCBft struct {
 	Config
-	groupId  string
-	pp       *MolassesConsensusProposer
-	currTask *PCTask
+	groupId   string
+	pp        *MolassesConsensusProposer
+	currTask  *PCTask
+	currProof *quorumpb.ConsensusProof
+
+	status BftStatus
+
+	tickerLen int64
+	tickCnt   int64
+	ticker    *time.Ticker
+
+	tickerdone chan bool
+	taskdone   chan bool
 }
 
-func NewPCBft(cfg Config, pp *MolassesConsensusProposer) *PCBft {
+func NewPCBft(cfg Config, pp *MolassesConsensusProposer, tickerLen, tickCnt int64) *PCBft {
 	pcbft_log.Debugf("NewPCBft called")
 	return &PCBft{
-		Config:   cfg,
-		groupId:  pp.groupId,
-		pp:       pp,
-		currTask: nil,
+		Config:     cfg,
+		groupId:    pp.groupId,
+		pp:         pp,
+		currTask:   nil,
+		currProof:  nil,
+		status:     IDLE,
+		ticker:     nil,
+		tickerdone: make(chan bool),
+		taskdone:   make(chan bool),
 	}
 }
 
@@ -37,8 +54,28 @@ func (bft *PCBft) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 	return nil
 }
 
+func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof) {
+	pcbft_log.Debugf("AddProducerProposal called, reqid <%s> ", proof.Req.ReqId)
+	bft.currProof = proof
+}
+
 func (bft *PCBft) Start() error {
-	return nil
+	go func() {
+		bft.ticker = time.NewTicker(time.Duration(bft.tickerLen) * time.Millisecond)
+		bft.status = RUNNING
+		for {
+			select {
+			case <-bft.tickerdone:
+				pcbft_log.Debugf("<%s> TickerDone called", bft.groupId)
+				return
+			case <-bft.ticker.C:
+				pcbft_log.Debugf("<%s> ticker called at <%d>", bft.groupId, time.Now().Nanosecond())
+				//increase epoch
+				//create new acs with new epoch
+				//call inputvalue for new acs
+			}
+		}
+	}()
 }
 
 func (bft *PCBft) Stop() error {
@@ -127,26 +164,8 @@ func (ppbft *PCBft) AcsDone(epoch uint64, result map[string][]byte) {
 	*/
 }
 
-func (ppbft *PCBft) AddProof(proof *quorumpb.ConsensusProof) error {
-	//pcbft_log.Debugf("AddProducerProposal called, SessionId <%s> ", req.ReqId)
-
-	/*
-		datab, err := proto.Marshal(req)
-		if err != nil {
-			return err
-		}
-
-		_, ok := pbft.acsInsts[req.SessionId]
-		if !ok {
-			pbft_log.Debugf("Create new ACS with sessionId <%s>", req.SessionId)
-			acs := NewPSyncACS(pbft.Config, pbft, req.SessionId)
-			pbft.acsInsts[req.SessionId] = acs
-		}
-
-		return pbft.acsInsts[req.SessionId].InputValue(datab)
-	*/
-
-	return nil
+func (bft *PCBft) checkConsensus(epoch uint64, proofs []*quorumpb.ConsensusProof) bool {
+	return true
 }
 
 func (ppbft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
@@ -155,5 +174,4 @@ func (ppbft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (ppbft *PCBft) HandleTimeOut(reqId string) {
-	return
 }

@@ -6,12 +6,11 @@ import (
 
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-var hbmsgsender_log = logging.Logger("hbmsender")
+//var hbmsgsender_log = logging.Logger("hbmsender")
 
 const DEFAULT_HB_MSG_SEND_INTEVL = 1 * 1000 //in millseconds
 

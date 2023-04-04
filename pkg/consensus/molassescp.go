@@ -218,7 +218,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 
 		//create bft
 		molacp_log.Debugf("<%s> create bft", cp.groupId)
-		cp.bft = NewPCBft(*config, cp)
+		cp.bft = NewPCBft(*config, cp, int64(req.AgreementTickLenInMs), int64(req.AgreementTickCount))
 		cp.bft.Start()
 		cp.bft.AddProof(bundle)
 	}

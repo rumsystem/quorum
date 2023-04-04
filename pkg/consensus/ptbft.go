@@ -73,7 +73,7 @@ func (bft *PTBft) Start() {
 				bft.Propose()
 			}
 		}
-		bft.ticker.Stop()
+		//bft.ticker.Stop()
 	}()
 }
 
