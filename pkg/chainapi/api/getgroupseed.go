@@ -19,30 +19,34 @@ import (
 // @Router /api/v1/group/{group_id}/seed [get]
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-
-	groupId := c.Param("group_id")
-	if groupId == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
+	var params handlers.GetGroupSeedParam
+	if err := cc.BindAndValidate(&params); err != nil {
+		return err
 	}
 
-	seed, err := handlers.GetGroupSeed(groupId, h.Appdb)
+	seed, err := handlers.GetGroupSeed(params.GroupId, h.Appdb)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	jwt, err := handlers.GetOrCreateGroupNodeJwt(groupId)
-	if err != nil {
-		return rumerrors.NewInternalServerError(err)
+	var chainUrls []string
+
+	if params.IncludeChainUrl {
+		jwt, err := handlers.GetOrCreateGroupNodeJwt(params.GroupId)
+		if err != nil {
+			return rumerrors.NewInternalServerError(err)
+		}
+
+		// get chain api url
+		baseUrl := cc.GetBaseURLFromRequest()
+		chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
+		chainUrls = append(chainUrls, chainapiUrl)
 	}
 
-	// get chain api url
-	baseUrl := cc.GetBaseURLFromRequest()
-	chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
-	seedurl, err := handlers.GroupSeedToUrl(1, []string{chainapiUrl}, seed)
+	seedurl, err := handlers.GroupSeedToUrl(1, chainUrls, seed)
 	if err != nil {
 		return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
 	}
