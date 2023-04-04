@@ -9,6 +9,8 @@ type GroupIface interface {
 	GetTrx(trxId string) (*quorumpb.Trx, error)
 	GetTrxFromCache(trxId string) (*quorumpb.Trx, error)
 	GetRexSyncerStatus() string
+	StartSync(restart bool) error
+	StopSync() error
 }
 
 type RexSyncResult struct {
