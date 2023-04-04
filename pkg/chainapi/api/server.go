@@ -102,6 +102,11 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 
+	r.GET("/v1/group/:group_id/consensus/history", h.GetConsensusHistory)
+	r.GET("/v1/group/:group_id/consensus/last", h.GetLatestConsensusChangeResult)
+	r.GET("/v1/group/:group_id/consensus/:reqid", h.GetConsensusResultByReqId)
+	r.GET("/v1/group/:group_id/consensus/current", h.GetCurrentConsensus)
+
 	// start https or http server
 	host := config.APIHost
 	if utils.IsDomainName(host) { // domain
@@ -165,14 +170,18 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
-	//TBD
-	//r.GET("/v1/group/:group_id/consensus", h.GetGroupConsensus)
+
 	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
 	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
 	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
+
+	r.GET("/v1/group/:group_id/consensus/history", h.GetConsensusHistory)
+	r.GET("/v1/group/:group_id/consensus/last", h.GetLatestConsensusChangeResult)
+	r.GET("/v1/group/:group_id/consensus/:reqid", h.GetConsensusResultByReqId)
+	r.GET("/v1/group/:group_id/consensus/current", h.GetCurrentConsensus)
 
 	//app api
 	a.POST("/v1/token/refresh", apph.RefreshToken)
