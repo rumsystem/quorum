@@ -28,10 +28,11 @@ func TestGetUserEncryptPubKeys(t *testing.T) {
 
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-get-pubkeys",
-		ConsensusType:  "poa",
-		EncryptionType: "private",
-		AppKey:         "default",
+		GroupName:       "test-get-pubkeys",
+		ConsensusType:   "poa",
+		EncryptionType:  "private",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {

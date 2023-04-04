@@ -153,10 +153,11 @@ func TestGetChainDataNSdk(t *testing.T) {
 
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-chain-data",
-		ConsensusType:  "poa",
-		EncryptionType: "public",
-		AppKey:         "default",
+		GroupName:       "test-chain-data",
+		ConsensusType:   "poa",
+		EncryptionType:  "public",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {
@@ -236,10 +237,11 @@ func TestGetChainDataAppConfigNSdk(t *testing.T) {
 
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-chain-data",
-		ConsensusType:  "poa",
-		EncryptionType: "public",
-		AppKey:         "default",
+		GroupName:       "test-chain-data",
+		ConsensusType:   "poa",
+		EncryptionType:  "public",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {

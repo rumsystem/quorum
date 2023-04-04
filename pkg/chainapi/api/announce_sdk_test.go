@@ -25,10 +25,11 @@ func announceNSdk(urls []string, payload NSdkAnnounceParams) (*handlers.Announce
 func TestAnnounceNSdk(t *testing.T) {
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-sync",
-		ConsensusType:  "poa",
-		EncryptionType: "public",
-		AppKey:         "default",
+		GroupName:       "test-sync",
+		ConsensusType:   "poa",
+		EncryptionType:  "public",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {
