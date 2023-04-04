@@ -17,22 +17,10 @@ func GetOrCreateGroupNodeJwt(groupId string) (string, error) {
 	nodeoptions := options.GetNodeOptions()
 
 	jwtName := fmt.Sprintf("allow-%s", groupId)
-	jwt := nodeoptions.GetJWTTokenMap(jwtName)
-	if jwt == "" {
-		var err error
-		jwt, err = utils.NewJWTToken(
-			jwtName,
-			"node",
-			[]string{groupId},
-			nodeoptions.JWTKey,
-			time.Now().Add(time.Hour*24*365*5), // 5 years
-		)
-		if err != nil {
-			return "", err
-		}
-		if err := nodeoptions.SetJWTTokenMap(jwtName, jwt); err != nil {
-			return "", err
-		}
+	exp := time.Now().Add(time.Hour * 24 * 365 * 5)
+	jwt, err := nodeoptions.GetOrCreateNodeJwt(groupId, jwtName, exp)
+	if err != nil {
+		return "", err
 	}
 
 	if jwt == "" {
