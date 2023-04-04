@@ -147,9 +147,11 @@ enum ChangeConsensusResult {
 }
 
 message ChangeConsensusResultBundle{
-    ChangeConsensusResult         Result = 1;
-    ChangeConsensusReq            Req    = 2;
-    repeated ChangeConsensusResp  Resp   = 3;
+    ChangeConsensusResult         Result             = 1;
+    ChangeConsensusReq            Req                = 2;
+    repeated ChangeConsensusResp  Resps              = 3;
+    uint64                        Epoch              = 4;
+    repeated string               ResponsedProducers = 5;
 }
 
 message ReqBlock {

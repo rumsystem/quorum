@@ -501,6 +501,20 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 	return nil
 }
 
+func (chain *Chain) ChangeConsensusDone(trxId, reqId string, bundle *quorumpb.ChangeConsensusResultBundle) {
+	//update change consensus result
+	nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, bundle, chain.nodename)
+
+	if bundle.Result == quorumpb.ChangeConsensusResult_SUCCESS {
+		//update chain consensus
+	} else {
+		//update chain consensus failed or timeout
+		return
+	}
+
+	//send the changeConsensusTrx by using the trxId
+}
+
 func (chain *Chain) UpdConnMgrProducer() {
 	chain_log.Debugf("<%s> UpdConnMgrProducer called", chain.groupItem.GroupId)
 	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)

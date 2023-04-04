@@ -21,4 +21,5 @@ type ChainMolassesIface interface {
 	IsProducer() bool
 	IsOwner() bool
 	VerifySign(hash, signature []byte, pubkey string) (bool, error)
+	ChangeConsensusDone(trxId, reqId string, bundle *quorumpb.ChangeConsensusResultBundle)
 }
