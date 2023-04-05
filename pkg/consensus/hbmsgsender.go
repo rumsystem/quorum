@@ -70,6 +70,15 @@ func (msender *HBMsgSender) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 	return nil
 }
 
+func (msender *HBMsgSender) StopSending() {
+
+	msender.locker.Lock()
+	defer msender.locker.Unlock()
+	if msender.ticker != nil {
+		msender.tickerDone <- true
+	}
+}
+
 func (msender *HBMsgSender) startSending() {
 	if msender.ticker != nil {
 		msender.tickerDone <- true

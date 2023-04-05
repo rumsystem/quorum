@@ -55,12 +55,10 @@ func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*U
 
 		//check if pubkey in producer list are unique
 		bundle := make(map[string]bool)
-
 		bftProducerBundle := &quorumpb.BFTProducerBundleItem{}
 		producers := []*quorumpb.ProducerItem{}
 
 		for _, producerPubkey := range params.ProducerPubkey {
-
 			if ok := bundle[producerPubkey]; ok {
 				return nil, fmt.Errorf("producer pubkey should be unique")
 			}
