@@ -811,10 +811,23 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, nodename)
 		case quorumpb.TrxType_CONSENSUS:
 			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateConsensusTrx(trx, nodename)
-			chain.updProducerList()
-			chain.updAnnouncedProducerStatus()
-			chain.updProducerConfig()
+			isValid, error := chain.verifyConsensusTrx(trx)
+			if error != nil {
+				chain_log.Warningf("<%s> verify consensus trx failed with error <%s>", chain.groupItem.GroupId, error.Error())
+				continue
+			}
+			if !isValid {
+				chain_log.Warningf("<%s> verify consensus trx failed", chain.groupItem.GroupId)
+				continue
+			} else {
+				chain_log.Debugf("<%s> verify consensus trx success", chain.groupItem.GroupId)
+				err = chain.changeConsensus(trx, nodename)
+				if err != nil {
+					chain_log.Warningf("<%s> change consensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
+					continue
+				}
+			}
+
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateUserTrx(trx, nodename)
@@ -838,6 +851,19 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		//save original trx to db
 		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 	}
+	return nil
+}
+
+func (chain *Chain) verifyConsensusTrx(trx *quorumpb.Trx) (bool, error) {
+	return true, nil
+}
+
+func (chain *Chain) changeConsensus(trx *quorumpb.Trx, nodename string) error {
+	nodectx.GetNodeCtx().GetChainStorage().UpdateConsensusTrx(trx, nodename)
+	chain.updProducerList()
+	chain.updAnnouncedProducerStatus()
+	chain.updProducerConfig()
+
 	return nil
 }
 

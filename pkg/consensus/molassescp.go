@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -33,6 +34,7 @@ type MolassesConsensusProposer struct {
 	bft             *PCBft
 	CurrReq         *quorumpb.ChangeConsensusReq
 	ReqSender       *CCReqSender
+	locker          sync.Mutex
 }
 
 func (cp *MolassesConsensusProposer) NewConsensusProposer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
@@ -49,6 +51,9 @@ func (cp *MolassesConsensusProposer) NewConsensusProposer(item *quorumpb.GroupIt
 
 func (cp *MolassesConsensusProposer) StartChangeConsensus(producerList *quorumpb.BFTProducerBundleItem, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
 	molacp_log.Debugf("<%s> StartChangeConsensus called", cp.groupId)
+
+	cp.locker.Lock()
+	defer cp.locker.Unlock()
 
 	//stop current bft
 	if cp.bft != nil {
@@ -114,6 +119,9 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producerList *quorumpb
 func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusReq) error {
 	molacp_log.Debugf("<%s> HandleCCReq called", cp.groupId)
 
+	cp.locker.Lock()
+	defer cp.locker.Unlock()
+
 	//check if req is from group owner
 	if cp.grpItem.OwnerPubKey != req.SenderPubkey {
 		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not from group owner, ignore", cp.groupId, req.ReqId)
@@ -144,6 +152,8 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 			return nil
 		}
 	}
+
+	cp.CurrReq = req
 
 	//verify if req is valid
 	dumpreq := &quorumpb.ChangeConsensusReq{
@@ -191,23 +201,12 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		cp.ReqSender.StopSending()
 	}
 
-	//add pubkeys for all producers
-	cp.producerspubkey = append(cp.producerspubkey, req.ProducerPubkeyList...)
+	//check if owner is in the producer list
 	if cp.cIface.IsOwner() {
-		inTheList := false
-
-
-	//create Proof
-	bundle := &quorumpb.ConsensusProof{
-		Req: req,
-	}
-
-	//check if owner is in the producer list	
-	if cp.cIface.IsOwner() {
-		isOwnerInProducerList := false
+		isInProducerList := false
 		for _, producer := range req.ProducerPubkeyList {
 			if producer == cp.grpItem.UserSignPubkey {
-				isOwnerInProducerList = true
+				isInProducerList = true
 				break
 			}
 		}
@@ -217,7 +216,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		}
 	}
 
-	//create resp
+	//create
 	resp := &quorumpb.ChangeConsensusResp{
 		RespId:       guuid.New().String(),
 		GroupId:      req.GroupId,
@@ -227,19 +226,17 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		SenderSign:   nil,
 	}
 
-	byts, err := proto.Marshal(dumpreq)
+	byts, err = proto.Marshal(resp)
 	if err != nil {
 		molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
 		return err
 	}
 
-	hash := localcrypto.Hash(byts)
+	hash = localcrypto.Hash(byts)
 	ks := nodectx.GetNodeCtx().Keystore
 	signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
 	req.MsgHash = hash
 	req.SenderSign = signature
-	bundle.Resp = resp
-
 
 	//create bft config
 	config, err := cp.createBftConfig()
@@ -248,13 +245,17 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		return err
 	}
 
-	cp.CurrReq = req
+	//create Proof
+	proofBundle := &quorumpb.ConsensusProof{
+		Req:  req,
+		Resp: resp,
+	}
 
-	//create bft
+	//create and start bft
 	molacp_log.Debugf("<%s> create bft", cp.groupId)
-	cp.bft = NewPCBft(*config, cp, int64(req.AgreementTickLenInMs), int64(req.AgreementTickCount))
+	cp.bft = NewPCBft(*config, cp, req.AgreementTickLenInMs, req.AgreementTickCount)
 	cp.bft.Start()
-	cp.bft.AddProof(bundle)
+	cp.bft.AddProof(proofBundle)
 
 	return nil
 }
@@ -300,7 +301,22 @@ func (cp *MolassesConsensusProposer) HandleBftDone(epoch uint64, rawResult map[s
 	cp.cIface.ChangeConsensusDone(cp.trxId, cp.CurrReq.ReqId, bundle)
 }
 
+func (cp *MolassesConsensusProposer) HandleBFTTimeout(epoch uint64, reqId string, responsedProducers []string) {
+	molacp_log.Debugf("<%s> HandleBFTTimeout called", cp.groupId)
+
+	bundle := &quorumpb.ChangeConsensusResultBundle{
+		Req:                cp.CurrReq,
+		Resps:              nil,
+		Result:             quorumpb.ChangeConsensusResult_TIMEOUT,
+		Epoch:              epoch,
+		ResponsedProducers: responsedProducers,
+	}
+
+	cp.cIface.ChangeConsensusDone(cp.trxId, cp.CurrReq.ReqId, bundle)
+}
+
 func (cp *MolassesConsensusProposer) verifyRawResult(rawResult map[string][]byte) (bool, map[string]*quorumpb.ConsensusProof) {
+	molacp_log.Debugf("<%s> verifyRawResult called", cp.groupId)
 
 	//convert rawResultMap to proof map
 	proofMap := make(map[string]*quorumpb.ConsensusProof)
@@ -377,30 +393,13 @@ func (cp *MolassesConsensusProposer) verifyRawResult(rawResult map[string][]byte
 	return true, proofMap
 }
 
-func (cp *MolassesConsensusProposer) HandleCCRTimeout(epoch uint64, reqId string, responsedProducers []string) {
-	if reqId != cp.CurrReq.ReqId {
-		molacp_log.Debugf("<%s> HandleCCRResult reqid <%s> is not same as current reqid <%s>, ignore", cp.groupId, reqId, cp.CurrReq.ReqId)
-		return
-	}
-
-	bundle := &quorumpb.ChangeConsensusResultBundle{
-		Req:                cp.CurrReq,
-		Resps:              nil,
-		Result:             quorumpb.ChangeConsensusResult_TIMEOUT,
-		Epoch:              epoch,
-		ResponsedProducers: responsedProducers,
-	}
-
-	cp.cIface.ChangeConsensusDone(cp.trxId, cp.CurrReq.ReqId, bundle)
-}
-
 func (cp *MolassesConsensusProposer) createBftConfig() (*Config, error) {
 	molacp_log.Debugf("<%s> createBftConfig called", cp.groupId)
 
 	var producerNodes []string
 
 	n := len(producerNodes)
-	f := 0 // all participant producers should agree with the consensus request
+	f := 0 // all participant producers(owner included) should agree with the consensus request
 
 	molaproducer_log.Debugf("failable producers <%d>", f)
 	batchSize := 1

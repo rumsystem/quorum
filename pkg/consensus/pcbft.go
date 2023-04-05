@@ -10,8 +10,6 @@ import (
 
 var pcbft_log = logging.Logger("pcbft")
 
-var DEFAULT_CONSENSUS_PROPOSE_PULSE = 1 * 1000 //1s
-
 type PCTask struct {
 	Epoch       uint64
 	ProposeData []byte
@@ -29,15 +27,17 @@ type PCBft struct {
 
 	status BftStatus
 
-	tickerLen int64
-	tickCnt   int64
+	tickerLen uint64
+	tickCnt   uint64
 	ticker    *time.Ticker
 
 	tickerdone chan bool
 	taskdone   chan bool
+
+	//responsedProducers map[string]bool
 }
 
-func NewPCBft(cfg Config, pp *MolassesConsensusProposer, tickerLen, tickCnt int64) *PCBft {
+func NewPCBft(cfg Config, pp *MolassesConsensusProposer, tickerLen, tickCnt uint64) *PCBft {
 	pcbft_log.Debugf("NewPCBft called")
 	return &PCBft{
 		Config:     cfg,
@@ -51,11 +51,6 @@ func NewPCBft(cfg Config, pp *MolassesConsensusProposer, tickerLen, tickCnt int6
 		tickerdone: make(chan bool),
 		taskdone:   make(chan bool),
 	}
-}
-
-func (bft *PCBft) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	pcbft_log.Debugf("<%s> HandleHBMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
-	return nil
 }
 
 func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof) {
@@ -100,6 +95,9 @@ func (bft *PCBft) Propose() error {
 	if bft.currEpoch > uint64(bft.tickCnt) {
 		//consensus not be done in time
 		//stop ticker
+		//TBD fill responsed producer
+		bft.pp.HandleBFTTimeout(bft.currEpoch, bft.currProof.Req.ReqId, nil)
+		bft.tickerdone <- true
 		return nil
 	}
 
@@ -120,14 +118,15 @@ func (bft *PCBft) Propose() error {
 
 func (bft *PCBft) AcsDone(epoch uint64, result map[string][]byte) {
 	pcbft_log.Debugf("AcsDone called, epoch <%d>", epoch)
-	//give the results back to proposer
 	bft.pp.HandleBftDone(epoch, result)
 }
 
-func (ppbft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
+func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	pcbft_log.Debugf("HandleHBMsg called, Epoch <%d>", hbmsg.Epoch)
-	return nil
-}
 
-func (ppbft *PCBft) HandleTimeOut(reqId string) {
+	if bft.currTask != nil {
+		bft.currTask.acsInsts.HandleHBMessage(hbmsg)
+	}
+
+	return nil
 }
