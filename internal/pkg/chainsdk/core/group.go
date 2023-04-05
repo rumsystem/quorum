@@ -1,10 +1,6 @@
 package chain
 
 import (
-	"bytes"
-	"encoding/hex"
-	"time"
-
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -46,23 +42,12 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	pItem := &quorumpb.ProducerItem{}
 	pItem.GroupId = item.GroupId
-	pItem.GroupOwnerPubkey = item.OwnerPubKey
 	pItem.ProducerPubkey = item.OwnerPubKey
+	pItem.Proof = nil
+	pItem.BlkCnt = 0
+	pItem.Memo = "owner as the first group producer"
 
-	var buffer bytes.Buffer
-	buffer.Write([]byte(pItem.GroupId))
-	buffer.Write([]byte(pItem.ProducerPubkey))
-	buffer.Write([]byte(pItem.GroupOwnerPubkey))
-	hash := localcrypto.Hash(buffer.Bytes())
-
-	ks := nodectx.GetNodeCtx().Keystore
-	signature, err := ks.EthSignByKeyName(item.GroupId, hash)
-	if err != nil {
-		return err
-	}
-	pItem.GroupOwnerSign = hex.EncodeToString(signature)
 	pItem.Memo = "Owner Registated as the first group producer"
-	pItem.TimeStamp = time.Now().UnixNano()
 
 	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
 	if err != nil {

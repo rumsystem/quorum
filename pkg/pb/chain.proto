@@ -21,12 +21,6 @@ enum AnnounceType {
    AS_PRODUCER = 1;
 }
 
-enum ApproveType {
-    ANNOUNCED = 0;
-    APPROVED  = 1;
-    REJECTED  = 2;
-}
-
 enum ActionType {
     ADD    = 0;
     REMOVE = 1;
@@ -189,45 +183,42 @@ message PostItem {
     int64  TimeStamp    = 4;
 }
 
-message ProducerItem {
-   string     GroupId             = 1;
-   string     ProducerPubkey      = 2;
-   string     GroupOwnerPubkey    = 3;   
-   string     GroupOwnerSign      = 4;
-   ActionType Action              = 5;
-   int64      WithnessBlocks      = 6;
-   int64      TimeStamp           = 7;       
-   string     Memo                = 8;
-}
-
 message BFTProducerBundleItem {
     repeated ProducerItem Producers = 1;
+}
+
+message ProducerItem {
+   string     GroupId        = 1;
+   string     ProducerPubkey = 2;
+   Trx        Proof          = 3;
+   int64      BlkCnt         = 4;   
+   string     Memo           = 5;
 }
 
 message UserItem {
    string     GroupId             = 1;
    string     UserPubkey          = 2;
    string     EncryptPubkey       = 3;
-   string     GroupOwnerPubkey    = 4;
-   string     GroupOwnerSign      = 5;
-   int64      TimeStamp           = 6;
-   ActionType Action              = 7;
-   string     Memo                = 8;
+   Trx        Proof               = 4;
+   int64      TxCnt               = 5; //how many trx send by this user
+   string     Memo                = 6;
 }
 
 message AnnounceItem {
-    string       GroupId            = 1;
-    string       SignPubkey         = 2;
-    string       EncryptPubkey      = 3;
-    string       AnnouncerSignature = 4;
-    AnnounceType Type               = 5;
-    string       OwnerPubkey        = 6;
-    string       OwnerSignature     = 7;
-    ApproveType  Result             = 8;    
-    int64        TimeStamp          = 9; 
-    ActionType   Action             = 10;
-    string       Memo               = 11;
-    optional string Contract        = 12;
+    string          GroupId         = 1;    
+    ActionType      Action          = 2;
+    AnnounceContent Content         = 3;
+    string          AnnouncerPubkey = 4;
+    bytes           Hash            = 5;
+    string          Signature       = 6;
+}
+
+
+message AnnounceContent {
+    AnnounceType    Type          = 1;    
+    string          SignPubkey    = 2;
+    string          EncryptPubkey = 3;
+    string          Memo          = 4;
 }
 
 enum GroupEncryptType {
