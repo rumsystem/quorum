@@ -135,8 +135,9 @@ func (rs *RexSyncer) Stop() {
 	rs.mustatus.Lock()
 	rs.Status = CLOSED
 	rs.mustatus.Unlock()
-	safeCloseTaskQ(rs.taskq)
-	safeCloseResultQ(rs.resultq)
+	// TODO: don't close channel until destory all related timers
+	//safeCloseTaskQ(rs.taskq)
+	//safeCloseResultQ(rs.resultq)
 	rex_syncer_log.Debugf("<%s> rexsyncer stop success.", rs.GroupId)
 }
 
