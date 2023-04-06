@@ -119,13 +119,8 @@ func GetJWTAllowGroups(token *jwt.Token) []string {
 // @Success 200 {object} TokenItem  "a new auth token"
 // @Router /app/api/v1/token [post]
 func (h *Handler) CreateToken(c echo.Context) error {
-	cc := c.(*utils.CustomContext)
 	var err error
-
-	if !rummiddleware.LocalhostSkipper(c) {
-		return rumerrors.NewBadRequestError("only localhost can access this rest api")
-	}
-
+	cc := c.(*utils.CustomContext)
 	params := new(CreateJWTParams)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
