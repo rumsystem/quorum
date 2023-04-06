@@ -15,10 +15,10 @@ import (
 // @Param group_id path string true "Group Id"
 // @Success 200 {array} handlers.AnnouncedUserListItem
 // @Router /api/v1/group/{group_id}/announced/users [get]
-func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
+func (h *Handler) GetAnnouncedUsers(c echo.Context) error {
 	groupid := c.Param("group_id")
 
-	res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, groupid)
+	res, err := handlers.GetAnnouncedUsers(h.ChainAPIdb, groupid)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
@@ -34,11 +34,11 @@ func (h *Handler) GetAnnouncedGroupUsers(c echo.Context) error {
 // @Param sign_pubkey path string true "User SignPubkey"
 // @Success 200 {object} handlers.AnnouncedUserListItem
 // @Router /api/v1/group/{group_id}/announced/user/{sign_pubkey} [get]
-func (h *Handler) GetAnnouncedGroupUser(c echo.Context) error {
+func (h *Handler) GetAnnouncedUser(c echo.Context) error {
 	groupid := c.Param("group_id")
 	sign_pubkey := c.Param("sign_pubkey")
 
-	res, err := handlers.GetAnnouncedGroupUser(groupid, sign_pubkey)
+	res, err := handlers.GetAnnouncedUser(h.ChainAPIdb, groupid, sign_pubkey)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

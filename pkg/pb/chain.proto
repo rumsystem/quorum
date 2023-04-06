@@ -183,23 +183,26 @@ message PostItem {
     int64  TimeStamp    = 4;
 }
 
-message BFTProducerBundleItem {
-    repeated ProducerItem Producers = 1;
-}
-
 message ProducerItem {
    string     GroupId        = 1;
    string     ProducerPubkey = 2;
-   Trx        Proof          = 3;
+   string     ProofTrxId     = 3;
    int64      BlkCnt         = 4;   
    string     Memo           = 5;
+}
+
+message UpdGroupUserItem {
+    string     GroupId    = 1;
+    string     UserPubkey = 2;
+    ActionType Action     = 3;
+    string     Memo       = 4;
 }
 
 message UserItem {
    string     GroupId             = 1;
    string     UserPubkey          = 2;
    string     EncryptPubkey       = 3;
-   Trx        Proof               = 4;
+   string     ProofTrxId          = 4;
    int64      TxCnt               = 5; //how many trx send by this user
    string     Memo                = 6;
 }
@@ -212,7 +215,6 @@ message AnnounceItem {
     bytes           Hash            = 5;
     string          Signature       = 6;
 }
-
 
 message AnnounceContent {
     AnnounceType    Type          = 1;    

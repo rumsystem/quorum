@@ -185,7 +185,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 		if err != nil {
 			return rumerrors.NewBadRequestError("INVALID_DATA")
 		}
-		res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, item.GroupId)
+		res, err := handlers.GetAnnouncedProducers(h.ChainAPIdb, item.GroupId)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
@@ -197,13 +197,13 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			return rumerrors.NewBadRequestError("INVALID_DATA")
 		}
 		if item.SignPubkey == "" {
-			res, err := handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, item.GroupId)
+			res, err := handlers.GetAnnouncedUsers(h.ChainAPIdb, item.GroupId)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
 			}
 			return c.JSON(http.StatusOK, res)
 		} else {
-			res, err := handlers.GetAnnouncedGroupUser(item.GroupId, item.SignPubkey)
+			res, err := handlers.GetAnnouncedUser(h.ChainAPIdb, item.GroupId, item.SignPubkey)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
 			}

@@ -42,7 +42,7 @@ type GetCurrentConsensusParam struct {
 }
 
 type GetCurrentConsensusResult struct {
-	Producers        *quorumpb.BFTProducerBundleItem       `json:"producers"`
+	Producers        []string                              `json:"producers"`
 	TrxEpochInterval uint64                                `json:"trx_epoch_interval"`
 	LatestConsensus  *quorumpb.ChangeConsensusResultBundle `json:"latest_consensus"`
 }

@@ -9,6 +9,8 @@ import (
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 )
 
+//TBD, needs to be modified
+
 func (h *NodeSDKHandler) GetAnnouncedUsers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 

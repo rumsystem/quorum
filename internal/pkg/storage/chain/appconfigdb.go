@@ -8,10 +8,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) UpdateAppConfigTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return cs.UpdateAppConfig(trx.Data, prefix...)
-}
-
 func (cs *Storage) UpdateAppConfig(data []byte, prefix ...string) (err error) {
 	item := &quorumpb.AppConfigItem{}
 	if err := proto.Unmarshal(data, item); err != nil {

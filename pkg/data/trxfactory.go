@@ -56,7 +56,7 @@ func (factory *TrxFactory) GetRegProducerBundleTrx(keyalias string, item *quorum
 }
 */
 
-func (factory *TrxFactory) GetRegUserTrx(keyalias string, item *quorumpb.UserItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetUpdGroupUserTrx(keyalias string, item *quorumpb.UpdGroupUserItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err

@@ -49,7 +49,7 @@ func (cp *MolassesConsensusProposer) NewConsensusProposer(item *quorumpb.GroupIt
 	cp.ReqSender = nil
 }
 
-func (cp *MolassesConsensusProposer) StartChangeConsensus(producerList *quorumpb.BFTProducerBundleItem, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
+func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
 	molacp_log.Debugf("<%s> StartChangeConsensus called", cp.groupId)
 
 	cp.locker.Lock()
@@ -75,18 +75,13 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producerList *quorumpb
 
 	//tbd get current nonce
 	nonce := uint64(0)
-
-	var pubkeys []string
-	for _, producer := range producerList.Producers {
-		pubkeys = append(pubkeys, producer.ProducerPubkey)
-	}
-	cp.producerspubkey = append(cp.producerspubkey, pubkeys...)
+	cp.producerspubkey = producers
 
 	req := &quorumpb.ChangeConsensusReq{
 		ReqId:                guuid.New().String(),
 		GroupId:              cp.groupId,
 		Nonce:                nonce,
-		ProducerPubkeyList:   pubkeys,
+		ProducerPubkeyList:   cp.producerspubkey,
 		AgreementTickLenInMs: agrmTickLen,
 		AgreementTickCount:   agrmTickCnt,
 		StartFromEpoch:       fromNewEpoch,

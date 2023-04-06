@@ -113,7 +113,8 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		Data:         trx.Data,
 		TimeStamp:    trx.TimeStamp,
 		Version:      trx.Version,
-		Expired:      trx.Expired}
+		Expired:      trx.Expired,
+	}
 
 	bytes, err := proto.Marshal(clonetrxmsg)
 	if err != nil {

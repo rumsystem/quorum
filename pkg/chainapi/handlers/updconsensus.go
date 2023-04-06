@@ -1,24 +1,18 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type UpdConsensusResult struct {
 	GroupId      string `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
-	Producers    []*quorumpb.ProducerItem
+	Producers    []string
 	FromEpoch    uint64 `json:"start_from_epoch" validate:"required" example:"100"`
 	TrxEpochTick uint64 `json:"trx_epoch_tick" validate:"required" example:"100"`
 	TrxId        string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
@@ -49,88 +43,66 @@ func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*U
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, rumerrors.ErrOnlyGroupOwner
 	} else {
+		//check len of pubkey list
 		if len(params.ProducerPubkey) == 0 {
 			return nil, errors.New("producer pubkey list empty")
 		}
 
-		//check if pubkey in producer list are unique
+		//check if pubkeys pubkey list are unique
 		bundle := make(map[string]bool)
-		bftProducerBundle := &quorumpb.BFTProducerBundleItem{}
-		producers := []*quorumpb.ProducerItem{}
-
 		for _, producerPubkey := range params.ProducerPubkey {
 			if ok := bundle[producerPubkey]; ok {
 				return nil, fmt.Errorf("producer pubkey should be unique")
 			}
-
 			bundle[producerPubkey] = true
+		}
 
-			if producerPubkey != group.Item.OwnerPubKey {
-				isAnnounced, err := chainapidb.IsProducerAnnounced(group.GroupId, producerPubkey, group.Nodename)
-				if err != nil {
-					return nil, err
-				}
-
-				if !isAnnounced {
-					return nil, fmt.Errorf("producer <%s> is not announced", producerPubkey)
-				}
-
-				producer, err := group.GetAnnouncedProducer(producerPubkey)
-				if err != nil {
-					return nil, err
-				}
-
-				if producer.Action == quorumpb.ActionType_REMOVE {
-					return nil, fmt.Errorf("can not proposal a non-active producer <%s>", producerPubkey)
-				}
+		//check if pubkeys are announced
+		for _, producerPubkey := range params.ProducerPubkey {
+			if producerPubkey == group.Item.OwnerPubKey {
+				//skip owner
+				continue
 			}
 
-			if params.TrxEpochTick < 500 {
-				return nil, errors.New("trx epoch tick should be greater than 500(ms)")
-			}
-
-			item := &quorumpb.ProducerItem{}
-			item.GroupId = params.GroupId
-			item.ProducerPubkey = producerPubkey
-			item.GroupOwnerPubkey = group.Item.OwnerPubKey
-
-			var buffer bytes.Buffer
-			buffer.Write([]byte(item.GroupId))
-			buffer.Write([]byte(item.ProducerPubkey))
-			buffer.Write([]byte(item.GroupOwnerPubkey))
-			hash := localcrypto.Hash(buffer.Bytes())
-
-			ks := nodectx.GetNodeCtx().Keystore
-			signature, err := ks.EthSignByKeyName(item.GroupId, hash)
-
+			isAnnounced, err := chainapidb.IsProducerAnnounced(group.GroupId, producerPubkey, group.Nodename)
 			if err != nil {
 				return nil, err
 			}
 
-			item.GroupOwnerSign = hex.EncodeToString(signature)
-			item.Memo = params.Memo
-			item.TimeStamp = time.Now().UnixNano()
-			producers = append(producers, item)
+			if !isAnnounced {
+				return nil, fmt.Errorf("producer <%s> is not announced", producerPubkey)
+			}
 		}
 
-		bftProducerBundle.Producers = producers
+		//check trx epoch tick length
+		if params.TrxEpochTick < 500 {
+			return nil, errors.New("trx epoch tick length should be greater than 500(ms)")
+		}
 
-		trxId, err := group.UpdConsensus(bftProducerBundle, params.AgreementTickCount, params.AgreementTickLength, params.FromNewEpoch, params.TrxEpochTick)
+		if params.AgreementTickCount < 10 {
+			return nil, errors.New("agreement tick count should be greater than 10")
+		}
+
+		if params.AgreementTickLength < 1000 {
+			return nil, errors.New("agreement tick length should be greater than 1000(ms)")
+		}
+
+		trxId, err := group.UpdConsensus(params.ProducerPubkey, params.AgreementTickCount, params.AgreementTickLength, params.FromNewEpoch, params.TrxEpochTick)
 		if err != nil {
 			return nil, err
 		}
 
 		failable := (len(bundle) - 1) / 3 /* 3F < N */
-
 		result := &UpdConsensusResult{
 			TrxId:        trxId,
 			GroupId:      group.Item.GroupId,
-			Producers:    bftProducerBundle.Producers,
+			Producers:    params.ProducerPubkey,
 			Failable:     &failable,
 			Memo:         params.Memo,
 			FromEpoch:    params.FromNewEpoch,
 			TrxEpochTick: params.TrxEpochTick,
 		}
+
 		return result, nil
 	}
 }

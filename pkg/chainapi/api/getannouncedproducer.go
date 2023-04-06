@@ -15,10 +15,10 @@ import (
 // @Param group_id path string true "Group Id"
 // @Success 200 {array} handlers.AnnouncedProducerListItem
 // @Router /api/v1/group/{group_id}/announced/producers [get]
-func (h *Handler) GetAnnouncedGroupProducer(c echo.Context) (err error) {
+func (h *Handler) GetAnnouncedProducers(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 
-	res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, groupid)
+	res, err := handlers.GetAnnouncedProducers(h.ChainAPIdb, groupid)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

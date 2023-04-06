@@ -43,10 +43,9 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	pItem := &quorumpb.ProducerItem{}
 	pItem.GroupId = item.GroupId
 	pItem.ProducerPubkey = item.OwnerPubKey
-	pItem.Proof = nil
+	pItem.ProofTrxId = ""
 	pItem.BlkCnt = 0
 	pItem.Memo = "owner as the first group producer"
-
 	pItem.Memo = "Owner Registated as the first group producer"
 
 	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
@@ -247,15 +246,15 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdConsensus(item *quorumpb.BFTProducerBundleItem, agrmTickCount, agrmTickLength, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
+func (grp *Group) UpdConsensus(producers []string, agrmTickCount, agrmTickLength, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
 	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
 	trxId := guuid.New().String()
-	return trxId, grp.ChainCtx.UpdConsensus(item, trxId, agrmTickCount, agrmTickLength, fromNewEpoch, trxEpochTick)
+	return trxId, grp.ChainCtx.UpdConsensus(producers, trxId, agrmTickCount, agrmTickLength, fromNewEpoch, trxEpochTick)
 }
 
-func (grp *Group) UpdUser(item *quorumpb.UserItem) (string, error) {
+func (grp *Group) UpdGroupUser(item *quorumpb.UpdGroupUserItem) (string, error) {
 	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetRegUserTrx("", item)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdGroupUserTrx("", item)
 	if err != nil {
 		return "", nil
 	}

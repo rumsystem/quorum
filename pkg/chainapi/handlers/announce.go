@@ -31,7 +31,6 @@ type AnnounceParam struct {
 }
 
 func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
-
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
 		return nil, rumerrors.ErrGroupNotFound

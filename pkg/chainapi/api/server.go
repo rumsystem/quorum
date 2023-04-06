@@ -97,9 +97,9 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 	//TBD
 	//r.GET("/v1/group/:group_id/conensus", h.GetGroupConsensus)
-	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
-	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
-	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
+	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
+	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUser)
+	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 
 	r.GET("/v1/group/:group_id/consensus/history", h.GetConsensusHistory)
@@ -159,7 +159,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 	r.POST("/v1/group/updconsensus", h.UpdConsensus)
-	r.POST("/v1/group/user", h.GroupUser)
+	r.POST("/v1/group/upduser", h.UpdGroupUser)
 	r.POST("/v1/group/announce", h.Announce)
 
 	r.GET("/v1/node", h.GetNodeInfo)
@@ -171,9 +171,9 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
-	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
-	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
-	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
+	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
+	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUser)
+	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)

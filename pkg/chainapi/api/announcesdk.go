@@ -61,15 +61,15 @@ func (h *Handler) AnnounceNodeSDK(c echo.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	var result *handlers.AnnounceResult
-	result = &handlers.AnnounceResult{
-		GroupId:                item.GroupId,
-		AnnouncedSignPubkey:    item.SignPubkey,
-		AnnouncedEncryptPubkey: item.EncryptPubkey,
-		Type:                   item.Type.String(),
-		Action:                 item.Action.String(),
-		Sign:                   item.AnnouncerSignature,
-		TrxId:                  trxId,
+
+	result := &handlers.AnnounceResult{
+		GroupId:       item.GroupId,
+		SignPubkey:    item.Content.SignPubkey,
+		EncryptPubkey: item.Content.EncryptPubkey,
+		Type:          item.Content.Type.String(),
+		Action:        item.Action.String(),
+		Sign:          item.Signature,
+		TrxId:         trxId,
 	}
 
 	return c.JSON(http.StatusOK, result)
