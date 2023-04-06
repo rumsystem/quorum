@@ -32,20 +32,20 @@ type TokenItem struct {
 type CreateJWTParams struct {
 	Name      string    `json:"name" validate:"required" example:"allow-513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
 	Role      string    `json:"role" validate:"required,oneof=node chain" example:"node"`
-	GroupId   string    `json:"group_id"  example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	GroupId   string    `json:"group_id" validate:"required_if=Role node" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
 	ExpiresAt time.Time `json:"expires_at" validate:"required" example:"2022-12-28T08:10:36.675204+00:00"`
 }
 
 type RevokeJWTParams struct {
 	Role    string `json:"role" validate:"required,oneof=node chain" example:"node"`
-	GroupId string `json:"group_id"  example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	GroupId string `json:"group_id" validate:"required_if=Role node" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
 	Token   string `json:"token" validate:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI1MTNiZDNmMi1hMGJjLTQ3MGItODA2My1lYzk1NDlmMzRiN2QiXSwiZXhwIjoxODI2MTA4MzA5LCJuYW1lIjoiYWxsb3ctNTEzYmQzZjItYTBiYy00NzBiLTgwNjMtZWM5NTQ5ZjM0YjdkIiwicm9sZSI6Im5vZGUifQ.CZQB2jzvY3lB_XgAd8izAQaunsHZFh1qN0tmSdYkce8"`
 }
 
 type RemoveJWTParams struct {
-	Role    string `json:"role" validate:"required,oneof=node chain" example:"node"`
-	GroupId string `json:"group_id"  example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
-	Token   string `json:"token" validate:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI1MTNiZDNmMi1hMGJjLTQ3MGItODA2My1lYzk1NDlmMzRiN2QiXSwiZXhwIjoxODI2MTA4MzA5LCJuYW1lIjoiYWxsb3ctNTEzYmQzZjItYTBiYy00NzBiLTgwNjMtZWM5NTQ5ZjM0YjdkIiwicm9sZSI6Im5vZGUifQ.CZQB2jzvY3lB_XgAd8izAQaunsHZFh1qN0tmSdYkce8"`
+	Role    string `json:"role" query:"role" validate:"required,oneof=node chain" example:"node"`
+	GroupId string `json:"group_id" query:"group_id" validate:"required_if=Role node" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	Token   string `json:"token" query:"token" validate:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI1MTNiZDNmMi1hMGJjLTQ3MGItODA2My1lYzk1NDlmMzRiN2QiXSwiZXhwIjoxODI2MTA4MzA5LCJuYW1lIjoiYWxsb3ctNTEzYmQzZjItYTBiYy00NzBiLTgwNjMtZWM5NTQ5ZjM0YjdkIiwicm9sZSI6Im5vZGUifQ.CZQB2jzvY3lB_XgAd8izAQaunsHZFh1qN0tmSdYkce8"`
 }
 
 func getJWTKey() (string, error) {
@@ -126,16 +126,6 @@ func (h *Handler) CreateToken(c echo.Context) error {
 		return err
 	}
 
-	if params.Role == "node" {
-		if len(params.GroupId) == 0 {
-			return rumerrors.NewBadRequestError("allow_groups field must not be empty for node jwt")
-		}
-	} else {
-		if len(params.GroupId) > 0 {
-			return rumerrors.NewBadRequestError("allow_groups field must be empty for chain jwt")
-		}
-	}
-
 	nodeOpt := options.GetNodeOptions()
 	if nodeOpt == nil {
 		return errors.New("Call InitNodeOptions() before use it")
@@ -176,9 +166,6 @@ func (h *Handler) RevokeToken(c echo.Context) error {
 	}
 
 	if payload.Role == "node" {
-		if payload.GroupId == "" {
-			return rumerrors.NewBadRequestError(errors.New("missing group_id"))
-		}
 		if err := nodeOpt.RevokeNodeJWT(payload.GroupId, payload.Token); err != nil {
 			return err
 		}
@@ -196,7 +183,7 @@ func (h *Handler) RevokeToken(c echo.Context) error {
 // @Description Remove a auth token
 // @Produce json
 // @Param Authorization header string true "current auth token"
-// @Param   remove_jwt_params  body RemoveJWTParams  true  "remove jwt params"
+// @Param   remove_jwt_params  query RemoveJWTParams  true  "remove jwt params"
 // @Success 200 {object} utils.SuccessResponse
 // @Router /app/api/v1/token [delete]
 func (h *Handler) RemoveToken(c echo.Context) error {
@@ -212,9 +199,6 @@ func (h *Handler) RemoveToken(c echo.Context) error {
 	}
 
 	if payload.Role == "node" {
-		if payload.GroupId == "" {
-			return rumerrors.NewBadRequestError(errors.New("missing group_id"))
-		}
 		if err := nodeOpt.RemoveNodeJWT(payload.GroupId, payload.Token); err != nil {
 			return err
 		}
