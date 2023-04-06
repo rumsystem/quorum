@@ -234,6 +234,10 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 	exp := time.Now().Add(time.Hour * 24 * 30)
 	var newTokenStr string
 
+	if len(allowGroups) == 0 {
+		return rumerrors.NewBadRequestError("invalid token")
+	}
+
 	if role == "chain" {
 		if !nodeOpt.IsValidChainJWT(token.Raw) {
 			return rumerrors.NewBadRequestError(errors.New("invalid token"))
@@ -246,7 +250,7 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 
 	if role == "node" {
 		if !nodeOpt.IsValidNodeJWT(allowGroups[0], token.Raw) {
-			return rumerrors.NewBadRequestError(errors.New("invalid token"))
+			return rumerrors.NewBadRequestError(errors.New("invalid jwt"))
 		}
 		newTokenStr, err = nodeOpt.NewNodeJWT(allowGroups[0], name, exp)
 		if err != nil {
@@ -334,6 +338,10 @@ func GetJWTToken(c echo.Context) (*jwt.Token, error) {
 
 func _isValidToken(token *jwt.Token) bool {
 	role := GetJWTRole(token)
+	if len(GetJWTAllowGroups(token)) == 0 {
+		return false
+	}
+
 	groupid := GetJWTAllowGroups(token)[0]
 
 	nodeOpt := options.GetNodeOptions()
