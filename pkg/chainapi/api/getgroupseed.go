@@ -15,6 +15,7 @@ import (
 // @Description get group seed from appdb
 // @Produce json
 // @Param group_id path string  true "Group Id"
+// @Param include_chain_url query bool false "if include chain url"
 // @Success 200 {object} handlers.GetGroupSeedResult
 // @Router /api/v1/group/{group_id}/seed [get]
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {

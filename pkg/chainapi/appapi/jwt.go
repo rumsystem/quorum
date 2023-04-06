@@ -117,7 +117,7 @@ func GetJWTAllowGroups(token *jwt.Token) []string {
 // @Produce json
 // @Param   create_jwt_params  body CreateJWTParams  true  "create jwt params"
 // @Success 200 {object} TokenItem  "a new auth token"
-// @Router /app/api/v1/token/create [post]
+// @Router /app/api/v1/token [post]
 func (h *Handler) CreateToken(c echo.Context) error {
 	cc := c.(*utils.CustomContext)
 	var err error
