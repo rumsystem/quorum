@@ -10,9 +10,10 @@ import (
 	"github.com/labstack/echo/v4"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
+	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 )
 
-type groupInfo struct {
+type GroupInfo struct {
 	GroupId         string             `json:"group_id" validate:"required,uuid4" example:"c0020941-e648-40c9-92dc-682645acd17e"`
 	GroupName       string             `json:"group_name" validate:"required" example:"demo-app"`
 	OwnerPubKey     string             `json:"owner_pubkey" validate:"required" example:"CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg=="`
@@ -30,7 +31,7 @@ type groupInfo struct {
 }
 
 type GroupInfoList struct {
-	GroupInfos []*groupInfo `json:"groups"`
+	GroupInfos []*GroupInfo `json:"groups"`
 }
 
 func (s *GroupInfoList) Len() int { return len(s.GroupInfos) }
@@ -49,42 +50,77 @@ func (s *GroupInfoList) Less(i, j int) bool {
 // @Success 200 {object} GroupInfoList
 // @Router /api/v1/groups [get]
 func (h *Handler) GetGroups(c echo.Context) (err error) {
-	var groups []*groupInfo
+	var groups []*GroupInfo
 	groupmgr := chain.GetGroupMgr()
-	for _, value := range groupmgr.Groups {
-		group := &groupInfo{}
-
-		group.OwnerPubKey = value.Item.OwnerPubKey
-		group.GroupId = value.Item.GroupId
-		group.GroupName = value.Item.GroupName
-		group.OwnerPubKey = value.Item.OwnerPubKey
-		group.UserPubkey = value.Item.UserSignPubkey
-		group.ConsensusType = value.Item.ConsenseType.String()
-		group.EncryptionType = value.Item.EncryptType.String()
-		group.CipherKey = value.Item.CipherKey
-		group.AppKey = value.Item.AppKey
-
-		group.LastUpdated = value.GetLatestUpdate()
-		group.CurrtEpoch = value.GetCurrentEpoch()
-		group.CurrtTopBlock = value.GetCurrentBlockId()
-
-		b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
+	for groupId, _ := range groupmgr.Groups {
+		group, err := getGroupInfo(groupId)
 		if err != nil {
-			//try libp2pkey
-		} else {
-			ethpubkey, err := ethcrypto.DecompressPubkey(b)
-			//ethpubkey, err := ethcrypto.UnmarshalPubkey(b)
-			if err == nil {
-				ethaddr := ethcrypto.PubkeyToAddress(*ethpubkey)
-				group.UserEthaddr = ethaddr.Hex()
-			}
+			return err
 		}
-		group.RexSyncerStatus = value.GetRexSyncerStatus()
-		group.RexSyncerResult, _ = value.ChainCtx.GetLastRexSyncResult()
 		groups = append(groups, group)
 	}
 
 	ret := GroupInfoList{groups}
 	sort.Sort(&ret)
 	return c.JSON(http.StatusOK, &ret)
+}
+
+// @Tags Groups
+// @Summary GetGroupById
+// @Description Get the joined group by group id
+// @Produce json
+// @Param group_id path string  true "Group Id"
+// @Success 200 {object} GroupInfo
+// @Router /api/v1/group/{group_id} [get]
+func (h *Handler) GetGroupById(c echo.Context) (err error) {
+	groupId := c.Param("group_id")
+	if groupId == "" {
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
+	}
+	groupInfo, err := getGroupInfo(groupId)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	return c.JSON(http.StatusOK, groupInfo)
+}
+
+func getGroupInfo(groupId string) (*GroupInfo, error) {
+	groupmgr := chain.GetGroupMgr()
+	value, ok := groupmgr.Groups[groupId]
+	if !ok {
+		return nil, rumerrors.ErrGroupNotFound
+	}
+
+	group := &GroupInfo{}
+
+	group.OwnerPubKey = value.Item.OwnerPubKey
+	group.GroupId = value.Item.GroupId
+	group.GroupName = value.Item.GroupName
+	group.OwnerPubKey = value.Item.OwnerPubKey
+	group.UserPubkey = value.Item.UserSignPubkey
+	group.ConsensusType = value.Item.ConsenseType.String()
+	group.EncryptionType = value.Item.EncryptType.String()
+	group.CipherKey = value.Item.CipherKey
+	group.AppKey = value.Item.AppKey
+
+	group.LastUpdated = value.GetLatestUpdate()
+	group.CurrtEpoch = value.GetCurrentEpoch()
+	group.CurrtTopBlock = value.GetCurrentBlockId()
+
+	b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)
+	if err != nil {
+		//try libp2pkey
+	} else {
+		ethpubkey, err := ethcrypto.DecompressPubkey(b)
+		//ethpubkey, err := ethcrypto.UnmarshalPubkey(b)
+		if err == nil {
+			ethaddr := ethcrypto.PubkeyToAddress(*ethpubkey)
+			group.UserEthaddr = ethaddr.Hex()
+		}
+	}
+	group.RexSyncerStatus = value.GetRexSyncerStatus()
+	group.RexSyncerResult, _ = value.ChainCtx.GetLastRexSyncResult()
+
+	return group, nil
 }

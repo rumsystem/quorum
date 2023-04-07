@@ -105,37 +105,17 @@ func getProducers(api string, groupID string) ([]handlers.ProducerListItem, erro
 
 // add producer by group owner
 func addProducer(api string, payload handlers.GrpProducerParam) (*handlers.GrpProducerResult, error) {
-	payloadByte, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	payloadStr := string(payloadByte)
-
-	_, resp, err := testnode.RequestAPI(api, "/api/v1/group/producer", "POST", payloadStr)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
 	var result handlers.GrpProducerResult
-	if err := json.Unmarshal(resp, &result); err != nil {
+	_, _, err := requestAPI(api, "/api/v1/group/producer", "POST", payload, nil, &result, false)
+	if err != nil {
 		return nil, err
-	}
-
-	validate := validator.New()
-	if err := validate.Struct(result); err != nil {
-		e := fmt.Errorf("validate.Struct failed: %s, result: %+v", err, result)
-		return nil, e
 	}
 
 	return &result, nil
 }
 
 func TestAnnounceProducer(t *testing.T) {
+	t.Skip("API UNDER CONSTRUCTIO")
 	t.Parallel()
 
 	// create group

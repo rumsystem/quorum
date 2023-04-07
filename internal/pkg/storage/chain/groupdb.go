@@ -110,10 +110,6 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 	key = s.GetAppConfigPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
-	//nonce prefix
-	key = s.GetNonceKey(groupId, prefix...)
-	keys = append(keys, key)
-
 	//trx_id for producer update trx
 	key = s.GetProducerTrxIDKey(groupId, prefix...)
 	keys = append(keys, key)
@@ -127,7 +123,7 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 	keys = append(keys, key)
 
 	// trx
-	key = s.GetTrxPrefix(groupId, "", prefix...)
+	key = s.GetTrxPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
 	//remove all

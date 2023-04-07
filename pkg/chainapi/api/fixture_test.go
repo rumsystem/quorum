@@ -16,6 +16,7 @@ import (
 	"filippo.io/age"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/go-querystring/query"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/testnode"
@@ -146,9 +147,17 @@ func requestAPI(baseUrl string, endpoint string, method string, payload interfac
 		return 0, nil, fmt.Errorf("url.JoinPath(%s, %s) failed: %s", baseUrl, endpoint, err)
 	}
 
+	if method == "GET" && payload != nil {
+		q, err := query.Values(payload)
+		if err != nil {
+			return 0, nil, fmt.Errorf("convert struct %+v to query string failed: %s", payload, err)
+		}
+		_url = fmt.Sprintf("%s?%s", _url, q.Encode())
+	}
+
 	statusCode, resp, err := utils.RequestAPI(_url, method, payload, headers, result)
 	if err != nil || statusCode >= 400 {
-		e := fmt.Errorf("%s %s failed: %s, payload: %+v, response: %s", method, endpoint, err, payload, resp)
+		e := fmt.Errorf("%s %s failed: %s, payload: %+v, response: %s", method, _url, err, payload, resp)
 		logger.Error(e)
 		return statusCode, resp, e
 	}

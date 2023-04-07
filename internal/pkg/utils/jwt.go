@@ -8,16 +8,13 @@ import (
 )
 
 // NewJWTToken creates a new jwt token
-func NewJWTToken(name string, role string, allowGroups []string, jwtKey string, exp time.Time) (string, error) {
-	if allowGroups == nil {
-		allowGroups = []string{}
-	}
+func NewJWTToken(name string, role string, allowGroup string, jwtKey string, exp time.Time) (string, error) {
 
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["name"] = name
 	claims["role"] = role
-	claims["allowGroups"] = allowGroups
+	claims["allowGroup"] = allowGroup
 	claims["exp"] = exp.Unix()
 
 	return token.SignedString([]byte(jwtKey))

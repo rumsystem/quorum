@@ -25,7 +25,6 @@ const (
 	TRX_AUTH_TYPE_PREFIX = "trx_auth"  //trx auth type
 	ALLW_LIST_PREFIX     = "alw_list"  //allow list
 	DENY_LIST_PREFIX     = "dny_list"  //deny list
-	NONCE_PREFIX         = "nonce"     //group trx nonce
 	PRD_TRX_ID_PREFIX    = "prd_trxid" //trxid of latest trx which update group producer list
 
 	// groupinfo db
@@ -36,7 +35,6 @@ const (
 	// consensus db
 	CNS_BUFD_TRX = "cns_bf_trx" //buffered trx (used by acs)
 	CNS_BUFD_MSG = "cns_bf_msg" //buffered message (used by bba & rbc)
-	CNS_PSYNC    = "cns_psync"  //psync resp
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -210,28 +208,23 @@ func GetAppConfigKey(groupId string, name string, prefix ...string) string {
 	return _prefix + "_" + name
 }
 
-func GetNonceKey(groupId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + NONCE_PREFIX + "_" + groupId
-}
-
 func GetProducerTrxIDKey(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	return nodeprefix + PRD_TRX_ID_PREFIX + "_" + groupId
 }
-
-func GetTrxPrefix(groupId, trxId string, prefix ...string) string {
+func GetTrxPrefix(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	key := nodeprefix + TRX_PREFIX + "_" + groupId + "_"
-	if trxId != "" {
-		key = key + trxId + "_"
-	}
 	return key
 }
 
-func GetTrxKey(groupId, trxId string, nonce int64, prefix ...string) string {
-	_prefix := GetTrxPrefix(groupId, trxId, prefix...)
-	return _prefix + fmt.Sprint(nonce)
+func GetTrxKey(groupId, trxId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	key := nodeprefix + TRX_PREFIX + "_" + groupId + "_"
+	if trxId != "" {
+		key = key + trxId
+	}
+	return key
 }
 
 func GetSeedKey(groupID string) []byte {
@@ -245,30 +238,6 @@ func GetTrxHBBPrefix(queueId string) string {
 func GetTrxHBBKey(queueId string, trxId string) string {
 	prefix := GetTrxHBBPrefix(queueId)
 	return prefix + trxId
-}
-
-func GetHBMsgBufferPrefix(queueId string) string {
-	return CNS_BUFD_MSG + "_" + queueId + "_"
-}
-
-func GetHBMsgBufferKeyEpoch(queueId string, epoch uint64) string {
-	prefix := GetHBMsgBufferPrefix(queueId)
-	epochStr := strconv.FormatUint(epoch, 10)
-	return prefix + epochStr
-}
-
-func GetHBMsgBufferKeyFull(queueId string, epoch uint64, msgId string) string {
-	prefix := GetHBMsgBufferPrefix(queueId)
-	epochStr := strconv.FormatUint(epoch, 10)
-	return prefix + epochStr + "_" + msgId
-}
-
-func GetPSyncPrefix(groupId string) string {
-	return CNS_PSYNC + "_" + groupId + "_"
-}
-
-func GetPSyncKey(groupId, sessionId string) string {
-	return GetPSyncPrefix(groupId) + sessionId
 }
 
 // Relay

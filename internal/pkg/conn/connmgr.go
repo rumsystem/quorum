@@ -244,6 +244,9 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 
 	psconn := connMgr.getUserConn()
+	if psconn == nil {
+		return fmt.Errorf("no user conn for %s. (can be ignored)", connMgr.GroupId)
+	}
 	channelpeers := psconn.Topic.ListPeers()
 	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, channelpeers, rummsg)
 }
@@ -286,26 +289,6 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
 	}
 
 	pkg.Type = quorumpb.PackageType_HBB
-	pkg.Data = pbBytes
-
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	psconn := connMgr.getProducerPsConn()
-	return psconn.Publish(pkgBytes)
-}
-
-func (connMgr *ConnMgr) BroadcastPSyncMsg(psync *quorumpb.PSyncMsg) error {
-	pkg := &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(psync)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_PSYNC
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)

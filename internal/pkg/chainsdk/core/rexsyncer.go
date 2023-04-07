@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
@@ -52,10 +53,9 @@ type RexSyncer struct {
 	//chan signals
 	taskq   chan *SyncTask
 	resultq chan *SyncResult
-	//taskdone   chan struct{}
-	stopnotify chan struct{}
 
 	Status            SyncerStatus
+	mustatus          sync.RWMutex
 	CurrRetryCount    uint
 	CurrentDely       int
 	CurrentTask       *SyncTask
@@ -76,8 +76,6 @@ func NewRexSyncer(groupid string, nodename string, cdnIface def.ChainDataSyncIfa
 	rex_syncer_log.Debugf("<%s> Init rex syncer channels", rs.GroupId)
 	rs.taskq = make(chan *SyncTask)
 	rs.resultq = make(chan *SyncResult)
-	//rs.taskdone = make(chan struct{})
-	rs.stopnotify = make(chan struct{})
 
 	rs.Status = IDLE
 	rs.CurrentTask = nil
@@ -101,6 +99,9 @@ func (rs *RexSyncer) Start() {
 	//start taskq
 	go func() {
 		for task := range rs.taskq {
+			if rs.Status == CLOSED {
+				return
+			}
 			//calculate current delay
 			task.DelayTime += int(rs.CurrRetryCount)*SYNC_BLOCK_FREQ_ADJ + rs.CurrentDely
 			if task.DelayTime > MAXIMUM_DELAY_DURATION {
@@ -113,15 +114,16 @@ func (rs *RexSyncer) Start() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(taskTimeout)*time.Millisecond)
 			rs.runTask(ctx, task, cancel)
 		}
-		rs.stopnotify <- struct{}{}
 	}()
 
 	//start resultq
 	go func() {
 		for result := range rs.resultq {
+			if rs.Status == CLOSED {
+				return
+			}
 			rs.handleResult(result)
 		}
-		rs.stopnotify <- struct{}{}
 	}()
 
 	task := rs.newSyncBlockTask()
@@ -130,21 +132,13 @@ func (rs *RexSyncer) Start() {
 
 func (rs *RexSyncer) Stop() {
 	rex_syncer_log.Debugf("<%s> Stop called", rs.GroupId)
+	rs.mustatus.Lock()
 	rs.Status = CLOSED
-	safeCloseTaskQ(rs.taskq)
-	safeCloseResultQ(rs.resultq)
-	//safeClose(rs.taskdone)
-	if rs.stopnotify != nil {
-		signcount := 0
-		for range rs.stopnotify {
-			signcount++
-			//wait stop sign and set idle
-			if signcount == 2 { // taskq and resultq stopped
-				close(rs.stopnotify)
-				rex_syncer_log.Debugf("<%s> rexsyncer stop success.", rs.GroupId)
-			}
-		}
-	}
+	rs.mustatus.Unlock()
+	// TODO: don't close channel until destory all related timers
+	//safeCloseTaskQ(rs.taskq)
+	//safeCloseResultQ(rs.resultq)
+	rex_syncer_log.Debugf("<%s> rexsyncer stop success.", rs.GroupId)
 }
 
 func (rs *RexSyncer) GetLastRexSyncResult() (*def.RexSyncResult, error) {
@@ -246,6 +240,8 @@ func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask, cancel context
 func (rs *RexSyncer) AddTask(task *SyncTask) {
 	rex_syncer_log.Debugf("Gsyncer addTask called")
 	go func() {
+		rs.mustatus.Lock()
+		defer rs.mustatus.Unlock()
 		if rs.Status != CLOSED {
 			rs.taskq <- task
 		}
@@ -254,6 +250,8 @@ func (rs *RexSyncer) AddTask(task *SyncTask) {
 
 func (rs *RexSyncer) AddResult(result *SyncResult) {
 	go func() {
+		rs.mustatus.Lock()
+		defer rs.mustatus.Unlock()
 		if rs.Status != CLOSED {
 			rs.resultq <- result
 		}

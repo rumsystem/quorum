@@ -6,7 +6,6 @@ enum PackageType {
     TRX             = 0;
     BLOCK           = 1;
     HBB             = 2;
-    PSYNC           = 3;
 }
 
 message Package {
@@ -55,21 +54,11 @@ message Trx {
     string         Version      = 6;
     int64          Expired      = 7;
     int64          ResendCount  = 8;
-    int64          Nonce        = 9;
     string         SenderPubkey = 10;  
     bytes          SenderSign   = 11;
     TrxStroageType StorageType  = 12;
+    reserved 9; 
 }
-
-//message Witnesses {
-//string   groupId       = 1;
-//int64    epoch         = 2;
-//    bytes    TrxHash       = 3;
-//string   WitnessPubkey = 4;
-//bytes    WitnessSign   = 5;
-//}
-//  repeated    Witnesses Witesses = 7;
-
 
 message Block {    
     string      GroupId            = 1;     
@@ -255,7 +244,6 @@ message GroupSeed {
     string Signature      = 9;
 }
 
-//for NodeSDK
 message NodeSDKGroupItem {
     GroupItem Group          = 1;
     string    EncryptAlias   = 2;
@@ -264,7 +252,6 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
-//for block build
 message HBTrxBundle {
     repeated Trx Trxs = 1;
 }  
@@ -346,39 +333,6 @@ message Aux {
     uint64     Epoch        = 3;    
     bool       Value        = 4;
 }
-
-message PSyncMsg {
-    PSyncMsgType MsgType = 1; //PSYNC_REQ or PSYNC_RESP
-    bytes        Payload = 2;
-}
-
-enum PSyncMsgType {
-    PSYNC_REQ  = 0;
-    PSYNC_RESP = 1;
-}
-
-message PSyncReq {
-    string GroupId      = 1;
-    string SessionId    = 2;
-    string SenderPubkey = 3;      
-    uint64 MyEpoch      = 4;
-    bytes  SenderSign   = 5;
-}
-
-message PSyncResp {
-    string               GroupId           = 1;
-    string               SessionId         = 2; 
-    string               SenderPubkey      = 3;
-    uint64               MyCurEpoch        = 4;
-    PSyncProducerItem    MyCurProducerList = 5;
-    Trx                  ProducerProof     = 6;
-    bytes                SenderSign        = 7;
-}
-
-message PSyncProducerItem {
-    repeated string Producers = 1;
-}
-
 
 //old proto msg
 message GroupItemV0 {

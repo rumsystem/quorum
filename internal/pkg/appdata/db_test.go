@@ -49,7 +49,6 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	trx1_0.Data = []byte("")
 	trx1_0.Version = "1.0.0"
 	trx1_0.TimeStamp = time.Now().UnixNano()
-	trx1_0.Nonce = int64(0)
 
 	trx1_1 := &quorumpb.Trx{}
 	trx1_1.TrxId = "b2a3b9aa-bd16-4e80-8497-6d95eddfec52"
@@ -59,7 +58,6 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	trx1_1.Data = []byte("")
 	trx1_1.Version = "1.0.0"
 	trx1_1.TimeStamp = time.Now().UnixNano()
-	trx1_1.Nonce = int64(1)
 
 	trx1_2 := &quorumpb.Trx{}
 	trx1_2.TrxId = "b2a3b9aa-bd16-4e80-8497-6d95eddfec52"
@@ -69,7 +67,6 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	trx1_2.Data = []byte("")
 	trx1_2.Version = "1.0.0"
 	trx1_2.TimeStamp = time.Now().UnixNano()
-	trx1_2.Nonce = int64(2)
 
 	trx1_3 := &quorumpb.Trx{}
 	trx1_3.TrxId = "c778c5d0-7fd0-4bdd-867b-cc0bd1d125eb"
@@ -79,7 +76,6 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	trx1_3.Data = []byte("")
 	trx1_3.Version = "1.0.0"
 	trx1_3.TimeStamp = time.Now().UnixNano()
-	trx1_3.Nonce = int64(0)
 
 	trx1_4 := &quorumpb.Trx{}
 	trx1_4.TrxId = "0b742adb-69dc-4c81-acea-e7aa19d6e150"
@@ -89,7 +85,6 @@ func makemockdb(temppath string, groupid string) (*AppDb, error) {
 	trx1_4.Data = []byte("")
 	trx1_4.Version = "1.0.0"
 	trx1_4.TimeStamp = time.Now().UnixNano()
-	trx1_4.Nonce = int64(0)
 
 	trxs := []*quorumpb.Trx{}
 	trxs = append(trxs, trx1_0) //seqid 0

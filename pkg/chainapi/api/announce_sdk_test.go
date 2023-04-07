@@ -7,14 +7,13 @@ import (
 	"time"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-func announceNSdk(urls []string, payload AnnounceNodeSDKParam) (*handlers.AnnounceResult, error) {
-	path := fmt.Sprintf("/api/v1/node/announce/%s", payload.GroupId)
+func announceNSdk(urls []string, payload NSdkAnnounceParams) (*handlers.AnnounceResult, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/announce", payload.GroupId)
 	var result handlers.AnnounceResult
 	if _, _, err := requestNSdk(urls, path, "POST", payload, nil, &result, false); err != nil {
 		return nil, err
@@ -26,23 +25,20 @@ func announceNSdk(urls []string, payload AnnounceNodeSDKParam) (*handlers.Announ
 func TestAnnounceNSdk(t *testing.T) {
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-sync",
-		ConsensusType:  "poa",
-		EncryptionType: "public",
-		AppKey:         "default",
+		GroupName:       "test-sync",
+		ConsensusType:   "poa",
+		EncryptionType:  "public",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {
 		t.Fatalf("createGroup failed: %s, payload: %+v", err, createGroupParam)
 	}
 
-	seed, urls, err := handlers.UrlToGroupSeed(group.Seed)
+	_, urls, err := handlers.UrlToGroupSeed(group.Seed)
 	if err != nil {
 		t.Errorf("convert group send url failed: %s", err)
-	}
-	ciperKey, err := hex.DecodeString(seed.CipherKey)
-	if err != nil {
-		t.Errorf("convert seed.CipherKey failed: %s", err)
 	}
 
 	item := quorumpb.AnnounceItem{
@@ -67,19 +63,9 @@ func TestAnnounceNSdk(t *testing.T) {
 	item.AnnouncerSignature = hex.EncodeToString(signature)
 	item.TimeStamp = time.Now().UnixMicro()
 
-	itemBytes, err := proto.Marshal(&item)
-	if err != nil {
-		t.Errorf("proto.Marshal item failed: %s", err)
-	}
-
-	encrypted, err := localcrypto.AesEncrypt(itemBytes, ciperKey)
-	if err != nil {
-		t.Errorf("localcrypto.AesEncrypt failed: %s", err)
-	}
-
-	payload := AnnounceNodeSDKParam{
+	payload := NSdkAnnounceParams{
 		GroupId: group.GroupId,
-		Req:     encrypted,
+		Data:    &item,
 	}
 
 	if _, err := announceNSdk(urls, payload); err != nil {
@@ -87,9 +73,9 @@ func TestAnnounceNSdk(t *testing.T) {
 	}
 
 	time.Sleep(25 * time.Second)
-	producers, err := getChainDataByAnnouncedProducer(urls, AnnGrpProducer{GroupId: group.GroupId}, ciperKey)
+	producers, err := getChainDataByAnnouncedProducer(urls, GetNSdkAnnouncedProducerParams{GroupId: group.GroupId})
 	if err != nil {
-		t.Errorf("getChainDataByAnnouncedUser failed: %s", err)
+		t.Errorf("getChainDataByAnnouncedProducer failed: %s", err)
 	}
 
 	found := false

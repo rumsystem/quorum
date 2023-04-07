@@ -2,6 +2,7 @@ package appdata
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,10 +28,6 @@ type AppDb struct {
 	Db       storage.QuorumStorage
 	seq      map[string]storage.Sequence
 	DataPath string
-}
-type TrxIdNonce struct {
-	TrxId string
-	Nonce int64
 }
 
 func NewAppDb() *AppDb {
@@ -70,63 +67,61 @@ func (appdb *AppDb) Rebuild(vertag string, chainDb storage.QuorumStorage) error 
 	return nil
 }
 
-func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, targetnonce int64, num int, reverse bool, starttrxinclude bool) ([]TrxIdNonce, error) {
+func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, starttrx string, num int, reverse bool, starttrxinclude bool) (trxidList []string, err error) {
 	prefix := fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid)
 	sendermap := make(map[string]bool)
 	for _, s := range senders {
 		sendermap[s] = true
 	}
 
-	trxidsnonce := []TrxIdNonce{}
+	trxids := []string{}
 	runcollector := false
 
 	if starttrx == "" {
 		runcollector = true //no trxid, start collecting from the first item
 	}
 
-	_, err := appdb.Db.PrefixForeachKey([]byte(prefix), []byte(prefix), reverse, func(k []byte, err error) error {
+	_, err = appdb.Db.PrefixForeachKey([]byte(prefix), []byte(prefix), reverse, func(k []byte, err error) error {
 		if err != nil {
 			return err
 		}
-		var trxid, sender string
-		var trxnonce int64
 
-		dataidx := bytes.LastIndexByte(k, byte('_'))
-		start := dataidx
-		seg := 0
-		for i, c := range k[dataidx:] {
-			if c == ':' {
-				if seg == 0 {
-					sender = string(k[start+1 : start+i])
-					trxid = string(k[start+1+i : start+i+37])
-					start = i
-					seg = 1
-				} else if seg == 1 {
-					if len(k)-2 > start+i {
-						n := string(k[start+i : len(k)-2])
-						trxnonce, _ = strconv.ParseInt(n, 10, 64)
-					}
-				}
-			}
+		dataidx := bytes.Index(k[len(prefix):], []byte("_"))
+		if dataidx < 0 {
+			return nil
 		}
+		dataidx = len(prefix) + dataidx + 1
+
+		parts := bytes.Split(k[dataidx:], []byte(":"))
+		if len(parts) != 2 {
+			appdatalog.Warnf("can not get sender and trxid from %s", k[dataidx:])
+			return nil
+		}
+
+		// Note: sender, trxid contains bytes "\x00\x01"
+		sender, trxid := string(parts[0]), string(parts[1])[:36]
+		sender = sender[len(sender)-44:]
+		if len(sender) != 44 {
+			appdatalog.Warnf("key hex: %s prefix: %s invalid sender hex: <%s> len(sender): %d", hex.EncodeToString(k), prefix, hex.EncodeToString([]byte(sender)), len(sender))
+			return nil
+		}
+		if len(trxid) != 36 {
+			appdatalog.Warnf("key hex: %s prefix: %s invalid trxid hex: %s", hex.EncodeToString(k), prefix, hex.EncodeToString([]byte(trxid)))
+			return nil
+		}
+
 		if runcollector {
 			if len(senders) == 0 || sendermap[sender] == true {
-				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
+				trxids = append(trxids, trxid)
 			}
 		}
 		if trxid == starttrx && !runcollector { //start collecting after this item
-			if targetnonce > 0 {
-				if targetnonce == trxnonce {
-					runcollector = true
-				}
-			} else {
-				runcollector = true
-			}
+			runcollector = true
 			if starttrxinclude && runcollector {
-				trxidsnonce = append(trxidsnonce, TrxIdNonce{trxid, trxnonce})
+				trxids = append(trxids, trxid)
 			}
 		}
-		if len(trxidsnonce) == num {
+		if len(trxids) == num {
 			// use this to break loop
 			return errors.New("OK")
 		}
@@ -137,7 +132,7 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		err = nil
 	}
 
-	return trxidsnonce, err
+	return trxids, err
 }
 
 func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
@@ -228,11 +223,7 @@ func (appdb *AppDb) AddMetaByTrx(blockId uint64, groupid string, trxs []*quorump
 			//cnt_grp_-6d028f63-d2d0-49aa-9a56-4480ef5a7f2a-_CAISIQKDY1R5hZ09yG1+i/Kdk8E/KDT8Wm/PrKmgtsdtXFHXEg==:b2a3b9aa-bd16-4e80-8497-6d95eddfec52:1
 			//cnt_grp_-6d028f63-d2d0-49aa-9a56-4480ef5a7f2a-_CAISIQKDY1R5hZ09yG1+i/Kdk8E/KDT8Wm/PrKmgtsdtXFHXEg==:b2a3b9aa-bd16-4e80-8497-6d95eddfec52
 			var tail string
-			if trx.Nonce == 0 {
-				tail = fmt.Sprintf("%s:%s", trx.SenderPubkey, trx.TrxId)
-			} else {
-				tail = fmt.Sprintf("%s:%s:%d", trx.SenderPubkey, trx.TrxId, trx.Nonce)
-			}
+			tail = fmt.Sprintf("%s:%s", trx.SenderPubkey, trx.TrxId)
 			key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid), seqid, tail)
 			if err != nil {
 				return err
