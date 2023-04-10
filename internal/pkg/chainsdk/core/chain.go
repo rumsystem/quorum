@@ -625,7 +625,10 @@ func (chain *Chain) CreateConsensus() error {
 	}
 
 	chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)
-	chain.Consensus.StartProposeTrx()
+
+	//start propose trx
+	//commented by cuicat for debug
+	//chain.Consensus.StartProposeTrx()
 
 	return nil
 }

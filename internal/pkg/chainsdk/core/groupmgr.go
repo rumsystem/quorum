@@ -59,7 +59,8 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
-		grp.StartSync(false)
+		//comment out for now
+		//		grp.StartSync()
 	}
 
 	return nil

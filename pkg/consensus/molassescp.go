@@ -98,15 +98,14 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 	ks := nodectx.GetNodeCtx().Keystore
 
 	hash := localcrypto.Hash(byts)
-	hashResult := localcrypto.Hash(hash)
-	signature, _ := ks.EthSignByKeyName(cp.groupId, hashResult)
+	signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
 	req.MsgHash = hash
 	req.SenderSign = signature
 
 	//create req sender and start send req
 	sender := NewCCReqSender(cp.groupId)
-	cp.ReqSender.SendCCReq(req)
 	cp.ReqSender = sender
+	cp.ReqSender.SendCCReq(req)
 
 	return nil
 }
@@ -179,9 +178,12 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 
 	//verify signature
 	verifySign, err := cp.cIface.VerifySign(hash, req.SenderSign, req.SenderPubkey)
+
 	if err != nil {
+		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> failed with error <%s>", cp.groupId, req.ReqId, err.Error())
 		return err
 	}
+
 	if !verifySign {
 		return fmt.Errorf("verify signature failed")
 	}
@@ -189,11 +191,6 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 	//stop current bft
 	if cp.bft != nil {
 		cp.bft.Stop()
-	}
-
-	//stop current sender
-	if cp.ReqSender != nil {
-		cp.ReqSender.StopSending()
 	}
 
 	//check if owner is in the producer list
@@ -249,8 +246,10 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 	//create and start bft
 	molacp_log.Debugf("<%s> create bft", cp.groupId)
 	cp.bft = NewPCBft(*config, cp, req.AgreementTickLenInMs, req.AgreementTickCount)
-	cp.bft.Start()
 	cp.bft.AddProof(proofBundle)
+	cp.bft.Start()
+
+	molacp_log.Debugf("<%s> HandleCCReq reqid <%s> done", cp.groupId, req.ReqId)
 
 	return nil
 }

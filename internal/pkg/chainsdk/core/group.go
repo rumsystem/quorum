@@ -360,7 +360,7 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 }
 
 func (grp *Group) UpdConsensus(producers []string, agrmTickCount, agrmTickLength, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
-	group_log.Debugf("<%s> UpdProducer called", grp.Item.GroupId)
+	group_log.Debugf("<%s> UpdConsensus called", grp.Item.GroupId)
 	trxId := guuid.New().String()
 	return trxId, grp.ChainCtx.UpdConsensus(producers, trxId, agrmTickCount, agrmTickLength, fromNewEpoch, trxEpochTick)
 }
@@ -411,7 +411,7 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	return trx.TrxId, nil
 }
 
-func (grp *Group) StartSync(restart bool) error {
+func (grp *Group) StartSync() error {
 	group_log.Debugf("<%s> StartSync called", grp.Item.GroupId)
 	return grp.ChainCtx.StartSync()
 }

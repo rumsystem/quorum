@@ -47,6 +47,8 @@ func NewPCBft(cfg Config, pp *MolassesConsensusProposer, tickerLen, tickCnt uint
 		currProof:  nil,
 		currEpoch:  0,
 		status:     IDLE,
+		tickerLen:  tickerLen,
+		tickCnt:    tickCnt,
 		ticker:     nil,
 		tickerdone: make(chan bool),
 		taskdone:   make(chan bool),
@@ -70,7 +72,7 @@ func (bft *PCBft) Start() {
 				pcbft_log.Debugf("<%s> TickerDone called", bft.groupId)
 				return
 			case <-bft.ticker.C:
-				pcbft_log.Debugf("<%s> ticker called at <%d>", bft.groupId, time.Now().Nanosecond())
+				pcbft_log.Debugf("<%s> ticker called at <%d>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", bft.groupId, time.Now().Nanosecond())
 				bft.Propose()
 			}
 		}
@@ -91,6 +93,7 @@ func (bft *PCBft) Stop() {
 }
 
 func (bft *PCBft) Propose() error {
+	pcbft_log.Debugf("Propose called, epoch <%d>", bft.currEpoch)
 	bft.currEpoch += 1
 	if bft.currEpoch > uint64(bft.tickCnt) {
 		//consensus not be done in time
@@ -107,6 +110,7 @@ func (bft *PCBft) Propose() error {
 		ProposeData: bft.currProotData,
 		acsInsts:    acs,
 	}
+	bft.currTask = task
 
 	go func() {
 		bft.currTask.acsInsts.InputValue(task.ProposeData)

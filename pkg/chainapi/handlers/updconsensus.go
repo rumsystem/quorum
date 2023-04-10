@@ -74,17 +74,17 @@ func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*U
 			}
 		}
 
-		//check trx epoch tick length
-		if params.TrxEpochTick < 500 {
-			return nil, errors.New("trx epoch tick length should be greater than 500(ms)")
+		if params.AgreementTickLength < 1000 {
+			return nil, errors.New("agreement tick length should be greater than 1000(ms)")
 		}
 
 		if params.AgreementTickCount < 10 {
 			return nil, errors.New("agreement tick count should be greater than 10")
 		}
 
-		if params.AgreementTickLength < 1000 {
-			return nil, errors.New("agreement tick length should be greater than 1000(ms)")
+		//check trx epoch tick length
+		if params.TrxEpochTick < 500 {
+			return nil, errors.New("trx epoch tick length should be greater than 500(ms)")
 		}
 
 		trxId, err := group.UpdConsensus(params.ProducerPubkey, params.AgreementTickCount, params.AgreementTickLength, params.FromNewEpoch, params.TrxEpochTick)
