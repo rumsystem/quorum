@@ -278,6 +278,6 @@ func GetChangeConsensusResultPrefix(groupId string, prefix ...string) string {
 }
 
 func GetChangeConsensusResultKey(groupId string, reqId string, prefix ...string) string {
-	_prefix := GetChangeConsensusResultPrefix(groupId)
+	_prefix := GetChangeConsensusResultPrefix(groupId, prefix...)
 	return _prefix + "_" + reqId
 }

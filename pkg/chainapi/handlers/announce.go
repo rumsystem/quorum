@@ -91,7 +91,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 		}
 
 		item.Hash = hash
-		item.Signature = hex.EncodeToString(signature)
+		item.Signature = signature
 
 		trxId, err := group.UpdAnnounce(item)
 
@@ -105,7 +105,7 @@ func AnnounceHandler(params *AnnounceParam) (*AnnounceResult, error) {
 			EncryptPubkey: ctn.EncryptPubkey,
 			Type:          ctn.Type.String(),
 			Action:        item.Action.String(),
-			Sign:          item.Signature,
+			Sign:          hex.EncodeToString(item.Signature),
 			TrxId:         trxId,
 		}
 

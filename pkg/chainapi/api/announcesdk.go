@@ -68,7 +68,7 @@ func (h *Handler) AnnounceNodeSDK(c echo.Context) (err error) {
 		EncryptPubkey: item.Content.EncryptPubkey,
 		Type:          item.Content.Type.String(),
 		Action:        item.Action.String(),
-		Sign:          item.Signature,
+		Sign:          hex.EncodeToString(item.Signature),
 		TrxId:         trxId,
 	}
 

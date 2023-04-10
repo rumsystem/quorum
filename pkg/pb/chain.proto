@@ -213,7 +213,7 @@ message AnnounceItem {
     AnnounceContent Content         = 3;
     string          AnnouncerPubkey = 4;
     bytes           Hash            = 5;
-    string          Signature       = 6;
+    bytes           Signature       = 6;
 }
 
 message AnnounceContent {

@@ -1,8 +1,6 @@
 package chain
 
 import (
-	"encoding/hex"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -71,7 +69,7 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 		return err
 	}
 
-	aItem.Signature = hex.EncodeToString(signature)
+	aItem.Signature = signature
 
 	//save aItem to db
 	err = nodectx.GetNodeCtx().GetChainStorage().AddAnnounceItem(aItem, grp.Nodename)
@@ -141,8 +139,13 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 		ResponsedProducers: []string{item.OwnerPubKey},
 	}
 
+	group_log.Debugf("<%s> save consensus result", grp.Item.GroupId)
 	//save resultBundle to db
 	err = nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(item.GroupId, resultBundle, grp.Nodename)
+	if err != nil {
+		group_log.Debugf("<%s> save consensus result failed", grp.Item.GroupId)
+		return err
+	}
 
 	//add group owner as the first group producer
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
@@ -151,7 +154,6 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	pItem.ProducerPubkey = item.OwnerPubKey
 	pItem.ProofTrxId = ""
 	pItem.BlkCnt = 0
-	pItem.Memo = "owner as the first group producer"
 	pItem.Memo = "Owner Registated as the first group producer"
 
 	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
