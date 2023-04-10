@@ -1,6 +1,9 @@
 package chain
 
 import (
+	"encoding/hex"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -37,6 +40,109 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	if err != nil {
 		return err
 	}
+
+	group_log.Debugf("<%s> owner announce as the first group producer", grp.Item.GroupId)
+	//owner announce as the first group producer
+	aContent := &quorumpb.AnnounceContent{
+		Type:          quorumpb.AnnounceType_AS_PRODUCER,
+		SignPubkey:    item.OwnerPubKey,
+		EncryptPubkey: item.UserEncryptPubkey,
+		Memo:          "owner announce as the first group producer",
+	}
+
+	aItem := &quorumpb.AnnounceItem{
+		GroupId:         item.GroupId,
+		Action:          quorumpb.ActionType_ADD,
+		Content:         aContent,
+		AnnouncerPubkey: item.OwnerPubKey,
+	}
+
+	//create hash
+	byts, err := proto.Marshal(aItem)
+	if err != nil {
+		return err
+	}
+	aItem.Hash = localcrypto.Hash(byts)
+
+	ks := nodectx.GetNodeCtx().Keystore
+	signature, err := ks.EthSignByKeyName(item.GroupId, aItem.Hash)
+
+	if err != nil {
+		return err
+	}
+
+	aItem.Signature = hex.EncodeToString(signature)
+
+	//save aItem to db
+	err = nodectx.GetNodeCtx().GetChainStorage().AddAnnounceItem(aItem, grp.Nodename)
+	if err != nil {
+		return err
+	}
+
+	//add consensus info for group owner
+	//create consensus req
+	consensusReq := &quorumpb.ChangeConsensusReq{
+		ReqId:                guuid.New().String(),
+		GroupId:              item.GroupId,
+		Nonce:                0,
+		ProducerPubkeyList:   []string{item.OwnerPubKey},
+		AgreementTickLenInMs: 0,
+		AgreementTickCount:   0,
+		StartFromEpoch:       0,
+		TrxEpochTickLenInMs:  1000,
+		Contract:             nil,
+		SenderPubkey:         item.OwnerPubKey,
+	}
+
+	//create hash for consensus req
+	byts, err = proto.Marshal(consensusReq)
+	if err != nil {
+		return err
+	}
+
+	consensusReq.MsgHash = localcrypto.Hash(byts)
+
+	//sign hash
+	signature, err = ks.EthSignByKeyName(item.GroupId, consensusReq.MsgHash)
+	if err != nil {
+		return err
+	}
+
+	consensusReq.SenderSign = signature
+
+	//creaet consensus resp
+	consensusResp := &quorumpb.ChangeConsensusResp{
+		RespId:       guuid.New().String(),
+		GroupId:      item.GroupId,
+		SenderPubkey: item.OwnerPubKey,
+		Req:          consensusReq,
+	}
+
+	//create hash for consensus resp
+	byts, err = proto.Marshal(consensusResp)
+	if err != nil {
+		return err
+	}
+
+	consensusResp.MsgHash = localcrypto.Hash(byts)
+	//sign hash
+	signature, err = ks.EthSignByKeyName(item.GroupId, consensusResp.MsgHash)
+	if err != nil {
+		return err
+	}
+
+	consensusResp.SenderSign = signature
+	//create ResultBundle
+	resultBundle := &quorumpb.ChangeConsensusResultBundle{
+		Result:             quorumpb.ChangeConsensusResult_SUCCESS,
+		Req:                consensusReq,
+		Resps:              []*quorumpb.ChangeConsensusResp{consensusResp},
+		Epoch:              0,
+		ResponsedProducers: []string{item.OwnerPubKey},
+	}
+
+	//save resultBundle to db
+	err = nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(item.GroupId, resultBundle, grp.Nodename)
 
 	//add group owner as the first group producer
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
@@ -210,6 +316,11 @@ func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, er
 func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, error) {
 	group_log.Debugf("<%s> GetAppConfigItem called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigItem(keyName, grp.Item.GroupId, grp.Nodename)
+}
+
+func (grp *Group) GetAllChangeConsensusResultBundle() ([]*quorumpb.ChangeConsensusResultBundle, error) {
+	group_log.Debugf("<%s> GetAllChangeConsensusResultBundle called", grp.Item.GroupId)
+	return nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(grp.Item.GroupId, grp.Nodename)
 }
 
 // send update announce trx

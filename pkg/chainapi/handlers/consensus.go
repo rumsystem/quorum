@@ -1,28 +1,43 @@
 package handlers
 
 import (
+	"fmt"
+
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
+	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
-
-type GetConsensusHistoryParam struct {
-}
 
 type GetConsensusHistory struct {
 	ConsensusHistory []*quorumpb.ChangeConsensusResultBundle `json:"consensus_history"`
 }
 
-func GetConsensusHistoryHandler(params *GetConsensusHistoryParam) (*GetConsensusHistory, error) {
-	return nil, nil
-}
+func GetConsensusHistoryHandler(chainapidb def.APIHandlerIface, groupId string) (*GetConsensusHistory, error) {
+	//get consensusbundle from db
+	if groupId == "" {
+		return nil, fmt.Errorf("group_id can't be nil.")
+	}
 
-type GetLatestConsensusChangeResultParam struct {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupId]; ok {
+		consensusHistory, err := group.GetAllChangeConsensusResultBundle()
+		if err != nil {
+			return nil, err
+		}
+		resunlt := &GetConsensusHistory{
+			ConsensusHistory: consensusHistory,
+		}
+		return resunlt, nil
+	} else {
+		return nil, fmt.Errorf("group <%s> not exist", groupId)
+	}
 }
 
 type GetLatestConsensusChangeResult struct {
 	LatestConsensusResult *quorumpb.ChangeConsensusResultBundle `json:"latest_consensus_result"`
 }
 
-func GetLatestConsensusChangeResultHandler(params *GetLatestConsensusChangeResultParam) (*GetLatestConsensusChangeResult, error) {
+func GetLatestConsensusChangeResultHandler(chainapidb def.APIHandlerIface, groupId string) (*GetLatestConsensusChangeResult, error) {
 	return nil, nil
 }
 
@@ -34,7 +49,7 @@ type GetConsensusResultByReqIdResult struct {
 	ConsensusResult *quorumpb.ChangeConsensusResultBundle `json:"consensus_result"`
 }
 
-func GetConsensusResultByReqIdHandler(params *GetConsensusResultByReqIdParam) (*GetConsensusResultByReqIdResult, error) {
+func GetConsensusResultByReqIdHandler(chainapidb def.APIHandlerIface, groupId string, reqId string) (*GetConsensusResultByReqIdResult, error) {
 	return nil, nil
 }
 
@@ -47,6 +62,6 @@ type GetCurrentConsensusResult struct {
 	LatestConsensus  *quorumpb.ChangeConsensusResultBundle `json:"latest_consensus"`
 }
 
-func GetCurrentConsensusHandler(params *GetCurrentConsensusParam) (*GetCurrentConsensusResult, error) {
+func GetCurrentConsensusHandler(chainapidb def.APIHandlerIface, groupId string) (*GetCurrentConsensusResult, error) {
 	return nil, nil
 }

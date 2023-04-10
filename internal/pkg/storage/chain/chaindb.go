@@ -23,6 +23,31 @@ func NewChainStorage(dbmgr *s.DbMgr) (storage *Storage) {
 	return storage
 }
 
+func (cs *Storage) AddAnnounceItem(item *quorumpb.AnnounceItem, prefix ...string) (err error) {
+	var key string
+	if item.Content.Type == quorumpb.AnnounceType_AS_USER {
+		key = s.GetAnnounceAsUserKey(item.GroupId, item.Content.SignPubkey, prefix...)
+	} else if item.Content.Type == quorumpb.AnnounceType_AS_PRODUCER {
+		key = s.GetAnnounceAsProducerKey(item.GroupId, item.Content.SignPubkey, prefix...)
+	} else {
+		return fmt.Errorf("unknown announce type %d", item.Content.Type)
+	}
+
+	data, err := proto.Marshal(item)
+	if err != nil {
+		chaindb_log.Debugf(err.Error())
+		return err
+	}
+
+	err = cs.dbmgr.Db.Set([]byte(key), data)
+	if err != nil {
+		chaindb_log.Debugf(err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
 	item := &quorumpb.AnnounceItem{}
 	if err := proto.Unmarshal(data, item); err != nil {
@@ -141,7 +166,7 @@ func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, cu
 }
 
 func (cs *Storage) UpdateChangeConsensusResult(groupId string, result *quorumpb.ChangeConsensusResultBundle, prefix ...string) error {
-	key := s.GetChangeConsensusResultKey(groupId, result.Req.ReqId, result.Req.Nonce, prefix...)
+	key := s.GetChangeConsensusResultKey(groupId, result.Req.ReqId, prefix...)
 	data, err := proto.Marshal(result)
 	if err != nil {
 		return err
@@ -169,27 +194,16 @@ func (cs *Storage) GetAllChangeConsensusResult(groupId string, prefix ...string)
 	return rList, err
 }
 
-func (cs *Storage) GetLastChangeConsensusResult(groupId string, prefix ...string) (*quorumpb.ChangeConsensusResultBundle, error) {
-	key := s.GetChangeConsensusResultPrefix(groupId, prefix...)
-	var lastResult *quorumpb.ChangeConsensusResultBundle
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := quorumpb.ChangeConsensusResultBundle{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		if lastResult == nil {
-			lastResult = &item
-		} else {
-			if item.Req.Nonce > lastResult.Req.Nonce {
-				lastResult = &item
-			}
-		}
-		return nil
-	})
-
-	return lastResult, err
+func (cs *Storage) GetChangeConsensusResultByReqId(groupId, reqId string, prefix ...string) (*quorumpb.ChangeConsensusResultBundle, error) {
+	key := s.GetChangeConsensusResultKey(groupId, reqId, prefix...)
+	data, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	item := quorumpb.ChangeConsensusResultBundle{}
+	perr := proto.Unmarshal(data, &item)
+	if perr != nil {
+		return nil, perr
+	}
+	return &item, nil
 }

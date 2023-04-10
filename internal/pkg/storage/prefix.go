@@ -277,8 +277,7 @@ func GetChangeConsensusResultPrefix(groupId string, prefix ...string) string {
 	return nodeprefix + CNS_CCR_RESULT_PREFIX + "_" + groupId + "_"
 }
 
-func GetChangeConsensusResultKey(groupId string, reqId string, nonce uint64, prefix ...string) string {
-	nonceSD := strconv.FormatUint(nonce, 10)
+func GetChangeConsensusResultKey(groupId string, reqId string, prefix ...string) string {
 	_prefix := GetChangeConsensusResultPrefix(groupId)
-	return _prefix + nonceSD + "_" + reqId
+	return _prefix + "_" + reqId
 }
