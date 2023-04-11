@@ -125,6 +125,12 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 		return nil, err
 	}
 
+	//list all trxs
+	trx_bft_log.Debugf("<%s> trxs to propose", bft.groupId)
+	for _, trx := range trxs {
+		trx_bft_log.Debugf("<%s> trx <%s>", bft.groupId, trx.TrxId)
+	}
+
 	var datab []byte
 	for {
 		trxBundle := &quorumpb.HBTrxBundle{}
@@ -205,6 +211,19 @@ func safeCloseTaskQ(ch chan *ProposeTask) (recovered bool) {
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
 	bft.txBuffer.Push(tx)
+
+	//for debug only added by cuicat
+	//list all trxs in buffer
+	trxs, err := bft.txBuffer.GetAllTrxInBuffer()
+	if err != nil {
+		return err
+	}
+
+	trx_bft_log.Debugf("<%s> all trx in buffer", bft.groupId)
+	for _, trx := range trxs {
+		trx_bft_log.Debugf("<%s> TrxId <%s>", bft.groupId, trx.TrxId)
+	}
+
 	return nil
 }
 
@@ -261,6 +280,19 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 				trx_bft_log.Warnf(err.Error())
 			}
 		}
+
+		//get all trxs in buffer after delete
+		trxs, err := bft.txBuffer.GetAllTrxInBuffer()
+		if err != nil {
+			trx_bft_log.Warnf(err.Error())
+		}
+
+		//list all trxs
+		trx_bft_log.Debugf("<%s> after delete, all trx in buffer", bft.producer.groupId)
+		for _, trx := range trxs {
+			trx_bft_log.Debugf("<%s> TrxId <%s>", bft.producer.groupId, trx.TrxId)
+		}
+
 		//update local BlockId
 		bft.producer.cIface.IncCurrBlockId()
 	}
@@ -281,9 +313,13 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
-
-	trx_bft_log.Debugf("<%s> sort trxs", bft.producer.groupId)
 	sortedTrxs := bft.sortTrx(trxs)
+	trx_bft_log.Debugf("<%s> sorted trxs", bft.producer.groupId)
+	//list all sorted trx
+	for _, trx := range sortedTrxs {
+		trx_bft_log.Debugf("<%s> TrxId <%s>", bft.producer.groupId, trx.TrxId)
+	}
+
 	var trxToPackage []*quorumpb.Trx
 
 	//check total trxs size
@@ -296,6 +332,11 @@ func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error
 		} else {
 			break
 		}
+	}
+	//list all trx to package
+	trx_bft_log.Debugf("<%s> trx to package", bft.producer.groupId)
+	for _, trx := range trxToPackage {
+		trx_bft_log.Debugf("<%s> TrxId <%s>", bft.producer.groupId, trx.TrxId)
 	}
 
 	currBlockId := bft.producer.cIface.GetCurrBlockId()
