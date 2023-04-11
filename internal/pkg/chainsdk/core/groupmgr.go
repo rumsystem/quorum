@@ -58,9 +58,9 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 	groupMgr_log.Debug("SyncAllGroup called")
 
 	for _, grp := range groupMgr.Groups {
-		groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
-		//comment out for now
-		//		grp.StartSync()
+		//comment by cuicat
+		//groupMgr_log.Debugf("Start sync group: <%s>", grp.Item.GroupId)
+		grp.StartSync()
 	}
 
 	return nil
@@ -70,7 +70,7 @@ func (groupmgr *GroupMgr) StopSyncAllGroups() error {
 	groupMgr_log.Debug("StopSyncAllGroup called")
 	for _, grp := range groupMgr.Groups {
 		groupMgr_log.Debugf("Stop sync group: <%s>", grp.Item.GroupId)
-		//grp.StopSync()
+		grp.StopSync()
 	}
 
 	return nil
