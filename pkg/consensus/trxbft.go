@@ -138,18 +138,28 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 
 		datab, err = proto.Marshal(trxBundle)
 		if err != nil {
+			trx_bft_log.Errorf("<%s> marshal trx bundle error <%s>", bft.groupId, err.Error())
 			return nil, err
 		}
 
 		if len(datab) == 0 {
 			datab = []byte("EMPTY")
+			trx_bft_log.Debugf("<%s> SOMETHING WRONG ~~~, datab is empty, set to EMPTY", bft.groupId)
 			break
 		} else if len(datab) <= MAXIMUM_TRX_BUNDLE_LENGTH {
+			trx_bft_log.Debugf("<%s> datab length <%d> is ok", bft.groupId, len(datab))
 			break
 		}
 
 		//remove last trxs from the slice and try again
+		trx_acs_log.Debugf("<%s> datab length <%d> is too long, remove last trx and try again", bft.groupId, len(datab))
 		trxs = trxs[:len(trxs)-1]
+
+		//list all trx
+		trx_bft_log.Debugf("<%s> trxs to propose after remove last one", bft.groupId)
+		for _, trx := range trxs {
+			trx_bft_log.Debugf("<%s> trx <%s>", bft.groupId, trx.TrxId)
+		}
 	}
 
 	currEpoch := bft.producer.cIface.GetCurrEpoch()
