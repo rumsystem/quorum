@@ -672,7 +672,7 @@ func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
-	chain.rexSyncer.Start()
+	//chain.rexSyncer.Start()
 	return nil
 }
 

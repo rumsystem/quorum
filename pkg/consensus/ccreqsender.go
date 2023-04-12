@@ -58,20 +58,20 @@ func (msender *CCReqSender) startSending() {
 	go func() {
 		ccrmsgsender_log.Debugf("<%s> create ticker <%s>", msender.groupId, msender.CurrCCReq.ReqId)
 		msender.ticker = time.NewTicker(time.Duration(DEFAULT_CC_REQ_SEND_INTEVL) * time.Millisecond)
+		defer msender.ticker.Stop()
 		for {
 			select {
 			case <-msender.tickerDone:
 				ccrmsgsender_log.Debugf("<%s> old Ticker Done", msender.groupId)
 				return
 			case <-msender.ticker.C:
-				ccrmsgsender_log.Debugf("<%s> tick~ <%s> at <%d>", msender.groupId, msender.CurrCCReq.ReqId, time.Now().UnixMilli())
+				ccrmsgsender_log.Debugf("<%s> tick, send req <%s>", msender.groupId, msender.CurrCCReq.ReqId)
 				connMgr, err := conn.GetConn().GetConnMgr(msender.groupId)
 				if err != nil {
 					return
 				}
 				connMgr.BroadcastPPReq(msender.CurrCCReq)
 			}
-			msender.ticker.Stop()
 		}
 	}()
 }
