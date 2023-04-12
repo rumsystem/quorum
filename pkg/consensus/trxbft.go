@@ -128,7 +128,7 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 	//list all trxs
 	trx_bft_log.Debugf("<%s> trxs to propose", bft.groupId)
 	for _, trx := range trxs {
-		trx_bft_log.Debugf("<%s> trx <%s>", bft.groupId, trx.TrxId)
+		trx_bft_log.Debugf("<%s> trx <%s> len <%d>", bft.groupId, trx.TrxId, len(trx.Data))
 	}
 
 	var datab []byte
