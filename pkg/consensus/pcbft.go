@@ -69,7 +69,7 @@ func (bft *PCBft) Propose() error {
 	chAcsDone := make(chan *AcsResult, 1)
 
 	go func() {
-		acs := NewPPAcs(bft.groupId, bft.nodename, bft.Config, bft.epoch, chAcsDone)
+		acs := NewPPAcs(bft.cpCtx, bft.groupId, bft.nodename, bft.Config, bft.epoch, chAcsDone)
 		acs.InputValue(bft.currProotData)
 	}()
 
@@ -102,7 +102,6 @@ func (bft *PCBft) Propose() error {
 			bft.Propose()
 		}
 	}
-	return nil
 }
 
 func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {

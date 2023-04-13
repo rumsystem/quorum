@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -20,7 +21,7 @@ type PPAcs struct {
 	chAcsDone chan *AcsResult
 }
 
-func NewPPAcs(groupId, nodename string, cfg Config, epoch uint64, chAcsDone chan *AcsResult) *PPAcs {
+func NewPPAcs(ctx context.Context, groupId, nodename string, cfg Config, epoch uint64, chAcsDone chan *AcsResult) *PPAcs {
 	pcacs_log.Debugf("NewPPAcs called, epoch <%d>", epoch)
 
 	acs := &PPAcs{
@@ -34,7 +35,7 @@ func NewPPAcs(groupId, nodename string, cfg Config, epoch uint64, chAcsDone chan
 	}
 
 	for _, nodeID := range cfg.Nodes {
-		acs.rbcInsts[nodeID], _ = NewPCRbc(cfg, acs, groupId, nodename, cfg.MyPubkey, nodeID)
+		acs.rbcInsts[nodeID], _ = NewPCRbc(ctx, cfg, acs, groupId, nodename, cfg.MyPubkey, nodeID)
 	}
 
 	return acs

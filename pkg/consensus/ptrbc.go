@@ -74,7 +74,7 @@ func NewPTRBC(cfg Config, acs *PTAcs, groupId, myPubkey, rbcInstPubkey string) (
 		numDataShards:   dataShards,
 		readySent:       make(map[string]bool),
 		consenusDone:    false,
-		msgSender:       NewHBMsgSender(groupId, acs.Epoch, myPubkey, quorumpb.PackageType_HBB_PT),
+		msgSender:       NewHBMsgSender(nil, groupId, acs.Epoch, myPubkey, quorumpb.PackageType_HBB_PT),
 	}
 
 	return rbc, nil

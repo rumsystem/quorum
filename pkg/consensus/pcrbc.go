@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/klauspost/reedsolomon"
@@ -38,17 +39,13 @@ type PCRbc struct {
 }
 
 // same as trx rbc
-func NewPCRbc(cfg Config, acs *PPAcs, groupId, nodename, myPubkey, rbcInstPubkey string) (*PCRbc, error) {
+func NewPCRbc(ctx context.Context, cfg Config, acs *PPAcs, groupId, nodename, myPubkey, rbcInstPubkey string) (*PCRbc, error) {
 	pcrbc_log.Debugf("NewPCRbc called, epoch <%d>  pubkey <%s>", acs.Epoch, rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
 		dataShards   = cfg.N - parityShards //N - 2f
 	)
-
-	if parityShards == 0 {
-		parityShards = 1
-	}
 
 	//initial reed solomon codec
 	ecc, err := reedsolomon.New(dataShards, parityShards) //DataShards N-2f parityShards: 2f , totally N pieces
@@ -69,7 +66,7 @@ func NewPCRbc(cfg Config, acs *PPAcs, groupId, nodename, myPubkey, rbcInstPubkey
 		numDataShards:   dataShards,
 		readySent:       make(map[string]bool),
 		consenusDone:    false,
-		msgSender:       NewHBMsgSender(groupId, acs.Epoch, myPubkey, quorumpb.PackageType_HBB_PC),
+		msgSender:       NewHBMsgSender(ctx, groupId, acs.Epoch, myPubkey, quorumpb.PackageType_HBB_PC),
 	}
 
 	return rbc, nil
@@ -93,10 +90,13 @@ func (r *PCRbc) InputValue(data []byte) error {
 		return err
 	}
 
+	pcrbc_log.Debugf("<%s> create InitProposeMsgs, len <%d>", r.rbcInstPubkey, len(initProposeMsgs))
+
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
 		err := r.msgSender.SendHBRBCMsg(initMsg)
 		if err != nil {
+			pcrbc_log.Debugf(err.Error())
 			return err
 		}
 	}
