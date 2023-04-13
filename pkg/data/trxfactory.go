@@ -1,14 +1,9 @@
 package data
 
 import (
-	"encoding/binary"
-	"errors"
-
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
-
-const POST_OBJ_SIZE_LIMIT = 300 * 1024 //200Kb
 
 type TrxFactory struct {
 	nodename  string
@@ -109,8 +104,7 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
-	if binary.Size(content) > POST_OBJ_SIZE_LIMIT {
-		err := errors.New("content size over 200Kb")
+	if _, err := IsTrxDataWithinSizeLimit(content); err != nil {
 		return nil, err
 	}
 

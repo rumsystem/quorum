@@ -17,6 +17,7 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/constants"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	"github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -191,6 +192,11 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 
 func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
+
+	// check trx.Data size
+	if _, err := data.IsTrxDataWithinSizeLimit(trx.Data); err != nil {
+		return err
+	}
 
 	// compress trx.Data
 	compressedContent := new(bytes.Buffer)
