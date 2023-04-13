@@ -19,8 +19,25 @@ type NodeOptions struct {
 	MaxPeers          int
 	ConnsHi           int
 	NetworkName       string
-	JWTTokenMap       map[string]string
-	JWTKey            string
+	JWT               *JWT
 	SignKeyMap        map[string]string
 	mu                sync.RWMutex
 }
+
+type (
+	JWT struct {
+		Key   string                  `json:"key" mapstructure:"key"`
+		Chain *JWTListItem            `json:"chain" mapstructure:"chain"`
+		Node  map[string]*JWTListItem `json:"node" mapstructure:"node"`
+	}
+
+	JWTListItem struct {
+		Normal []*TokenItem `json:"normal" mapstructure:"normal"`
+		Revoke []*TokenItem `json:"revoke" mapstructure:"revoke"`
+	}
+
+	TokenItem struct {
+		Remark string `json:"remark" mapstructure:"remark"`
+		Token  string `json:"token" mapstructure:"token"`
+	}
+)

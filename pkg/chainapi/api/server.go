@@ -32,7 +32,7 @@ type StartServerParam struct {
 func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
-	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
+	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.LocalhostSkipper,
@@ -67,7 +67,7 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
-	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
+	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.LocalhostSkipper,
@@ -125,7 +125,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
-	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
+	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.JWTSkipper,
@@ -176,8 +176,12 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 
 	//app api
+	a.POST("/v1/token", apph.CreateToken)
+	a.DELETE("/v1/token", apph.RemoveToken)
 	a.POST("/v1/token/refresh", apph.RefreshToken)
-	a.POST("/v1/token/create", apph.CreateToken)
+	a.POST("/v1/token/revoke", apph.RevokeToken)
+	a.GET("/v1/token/list", apph.ListToken)
+
 	a.GET("/v1/group/:group_id/content", apph.ContentByPeers)
 
 	if nodeopt.EnableRelay {
