@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -10,48 +11,49 @@ import (
 
 var pcbft_log = logging.Logger("pcbft")
 
-type PCTask struct {
-	Epoch       uint64
-	ProposeData []byte
-	acsInsts    *PPAcs
+type AcsResult struct {
+	epoch  uint64
+	result map[string][]byte
+}
+
+type BftResult struct {
+	Result  quorumpb.ChangeConsensusResult
+	RawData map[string][]byte
+	Epoch   uint64
 }
 
 type PCBft struct {
 	Config
-	groupId       string
-	pp            *MolassesConsensusProposer
-	currTask      *PCTask
+	groupId  string
+	nodename string
+
 	currProof     *quorumpb.ConsensusProof
 	currProotData []byte
-	currEpoch     uint64
 
-	status BftStatus
+	agreementEpochLenInMs uint64
+	agreementTotalEpoch   uint64
 
-	tickerLen uint64
-	tickCnt   uint64
-	ticker    *time.Ticker
+	chBftDone chan *BftResult
+	cpCtx     context.Context
 
-	tickerdone chan bool
-	taskdone   chan bool
+	epoch   uint64
+	acsInst *PPAcs
 
 	//responsedProducers map[string]bool
 }
 
-func NewPCBft(cfg Config, pp *MolassesConsensusProposer, tickerLen, tickCnt uint64) *PCBft {
+func NewPCBft(ctx context.Context, groupId, nodename string, cfg Config, agrmEpochLen, agrmTotalEpoch uint64, ch chan *BftResult) *PCBft {
 	pcbft_log.Debugf("NewPCBft called")
 	return &PCBft{
-		Config:     cfg,
-		groupId:    pp.groupId,
-		pp:         pp,
-		currTask:   nil,
-		currProof:  nil,
-		currEpoch:  0,
-		status:     IDLE,
-		tickerLen:  tickerLen,
-		tickCnt:    tickCnt,
-		ticker:     nil,
-		tickerdone: make(chan bool),
-		taskdone:   make(chan bool),
+		Config:                cfg,
+		groupId:               groupId,
+		nodename:              nodename,
+		currProof:             nil,
+		epoch:                 0,
+		agreementEpochLenInMs: agrmEpochLen,
+		agreementTotalEpoch:   agrmTotalEpoch,
+		cpCtx:                 ctx,
+		chBftDone:             ch,
 	}
 }
 
@@ -62,74 +64,51 @@ func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof) {
 	bft.currProotData = datab
 }
 
-func (bft *PCBft) Start() {
-	go func() {
-		bft.ticker = time.NewTicker(time.Duration(bft.tickerLen) * time.Millisecond)
-		bft.status = RUNNING
-		for {
-			select {
-			case <-bft.tickerdone:
-				pcbft_log.Debugf("<%s> TickerDone called", bft.groupId)
-				return
-			case <-bft.ticker.C:
-				pcbft_log.Debugf("<%s> ticker called at <%d>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", bft.groupId, time.Now().Nanosecond())
-				bft.Propose()
-			}
-		}
-	}()
-}
-
-func (bft *PCBft) Stop() {
-	if bft.status != RUNNING {
-		pcbft_log.Debugf("<%s> bft not running, ignore stop", bft.groupId)
-		return
-	}
-
-	bft.status = CLOSED
-	bft.taskdone <- true
-	bft.ticker.Stop()
-	bft.tickerdone <- true
-	pcbft_log.Debugf("<%s> bft stopped", bft.groupId)
-}
-
 func (bft *PCBft) Propose() error {
-	pcbft_log.Debugf("Propose called, epoch <%d>", bft.currEpoch)
-	bft.currEpoch += 1
-	if bft.currEpoch > uint64(bft.tickCnt) {
-		//consensus not be done in time
-		//stop ticker
-		//TBD fill responsed producer
-		bft.pp.HandleBFTTimeout(bft.currEpoch, bft.currProof.Req.ReqId, nil)
-		bft.tickerdone <- true
-		return nil
-	}
-
-	acs := NewPPAcs(bft.Config, bft, bft.currEpoch)
-	task := &PCTask{
-		Epoch:       bft.currEpoch,
-		ProposeData: bft.currProotData,
-		acsInsts:    acs,
-	}
-	bft.currTask = task
+	pcbft_log.Debugf("Propose called")
+	chAcsDone := make(chan *AcsResult, 1)
 
 	go func() {
-		bft.currTask.acsInsts.InputValue(task.ProposeData)
+		acs := NewPPAcs(bft.groupId, bft.nodename, bft.Config, bft.epoch, chAcsDone)
+		acs.InputValue(bft.currProotData)
 	}()
 
-	<-bft.taskdone
+	for {
+		select {
+		case <-bft.cpCtx.Done():
+			pcbft_log.Debugf("<%s> ctx done", bft.groupId)
+			return nil
+		case acsResult := <-chAcsDone:
+			pcbft_log.Debugf("acs done, epoch <%d>", acsResult.epoch)
+			//bft.chBftDone <- bft.makeResultBundle(acsResult.epoch, acsResult.result)
+			bft.chBftDone <- &BftResult{
+				Result:  quorumpb.ChangeConsensusResult_SUCCESS,
+				Epoch:   acsResult.epoch,
+				RawData: acsResult.result,
+			}
+			return nil
+		case <-time.After(time.Duration(bft.agreementEpochLenInMs) * time.Millisecond):
+			pcbft_log.Debugf("acs <%d> timeout", bft.epoch)
+			bft.epoch += 1
+			if bft.epoch > uint64(bft.agreementTotalEpoch) {
+				pcbft_log.Debugf("bft timeout, could not make agreement")
+				bft.chBftDone <- &BftResult{
+					Result:  quorumpb.ChangeConsensusResult_TIMEOUT,
+					Epoch:   bft.epoch,
+					RawData: nil,
+				}
+				return nil
+			}
+			bft.Propose()
+		}
+	}
 	return nil
-}
-
-func (bft *PCBft) AcsDone(epoch uint64, result map[string][]byte) {
-	pcbft_log.Debugf("AcsDone called, epoch <%d>", epoch)
-	bft.pp.HandleBftDone(epoch, result)
 }
 
 func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	pcbft_log.Debugf("HandleHBMsg called, Epoch <%d>", hbmsg.Epoch)
-
-	if bft.currTask != nil {
-		bft.currTask.acsInsts.HandleHBMessage(hbmsg)
+	if bft.acsInst != nil {
+		bft.acsInst.HandleHBMessage(hbmsg)
 	}
 
 	return nil

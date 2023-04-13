@@ -2,6 +2,7 @@ package chain
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -28,17 +29,19 @@ import (
 var chain_log = logging.Logger("chain")
 
 type Chain struct {
-	groupItem    *quorumpb.GroupItem
-	nodename     string
-	producerPool map[string]*quorumpb.ProducerItem
-	userPool     map[string]*quorumpb.UserItem
-	trxFactory   *rumchaindata.TrxFactory
-	rexSyncer    *RexSyncer
-	chaindata    *ChainData
-	Consensus    def.Consensus
-	CurrBlock    uint64
-	CurrEpoch    uint64
-	LatestUpdate int64
+	groupItem     *quorumpb.GroupItem
+	nodename      string
+	producerPool  map[string]*quorumpb.ProducerItem
+	userPool      map[string]*quorumpb.UserItem
+	trxFactory    *rumchaindata.TrxFactory
+	rexSyncer     *RexSyncer
+	chaindata     *ChainData
+	Consensus     def.Consensus
+	CurrBlock     uint64
+	CurrEpoch     uint64
+	LatestUpdate  int64
+	ChainCtx      context.Context
+	CtxCancelFunc context.CancelFunc
 }
 
 func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChainInfo bool) error {
@@ -50,6 +53,9 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	//initial TrxFactory
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
+
+	//create context with cancel function
+	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
 
 	//initial Syncer
 	chain.rexSyncer = NewRexSyncer(chain.groupItem.GroupId, chain.nodename, chain, chain)
@@ -621,7 +627,7 @@ func (chain *Chain) CreateConsensus() error {
 	if shouldCreateConsensusProposer {
 		chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupItem.GroupId)
 		consensusProposer = &consensus.MolassesConsensusProposer{}
-		consensusProposer.NewConsensusProposer(chain.groupItem, chain.nodename, chain)
+		consensusProposer.NewConsensusProposer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
 	}
 
 	chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)

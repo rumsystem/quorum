@@ -12,27 +12,29 @@ var pcacs_log = logging.Logger("pcacs")
 
 type PPAcs struct {
 	Config
-	bft        *PCBft
 	Epoch      uint64
 	rbcInsts   map[string]*PCRbc
 	rbcOutput  map[string]bool
 	rbcResults map[string][]byte
+
+	chAcsDone chan *AcsResult
 }
 
-func NewPPAcs(cfg Config, bft *PCBft, epoch uint64) *PPAcs {
+func NewPPAcs(groupId, nodename string, cfg Config, epoch uint64, chAcsDone chan *AcsResult) *PPAcs {
 	pcacs_log.Debugf("NewPPAcs called, epoch <%d>", epoch)
 
 	acs := &PPAcs{
 		Config:     cfg,
-		bft:        bft,
 		Epoch:      epoch,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
+
+		chAcsDone: chAcsDone,
 	}
 
-	for _, id := range cfg.Nodes {
-		acs.rbcInsts[id], _ = NewPCRbc(cfg, acs, bft.pp.groupId, cfg.MyPubkey, id)
+	for _, nodeID := range cfg.Nodes {
+		acs.rbcInsts[nodeID], _ = NewPCRbc(cfg, acs, groupId, nodename, cfg.MyPubkey, nodeID)
 	}
 
 	return acs
@@ -56,17 +58,18 @@ func (a *PPAcs) RbcDone(proposerPubkey string) {
 	a.rbcOutput[proposerPubkey] = true
 
 	if len(a.rbcOutput) == a.N-a.f {
-		ptacs_log.Debugf("enough RBC done, consensus needed <%d>", a.N-a.f)
+		ptacs_log.Debugf("enough RBC finished", a.N-a.f)
 		for rbcInst, _ := range a.rbcOutput {
-			//load all rbc results
 			a.rbcResults[rbcInst] = a.rbcInsts[rbcInst].Output()
 		}
 
-		//call hbb to get result
-		a.bft.AcsDone(a.Epoch, a.rbcResults)
+		//notify acs done
+		a.chAcsDone <- &AcsResult{
+			epoch:  a.Epoch,
+			result: a.rbcResults,
+		}
 	} else {
 		pcacs_log.Debugf("Wait for enough RBC done")
-		return
 	}
 }
 

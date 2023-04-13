@@ -15,6 +15,7 @@ type PCRbc struct {
 	Config
 
 	groupId       string
+	nodename      string
 	myPubkey      string
 	rbcInstPubkey string
 
@@ -37,7 +38,7 @@ type PCRbc struct {
 }
 
 // same as trx rbc
-func NewPCRbc(cfg Config, acs *PPAcs, groupId, myPubkey, rbcInstPubkey string) (*PCRbc, error) {
+func NewPCRbc(cfg Config, acs *PPAcs, groupId, nodename, myPubkey, rbcInstPubkey string) (*PCRbc, error) {
 	pcrbc_log.Debugf("NewPCRbc called, epoch <%d>  pubkey <%s>", acs.Epoch, rbcInstPubkey)
 
 	var (
@@ -85,7 +86,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 
 	//create InitPropoeMsgs
 	originalDataSize := len(data)
-	initProposeMsgs, err := MakeRBCInitProposeMessage(r.groupId, r.acs.bft.pp.nodename, r.MyPubkey, shards, r.Config.Nodes, originalDataSize)
+	initProposeMsgs, err := MakeRBCInitProposeMessage(r.groupId, r.nodename, r.MyPubkey, shards, r.Config.Nodes, originalDataSize)
 
 	if err != nil {
 		pcrbc_log.Debugf(err.Error())
@@ -119,7 +120,7 @@ func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	//make proof
-	proofMsg, err := MakeRBCEchoMessage(r.groupId, r.acs.bft.pp.nodename, r.MyPubkey, initp, int(initp.OriginalDataSize))
+	proofMsg, err := MakeRBCEchoMessage(r.groupId, r.nodename, r.MyPubkey, initp, int(initp.OriginalDataSize))
 	if err != nil {
 		return err
 	}
@@ -191,7 +192,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 
 		//multicast READY msg
 		pcrbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
-		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.pp.nodename, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
+		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.nodename, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
 		if err != nil {
 			return err
 		}
@@ -243,7 +244,7 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 		pcrbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
 		if !r.readySent[roothashS] {
 			pcrbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
-			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.pp.nodename, r.myPubkey, ready.OriginalProposerPubkey, ready.RootHash)
+			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.nodename, r.myPubkey, ready.OriginalProposerPubkey, ready.RootHash)
 			if err != nil {
 				return err
 			}
