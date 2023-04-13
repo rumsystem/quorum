@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"errors"
 	"sort"
 	"time"
 
@@ -17,6 +18,7 @@ var trx_bft_log = logging.Logger("tbft")
 
 var DEFAULT_PROPOSE_PULSE = 1 * 1000       // 1s
 var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
+var SINGLE_TRX_DATA_LENGTH = 500 * 1024    //500Kib
 
 type ProposeTask struct {
 	Epoch          uint64
@@ -220,8 +222,13 @@ func safeCloseTaskQ(ch chan *ProposeTask) (recovered bool) {
 
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
-	bft.txBuffer.Push(tx)
 
+	if len(tx.Data) > SINGLE_TRX_DATA_LENGTH {
+		trx_bft_log.Errorf("<%s> Trx data length <%d> is too long", bft.groupId, len(tx.Data))
+		return errors.New("trx data length is too long")
+	}
+
+	bft.txBuffer.Push(tx)
 	//for debug only added by cuicat
 	//list all trxs in buffer
 	trxs, err := bft.txBuffer.GetAllTrxInBuffer()
