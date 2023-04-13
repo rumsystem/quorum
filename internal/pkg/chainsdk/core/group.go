@@ -359,10 +359,10 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdConsensus(producers []string, agrmTickCount, agrmTickLength, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
+func (grp *Group) UpdConsensus(producers []string, agrmTickLength, agrmTickCount, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
 	group_log.Debugf("<%s> UpdConsensus called", grp.Item.GroupId)
 	trxId := guuid.New().String()
-	return trxId, grp.ChainCtx.UpdConsensus(producers, trxId, agrmTickCount, agrmTickLength, fromNewEpoch, trxEpochTick)
+	return trxId, grp.ChainCtx.UpdConsensus(producers, trxId, agrmTickLength, agrmTickCount, fromNewEpoch, trxEpochTick)
 }
 
 func (grp *Group) UpdGroupUser(item *quorumpb.UpdGroupUserItem) (string, error) {
