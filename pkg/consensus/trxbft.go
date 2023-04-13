@@ -18,7 +18,7 @@ var trx_bft_log = logging.Logger("tbft")
 
 var DEFAULT_PROPOSE_PULSE = 1 * 1000       // 1s
 var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
-var SINGLE_TRX_DATA_LENGTH = 500 * 1024    //500Kib
+var TRX_DATA_LENGTH = 300 * 1024           //300Kib
 
 type ProposeTask struct {
 	Epoch          uint64
@@ -223,9 +223,9 @@ func safeCloseTaskQ(ch chan *ProposeTask) (recovered bool) {
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
 
-	if len(tx.Data) > SINGLE_TRX_DATA_LENGTH {
+	if len(tx.Data) > TRX_DATA_LENGTH {
 		trx_bft_log.Errorf("<%s> Trx data length <%d> is too long", bft.groupId, len(tx.Data))
-		return errors.New("trx data length is too long")
+		return errors.New("trx.data too large, should less than 300Kb")
 	}
 
 	bft.txBuffer.Push(tx)
