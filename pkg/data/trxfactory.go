@@ -104,7 +104,7 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
-	if _, err := IsTrxWithinSizeLimit(content); err != nil {
+	if _, err := IsTrxDataWithinSizeLimit(content); err != nil {
 		return nil, err
 	}
 
