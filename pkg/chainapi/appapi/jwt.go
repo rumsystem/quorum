@@ -2,6 +2,7 @@ package appapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -29,10 +30,22 @@ type TokenItem struct {
 }
 
 type CreateJWTParams struct {
-	Name        string    `json:"name" validate:"required" example:"allow-513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
-	Role        string    `json:"role" validate:"required,oneof=node chain" example:"node"`
-	AllowGroups []string  `json:"allow_groups" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
-	ExpiresAt   time.Time `json:"expires_at" validate:"required" example:"2022-12-28T08:10:36.675204+00:00"`
+	Name      string    `json:"name" validate:"required" example:"allow-513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	Role      string    `json:"role" validate:"required,oneof=node chain" example:"node"`
+	GroupId   string    `json:"group_id" validate:"required_if=Role node" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	ExpiresAt time.Time `json:"expires_at" validate:"required" example:"2022-12-28T08:10:36.675204+00:00"`
+}
+
+type RevokeJWTParams struct {
+	Role    string `json:"role" validate:"required,oneof=node chain" example:"node"`
+	GroupId string `json:"group_id" validate:"required_if=Role node" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	Token   string `json:"token" validate:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI1MTNiZDNmMi1hMGJjLTQ3MGItODA2My1lYzk1NDlmMzRiN2QiXSwiZXhwIjoxODI2MTA4MzA5LCJuYW1lIjoiYWxsb3ctNTEzYmQzZjItYTBiYy00NzBiLTgwNjMtZWM5NTQ5ZjM0YjdkIiwicm9sZSI6Im5vZGUifQ.CZQB2jzvY3lB_XgAd8izAQaunsHZFh1qN0tmSdYkce8"`
+}
+
+type RemoveJWTParams struct {
+	Role    string `json:"role" query:"role" validate:"required,oneof=node chain" example:"node"`
+	GroupId string `json:"group_id" query:"group_id" validate:"required_if=Role node" example:"513bd3f2-a0bc-470b-8063-ec9549f34b7d"`
+	Token   string `json:"token" query:"token" validate:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI1MTNiZDNmMi1hMGJjLTQ3MGItODA2My1lYzk1NDlmMzRiN2QiXSwiZXhwIjoxODI2MTA4MzA5LCJuYW1lIjoiYWxsb3ctNTEzYmQzZjItYTBiYy00NzBiLTgwNjMtZWM5NTQ5ZjM0YjdkIiwicm9sZSI6Im5vZGUifQ.CZQB2jzvY3lB_XgAd8izAQaunsHZFh1qN0tmSdYkce8"`
 }
 
 func getJWTKey() (string, error) {
@@ -41,13 +54,7 @@ func getJWTKey() (string, error) {
 	if nodeOpt == nil {
 		return "", errors.New("Call InitNodeOptions() before use it")
 	}
-	return nodeOpt.JWTKey, nil
-}
-
-func getToken(name string, role string, allowGroups []string, jwtKey string) (string, error) {
-	// FIXME: hardcode
-	exp := time.Now().Add(time.Hour * 24 * 30)
-	return utils.NewJWTToken(name, role, allowGroups, jwtKey, exp)
+	return nodeOpt.JWT.Key, nil
 }
 
 func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
@@ -66,12 +73,7 @@ func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
 	return config
 }
 
-func GetJWTName(c echo.Context) string {
-	token, err := getJWTToken(c)
-	if err != nil {
-		logger.Errorf("get jwt token failed: %s", err)
-		return ""
-	}
+func GetJWTName(token *jwt.Token) string {
 	claims := token.Claims.(jwt.MapClaims)
 	name, ok := claims["name"]
 	if !ok {
@@ -81,12 +83,7 @@ func GetJWTName(c echo.Context) string {
 	return name.(string)
 }
 
-func GetJWTRole(c echo.Context) string {
-	token, err := getJWTToken(c)
-	if err != nil {
-		logger.Errorf("get jwt token failed: %s", err)
-		return ""
-	}
+func GetJWTRole(token *jwt.Token) string {
 	claims := token.Claims.(jwt.MapClaims)
 	role, ok := claims["role"]
 	if !ok {
@@ -96,29 +93,21 @@ func GetJWTRole(c echo.Context) string {
 	return role.(string)
 }
 
-func GetJWTAllowGroups(c echo.Context) []string {
+func GetJWTAllowGroups(token *jwt.Token) []string {
 	groups := []string{}
-	token, err := getJWTToken(c)
-	if err != nil {
-		logger.Errorf("get jwt token failed: %s", err)
-		return groups
-	}
 	claims := token.Claims.(jwt.MapClaims)
-	allowGroups, ok := claims["allowGroups"]
+	allowGroup, ok := claims["allowGroup"]
 	if !ok {
 		return groups
 	}
 
-	items, ok := allowGroups.([]interface{})
+	item, ok := allowGroup.(string)
 	if !ok {
-		logger.Errorf("cast allowGroups to `[]interface{}` failed")
+		logger.Errorf("cast allowGroup to `string` failed")
 		return groups
 	}
 
-	for _, v := range items {
-		groups = append(groups, v.(string))
-	}
-	return groups
+	return []string{item}
 }
 
 // @Tags Apps
@@ -128,29 +117,13 @@ func GetJWTAllowGroups(c echo.Context) []string {
 // @Produce json
 // @Param   create_jwt_params  body CreateJWTParams  true  "create jwt params"
 // @Success 200 {object} TokenItem  "a new auth token"
-// @Router /app/api/v1/token/create [post]
+// @Router /app/api/v1/token [post]
 func (h *Handler) CreateToken(c echo.Context) error {
-	cc := c.(*utils.CustomContext)
-
 	var err error
-
-	if !rummiddleware.LocalhostSkipper(c) {
-		return rumerrors.NewBadRequestError("only localhost can access this rest api")
-	}
-
+	cc := c.(*utils.CustomContext)
 	params := new(CreateJWTParams)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
-	}
-
-	if params.Role == "node" {
-		if params.AllowGroups == nil || len(params.AllowGroups) == 0 {
-			return rumerrors.NewBadRequestError("allow_groups field must not be empty for node jwt")
-		}
-	} else {
-		if params.AllowGroups != nil || len(params.AllowGroups) > 0 {
-			return rumerrors.NewBadRequestError("allow_groups field must be empty for chain jwt")
-		}
 	}
 
 	nodeOpt := options.GetNodeOptions()
@@ -158,20 +131,84 @@ func (h *Handler) CreateToken(c echo.Context) error {
 		return errors.New("Call InitNodeOptions() before use it")
 	}
 
-	jwtKey, err := getJWTKey()
+	var tokenStr string
+	if params.Role == "chain" {
+		tokenStr, err = nodeOpt.NewChainJWT(params.Name, params.ExpiresAt)
+	} else if params.Role == "node" {
+		tokenStr, err = nodeOpt.NewNodeJWT(params.GroupId, params.Name, params.ExpiresAt)
+	}
 	if err != nil {
 		return err
-	}
-
-	tokenStr, err := utils.NewJWTToken(params.Name, params.Role, params.AllowGroups, jwtKey, params.ExpiresAt)
-	if err != nil {
-		return err
-	}
-	if err := nodeOpt.SetJWTTokenMap(params.Name, tokenStr); err != nil {
-		return errors.New("save jwt to config file failed")
 	}
 
 	return c.JSON(http.StatusOK, &TokenItem{Token: tokenStr})
+}
+
+// @Tags Apps
+// @Summary RevokeToken
+// @Description Revoke a auth token
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "current auth token"
+// @Param   revoke_jwt_params  body RevokeJWTParams  true  "revoke jwt params"
+// @Success 200 {object} utils.SuccessResponse
+// @Router /app/api/v1/token/revoke [post]
+func (h *Handler) RevokeToken(c echo.Context) error {
+	cc := c.(*utils.CustomContext)
+	var payload RevokeJWTParams
+	if err := cc.BindAndValidate(&payload); err != nil {
+		return err
+	}
+
+	nodeOpt := options.GetNodeOptions()
+	if nodeOpt == nil {
+		return errors.New("Call InitNodeOptions() before use it")
+	}
+
+	if payload.Role == "node" {
+		if err := nodeOpt.RevokeNodeJWT(payload.GroupId, payload.Token); err != nil {
+			return err
+		}
+	} else if payload.Role == "chain" {
+		if err := nodeOpt.RevokeChainJWT(payload.Token); err != nil {
+			return err
+		}
+	}
+
+	return cc.Success()
+}
+
+// @Tags Apps
+// @Summary RemoveToken
+// @Description Remove a auth token
+// @Produce json
+// @Param Authorization header string true "current auth token"
+// @Param   remove_jwt_params  query RemoveJWTParams  true  "remove jwt params"
+// @Success 200 {object} utils.SuccessResponse
+// @Router /app/api/v1/token [delete]
+func (h *Handler) RemoveToken(c echo.Context) error {
+	cc := c.(*utils.CustomContext)
+	var payload RemoveJWTParams
+	if err := cc.BindAndValidate(&payload); err != nil {
+		return err
+	}
+
+	nodeOpt := options.GetNodeOptions()
+	if nodeOpt == nil {
+		return errors.New("Call InitNodeOptions() before use it")
+	}
+
+	if payload.Role == "node" {
+		if err := nodeOpt.RemoveNodeJWT(payload.GroupId, payload.Token); err != nil {
+			return err
+		}
+	} else if payload.Role == "chain" {
+		if err := nodeOpt.RemoveChainJWT(payload.Token); err != nil {
+			return err
+		}
+	}
+
+	return cc.Success()
 }
 
 // @Tags Apps
@@ -187,38 +224,62 @@ func (h *Handler) RefreshToken(c echo.Context) error {
 		return errors.New("Call InitNodeOptions() before use it")
 	}
 
-	// check token
-	jwtKey, err := getJWTKey()
+	token, err := GetJWTToken(c)
 	if err != nil {
-		return err
+		return rumerrors.NewBadRequestError(errors.New("invalid jwt"))
+	}
+	name := GetJWTName(token)
+	role := GetJWTRole(token)
+	allowGroups := GetJWTAllowGroups(token)
+	exp := time.Now().Add(time.Hour * 24 * 30)
+	var newTokenStr string
+
+	if len(allowGroups) == 0 {
+		return rumerrors.NewBadRequestError("invalid token")
 	}
 
-	token, err := getJWTToken(c)
-	if err != nil {
-		return err
+	if role == "chain" {
+		if !nodeOpt.IsValidChainJWT(token.Raw) {
+			return rumerrors.NewBadRequestError(errors.New("invalid token"))
+		}
+		newTokenStr, err = nodeOpt.NewChainJWT(name, exp)
+		if err != nil {
+			return err
+		}
 	}
 
-	// token invalid include expired or invalid
-	tokenStr := token.Raw
-	if utils.IsJWTTokenExpired(tokenStr, jwtKey) {
-		logger.Infof("token expires, return new token")
-	} else if valid, err := utils.IsJWTTokenValid(tokenStr, jwtKey); !valid || err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
-	name := GetJWTName(c)
-	role := GetJWTRole(c)
-	allowGroups := GetJWTAllowGroups(c)
-
-	newTokenStr, err := getToken(name, role, allowGroups, jwtKey)
-	if err != nil {
-		return err
-	}
-	if err := nodeOpt.SetJWTTokenMap(name, newTokenStr); err != nil {
-		return err
+	if role == "node" {
+		if !nodeOpt.IsValidNodeJWT(allowGroups[0], token.Raw) {
+			return rumerrors.NewBadRequestError(errors.New("invalid jwt"))
+		}
+		newTokenStr, err = nodeOpt.NewNodeJWT(allowGroups[0], name, exp)
+		if err != nil {
+			return err
+		}
 	}
 
 	return c.JSON(http.StatusOK, &TokenItem{Token: newTokenStr})
+}
+
+// @Tags Apps
+// @Summary ListToken
+// @Description List all auth token
+// @Produce json
+// @Param Authorization header string true "current auth token"
+// @Success 200 {object} options.JWT
+// @Router /app/api/v1/token/list [get]
+func (h *Handler) ListToken(c echo.Context) error {
+	nodeOpt := options.GetNodeOptions()
+	if nodeOpt == nil {
+		return errors.New("Call InitNodeOptions() before use it")
+	}
+
+	tokens, err := nodeOpt.GetAllJWT()
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, tokens)
 }
 
 func jwtFromHeader(c echo.Context) (string, error) {
@@ -234,22 +295,77 @@ func jwtFromHeader(c echo.Context) (string, error) {
 	return "", errors.New("missing jwt token")
 }
 
-// getJWTToken get jwt token from echo context or http request header
+// GetJWTToken get jwt token from echo context or http request header
 // can not get jwt token from c.Get(jwtContextKey) for localhost or 127.0.0.1
-func getJWTToken(c echo.Context) (*jwt.Token, error) {
+func GetJWTToken(c echo.Context) (*jwt.Token, error) {
 	token := c.Get(jwtContextKey)
 	if token != nil {
-		return (token.(*jwt.Token)), nil
+		t := (token.(*jwt.Token))
+		if _isValidToken(t) {
+			return t, nil
+		}
+		return nil, fmt.Errorf("invalid jwt: %s", t.Raw)
 	}
 
 	tokenStr, err := jwtFromHeader(c)
 	if err != nil {
+		logger.Warn("can not get jwt from header")
 		return nil, err
 	}
 
 	jwtKey, err := getJWTKey()
 	if err != nil {
-		return nil, errors.New("can not get jwt key")
+		e := errors.New("can not get jwt key")
+		logger.Warn(e)
+		return nil, e
 	}
-	return utils.ParseJWTToken(tokenStr, jwtKey)
+
+	_token, err := utils.ParseJWTToken(tokenStr, jwtKey)
+	if err != nil {
+		e := fmt.Errorf("parse jwt token failed: %s", err)
+		logger.Warn(e)
+		return nil, e
+	}
+
+	if _isValidToken(_token) {
+		return _token, nil
+	}
+
+	e := fmt.Errorf("invalid jwt: %s", _token.Raw)
+	logger.Warn(e)
+	return nil, e
+}
+
+func _isValidToken(token *jwt.Token) bool {
+	role := GetJWTRole(token)
+	if len(GetJWTAllowGroups(token)) == 0 {
+		return false
+	}
+
+	groupid := GetJWTAllowGroups(token)[0]
+
+	nodeOpt := options.GetNodeOptions()
+	if nodeOpt == nil {
+		logger.Warn("Call InitNodeOptions() before use it")
+		return false
+	}
+
+	if role == "chain" {
+		if nodeOpt.IsValidChainJWT(token.Raw) {
+			return true
+		} else {
+			logger.Warn("invalid chain jwt")
+			return false
+		}
+	} else if role == "node" {
+		if nodeOpt.IsValidNodeJWT(groupid, token.Raw) {
+			return true
+		} else {
+			logger.Warn(errors.New("invalid node jwt"))
+			return false
+		}
+	}
+
+	logger.Warn(errors.New("invalid jwt role"))
+	return false
 }
