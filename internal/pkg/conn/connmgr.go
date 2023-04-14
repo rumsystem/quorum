@@ -299,9 +299,6 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.Packa
 	if err != nil {
 		conn_log.Errorf("BroadcastHBMsg failed, err: %v", err)
 	}
-
-	conn_log.Debugf("BroadcastHBMsg done, err: %v", err)
-
 	return err
 }
 

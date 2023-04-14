@@ -161,6 +161,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleBlockPsConn(blk)
 		}
+
 	} else if pkg.Type == quorumpb.PackageType_TRX {
 		trx := &quorumpb.Trx{}
 		err = proto.Unmarshal(pkg.Data, trx)
