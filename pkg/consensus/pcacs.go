@@ -57,7 +57,7 @@ func (a *PPAcs) RbcDone(proposerPubkey string) {
 	a.rbcOutput[proposerPubkey] = true
 
 	if len(a.rbcOutput) == a.N-a.f {
-		ptacs_log.Debugf("enough RBC finished", a.N-a.f)
+		ptacs_log.Debugf("<%d> RBC insts finished, enough for BFT", a.N-a.f)
 		for rbcInst, _ := range a.rbcOutput {
 			a.rbcResults[rbcInst] = a.rbcInsts[rbcInst].Output()
 		}

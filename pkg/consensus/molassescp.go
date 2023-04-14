@@ -71,58 +71,58 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 	time.Sleep(1000 * time.Millisecond)
 
 	cp.trxId = trxId
-	nonce := uint64(0)
 
-	//create req
-	req := &quorumpb.ChangeConsensusReq{
-		ReqId:                guuid.New().String(),
-		GroupId:              cp.groupId,
-		Nonce:                nonce,
-		ProducerPubkeyList:   producers,
-		AgreementTickLenInMs: agrmTickLen,
-		AgreementTickCount:   agrmTickCnt,
-		StartFromEpoch:       fromNewEpoch,
-		TrxEpochTickLenInMs:  trxEpochTickLen,
-		SenderPubkey:         cp.grpItem.UserSignPubkey,
-	}
-
-	byts, err := proto.Marshal(req)
-	if err != nil {
-		molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
-		return err
-	}
-
-	ks := nodectx.GetNodeCtx().Keystore
-	hash := localcrypto.Hash(byts)
-	signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
-	req.MsgHash = hash
-	req.SenderSign = signature
-
-	cp.senderCtx, cp.senderCancelFunc = context.WithCancel(cp.chainCtx)
 	go func() {
-		molacp_log.Debugf("<%s> create ticker to send req<%s>", cp.groupId, req.ReqId)
-		//reset broadcast count
+		//TBD get nonce
+		nonce := uint64(0)
+		//create req
+		req := &quorumpb.ChangeConsensusReq{
+			ReqId:                guuid.New().String(),
+			GroupId:              cp.groupId,
+			Nonce:                nonce,
+			ProducerPubkeyList:   producers,
+			AgreementTickLenInMs: agrmTickLen,
+			AgreementTickCount:   agrmTickCnt,
+			StartFromEpoch:       fromNewEpoch,
+			TrxEpochTickLenInMs:  trxEpochTickLen,
+			SenderPubkey:         cp.grpItem.UserSignPubkey,
+		}
+
+		byts, err := proto.Marshal(req)
+		if err != nil {
+			molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
+			return
+		}
+
+		ks := nodectx.GetNodeCtx().Keystore
+		hash := localcrypto.Hash(byts)
+		signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
+		req.MsgHash = hash
+		req.SenderSign = signature
+
+		cp.senderCtx, cp.senderCancelFunc = context.WithCancel(cp.chainCtx)
 		cp.broadcastCnt = 0
-		ticker := time.NewTicker(time.Duration(req.AgreementTickLenInMs) * time.Millisecond)
-		for {
-			select {
-			case <-cp.senderCtx.Done():
-				molacp_log.Debugf("<%s> ctx Done, stop sending req", cp.groupId)
-				return
-			case <-ticker.C:
+		for cp.broadcastCnt < int(agrmTickCnt) {
+			go func() {
 				molacp_log.Debugf("<%s> send req <%s>", cp.groupId, req.ReqId)
 				connMgr, err := conn.GetConn().GetConnMgr(cp.groupId)
 				if err != nil {
 					return
 				}
 				connMgr.BroadcastPPReq(req)
+			}()
+
+			select {
+			case <-cp.senderCtx.Done():
+				molacp_log.Debugf("<%s> ctx Done, stop sending req ", cp.groupId)
+				return
+			case <-time.After(time.Duration(req.AgreementTickLenInMs) * time.Millisecond):
+				molacp_log.Debugf("<%s> round <%d> timeout", cp.groupId, cp.broadcastCnt)
 				cp.broadcastCnt += 1
-				if cp.broadcastCnt >= int(req.AgreementTickCount) {
-					molacp_log.Debugf("<%s> send req <%s> finished, timeout", cp.groupId, req.ReqId)
-					return
-				}
 			}
 		}
+		//if goes here, means no consensus reached and timeout, notify chain
+		molacp_log.Debugf("<%s> no consensus reached, notify chain", cp.groupId)
 	}()
 
 	return nil
@@ -213,67 +213,68 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 			}
 		}
 
-		//if not add owner to the list to finish the consensus
+		//if not add owner to the list to finish consensus
 		if !isInProducerList {
 			req.ProducerPubkeyList = append(req.ProducerPubkeyList, cp.grpItem.OwnerPubKey)
 		}
 	}
 
-	//create resp
-	resp := &quorumpb.ChangeConsensusResp{
-		RespId:       guuid.New().String(),
-		GroupId:      req.GroupId,
-		SenderPubkey: cp.grpItem.UserSignPubkey,
-		Req:          req,
-		MsgHash:      nil,
-		SenderSign:   nil,
-	}
-
-	byts, err = proto.Marshal(resp)
-	if err != nil {
-		molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
-		return err
-	}
-
-	hash = localcrypto.Hash(byts)
-	ks := nodectx.GetNodeCtx().Keystore
-	signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
-	req.MsgHash = hash
-	req.SenderSign = signature
-
-	//create Proof
-	proofBundle := &quorumpb.ConsensusProof{
-		Req:  req,
-		Resp: resp,
-	}
-
-	//create bft config
-	config, err := cp.createBftConfig(req.ProducerPubkeyList)
-	if err != nil {
-		molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
-		return err
-	}
-
-	//create new context
-	taskCtx, taskCancel := context.WithCancel(cp.chainCtx)
-
-	//create channel to receive bft result
-	chBftDone := make(chan *quorumpb.ChangeConsensusResultBundle, 1)
-
-	//create bft
-	molacp_log.Debugf("<%s> create new bft", cp.groupId)
-	bft := NewPCBft(taskCtx, cp.groupId, cp.nodename, *config, chBftDone, cp.cIface)
-
-	task := &ConsensusProposeTask{
-		Req:        req,
-		bftCtx:     taskCtx,
-		cancelFunc: taskCancel,
-		bft:        bft,
-		chBftDone:  chBftDone,
-	}
-
-	cp.currTask = task
 	go func() {
+		//create resp
+		resp := &quorumpb.ChangeConsensusResp{
+			RespId:       guuid.New().String(),
+			GroupId:      req.GroupId,
+			SenderPubkey: cp.grpItem.UserSignPubkey,
+			Req:          req,
+			MsgHash:      nil,
+			SenderSign:   nil,
+		}
+
+		byts, err = proto.Marshal(resp)
+		if err != nil {
+			molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
+			return err
+		}
+
+		hash = localcrypto.Hash(byts)
+		ks := nodectx.GetNodeCtx().Keystore
+		signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
+		req.MsgHash = hash
+		req.SenderSign = signature
+
+		//create Proof
+		proofBundle := &quorumpb.ConsensusProof{
+			Req:  req,
+			Resp: resp,
+		}
+
+		//create bft config
+		config, err := cp.createBftConfig(req.ProducerPubkeyList)
+		if err != nil {
+			molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
+			return err
+		}
+
+		//create new context
+		taskCtx, taskCancel := context.WithCancel(cp.chainCtx)
+
+		//create channel to receive bft result
+		chBftDone := make(chan *quorumpb.ChangeConsensusResultBundle, 1)
+
+		//create bft
+		molacp_log.Debugf("<%s> create new bft", cp.groupId)
+		bft := NewPCBft(taskCtx, cp.groupId, cp.nodename, *config, chBftDone, cp.cIface)
+
+		task := &ConsensusProposeTask{
+			Req:        req,
+			bftCtx:     taskCtx,
+			cancelFunc: taskCancel,
+			bft:        bft,
+			chBftDone:  chBftDone,
+		}
+
+		cp.currTask = task
+
 		cp.currTask.bft.AddProof(proofBundle)
 		cp.currTask.bft.Propose()
 
@@ -282,13 +283,8 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		case <-cp.currTask.bftCtx.Done():
 			molacp_log.Debugf("<%s> HandleCCReq bft context done", cp.groupId)
 			return
-		case result := <-cp.currTask.chBftDone:
+		case /* result := */ <-cp.currTask.chBftDone:
 			molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
-			//handle resutl
-			//notify chain
-			//finish all local goroutine
-
-			molacp_log.Debugf("<%s> HandleCCReq bft done with result <%v>, notify chain", cp.groupId, result)
 
 			//cancel current task
 			cp.currTask.cancelFunc()
@@ -299,6 +295,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 				cp.senderCancelFunc = nil
 			}
 
+			//notify chain
 			return
 		}
 	}()
