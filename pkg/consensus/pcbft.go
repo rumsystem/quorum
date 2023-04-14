@@ -1,25 +1,21 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"github.com/rumsystem/quorum/pkg/consensus/def"
+	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 var pcbft_log = logging.Logger("pcbft")
 
 type AcsResult struct {
-	epoch  uint64
 	result map[string][]byte
-}
-
-type BftResult struct {
-	Result  quorumpb.ChangeConsensusResult
-	RawData map[string][]byte
-	Epoch   uint64
 }
 
 type PCBft struct {
@@ -30,30 +26,23 @@ type PCBft struct {
 	currProof     *quorumpb.ConsensusProof
 	currProotData []byte
 
-	agreementEpochLenInMs uint64
-	agreementTotalEpoch   uint64
+	chBftDone chan *quorumpb.ChangeConsensusResultBundle
+	bftCtx    context.Context
 
-	chBftDone chan *BftResult
-	cpCtx     context.Context
-
-	epoch   uint64
 	acsInst *PPAcs
 
-	//responsedProducers map[string]bool
+	cIface def.ChainMolassesIface
 }
 
-func NewPCBft(ctx context.Context, groupId, nodename string, cfg Config, agrmEpochLen, agrmTotalEpoch uint64, ch chan *BftResult) *PCBft {
+func NewPCBft(ctx context.Context, groupId, nodename string, cfg Config, ch chan *quorumpb.ChangeConsensusResultBundle, iface def.ChainMolassesIface) *PCBft {
 	pcbft_log.Debugf("NewPCBft called")
 	return &PCBft{
-		Config:                cfg,
-		groupId:               groupId,
-		nodename:              nodename,
-		currProof:             nil,
-		epoch:                 0,
-		agreementEpochLenInMs: agrmEpochLen,
-		agreementTotalEpoch:   agrmTotalEpoch,
-		cpCtx:                 ctx,
-		chBftDone:             ch,
+		Config:    cfg,
+		groupId:   groupId,
+		nodename:  nodename,
+		currProof: nil,
+		bftCtx:    ctx,
+		chBftDone: ch,
 	}
 }
 
@@ -68,47 +57,135 @@ func (bft *PCBft) Propose() error {
 	pcbft_log.Debugf("Propose called")
 	chAcsDone := make(chan *AcsResult, 1)
 
-	go func() {
-		acs := NewPPAcs(bft.cpCtx, bft.groupId, bft.nodename, bft.Config, bft.epoch, chAcsDone)
-		acs.InputValue(bft.currProotData)
-	}()
+	acs := NewPPAcs(bft.bftCtx, bft.groupId, bft.nodename, bft.Config, chAcsDone)
+	acs.InputValue(bft.currProotData)
+	bft.acsInst = acs
 
 	for {
 		select {
-		case <-bft.cpCtx.Done():
+		case <-bft.bftCtx.Done():
 			pcbft_log.Debugf("<%s> ctx done", bft.groupId)
 			return nil
 		case acsResult := <-chAcsDone:
-			pcbft_log.Debugf("acs done, epoch <%d>", acsResult.epoch)
-			//bft.chBftDone <- bft.makeResultBundle(acsResult.epoch, acsResult.result)
-			bft.chBftDone <- &BftResult{
-				Result:  quorumpb.ChangeConsensusResult_SUCCESS,
-				Epoch:   acsResult.epoch,
-				RawData: acsResult.result,
-			}
-			return nil
-		case <-time.After(time.Duration(bft.agreementEpochLenInMs) * time.Millisecond):
-			pcbft_log.Debugf("acs <%d> timeout", bft.epoch)
-			bft.epoch += 1
-			if bft.epoch > uint64(bft.agreementTotalEpoch) {
-				pcbft_log.Debugf("bft timeout, could not make agreement")
-				bft.chBftDone <- &BftResult{
-					Result:  quorumpb.ChangeConsensusResult_TIMEOUT,
-					Epoch:   bft.epoch,
-					RawData: nil,
+			pcbft_log.Debugf("acs done")
+			//verify raw result
+			ok, proofMap := bft.verifyRawResult(acsResult.result)
+			if !ok {
+				pcbft_log.Errorf("<%s> verify raw result failed", bft.groupId)
+				resultBundle := &quorumpb.ChangeConsensusResultBundle{
+					Result:             quorumpb.ChangeConsensusResult_FAIL,
+					Req:                bft.currProof.Req,
+					Resps:              nil,
+					ResponsedProducers: nil,
 				}
-				return nil
+
+				//notify bft done
+				bft.chBftDone <- resultBundle
+				return fmt.Errorf("bft done but verify raw result failed")
 			}
-			bft.Propose()
+
+			var resps []*quorumpb.ChangeConsensusResp
+			var producers []string
+			for _, proof := range proofMap {
+				resps = append(resps, proof.Resp)
+				producers = append(producers, proof.Resp.SenderPubkey)
+			}
+
+			resultBundle := &quorumpb.ChangeConsensusResultBundle{
+				Result:             quorumpb.ChangeConsensusResult_SUCCESS,
+				Req:                bft.currProof.Req,
+				Resps:              resps,
+				ResponsedProducers: producers,
+			}
+			//notify bft done
+			bft.chBftDone <- resultBundle
+			return nil
 		}
 	}
 }
 
 func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	pcbft_log.Debugf("HandleHBMsg called, Epoch <%d>", hbmsg.Epoch)
+	pcbft_log.Debugf("HandleHBMsg called")
 	if bft.acsInst != nil {
 		bft.acsInst.HandleHBMessage(hbmsg)
 	}
-
 	return nil
+}
+
+func (cbft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[string]*quorumpb.ConsensusProof) {
+	pcbft_log.Debugf("<%s> verifyRawResult called", cbft.groupId)
+
+	//convert rawResultMap to proof map
+	proofMap := make(map[string]*quorumpb.ConsensusProof)
+	for k, v := range rawResult {
+		proof := &quorumpb.ConsensusProof{}
+		err := proto.Unmarshal(v, proof)
+		if err != nil {
+			pcbft_log.Errorf("<%s> unmarshal consensus proof failed", cbft.groupId)
+			return false, proofMap
+		}
+		proofMap[k] = proof
+	}
+
+	//check if the maps contains responses from all required producers
+	for _, pubkey := range cbft.currProof.Req.ProducerPubkeyList {
+		proof, ok := proofMap[pubkey]
+		if !ok {
+			pcbft_log.Errorf("<%s> proof map does not contains producerPubkey <%s>", cbft.groupId, pubkey)
+			return false, proofMap
+		}
+
+		//check if sender is as same as producerPubkey
+		if proof.Resp.SenderPubkey != pubkey {
+			pcbft_log.Errorf("<%s> proof sender is not same as producerPubkey", cbft.groupId)
+			return false, proofMap
+		}
+
+		//check if all req are the same as original req
+		if !proto.Equal(proof.Req, cbft.currProof.Req) {
+			pcbft_log.Errorf("<%s> proof req is not same as original req", cbft.groupId)
+			return false, proofMap
+		}
+
+		//check if all resp sign against the same original req
+		if !proto.Equal(proof.Req, proof.Resp.Req) {
+			pcbft_log.Errorf("<%s> proof req is not same as proof resp req", cbft.groupId)
+			return false, proofMap
+		}
+
+		//check if all resp sign is valid
+		dumpResp := &quorumpb.ChangeConsensusResp{
+			RespId:       proof.Resp.RespId,
+			GroupId:      proof.Resp.GroupId,
+			SenderPubkey: proof.Resp.SenderPubkey,
+			Req:          proof.Resp.Req,
+			MsgHash:      nil,
+			SenderSign:   nil,
+		}
+
+		byts, err := proto.Marshal(dumpResp)
+		if err != nil {
+			pcbft_log.Errorf("<%s> marshal change consensus resp failed", cbft.groupId)
+			return false, proofMap
+		}
+
+		hash := localcrypto.Hash(byts)
+		if !bytes.Equal(hash, proof.Resp.MsgHash) {
+			pcbft_log.Errorf("<%s> proof resp hash is not same as original hash", cbft.groupId)
+			return false, proofMap
+		}
+
+		isValid, err := cbft.cIface.VerifySign(hash, proof.Resp.SenderSign, proof.Resp.SenderPubkey)
+		if err != nil {
+			pcbft_log.Errorf("<%s> verify proof resp sign failed", cbft.groupId)
+			return false, proofMap
+		}
+
+		if !isValid {
+			pcbft_log.Errorf("<%s> proof resp sign is not valid", cbft.groupId)
+			return false, proofMap
+		}
+	}
+
+	return true, proofMap
 }

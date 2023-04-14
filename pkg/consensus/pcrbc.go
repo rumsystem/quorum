@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	guuid "github.com/google/uuid"
 	"github.com/klauspost/reedsolomon"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"google.golang.org/protobuf/proto"
 
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
@@ -34,13 +37,11 @@ type PCRbc struct {
 	consenusDone bool
 
 	acs *PPAcs //for callback when finished
-
-	msgSender *HBMsgSender
 }
 
 // same as trx rbc
 func NewPCRbc(ctx context.Context, cfg Config, acs *PPAcs, groupId, nodename, myPubkey, rbcInstPubkey string) (*PCRbc, error) {
-	pcrbc_log.Debugf("NewPCRbc called, epoch <%d>  pubkey <%s>", acs.Epoch, rbcInstPubkey)
+	pcrbc_log.Debugf("NewPCRbc called, pubkey <%s>", rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
@@ -66,7 +67,6 @@ func NewPCRbc(ctx context.Context, cfg Config, acs *PPAcs, groupId, nodename, my
 		numDataShards:   dataShards,
 		readySent:       make(map[string]bool),
 		consenusDone:    false,
-		msgSender:       NewHBMsgSender(ctx, groupId, acs.Epoch, myPubkey, quorumpb.PackageType_HBB_PC),
 	}
 
 	return rbc, nil
@@ -94,7 +94,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
-		err := r.msgSender.SendHBRBCMsg(initMsg)
+		err := r.SendHBRBCMsg(initMsg)
 		if err != nil {
 			pcrbc_log.Debugf(err.Error())
 			return err
@@ -105,7 +105,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 }
 
 func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
-	pcrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>, epoch <%d>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey, r.acs.Epoch)
+	pcrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey)
 	if !r.IsProducer(initp.ProposerPubkey) {
 		return fmt.Errorf("<%s> receive proof from non producer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
 	}
@@ -126,11 +126,11 @@ func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return r.msgSender.SendHBRBCMsg(proofMsg)
+	return r.SendHBRBCMsg(proofMsg)
 }
 
 func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
-	pcrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.Epoch)
+	pcrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
 
 	if !r.IsProducer(echo.EchoProviderPubkey) {
 		return fmt.Errorf("<%s> receive ECHO from non producer node <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
@@ -197,7 +197,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 			return err
 		}
 
-		err = r.msgSender.SendHBRBCMsg(readyMsg)
+		err = r.SendHBRBCMsg(readyMsg)
 		if err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 }
 
 func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
-	pcrbc_log.Debugf("<%s> handle READY_MSG, ReadyProviderPubkey <%s>,  epoch <%d>", r.rbcInstPubkey, ready.ReadyProviderPubkey, r.acs.Epoch)
+	pcrbc_log.Debugf("<%s> handle READY_MSG, ReadyProviderPubkey <%s>", r.rbcInstPubkey, ready.ReadyProviderPubkey)
 
 	if !r.IsProducer(ready.ReadyProviderPubkey) {
 		return fmt.Errorf("<%s> receive READY from non producer node <%s>", r.rbcInstPubkey, ready.ReadyProviderPubkey)
@@ -249,7 +249,7 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 				return err
 			}
 
-			err = r.msgSender.SendHBRBCMsg(readyMsg)
+			err = r.SendHBRBCMsg(readyMsg)
 			if err != nil {
 				return err
 			}
@@ -313,4 +313,25 @@ func (r *PCRbc) IsProducer(pubkey string) bool {
 
 func (r *PCRbc) VerifySign() bool {
 	return true
+}
+
+func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
+	rbcb, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	hbmsg := &quorumpb.HBMsgv1{
+		MsgId:       guuid.New().String(),
+		Epoch:       0,
+		PayloadType: quorumpb.HBMsgPayloadType_RBC,
+		Payload:     rbcb,
+	}
+
+	connMgr, err := conn.GetConn().GetConnMgr(r.groupId)
+	if err != nil {
+		return err
+	}
+	connMgr.BroadcastHBMsg(hbmsg, quorumpb.PackageType_HBB_PC)
+	return nil
 }

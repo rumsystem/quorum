@@ -13,7 +13,6 @@ var pcacs_log = logging.Logger("pcacs")
 
 type PPAcs struct {
 	Config
-	Epoch      uint64
 	rbcInsts   map[string]*PCRbc
 	rbcOutput  map[string]bool
 	rbcResults map[string][]byte
@@ -21,12 +20,11 @@ type PPAcs struct {
 	chAcsDone chan *AcsResult
 }
 
-func NewPPAcs(ctx context.Context, groupId, nodename string, cfg Config, epoch uint64, chAcsDone chan *AcsResult) *PPAcs {
-	pcacs_log.Debugf("NewPPAcs called, epoch <%d>", epoch)
+func NewPPAcs(ctx context.Context, groupId, nodename string, cfg Config, chAcsDone chan *AcsResult) *PPAcs {
+	pcacs_log.Debugf("NewPPAcs called")
 
 	acs := &PPAcs{
 		Config:     cfg,
-		Epoch:      epoch,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
@@ -66,7 +64,6 @@ func (a *PPAcs) RbcDone(proposerPubkey string) {
 
 		//notify acs done
 		a.chAcsDone <- &AcsResult{
-			epoch:  a.Epoch,
 			result: a.rbcResults,
 		}
 	} else {
@@ -75,7 +72,7 @@ func (a *PPAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PPAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ptacs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
+	ptacs_log.Debugf("<%d> HandleMessage called", hbmsg.Epoch)
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
@@ -104,7 +101,7 @@ func (a *PPAcs) handleRbcMsg(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
+		ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>", initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
 			ptacs_log.Debugf("not for me")
 			return nil
