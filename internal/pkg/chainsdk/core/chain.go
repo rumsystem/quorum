@@ -151,7 +151,7 @@ func (chain *Chain) UpdConsensus(producers []string, trxId string, agrmTickLen, 
 
 // PSConn msg handler
 func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
-	chain_log.Debugf("<%s> HandlePsConnMessage called, <%s>", chain.groupItem.GroupId, pkg.Type.String())
+	//chain_log.Debugf("<%s> HandlePsConnMessage called, <%s>", chain.groupItem.GroupId, pkg.Type.String())
 	var err error
 	if pkg.Type == quorumpb.PackageType_BLOCK {
 		blk := &quorumpb.Block{}
@@ -635,7 +635,7 @@ func (chain *Chain) CreateConsensus() error {
 
 	//start propose trx
 	//commented by cuicat for debug
-	//chain.Consensus.StartProposeTrx()
+	chain.Consensus.StartProposeTrx()
 
 	return nil
 }

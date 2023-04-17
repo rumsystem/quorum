@@ -2,7 +2,11 @@ package consensus
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -37,10 +41,6 @@ type PTAcsResult struct {
 
 type PTBft struct {
 	Config
-	groupId     string
-	nodename    string
-	myPubkey    string
-	ownerPubkey string
 
 	currTask *PTTask
 	txBuffer *TrxBuffer
@@ -65,38 +65,52 @@ func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PT
 }
 
 func (bft *PTBft) AddTrx(tx *quorumpb.Trx) error {
-	ptbft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
+	ptbft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.GroupId, tx.TrxId)
 	bft.txBuffer.Push(tx)
 	return nil
 }
 
+// get goroutine id
+func goid() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
+}
+
 func (bft *PTBft) Start() {
-	ptbft_log.Debugf("<%s> Start called", bft.groupId)
-	for {
-		ticker := time.NewTicker(time.Duration(DEFAULT_TRX_PROPOSE_PULSE) * time.Millisecond)
-		defer ticker.Stop()
+	go func() {
+		ptbft_log.Debugf("<%s> Start called, id <%d>", bft.GroupId, goid())
 		for {
-			select {
-			case <-bft.localCtx.Done():
-				ptbft_log.Debugf("<%s> local ctx finished called, die peaceful", bft.groupId)
-				return
-			case <-ticker.C:
-				ptbft_log.Debugf("<%s> ticker called at <%d>, propose", bft.groupId, time.Now().Nanosecond())
-				bft.Propose()
+			ticker := time.NewTicker(time.Duration(DEFAULT_TRX_PROPOSE_PULSE) * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-bft.localCtx.Done():
+					ptbft_log.Debugf("<%s> local ctx finished called, die peaceful", bft.GroupId)
+					return
+				case <-ticker.C:
+					ptbft_log.Debugf("<%s> ticker called at <%d>, propose", bft.GroupId, time.Now().Nanosecond())
+					bft.Propose()
+				}
 			}
 		}
-	}
+	}()
 }
 
 func (bft *PTBft) Stop() {
-	ptbft_log.Debugf("<%s> Stop called", bft.groupId)
+	ptbft_log.Debugf("<%s> Stop called", bft.GroupId)
 	if bft.localCancelFunc != nil {
 		bft.localCancelFunc()
 	}
 }
 
 func (bft *PTBft) Propose() {
-	ptbft_log.Debugf("<%s> Propose called", bft.groupId)
+	ptbft_log.Debugf("<%s> Propose called", bft.GroupId)
 	//stop current task if any
 
 	go func() {
@@ -106,7 +120,7 @@ func (bft *PTBft) Propose() {
 		//select some trxs from buffer
 		trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 		if err != nil {
-			ptbft_log.Debugf("<%s> GetNRandTrx failed with error <%s>", bft.groupId, err.Error())
+			ptbft_log.Debugf("<%s> GetNRandTrx failed with error <%s>", bft.GroupId, err.Error())
 			return
 		}
 
@@ -115,7 +129,7 @@ func (bft *PTBft) Propose() {
 
 		datab, err := proto.Marshal(trxBundle)
 		if err != nil {
-			ptbft_log.Debugf("<%s> Marshal failed with error <%s>", bft.groupId, err.Error())
+			ptbft_log.Debugf("<%s> Marshal failed with error <%s>", bft.GroupId, err.Error())
 			return
 		}
 
@@ -144,10 +158,10 @@ func (bft *PTBft) Propose() {
 		for {
 			select {
 			case <-bft.currTask.taskCtx.Done():
-				ptbft_log.Debugf("<%s> taskCtx done, die peaceful", bft.groupId)
+				ptbft_log.Debugf("<%s> taskCtx done, die peaceful", bft.GroupId)
 				return
 			case result := <-bft.currTask.chAcsDone:
-				ptbft_log.Debugf("<%s> acs done, epoch <%d>, handle result", bft.groupId, result.epoch)
+				ptbft_log.Debugf("<%s> acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
 				bft.acsDone(result)
 			}
 
@@ -165,7 +179,7 @@ func (bft *PTBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (bft *PTBft) acsDone(result *PTAcsResult) {
-	ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.groupId, result.epoch)
+	ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 
 	//decode trxs
@@ -194,13 +208,13 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 		//Try build block and broadcast it
 		err := bft.buildBlock(result.epoch, trxs)
 		if err != nil {
-			ptbft_log.Warnf("<%s> Build block failed at epoch %d, error %s", bft.groupId, result.epoch, err.Error())
+			ptbft_log.Warnf("<%s> Build block failed at epoch %d, error %s", bft.GroupId, result.epoch, err.Error())
 			return
 		}
 		//remove outputed trxs from buffer
 		for trxId := range trxs {
 			err := bft.txBuffer.Delete(trxId)
-			ptbft_log.Debugf("<%s> remove packaged trx <%s>", bft.groupId, trxId)
+			ptbft_log.Debugf("<%s> remove packaged trx <%s>", bft.GroupId, trxId)
 			if err != nil {
 				ptbft_log.Warnf(err.Error())
 			}
@@ -213,56 +227,56 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 	bft.cIface.IncCurrEpoch()
 	bft.cIface.SetLastUpdate(time.Now().UnixNano())
 	bft.cIface.SaveChainInfoToDb()
-	ptbft_log.Debugf("<%s> ChainInfo updated", bft.groupId)
+	ptbft_log.Debugf("<%s> ChainInfo updated", bft.GroupId)
 }
 
 func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {
-	ptbft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.groupId, epoch)
+	ptbft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.GroupId, epoch)
 	//try build block by using trxs
 
-	ptbft_log.Debugf("<%s> sort trx", bft.groupId)
+	ptbft_log.Debugf("<%s> sort trx", bft.GroupId)
 	trxToPackage := bft.sortTrx(trxs)
 
 	currBlockId := bft.cIface.GetCurrBlockId()
-	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.groupId, currBlockId, false, bft.nodename)
+	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.GroupId, currBlockId, false, bft.NodeName)
 
 	if err != nil {
-		ptbft_log.Debugf("<%s> get block parent failed, <%s>", bft.groupId, err.Error())
+		ptbft_log.Debugf("<%s> get block parent failed, <%s>", bft.GroupId, err.Error())
 		return err
 	} else {
-		ptbft_log.Debugf("<%s> start build block with parent <%d> ", bft.groupId, parent.BlockId)
+		ptbft_log.Debugf("<%s> start build block with parent <%d> ", bft.GroupId, parent.BlockId)
 		ks := localcrypto.GetKeystore()
 
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, bft.myPubkey, ks, "", bft.nodename)
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
 
 		if err != nil {
-			ptbft_log.Debugf("<%s> build block failed <%s>", bft.groupId, err.Error())
+			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err
 		}
 
 		//save it
 		//ptbft_log.Debugf("<%s> save block just built to local db", bft.producer.groupId)
-		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.nodename)
+		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.NodeName)
 		if err != nil {
 			return err
 		}
 
 		//apply trxs
 		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-			bft.cIface.ApplyTrxsProducerNode(trxToPackage, bft.nodename)
+			bft.cIface.ApplyTrxsProducerNode(trxToPackage, bft.NodeName)
 		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-			bft.cIface.ApplyTrxsFullNode(trxToPackage, bft.nodename)
+			bft.cIface.ApplyTrxsFullNode(trxToPackage, bft.NodeName)
 		}
 
 		//broadcast it
-		ptbft_log.Debugf("<%s> broadcast block just built to user channel", bft.groupId)
-		connMgr, err := conn.GetConn().GetConnMgr(bft.groupId)
+		ptbft_log.Debugf("<%s> broadcast block just built to user channel", bft.GroupId)
+		connMgr, err := conn.GetConn().GetConnMgr(bft.GroupId)
 		if err != nil {
 			return err
 		}
 		err = connMgr.BroadcastBlock(newBlock)
 		if err != nil {
-			ptbft_log.Debugf("<%s> Broadcast failed <%s>", bft.groupId, err.Error())
+			ptbft_log.Debugf("<%s> Broadcast failed <%s>", bft.GroupId, err.Error())
 		}
 	}
 
@@ -307,7 +321,7 @@ func (bft *PTBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 
 	for _, key := range senderKeys {
 		//skip owner trxs
-		if key == bft.ownerPubkey {
+		if key == bft.OwnerPubKey {
 			continue
 		}
 		//append
@@ -315,7 +329,7 @@ func (bft *PTBft) sortTrx(trxs map[string]*quorumpb.Trx) []*quorumpb.Trx {
 	}
 
 	//append any trxs from owner at the end of trxs slice
-	if ownertrxs, ok := container[bft.ownerPubkey]; ok {
+	if ownertrxs, ok := container[bft.OwnerPubKey]; ok {
 		result = append(result, ownertrxs...)
 	}
 

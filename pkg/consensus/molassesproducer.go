@@ -25,7 +25,7 @@ type MolassesProducer struct {
 }
 
 func (producer *MolassesProducer) NewProducer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
-	molaproducer_log.Debug("<%s> NewProducer called", item.GroupId)
+	molaproducer_log.Debugf("<%s> NewProducer called", item.GroupId)
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
 	producer.grpItem = item
@@ -34,20 +34,19 @@ func (producer *MolassesProducer) NewProducer(ctx context.Context, item *quorump
 }
 
 func (producer *MolassesProducer) StartPropose() {
-	molaproducer_log.Debug("StartPropose called")
+	molaproducer_log.Debugf("<%s> StartPropose called", producer.groupId)
 
 	producer.locker.Lock()
 	defer producer.locker.Unlock()
 
 	if !producer.cIface.IsProducer() {
-		molaproducer_log.Debug("unapproved producer do nothing")
+		molaproducer_log.Debugf("<%s> unapproved producer do nothing", producer.groupId)
 	}
 
-	molaproducer_log.Debug("producer <%s >start propose")
+	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, producer.grpItem.UserSignPubkey)
 	config, err := producer.createBftConfig()
 	if err != nil {
-		molaproducer_log.Error("create bft failed")
-		molaproducer_log.Error(err.Error())
+		molaproducer_log.Error("create bft failed with error: %s", err.Error())
 		return
 	}
 
