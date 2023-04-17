@@ -233,7 +233,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		byts, err = proto.Marshal(resp)
 		if err != nil {
 			molacp_log.Errorf("<%s> marshal change consensus resp failed", cp.groupId)
-			return err
+			return
 		}
 
 		hash = localcrypto.Hash(byts)
@@ -252,7 +252,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		config, err := cp.createBftConfig(req.ProducerPubkeyList)
 		if err != nil {
 			molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
-			return err
+			return
 		}
 
 		//create new context
@@ -283,7 +283,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		case <-cp.currTask.bftCtx.Done():
 			molacp_log.Debugf("<%s> HandleCCReq bft context done", cp.groupId)
 			return
-		case /* result := */ <-cp.currTask.chBftDone:
+		case result := <-cp.currTask.chBftDone:
 			molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
 
 			//cancel current task
@@ -294,6 +294,8 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 				cp.senderCancelFunc()
 				cp.senderCancelFunc = nil
 			}
+
+			cp.cIface.ChangeConsensusDone(cp.trxId, result)
 
 			//notify chain
 			return

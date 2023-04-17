@@ -566,7 +566,7 @@ func (chain *Chain) updProducerConfig() {
 	}
 
 	//recreate producer BFT config
-	chain.Consensus.Producer().RecreateBft()
+	//chain.Consensus.Producer().RecreateBft()
 }
 
 func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
@@ -616,7 +616,7 @@ func (chain *Chain) CreateConsensus() error {
 	if shouldCreateProducer {
 		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
 		producer = &consensus.MolassesProducer{}
-		producer.NewProducer(chain.groupItem, chain.nodename, chain)
+		producer.NewProducer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
 	}
 
 	if shouldCreateUser {
@@ -640,23 +640,18 @@ func (chain *Chain) CreateConsensus() error {
 	return nil
 }
 
-func (chain *Chain) ChangeConsensusDone(trxId, reqId string, bundle *quorumpb.ChangeConsensusResultBundle) {
+func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeConsensusResultBundle) {
 	//update change consensus result
 	nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, bundle, chain.nodename)
 
-	if bundle.Result == quorumpb.ChangeConsensusResult_SUCCESS {
-		//update chain consensus
+	switch bundle.Result {
+	case quorumpb.ChangeConsensusResult_SUCCESS:
 
-	} else {
-		//update chain consensus failed or timeout
-		return
+	case quorumpb.ChangeConsensusResult_FAIL:
+	case quorumpb.ChangeConsensusResult_TIMEOUT:
 	}
 
 	//send the changeConsensusTrx by using the trxId
-}
-
-func (chain *Chain) updateConsensus(trx *quorumpb.Trx, decodedData []byte, nodename string) error {
-	return nil
 }
 
 func (chain *Chain) IsProducer() bool {
@@ -780,11 +775,13 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, decodedData, nodename)
 		case quorumpb.TrxType_CONSENSUS:
 			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-			err = chain.updateConsensus(trx, decodedData, nodename)
-			if err != nil {
-				chain_log.Warningf("<%s> change consensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
-				continue
-			}
+			/*
+				err = chain.updateConsensus(trx, decodedData, nodename)
+				if err != nil {
+					chain_log.Warningf("<%s> change consensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
+					continue
+				}
+			*/
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply UpdGroupUser trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)

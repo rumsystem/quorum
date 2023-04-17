@@ -3,8 +3,11 @@ package consensus
 import (
 	"fmt"
 
+	guuid "github.com/google/uuid"
 	"github.com/klauspost/reedsolomon"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"google.golang.org/protobuf/proto"
 
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
@@ -13,9 +16,6 @@ var ptrbc_log = logging.Logger("ptrbc")
 
 type PTRbc struct {
 	Config
-
-	groupId       string
-	myPubkey      string
 	rbcInstPubkey string
 
 	numParityShards int
@@ -31,8 +31,6 @@ type PTRbc struct {
 	consenusDone bool
 
 	acs *PTAcs //for callback when finished
-
-	msgSender *HBMsgSender
 }
 
 // f : maximum failable node
@@ -45,8 +43,8 @@ type PTRbc struct {
 //	10 producers node (owner included), 3 * 3 < 10, 3 failable node
 //
 // ecc will encode data bytes into (N) pieces, each node needs (N - 2f) pieces to recover data
-func NewPTRBC(cfg Config, acs *PTAcs, groupId, myPubkey, rbcInstPubkey string) (*PTRbc, error) {
-	ptrbc_log.Infof("NewPTRBC called, epoch <%d> pubkey <%s>", acs.Epoch, rbcInstPubkey)
+func NewPTRBC(cfg Config, acs *PTAcs, rbcInstPubkey string) (*PTRbc, error) {
+	ptrbc_log.Infof("NewPTRBC called, epoch <%d> pubkey <%s>", acs.epoch, rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
@@ -59,13 +57,11 @@ func NewPTRBC(cfg Config, acs *PTAcs, groupId, myPubkey, rbcInstPubkey string) (
 		return nil, err
 	}
 
-	//ptrbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
+	ptrbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
 
 	rbc := &PTRbc{
 		Config:          cfg,
 		acs:             acs,
-		groupId:         groupId,
-		myPubkey:        myPubkey,
 		rbcInstPubkey:   rbcInstPubkey,
 		ecc:             ecc,
 		recvEchos:       make(map[string]Echos),
@@ -74,7 +70,6 @@ func NewPTRBC(cfg Config, acs *PTAcs, groupId, myPubkey, rbcInstPubkey string) (
 		numDataShards:   dataShards,
 		readySent:       make(map[string]bool),
 		consenusDone:    false,
-		msgSender:       NewHBMsgSender(nil, groupId, acs.Epoch, myPubkey, quorumpb.PackageType_HBB_PT),
 	}
 
 	return rbc, nil
@@ -95,7 +90,7 @@ func (r *PTRbc) InputValue(data []byte) error {
 
 	//create InitPropoeMsgs
 	originalDataSize := len(data)
-	initProposeMsgs, err := MakeRBCInitProposeMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, shards, r.Config.Nodes, originalDataSize)
+	initProposeMsgs, err := MakeRBCInitProposeMessage(r.GroupId, r.NodeName, r.MyPubkey, shards, r.Nodes, originalDataSize)
 
 	if err != nil {
 		ptrbc_log.Debugf(err.Error())
@@ -104,7 +99,7 @@ func (r *PTRbc) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
-		err := r.msgSender.SendHBRBCMsg(initMsg)
+		r.SendHBRBCMsg(initMsg)
 		if err != nil {
 			return err
 		}
@@ -129,13 +124,13 @@ func (r *PTRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	//make proof
-	proofMsg, err := MakeRBCEchoMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, initp, int(initp.OriginalDataSize))
+	proofMsg, err := MakeRBCEchoMessage(r.GroupId, r.NodeName, r.MyPubkey, initp, int(initp.OriginalDataSize))
 	if err != nil {
 		return err
 	}
 
 	//ptrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return r.msgSender.SendHBRBCMsg(proofMsg)
+	return r.SendHBRBCMsg(proofMsg)
 }
 
 func (r *PTRbc) handleEchoMsg(echo *quorumpb.Echo) error {
@@ -203,12 +198,12 @@ func (r *PTRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 
 		//multicast READY msg
 		//ptrbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
-		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
+		readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
 		if err != nil {
 			return err
 		}
 
-		err = r.msgSender.SendHBRBCMsg(readyMsg)
+		err = r.SendHBRBCMsg(readyMsg)
 		if err != nil {
 			return err
 		}
@@ -255,12 +250,12 @@ func (r *PTRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 		//ptrbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
 		if !r.readySent[roothashS] {
 			//ptrbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
-			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.myPubkey, ready.OriginalProposerPubkey, ready.RootHash)
+			readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.Config.MyPubkey, ready.OriginalProposerPubkey, ready.RootHash)
 			if err != nil {
 				return err
 			}
 
-			err = r.msgSender.SendHBRBCMsg(readyMsg)
+			err = r.SendHBRBCMsg(readyMsg)
 			if err != nil {
 				return err
 			}
@@ -324,4 +319,31 @@ func (r *PTRbc) IsProducer(pubkey string) bool {
 
 func (r *PTRbc) VerifySign() bool {
 	return true
+}
+
+func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
+	//hbmsgsender_log.Debugf("<%s> SendHBRBCMsg called", r.GroupId)
+	rbcb, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	hbmsg := &quorumpb.HBMsgv1{
+		MsgId:       guuid.New().String(),
+		Epoch:       r.acs.epoch,
+		PayloadType: quorumpb.HBMsgPayloadType_RBC,
+		Payload:     rbcb,
+	}
+
+	connMgr, err := conn.GetConn().GetConnMgr(r.GroupId)
+	if err != nil {
+
+		return err
+	}
+	connMgr.BroadcastHBMsg(hbmsg, quorumpb.PackageType_HBB_PT)
+	return nil
+}
+
+func (bft *PTBft) SendHBAABMsg(msg *quorumpb.BBAMsg) error {
+	return nil
 }

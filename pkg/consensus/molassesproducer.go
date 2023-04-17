@@ -1,6 +1,9 @@
 package consensus
 
 import (
+	"context"
+	"sync"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
@@ -11,82 +14,56 @@ import (
 var molaproducer_log = logging.Logger("producer")
 
 type MolassesProducer struct {
-	grpItem  *quorumpb.GroupItem
-	nodename string
-	cIface   def.ChainMolassesIface
 	groupId  string
-	ptbft    *PTBft
+	nodename string
+	grpItem  *quorumpb.GroupItem
+	cIface   def.ChainMolassesIface
+
+	ptbft  *PTBft
+	ctx    context.Context
+	locker sync.RWMutex
 }
 
-func (producer *MolassesProducer) NewProducer(item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
-	molaproducer_log.Debug("NewProducer called")
-	producer.grpItem = item
-	producer.cIface = iface
+func (producer *MolassesProducer) NewProducer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
+	molaproducer_log.Debug("<%s> NewProducer called", item.GroupId)
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
+	producer.grpItem = item
+	producer.cIface = iface
+	producer.ctx = ctx
+}
 
+func (producer *MolassesProducer) StartPropose() {
+	molaproducer_log.Debug("StartPropose called")
+
+	producer.locker.Lock()
+	defer producer.locker.Unlock()
+
+	if !producer.cIface.IsProducer() {
+		molaproducer_log.Debug("unapproved producer do nothing")
+	}
+
+	molaproducer_log.Debug("producer <%s >start propose")
 	config, err := producer.createBftConfig()
 	if err != nil {
 		molaproducer_log.Error("create bft failed")
 		molaproducer_log.Error(err.Error())
 		return
 	}
-	producer.ptbft = NewPTBft(*config, producer)
-}
 
-func (producer *MolassesProducer) StartPropose() {
-	molaproducer_log.Debug("StartPropose called")
-	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
-	if err != nil {
-		return
-	}
-
-	isProducer := false
-	for _, p := range producer_nodes {
-		if producer.grpItem.UserSignPubkey == p.ProducerPubkey {
-			isProducer = true
-			break
-		}
-	}
-
-	if isProducer {
-		molaproducer_log.Debug("approved producer start propose")
-		producer.ptbft.Start()
-	} else {
-		molaproducer_log.Debug("unapproved producer do nothing")
-	}
+	producer.ptbft = NewPTBft(producer.ctx, *config, producer.cIface)
+	producer.ptbft.Start()
 }
 
 func (producer *MolassesProducer) StopPropose() {
 	molaproducer_log.Debug("StopPropose called")
+	producer.locker.Lock()
+	defer producer.locker.Unlock()
+
 	if producer.ptbft != nil {
 		producer.ptbft.Stop()
 	}
-}
-
-func (producer *MolassesProducer) RecreateBft() {
-	molaproducer_log.Debug("RecreateBft called")
-
-	//stop current bft
-	if producer.ptbft != nil {
-		producer.ptbft.Stop()
-	}
-
-	//check if I am still a valid producer
-	if !producer.cIface.IsProducer() {
-		molaproducer_log.Debug("no longer approved producer, quit bft")
-		return
-	}
-
-	config, err := producer.createBftConfig()
-	if err != nil {
-		molaproducer_log.Errorf("recreate bft failed")
-		molaproducer_log.Error(err.Error())
-		return
-	}
-
-	producer.ptbft = NewPTBft(*config, producer)
-	producer.ptbft.Start()
+	producer.ptbft = nil
 }
 
 func (producer *MolassesProducer) createBftConfig() (*Config, error) {
@@ -119,11 +96,15 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
 	config := &Config{
+		GroupId:     producer.groupId,
+		NodeName:    producer.nodename,
+		MyPubkey:    producer.grpItem.UserSignPubkey,
+		OwnerPubKey: producer.grpItem.OwnerPubKey,
+
 		N:         N,
 		f:         f,
 		Nodes:     nodes,
 		BatchSize: batchSize,
-		MyPubkey:  producer.grpItem.UserSignPubkey,
 	}
 
 	return config, nil
@@ -261,5 +242,8 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 
 func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	//molaproducer_log.Debugf("<%s> HandleHBMsg, Epoch <%d>", producer.groupId, hbmsg.Epoch)
-	return producer.ptbft.HandleMessage(hbmsg)
+	if producer.ptbft != nil {
+		producer.ptbft.HandleMessage(hbmsg)
+	}
+	return nil
 }

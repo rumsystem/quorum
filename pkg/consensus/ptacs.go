@@ -12,27 +12,28 @@ var ptacs_log = logging.Logger("ptacs")
 
 type PTAcs struct {
 	Config
-	bft        *PTBft
-	Epoch      uint64
+	epoch      uint64
 	rbcInsts   map[string]*PTRbc
 	rbcOutput  map[string]bool
 	rbcResults map[string][]byte
+
+	chAcsDone chan *PTAcsResult
 }
 
-func NewPTACS(cfg Config, bft *PTBft, epoch uint64) *PTAcs {
+func NewPTACS(cfg Config, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
 	ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 
 	acs := &PTAcs{
 		Config:     cfg,
-		bft:        bft,
-		Epoch:      epoch,
+		epoch:      epoch,
 		rbcInsts:   make(map[string]*PTRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
+		chAcsDone:  chAcsDone,
 	}
 
 	for _, rbcInstPubkey := range cfg.Nodes {
-		acs.rbcInsts[rbcInstPubkey], _ = NewPTRBC(cfg, acs, bft.producer.groupId, cfg.MyPubkey, rbcInstPubkey)
+		acs.rbcInsts[rbcInstPubkey], _ = NewPTRBC(cfg, acs, rbcInstPubkey)
 	}
 
 	return acs
@@ -49,7 +50,6 @@ func (a *PTAcs) InputValue(val []byte) error {
 	return rbc.InputValue(val)
 }
 
-// rbc for proposerIs finished
 func (a *PTAcs) RbcDone(proposerPubkey string) {
 	ptacs_log.Infof("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
@@ -63,9 +63,11 @@ func (a *PTAcs) RbcDone(proposerPubkey string) {
 			//load all valid rbc results
 			a.rbcResults[rbcInst] = a.rbcInsts[rbcInst].Output()
 		}
-
-		//call hbb to get result
-		a.bft.AcsDone(a.Epoch, a.rbcResults)
+		//call acs done
+		a.chAcsDone <- &PTAcsResult{
+			epoch:  a.epoch,
+			result: a.rbcResults,
+		}
 	} else {
 		//ptacs_log.Debugf("Wait for enough RBC done")
 		return
