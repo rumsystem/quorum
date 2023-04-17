@@ -239,8 +239,8 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		hash = localcrypto.Hash(byts)
 		ks := nodectx.GetNodeCtx().Keystore
 		signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
-		req.MsgHash = hash
-		req.SenderSign = signature
+		resp.MsgHash = hash
+		resp.SenderSign = signature
 
 		//create Proof
 		proofBundle := &quorumpb.ConsensusProof{

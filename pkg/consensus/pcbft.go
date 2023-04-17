@@ -39,6 +39,7 @@ func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensus
 		currProof: nil,
 		bftCtx:    ctx,
 		chBftDone: ch,
+		cIface:    iface,
 	}
 }
 

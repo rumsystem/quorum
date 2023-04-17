@@ -635,7 +635,7 @@ func (chain *Chain) CreateConsensus() error {
 
 	//start propose trx
 	//commented by cuicat for debug
-	chain.Consensus.StartProposeTrx()
+	//chain.Consensus.StartProposeTrx()
 
 	return nil
 }
