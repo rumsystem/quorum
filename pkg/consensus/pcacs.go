@@ -11,7 +11,7 @@ import (
 
 var pcacs_log = logging.Logger("pcacs")
 
-type PPAcs struct {
+type PCAcs struct {
 	Config
 	rbcInsts   map[string]*PCRbc
 	rbcOutput  map[string]bool
@@ -20,10 +20,10 @@ type PPAcs struct {
 	chAcsDone chan *AcsResult
 }
 
-func NewPPAcs(ctx context.Context, groupId, nodename string, cfg Config, chAcsDone chan *AcsResult) *PPAcs {
-	pcacs_log.Debugf("NewPPAcs called")
+func NewPCAcs(ctx context.Context, cfg Config, chAcsDone chan *AcsResult) *PCAcs {
+	pcacs_log.Debugf("NewPCAcs called")
 
-	acs := &PPAcs{
+	acs := &PCAcs{
 		Config:     cfg,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
@@ -32,15 +32,15 @@ func NewPPAcs(ctx context.Context, groupId, nodename string, cfg Config, chAcsDo
 		chAcsDone: chAcsDone,
 	}
 
-	for _, nodeID := range cfg.Nodes {
-		acs.rbcInsts[nodeID], _ = NewPCRbc(ctx, cfg, acs, groupId, nodename, cfg.MyPubkey, nodeID)
+	for _, nodePubkey := range cfg.Nodes {
+		acs.rbcInsts[nodePubkey], _ = NewPCRbc(ctx, cfg, acs, acs.GroupId, acs.NodeName, acs.MyPubkey, nodePubkey)
 	}
 
 	return acs
 }
 
 // give input value to
-func (a *PPAcs) InputValue(val []byte) error {
+func (a *PCAcs) InputValue(val []byte) error {
 	pcacs_log.Debug("InputValue called")
 
 	rbc, ok := a.rbcInsts[a.MyPubkey]
@@ -52,7 +52,7 @@ func (a *PPAcs) InputValue(val []byte) error {
 }
 
 // rbc for proposerIs finished
-func (a *PPAcs) RbcDone(proposerPubkey string) {
+func (a *PCAcs) RbcDone(proposerPubkey string) {
 	pcacs_log.Debugf("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 
@@ -71,7 +71,7 @@ func (a *PPAcs) RbcDone(proposerPubkey string) {
 	}
 }
 
-func (a *PPAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
+func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 	ptacs_log.Debugf("<%d> HandleMessage called", hbmsg.Epoch)
 
 	switch hbmsg.PayloadType {
@@ -84,7 +84,7 @@ func (a *PPAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 	}
 }
 
-func (a *PPAcs) handleRbcMsg(payload []byte) error {
+func (a *PCAcs) handleRbcMsg(payload []byte) error {
 	//ptacs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
 
 	//cast payload to RBC message
@@ -143,6 +143,6 @@ func (a *PPAcs) handleRbcMsg(payload []byte) error {
 }
 
 // TBD
-func (a *PPAcs) handleBbaMsg(payload []byte) error {
+func (a *PCAcs) handleBbaMsg(payload []byte) error {
 	return nil
 }

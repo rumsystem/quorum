@@ -203,7 +203,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 	//sleep 1s to make sure previous task is closed
 	time.Sleep(1000 * time.Millisecond)
 
-	//check if owner is in the producer list
+	//check if owner is in the producer list (if I am the owner)
 	if cp.cIface.IsOwner() {
 		isInProducerList := false
 		for _, producer := range req.ProducerPubkeyList {
@@ -263,7 +263,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 
 		//create bft
 		molacp_log.Debugf("<%s> create new bft", cp.groupId)
-		bft := NewPCBft(taskCtx, cp.groupId, cp.nodename, *config, chBftDone, cp.cIface)
+		bft := NewPCBft(taskCtx, *config, chBftDone, cp.cIface)
 
 		task := &ConsensusProposeTask{
 			Req:        req,
@@ -285,6 +285,8 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 			return
 		case result := <-cp.currTask.chBftDone:
 			molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
+			//notify chain
+			cp.cIface.ChangeConsensusDone(cp.trxId, result)
 
 			//cancel current task
 			cp.currTask.cancelFunc()
@@ -295,9 +297,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 				cp.senderCancelFunc = nil
 			}
 
-			cp.cIface.ChangeConsensusDone(cp.trxId, result)
-
-			//notify chain
+			molacp_log.Debugf("<%s> HandleCCReq bft done, quit peaceful", cp.groupId)
 			return
 		}
 	}()
@@ -314,36 +314,19 @@ func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error 
 	return nil
 }
 
-/*
-func (cp *MolassesConsensusProposer) HandleBFTTimeout(epoch uint64, reqId string, responsedProducers []string) {
-	molacp_log.Debugf("<%s> HandleBFTTimeout called", cp.groupId)
-
-	bundle := &quorumpb.ChangeConsensusResultBundle{
-		Req:                cp.CurrReq,
-		Resps:              nil,
-		Result:             quorumpb.ChangeConsensusResult_TIMEOUT,
-		Epoch:              epoch,
-		ResponsedProducers: responsedProducers,
-	}
-
-	cp.cIface.ChangeConsensusDone(cp.trxId, cp.CurrReq.ReqId, bundle)
-}
-*/
-
 func (cp *MolassesConsensusProposer) createBftConfig(producers []string) (*Config, error) {
 	molacp_log.Debugf("<%s> createBftConfig called", cp.groupId)
-	n := len(producers)
-	f := 0 // all participant producers(owner included) should agree with the consensus request
-
-	molaproducer_log.Debugf("failable producers <%d>", f)
-	batchSize := 1
 
 	config := &Config{
-		N:         n,
-		f:         f,
+		GroupId:     cp.groupId,
+		NodeName:    cp.nodename,
+		MyPubkey:    cp.grpItem.UserSignPubkey,
+		OwnerPubKey: cp.grpItem.OwnerPubKey,
+
+		N:         len(producers),
+		f:         0,
 		Nodes:     producers,
-		BatchSize: batchSize,
-		MyPubkey:  cp.grpItem.UserSignPubkey,
+		BatchSize: 1,
 	}
 
 	return config, nil

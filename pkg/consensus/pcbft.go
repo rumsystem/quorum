@@ -20,8 +20,6 @@ type AcsResult struct {
 
 type PCBft struct {
 	Config
-	groupId  string
-	nodename string
 
 	currProof     *quorumpb.ConsensusProof
 	currProotData []byte
@@ -29,17 +27,15 @@ type PCBft struct {
 	chBftDone chan *quorumpb.ChangeConsensusResultBundle
 	bftCtx    context.Context
 
-	acsInst *PPAcs
+	acsInst *PCAcs
 
 	cIface def.ChainMolassesIface
 }
 
-func NewPCBft(ctx context.Context, groupId, nodename string, cfg Config, ch chan *quorumpb.ChangeConsensusResultBundle, iface def.ChainMolassesIface) *PCBft {
+func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensusResultBundle, iface def.ChainMolassesIface) *PCBft {
 	pcbft_log.Debugf("NewPCBft called")
 	return &PCBft{
 		Config:    cfg,
-		groupId:   groupId,
-		nodename:  nodename,
 		currProof: nil,
 		bftCtx:    ctx,
 		chBftDone: ch,
@@ -57,21 +53,21 @@ func (bft *PCBft) Propose() error {
 	pcbft_log.Debugf("Propose called")
 	chAcsDone := make(chan *AcsResult, 1)
 
-	acs := NewPPAcs(bft.bftCtx, bft.groupId, bft.nodename, bft.Config, chAcsDone)
+	acs := NewPCAcs(bft.bftCtx, bft.Config, chAcsDone)
 	acs.InputValue(bft.currProotData)
 	bft.acsInst = acs
 
 	for {
 		select {
 		case <-bft.bftCtx.Done():
-			pcbft_log.Debugf("<%s> ctx done", bft.groupId)
+			pcbft_log.Debugf("<%s> bft ctx done, quit peacefully", bft.GroupId)
 			return nil
 		case acsResult := <-chAcsDone:
 			pcbft_log.Debugf("acs done")
 			//verify raw result
 			ok, proofMap := bft.verifyRawResult(acsResult.result)
 			if !ok {
-				pcbft_log.Errorf("<%s> verify raw result failed", bft.groupId)
+				pcbft_log.Errorf("<%s> verify raw result failed", bft.GroupId)
 				resultBundle := &quorumpb.ChangeConsensusResultBundle{
 					Result:             quorumpb.ChangeConsensusResult_FAIL,
 					Req:                bft.currProof.Req,
@@ -81,7 +77,7 @@ func (bft *PCBft) Propose() error {
 
 				//notify bft done
 				bft.chBftDone <- resultBundle
-				return fmt.Errorf("bft done but verify raw result failed")
+				return fmt.Errorf("bft done but verify raw result failed, quit percefully")
 			}
 
 			var resps []*quorumpb.ChangeConsensusResp
@@ -99,6 +95,8 @@ func (bft *PCBft) Propose() error {
 			}
 			//notify bft done
 			bft.chBftDone <- resultBundle
+			pcbft_log.Debugf("<%s> bft done, quit peacefully", bft.GroupId)
+
 			return nil
 		}
 	}
@@ -112,8 +110,8 @@ func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	return nil
 }
 
-func (cbft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[string]*quorumpb.ConsensusProof) {
-	pcbft_log.Debugf("<%s> verifyRawResult called", cbft.groupId)
+func (bft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[string]*quorumpb.ConsensusProof) {
+	pcbft_log.Debugf("<%s> verifyRawResult called", bft.GroupId)
 
 	//convert rawResultMap to proof map
 	proofMap := make(map[string]*quorumpb.ConsensusProof)
@@ -121,35 +119,35 @@ func (cbft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[strin
 		proof := &quorumpb.ConsensusProof{}
 		err := proto.Unmarshal(v, proof)
 		if err != nil {
-			pcbft_log.Errorf("<%s> unmarshal consensus proof failed", cbft.groupId)
+			pcbft_log.Errorf("<%s> unmarshal consensus proof failed", bft.GroupId)
 			return false, proofMap
 		}
 		proofMap[k] = proof
 	}
 
 	//check if the maps contains responses from all required producers
-	for _, pubkey := range cbft.currProof.Req.ProducerPubkeyList {
+	for _, pubkey := range bft.currProof.Req.ProducerPubkeyList {
 		proof, ok := proofMap[pubkey]
 		if !ok {
-			pcbft_log.Errorf("<%s> proof map does not contains producerPubkey <%s>", cbft.groupId, pubkey)
+			pcbft_log.Errorf("<%s> proof map does not contains producerPubkey <%s>", bft.GroupId, pubkey)
 			return false, proofMap
 		}
 
 		//check if sender is as same as producerPubkey
 		if proof.Resp.SenderPubkey != pubkey {
-			pcbft_log.Errorf("<%s> proof sender is not same as producerPubkey", cbft.groupId)
+			pcbft_log.Errorf("<%s> proof sender is not same as producerPubkey", bft.GroupId)
 			return false, proofMap
 		}
 
 		//check if all req are the same as original req
-		if !proto.Equal(proof.Req, cbft.currProof.Req) {
-			pcbft_log.Errorf("<%s> proof req is not same as original req", cbft.groupId)
+		if !proto.Equal(proof.Req, bft.currProof.Req) {
+			pcbft_log.Errorf("<%s> proof req is not same as original req", bft.GroupId)
 			return false, proofMap
 		}
 
 		//check if all resp sign against the same original req
 		if !proto.Equal(proof.Req, proof.Resp.Req) {
-			pcbft_log.Errorf("<%s> proof req is not same as proof resp req", cbft.groupId)
+			pcbft_log.Errorf("<%s> proof req is not same as proof resp req", bft.GroupId)
 			return false, proofMap
 		}
 
@@ -165,24 +163,24 @@ func (cbft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[strin
 
 		byts, err := proto.Marshal(dumpResp)
 		if err != nil {
-			pcbft_log.Errorf("<%s> marshal change consensus resp failed", cbft.groupId)
+			pcbft_log.Errorf("<%s> marshal change consensus resp failed", bft.GroupId)
 			return false, proofMap
 		}
 
 		hash := localcrypto.Hash(byts)
 		if !bytes.Equal(hash, proof.Resp.MsgHash) {
-			pcbft_log.Errorf("<%s> proof resp hash is not same as original hash", cbft.groupId)
+			pcbft_log.Errorf("<%s> proof resp hash is not same as original hash", bft.GroupId)
 			return false, proofMap
 		}
 
-		isValid, err := cbft.cIface.VerifySign(hash, proof.Resp.SenderSign, proof.Resp.SenderPubkey)
+		isValid, err := bft.cIface.VerifySign(hash, proof.Resp.SenderSign, proof.Resp.SenderPubkey)
 		if err != nil {
-			pcbft_log.Errorf("<%s> verify proof resp sign failed", cbft.groupId)
+			pcbft_log.Errorf("<%s> verify proof resp sign failed", bft.GroupId)
 			return false, proofMap
 		}
 
 		if !isValid {
-			pcbft_log.Errorf("<%s> proof resp sign is not valid", cbft.groupId)
+			pcbft_log.Errorf("<%s> proof resp sign is not valid", bft.GroupId)
 			return false, proofMap
 		}
 	}
