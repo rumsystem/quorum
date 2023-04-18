@@ -121,6 +121,11 @@ func GetProducerKey(groupId string, pk string, prefix ...string) string {
 	return _prefix + pk
 }
 
+func GetProducerConsensusConfInterval(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + PRD_PREFIX + "_" + groupId + "_" + "conf_interval"
+}
+
 func GetUserPrefix(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	return nodeprefix + USR_PREFIX + "_" + groupId + "_"

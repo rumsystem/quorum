@@ -27,6 +27,7 @@ import (
 )
 
 var chain_log = logging.Logger("chain")
+var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //1s
 
 type Chain struct {
 	groupItem     *quorumpb.GroupItem
@@ -54,7 +55,7 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
 
-	//create context with cancel function
+	//create context with cancel function, chainCtx will be ctx parent of all underlay components
 	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
 
 	//initial Syncer
@@ -88,6 +89,9 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 		chain.SetLastUpdate(lastUpdate)
 		chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
 		chain.SaveChainInfoToDb()
+
+		//initial consensus
+		nodectx.GetNodeCtx().GetChainStorage().UpdateProducerConsensusConfInterval(chain.groupItem.GroupId, uint64(DEFAULT_PROPOSE_TRX_INTERVAL), chain.nodename)
 	}
 
 	return nil
@@ -540,7 +544,7 @@ func (chain *Chain) updUserList() {
 	}
 }
 
-func (chain *Chain) updProducerList() {
+func (chain *Chain) updateProducerPool() {
 	chain_log.Debugf("<%s> UpdProducerList called", chain.groupItem.GroupId)
 	chain.producerPool = make(map[string]*quorumpb.ProducerItem)
 	producers, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.groupItem.GroupId, chain.nodename)
@@ -559,14 +563,51 @@ func (chain *Chain) updProducerList() {
 	}
 }
 
-func (chain *Chain) updProducerConfig() {
+func (chain *Chain) updChainConsensus(trxId string, proof *quorumpb.ChangeConsensusResultBundle) error {
 	chain_log.Debugf("<%s> updProducerConfig called", chain.groupItem.GroupId)
 	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-		return
+		return fmt.Errorf("updProducerConfig failed, consensus is nil")
 	}
 
-	//recreate producer BFT config
-	//chain.Consensus.Producer().RecreateBft()
+	//remove current producers
+	err := nodectx.GetNodeCtx().GetChainStorage().RemoveAllProducers(chain.groupItem.GroupId, chain.nodename)
+	if err != nil {
+		chain_log.Warningf("<%s> updProducerConfig failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+
+	//add new producers
+	for _, pubkey := range proof.Req.ProducerPubkeyList {
+		producer := &quorumpb.ProducerItem{
+			GroupId:        chain.groupItem.GroupId,
+			ProducerPubkey: pubkey,
+			ProofTrxId:     trxId,
+			BlkCnt:         0, //should handle this???
+			Memo:           "",
+		}
+		//add to db
+		err := nodectx.GetNodeCtx().GetChainStorage().AddProducer(producer, chain.nodename)
+		if err != nil {
+			chain_log.Warningf("<%s> updProducerConfig failed with err <%s>", chain.groupItem.GroupId, err.Error())
+			return err
+		}
+	}
+
+	//update chain consensus config
+	//update current chain epoch and last update time
+	chain.SetCurrEpoch(proof.Req.StartFromEpoch)
+	chain.SetLastUpdate(time.Now().UnixNano())
+
+	//update chain consensus config
+	err = nodectx.GetNodeCtx().GetChainStorage().UpdateProducerConsensusConfInterval(chain.groupItem.GroupId, proof.Req.TrxEpochTickLenInMs, chain.nodename)
+	if err != nil {
+		chain_log.Warningf("<%s> updProducerConfig failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+
+	//reload producer list
+	chain.updateProducerPool()
+	return nil
 }
 
 func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
@@ -642,16 +683,40 @@ func (chain *Chain) CreateConsensus() error {
 
 func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeConsensusResultBundle) {
 	//update change consensus result
+	chain_log.Debugf("<%s> ChangeConsensusDone called", chain.groupItem.GroupId)
+
+	//save change consensus result
 	nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, bundle, chain.nodename)
 
 	switch bundle.Result {
 	case quorumpb.ChangeConsensusResult_SUCCESS:
+		//stop current propose
+		chain.Consensus.Producer().StopPropose()
+		//update producer list
+		chain.updChainConsensus(trxId, bundle)
+		chain.Consensus.Producer().StartPropose()
+
+		//propose the change consensus result trx
+		trx, err := chain.trxFactory.GetChangeConsensusResultTrx("", trxId, bundle)
+		if err != nil {
+			chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
+			return
+		}
+
+		//propose the trx
+		connMgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)
+		if err != nil {
+			chain_log.Warningf("<%s> GetConnMgr failed with err <%s>", chain.groupItem.GroupId, err.Error())
+			return
+		}
+		err = connMgr.SendUserTrxPubsub(trx)
+		if err != nil {
+			return
+		}
 
 	case quorumpb.ChangeConsensusResult_FAIL:
 	case quorumpb.ChangeConsensusResult_TIMEOUT:
 	}
-
-	//send the changeConsensusTrx by using the trxId
 }
 
 func (chain *Chain) IsProducer() bool {
@@ -773,15 +838,6 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, decodedData, nodename)
-		case quorumpb.TrxType_CONSENSUS:
-			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-			/*
-				err = chain.updateConsensus(trx, decodedData, nodename)
-				if err != nil {
-					chain_log.Warningf("<%s> change consensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
-					continue
-				}
-			*/
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply UpdGroupUser trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
@@ -795,6 +851,9 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
+		case quorumpb.TrxType_CONSENSUS:
+			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
+			//TBD
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupItem.GroupId, trx.Type.String())
 		}
@@ -858,15 +917,6 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 
 		chain_log.Debugf("<%s> apply trx <%s>", chain.groupItem.GroupId, trx.TrxId)
 		switch trx.Type {
-		case quorumpb.TrxType_CONSENSUS:
-			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-			/*
-				nodectx.GetNodeCtx().GetChainStorage().UpdateConsensus(trx, nodename)
-				chain.updProducerList()
-				chain.updAnnouncedProducerStatus()
-				chain.updProducerConfig()
-				chain.UpdConnMgrProducer()
-			*/
 		case quorumpb.TrxType_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
@@ -877,6 +927,8 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
+		case quorumpb.TrxType_CONSENSUS:
+			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupItem.GroupId, trx.Type)
 		}

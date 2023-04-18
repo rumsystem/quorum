@@ -110,6 +110,22 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, keyalias)
 }
 
+func (factory *TrxFactory) GetChangeConsensusResultTrx(keyalias string, trxId string, item *quorumpb.ChangeConsensusResultBundle) (*quorumpb.Trx, error) {
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return nil, err
+	}
+
+	trx, err := factory.CreateTrxByEthKey(quorumpb.TrxType_CONSENSUS, encodedcontent, keyalias)
+	if err != nil {
+		return nil, err
+	}
+
+	//change random generated uuid trxid to given trxid
+	trx.TrxId = trxId
+	return trx, nil
+}
+
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
 	if binary.Size(content) > POST_OBJ_SIZE_LIMIT {
 		err := errors.New("content size over 200Kb")

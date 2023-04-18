@@ -1,15 +1,13 @@
 package chainstorage
 
 import (
+	"encoding/binary"
+
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
-
-func (cs *Storage) UpdateProducer(trxId string, data []byte, prefix ...string) error {
-	return nil
-}
 
 func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
@@ -25,6 +23,12 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 		return err
 	}
 	return cs.dbmgr.Db.Set([]byte(key), pbyte)
+}
+
+func (cs *Storage) RemoveAllProducers(groupId string, prefix ...string) error {
+	key := s.GetProducerPrefix(groupId, prefix...)
+	_, err := cs.dbmgr.Db.PrefixDelete([]byte(key))
+	return err
 }
 
 func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
@@ -107,4 +111,23 @@ func (cs *Storage) IsProducer(groupId, pubkey string, prefix ...string) (bool, e
 func (cs *Storage) IsProducerAnnounced(groupId, pubkey string, prefix ...string) (bool, error) {
 	key := s.GetAnnounceAsProducerKey(groupId, pubkey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
+}
+
+func (cs *Storage) UpdateProducerConsensusConfInterval(groupId string, proposeTrxInterval uint64, prefix ...string) error {
+	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, proposeTrxInterval)
+	return cs.dbmgr.Db.Set([]byte(key), b)
+
+}
+
+func (cs *Storage) GetProducerConsensusConfInterval(groupId string, prefix ...string) (uint64, error) {
+	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
+	value, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return 0, err
+	}
+
+	interval := uint64(binary.LittleEndian.Uint64(value))
+	return interval, nil
 }

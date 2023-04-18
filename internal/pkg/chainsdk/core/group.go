@@ -162,7 +162,7 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	}
 
 	//load and update group producers
-	grp.ChainCtx.updProducerList()
+	grp.ChainCtx.updateProducerPool()
 
 	//create and register ConnMgr for chainctx
 	conn.GetConn().RegisterChainCtx(item.GroupId,
@@ -214,7 +214,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	}
 
 	//reload producers
-	grp.ChainCtx.updProducerList()
+	grp.ChainCtx.updateProducerPool()
 
 	//create and register ConnMgr for chainctx
 	conn.GetConn().RegisterChainCtx(item.GroupId,
