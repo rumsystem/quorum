@@ -591,12 +591,14 @@ func (chain *Chain) updChainConsensus(trxId string, proof *quorumpb.ChangeConsen
 			chain_log.Warningf("<%s> updProducerConfig failed with err <%s>", chain.groupItem.GroupId, err.Error())
 			return err
 		}
+		chain_log.Debugf("<%s> add producer <%s>", chain.groupItem.GroupId, pubkey)
 	}
 
 	//update chain consensus config
 	//update current chain epoch and last update time
 	chain.SetCurrEpoch(proof.Req.StartFromEpoch)
 	chain.SetLastUpdate(time.Now().UnixNano())
+	chain.SaveChainInfoToDb()
 
 	//update chain consensus config
 	err = nodectx.GetNodeCtx().GetChainStorage().UpdateProducerConsensusConfInterval(chain.groupItem.GroupId, proof.Req.TrxEpochTickLenInMs, chain.nodename)

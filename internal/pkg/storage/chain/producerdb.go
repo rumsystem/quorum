@@ -74,12 +74,12 @@ func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.P
 		if err != nil {
 			return err
 		}
-		item := quorumpb.ProducerItem{}
-		perr := proto.Unmarshal(v, &item)
+		item := &quorumpb.ProducerItem{}
+		perr := proto.Unmarshal(v, item)
 		if perr != nil {
 			return perr
 		}
-		pList = append(pList, &item)
+		pList = append(pList, item)
 		return nil
 	})
 

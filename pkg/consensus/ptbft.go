@@ -85,8 +85,15 @@ func goid() int {
 func (bft *PTBft) Start() {
 	go func() {
 		ptbft_log.Debugf("<%s> Start called, id <%d>", bft.GroupId, goid())
+		//load propose pulse from config
+		interval, err := nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(bft.GroupId, bft.NodeName)
+		if err != nil {
+			ptbft_log.Debugf("<%s> GetProducerConsensusConfInterval failed with error <%s>", bft.GroupId, err.Error())
+			return
+		}
+
 		for {
-			ticker := time.NewTicker(time.Duration(DEFAULT_TRX_PROPOSE_PULSE) * time.Millisecond)
+			ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
 			defer ticker.Stop()
 			for {
 				select {

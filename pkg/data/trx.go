@@ -71,8 +71,80 @@ func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.G
 	return &trx, hashed, nil
 }
 
+func CreateTrxWithTrxIdWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, trxId string, msgType quorumpb.TrxType, nonce int64, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
+	var trx quorumpb.Trx
+
+	trx.TrxId = trxId
+	trx.Type = msgType
+	trx.GroupId = groupItem.GroupId
+	trx.SenderPubkey = groupItem.UserSignPubkey
+	trx.Nonce = nonce
+
+	var encryptdData []byte
+	if msgType == quorumpb.TrxType_POST && groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+		//for post, private group, encrypted by age for all announced group users
+		if len(encryptto) == 1 {
+			var err error
+			ks := localcrypto.GetKeystore()
+			if len(encryptto[0]) == 0 {
+				return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", groupItem.GroupId)
+			}
+			encryptdData, err = ks.EncryptTo(encryptto[0], data)
+			if err != nil {
+				return &trx, []byte(""), err
+			}
+		} else {
+			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", groupItem.GroupId)
+		}
+	} else {
+		var err error
+		ciperKey, err := hex.DecodeString(groupItem.CipherKey)
+		if err != nil {
+			return &trx, []byte(""), err
+		}
+		encryptdData, err = localcrypto.AesEncrypt(data, ciperKey)
+		if err != nil {
+			return &trx, []byte(""), err
+		}
+	}
+
+	trx.Data = encryptdData
+	trx.Version = version
+
+	UpdateTrxTimeLimit(&trx)
+
+	bytes, err := proto.Marshal(&trx)
+	if err != nil {
+		return &trx, []byte(""), err
+	}
+	hashed := localcrypto.Hash(bytes)
+	return &trx, hashed, nil
+}
+
 func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, nonce int64, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
 	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, nonce, data, encryptto...)
+	if err != nil {
+		return trx, err
+	}
+
+	ks := localcrypto.GetKeystore()
+	var signature []byte
+	if keyalias == "" {
+		keyname := groupItem.GroupId
+		signature, err = ks.EthSignByKeyName(keyname, hash)
+	} else {
+		signature, err = ks.EthSignByKeyAlias(keyalias, hash)
+	}
+	if err != nil {
+		return trx, err
+	}
+
+	trx.SenderSign = signature
+	return trx, nil
+}
+
+func CreateTrxWithTrxIdByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, trxId string, msgType quorumpb.TrxType, nonce int64, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
+	trx, hash, err := CreateTrxWithTrxIdWithoutSign(nodename, version, groupItem, trxId, msgType, nonce, data, encryptto...)
 	if err != nil {
 		return trx, err
 	}

@@ -28,6 +28,10 @@ func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []by
 	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, 0, data, keyalias, encryptto...)
 }
 
+func (fcatory *TrxFactory) CreateTrxWithTrxIdByEthKey(msgType quorumpb.TrxType, trxId string, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
+	return CreateTrxWithTrxIdByEthKey(fcatory.nodename, fcatory.version, fcatory.groupItem, trxId, msgType, 0, data, keyalias, encryptto...)
+}
+
 func (factory *TrxFactory) GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
@@ -116,13 +120,11 @@ func (factory *TrxFactory) GetChangeConsensusResultTrx(keyalias string, trxId st
 		return nil, err
 	}
 
-	trx, err := factory.CreateTrxByEthKey(quorumpb.TrxType_CONSENSUS, encodedcontent, keyalias)
+	trx, err := factory.CreateTrxWithTrxIdByEthKey(quorumpb.TrxType_CONSENSUS, trxId, encodedcontent, keyalias)
 	if err != nil {
 		return nil, err
 	}
 
-	//change random generated uuid trxid to given trxid
-	trx.TrxId = trxId
 	return trx, nil
 }
 
