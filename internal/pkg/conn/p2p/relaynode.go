@@ -21,7 +21,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
-	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -34,14 +33,6 @@ type RelayNode struct {
 	PeerID peer.ID
 	Host   host.Host
 	Info   *NodeInfo
-}
-
-func (node *RelayNode) GetRelay() *relayv2.Relay {
-	//TODO: fix the relay
-	//bhost := node.Host.(*routedhost.RoutedHost).Unwrap().(*basichost.BasicHost)
-	//relayManager := bhost.RelayManager()
-	//return relayManager.Relay()
-	return nil
 }
 
 func (node *RelayNode) eventhandler(ctx context.Context) {
@@ -105,11 +96,9 @@ func NewRelayServiceNode(ctx context.Context, nodeOpt *options.RelayNodeOptions,
 		),
 		libp2p.DisableRelay(),
 		libp2p.EnableRelayService(
-			//TODO: upgrade the WithAudit func
-			//relay.WithAudit(audit.NewQuorumTrafficAudit(db)),
 			relay.WithACL(NewQuorumRelayFilter(db)),
 			relay.WithResources(nodeOpt.RC),
-			relay.WithLimit(nil), /* double check, nodeOpt.RC.Limit should already be nil */
+			relay.WithLimit(nodeOpt.RC.Limit),
 		),
 		identity,
 	}

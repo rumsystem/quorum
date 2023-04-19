@@ -33,22 +33,6 @@ func (h *RelayServerHandler) AddBlacklist(c echo.Context) (err error) {
 		return rumerrors.NewInternalServerError(err)
 	}
 
-	relay := h.node.GetRelay()
-	if relay != nil {
-		//TODO upgrade the DisconnectByPeerID
-		//type *relay.Relay has no field or method DisconnectByPeerID
-
-		//from, err := peer.Decode(param.FromPeer)
-		//if err != nil {
-		//	return rumerrors.NewBadRequestError(err.Error())
-		//}
-		//to, err := peer.Decode(param.ToPeer)
-		//if err != nil {
-		//	return rumerrors.NewBadRequestError(err.Error())
-		//}
-		//relay.DisconnectByPeerID(from, to)
-	}
-
 	return c.JSON(http.StatusOK, result)
 }
 
