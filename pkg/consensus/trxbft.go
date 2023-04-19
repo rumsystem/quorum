@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"errors"
 	"sort"
 	"time"
 
@@ -17,6 +18,7 @@ var trx_bft_log = logging.Logger("tbft")
 
 var DEFAULT_PROPOSE_PULSE = 1 * 1000       // 1s
 var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
+var TRX_DATA_LENGTH = 300 * 1024           //300Kib
 
 type ProposeTask struct {
 	Epoch          uint64
@@ -125,6 +127,12 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 		return nil, err
 	}
 
+	//list all trxs
+	trx_bft_log.Debugf("<%s> trxs to propose", bft.groupId)
+	for _, trx := range trxs {
+		trx_bft_log.Debugf("<%s> trx <%s> len <%d>", bft.groupId, trx.TrxId, len(trx.Data))
+	}
+
 	var datab []byte
 	for {
 		trxBundle := &quorumpb.HBTrxBundle{}
@@ -132,18 +140,28 @@ func (bft *TrxBft) NewProposeTask() (*ProposeTask, error) {
 
 		datab, err = proto.Marshal(trxBundle)
 		if err != nil {
+			trx_bft_log.Errorf("<%s> marshal trx bundle error <%s>", bft.groupId, err.Error())
 			return nil, err
 		}
 
 		if len(datab) == 0 {
 			datab = []byte("EMPTY")
+			trx_bft_log.Debugf("<%s> SOMETHING WRONG ~~~, datab is empty, set to EMPTY", bft.groupId)
 			break
 		} else if len(datab) <= MAXIMUM_TRX_BUNDLE_LENGTH {
+			trx_bft_log.Debugf("<%s> datab length <%d> is ok", bft.groupId, len(datab))
 			break
 		}
 
 		//remove last trxs from the slice and try again
+		trx_acs_log.Debugf("<%s> datab length <%d> is too long, remove last trx and try again", bft.groupId, len(datab))
 		trxs = trxs[:len(trxs)-1]
+
+		//list all trx
+		trx_bft_log.Debugf("<%s> trxs to propose after remove last one", bft.groupId)
+		for _, trx := range trxs {
+			trx_bft_log.Debugf("<%s> trx <%s>", bft.groupId, trx.TrxId)
+		}
 	}
 
 	currEpoch := bft.producer.cIface.GetCurrEpoch()
@@ -204,7 +222,25 @@ func safeCloseTaskQ(ch chan *ProposeTask) (recovered bool) {
 
 func (bft *TrxBft) AddTrx(tx *quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> AddTrx called, TrxId <%s>", bft.groupId, tx.TrxId)
+
+	if len(tx.Data) > TRX_DATA_LENGTH {
+		trx_bft_log.Errorf("<%s> Trx data length <%d> is too long", bft.groupId, len(tx.Data))
+		return errors.New("trx.data too large, should less than 300Kb")
+	}
+
 	bft.txBuffer.Push(tx)
+	//for debug only added by cuicat
+	//list all trxs in buffer
+	trxs, err := bft.txBuffer.GetAllTrxInBuffer()
+	if err != nil {
+		return err
+	}
+
+	trx_bft_log.Debugf("<%s> all trx in buffer", bft.groupId)
+	for _, trx := range trxs {
+		trx_bft_log.Debugf("<%s> TrxId <%s>", bft.groupId, trx.TrxId)
+	}
+
 	return nil
 }
 
@@ -261,6 +297,19 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 				trx_bft_log.Warnf(err.Error())
 			}
 		}
+
+		//get all trxs in buffer after delete
+		trxs, err := bft.txBuffer.GetAllTrxInBuffer()
+		if err != nil {
+			trx_bft_log.Warnf(err.Error())
+		}
+
+		//list all trxs
+		trx_bft_log.Debugf("<%s> after delete, all trx in buffer", bft.producer.groupId)
+		for _, trx := range trxs {
+			trx_bft_log.Debugf("<%s> TrxId <%s>", bft.producer.groupId, trx.TrxId)
+		}
+
 		//update local BlockId
 		bft.producer.cIface.IncCurrBlockId()
 	}
@@ -281,9 +330,13 @@ func (bft *TrxBft) AcsDone(epoch uint64, result map[string][]byte) {
 func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {
 	trx_bft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.producer.groupId, epoch)
 	//try build block by using trxs
-
-	trx_bft_log.Debugf("<%s> sort trxs", bft.producer.groupId)
 	sortedTrxs := bft.sortTrx(trxs)
+	trx_bft_log.Debugf("<%s> sorted trxs", bft.producer.groupId)
+	//list all sorted trx
+	for _, trx := range sortedTrxs {
+		trx_bft_log.Debugf("<%s> TrxId <%s>", bft.producer.groupId, trx.TrxId)
+	}
+
 	var trxToPackage []*quorumpb.Trx
 
 	//check total trxs size
@@ -296,6 +349,11 @@ func (bft *TrxBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error
 		} else {
 			break
 		}
+	}
+	//list all trx to package
+	trx_bft_log.Debugf("<%s> trx to package", bft.producer.groupId)
+	for _, trx := range trxToPackage {
+		trx_bft_log.Debugf("<%s> TrxId <%s>", bft.producer.groupId, trx.TrxId)
 	}
 
 	currBlockId := bft.producer.cIface.GetCurrBlockId()

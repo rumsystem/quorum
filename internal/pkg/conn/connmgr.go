@@ -193,12 +193,8 @@ func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string) error {
 	conn_log.Debugf("<%s> SendTrxPubsub called", connMgr.GroupId)
 
-	// check trx size
-	content, err := proto.Marshal(trx)
-	if err != nil {
-		return err
-	}
-	if _, err := data.IsTrxWithinSizeLimit(content); err != nil {
+	// check trx.Data size
+	if _, err := data.IsTrxDataWithinSizeLimit(trx.Data); err != nil {
 		return err
 	}
 
