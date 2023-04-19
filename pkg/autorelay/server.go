@@ -25,7 +25,7 @@ type Handler struct {
 	NodeName  string
 }
 
-//StartRelayServer : Start local web server
+// StartRelayServer : Start local web server
 func StartRelayServer(config cli.RelayNodeFlag, quitCh chan os.Signal, h *api.RelayServerHandler) {
 	e := utils.NewEcho(config.IsDebug)
 	r := e.Group("/relay")
@@ -39,7 +39,6 @@ func StartRelayServer(config cli.RelayNodeFlag, quitCh chan os.Signal, h *api.Re
 	r.POST("/v1/forbid", h.ForbidPeer)
 	r.POST("/v1/blacklist", h.AddBlacklist)
 	r.DELETE("/v1/blacklist", h.DeleteBlacklist)
-	r.POST("/v1/disconnect", h.Disconnect)
 
 	r.GET("/v1/permissions", h.GetPermissions)
 	r.GET("/v1/blacklist", h.GetBlacklist)
