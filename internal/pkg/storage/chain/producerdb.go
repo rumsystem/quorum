@@ -16,8 +16,6 @@ func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) er
 	}
 
 	key := s.GetProducerKey(item.GroupId, pk, prefix...)
-	chaindb_log.Infof("Add Producer with key %s", key)
-
 	pbyte, err := proto.Marshal(item)
 	if err != nil {
 		return err
@@ -74,6 +72,7 @@ func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.P
 		if err != nil {
 			return err
 		}
+
 		item := &quorumpb.ProducerItem{}
 		perr := proto.Unmarshal(v, item)
 		if perr != nil {
@@ -113,14 +112,6 @@ func (cs *Storage) IsProducerAnnounced(groupId, pubkey string, prefix ...string)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
 
-func (cs *Storage) UpdateProducerConsensusConfInterval(groupId string, proposeTrxInterval uint64, prefix ...string) error {
-	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, proposeTrxInterval)
-	return cs.dbmgr.Db.Set([]byte(key), b)
-
-}
-
 func (cs *Storage) GetProducerConsensusConfInterval(groupId string, prefix ...string) (uint64, error) {
 	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
 	value, err := cs.dbmgr.Db.Get([]byte(key))
@@ -130,4 +121,11 @@ func (cs *Storage) GetProducerConsensusConfInterval(groupId string, prefix ...st
 
 	interval := uint64(binary.LittleEndian.Uint64(value))
 	return interval, nil
+}
+
+func (cs *Storage) SetProducerConsensusConfInterval(groupId string, proposeTrxInterval uint64, prefix ...string) error {
+	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, proposeTrxInterval)
+	return cs.dbmgr.Db.Set([]byte(key), b)
 }

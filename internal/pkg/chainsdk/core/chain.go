@@ -91,7 +91,8 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 		chain.SaveChainInfoToDb()
 
 		//initial consensus
-		nodectx.GetNodeCtx().GetChainStorage().UpdateProducerConsensusConfInterval(chain.groupItem.GroupId, uint64(DEFAULT_PROPOSE_TRX_INTERVAL), chain.nodename)
+		chain_log.Debugf("<%s> initial consensus", item.GroupId)
+		nodectx.GetNodeCtx().GetChainStorage().SetProducerConsensusConfInterval(chain.groupItem.GroupId, uint64(DEFAULT_PROPOSE_TRX_INTERVAL), chain.nodename)
 	}
 
 	return nil
@@ -601,7 +602,7 @@ func (chain *Chain) updChainConsensus(trxId string, proof *quorumpb.ChangeConsen
 	chain.SaveChainInfoToDb()
 
 	//update chain consensus config
-	err = nodectx.GetNodeCtx().GetChainStorage().UpdateProducerConsensusConfInterval(chain.groupItem.GroupId, proof.Req.TrxEpochTickLenInMs, chain.nodename)
+	err = nodectx.GetNodeCtx().GetChainStorage().SetProducerConsensusConfInterval(chain.groupItem.GroupId, proof.Req.TrxEpochTickLenInMs, chain.nodename)
 	if err != nil {
 		chain_log.Warningf("<%s> updProducerConfig failed with err <%s>", chain.groupItem.GroupId, err.Error())
 		return err
@@ -669,7 +670,7 @@ func (chain *Chain) CreateConsensus() error {
 	}
 
 	if shouldCreateConsensusProposer {
-		chain_log.Infof("<%s> Create and initial molasses psyncer", chain.groupItem.GroupId)
+		chain_log.Infof("<%s> Create and initial molasses consensusproposer", chain.groupItem.GroupId)
 		consensusProposer = &consensus.MolassesConsensusProposer{}
 		consensusProposer.NewConsensusProposer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
 	}
@@ -678,7 +679,7 @@ func (chain *Chain) CreateConsensus() error {
 
 	//start propose trx
 	//commented by cuicat for debug
-	//chain.Consensus.StartProposeTrx()
+	chain.Consensus.StartProposeTrx()
 
 	return nil
 }

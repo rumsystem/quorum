@@ -155,7 +155,6 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 	pItem.ProofTrxId = ""
 	pItem.BlkCnt = 0
 	pItem.Memo = "Owner Registated as the first group producer"
-
 	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
 	if err != nil {
 		return err

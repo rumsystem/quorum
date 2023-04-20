@@ -37,6 +37,7 @@ const (
 	CNS_BUFD_TRX          = "cns_bf_trx"     //buffered trx (used by acs)
 	CNS_CCR_RESULT_PREFIX = "cns_ccr_result" //consensus result
 
+	CNS_PROPOSE_TRX_INTERVAL = "cns_prop_trx_interval" //consensus propose trx interval
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -123,7 +124,7 @@ func GetProducerKey(groupId string, pk string, prefix ...string) string {
 
 func GetProducerConsensusConfInterval(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + PRD_PREFIX + "_" + groupId + "_" + "conf_interval"
+	return nodeprefix + CNS_PROPOSE_TRX_INTERVAL + "_" + groupId + "_"
 }
 
 func GetUserPrefix(groupId string, prefix ...string) string {

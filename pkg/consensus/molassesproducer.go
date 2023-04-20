@@ -41,6 +41,7 @@ func (producer *MolassesProducer) StartPropose() {
 
 	if !producer.cIface.IsProducer() {
 		molaproducer_log.Debugf("<%s> unapproved producer do nothing", producer.groupId)
+		return
 	}
 
 	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, producer.grpItem.UserSignPubkey)
