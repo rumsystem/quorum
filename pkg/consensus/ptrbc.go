@@ -57,7 +57,7 @@ func NewPTRBC(cfg Config, acs *PTAcs, rbcInstPubkey string) (*PTRbc, error) {
 		return nil, err
 	}
 
-	ptrbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
+	//ptrbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
 
 	rbc := &PTRbc{
 		Config:          cfg,

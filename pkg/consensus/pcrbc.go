@@ -85,7 +85,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 		return err
 	}
 
-	pcrbc_log.Debugf("<%s> create InitProposeMsgs, len <%d>", r.rbcInstPubkey, len(initProposeMsgs))
+	//pcrbc_log.Debugf("<%s> create InitProposeMsgs, len <%d>", r.rbcInstPubkey, len(initProposeMsgs))
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
@@ -120,12 +120,12 @@ func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 		return err
 	}
 
-	pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
+	//pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
 	return r.SendHBRBCMsg(proofMsg)
 }
 
 func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
-	pcrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
+	//pcrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
 
 	if !r.IsProducer(echo.EchoProviderPubkey) {
 		return fmt.Errorf("<%s> receive ECHO from non producer node <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
@@ -141,23 +141,23 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 
 	roothashS := string(echo.RootHash)
 	//save echo by using roothash
-	pcrbc_log.Debugf("<%s> Save ECHO with roothash <%v>", r.rbcInstPubkey, echo.RootHash[:8])
+	//pcrbc_log.Debugf("<%s> Save ECHO with roothash <%v>", r.rbcInstPubkey, echo.RootHash[:8])
 
 	r.recvEchos[roothashS] = append(r.recvEchos[roothashS], echo)
 
-	pcrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> ECHO", r.rbcInstPubkey, echo.RootHash[:8], r.recvEchos[roothashS].Len())
+	//pcrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> ECHO", r.rbcInstPubkey, echo.RootHash[:8], r.recvEchos[roothashS].Len())
 
 	if len(r.recvReadys[roothashS]) == 2*r.f+1 && r.recvEchos[roothashS].Len() >= r.N-2*r.f {
-		pcrbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, roothashS, len(r.recvReadys))
-		pcrbc_log.Debugf("<%s> RootHash <%s>, Received <%d> ECHO, which is morn than N - 2F", r.rbcInstPubkey, roothashS, r.recvEchos[roothashS].Len())
-		pcrbc_log.Debugf("<%s> RootHash <%s>, try decode", r.rbcInstPubkey)
+		//pcrbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, roothashS, len(r.recvReadys))
+		//pcrbc_log.Debugf("<%s> RootHash <%s>, Received <%d> ECHO, which is morn than N - 2F", r.rbcInstPubkey, roothashS, r.recvEchos[roothashS].Len())
+		//pcrbc_log.Debugf("<%s> RootHash <%s>, try decode", r.rbcInstPubkey)
 
 		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
 		}
 
-		pcrbc_log.Debugf("<%s> RBC for roothash <%s> is done", r.rbcInstPubkey, roothashS)
+		//pcrbc_log.Debugf("<%s> RBC for roothash <%s> is done", r.rbcInstPubkey, roothashS)
 		r.acs.RbcDone(r.rbcInstPubkey)
 		r.consenusDone = true
 		r.output = output
@@ -172,7 +172,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 		– if READY(h) has not yet been sent, multicast READY(h)
 	*/
 	if r.recvEchos[roothashS].Len() == r.N-r.f {
-		pcrbc_log.Debugf("<%s> get N-F echo for rootHash <%v>, try decode", r.rbcInstPubkey, echo.RootHash[:8])
+		//pcrbc_log.Debugf("<%s> get N-F echo for rootHash <%v>, try decode", r.rbcInstPubkey, echo.RootHash[:8])
 		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
@@ -186,7 +186,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 		}
 
 		//multicast READY msg
-		pcrbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
+		//pcrbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
 		readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
 		if err != nil {
 			return err
@@ -208,7 +208,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 }
 
 func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
-	pcrbc_log.Debugf("<%s> handle READY_MSG, ReadyProviderPubkey <%s>", r.rbcInstPubkey, ready.ReadyProviderPubkey)
+	//pcrbc_log.Debugf("<%s> handle READY_MSG, ReadyProviderPubkey <%s>", r.rbcInstPubkey, ready.ReadyProviderPubkey)
 
 	if !r.IsProducer(ready.ReadyProviderPubkey) {
 		return fmt.Errorf("<%s> receive READY from non producer node <%s>", r.rbcInstPubkey, ready.ReadyProviderPubkey)
@@ -221,13 +221,13 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 	roothashS := string(ready.RootHash)
 
 	//save it
-	pcrbc_log.Debugf("<%s> Save READY with roothash <%v>", r.rbcInstPubkey, ready.RootHash[:8])
+	//pcrbc_log.Debugf("<%s> Save READY with roothash <%v>", r.rbcInstPubkey, ready.RootHash[:8])
 	r.recvReadys[roothashS] = append(r.recvReadys[roothashS], ready)
 
-	pcrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys[roothashS]))
+	//pcrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys[roothashS]))
 
 	if r.consenusDone {
-		pcrbc_log.Debugf("<%s> RootHash <%v>, RBC is done, do nothing", r.rbcInstPubkey, ready.RootHash[:8])
+		//	pcrbc_log.Debugf("<%s> RootHash <%v>, RBC is done, do nothing", r.rbcInstPubkey, ready.RootHash[:8])
 		return nil
 	}
 
@@ -236,9 +236,9 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 	*/
 
 	if len(r.recvReadys[roothashS]) == r.f+1 {
-		pcrbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
+		//pcrbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
 		if !r.readySent[roothashS] {
-			pcrbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
+			//pcrbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
 			readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, ready.OriginalProposerPubkey, ready.RootHash)
 			if err != nil {
 				return err
@@ -258,33 +258,33 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 		upon receiving 2 f +1 matching READY(h) messages, wait for (at least) N −2f ECHO messages, then decode v
 	*/
 	if len(r.recvReadys[roothashS]) >= 2*r.f+1 {
-		pcrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is more than 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
+		//pcrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is more than 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
 		if r.recvEchos[roothashS].Len() >= r.N-2*r.f {
-			pcrbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+			//pcrbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
 			if r.output == nil {
-				pcrbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
+				//pcrbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
 				output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 				if err != nil {
 					return err
 				}
 				r.output = output
 			} else {
-				pcrbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
+				//pcrbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
 			}
 
-			pcrbc_log.Debugf("<%s> Roothash <%v>, RBC is done", r.rbcInstPubkey, ready.RootHash[:8])
+			//pcrbc_log.Debugf("<%s> Roothash <%v>, RBC is done", r.rbcInstPubkey, ready.RootHash[:8])
 			r.consenusDone = true
 			r.acs.RbcDone(r.rbcInstPubkey)
 
 			return nil
 		} else {
-			pcrbc_log.Debugf("<%s> RootHash <%v> get enough READY but wait for more ECHO(now has <%d> ECHO)", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+			//pcrbc_log.Debugf("<%s> RootHash <%v> get enough READY but wait for more ECHO(now has <%d> ECHO)", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
 			return nil
 		}
 	}
 
 	//wait till get enough READY
-	pcrbc_log.Debugf("<%s> RootHash <%v> wait for more READY", r.rbcInstPubkey, ready.RootHash[:8])
+	//pcrbc_log.Debugf("<%s> RootHash <%v> wait for more READY", r.rbcInstPubkey, ready.RootHash[:8])
 	return nil
 }
 

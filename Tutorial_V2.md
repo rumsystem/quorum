@@ -79,21 +79,7 @@ RUM implement HBBFT(https://eprint.iacr.org/2016/199.pdf) protocol to make conse
 6. after select by the group owner, a producer become an "alive" producer
 7. alive producer will join group consensus process and producer block
 
-<<<<<<< HEAD
-## What will happen after a fullnode (except owner) offline and back
-1. Start epoch(block) sync with all producers
-2. Till get a "BLOCK_NOT_FOUND" response, then finish epoch sync
-3. work normally
+## How to test 
 
-## What will happen after a producer node (owner consider as a producer) offline and back
-1. Start consensus sync with all other producers
-2. If consensus sync successful, it means the chain still has enough producers and work normally
-3. If needed(chain epoch is large than local epoch), then start epoch sync
-4. Till get a "BLOCK_NOT_FOUND" response, then finish epoch sync
-5. work normally
-
-## number of producers
-in current implementation, if there are not enough "alive" or "reachable" producers to finish consensus, the group (chain) is consider "death"
-=======
->>>>>>> consensus_2_main
-
+1. Start 3 nodes 
+2. All 3 nodes join the same group (1 is owner)

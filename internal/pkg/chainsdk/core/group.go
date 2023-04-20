@@ -324,6 +324,41 @@ func (grp *Group) GetAllChangeConsensusResultBundle() ([]*quorumpb.ChangeConsens
 	return nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(grp.Item.GroupId, grp.Nodename)
 }
 
+func (grp *Group) GetCurrentTrxProposeInterval() (uint64, error) {
+	return nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(grp.Item.GroupId, grp.Nodename)
+}
+
+func (grp *Group) GetLastChangeConsensusResult(isSuccess bool) (*quorumpb.ChangeConsensusResultBundle, error) {
+	group_log.Debugf("<%s> GetLastSuccessChangeConsensusResult called", grp.Item.GroupId)
+	results, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(grp.Item.GroupId, grp.Nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	//if there is only 1 proof and nonce is 0, return it (added by owner when create group)
+	if len(results) == 1 && results[0].Req.Nonce == 0 {
+		return results[0], nil
+	}
+
+	nonce := uint64(0)
+	last := &quorumpb.ChangeConsensusResultBundle{}
+	for _, result := range results {
+		if isSuccess && result.Result != quorumpb.ChangeConsensusResult_SUCCESS {
+			continue
+		}
+		if result.Req.Nonce > nonce {
+			last = result
+			nonce = result.Req.Nonce
+		}
+	}
+	return last, nil
+}
+
+func (grp *Group) GetChangeConsensusResultById(id string) (*quorumpb.ChangeConsensusResultBundle, error) {
+	group_log.Debugf("<%s> GetChangeConsensusResultById called", grp.Item.GroupId)
+	return nodectx.GetNodeCtx().GetChainStorage().GetChangeConsensusResultByReqId(grp.Item.GroupId, id, grp.Nodename)
+}
+
 // send update announce trx
 func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
 	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)

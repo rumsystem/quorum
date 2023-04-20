@@ -577,6 +577,7 @@ func (chain *Chain) updChainConsensus(trxId string, proof *quorumpb.ChangeConsen
 		return err
 	}
 
+	chain_log.Debugf("<%s> remove all producers", chain.groupItem.GroupId)
 	//add new producers
 	for _, pubkey := range proof.Req.ProducerPubkeyList {
 		producer := &quorumpb.ProducerItem{
@@ -607,6 +608,8 @@ func (chain *Chain) updChainConsensus(trxId string, proof *quorumpb.ChangeConsen
 		chain_log.Warningf("<%s> updProducerConfig failed with err <%s>", chain.groupItem.GroupId, err.Error())
 		return err
 	}
+
+	chain_log.Debugf("<%s> update trx propose interval to <%d> ms", chain.groupItem.GroupId, proof.Req.TrxEpochTickLenInMs)
 
 	//reload producer list
 	chain.updateProducerPool()
@@ -684,8 +687,8 @@ func (chain *Chain) CreateConsensus() error {
 	return nil
 }
 
+// update change consensus result
 func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeConsensusResultBundle) {
-	//update change consensus result
 	chain_log.Debugf("<%s> ChangeConsensusDone called", chain.groupItem.GroupId)
 
 	//save change consensus result
@@ -705,7 +708,6 @@ func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeCon
 			chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
 			return
 		}
-
 		//propose the trx
 		connMgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)
 		if err != nil {
@@ -716,7 +718,6 @@ func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeCon
 		if err != nil {
 			return
 		}
-
 	case quorumpb.ChangeConsensusResult_FAIL:
 	case quorumpb.ChangeConsensusResult_TIMEOUT:
 	}

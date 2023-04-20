@@ -9,13 +9,13 @@ import (
 )
 
 type GetConsensusHistory struct {
-	ConsensusHistory []*quorumpb.ChangeConsensusResultBundle `json:"consensus_history"`
+	Proofs []*quorumpb.ChangeConsensusResultBundle `json:"proofs"`
 }
 
 func GetConsensusHistoryHandler(chainapidb def.APIHandlerIface, groupId string) (*GetConsensusHistory, error) {
 	//get consensusbundle from db
 	if groupId == "" {
-		return nil, fmt.Errorf("group_id can't be nil.")
+		return nil, fmt.Errorf("group_id can't be nil")
 	}
 
 	groupmgr := chain.GetGroupMgr()
@@ -25,7 +25,7 @@ func GetConsensusHistoryHandler(chainapidb def.APIHandlerIface, groupId string) 
 			return nil, err
 		}
 		resunlt := &GetConsensusHistory{
-			ConsensusHistory: consensusHistory,
+			Proofs: consensusHistory,
 		}
 		return resunlt, nil
 	} else {
@@ -34,11 +34,26 @@ func GetConsensusHistoryHandler(chainapidb def.APIHandlerIface, groupId string) 
 }
 
 type GetLatestConsensusChangeResult struct {
-	LatestConsensusResult *quorumpb.ChangeConsensusResultBundle `json:"latest_consensus_result"`
+	Proof *quorumpb.ChangeConsensusResultBundle `json:"proof"`
 }
 
 func GetLatestConsensusChangeResultHandler(chainapidb def.APIHandlerIface, groupId string) (*GetLatestConsensusChangeResult, error) {
-	return nil, nil
+	if groupId == "" {
+		return nil, fmt.Errorf("group_id can't be nil")
+	}
+
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupId]; ok {
+		latestConsensusResult, err := group.GetLastChangeConsensusResult(false)
+		if err != nil {
+			return nil, err
+		}
+		resunlt := &GetLatestConsensusChangeResult{
+			Proof: latestConsensusResult,
+		}
+		return resunlt, nil
+	}
+	return nil, fmt.Errorf("group <%s> not exist", groupId)
 }
 
 type GetConsensusResultByReqIdParam struct {
@@ -46,22 +61,56 @@ type GetConsensusResultByReqIdParam struct {
 }
 
 type GetConsensusResultByReqIdResult struct {
-	ConsensusResult *quorumpb.ChangeConsensusResultBundle `json:"consensus_result"`
+	Proof *quorumpb.ChangeConsensusResultBundle `json:"proof"`
 }
 
 func GetConsensusResultByReqIdHandler(chainapidb def.APIHandlerIface, groupId string, reqId string) (*GetConsensusResultByReqIdResult, error) {
-	return nil, nil
-}
+	if groupId == "" {
+		return nil, fmt.Errorf("group_id can't be nil")
+	}
 
-type GetCurrentConsensusParam struct {
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupId]; ok {
+		consensusResult, err := group.GetChangeConsensusResultById(reqId)
+		if err != nil {
+			return nil, err
+		}
+		resunlt := &GetConsensusResultByReqIdResult{
+			Proof: consensusResult,
+		}
+		return resunlt, nil
+	}
+	return nil, fmt.Errorf("group <%s> not exist", groupId)
 }
 
 type GetCurrentConsensusResult struct {
-	Producers        []string                              `json:"producers"`
+	Producers        []*quorumpb.ProducerItem              `json:"producers"`
 	TrxEpochInterval uint64                                `json:"trx_epoch_interval"`
-	LatestConsensus  *quorumpb.ChangeConsensusResultBundle `json:"latest_consensus"`
+	Proof            *quorumpb.ChangeConsensusResultBundle `json:"proof"`
 }
 
 func GetCurrentConsensusHandler(chainapidb def.APIHandlerIface, groupId string) (*GetCurrentConsensusResult, error) {
-	return nil, nil
+	if groupId == "" {
+		return nil, fmt.Errorf("group_id can't be nil")
+	}
+
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupId]; ok {
+		producers, err := group.GetProducers()
+		if err != nil {
+			return nil, err
+		}
+
+		trxEpochInterval, err := group.GetCurrentTrxProposeInterval()
+		if err != nil {
+			return nil, err
+		}
+		proof, err := group.GetLastChangeConsensusResult(true)
+		if err != nil {
+			return nil, err
+		}
+		return &GetCurrentConsensusResult{Producers: producers, TrxEpochInterval: trxEpochInterval, Proof: proof}, nil
+	}
+
+	return nil, fmt.Errorf("group <%s> not exist", groupId)
 }

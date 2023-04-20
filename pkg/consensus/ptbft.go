@@ -84,7 +84,8 @@ func goid() int {
 
 func (bft *PTBft) Start() {
 	go func() {
-		ptbft_log.Debugf("<%s> Start called, id <%d>", bft.GroupId, goid())
+		goid := goid()
+		ptbft_log.Debugf("<%s> Start called, id <%d>", bft.GroupId, goid)
 		//load propose pulse from config
 		interval, err := nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(bft.GroupId, bft.NodeName)
 		if err != nil {
@@ -98,9 +99,10 @@ func (bft *PTBft) Start() {
 			for {
 				select {
 				case <-bft.localCtx.Done():
-					ptbft_log.Debugf("<%s> local ctx finished called, die peaceful", bft.GroupId)
+					ptbft_log.Debugf("<%s> goid <%d>, local ctx finished called, die peaceful", bft.GroupId, goid)
 					return
 				case <-ticker.C:
+					ptbft_log.Debugf("\n\n\n\n\n\n\n\n")
 					ptbft_log.Debugf("<%s> ticker called at <%d>, propose", bft.GroupId, time.Now().Nanosecond())
 					bft.Propose()
 				}
@@ -165,10 +167,10 @@ func (bft *PTBft) Propose() {
 		for {
 			select {
 			case <-bft.currTask.taskCtx.Done():
-				ptbft_log.Debugf("<%s> taskCtx done, die peaceful", bft.GroupId)
+				//ptbft_log.Debugf("<%s> taskCtx done, die peaceful", bft.GroupId)
 				return
 			case result := <-bft.currTask.chAcsDone:
-				ptbft_log.Debugf("<%s> acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
+				//ptbft_log.Debugf("<%s> acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
 				bft.acsDone(result)
 			}
 

@@ -67,14 +67,27 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 		cp.senderCancelFunc = nil
 	}
 
-	//sleep for 1s to make sure sender goroutine is closed
-	time.Sleep(1000 * time.Millisecond)
-
 	cp.trxId = trxId
 
 	go func() {
 		//TBD get nonce
-		nonce := uint64(0)
+		nonce, err := nodectx.GetNodeCtx().GetChainStorage().GetNextConsensusNonce(cp.groupId, cp.nodename)
+		if err != nil {
+			molacp_log.Errorf("<%s> get next consensus nonce failed", cp.groupId)
+			return
+		}
+
+		//nonce 0 is used by owner when create the group
+		if nonce == 0 {
+			nonce, err = nodectx.GetNodeCtx().GetChainStorage().GetNextConsensusNonce(cp.groupId, cp.nodename)
+			if err != nil {
+				molacp_log.Errorf("<%s> get next consensus nonce failed", cp.groupId)
+				return
+			}
+		}
+
+		molacp_log.Debugf("<%s> get next consensus nonce <%d>", cp.groupId, nonce)
+
 		//create req
 		req := &quorumpb.ChangeConsensusReq{
 			ReqId:                guuid.New().String(),
@@ -104,7 +117,7 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 		cp.broadcastCnt = 0
 		for cp.broadcastCnt < int(agrmTickCnt) {
 			go func() {
-				molacp_log.Debugf("<%s> send req <%s>", cp.groupId, req.ReqId)
+				molacp_log.Debugf("<%s> change consensus round <%d> send req <%s>", cp.groupId, cp.broadcastCnt, req.ReqId)
 				connMgr, err := conn.GetConn().GetConnMgr(cp.groupId)
 				if err != nil {
 					return
@@ -117,7 +130,7 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 				molacp_log.Debugf("<%s> ctx Done, stop sending req ", cp.groupId)
 				return
 			case <-time.After(time.Duration(req.AgreementTickLenInMs) * time.Millisecond):
-				molacp_log.Debugf("<%s> round <%d> timeout", cp.groupId, cp.broadcastCnt)
+				molacp_log.Debugf("<%s> change consensus round <%d> timeout", cp.groupId, cp.broadcastCnt)
 				cp.broadcastCnt += 1
 			}
 		}
@@ -200,26 +213,26 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 		cp.currTask.cancelFunc()
 	}
 
-	//sleep 1s to make sure previous task is closed
-	time.Sleep(1000 * time.Millisecond)
+	cp.currTask = nil
 
-	//check if owner is in the producer list (if I am the owner)
-	if cp.cIface.IsOwner() {
-		isInProducerList := false
-		for _, producer := range req.ProducerPubkeyList {
-			if producer == cp.grpItem.UserSignPubkey {
-				isInProducerList = true
-				break
+	go func() {
+		//check if owner is in the producer list (if I am the owner)
+		if cp.cIface.IsOwner() {
+			isInProducerList := false
+			for _, producer := range req.ProducerPubkeyList {
+				if producer == cp.grpItem.UserSignPubkey {
+					isInProducerList = true
+					break
+				}
+			}
+
+			//if not add owner to the list to finish consensus
+			if !isInProducerList {
+				molacp_log.Debugf("<%s> owner is not in the producer list, to make consensus finished add owner to producer list", cp.groupId)
+				req.ProducerPubkeyList = append(req.ProducerPubkeyList, cp.grpItem.OwnerPubKey)
 			}
 		}
 
-		//if not add owner to the list to finish consensus
-		if !isInProducerList {
-			req.ProducerPubkeyList = append(req.ProducerPubkeyList, cp.grpItem.OwnerPubKey)
-		}
-	}
-
-	go func() {
 		//create resp
 		resp := &quorumpb.ChangeConsensusResp{
 			RespId:       guuid.New().String(),

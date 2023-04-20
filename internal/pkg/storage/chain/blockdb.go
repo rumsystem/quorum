@@ -70,3 +70,7 @@ func (cs *Storage) GatherBlocksFromCache(block *quorumpb.Block, prefix ...string
 
 	return nil, err
 }
+
+func (cs *Storage) GetNextConsensusNonce(groupId string, prefix ...string) (uint64, error) {
+	return cs.dbmgr.GetNextConsensusNonce(groupId, prefix...)
+}

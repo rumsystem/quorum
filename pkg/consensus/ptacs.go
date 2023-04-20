@@ -40,8 +40,7 @@ func NewPTACS(cfg Config, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
 }
 
 func (a *PTAcs) InputValue(val []byte) error {
-	ptacs_log.Info("InputValue called")
-
+	//ptacs_log.Info("InputValue called")
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
 		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)
