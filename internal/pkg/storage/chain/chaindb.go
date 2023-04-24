@@ -167,7 +167,7 @@ func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, cu
 
 func (cs *Storage) UpdateChangeConsensusResult(groupId string, result *quorumpb.ChangeConsensusResultBundle, prefix ...string) error {
 	key := s.GetChangeConsensusResultKey(groupId, result.Req.ReqId, prefix...)
-	//chaindb_log.Debugf("UpdateChangeConsensusResult key %s", key)
+	chaindb_log.Debugf("UpdateChangeConsensusResult key %s", key)
 	data, err := proto.Marshal(result)
 	if err != nil {
 		return err
@@ -198,6 +198,7 @@ func (cs *Storage) GetAllChangeConsensusResult(groupId string, prefix ...string)
 
 func (cs *Storage) GetChangeConsensusResultByReqId(groupId, reqId string, prefix ...string) (*quorumpb.ChangeConsensusResultBundle, error) {
 	key := s.GetChangeConsensusResultKey(groupId, reqId, prefix...)
+	chaindb_log.Debugf("GetChangeConsensusResultByReqId key %s", key)
 	data, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
