@@ -857,7 +857,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
 		case quorumpb.TrxType_CONSENSUS:
 			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-			//TBD
+			chain.applyConseususTrx(trx, decodedData, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupItem.GroupId, trx.Type.String())
 		}
@@ -933,11 +933,62 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
 		case quorumpb.TrxType_CONSENSUS:
 			chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
+			chain.applyConseususTrx(trx, decodedData, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupItem.GroupId, trx.Type)
 		}
 		//save trx to db
 		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
+	}
+
+	return nil
+}
+
+func (chain *Chain) applyConseususTrx(trx *quorumpb.Trx, decodeData []byte, nodename string) error {
+	chain_log.Debugf("<%s> applyConseususTrx called", chain.groupItem.GroupId)
+
+	//decode change consensus result
+	resultBundle := &quorumpb.ChangeConsensusResultBundle{}
+	err := proto.Unmarshal(decodeData, resultBundle)
+	if err != nil {
+		return err
+	}
+
+	//check if change consensus result is valid
+	if resultBundle.Result != quorumpb.ChangeConsensusResult_SUCCESS {
+		chain_log.Warningf("<%s> change consensus result is not success, skip", chain.groupItem.GroupId)
+		return nil
+	}
+
+	history, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(chain.groupItem.GroupId, nodename)
+	if err != nil {
+		return err
+	}
+
+	shouldAccept := true
+	for _, item := range history {
+		if item.Req.ReqId == resultBundle.Req.ReqId {
+			chain_log.Debugf("<%s> change consensus result with reqId <%s> already exist, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId)
+			shouldAccept = false
+			break
+		}
+
+		if item.Req.Nonce > resultBundle.Req.Nonce {
+			chain_log.Debugf("<%s> change consensus result with reqId <%d> nonce <%d> is smaller than current nonce <%d>, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId, item.Req.Nonce, resultBundle.Req.Nonce)
+			shouldAccept = false
+			break
+		}
+	}
+
+	if shouldAccept {
+		//update consensus
+		chain.updChainConsensus(trx.TrxId, resultBundle)
+		//stop current propose
+		if chain.Consensus.Producer() != nil {
+			chain.Consensus.Producer().StopPropose()
+			//update producer list
+			chain.Consensus.Producer().StartPropose()
+		}
 	}
 
 	return nil
