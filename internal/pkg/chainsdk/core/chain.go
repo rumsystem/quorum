@@ -981,6 +981,8 @@ func (chain *Chain) applyConseususTrx(trx *quorumpb.Trx, decodeData []byte, node
 	}
 
 	if shouldAccept {
+		//save change consensus result
+		nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, resultBundle, nodename)
 		//update consensus
 		chain.updChainConsensus(trx.TrxId, resultBundle)
 		//stop current propose
