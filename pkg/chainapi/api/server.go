@@ -107,6 +107,11 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/consensus/:reqid", h.GetConsensusResultByReqId)
 	r.GET("/v1/group/:group_id/consensus/current", h.GetCurrentConsensus)
 
+	r.GET("/v1/group/:group_id/consensus/proof/history", h.GetConsensusHistory)
+	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
+	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
+	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
+
 	// start https or http server
 	host := config.APIHost
 	if utils.IsDomainName(host) { // domain

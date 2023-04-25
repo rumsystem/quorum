@@ -27,7 +27,7 @@ import (
 )
 
 var chain_log = logging.Logger("chain")
-var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //1s
+var DEFAULT_PROPOSE_TRX_INTERVAL = 30 * 1000 //1s
 
 type Chain struct {
 	groupItem     *quorumpb.GroupItem
@@ -513,6 +513,7 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 	return nil
 }
 
+/*
 func (chain *Chain) UpdConnMgrProducer() {
 	chain_log.Debugf("<%s> UpdConnMgrProducer called", chain.groupItem.GroupId)
 	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)
@@ -524,6 +525,7 @@ func (chain *Chain) UpdConnMgrProducer() {
 
 	connMgr.UpdProducers(producerspubkey)
 }
+*/
 
 func (chain *Chain) updUserList() {
 	chain_log.Debugf("<%s> updUserList called", chain.groupItem.GroupId)
@@ -743,6 +745,8 @@ func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
+
+	//commented by cuicat for debug
 	//chain.rexSyncer.Start()
 	return nil
 }

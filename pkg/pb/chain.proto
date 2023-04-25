@@ -241,8 +241,8 @@ message GroupItem {
     string            UserEncryptPubkey       = 5;
     int64             LastUpdate              = 6;
     Block             GenesisBlock            = 7;
-    GroupEncryptType  EncryptType   = 8;
-    GroupConsenseType ConsenseType = 9;
+    GroupEncryptType  EncryptType             = 8;
+    GroupConsenseType ConsenseType            = 9;
     string            CipherKey               = 10;
     string            AppKey                  = 11;
 }

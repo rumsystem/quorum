@@ -105,7 +105,7 @@ func (a *PTAcs) handleRbcMsg(payload []byte) error {
 		}
 		//	ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.Epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
-			ptacs_log.Debugf("not for me")
+			//ptacs_log.Debugf("not for me")
 			return nil
 		}
 

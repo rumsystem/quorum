@@ -169,8 +169,9 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 		item.UserSignPubkey,
 		grp.ChainCtx)
 
+	//commented by cuicat
 	//update producer list for ConnMgr just created
-	grp.ChainCtx.UpdConnMgrProducer()
+	//grp.ChainCtx.UpdConnMgrProducer()
 
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
@@ -221,8 +222,9 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 		item.UserSignPubkey,
 		grp.ChainCtx)
 
+	//commented by cuicat
 	//update producer list for ConnMgr just created
-	grp.ChainCtx.UpdConnMgrProducer()
+	//grp.ChainCtx.UpdConnMgrProducer()
 
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
@@ -250,6 +252,14 @@ func (grp *Group) LeaveGrp() error {
 
 	//remove group from local db
 	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)
+}
+
+func (grp *Group) IsProducer() bool {
+	return grp.ChainCtx.IsProducer()
+}
+
+func (grp *Group) IsOwner() bool {
+	return grp.ChainCtx.IsOwner()
 }
 
 func (grp *Group) ClearGroupData() error {

@@ -21,8 +21,6 @@ import (
 
 var ptbft_log = logging.Logger("ptbft")
 
-var DEFAULT_TRX_PROPOSE_PULSE = 1 * 1000 // 1s
-
 var EMPTY_TRX_BUNDLE = "EMPTY_TRX_BUNDLE"
 
 type PTTask struct {

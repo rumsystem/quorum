@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -67,10 +66,15 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 		cp.senderCancelFunc = nil
 	}
 
+	//cancel previous task if any
+	if cp.currTask != nil {
+		cp.currTask.cancelFunc()
+		cp.currTask = nil
+	}
+
 	cp.trxId = trxId
 
 	go func() {
-		//TBD get nonce
 		nonce, err := nodectx.GetNodeCtx().GetChainStorage().GetNextConsensusNonce(cp.groupId, cp.nodename)
 		if err != nil {
 			molacp_log.Errorf("<%s> get next consensus nonce failed", cp.groupId)
@@ -147,75 +151,74 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 	cp.locker.Lock()
 	defer cp.locker.Unlock()
 
-	//check if req is from group owner
-	if cp.grpItem.OwnerPubKey != req.SenderPubkey {
-		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not from group owner, ignore", cp.groupId, req.ReqId)
-		return nil
-	}
+	go func() {
+		//check if req is from group owner
+		if cp.grpItem.OwnerPubKey != req.SenderPubkey {
+			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not from group owner, ignore", cp.groupId, req.ReqId)
+			return
+		}
 
-	//check if I am in the producer list (not owner)
-	if !cp.cIface.IsOwner() {
-		inTheList := false
-		for _, pubkey := range req.ProducerPubkeyList {
-			if pubkey == cp.grpItem.UserSignPubkey {
-				inTheList = true
-				break
+		//check if I am in the producer list (not owner)
+		if !cp.cIface.IsOwner() {
+			inTheList := false
+			for _, pubkey := range req.ProducerPubkeyList {
+				if pubkey == cp.grpItem.UserSignPubkey {
+					inTheList = true
+					break
+				}
+			}
+			if !inTheList {
+				molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not for me, ignore", cp.groupId, req.ReqId)
+				return
 			}
 		}
-		if !inTheList {
-			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not for me, ignore", cp.groupId, req.ReqId)
-			return nil
+
+		//verify if req is valid
+		dumpreq := &quorumpb.ChangeConsensusReq{
+			ReqId:                req.ReqId,
+			GroupId:              req.GroupId,
+			Nonce:                req.Nonce,
+			ProducerPubkeyList:   req.ProducerPubkeyList,
+			AgreementTickLenInMs: req.AgreementTickLenInMs,
+			AgreementTickCount:   req.AgreementTickCount,
+			StartFromEpoch:       req.StartFromEpoch,
+			TrxEpochTickLenInMs:  req.TrxEpochTickLenInMs,
+			SenderPubkey:         req.SenderPubkey,
+			MsgHash:              nil,
+			SenderSign:           nil,
 		}
-	}
 
-	//verify if req is valid
-	dumpreq := &quorumpb.ChangeConsensusReq{
-		ReqId:                req.ReqId,
-		GroupId:              req.GroupId,
-		Nonce:                req.Nonce,
-		ProducerPubkeyList:   req.ProducerPubkeyList,
-		AgreementTickLenInMs: req.AgreementTickLenInMs,
-		AgreementTickCount:   req.AgreementTickCount,
-		StartFromEpoch:       req.StartFromEpoch,
-		TrxEpochTickLenInMs:  req.TrxEpochTickLenInMs,
-		SenderPubkey:         req.SenderPubkey,
-		MsgHash:              nil,
-		SenderSign:           nil,
-	}
+		byts, err := proto.Marshal(dumpreq)
+		if err != nil {
+			molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
+			return
+		}
 
-	byts, err := proto.Marshal(dumpreq)
-	if err != nil {
-		molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
-		return err
-	}
+		hash := localcrypto.Hash(byts)
+		if !bytes.Equal(hash, req.MsgHash) {
+			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> hash is not same as req.MsgHash, ignore", cp.groupId, req.ReqId)
+			return
+		}
 
-	hash := localcrypto.Hash(byts)
-	if !bytes.Equal(hash, req.MsgHash) {
-		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> hash is not same as req.MsgHash, ignore", cp.groupId, req.ReqId)
-		return fmt.Errorf("req hash is not same as req.MsgHash")
-	}
+		//verify signature
+		verifySign, err := cp.cIface.VerifySign(hash, req.SenderSign, req.SenderPubkey)
 
-	//verify signature
-	verifySign, err := cp.cIface.VerifySign(hash, req.SenderSign, req.SenderPubkey)
+		if err != nil {
+			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> failed with error <%s>", cp.groupId, req.ReqId, err.Error())
+			return
+		}
 
-	if err != nil {
-		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> failed with error <%s>", cp.groupId, req.ReqId, err.Error())
-		return err
-	}
+		if !verifySign {
+			molacp_log.Debug("<%s> HandleCCReq reqid <%s> verify sign failed", cp.groupId, req.ReqId)
+			return
+		}
 
-	if !verifySign {
-		return fmt.Errorf("verify signature failed")
-	}
+		//handle new req
+		if cp.currTask != nil {
+			molacp_log.Debugf("<%s> StartChangeConsensus, cancel previous task", cp.groupId)
+			cp.currTask.cancelFunc()
+		}
 
-	//handle new req
-	if cp.currTask != nil {
-		molacp_log.Debugf("<%s> StartChangeConsensus, cancel previous task", cp.groupId)
-		cp.currTask.cancelFunc()
-	}
-
-	cp.currTask = nil
-
-	go func() {
 		//check if owner is in the producer list (if I am the owner)
 		if cp.cIface.IsOwner() {
 			isInProducerList := false

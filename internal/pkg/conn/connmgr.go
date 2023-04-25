@@ -16,7 +16,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/constants"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -132,6 +131,8 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	return nil
 }
 
+//commented by cuicat
+/*
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
 	connMgr.ProducerPool = make(map[string]string)
@@ -151,6 +152,7 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	}
 	return nil
 }
+*/
 
 func (connMgr *ConnMgr) LeaveAllChannels() error {
 	conn_log.Debugf("LeaveChannel called, groupId <%s>", connMgr.GroupId)
@@ -171,6 +173,8 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 }
 
+//commented by cuicat
+/*
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
@@ -183,6 +187,7 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 		return producerPsconn
 	}
 }
+*/
 
 func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)
@@ -294,7 +299,7 @@ func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.Packa
 		return err
 	}
 
-	psconn := connMgr.getProducerPsConn()
+	psconn := connMgr.getUserConn()
 	err = psconn.Publish(pkgBytes)
 	if err != nil {
 		conn_log.Errorf("BroadcastHBMsg failed, err: %v", err)
@@ -336,6 +341,6 @@ func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ChangeConsensusReq) error {
 		return err
 	}
 
-	psconn := connMgr.getProducerPsConn()
+	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
 }

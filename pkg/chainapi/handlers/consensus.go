@@ -138,14 +138,18 @@ func GetCurrentConsensusHandler(chainapidb def.APIHandlerIface, groupId string) 
 			return nil, err
 		}
 
-		currentEpoch := group.GetCurrentEpoch()
+		currEpoch := uint64(0)
+		if group.IsOwner() || group.IsProducer() {
+			currEpoch = group.GetCurrentEpoch()
+		}
+
 		currentBlockId := group.GetCurrentBlockId()
 		lastUpdate := group.GetLatestUpdate()
 
 		return &GetCurrentConsensusResult{Producers: producers,
 			TrxEpochInterval: trxEpochInterval,
 			ProofReqID:       proof.Req.ReqId,
-			CurrEpoch:        currentEpoch,
+			CurrEpoch:        currEpoch,
 			CurrBlockId:      currentBlockId,
 			LastUpdate:       lastUpdate}, nil
 	}
