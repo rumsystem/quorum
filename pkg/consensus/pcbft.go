@@ -33,7 +33,7 @@ type PCBft struct {
 }
 
 func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensusResultBundle, iface def.ChainMolassesIface) *PCBft {
-	pcbft_log.Debugf("NewPCBft called")
+	//pcbft_log.Debugf("NewPCBft called")
 	return &PCBft{
 		Config:    cfg,
 		currProof: nil,
@@ -44,7 +44,7 @@ func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensus
 }
 
 func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof) {
-	pcbft_log.Debugf("AddProducerProposal called, reqid <%s> ", proof.Req.ReqId)
+	pcbft_log.Debugf("AddProof called, reqid <%s>, nonce <%d> ", proof.Req.ReqId, proof.Req.Nonce)
 	bft.currProof = proof
 	datab, _ := proto.Marshal(proof)
 	bft.currProotData = datab
@@ -54,7 +54,7 @@ func (bft *PCBft) Propose() error {
 	pcbft_log.Debugf("Propose called")
 	chAcsDone := make(chan *AcsResult, 1)
 
-	acs := NewPCAcs(bft.bftCtx, bft.Config, chAcsDone)
+	acs := NewPCAcs(bft.bftCtx, bft.Config, bft.currProof.Epoch, chAcsDone)
 	acs.InputValue(bft.currProotData)
 	bft.acsInst = acs
 
@@ -104,7 +104,7 @@ func (bft *PCBft) Propose() error {
 }
 
 func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	pcbft_log.Debugf("HandleHBMsg called")
+	//pcbft_log.Debugf("HandleHBMsg called")
 	if bft.acsInst != nil {
 		bft.acsInst.HandleHBMessage(hbmsg)
 	}

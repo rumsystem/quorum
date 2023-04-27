@@ -73,7 +73,11 @@ func (a *PTAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	//	ptacs_log.Debugf("<%d> HandleMessage called, Epoch <%d>", hbmsg.Epoch, a.Epoch)
+
+	if hbmsg.Epoch != a.epoch {
+		ptacs_log.Debugf("received message from epoch <%d>, but current epoch is <%d>", hbmsg.Epoch, a.epoch)
+		return fmt.Errorf("received message from epoch <%d>, but current epoch is <%d>", hbmsg.Epoch, a.epoch)
+	}
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:

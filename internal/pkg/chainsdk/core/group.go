@@ -135,7 +135,6 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 		Result:             quorumpb.ChangeConsensusResult_SUCCESS,
 		Req:                consensusReq,
 		Resps:              []*quorumpb.ChangeConsensusResp{consensusResp},
-		Epoch:              0,
 		ResponsedProducers: []string{item.OwnerPubKey},
 	}
 

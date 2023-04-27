@@ -19,28 +19,35 @@ import (
 var molacp_log = logging.Logger("cp")
 
 type ConsensusProposeTask struct {
-	Req        *quorumpb.ChangeConsensusReq
-	bftCtx     context.Context
-	cancelFunc context.CancelFunc
-	bft        *PCBft
-	chBftDone  chan *quorumpb.ChangeConsensusResultBundle
+	GOID             int
+	TrxId            string
+	BroadcastCnt     int
+	senderCtx        context.Context
+	senderCancelFunc context.CancelFunc
+	Req              *quorumpb.ChangeConsensusReq
+	ReqBytes         []byte
+}
+
+type BftTask struct {
+	GOID          int
+	bftCtx        context.Context
+	bftCancelFunc context.CancelFunc
+	bft           *PCBft
+	chBftDone     chan *quorumpb.ChangeConsensusResultBundle
+	Proof         *quorumpb.ConsensusProof
 }
 
 type MolassesConsensusProposer struct {
 	grpItem  *quorumpb.GroupItem
 	groupId  string
 	nodename string
-	trxId    string
 	cIface   def.ChainMolassesIface
 	chainCtx context.Context
 
-	currTask *ConsensusProposeTask
-	locker   sync.Mutex
+	currBftTask  *BftTask
+	currSendTask *ConsensusProposeTask
 
-	senderCtx        context.Context
-	senderCancelFunc context.CancelFunc
-
-	broadcastCnt int
+	locker sync.Mutex
 }
 
 func (cp *MolassesConsensusProposer) NewConsensusProposer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
@@ -48,33 +55,41 @@ func (cp *MolassesConsensusProposer) NewConsensusProposer(ctx context.Context, i
 	cp.grpItem = item
 	cp.groupId = item.GroupId
 	cp.nodename = nodename
-	cp.trxId = ""
 	cp.cIface = iface
 	cp.chainCtx = ctx
-	cp.broadcastCnt = 0
 }
 
 func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
 	molacp_log.Debugf("<%s> StartChangeConsensus called", cp.groupId)
-
 	cp.locker.Lock()
 	defer cp.locker.Unlock()
 
-	//cancel previous sender if any
-	if cp.senderCancelFunc != nil {
-		cp.senderCancelFunc()
-		cp.senderCancelFunc = nil
+	if cp.currSendTask != nil {
+		molacp_log.Debugf("<%s> previous send task is not finished, cancel it", cp.groupId)
+		if cp.currSendTask.senderCancelFunc != nil {
+			cp.currSendTask.senderCancelFunc()
+		}
 	}
 
-	//cancel previous task if any
-	if cp.currTask != nil {
-		cp.currTask.cancelFunc()
-		cp.currTask = nil
+	if cp.currBftTask != nil {
+		molacp_log.Debugf("<%s> previous bft task is not finished, cancel it", cp.groupId)
+		if cp.currBftTask.bftCancelFunc != nil {
+			cp.currBftTask.bftCancelFunc()
+		}
 	}
 
-	cp.trxId = trxId
+	cp.currSendTask = nil
+	cp.currBftTask = nil
 
 	go func() {
+		cp.currSendTask = &ConsensusProposeTask{
+			GOID:         goid(),
+			TrxId:        trxId,
+			BroadcastCnt: 0,
+		}
+
+		molacp_log.Debugf("<%s> start sender task, GOID <%d>", cp.groupId, cp.currSendTask.GOID)
+
 		nonce, err := nodectx.GetNodeCtx().GetChainStorage().GetNextConsensusNonce(cp.groupId, cp.nodename)
 		if err != nil {
 			molacp_log.Errorf("<%s> get next consensus nonce failed", cp.groupId)
@@ -90,7 +105,7 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 			}
 		}
 
-		molacp_log.Debugf("<%s> get next consensus nonce <%d>", cp.groupId, nonce)
+		molacp_log.Debugf("<%s> get consensus nonce done <%d> ", cp.groupId, nonce)
 
 		//create req
 		req := &quorumpb.ChangeConsensusReq{
@@ -111,31 +126,41 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 			return
 		}
 
-		ks := nodectx.GetNodeCtx().Keystore
 		hash := localcrypto.Hash(byts)
+		ks := nodectx.GetNodeCtx().Keystore
 		signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
 		req.MsgHash = hash
 		req.SenderSign = signature
 
-		cp.senderCtx, cp.senderCancelFunc = context.WithCancel(cp.chainCtx)
-		cp.broadcastCnt = 0
-		for cp.broadcastCnt < int(agrmTickCnt) {
-			go func() {
-				molacp_log.Debugf("<%s> change consensus round <%d> send req <%s>", cp.groupId, cp.broadcastCnt, req.ReqId)
-				connMgr, err := conn.GetConn().GetConnMgr(cp.groupId)
-				if err != nil {
-					return
-				}
-				connMgr.BroadcastPPReq(req)
-			}()
+		cp.currSendTask.Req = req
+		signedbyts, err := proto.Marshal(req)
+		if err != nil {
+			molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
+			return
+		}
+		cp.currSendTask.ReqBytes = signedbyts
+		cp.currSendTask.senderCtx, cp.currSendTask.senderCancelFunc = context.WithCancel(cp.chainCtx)
+
+		for cp.currSendTask.BroadcastCnt < int(cp.currSendTask.Req.AgreementTickCount) {
+			reqMsg := &quorumpb.ChangeConsensusReqMsg{
+				Req:   cp.currSendTask.Req,
+				Epoch: uint64(cp.currSendTask.BroadcastCnt),
+			}
+
+			molacp_log.Debugf("<%s> change consensus ROUND <%d> req <%s>", cp.groupId, cp.currSendTask.BroadcastCnt, cp.currSendTask.Req.ReqId)
+			connMgr, err := conn.GetConn().GetConnMgr(cp.groupId)
+			if err != nil {
+				return
+			}
+			connMgr.BroadcastCCReqMsg(reqMsg)
 
 			select {
-			case <-cp.senderCtx.Done():
-				molacp_log.Debugf("<%s> ctx Done, stop sending req ", cp.groupId)
+			case <-cp.currSendTask.senderCtx.Done():
+				molacp_log.Debugf("<%s> sendTask ctx Done, GOID <%d> ", cp.groupId, cp.currSendTask.GOID)
 				return
-			case <-time.After(time.Duration(req.AgreementTickLenInMs) * time.Millisecond):
-				molacp_log.Debugf("<%s> change consensus round <%d> timeout", cp.groupId, cp.broadcastCnt)
-				cp.broadcastCnt += 1
+			case <-time.After(time.Duration(cp.currSendTask.Req.AgreementTickLenInMs) * time.Millisecond):
+				molacp_log.Debugf("<%s> change consensus ROUND <%d> timeout", cp.groupId, cp.currSendTask.BroadcastCnt)
+				cp.currSendTask.BroadcastCnt += 1
 			}
 		}
 		//if goes here, means no consensus reached and timeout, notify chain
@@ -145,84 +170,91 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 	return nil
 }
 
-func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusReq) error {
-	molacp_log.Debugf("<%s> HandleCCReq called reqId <%s>", cp.groupId, req.ReqId)
+func (cp *MolassesConsensusProposer) HandleCCReq(msg *quorumpb.ChangeConsensusReqMsg) error {
+	molacp_log.Debugf("<%s> HandleCCReq called reqId <%s>, epoch <%d>", cp.groupId, msg.Req.ReqId, msg.Epoch)
 
 	cp.locker.Lock()
 	defer cp.locker.Unlock()
 
+	//check if req is from group owner
+	if cp.grpItem.OwnerPubKey != msg.Req.SenderPubkey {
+		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not from group owner, ignore", cp.groupId, msg.Req.ReqId)
+		return nil
+	}
+
+	//check if I am in the producer list (not owner)
+	if !cp.cIface.IsOwner() {
+		inTheList := false
+		for _, pubkey := range msg.Req.ProducerPubkeyList {
+			if pubkey == cp.grpItem.UserSignPubkey {
+				inTheList = true
+				break
+			}
+		}
+		if !inTheList {
+			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not for me, ignore", cp.groupId, msg.Req.ReqId)
+			return nil
+		}
+	}
+	//verify if req is valid
+	dumpreq := &quorumpb.ChangeConsensusReq{
+		ReqId:                msg.Req.ReqId,
+		GroupId:              msg.Req.GroupId,
+		Nonce:                msg.Req.Nonce,
+		ProducerPubkeyList:   msg.Req.ProducerPubkeyList,
+		AgreementTickLenInMs: msg.Req.AgreementTickLenInMs,
+		AgreementTickCount:   msg.Req.AgreementTickCount,
+		StartFromEpoch:       msg.Req.StartFromEpoch,
+		TrxEpochTickLenInMs:  msg.Req.TrxEpochTickLenInMs,
+		SenderPubkey:         msg.Req.SenderPubkey,
+		MsgHash:              nil,
+		SenderSign:           nil,
+	}
+
+	byts, err := proto.Marshal(dumpreq)
+	if err != nil {
+		molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
+		return err
+	}
+
+	hash := localcrypto.Hash(byts)
+	if !bytes.Equal(hash, msg.Req.MsgHash) {
+		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> hash is not same as req.MsgHash, ignore", cp.groupId, msg.Req.ReqId)
+		return err
+	}
+
+	//verify signature
+	verifySign, err := cp.cIface.VerifySign(hash, msg.Req.SenderSign, msg.Req.SenderPubkey)
+
+	if err != nil {
+		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> failed with error <%s>", cp.groupId, msg.Req.ReqId, err.Error())
+		return err
+	}
+
+	if !verifySign {
+		molacp_log.Debug("<%s> HandleCCReq reqid <%s> verify sign failed", cp.groupId, msg.Req.ReqId)
+		return err
+	}
+
+	if cp.currBftTask != nil {
+		if msg.Req.Nonce < cp.currBftTask.Proof.Req.Nonce {
+			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> nonce is not bigger than current nonce, ignore", cp.groupId, msg.Req.ReqId)
+			return nil
+		}
+	}
+
+	//handle new req
+	if cp.currBftTask != nil && cp.currBftTask.bftCancelFunc != nil {
+		molacp_log.Debugf("<%s> HandleCCReq reqid <%s> cancel current bft task", cp.groupId, msg.Req.ReqId)
+		cp.currBftTask.bftCancelFunc()
+		cp.currBftTask = nil
+	}
+
 	go func() {
-		//check if req is from group owner
-		if cp.grpItem.OwnerPubKey != req.SenderPubkey {
-			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not from group owner, ignore", cp.groupId, req.ReqId)
-			return
-		}
-
-		//check if I am in the producer list (not owner)
-		if !cp.cIface.IsOwner() {
-			inTheList := false
-			for _, pubkey := range req.ProducerPubkeyList {
-				if pubkey == cp.grpItem.UserSignPubkey {
-					inTheList = true
-					break
-				}
-			}
-			if !inTheList {
-				molacp_log.Debugf("<%s> HandleCCReq reqid <%s> is not for me, ignore", cp.groupId, req.ReqId)
-				return
-			}
-		}
-
-		//verify if req is valid
-		dumpreq := &quorumpb.ChangeConsensusReq{
-			ReqId:                req.ReqId,
-			GroupId:              req.GroupId,
-			Nonce:                req.Nonce,
-			ProducerPubkeyList:   req.ProducerPubkeyList,
-			AgreementTickLenInMs: req.AgreementTickLenInMs,
-			AgreementTickCount:   req.AgreementTickCount,
-			StartFromEpoch:       req.StartFromEpoch,
-			TrxEpochTickLenInMs:  req.TrxEpochTickLenInMs,
-			SenderPubkey:         req.SenderPubkey,
-			MsgHash:              nil,
-			SenderSign:           nil,
-		}
-
-		byts, err := proto.Marshal(dumpreq)
-		if err != nil {
-			molacp_log.Errorf("<%s> marshal change consensus req failed", cp.groupId)
-			return
-		}
-
-		hash := localcrypto.Hash(byts)
-		if !bytes.Equal(hash, req.MsgHash) {
-			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> hash is not same as req.MsgHash, ignore", cp.groupId, req.ReqId)
-			return
-		}
-
-		//verify signature
-		verifySign, err := cp.cIface.VerifySign(hash, req.SenderSign, req.SenderPubkey)
-
-		if err != nil {
-			molacp_log.Debugf("<%s> HandleCCReq reqid <%s> failed with error <%s>", cp.groupId, req.ReqId, err.Error())
-			return
-		}
-
-		if !verifySign {
-			molacp_log.Debug("<%s> HandleCCReq reqid <%s> verify sign failed", cp.groupId, req.ReqId)
-			return
-		}
-
-		//handle new req
-		if cp.currTask != nil {
-			molacp_log.Debugf("<%s> StartChangeConsensus, cancel previous task", cp.groupId)
-			cp.currTask.cancelFunc()
-		}
-
 		//check if owner is in the producer list (if I am the owner)
 		if cp.cIface.IsOwner() {
 			isInProducerList := false
-			for _, producer := range req.ProducerPubkeyList {
+			for _, producer := range msg.Req.ProducerPubkeyList {
 				if producer == cp.grpItem.UserSignPubkey {
 					isInProducerList = true
 					break
@@ -232,16 +264,16 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 			//if not add owner to the list to finish consensus
 			if !isInProducerList {
 				molacp_log.Debugf("<%s> owner is not in the producer list, to make consensus finished add owner to producer list", cp.groupId)
-				req.ProducerPubkeyList = append(req.ProducerPubkeyList, cp.grpItem.OwnerPubKey)
+				msg.Req.ProducerPubkeyList = append(msg.Req.ProducerPubkeyList, cp.grpItem.OwnerPubKey)
 			}
 		}
 
 		//create resp
 		resp := &quorumpb.ChangeConsensusResp{
 			RespId:       guuid.New().String(),
-			GroupId:      req.GroupId,
+			GroupId:      msg.Req.GroupId,
 			SenderPubkey: cp.grpItem.UserSignPubkey,
-			Req:          req,
+			Req:          msg.Req,
 			MsgHash:      nil,
 			SenderSign:   nil,
 		}
@@ -260,60 +292,54 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 
 		//create Proof
 		proofBundle := &quorumpb.ConsensusProof{
-			Req:  req,
-			Resp: resp,
+			Epoch: msg.Epoch,
+			Req:   msg.Req,
+			Resp:  resp,
 		}
 
 		//create bft config
-		config, err := cp.createBftConfig(req.ProducerPubkeyList)
+		config, err := cp.createBftConfig(msg.Req.ProducerPubkeyList)
 		if err != nil {
 			molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
 			return
 		}
 
 		//create new context
-		taskCtx, taskCancel := context.WithCancel(cp.chainCtx)
+		bftCtx, bftCancel := context.WithCancel(cp.chainCtx)
 
 		//create channel to receive bft result
 		chBftDone := make(chan *quorumpb.ChangeConsensusResultBundle, 1)
 
-		//create bft
-		molacp_log.Debugf("<%s> create new bft", cp.groupId)
-		bft := NewPCBft(taskCtx, *config, chBftDone, cp.cIface)
-
-		task := &ConsensusProposeTask{
-			Req:        req,
-			bftCtx:     taskCtx,
-			cancelFunc: taskCancel,
-			bft:        bft,
-			chBftDone:  chBftDone,
+		//create bft task
+		cp.currBftTask = &BftTask{
+			GOID:          goid(),
+			bftCtx:        bftCtx,
+			bftCancelFunc: bftCancel,
+			bft:           NewPCBft(bftCtx, *config, chBftDone, cp.cIface),
+			chBftDone:     chBftDone,
+			Proof:         proofBundle,
 		}
 
-		cp.currTask = task
-
-		cp.currTask.bft.AddProof(proofBundle)
-		cp.currTask.bft.Propose()
+		cp.currBftTask.bft.AddProof(proofBundle)
+		cp.currBftTask.bft.Propose()
 
 		//wait result
 		select {
-		case <-cp.currTask.bftCtx.Done():
-			molacp_log.Debugf("<%s> HandleCCReq bft context done", cp.groupId)
+		case <-cp.currBftTask.bftCtx.Done():
+			molacp_log.Debugf("<%s> HandleCCReq bft context done, GOID <%d> ", cp.groupId, cp.currBftTask.GOID)
 			return
-		case result := <-cp.currTask.chBftDone:
+		case result := <-cp.currBftTask.chBftDone:
 			molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
-			//notify chain
-			cp.cIface.ChangeConsensusDone(cp.trxId, result)
+			cp.cIface.ChangeConsensusDone(result)
 
 			//cancel current task
-			cp.currTask.cancelFunc()
-
+			cp.currBftTask.bftCancelFunc()
 			//cancel current sender task if any
-			if cp.senderCancelFunc != nil {
-				cp.senderCancelFunc()
-				cp.senderCancelFunc = nil
+			if cp.currSendTask != nil && cp.currSendTask.senderCancelFunc != nil {
+				cp.currSendTask.senderCancelFunc()
 			}
 
-			molacp_log.Debugf("<%s> HandleCCReq bft done, quit peaceful", cp.groupId)
+			molacp_log.Debugf("<%s> HandleCCReq bft <%d> done, quit peaceful", cp.groupId, cp.currBftTask.GOID)
 			return
 		}
 	}()
@@ -323,9 +349,13 @@ func (cp *MolassesConsensusProposer) HandleCCReq(req *quorumpb.ChangeConsensusRe
 }
 
 func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	molacp_log.Debugf("<%s> HandleHBPMsg called", cp.groupId)
-	if cp.currTask != nil {
-		cp.currTask.bft.HandleHBMsg(hbmsg)
+
+	cp.locker.Lock()
+	defer cp.locker.Unlock()
+
+	//molacp_log.Debugf("<%s> HandleHBPMsg called", cp.groupId)
+	if cp.currBftTask != nil {
+		cp.currBftTask.bft.HandleHBMsg(hbmsg)
 	}
 	return nil
 }

@@ -18,13 +18,15 @@ type PCAcs struct {
 	rbcResults map[string][]byte
 
 	chAcsDone chan *AcsResult
+	Epoch     uint64
 }
 
-func NewPCAcs(ctx context.Context, cfg Config, chAcsDone chan *AcsResult) *PCAcs {
-	pcacs_log.Debugf("NewPCAcs called")
+func NewPCAcs(ctx context.Context, cfg Config, epoch uint64, chAcsDone chan *AcsResult) *PCAcs {
+	pcacs_log.Debugf("NewPCAcs called, epoch <%d>", epoch)
 
 	acs := &PCAcs{
 		Config:     cfg,
+		Epoch:      epoch,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
@@ -41,8 +43,7 @@ func NewPCAcs(ctx context.Context, cfg Config, chAcsDone chan *AcsResult) *PCAcs
 
 // give input value to
 func (a *PCAcs) InputValue(val []byte) error {
-	pcacs_log.Debug("InputValue called")
-
+	//pcacs_log.Debug("InputValue called")
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
 		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)
@@ -53,11 +54,12 @@ func (a *PCAcs) InputValue(val []byte) error {
 
 // rbc for proposerIs finished
 func (a *PCAcs) RbcDone(proposerPubkey string) {
-	pcacs_log.Debugf("RbcDone called, RBC <%s> finished", proposerPubkey)
+	//pcacs_log.Debugf("RbcDone called, RBC <%s> finished", proposerPubkey)
+	pcacs_log.Debugf("Rbc <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 
 	if len(a.rbcOutput) == a.N-a.f {
-		ptacs_log.Debugf("<%d> RBC insts finished, enough for BFT", a.N-a.f)
+		ptacs_log.Debugf("<%d> RBC finished, BFT done", a.N-a.f)
 		for rbcInst, _ := range a.rbcOutput {
 			a.rbcResults[rbcInst] = a.rbcInsts[rbcInst].Output()
 		}
@@ -66,13 +68,15 @@ func (a *PCAcs) RbcDone(proposerPubkey string) {
 		a.chAcsDone <- &AcsResult{
 			result: a.rbcResults,
 		}
-	} else {
-		pcacs_log.Debugf("Wait for enough RBC done")
 	}
 }
 
 func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ptacs_log.Debugf("<%d> HandleMessage called", hbmsg.Epoch)
+
+	if hbmsg.Epoch != a.Epoch {
+		ptacs_log.Debugf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.Epoch)
+		return fmt.Errorf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.Epoch)
+	}
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
@@ -86,7 +90,6 @@ func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 
 func (a *PCAcs) handleRbcMsg(payload []byte) error {
 	//ptacs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
-
 	//cast payload to RBC message
 	rbcMsg := &quorumpb.RBCMsg{}
 	err := proto.Unmarshal(payload, rbcMsg)
@@ -101,7 +104,7 @@ func (a *PCAcs) handleRbcMsg(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>", initp.ProposerPubkey, initp.RecvNodePubkey)
+		//ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>", initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
 			//ptacs_log.Debugf("not for me")
 			return nil

@@ -120,6 +120,11 @@ message ChangeConsensusReq {
     bytes             SenderSign           = 13;
 }
 
+message ChangeConsensusReqMsg {
+    uint64             Epoch  = 1;
+    ChangeConsensusReq Req    = 2;
+}
+
 message ChangeConsensusResp {
     string             RespId       = 1;
     string             GroupId      = 2;
@@ -130,8 +135,9 @@ message ChangeConsensusResp {
 }
 
 message ConsensusProof{
-    ChangeConsensusReq   req   = 1;
-    ChangeConsensusResp  resp = 2;
+    uint64               Epoch  = 1;
+    ChangeConsensusReq   Req    = 2;
+    ChangeConsensusResp  Resp   = 3;
 }
 
 enum ChangeConsensusResult {
@@ -144,8 +150,7 @@ message ChangeConsensusResultBundle{
     ChangeConsensusResult         Result             = 1;
     ChangeConsensusReq            Req                = 2;
     repeated ChangeConsensusResp  Resps              = 3;
-    uint64                        Epoch              = 4;
-    repeated string               ResponsedProducers = 5;
+    repeated string               ResponsedProducers = 4;
 }
 
 message ReqBlock {

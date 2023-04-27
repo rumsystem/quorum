@@ -325,10 +325,10 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) BroadcastPPReq(hbb *quorumpb.ChangeConsensusReq) error {
+func (connMgr *ConnMgr) BroadcastCCReqMsg(msg *quorumpb.ChangeConsensusReqMsg) error {
 	pkg := &quorumpb.Package{}
 
-	pbBytes, err := proto.Marshal(hbb)
+	pbBytes, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}

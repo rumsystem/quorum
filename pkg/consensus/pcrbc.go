@@ -38,7 +38,7 @@ type PCRbc struct {
 
 // same as trx rbc
 func NewPCRbc(ctx context.Context, cfg Config, acs *PCAcs, groupId, nodename, myPubkey, rbcInstPubkey string) (*PCRbc, error) {
-	pcrbc_log.Debugf("NewPCRbc called, pubkey <%s>", rbcInstPubkey)
+	//pcrbc_log.Debugf("NewPCRbc called, pubkey <%s>", rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
@@ -68,7 +68,7 @@ func NewPCRbc(ctx context.Context, cfg Config, acs *PCAcs, groupId, nodename, my
 }
 
 func (r *PCRbc) InputValue(data []byte) error {
-	pcrbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
+	//pcrbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
 
 	//create shards
 	shards, err := MakeShards(r.ecc, data)
@@ -89,7 +89,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
-		err := r.SendHBRBCMsg(initMsg)
+		err := r.SendHBRBCMsg(initMsg, r.acs.Epoch)
 		if err != nil {
 			pcrbc_log.Debugf(err.Error())
 			return err
@@ -100,7 +100,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 }
 
 func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
-	pcrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey)
+	//pcrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey)
 	if !r.IsProducer(initp.ProposerPubkey) {
 		return fmt.Errorf("<%s> receive proof from non producer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
 	}
@@ -121,7 +121,7 @@ func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	//pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return r.SendHBRBCMsg(proofMsg)
+	return r.SendHBRBCMsg(proofMsg, r.acs.Epoch)
 }
 
 func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
@@ -192,7 +192,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 			return err
 		}
 
-		err = r.SendHBRBCMsg(readyMsg)
+		err = r.SendHBRBCMsg(readyMsg, r.acs.Epoch)
 		if err != nil {
 			return err
 		}
@@ -244,7 +244,7 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 				return err
 			}
 
-			err = r.SendHBRBCMsg(readyMsg)
+			err = r.SendHBRBCMsg(readyMsg, r.acs.Epoch)
 			if err != nil {
 				return err
 			}
@@ -310,7 +310,7 @@ func (r *PCRbc) VerifySign() bool {
 	return true
 }
 
-func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
+func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg, nonce uint64) error {
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
 		return err
@@ -318,7 +318,7 @@ func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
-		Epoch:       0,
+		Epoch:       nonce,
 		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
 	}

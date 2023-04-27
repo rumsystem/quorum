@@ -14,7 +14,7 @@ type ChainDataSyncIface interface {
 	HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error
 	HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error
 	HandleHBRex(hb *quorumpb.HBMsgv1) error
-	HandleChangeConsensusReqPsConn(req *quorumpb.ChangeConsensusReq) error
+	HandleChangeConsensusReqPsConn(req *quorumpb.ChangeConsensusReqMsg) error
 	HandleGroupBroadcastPsConn(c *quorumpb.GroupBroadcast) error
 	StartSync() error
 	StopSync()

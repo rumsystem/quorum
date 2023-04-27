@@ -168,7 +168,6 @@ func (s *Store) IsExist(key []byte) (bool, error) {
 
 func (s *Store) PrefixDelete(prefix []byte) (int, error) {
 	//dbmgr_log.Debugf("delete key by prefix: %s", prefix)
-
 	matched := 0
 
 	err := s.db.Update(func(tx *bolt.Tx) error {

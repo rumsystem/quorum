@@ -27,7 +27,7 @@ import (
 )
 
 var chain_log = logging.Logger("chain")
-var DEFAULT_PROPOSE_TRX_INTERVAL = 1 * 1000 //1s
+var DEFAULT_PROPOSE_TRX_INTERVAL = 10 * 1000 //1s
 
 type Chain struct {
 	groupItem     *quorumpb.GroupItem
@@ -192,7 +192,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 			err = chain.HandleHBPCPsConn(hb)
 		}
 	} else if pkg.Type == quorumpb.PackageType_CHANGE_CONSENSUS_REQ {
-		req := &quorumpb.ChangeConsensusReq{}
+		req := &quorumpb.ChangeConsensusReqMsg{}
 		err = proto.Unmarshal(pkg.Data, req)
 		if err != nil {
 			chain_log.Warnf(err.Error())
@@ -336,7 +336,7 @@ func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
 
 // handle psync consensus req from PsConn
 func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
-	chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
+	//chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
 
 	if chain.Consensus.ConsensusProposer() == nil {
 		chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)
@@ -346,14 +346,13 @@ func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
 	return chain.Consensus.ConsensusProposer().HandleHBMsg(hb)
 }
 
-func (chain *Chain) HandleChangeConsensusReqPsConn(req *quorumpb.ChangeConsensusReq) error {
-	chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
-
+func (chain *Chain) HandleChangeConsensusReqPsConn(msg *quorumpb.ChangeConsensusReqMsg) error {
+	//chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
 	if chain.Consensus.ConsensusProposer() == nil {
 		chain_log.Warningf("<%s> Consensus ConsensusProposer is nil", chain.groupItem.GroupId)
 		return nil
 	}
-	return chain.Consensus.ConsensusProposer().HandleCCReq(req)
+	return chain.Consensus.ConsensusProposer().HandleCCReq(msg)
 }
 
 func (chain *Chain) HandleGroupBroadcastPsConn(brd *quorumpb.GroupBroadcast) error {
@@ -690,7 +689,7 @@ func (chain *Chain) CreateConsensus() error {
 }
 
 // update change consensus result
-func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeConsensusResultBundle) {
+func (chain *Chain) ChangeConsensusDone(bundle *quorumpb.ChangeConsensusResultBundle) {
 	chain_log.Debugf("<%s> ChangeConsensusDone called", chain.groupItem.GroupId)
 
 	//save change consensus result
@@ -698,27 +697,31 @@ func (chain *Chain) ChangeConsensusDone(trxId string, bundle *quorumpb.ChangeCon
 
 	switch bundle.Result {
 	case quorumpb.ChangeConsensusResult_SUCCESS:
+
+		trxId := "FAKE_ID"
 		//stop current propose
 		chain.Consensus.Producer().StopPropose()
 		//update producer list
 		chain.updChainConsensus(trxId, bundle)
 		chain.Consensus.Producer().StartPropose()
 
-		//propose the change consensus result trx
-		trx, err := chain.trxFactory.GetChangeConsensusResultTrx("", trxId, bundle)
-		if err != nil {
-			chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-			return
-		}
-		//propose the trx
-		connMgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)
-		if err != nil {
-			chain_log.Warningf("<%s> GetConnMgr failed with err <%s>", chain.groupItem.GroupId, err.Error())
-			return
-		}
-		err = connMgr.SendUserTrxPubsub(trx)
-		if err != nil {
-			return
+		//owner propose the change consensus result trx
+		if chain.IsOwner() {
+			trx, err := chain.trxFactory.GetChangeConsensusResultTrx("", trxId, bundle)
+			if err != nil {
+				chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
+				return
+			}
+			//propose the trx
+			connMgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)
+			if err != nil {
+				chain_log.Warningf("<%s> GetConnMgr failed with err <%s>", chain.groupItem.GroupId, err.Error())
+				return
+			}
+			err = connMgr.SendUserTrxPubsub(trx)
+			if err != nil {
+				return
+			}
 		}
 	case quorumpb.ChangeConsensusResult_FAIL:
 	case quorumpb.ChangeConsensusResult_TIMEOUT:
