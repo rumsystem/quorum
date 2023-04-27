@@ -233,7 +233,7 @@ func (producer *MolassesProducer) AddTrx(trx *quorumpb.Trx) {
 		return
 	}
 
-	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
+	//molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
 	err = producer.ptbft.AddTrx(trx)
 	if err != nil {
 		molaproducer_log.Errorf("add trx failed with error <%s>", err.Error())

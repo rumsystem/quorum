@@ -117,19 +117,19 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, decodedData []byte, prefix ...stri
 
 func (cs *Storage) SaveChainInfo(currBlock, currEpoch uint64, lastUpdate int64, groupId string, prefix ...string) error {
 	key := s.GetChainInfoEpoch(groupId, prefix...)
-	chaindb_log.Debugf("Save ChainInfo, currEpoch <%d>", currEpoch)
+	//chaindb_log.Debugf("Save ChainInfo, currEpoch <%d>", currEpoch)
 	e := make([]byte, 8)
 	binary.LittleEndian.PutUint64(e, currEpoch)
 	cs.dbmgr.Db.Set([]byte(key), e)
 
 	key = s.GetChainInfoBlock(groupId, prefix...)
-	chaindb_log.Debugf("Save ChainInfo, currBlock <%d>", currBlock)
+	//chaindb_log.Debugf("Save ChainInfo, currBlock <%d>", currBlock)
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, currBlock)
 	cs.dbmgr.Db.Set([]byte(key), b)
 
 	key = s.GetChainInfoLastUpdate(groupId, prefix...)
-	chaindb_log.Debugf("Save ChainInfo, LastUpdate <%d>", lastUpdate)
+	//chaindb_log.Debugf("Save ChainInfo, LastUpdate <%d>", lastUpdate)
 	l := make([]byte, 8)
 	binary.LittleEndian.PutUint64(l, uint64(lastUpdate))
 	cs.dbmgr.Db.Set([]byte(key), l)

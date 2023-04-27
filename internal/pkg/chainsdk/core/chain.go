@@ -27,7 +27,7 @@ import (
 )
 
 var chain_log = logging.Logger("chain")
-var DEFAULT_PROPOSE_TRX_INTERVAL = 30 * 1000 //1s
+var DEFAULT_PROPOSE_TRX_INTERVAL = 1 * 1000 //1s
 
 type Chain struct {
 	groupItem     *quorumpb.GroupItem
@@ -134,8 +134,8 @@ func (chain *Chain) GetLastUpdate() int64 {
 }
 
 func (chain *Chain) SaveChainInfoToDb() error {
-	chain_log.Debugf("<%s> SaveChainInfoToDb called", chain.groupItem.GroupId)
-	chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, chain.GetCurrEpoch(), chain.GetCurrBlockId(), chain.GetLastUpdate())
+	//chain_log.Debugf("<%s> SaveChainInfoToDb called", chain.groupItem.GroupId)
+	//chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, chain.GetCurrEpoch(), chain.GetCurrBlockId(), chain.GetLastUpdate())
 	return nodectx.GetNodeCtx().GetChainStorage().SaveChainInfo(chain.GetCurrBlockId(), chain.GetCurrEpoch(), chain.GetLastUpdate(), chain.groupItem.GroupId, chain.nodename)
 }
 

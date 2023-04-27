@@ -100,8 +100,7 @@ func (bft *PTBft) Start() {
 					ptbft_log.Debugf("<%s> goid <%d>, local ctx finished called, die peaceful", bft.GroupId, goid)
 					return
 				case <-ticker.C:
-					ptbft_log.Debugf("\n\n\n\n\n\n\n\n")
-					ptbft_log.Debugf("<%s> ticker called at <%d>, propose", bft.GroupId, time.Now().Nanosecond())
+					//ptbft_log.Debugf("<%s> ticker called at <%d>, propose", bft.GroupId, time.Now().Nanosecond())
 					bft.Propose()
 				}
 			}
@@ -117,7 +116,7 @@ func (bft *PTBft) Stop() {
 }
 
 func (bft *PTBft) Propose() {
-	ptbft_log.Debugf("<%s> Propose called", bft.GroupId)
+	//ptbft_log.Debugf("<%s> Propose called", bft.GroupId)
 	//stop current task if any
 
 	go func() {
@@ -161,6 +160,14 @@ func (bft *PTBft) Propose() {
 		bft.currTask = task
 		bft.currTask.acsInsts.InputValue(task.ProposedData)
 
+		ptbft_log.Debugf("<%s> >>> epoch <%d> try propose trxs:", bft.GroupId, proposedEpoch)
+		for _, trx := range trxs {
+			ptbft_log.Debugf("<%s> --- <%s>", bft.GroupId, trx.TrxId)
+		}
+		if len(trxs) == 0 {
+			ptbft_log.Debugf("<%s> --- <>", bft.GroupId)
+		}
+
 		//wait till acs done or timeout
 		for {
 			select {
@@ -186,7 +193,7 @@ func (bft *PTBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (bft *PTBft) acsDone(result *PTAcsResult) {
-	ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
+	//ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 
 	//decode trxs
@@ -210,8 +217,14 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 		}
 	}
 
+	ptbft_log.Debugf("<%s> >>> epoch <%d> done, trxs to package", bft.GroupId, result.epoch)
 	//try package trxs with a new block
 	if len(trxs) != 0 {
+
+		for _, trx := range trxs {
+			ptbft_log.Debugf("<%s> --- <%s>", bft.GroupId, trx.TrxId)
+		}
+
 		//Try build block and broadcast it
 		err := bft.buildBlock(result.epoch, trxs)
 		if err != nil {
@@ -228,22 +241,22 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 		}
 		//update local BlockId
 		bft.cIface.IncCurrBlockId()
+	} else {
+		ptbft_log.Debugf("<%s> --- <>", bft.GroupId)
 	}
 
 	//update and save local epoch
 	bft.cIface.IncCurrEpoch()
 	bft.cIface.SetLastUpdate(time.Now().UnixNano())
 	bft.cIface.SaveChainInfoToDb()
-	ptbft_log.Debugf("<%s> ChainInfo updated", bft.GroupId)
+	//ptbft_log.Debugf("<%s> ChainInfo updated", bft.GroupId)
 }
 
 func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {
 	ptbft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.GroupId, epoch)
 	//try build block by using trxs
-
-	ptbft_log.Debugf("<%s> sort trx", bft.GroupId)
+	//ptbft_log.Debugf("<%s> sort trx", bft.GroupId)
 	trxToPackage := bft.sortTrx(trxs)
-
 	currBlockId := bft.cIface.GetCurrBlockId()
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.GroupId, currBlockId, false, bft.NodeName)
 
@@ -255,7 +268,6 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		ks := localcrypto.GetKeystore()
 
 		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
-
 		if err != nil {
 			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err

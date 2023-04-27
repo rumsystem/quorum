@@ -21,8 +21,7 @@ type PTAcs struct {
 }
 
 func NewPTACS(cfg Config, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
-	ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
-
+	//ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 	acs := &PTAcs{
 		Config:     cfg,
 		epoch:      epoch,
@@ -50,7 +49,7 @@ func (a *PTAcs) InputValue(val []byte) error {
 }
 
 func (a *PTAcs) RbcDone(proposerPubkey string) {
-	ptacs_log.Infof("RbcDone called, RBC <%s> finished", proposerPubkey)
+	//ptacs_log.Infof("RbcDone called, RBC <%s> finished", proposerPubkey)
 	a.rbcOutput[proposerPubkey] = true
 	if len(a.rbcOutput) == a.N-a.f {
 		//ptacs_log.Debugf("enough RBC done, consensus needed<%d>", a.N-a.f)
