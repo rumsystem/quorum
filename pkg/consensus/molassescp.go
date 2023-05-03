@@ -20,22 +20,19 @@ import (
 var molacp_log = logging.Logger("cp")
 
 type ConsensusProposeTask struct {
-	GOID             int
-	TrxId            string
-	BroadcastCnt     int
-	senderCtx        context.Context
-	senderCancelFunc context.CancelFunc
-	Req              *quorumpb.ChangeConsensusReq
-	ReqBytes         []byte
+	TrxId    string
+	Req      *quorumpb.ChangeConsensusReq
+	ReqBytes []byte
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 type BftTask struct {
-	GOID          int
-	bftCtx        context.Context
-	bftCancelFunc context.CancelFunc
-	bft           *PCBft
-	chBftDone     chan *quorumpb.ChangeConsensusResultBundle
-	Proof         *quorumpb.ConsensusProof
+	bft       *PCBft
+	chBftDone chan *quorumpb.ChangeConsensusResultBundle
+	Proof     *quorumpb.ConsensusProof
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 type MolassesConsensusProposer struct {
@@ -48,62 +45,10 @@ type MolassesConsensusProposer struct {
 	chProposeTask chan *ConsensusProposeTask
 	chBftTask     chan *BftTask
 
-	chCpTaskCancelDone  chan bool
-	chBftTaskCancelDone chan bool
+	currCpTask  *ConsensusProposeTask
+	currBftTask *BftTask
 
 	lock sync.Mutex
-}
-
-func (cp *MolassesConsensusProposer) ProposerWorker(ctx context.Context, chProposeTask <-chan *ConsensusProposeTask) {
-	for {
-		select {
-		case <-ctx.Done():
-			molacp_log.Debugf("<%s> ProposerWorker exit", cp.groupId)
-			return
-		case task := <-chProposeTask:			
-			//handle it
-			for cp.cpTask.BroadcastCnt < int(cp.cpTask.Req.AgreementTickCount) {
-				reqMsg := &quorumpb.ChangeConsensusReqMsg{
-					Req:   cp.cpTask.Req,
-					Epoch: uint64(cp.cpTask.BroadcastCnt),
-				}
-	
-				molacp_log.Debugf("<%s> change consensus ROUND <%d> req <%s>", cp.groupId, cp.cpTask.BroadcastCnt, cp.cpTask.Req.ReqId)
-				connMgr, err := conn.GetConn().GetConnMgr(cp.groupId)
-				if err != nil {
-					return
-				}
-				connMgr.BroadcastCCReqMsg(reqMsg)
-				select {
-				case <-time.After(time.Duration(cp.cpTask.Req.AgreementTickLenInMs) * time.Millisecond):
-					molacp_log.Debugf("<%s> change consensus ROUND <%d> timeout", cp.groupId, cp.cpTask.BroadcastCnt)
-					cp.cpTask.BroadcastCnt += 1
-				}
-			}
-			//if goes here, means no consensus reached and timeout, notify chain
-			molacp_log.Debugf("<%s> no consensus reached, notify chain", cp.groupId)
-
-			if ctx.Err() != nil {
-				molacp_log.Debugf("<%s> ProposerWorker: context canceled, return", cp.groupId)
-				return
-			}		
-		}	
-	}
-}
-
-func (cp *MolassesConsensusProposer) BftWorker(ctx context.Context, chBftTask <-chan *BftTask) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case task := <-chBftTask:
-			//handle it
-
-			 if ctx.Err() != nil {
-				molacp_log.Debugf("<%s> BftWorker: context canceled, return", cp.groupId)
-				return
-			 }
-	}
 }
 
 func (cp *MolassesConsensusProposer) NewConsensusProposer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface def.ChainMolassesIface) {
@@ -117,107 +62,207 @@ func (cp *MolassesConsensusProposer) NewConsensusProposer(ctx context.Context, i
 	cp.chProposeTask = make(chan *ConsensusProposeTask, 1)
 	cp.chBftTask = make(chan *BftTask, 1)
 
+	go cp.ProposeWorker(ctx, cp.chProposeTask)
+	go cp.BftWorker(ctx, cp.chBftTask)
 
+	cp.currCpTask = nil
+	cp.currBftTask = nil
+}
 
-	go cp.ProposerWorker(cp.chProposeTask)
-	go cp.BftWorker(cp.chBftTask)
+func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chProposeTask <-chan *ConsensusProposeTask) {
+	for {
+		select {
+		case <-chainCtx.Done():
+			molacp_log.Debugf("<%s> ProposerWorker exit", cp.groupId)
+			return
+		case task, beforeChClosed := <-chProposeTask:
+			if chainCtx.Err() != nil {
+				molacp_log.Debugf("<%s> ProposerWorker: chainCtx canceled, return", cp.groupId)
+				return
+			}
 
-	cp.chCpTaskCancelDone = make(chan bool)
-	cp.chBftTaskCancelDone = make(chan bool)
+			if !beforeChClosed {
+				molacp_log.Debugf("<%s> ProposerWorker: channel closed, return", cp.groupId)
+				return
+			}
+
+			retryCnt := 0
+			isCanceled := false
+			//handle it
+			var err error
+		RETRY:
+
+			for retryCnt < int(task.Req.AgreementTickCount) {
+				reqMsg := &quorumpb.ChangeConsensusReqMsg{
+					Req:   task.Req,
+					Epoch: uint64(retryCnt),
+				}
+
+				molacp_log.Debugf("<%s> change consensus ROUND <%d> req <%s>", cp.groupId, retryCnt, task.Req.ReqId)
+				connMgr, err := conn.GetConn().GetConnMgr(cp.groupId)
+				if err != nil {
+					molacp_log.Errorf("<%s> ProposerWorker: GetConnMgr failed, err <%v>", cp.groupId, err)
+					break RETRY
+				}
+				connMgr.BroadcastCCReqMsg(reqMsg)
+				select {
+				case <-task.ctx.Done():
+					molacp_log.Debugf("<%s> ProposerWorker: taskCtx done", cp.groupId)
+					isCanceled = true
+					break RETRY
+				case <-time.After(time.Duration(task.Req.AgreementTickLenInMs) * time.Millisecond):
+					molacp_log.Debugf("<%s> change consensus ROUND <%d> timeout", cp.groupId, retryCnt)
+					retryCnt += 1
+				}
+			}
+
+			if err != nil {
+				molacp_log.Errorf("<%s> ProposerWorker: change consensus failed, err <%v>", cp.groupId, err)
+				resultBundle := &quorumpb.ChangeConsensusResultBundle{
+					Result:             quorumpb.ChangeConsensusResult_FAIL,
+					Req:                task.Req,
+					Resps:              nil,
+					ResponsedProducers: nil,
+				}
+				cp.cIface.ChangeConsensusDone(resultBundle, cp.currCpTask.TrxId)
+
+			} else {
+				if isCanceled {
+					molacp_log.Debugf("<%s> ProposerWorker: taskCtx canceled", cp.groupId)
+				} else {
+					//if goes here, means no consensus reached and timeout, notify chain and quit
+					molacp_log.Debugf("<%s> ProposerWorker: timeout and no consensus reached, notify chain", cp.groupId)
+					resultBundle := &quorumpb.ChangeConsensusResultBundle{
+						Result:             quorumpb.ChangeConsensusResult_TIMEOUT,
+						Req:                task.Req,
+						Resps:              nil,
+						ResponsedProducers: nil,
+					}
+					cp.cIface.ChangeConsensusDone(resultBundle, cp.currCpTask.TrxId)
+				}
+			}
+
+			molacp_log.Debugf("<%s> ProposerWorker: task done", cp.groupId)
+		}
+	}
+}
+
+func (cp *MolassesConsensusProposer) BftWorker(chainCtx context.Context, chBftTask <-chan *BftTask) {
+	for {
+		select {
+		case <-chainCtx.Done():
+			molacp_log.Debugf("<%s> BftWorker exit", cp.groupId)
+			return
+		case task, beforeChClosed := <-chBftTask:
+			//handle it
+			if chainCtx.Err() != nil {
+				molacp_log.Debugf("<%s> BftWorker: chainCtx canceled, return", cp.groupId)
+				return
+			}
+
+			if !beforeChClosed {
+				molacp_log.Debugf("<%s> BftWorker: channel closed, return", cp.groupId)
+				return
+			}
+
+			molacp_log.Debugf("<%s> BftWorker: start bft", cp.groupId)
+			err := task.bft.Propose()
+
+			isCanceled := false
+			select {
+			case <-task.ctx.Done():
+				molacp_log.Debugf("<%s> BftWorker, taskCtx done, quit task", cp.groupId)
+				isCanceled = true
+			case result := <-task.chBftDone:
+				molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
+				if cp.currCpTask != nil {
+					cp.cIface.ChangeConsensusDone(result, cp.currCpTask.TrxId)
+				} else {
+					cp.cIface.ChangeConsensusDone(result, "")
+				}
+			}
+
+			if err != nil {
+				molacp_log.Errorf("<%s> BftWorker: bftTask failed, err <%s>", cp.groupId, err.Error())
+			} else {
+				if isCanceled {
+					molacp_log.Debugf("<%s> BftWorker: bftTask done (canceled)", cp.groupId)
+				} else {
+					molacp_log.Debugf("<%s> BftWorker: bftTask done", cp.groupId)
+				}
+			}
+		}
+	}
 }
 
 func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
 	molacp_log.Debugf("<%s> StartChangeConsensus called", cp.groupId)
 
-	if cp.cpTask != nil {
-		cp.cpTask.senderCancelFunc()
-		molacp_log.Debugf("<%s> wait for cpTask cancel done", cp.groupId)
-		<-cp.chCpTaskCancelDone
-	}
-	cp.cpTask = nil
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
 
-	if cp.bftTask != nil {
-		cp.bftTask.bftCancelFunc()
-		molacp_log.Debugf("<%s> wait for bftTask cancel done", cp.groupId)
-		<-cp.chBftTaskCancelDone
-	}
-	cp.bftTask = nil
-
-	cpTask, err := cp.createProposeTask(producers, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen, cp.chCpTaskCancelDone)
+	cpTask, err := cp.createProposeTask(cp.chainCtx, producers, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen)
 	if err != nil {
 		molacp_log.Errorf("<%s> createProposeTask failed", cp.groupId)
 		return err
 	}
 
-	cp.cpTask = cpTask
+	if cp.currCpTask != nil {
+		cp.currCpTask.cancel()
+	}
 
-	go func() {
-		
-		//TBD: notify chain
-	}()
+	cp.chProposeTask <- cpTask
+	cp.currCpTask = cpTask
 
 	return nil
 }
 
 func (cp *MolassesConsensusProposer) StopAllTasks() {
 	molacp_log.Debugf("<%s> StopAllTasks called", cp.groupId)
-	if cp.cpTask != nil {
-		cp.cpTask.senderCancelFunc()
-		<-cp.chCpTaskCancelDone
+
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
+
+	if cp.currBftTask != nil {
+		cp.currBftTask.cancel()
 	}
-	if cp.bftTask != nil {
-		cp.bftTask.bftCancelFunc()
-		<-cp.chBftTaskCancelDone
+
+	if cp.currCpTask != nil {
+		cp.currCpTask.cancel()
 	}
-	cp.cpTask = nil
-	cp.bftTask = nil
+
+	cp.currBftTask = nil
+	cp.currCpTask = nil
 
 	molacp_log.Debugf("<%s> StopAllTasks done", cp.groupId)
 }
 
 func (cp *MolassesConsensusProposer) HandleCCReq(msg *quorumpb.ChangeConsensusReqMsg) error {
 	molacp_log.Debugf("<%s> HandleCCReq called reqId <%s>, epoch <%d>", cp.groupId, msg.Req.ReqId, msg.Epoch)
+	cp.lock.Lock()
+	defer cp.lock.Unlock()
 
-	if cp.bftTask != nil {
-		cp.bftTask.bftCancelFunc()
-		<-cp.bftTask.cancelDone
-		cp.bftTask = nil
-	}
-
-	bftTask, err := cp.createBftTask(msg, cp.chBftTaskCancelDone)
+	bftTask, err := cp.createBftTask(cp.chainCtx, msg)
 	if err != nil {
 		molacp_log.Debugf("<%s> HandleCCReq create bft task failed with error <%s>", cp.groupId, err.Error())
 		return err
 	} else {
-		molacp_log.Debugf("<%s> HandleCCReq create bft task <%d> success", cp.groupId, bftTask.GOID)
+		molacp_log.Debugf("<%s> HandleCCReq create bft task", cp.groupId)
 	}
 
-	cp.bftTask = bftTask
+	if cp.currBftTask != nil {
+		molacp_log.Debugf("<%s> HandleCCReq: currBftTask is not nil, cancel it", cp.groupId)
+		cp.currBftTask.cancel()
+	}
 
-	go func() {
-		cp.bftTask.bft.Propose()
-		select {
-		case <-cp.bftTask.bftCtx.Done():
-			molacp_log.Debugf("<%s> HandleCCReq bft context done, GOID <%d> ", cp.groupId, cp.bftTask.GOID)
-			cp.bftTask.cancelDone <- true
-			return
-		case result := <-cp.bftTask.chBftDone:
-			molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
-			if cp.cpTask != nil {
-				cp.cIface.ChangeConsensusDone(result, cp.cpTask.TrxId)
-			} else {
-				cp.cIface.ChangeConsensusDone(result, "")
-			}
-			return
-		}
-	}()
+	cp.chBftTask <- bftTask
+	cp.currBftTask = bftTask
 
 	return nil
 }
 
-func (cp *MolassesConsensusProposer) createProposeTask(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64, cancelDone chan bool) (*ConsensusProposeTask, error) {
+func (cp *MolassesConsensusProposer) createProposeTask(ctx context.Context, producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) (*ConsensusProposeTask, error) {
 	molacp_log.Debugf("<%s> createProposeTask called", cp.groupId)
-
 	nonce, err := nodectx.GetNodeCtx().GetChainStorage().GetNextConsensusNonce(cp.groupId, cp.nodename)
 	if err != nil {
 		molacp_log.Errorf("<%s> get next consensus nonce failed", cp.groupId)
@@ -234,6 +279,10 @@ func (cp *MolassesConsensusProposer) createProposeTask(producers []string, trxId
 	}
 
 	molacp_log.Debugf("<%s> get next consensus nonce <%d> ", cp.groupId, nonce)
+
+	for _, p := range producers {
+		molacp_log.Debugf("<%s> producer <%s>", cp.groupId, p)
+	}
 
 	//create req
 	req := &quorumpb.ChangeConsensusReq{
@@ -267,20 +316,17 @@ func (cp *MolassesConsensusProposer) createProposeTask(producers []string, trxId
 	}
 
 	cpTask := &ConsensusProposeTask{
-		GOID:         goid(),
-		TrxId:        trxId,
-		BroadcastCnt: 0,
-		cancelDone:   cancelDone,
-		Req:          req,
-		ReqBytes:     reqBytes,
+		TrxId:    trxId,
+		Req:      req,
+		ReqBytes: reqBytes,
 	}
 
 	//create sender ctx
-	cpTask.senderCtx, cpTask.senderCancelFunc = context.WithCancel(cp.chainCtx)
+	cpTask.ctx, cpTask.cancel = context.WithCancel(cp.chainCtx)
 	return cpTask, nil
 }
 
-func (cp *MolassesConsensusProposer) createBftTask(msg *quorumpb.ChangeConsensusReqMsg, cancelDone chan bool) (*BftTask, error) {
+func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quorumpb.ChangeConsensusReqMsg) (*BftTask, error) {
 	molacp_log.Debugf("<%s> createBftTask called", cp.groupId)
 
 	//check if req is from group owner
@@ -362,9 +408,9 @@ func (cp *MolassesConsensusProposer) createBftTask(msg *quorumpb.ChangeConsensus
 	}
 
 	hash = localcrypto.Hash(byts)
+	resp.MsgHash = hash
 	ks := nodectx.GetNodeCtx().Keystore
 	signature, _ := ks.EthSignByKeyName(cp.groupId, hash)
-	resp.MsgHash = hash
 	resp.SenderSign = signature
 
 	// create Proof
@@ -374,25 +420,27 @@ func (cp *MolassesConsensusProposer) createBftTask(msg *quorumpb.ChangeConsensus
 		Resp:  resp,
 	}
 
-	// check if owner is in the producer list (if I am the owner)
-	if cp.cIface.IsOwner() {
-		isInProducerList := false
-		for _, producer := range msg.Req.ProducerPubkeyList {
-			if producer == cp.grpItem.UserSignPubkey {
-				isInProducerList = true
-				break
-			}
-		}
+	participants := make([]string, 0)
+	participants = append(participants, msg.Req.ProducerPubkeyList...)
 
-		//if not add owner to the list to finish consensus
-		if !isInProducerList {
-			molacp_log.Debugf("<%s> owner is not in the producer list, to make consensus finished add owner to producer list", cp.groupId)
-			msg.Req.ProducerPubkeyList = append(msg.Req.ProducerPubkeyList, cp.grpItem.OwnerPubKey)
+	isOwnerInProducerList := false
+	for _, producer := range msg.Req.ProducerPubkeyList {
+		if producer == cp.grpItem.OwnerPubKey {
+			isOwnerInProducerList = true
+			break
 		}
 	}
 
+	//if not add owner to the list to finish consensus
+	if !isOwnerInProducerList {
+		molacp_log.Debugf("<%s> owner is not in the producer list, to make consensus finished add owner to participants list", cp.groupId)
+		participants = append(participants, cp.grpItem.OwnerPubKey)
+	} else {
+		molacp_log.Debugf("<%s> owner is in the producer list", cp.groupId)
+	}
+
 	// create bft config
-	config, err := cp.createBftConfig(msg.Req.ProducerPubkeyList)
+	config, err := cp.createBftConfig(participants)
 	if err != nil {
 		molacp_log.Errorf("<%s> create bft config failed", cp.groupId)
 		return nil, err
@@ -406,13 +454,11 @@ func (cp *MolassesConsensusProposer) createBftTask(msg *quorumpb.ChangeConsensus
 
 	// create bft task
 	bftTask := &BftTask{
-		GOID:          goid(),
-		bftCtx:        bftCtx,
-		bftCancelFunc: bftCancel,
-		bft:           NewPCBft(bftCtx, *config, chBftDone, cp.cIface),
-		chBftDone:     chBftDone,
-		Proof:         proofBundle,
-		cancelDone:    cancelDone,
+		ctx:       bftCtx,
+		cancel:    bftCancel,
+		bft:       NewPCBft(bftCtx, *config, chBftDone, cp.cIface),
+		chBftDone: chBftDone,
+		Proof:     proofBundle,
 	}
 
 	bftTask.bft.AddProof(proofBundle)
@@ -421,8 +467,8 @@ func (cp *MolassesConsensusProposer) createBftTask(msg *quorumpb.ChangeConsensus
 
 func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	//molacp_log.Debugf("<%s> HandleHBPMsg called", cp.groupId)
-	if cp.bftTask != nil {
-		cp.bftTask.bft.HandleHBMsg(hbmsg)
+	if cp.currBftTask != nil {
+		cp.currBftTask.bft.HandleHBMsg(hbmsg)
 	}
 	return nil
 }

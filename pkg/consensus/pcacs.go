@@ -43,7 +43,7 @@ func NewPCAcs(ctx context.Context, cfg Config, epoch uint64, chAcsDone chan *Acs
 
 // give input value to
 func (a *PCAcs) InputValue(val []byte) error {
-	//pcacs_log.Debug("InputValue called")
+	pcacs_log.Debug("InputValue called")
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
 		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)
@@ -89,7 +89,7 @@ func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (a *PCAcs) handleRbcMsg(payload []byte) error {
-	//ptacs_log.Debugf("handleRbc called, Epoch <%d>", a.Epoch)
+	//ptacs_log.Debugf("handleRbcMsg called, Epoch <%d>", a.Epoch)
 	//cast payload to RBC message
 	rbcMsg := &quorumpb.RBCMsg{}
 	err := proto.Unmarshal(payload, rbcMsg)
@@ -104,7 +104,7 @@ func (a *PCAcs) handleRbcMsg(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		//ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>", initp.ProposerPubkey, initp.RecvNodePubkey)
+		ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>", initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
 			//ptacs_log.Debugf("not for me")
 			return nil

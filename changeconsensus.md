@@ -261,7 +261,7 @@
         "memo": ""
         }
     
-    Explain in plan language:
+    Explaiation in plan language:
         producers "AqdrgpUpRj41BBZmpcfu8VahwZ9IXx8yJl0iaCPW3b7B" will be the new group producer
         Epoch should start from 10000
         Trx propose interval should be 10000ms (10s)

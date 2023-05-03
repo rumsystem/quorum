@@ -696,7 +696,6 @@ func (chain *Chain) ChangeConsensusDone(bundle *quorumpb.ChangeConsensusResultBu
 
 	switch bundle.Result {
 	case quorumpb.ChangeConsensusResult_SUCCESS:
-
 		trxId := trxId
 		//stop current propose
 		chain.Consensus.Producer().StopPropose()
@@ -723,7 +722,9 @@ func (chain *Chain) ChangeConsensusDone(bundle *quorumpb.ChangeConsensusResultBu
 			}
 		}
 	case quorumpb.ChangeConsensusResult_FAIL:
+		chain_log.Debug("<%s> ChangeConsensusResult_FAIL", chain.groupItem.GroupId)
 	case quorumpb.ChangeConsensusResult_TIMEOUT:
+		chain_log.Debug("<%s> ChangeConsensusResult_TIMEOUT", chain.groupItem.GroupId)
 	}
 }
 
@@ -980,7 +981,7 @@ func (chain *Chain) applyConseususTrx(trx *quorumpb.Trx, decodeData []byte, node
 		}
 
 		if item.Req.Nonce > resultBundle.Req.Nonce {
-			chain_log.Debugf("<%s> change consensus result with reqId <%d> nonce <%d> is smaller than current nonce <%d>, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId, item.Req.Nonce, resultBundle.Req.Nonce)
+			chain_log.Debugf("<%s> change consensus result with reqId <%d> nonce <%d> is smaller than current nonce <%d>, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId, resultBundle.Req.Nonce, item.Req.Nonce)
 			shouldAccept = false
 			break
 		}

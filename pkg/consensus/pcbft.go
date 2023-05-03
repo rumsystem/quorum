@@ -28,8 +28,7 @@ type PCBft struct {
 	bftCtx    context.Context
 
 	acsInst *PCAcs
-
-	cIface def.ChainMolassesIface
+	cIface  def.ChainMolassesIface
 }
 
 func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensusResultBundle, iface def.ChainMolassesIface) *PCBft {
