@@ -11,4 +11,5 @@ type ConsensusProposer interface {
 	HandleHBMsg(msg *quorumpb.HBMsgv1) error
 	HandleCCReq(req *quorumpb.ChangeConsensusReqMsg) error
 	StartChangeConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error
+	StopAllTasks()
 }

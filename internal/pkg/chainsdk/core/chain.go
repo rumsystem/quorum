@@ -680,25 +680,24 @@ func (chain *Chain) CreateConsensus() error {
 	}
 
 	chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)
-
-	//start propose trx
-	//commented by cuicat for debug
 	chain.Consensus.StartProposeTrx()
 
 	return nil
 }
 
 // update change consensus result
-func (chain *Chain) ChangeConsensusDone(bundle *quorumpb.ChangeConsensusResultBundle) {
+func (chain *Chain) ChangeConsensusDone(bundle *quorumpb.ChangeConsensusResultBundle, trxId string) {
 	chain_log.Debugf("<%s> ChangeConsensusDone called", chain.groupItem.GroupId)
 
 	//save change consensus result
 	nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, bundle, chain.nodename)
 
+	chain.Consensus.ConsensusProposer().StopAllTasks()
+
 	switch bundle.Result {
 	case quorumpb.ChangeConsensusResult_SUCCESS:
 
-		trxId := "FAKE_ID"
+		trxId := trxId
 		//stop current propose
 		chain.Consensus.Producer().StopPropose()
 		//update producer list
