@@ -389,7 +389,23 @@ func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quo
 		return nil, fmt.Errorf("verify sign failed")
 	}
 
-	//TBD: check if nonce is valid (should large than current nonce)
+	//check if req is already exist or nonce is smaller than current nonces
+	history, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(cp.groupId, cp.nodename)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range history {
+		if item.Req.ReqId == msg.Req.ReqId {
+			molacp_log.Debugf("<%s> change consensus result with reqId <%s> already exist, skip", cp.groupId, msg.Req.ReqId)
+			return nil, fmt.Errorf("change consensus result with reqId <%s> already exist", msg.Req.ReqId)
+		}
+
+		if item.Req.Nonce > msg.Req.Nonce {
+			molacp_log.Debugf("<%s> change consensus result with reqId <%s> nonce <%d> is smaller than current nonce <%d>, skip", cp.groupId, msg.Req.ReqId, msg.Req.Nonce, item.Req.Nonce)
+			return nil, fmt.Errorf("change consensus result with reqId <%s> nonce <%d> is smaller than current nonce <%d>", msg.Req.ReqId, msg.Req.Nonce, item.Req.Nonce)
+		}
+	}
 
 	// create resp
 	resp := &quorumpb.ChangeConsensusResp{
