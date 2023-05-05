@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"time"
 
 	guuid "github.com/google/uuid"
 	"github.com/klauspost/reedsolomon"
@@ -89,18 +90,20 @@ func (r *PCRbc) InputValue(data []byte) error {
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
+		pcrbc_log.Debugf("<%s> send InitProposeMsgs", r.rbcInstPubkey)
 		err := r.SendHBRBCMsg(initMsg, r.acs.Epoch)
 		if err != nil {
 			pcrbc_log.Debugf(err.Error())
 			return err
 		}
+		time.Sleep(1000 * time.Millisecond)
 	}
 
 	return nil
 }
 
 func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
-	pcrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey)
+	pcrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s> (mypubkey <%s>)", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey, r.Config.MyPubkey)
 	if !r.IsProducer(initp.ProposerPubkey) {
 		return fmt.Errorf("<%s> receive proof from non producer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
 	}
@@ -120,7 +123,7 @@ func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 		return err
 	}
 
-	//pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
+	pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
 	return r.SendHBRBCMsg(proofMsg, r.acs.Epoch)
 }
 
@@ -325,6 +328,7 @@ func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg, nonce uint64) error {
 
 	connMgr, err := conn.GetConn().GetConnMgr(r.GroupId)
 	if err != nil {
+		pcrbc_log.Debugf("?????????????????? %s", err.Error())
 		return err
 	}
 	connMgr.BroadcastHBMsg(hbmsg, quorumpb.PackageType_HBB_PC)

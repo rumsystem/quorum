@@ -287,8 +287,8 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	}
 
 	//check if block is from a valid group producer, currently only check if block is produced by owner
-	if !chain.IsOwnerByPubkey(block.ProducerPubkey) {
-		chain_log.Warningf("<%s> received block <%d> from unknown producer, reject it", chain.groupItem.GroupId, block.Epoch, block.ProducerPubkey)
+	if !chain.IsProducerByPubkey(block.ProducerPubkey) {
+		chain_log.Warningf("<%s> received blockid <%d> from unknown producer <%s>, reject it", chain.groupItem.GroupId, block.BlockId, block.ProducerPubkey)
 		return nil
 	}
 
@@ -320,7 +320,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 
 // handle HBB msg from PsConn
 func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
-	//chain_log.Debugf("<%s> HandleHBPsConn called", chain.groupItem.GroupId)
+	chain_log.Debugf("<%s> HandleHBPTPsConn called", chain.groupItem.GroupId)
 
 	//only producers(owner) need to handle HBB message
 	if !chain.IsProducer() {
@@ -336,7 +336,7 @@ func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
 
 // handle psync consensus req from PsConn
 func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
-	//chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
+	chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
 
 	if chain.Consensus.ConsensusProposer() == nil {
 		chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)

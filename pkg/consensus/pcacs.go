@@ -72,6 +72,7 @@ func (a *PCAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
+	ptacs_log.Debugf("ACS HandleHBMessage called, Epoch <%d>, msgType <%s>", a.Epoch, hbmsg.PayloadType.String())
 
 	if hbmsg.Epoch != a.Epoch {
 		ptacs_log.Debugf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.Epoch)
@@ -104,9 +105,9 @@ func (a *PCAcs) handleRbcMsg(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>", initp.ProposerPubkey, initp.RecvNodePubkey)
+
 		if initp.RecvNodePubkey != a.MyPubkey {
-			//ptacs_log.Debugf("not for me")
+			ptacs_log.Debugf("INIT_PROPOSE: sender <%s> receiver <%s>, NOT FOR ME, IGNORE", initp.ProposerPubkey, initp.RecvNodePubkey)
 			return nil
 		}
 
@@ -114,7 +115,7 @@ func (a *PCAcs) handleRbcMsg(payload []byte) error {
 		if !ok {
 			return fmt.Errorf("could not find rbc instance to handle InitPropose form <%s>", initp.ProposerPubkey)
 		}
-
+		//ptacs_log.Debugf("INIT_PROPOSE: is for me, handle it")
 		return rbc.handleInitProposeMsg(initp)
 	case quorumpb.RBCMsgType_ECHO:
 		echo := &quorumpb.Echo{}

@@ -482,9 +482,11 @@ func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quo
 }
 
 func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	//molacp_log.Debugf("<%s> HandleHBPMsg called", cp.groupId)
+	molacp_log.Debugf("<%s> HandleHBPMsg called", cp.groupId)
 	if cp.currBftTask != nil {
 		cp.currBftTask.bft.HandleHBMsg(hbmsg)
+	} else {
+		molacp_log.Debug("<%s> currBftTask is nil, ???", cp.groupId)
 	}
 	return nil
 }

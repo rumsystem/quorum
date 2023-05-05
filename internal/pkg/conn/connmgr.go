@@ -283,6 +283,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 }
 
 func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.PackageType) error {
+	conn_log.Debugf("<%s> BroadcastHBMsg called, type <%s>", connMgr.GroupId, typ.String())
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)

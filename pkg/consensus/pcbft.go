@@ -27,8 +27,9 @@ type PCBft struct {
 	chBftDone chan *quorumpb.ChangeConsensusResultBundle
 	bftCtx    context.Context
 
-	acsInst *PCAcs
-	cIface  def.ChainMolassesIface
+	acsInst   *PCAcs
+	chAcsDone chan *AcsResult
+	cIface    def.ChainMolassesIface
 }
 
 func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensusResultBundle, iface def.ChainMolassesIface) *PCBft {
@@ -39,6 +40,7 @@ func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensus
 		bftCtx:    ctx,
 		chBftDone: ch,
 		cIface:    iface,
+		chAcsDone: make(chan *AcsResult, 1),
 	}
 }
 
@@ -47,22 +49,21 @@ func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof) {
 	bft.currProof = proof
 	datab, _ := proto.Marshal(proof)
 	bft.currProotData = datab
+	acs := NewPCAcs(bft.bftCtx, bft.Config, bft.currProof.Epoch, bft.chAcsDone)
+	bft.acsInst = acs
+	pcbft_log.Debug("AddProof done")
+
 }
 
 func (bft *PCBft) Propose() error {
 	pcbft_log.Debugf("Propose called")
-	chAcsDone := make(chan *AcsResult, 1)
-
-	acs := NewPCAcs(bft.bftCtx, bft.Config, bft.currProof.Epoch, chAcsDone)
-	acs.InputValue(bft.currProotData)
-	bft.acsInst = acs
-
+	bft.acsInst.InputValue(bft.currProotData)
 	for {
 		select {
 		case <-bft.bftCtx.Done():
 			pcbft_log.Debugf("<%s> bft ctx done, quit peacefully", bft.GroupId)
 			return nil
-		case acsResult := <-chAcsDone:
+		case acsResult := <-bft.chAcsDone:
 			pcbft_log.Debugf("acs done")
 			//verify raw result
 			ok, proofMap := bft.verifyRawResult(acsResult.result)
@@ -103,9 +104,11 @@ func (bft *PCBft) Propose() error {
 }
 
 func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	//pcbft_log.Debugf("HandleHBMsg called")
+	pcbft_log.Debugf("PCBFT HandleHBMsg called")
 	if bft.acsInst != nil {
 		bft.acsInst.HandleHBMessage(hbmsg)
+	} else {
+		pcbft_log.Errorf("<%s> acsInst is nil,??????", bft.GroupId)
 	}
 	return nil
 }
