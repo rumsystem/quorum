@@ -27,7 +27,7 @@ type ConsensusProposeTask struct {
 	cancel   context.CancelFunc
 }
 
-type BftTask struct {
+type PCBftTask struct {
 	bft       *PCBft
 	chBftDone chan *quorumpb.ChangeConsensusResultBundle
 	Proof     *quorumpb.ConsensusProof
@@ -43,10 +43,10 @@ type MolassesConsensusProposer struct {
 	chainCtx context.Context
 
 	chProposeTask chan *ConsensusProposeTask
-	chBftTask     chan *BftTask
+	chBftTask     chan *PCBftTask
 
 	currCpTask  *ConsensusProposeTask
-	currBftTask *BftTask
+	currBftTask *PCBftTask
 
 	lock sync.Mutex
 }
@@ -60,7 +60,7 @@ func (cp *MolassesConsensusProposer) NewConsensusProposer(ctx context.Context, i
 	cp.chainCtx = ctx
 
 	cp.chProposeTask = make(chan *ConsensusProposeTask, 1)
-	cp.chBftTask = make(chan *BftTask, 1)
+	cp.chBftTask = make(chan *PCBftTask, 1)
 
 	go cp.ProposeWorker(ctx, cp.chProposeTask)
 	go cp.BftWorker(ctx, cp.chBftTask)
@@ -91,7 +91,6 @@ func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chP
 			//handle it
 			var err error
 		RETRY:
-
 			for retryCnt < int(task.Req.AgreementTickCount) {
 				reqMsg := &quorumpb.ChangeConsensusReqMsg{
 					Req:   task.Req,
@@ -147,7 +146,7 @@ func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chP
 	}
 }
 
-func (cp *MolassesConsensusProposer) BftWorker(chainCtx context.Context, chBftTask <-chan *BftTask) {
+func (cp *MolassesConsensusProposer) BftWorker(chainCtx context.Context, chBftTask <-chan *PCBftTask) {
 	for {
 		select {
 		case <-chainCtx.Done():
@@ -486,7 +485,7 @@ func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error 
 	if cp.currBftTask != nil {
 		cp.currBftTask.bft.HandleHBMsg(hbmsg)
 	} else {
-		molacp_log.Debug("<%s> currBftTask is nil, ???", cp.groupId)
+		molacp_log.Debug("<%s> currBftTask is nil, ??????", cp.groupId)
 	}
 	return nil
 }

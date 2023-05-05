@@ -2,11 +2,7 @@ package consensus
 
 import (
 	"context"
-	"fmt"
-	"runtime"
 	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -23,6 +19,16 @@ var ptbft_log = logging.Logger("ptbft")
 
 var EMPTY_TRX_BUNDLE = "EMPTY_TRX_BUNDLE"
 
+type PTBft struct {
+	Config
+	cIface         def.ChainMolassesIface
+	txBuffer       *TrxBuffer
+	chainCtx       context.Context
+	currTask       *PTTask
+	currTaskCancel context.CancelFunc
+	chPtTask       chan *PTTask
+}
+
 type PTTask struct {
 	Epoch          uint64
 	ProposedData   []byte
@@ -37,28 +43,139 @@ type PTAcsResult struct {
 	result map[string][]byte
 }
 
-type PTBft struct {
-	Config
+func (task *PTTask) Propose() {
+	//ptbft_log.Debugf("<%s> Propose called", bft.GroupId)
 
-	currTask *PTTask
-	txBuffer *TrxBuffer
+	if err != nil {
+		ptbft_log.Debugf("<%s> getNextTask failed with error <%s>", bft.GroupId, err.Error())
+		return
+	}
 
-	localCtx        context.Context
-	localCancelFunc context.CancelFunc
+	bft.currTask = task
+	bft.currTask.acsInsts.InputValue(task.ProposedData)
 
-	cIface def.ChainMolassesIface
+	//wait till acs done or timeout
+	for {
+		select {
+		case <-bft.currTask.taskCtx.Done():
+			//ptbft_log.Debugf("<%s> taskCtx done, die peaceful", bft.GroupId)
+			return
+		case result := <-bft.currTask.chAcsDone:
+			//ptbft_log.Debugf("<%s> acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
+			bft.acsDone(result)
+		}
+
+	}
+}
+
+func (bft *PTBft) getNextTask() (*PTTask, error) {
+	ptbft_log.Debugf("<%s> getNextTask called", bft.GroupId)
+
+	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
+	if err != nil {
+		ptbft_log.Debugf("<%s> GetNRandTrx failed with error <%s>", bft.GroupId, err.Error())
+		return nil, err
+	}
+
+	trxBundle := &quorumpb.HBTrxBundle{}
+	trxBundle.Trxs = append(trxBundle.Trxs, trxs...)
+
+	datab, err := proto.Marshal(trxBundle)
+	if err != nil {
+		ptbft_log.Debugf("<%s> Marshal failed with error <%s>", bft.GroupId, err.Error())
+		return nil, err
+	}
+
+	if len(datab) == 0 {
+		datab = []byte(EMPTY_TRX_BUNDLE)
+	}
+
+	currEpoch := bft.cIface.GetCurrEpoch()
+	proposedEpoch := currEpoch + 1
+
+	ptbft_log.Debugf("<%s> >>> Load task: epoch <%d> try propose the following trxs:", bft.GroupId, proposedEpoch)
+	for _, trx := range trxs {
+		ptbft_log.Debugf("trx : <%s>", trx.TrxId)
+	}
+	if len(trxs) == 0 {
+		ptbft_log.Debugf("<>")
+	}
+
+	chAcsDone := make(chan *PTAcsResult, 1)
+	ctx, cancel := context.WithCancel(bft.chainCtx)
+	task := &PTTask{
+		Epoch:          proposedEpoch,
+		ProposedData:   datab,
+		acsInsts:       NewPTACS(bft.Config, proposedEpoch, chAcsDone),
+		chAcsDone:      chAcsDone,
+		taskCtx:        ctx,
+		taskCancelFunc: cancel,
+	}
+
+	return task, nil
 }
 
 func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PTBft {
 	ptbft_log.Debugf("<%s> NewPTBft called", cfg.GroupId)
-	localCtx, localCancelFunc := context.WithCancel(ctx)
 	return &PTBft{
-		Config:          cfg,
-		txBuffer:        NewTrxBuffer(cfg.GroupId),
-		currTask:        nil,
-		localCtx:        localCtx,
-		localCancelFunc: localCancelFunc,
-		cIface:          iface,
+		Config:   cfg,
+		cIface:   iface,
+		txBuffer: NewTrxBuffer(cfg.GroupId),
+		chainCtx: ctx,
+		currTask: nil,
+		chPtTask: make(chan *PTTask, 1),
+	}
+}
+
+func (bft *PTBft) BftWorker(chainCtx context.Context, chBftTask <-chan *PTTask) {
+	interval, err := nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(bft.GroupId, bft.NodeName)
+	if err != nil {
+		ptbft_log.Debugf("<%s> GetProducerConsensusConfInterval failed with error <%s>", bft.GroupId, err.Error())
+		return
+	}
+
+	for {
+		select {
+		case <-chainCtx.Done():
+			ptbft_log.Debugf("<%s> PTBftWorker exit", bft.GroupId)
+			return
+
+		case task, beforechClosed := <-chBftTask:
+			if chainCtx.Err() != nil {
+				ptbft_log.Debugf("<%s> PTBftWorker exit", bft.GroupId)
+				return
+			}
+
+			if !beforechClosed {
+				ptbft_log.Debugf("<%s> PTBftWorker channel closed", bft.GroupId)
+				return
+			}
+
+			molacp_log.Debug("PTBftWorker got task")
+			task.acsInsts.InputValue(task.ProposedData)
+
+			startTime := time.Now()
+		CONTINUE:
+			select {
+			case <-task.taskCtx.Done():
+				ptbft_log.Debugf("<%s> PTBftWorker taskCtx done", bft.GroupId)
+				break CONTINUE
+			case result := <-task.chAcsDone:
+				ptbft_log.Debugf("<%s> PTBftWorker acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
+				bft.acsDone(result)
+				endTime := time.Now()
+				timeUsage := endTime.Sub(startTime)
+
+				if uint64(timeUsage.Milliseconds()) < interval {
+					idleTime := interval - uint64(timeUsage.Milliseconds())
+					ptbft_log.Debugf("<%s> PTBftWorker task done before timeout, idle for <%d> ms", bft.GroupId, idleTime)
+					time.Sleep(time.Duration(idleTime))
+				}
+			case <-time.After(time.Duration(interval) * time.Millisecond):
+				ptacs_log.Debugf("<%s> PTBftWorker task timeout", bft.GroupId)
+			}
+		}
+
 	}
 }
 
@@ -68,41 +185,21 @@ func (bft *PTBft) AddTrx(tx *quorumpb.Trx) error {
 	return nil
 }
 
-// get goroutine id
-func goid() int {
-	var buf [64]byte
-	n := runtime.Stack(buf[:], false)
-	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
-	id, err := strconv.Atoi(idField)
-	if err != nil {
-		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
-	}
-	return id
-}
-
 func (bft *PTBft) Start() {
+	molaproducer_log.Debugf("<%s> Start called", bft.GroupId)
+	go bft.BftWorker(bft.chainCtx, bft.chPtTask)
 	go func() {
-		goid := goid()
-		ptbft_log.Debugf("<%s> Start called, id <%d>", bft.GroupId, goid)
-		//load propose pulse from config
-		interval, err := nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(bft.GroupId, bft.NodeName)
-		if err != nil {
-			ptbft_log.Debugf("<%s> GetProducerConsensusConfInterval failed with error <%s>", bft.GroupId, err.Error())
-			return
-		}
-
 		for {
-			ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-bft.localCtx.Done():
-					ptbft_log.Debugf("<%s> goid <%d>, local ctx finished called, die peaceful", bft.GroupId, goid)
-					return
-				case <-ticker.C:
-					//ptbft_log.Debugf("<%s> ticker called at <%d>, propose", bft.GroupId, time.Now().Nanosecond())
-					bft.Propose()
-				}
+			task, err := bft.getNextTask()
+			if err != nil {
+				ptbft_log.Debugf("<%s> getNextTask failed with error <%s>", bft.GroupId, err.Error())
+			}
+
+			bft.chPtTask <- task
+			select {
+			case <-bft.chainCtx.Done():
+				ptbft_log.Debugf("<%s> chainctx done, quit", bft.GroupId)
+				return
 			}
 		}
 	}()
@@ -113,74 +210,6 @@ func (bft *PTBft) Stop() {
 	if bft.localCancelFunc != nil {
 		bft.localCancelFunc()
 	}
-}
-
-func (bft *PTBft) Propose() {
-	//ptbft_log.Debugf("<%s> Propose called", bft.GroupId)
-	//stop current task if any
-
-	go func() {
-		if bft.currTask != nil {
-			bft.currTask.taskCancelFunc()
-		}
-		//select some trxs from buffer
-		trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
-		if err != nil {
-			ptbft_log.Debugf("<%s> GetNRandTrx failed with error <%s>", bft.GroupId, err.Error())
-			return
-		}
-
-		trxBundle := &quorumpb.HBTrxBundle{}
-		trxBundle.Trxs = append(trxBundle.Trxs, trxs...)
-
-		datab, err := proto.Marshal(trxBundle)
-		if err != nil {
-			ptbft_log.Debugf("<%s> Marshal failed with error <%s>", bft.GroupId, err.Error())
-			return
-		}
-
-		if len(datab) == 0 {
-			datab = []byte(EMPTY_TRX_BUNDLE)
-		}
-
-		currEpoch := bft.cIface.GetCurrEpoch()
-		proposedEpoch := currEpoch + 1
-
-		chAcsDone := make(chan *PTAcsResult, 1)
-		ctx, cancel := context.WithCancel(bft.localCtx)
-		task := &PTTask{
-			Epoch:          proposedEpoch,
-			ProposedData:   datab,
-			acsInsts:       NewPTACS(bft.Config, proposedEpoch, chAcsDone),
-			chAcsDone:      chAcsDone,
-			taskCtx:        ctx,
-			taskCancelFunc: cancel,
-		}
-
-		bft.currTask = task
-		bft.currTask.acsInsts.InputValue(task.ProposedData)
-
-		ptbft_log.Debugf("<%s> >>> epoch <%d> try propose trxs:", bft.GroupId, proposedEpoch)
-		for _, trx := range trxs {
-			ptbft_log.Debugf("<%s> --- <%s>", bft.GroupId, trx.TrxId)
-		}
-		if len(trxs) == 0 {
-			ptbft_log.Debugf("<%s> --- <>", bft.GroupId)
-		}
-
-		//wait till acs done or timeout
-		for {
-			select {
-			case <-bft.currTask.taskCtx.Done():
-				//ptbft_log.Debugf("<%s> taskCtx done, die peaceful", bft.GroupId)
-				return
-			case result := <-bft.currTask.chAcsDone:
-				//ptbft_log.Debugf("<%s> acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
-				bft.acsDone(result)
-			}
-
-		}
-	}()
 }
 
 func (bft *PTBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
