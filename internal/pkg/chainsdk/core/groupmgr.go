@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"time"
 
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -48,6 +49,7 @@ func (groupMgr *GroupMgr) LoadAllGroups() error {
 			groupMgr_log.Debugf("load group: %s", item.GroupId)
 			groupMgr.Groups[item.GroupId] = group
 			group.LoadGroup(item)
+			time.Sleep(1 * time.Second)
 		}
 	}
 	return nil
@@ -61,6 +63,7 @@ func (groupMgr *GroupMgr) StartSyncAllGroups() error {
 		//comment by cuicat
 		groupMgr_log.Debugf("Group <%s> start syncing", grp.Item.GroupId)
 		grp.StartSync()
+		time.Sleep(1 * time.Second)
 	}
 
 	return nil
