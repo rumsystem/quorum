@@ -40,6 +40,16 @@ func (dbMgr *DbMgr) GetBlock(groupId string, blockId uint64, cached bool, prefix
 	} else {
 		key = GetBlockKey(groupId, blockId, prefix...)
 	}
+
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	if !isExist {
+		return nil, rumerrors.ErrBlockExist
+	}
+
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err

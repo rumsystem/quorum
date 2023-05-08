@@ -1,13 +1,19 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
+
+type GetTrxResponse struct {
+	Trx    *pb.Trx `json:"trx"`
+	Status string  `json:"status"`
+}
 
 // @Tags Chain
 // @Summary GetTrx
@@ -18,10 +24,9 @@ import (
 // @Success 200 {object} pb.Trx
 // @Router /api/v1/trx/{group_id}/{trx_id} [get]
 func (h *Handler) GetTrx(c echo.Context) (err error) {
-	cc := c.(*utils.CustomContext)
-	var params handlers.GetTrxParam
-	if err := cc.BindAndValidate(&params); err != nil {
-		return err
+	groupid := c.Param("group_id")
+	if groupid == "" {
+		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
 	}
 
 	trxid := c.Param("trx_id")
@@ -29,15 +34,24 @@ func (h *Handler) GetTrx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidTrxID)
 	}
 
-	groupid := c.Param("group_id")
-	if groupid == "" {
-		return rumerrors.NewBadRequestError(rumerrors.ErrInvalidGroupID)
-	}
+	groupmgr := chain.GetGroupMgr()
+	if group, ok := groupmgr.Groups[groupid]; ok {
+		trx, isOnChain, err := group.GetTrx(trxid)
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
 
-	trx, err := handlers.GetTrx(groupid, trxid)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
+		resp := &GetTrxResponse{
+			Trx: trx,
+		}
 
-	return c.JSON(http.StatusOK, trx)
+		if isOnChain {
+			resp.Status = "onchain"
+		} else {
+			resp.Status = "offchain"
+		}
+		return c.JSON(http.StatusOK, resp)
+	} else {
+		return rumerrors.NewBadRequestError(fmt.Sprintf("Group %s not exist", groupid))
+	}
 }

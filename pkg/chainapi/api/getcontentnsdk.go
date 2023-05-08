@@ -31,6 +31,15 @@ type GetGroupCtnReqItem struct {
 	Req     []byte `json:"Req" validate:"required" swaggertype:"primitive,string"` // base64 encoded req data
 }
 
+type TrxItem struct {
+	Trx    *quorumpb.Trx `json:"trx"`
+	Status string        `json:"status"`
+}
+
+type GetGroupCtnResponse struct {
+	TrxList []*TrxItem `json:"trx_list"`
+}
+
 // @Tags NodeAPI
 // @Summary GetContentNSdk
 // @Description get content
@@ -93,14 +102,25 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	trxList := []*quorumpb.Trx{}
+	trxList := []*TrxItem{}
 	for _, trxid := range trxids {
-		trx, err := group.GetTrx(trxid)
+		trx, isOnChain, err := group.GetTrx(trxid)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue
 		}
-		trxList = append(trxList, trx)
+
+		trxItem := &TrxItem{
+			Trx: trx,
+		}
+
+		if isOnChain {
+			trxItem.Status = "onchain"
+		} else {
+			trxItem.Status = "offchain"
+		}
+
+		trxList = append(trxList, trxItem)
 	}
 	return c.JSON(http.StatusOK, trxList)
 }

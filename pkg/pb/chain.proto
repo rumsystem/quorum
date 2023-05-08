@@ -66,7 +66,7 @@ message Block {
     repeated    Trx Trxs           = 6;
     int64       TimeStamp          = 8;       
     bytes       BlockHash          = 9;
-    bytes       ProducerSign       = 10;        
+    bytes       ProducerSign       = 10;  
 }
 
 enum GroupBroadcastType {

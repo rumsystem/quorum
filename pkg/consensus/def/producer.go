@@ -11,6 +11,6 @@ type Producer interface {
 	StartPropose()
 	StopPropose()
 	AddBlock(block *quorumpb.Block) error
-	AddTrx(trx *quorumpb.Trx)
+	AddTrxToTxBuffer(trx *quorumpb.Trx)
 	HandleHBMsg(hb *quorumpb.HBMsgv1) error
 }

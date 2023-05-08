@@ -218,12 +218,3 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 
 	return true, nil
 }
-
-// get all trxs from the blocks list
-func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
-	var trxs []*quorumpb.Trx
-	for _, block := range blocks {
-		trxs = append(trxs, block.Trxs...)
-	}
-	return trxs, nil
-}

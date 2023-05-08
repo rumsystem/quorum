@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -28,7 +27,6 @@ type PTBft struct {
 	currTask      *PTTask
 	bftCtx        context.Context
 	bftCancelFunc context.CancelFunc
-	locker        sync.Mutex
 }
 
 type PTTask struct {
@@ -180,8 +178,6 @@ func (bft *PTBft) AddTrx(tx *quorumpb.Trx) error {
 
 func (bft *PTBft) Start() {
 	ptbft_log.Debugf("<%s> Start called", bft.GroupId)
-	bft.locker.Lock()
-	defer bft.locker.Unlock()
 	if bft.bftCtx != nil {
 		bft.bftCancelFunc()
 	}
@@ -192,10 +188,6 @@ func (bft *PTBft) Start() {
 
 func (bft *PTBft) Stop() {
 	ptbft_log.Debugf("<%s> Stop called", bft.GroupId)
-
-	bft.locker.Lock()
-	defer bft.locker.Unlock()
-
 	if bft.bftCtx != nil {
 		bft.bftCancelFunc()
 		bft.bftCtx = nil
@@ -207,12 +199,11 @@ func (bft *PTBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
 	if bft.currTask != nil {
 		return bft.currTask.acsInsts.HandleHBMessage(hbmsg)
 	}
-
 	return nil
 }
 
 func (bft *PTBft) acsDone(result *PTAcsResult) {
-	ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
+	//ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 
 	//decode trxs
@@ -239,7 +230,6 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 	ptbft_log.Debugf("<%s> >>> epoch <%d> done, trxs to package", bft.GroupId, result.epoch)
 	//try package trxs with a new block
 	if len(trxs) != 0 {
-
 		for _, trx := range trxs {
 			ptbft_log.Debugf("<%s> --- <%s>", bft.GroupId, trx.TrxId)
 		}
@@ -247,7 +237,7 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 		//Try build block and broadcast it
 		err := bft.buildBlock(result.epoch, trxs)
 		if err != nil {
-			ptbft_log.Warnf("<%s> Build block failed at epoch %d, error %s", bft.GroupId, result.epoch, err.Error())
+			ptbft_log.Warnf("<%s> Build block failed at epoch <%d>, error <%s>", bft.GroupId, result.epoch, err.Error())
 			return
 		}
 		//remove outputed trxs from buffer
@@ -293,7 +283,7 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		}
 
 		//save it
-		//ptbft_log.Debugf("<%s> save block just built to local db", bft.producer.groupId)
+		ptbft_log.Debugf("<%s> save block just built to local db", bft.GroupId)
 		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.NodeName)
 		if err != nil {
 			return err

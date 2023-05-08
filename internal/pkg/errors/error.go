@@ -22,6 +22,7 @@ var (
 	ErrInvalidTrxID     = errors.New("Invalid trx id")
 	ErrInvalidTrxIDList = errors.New("Invalid trx id list")
 	ErrInvalidTrxData   = errors.New("Invalid trx data")
+	ErrTrxIdNotFound    = errors.New("Trx id not found")
 
 	ErrPrivateGroupNotSupported   = errors.New("Private group is not supported")
 	ErrEncryptionTypeNotSupported = errors.New("Encryption type is not supported")

@@ -1,6 +1,8 @@
 package chain
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -288,19 +290,33 @@ func (grp *Group) GetRexSyncerStatus() string {
 	return grp.ChainCtx.GetRexSyncerStatus()
 }
 
-func (grp *Group) GetBlock(blockId uint64) (*quorumpb.Block, error) {
+func (grp *Group) GetBlock(blockId uint64) (blk *quorumpb.Block, isOnChain bool, err error) {
 	group_log.Debugf("<%s> GetBlock called, blockId: <%d>", grp.Item.GroupId, blockId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, blockId, false, grp.Nodename)
+	block, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, blockId, false, grp.Nodename)
+	if err == nil {
+		return block, true, nil
+	}
+	block, err = nodectx.GetNodeCtx().GetChainStorage().GetBlock(grp.Item.GroupId, blockId, true, grp.Nodename)
+	if err == nil {
+		return block, false, nil
+	}
+
+	return nil, false, fmt.Errorf("GetBlock failed, block <%d> not exist", blockId)
 }
 
-func (grp *Group) GetTrx(trxId string) (*quorumpb.Trx, error) {
+func (grp *Group) GetTrx(trxId string) (tx *quorumpb.Trx, isOnChain bool, err error) {
 	group_log.Debugf("<%s> GetTrx called trxId: <%s>", grp.Item.GroupId, trxId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.Nodename)
-}
+	trx, err := nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Chain, grp.Nodename)
+	if err == nil {
+		return trx, true, nil
+	}
 
-func (grp *Group) GetTrxFromCache(trxId string) (*quorumpb.Trx, error) {
-	group_log.Debugf("<%s> GetTrxFromCache called trxId: <%s>", grp.Item.GroupId, trxId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.Nodename)
+	trx, err = nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.Item.GroupId, trxId, def.Cache, grp.Nodename)
+	if err == nil {
+		return trx, false, nil
+	}
+
+	return nil, false, fmt.Errorf("GetTrx failed, trx <%s> not exist", trxId)
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {

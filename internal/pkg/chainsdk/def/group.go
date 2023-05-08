@@ -6,8 +6,7 @@ import (
 
 type GroupIface interface {
 	SendRawTrx(trx *quorumpb.Trx) (string, error)
-	GetTrx(trxId string) (*quorumpb.Trx, error)
-	GetTrxFromCache(trxId string) (*quorumpb.Trx, error)
+	GetTrx(trxId string) (*quorumpb.Trx, bool, error)
 	GetRexSyncerStatus() string
 }
 

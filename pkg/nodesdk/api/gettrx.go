@@ -23,6 +23,11 @@ type Trx struct {
 	StorageType  string
 }
 
+type GetTrxResponse struct {
+	Trx       Trx
+	IsOnChain string
+}
+
 const GET_TRX_URI string = "/api/v1/trx"
 
 func (h *NodeSDKHandler) GetTrx() echo.HandlerFunc {
@@ -55,7 +60,7 @@ func (h *NodeSDKHandler) GetTrx() echo.HandlerFunc {
 
 		path := GET_TRX_URI + "/" + groupid + "/" + trxid
 
-		result := new(Trx)
+		result := new(GetTrxResponse)
 		err = httpClient.RequestChainAPI(path, http.MethodGet, nil, nil, result)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)

@@ -271,7 +271,12 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 		return nil
 	}
 
-	chain.Consensus.Producer().AddTrx(trx)
+	if !chain.IsProducer() {
+		chain_log.Warningf("<%s> producerAddTrx failed, not producer", chain.groupItem.GroupId)
+		return nil
+	}
+
+	chain.Consensus.Producer().AddTrxToTxBuffer(trx)
 	return nil
 }
 
@@ -279,14 +284,7 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlockPsConn called", chain.groupItem.GroupId)
 
-	// all approved producers(owner) should ignore block from psconn (they gonna build block by themselves)
-	// when sync, for all node blocks will come from rex channel
-	if chain.IsProducer() {
-		//chain_log.Infof("producer(owner) ignore incoming block from psconn")
-		return nil
-	}
-
-	//check if block is from a valid group producer, currently only check if block is produced by owner
+	//check if block is from a valid group producer
 	if !chain.IsProducerByPubkey(block.ProducerPubkey) {
 		chain_log.Warningf("<%s> received blockid <%d> from unknown producer <%s>, reject it", chain.groupItem.GroupId, block.BlockId, block.ProducerPubkey)
 		return nil
@@ -296,21 +294,21 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
 		err := chain.Consensus.Producer().AddBlock(block)
 		if err != nil {
-			chain_log.Warningf("<%s> announced producer add block error <%s>", chain.groupItem.GroupId, err.Error())
+			chain_log.Warningf("<%s> producer node add block error <%s>", chain.groupItem.GroupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Debugf("<%s> announced producer add block, parent not exist, blockId <%d>, currBlockId <%d>",
+				chain_log.Debugf("<%s> announced producer add block, parent not exist, blockId <%d>, currBlockId <%d>, wait syncing",
 					chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
 			}
 		}
 		return err
 	}
 
-	//for all node run as FULLNODE
+	//Fullnode at block
 	err := chain.Consensus.User().AddBlock(block)
 	if err != nil {
 		chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
 		if err.Error() == "PARENT_NOT_EXIST" {
-			chain_log.Infof("<%s> block parent not exist, blockId <%s>, currBlockId <%d>",
+			chain_log.Infof("<%s> block parent not exist, blockId <%s>, currBlockId <%d>, wait syncing",
 				chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
 		}
 	}
@@ -496,7 +494,6 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 				return err
 			}
 		}
-
 		return nil
 	}
 
