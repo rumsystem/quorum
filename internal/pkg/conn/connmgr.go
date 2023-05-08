@@ -219,7 +219,7 @@ func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string
 		return err
 	}
 
-	conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+	//conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
 	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
 }
@@ -260,7 +260,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 	}
 
 	if s == nil {
-		return errors.New("Resp peer steam can't be nil")
+		return errors.New("resp peer steam can't be nil")
 	}
 
 	// compress trx.Data
@@ -283,7 +283,7 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 }
 
 func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.PackageType) error {
-	conn_log.Debugf("<%s> BroadcastHBMsg called, type <%s>", connMgr.GroupId, typ.String())
+	//conn_log.Debugf("<%s> BroadcastHBMsg called, type <%s>", connMgr.GroupId, typ.String())
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(hbb)

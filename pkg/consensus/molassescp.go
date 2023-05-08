@@ -91,6 +91,7 @@ func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chP
 			//handle it
 			var err error
 		RETRY:
+
 			for retryCnt < int(task.Req.AgreementTickCount) {
 				reqMsg := &quorumpb.ChangeConsensusReqMsg{
 					Req:   task.Req,
@@ -325,7 +326,7 @@ func (cp *MolassesConsensusProposer) createProposeTask(ctx context.Context, prod
 	return cpTask, nil
 }
 
-func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quorumpb.ChangeConsensusReqMsg) (*BftTask, error) {
+func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quorumpb.ChangeConsensusReqMsg) (*PCBftTask, error) {
 	molacp_log.Debugf("<%s> createBftTask called", cp.groupId)
 
 	//check if req is from group owner
@@ -468,7 +469,7 @@ func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quo
 	chBftDone := make(chan *quorumpb.ChangeConsensusResultBundle, 1)
 
 	// create bft task
-	bftTask := &BftTask{
+	bftTask := &PCBftTask{
 		ctx:       bftCtx,
 		cancel:    bftCancel,
 		bft:       NewPCBft(bftCtx, *config, chBftDone, cp.cIface),

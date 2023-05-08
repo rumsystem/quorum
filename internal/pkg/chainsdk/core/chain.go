@@ -320,7 +320,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 
 // handle HBB msg from PsConn
 func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
-	chain_log.Debugf("<%s> HandleHBPTPsConn called", chain.groupItem.GroupId)
+	//chain_log.Debugf("<%s> HandleHBPTPsConn called", chain.groupItem.GroupId)
 
 	//only producers(owner) need to handle HBB message
 	if !chain.IsProducer() {
@@ -336,7 +336,7 @@ func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
 
 // handle psync consensus req from PsConn
 func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
-	chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
+	//chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
 
 	if chain.Consensus.ConsensusProposer() == nil {
 		chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)
