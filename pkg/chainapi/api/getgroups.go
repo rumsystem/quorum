@@ -8,9 +8,11 @@ import (
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/labstack/echo/v4"
+	"github.com/libp2p/go-libp2p/core/peer"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 )
 
 type GroupInfo struct {
@@ -28,6 +30,7 @@ type GroupInfo struct {
 	LastUpdated     int64              `json:"last_updated" validate:"required" example:"1633022375303983600"`
 	RexSyncerStatus string             `json:"rex_syncer_status" validate:"required" example:"IDLE"`
 	RexSyncerResult *def.RexSyncResult `json:"rex_Syncer_result" validate:"required"`
+	Peers           []peer.ID          `json:"peers" validate:"required" example:"16Uiu2HAkuXLC2hZTRbWToCNztyWB39KDi8g66ou3YrSzeTbsWsFG,16Uiu2HAm8XVpfQrJYaeL7XtrHC3FvfKt2QW7P8R3MBenYyHxu8Kk"`
 }
 
 type GroupInfoList struct {
@@ -121,6 +124,7 @@ func getGroupInfo(groupId string) (*GroupInfo, error) {
 	}
 	group.RexSyncerStatus = value.GetRexSyncerStatus()
 	group.RexSyncerResult, _ = value.ChainCtx.GetLastRexSyncResult()
+	group.Peers = nodectx.GetNodeCtx().ListGroupPeers(groupId)
 
 	return group, nil
 }
