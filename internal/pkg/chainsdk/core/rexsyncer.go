@@ -128,14 +128,8 @@ func (rs *RexSyncer) Start() {
 
 				//get next task
 				newTask := rs.getNextSyncTask()
-				rex_syncer_log.Debugf("11111111111111111")
-
 				rs.chSyncTask <- newTask
-				rex_syncer_log.Debugf("2222222222222222")
-
 				<-newTask.taskDone
-				rex_syncer_log.Debugf("3333333333333333")
-
 			}
 		}
 	}()
