@@ -58,9 +58,6 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	//create context with cancel function, chainCtx will be ctx parent of all underlay components
 	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
 
-	//initial Syncer
-	chain.rexSyncer = NewRexSyncer(chain.groupItem.GroupId, chain.nodename, chain, chain)
-
 	//initial chaindata manager
 	chain.chaindata = &ChainData{
 		nodename:       chain.nodename,
@@ -94,6 +91,9 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 		chain_log.Debugf("<%s> initial consensus", item.GroupId)
 		nodectx.GetNodeCtx().GetChainStorage().SetProducerConsensusConfInterval(chain.groupItem.GroupId, uint64(DEFAULT_PROPOSE_TRX_INTERVAL), chain.nodename)
 	}
+
+	//initial Syncer
+	chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 
 	return nil
 }
@@ -745,9 +745,7 @@ func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
-
-	//commented by cuicat for debug
-	//chain.rexSyncer.Start()
+	chain.rexSyncer.Start()
 	return nil
 }
 
@@ -766,7 +764,7 @@ func (chain *Chain) GetRexSyncerStatus() string {
 	switch status {
 	case IDLE:
 		statusStr = "IDLE"
-	case SYNCING:
+	case RUNNING:
 		statusStr = "SYNCING"
 	case CLOSED:
 		statusStr = "CLOSED"

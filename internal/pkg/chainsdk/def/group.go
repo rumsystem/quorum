@@ -16,5 +16,4 @@ type RexSyncResult struct {
 	BlockProvided         int32
 	SyncResult            string
 	LastSyncTaskTimestamp int64
-	NextSyncTaskTimeStamp int64
 }
