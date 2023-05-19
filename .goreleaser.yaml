@@ -19,9 +19,25 @@ builds:
 
 dockers:
   - image_templates:
-      - rumsystem/quorum
-    goos: linux
+      ["ghcr.io/rumsystem/{{ .ProjectName }}:{{ .Version }}-amd64"]
     goarch: amd64
+    goos: linux
+    dockerfile: Dockerfile-goreleaser
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/rumsystem/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+
+docker_manifests:
+  - name_template: ghcr.io/rumsystem/{{ .ProjectName }}:{{ .Version }}
+    image_templates:
+      - ghcr.io/rumsystem/{{ .ProjectName }}:{{ .Version }}-amd64
+  - name_template: ghcr.io/rumsystem/{{ .ProjectName }}:latest
+    image_templates:
+      - ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Version }}-amd64
 
 archives:
   - format: tar.gz

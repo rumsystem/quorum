@@ -32,7 +32,7 @@ type StartServerParam struct {
 func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
-	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
+	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.LocalhostSkipper,
@@ -67,7 +67,7 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
-	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
+	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.LocalhostSkipper,
@@ -92,6 +92,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 
 	r.GET("/v1/groups", h.GetGroups)
+	r.GET("/v1/group/:group_id", h.GetGroupById)
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
@@ -135,10 +136,10 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
-	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWTKey)
+	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
 	e.Use(middleware.JWTWithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
-		Skipper:   rummiddleware.LocalhostSkipper,
+		Skipper:   rummiddleware.JWTSkipper,
 		Policy:    policyStr,
 		Query:     "x = data.quorum.restapi.authz.allow", // FIXME: hardcode
 		InputFunc: opaInputFunc,
@@ -172,6 +173,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 	r.GET("/v1/groups", h.GetGroups)
+	r.GET("/v1/group/:group_id", h.GetGroupById)
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
@@ -189,8 +191,12 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
 
 	//app api
+	a.POST("/v1/token", apph.CreateToken)
+	a.DELETE("/v1/token", apph.RemoveToken)
 	a.POST("/v1/token/refresh", apph.RefreshToken)
-	a.POST("/v1/token/create", apph.CreateToken)
+	a.POST("/v1/token/revoke", apph.RevokeToken)
+	a.GET("/v1/token/list", apph.ListToken)
+
 	a.GET("/v1/group/:group_id/content", apph.ContentByPeers)
 
 	if nodeopt.EnableRelay {
@@ -204,11 +210,27 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/ws/trx", h.WebsocketManager.WsConnect)
 
 	//for nodesdk
-	r.POST("/v1/node/trx/:group_id", h.SendTrx)
-	r.POST("/v1/node/groupctn/:group_id", h.GetContentNSdk)
-	r.POST("/v1/node/getchaindata/:group_id", h.GetDataNSdk)
-	r.GET("/v1/node/getencryptpubkeys/:group_id", h.GetUserEncryptPubKeys)
-	r.POST("/v1/node/announce/:group_id", h.AnnounceNodeSDK)
+	{
+		n := e.Group("/api/v1/node")
+
+		n.POST("/:group_id/trx", h.NSdkSendTrx)
+		n.GET("/:group_id/groupctn", h.GetNSdkContent)
+
+		// auth
+		n.GET("/:group_id/auth/by/:trx_type", h.GetNSdkAuthType)
+		n.GET("/:group_id/auth/alwlist", h.GetNSdkAllowList)
+		n.GET("/:group_id/auth/denylist", h.GetNSdkDenyList)
+
+		// appconfig
+		n.GET("/:group_id/appconfig/keylist", h.GetNSdkAppconfigKeylist)
+		n.GET("/:group_id/appconfig/by/:key", h.GetNSdkAppconfigByKey)
+
+		// announce
+		n.POST("/:group_id/announce", h.AnnounceNodeSDK)
+
+		n.GET("/:group_id/info", h.GetNSdkGroupInfo)
+		n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)
+	}
 
 	// start https or http server
 	host := config.APIHost

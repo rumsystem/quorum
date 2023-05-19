@@ -18,23 +18,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type (
-	trxParam struct {
-		TrxId        string
-		GroupId      string
-		Data         []byte
-		TimeStamp    int64
-		Version      string
-		Expired      int64
-		Nonce        int
-		SenderPubkey string
-	}
-)
-
-func nodesdkSendTrx(urls []string, payload *NodeSDKSendTrxItem) (*SendTrxResult, error) {
-	urlSuffix := fmt.Sprintf("/api/v1/node/trx/%s", payload.GroupId)
+func nodesdkSendTrx(urls []string, payload *NSdkSendTrxParams) (*SendTrxResult, error) {
+	path := fmt.Sprintf("/api/v1/node/%s/trx", payload.GroupId)
 	var result SendTrxResult
-	_, _, err := requestNSdk(urls, urlSuffix, "POST", payload, nil, &result, false)
+	_, _, err := requestNSdk(urls, path, "POST", payload, nil, &result, false)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +79,6 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		Data:         encryptData,
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
-		Expired:      now.Add(5 * time.Minute).UnixNano(),
 		Nonce:        0, // Note: hardcode
 		SenderPubkey: ethPubkey,
 	}
@@ -108,29 +94,14 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		t.Errorf("generate eth signature failed: %s", err)
 	}
 
-	trxBytes, err := proto.Marshal(&trx)
-	if err != nil {
-		t.Errorf("proto.Marshal trx failed: %s", err)
-	}
-
-	trxJson := struct {
-		TrxBytes []byte
-	}{
-		TrxBytes: trxBytes,
-	}
-	trxJsonBytes, err := json.Marshal(trxJson)
-	if err != nil {
-		t.Errorf("json.Marshal trxJson failed: %s", err)
-	}
-
-	encTrxJson, err := localcrypto.AesEncrypt(trxJsonBytes, ciperKey)
-	if err != nil {
-		t.Errorf("json.Marshal trxJson failed: %s", err)
-	}
-
-	payload := NodeSDKSendTrxItem{
-		GroupId: group.GroupId,
-		TrxItem: encTrxJson,
+	payload := NSdkSendTrxParams{
+		GroupId:      group.GroupId,
+		TrxId:        trx.TrxId,
+		Data:         trx.Data,
+		Version:      trx.Version,
+		SenderPubkey: trx.SenderPubkey,
+		SenderSign:   trx.SenderSign,
+		TimeStamp:    trx.TimeStamp,
 	}
 
 	if _, err := nodesdkSendTrx(urls, &payload); err != nil {
@@ -163,13 +134,9 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 	if err != nil {
 		t.Errorf("json.Marshal obj failed: %s", err)
 	}
-	seed, urls, err := handlers.UrlToGroupSeed(group.Seed)
+	_, urls, err := handlers.UrlToGroupSeed(group.Seed)
 	if err != nil {
 		t.Errorf("convert group send url failed: %s", err)
-	}
-	ciperKey, err := hex.DecodeString(seed.CipherKey)
-	if err != nil {
-		t.Errorf("convert seed.CipherKey failed: %s", err)
 	}
 
 	encryptPubkeys, err := getUserEncryptPubKeys(urls, group.GroupId)
@@ -197,7 +164,6 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		Data:         encryptData.Bytes(),
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
-		Expired:      now.Add(5 * time.Minute).UnixNano(),
 		Nonce:        0, // Note: hardcode
 		SenderPubkey: ethPubkey,
 	}
@@ -213,29 +179,14 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		t.Errorf("generate eth signature failed: %s", err)
 	}
 
-	trxBytes, err := proto.Marshal(&trx)
-	if err != nil {
-		t.Errorf("proto.Marshal trx failed: %s", err)
-	}
-
-	trxJson := struct {
-		TrxBytes []byte
-	}{
-		TrxBytes: trxBytes,
-	}
-	trxJsonBytes, err := json.Marshal(trxJson)
-	if err != nil {
-		t.Errorf("json.Marshal trxJson failed: %s", err)
-	}
-
-	encTrxJson, err := localcrypto.AesEncrypt(trxJsonBytes, ciperKey)
-	if err != nil {
-		t.Errorf("json.Marshal trxJson failed: %s", err)
-	}
-
-	payload := NodeSDKSendTrxItem{
-		GroupId: group.GroupId,
-		TrxItem: encTrxJson,
+	payload := NSdkSendTrxParams{
+		GroupId:      group.GroupId,
+		TrxId:        trx.TrxId,
+		Data:         trx.Data,
+		Version:      trx.Version,
+		SenderPubkey: trx.SenderPubkey,
+		SenderSign:   trx.SenderSign,
+		TimeStamp:    trx.TimeStamp,
 	}
 
 	if _, err := nodesdkSendTrx(urls, &payload); err != nil {

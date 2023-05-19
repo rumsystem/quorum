@@ -1,0 +1,8 @@
+FROM scratch
+WORKDIR /
+COPY quorum /quorum
+EXPOSE 8000
+EXPOSE 8001
+EXPOSE 8002
+USER quorum:quorum
+ENTRYPOINT ["/quorum"]

@@ -17,10 +17,11 @@ import (
 )
 
 type CreateGroupParam struct {
-	GroupName      string `from:"group_name"      json:"group_name"      validate:"required,max=100,min=2" example:"demo group"`
-	ConsensusType  string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa" example:"poa"`
-	EncryptionType string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private" example:"public"`
-	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4" example:"test_app"`
+	GroupName       string `from:"group_name"      json:"group_name"      validate:"required,max=100,min=2" example:"demo group"`
+	ConsensusType   string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa" example:"poa"`
+	EncryptionType  string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private" example:"public"`
+	AppKey          string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4" example:"test_app"`
+	IncludeChainUrl bool   `json:"include_chain_url" example:"true"`
 }
 
 type JoinGroupParamV2 struct {

@@ -51,9 +51,6 @@ type GetGroupCtnResponse struct {
 // @Router  /api/v1/node/groupctn/{group_id} [post]
 func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	if is_user_blocked(c) {
-		return c.JSON(http.StatusForbidden, "")
-	}
 
 	getGroupCtnReqItem := new(GetGroupCtnReqItem)
 	if err := cc.BindAndValidate(getGroupCtnReqItem); err != nil {

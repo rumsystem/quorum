@@ -86,12 +86,12 @@ func (node *Node) AddPeers(ctx context.Context, peers []peer.AddrInfo) int {
 		defer cancel()
 		err := node.Host.Connect(pctx, peer)
 		if err != nil {
-			metric.FailedCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
+			metric.PubSubFailedCount.WithLabelValues(metric.PubSubActionType.ConnectPeer).Inc()
 			networklog.Warningf("connect peer failure: %s", peer)
 			cancel()
 			continue
 		} else {
-			metric.SuccessCount.WithLabelValues(metric.ActionType.ConnectPeer).Inc()
+			metric.PubSubSuccessCount.WithLabelValues(metric.PubSubActionType.ConnectPeer).Inc()
 			connectedCount++
 			networklog.Infof("connect: %s", peer)
 		}

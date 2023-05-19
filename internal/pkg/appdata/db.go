@@ -2,11 +2,11 @@ package appdata
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/google/orderedcode"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
@@ -85,16 +85,29 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 		if err != nil {
 			return err
 		}
-		dataidx := bytes.LastIndexByte(k, byte('_'))
-		parts := strings.Split(string(k[dataidx+1:]), ":")
-		if len(parts) != 2 {
-			e := fmt.Errorf("can not get sender and trxid from %s", k[dataidx:])
-			return e
+
+		dataidx := bytes.Index(k[len(prefix):], []byte("_"))
+		if dataidx < 0 {
+			return nil
 		}
-		sender, trxid := parts[0], parts[1][:36]
-		if len(sender) != 46 {
-			e := fmt.Errorf("invalid sender: %s", sender)
-			return e
+		dataidx = len(prefix) + dataidx + 1
+
+		parts := bytes.Split(k[dataidx:], []byte(":"))
+		if len(parts) != 2 {
+			appdatalog.Warnf("can not get sender and trxid from %s", k[dataidx:])
+			return nil
+		}
+
+		// Note: sender, trxid contains bytes "\x00\x01"
+		sender, trxid := string(parts[0]), string(parts[1])[:36]
+		sender = sender[len(sender)-44:]
+		if len(sender) != 44 {
+			appdatalog.Warnf("key hex: %s prefix: %s invalid sender hex: <%s> len(sender): %d", hex.EncodeToString(k), prefix, hex.EncodeToString([]byte(sender)), len(sender))
+			return nil
+		}
+		if len(trxid) != 36 {
+			appdatalog.Warnf("key hex: %s prefix: %s invalid trxid hex: %s", hex.EncodeToString(k), prefix, hex.EncodeToString([]byte(trxid)))
+			return nil
 		}
 
 		if runcollector {

@@ -70,21 +70,21 @@ func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainData
 	psconn.Topic, err = psconn.ps.Join(cId)
 	if err != nil {
 		channel_log.Infof("Join <%s> failed", cId)
-		metric.FailedCount.WithLabelValues(metric.ActionType.JoinTopic).Inc()
+		metric.PubSubFailedCount.WithLabelValues(metric.PubSubActionType.JoinTopic).Inc()
 		return err
 	} else {
 		channel_log.Infof("Join <%s> done", cId)
-		metric.SuccessCount.WithLabelValues(metric.ActionType.JoinTopic).Inc()
+		metric.PubSubSuccessCount.WithLabelValues(metric.PubSubActionType.JoinTopic).Inc()
 	}
 
 	psconn.Subscription, err = psconn.Topic.Subscribe()
 	if err != nil {
 		channel_log.Errorf("Subscribe <%s> failed: %s", cId, err)
-		metric.FailedCount.WithLabelValues(metric.ActionType.SubscribeTopic).Inc()
+		metric.PubSubFailedCount.WithLabelValues(metric.PubSubActionType.SubscribeTopic).Inc()
 		return err
 	} else {
 		channel_log.Infof("Subscribe <%s> done", cId)
-		metric.SuccessCount.WithLabelValues(metric.ActionType.SubscribeTopic).Inc()
+		metric.PubSubSuccessCount.WithLabelValues(metric.PubSubActionType.SubscribeTopic).Inc()
 	}
 
 	go psconn.handleGroupChannel(psconn.Ctx)
@@ -103,12 +103,12 @@ func (psconn *P2pPubSubConn) Publish(data []byte) error {
 	//set a 2 Second timeout for pubsub Publish
 	err := psconn.Topic.Publish(publishctx, data)
 	if err != nil {
-		metric.FailedCount.WithLabelValues(metric.ActionType.PublishToTopic).Inc()
+		metric.PubSubFailedCount.WithLabelValues(metric.PubSubActionType.PublishToTopic).Inc()
 	} else {
 		size := float64(metric.GetBinarySize(data))
-		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToTopic).Inc()
-		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToTopic).Set(size)
-		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToTopic).Add(size)
+		metric.PubSubSuccessCount.WithLabelValues(metric.PubSubActionType.PublishToTopic).Inc()
+		metric.PubSubOutBytes.WithLabelValues(metric.PubSubActionType.PublishToTopic).Set(size)
+		metric.PubSubOutBytesTotal.WithLabelValues(metric.PubSubActionType.PublishToTopic).Add(size)
 	}
 
 	return err
@@ -122,13 +122,13 @@ func (psconn *P2pPubSubConn) handleGroupChannel(ctx context.Context) error {
 			var pkg quorumpb.Package
 			if err := proto.Unmarshal(msg.Data, &pkg); err == nil {
 				size := float64(metric.GetProtoSize(&pkg))
-				metric.SuccessCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
-				metric.InBytes.WithLabelValues(metric.ActionType.ReceiveFromTopic).Set(size)
-				metric.InBytesTotal.WithLabelValues(metric.ActionType.ReceiveFromTopic).Add(size)
+				metric.PubSubSuccessCount.WithLabelValues(metric.PubSubActionType.ReceiveFromTopic).Inc()
+				metric.PubSubInBytes.WithLabelValues(metric.PubSubActionType.ReceiveFromTopic).Set(size)
+				metric.PubSubInBytesTotal.WithLabelValues(metric.PubSubActionType.ReceiveFromTopic).Add(size)
 				psconn.chain.HandlePsConnMessage(&pkg)
 
 			} else {
-				metric.FailedCount.WithLabelValues(metric.ActionType.ReceiveFromTopic).Inc()
+				metric.PubSubFailedCount.WithLabelValues(metric.PubSubActionType.ReceiveFromTopic).Inc()
 				channel_log.Warningf(err.Error())
 				channel_log.Warningf("%s", msg.Data)
 			}

@@ -17,22 +17,10 @@ func GetOrCreateGroupNodeJwt(groupId string) (string, error) {
 	nodeoptions := options.GetNodeOptions()
 
 	jwtName := fmt.Sprintf("allow-%s", groupId)
-	jwt := nodeoptions.GetJWTTokenMap(jwtName)
-	if jwt == "" {
-		var err error
-		jwt, err = utils.NewJWTToken(
-			jwtName,
-			"node",
-			[]string{groupId},
-			nodeoptions.JWTKey,
-			time.Now().Add(time.Hour*24*365*5), // 5 years
-		)
-		if err != nil {
-			return "", err
-		}
-		if err := nodeoptions.SetJWTTokenMap(jwtName, jwt); err != nil {
-			return "", err
-		}
+	exp := time.Now().Add(time.Hour * 24 * 365 * 5)
+	jwt, err := nodeoptions.GetOrCreateNodeJwt(groupId, jwtName, exp)
+	if err != nil {
+		return "", err
 	}
 
 	if jwt == "" {
@@ -48,22 +36,26 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 		return nil, err
 	}
 
-	jwt, err := GetOrCreateGroupNodeJwt(createGrpResult.GroupId)
-	if err != nil {
-		return nil, err
-	}
-	if jwt == "" {
-		return nil, rumerrors.ErrInvalidJWT
-	}
+	var chainUrls []string
+	if params.IncludeChainUrl {
+		jwt, err := GetOrCreateGroupNodeJwt(createGrpResult.GroupId)
+		if err != nil {
+			return nil, err
+		}
+		if jwt == "" {
+			return nil, rumerrors.ErrInvalidJWT
+		}
 
-	// get chain api url
-	chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
-	if err != nil {
-		return nil, err
+		// get chain api url
+		chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
+		if err != nil {
+			return nil, err
+		}
+		chainUrls = append(chainUrls, chainapiUrl)
 	}
 
 	// convert group seed to url
-	seedurl, err := GroupSeedToUrl(1, []string{chainapiUrl}, createGrpResult)
+	seedurl, err := GroupSeedToUrl(1, chainUrls, createGrpResult)
 	if err != nil {
 		return nil, err
 	}

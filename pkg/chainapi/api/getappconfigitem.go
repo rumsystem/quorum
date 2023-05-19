@@ -20,7 +20,7 @@ func (h *Handler) GetAppConfigItem(c echo.Context) (err error) {
 	groupId := c.Param("group_id")
 	itemKey := c.Param("key")
 
-	res, err := handlers.GetAppConfigKey(itemKey, groupId)
+	res, err := handlers.GetAppConfigByKey(itemKey, groupId)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

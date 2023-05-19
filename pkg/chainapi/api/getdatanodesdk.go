@@ -93,10 +93,6 @@ type GrpInfoNodeSDK struct {
 func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 
-	if is_user_blocked(c) {
-		return rumerrors.NewForbiddenError("block user")
-	}
-
 	getDataNodeSDKItem := new(GetDataNodeSDKItem)
 	if err := cc.BindAndValidate(getDataNodeSDKItem); err != nil {
 		return rumerrors.NewBadRequestError(err)
@@ -174,7 +170,7 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 		if err != nil {
 			return rumerrors.NewBadRequestError("INVALID_DATA")
 		}
-		res, err := handlers.GetAppConfigKey(item.Key, item.GroupId)
+		res, err := handlers.GetAppConfigByKey(item.Key, item.GroupId)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

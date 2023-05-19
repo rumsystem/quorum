@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -10,9 +11,9 @@ import (
 
 var (
 	// create
-	jwtName        string
-	jwtAllowGroups []string
-	jwtDuration    time.Duration
+	jwtName     string
+	jwtGroupId  string
+	jwtDuration time.Duration
 
 	// parse
 	jwtToken string
@@ -33,7 +34,7 @@ var jwtCreateNodeCmd = &cobra.Command{
 	Use:   "node",
 	Short: "Create jwt for node sdk and save to config file",
 	Run: func(cmd *cobra.Command, args []string) {
-		createNodeToken(configDir, peerName, jwtName, jwtDuration, jwtAllowGroups)
+		createNodeToken(configDir, peerName, jwtName, jwtDuration, jwtGroupId)
 	},
 }
 
@@ -69,10 +70,10 @@ func init() {
 	createNodeFlags.StringVarP(&peerName, "peername", "p", "peer", "peer name")
 	createNodeFlags.StringVarP(&jwtName, "name", "n", "", "name of the node jwt")
 	createNodeFlags.DurationVarP(&jwtDuration, "duration", "d", time.Hour*24*365, "duration of node jwt")
-	createNodeFlags.StringArrayVarP(&jwtAllowGroups, "allow_group", "a", []string{}, "allow groups for node jwt")
+	createNodeFlags.StringVarP(&jwtGroupId, "groupid", "g", "", "allow group for node jwt")
 
 	jwtCreateNodeCmd.MarkFlagRequired("name")
-	jwtCreateNodeCmd.MarkFlagRequired("allow_group")
+	jwtCreateNodeCmd.MarkFlagRequired("groupid")
 
 	// create chain jwt
 	createChainFlags := jwtCreateChainCmd.Flags()
@@ -100,37 +101,38 @@ func getJWTKey(configDir string, peerName string) string {
 	if err != nil {
 		logger.Fatalf("get jwt key failed: %s", err)
 	}
-	return opt.JWTKey
+	return opt.JWT.Key
 }
 
-func newToken(name string, role string, groups []string, key string, exp time.Time) string {
-	_tokenStr, err := utils.NewJWTToken(name, role, groups, key, exp)
-	if err != nil {
-		logger.Fatalf("create token failed: %s", err)
-	}
-	return _tokenStr
-}
-
-func saveToken(name, token, configdir, peername string) {
+func newToken(role string, groupid string, name string, duration time.Duration, configdir, peername string) (string, error) {
 	nodeoptions, err := options.InitNodeOptions(configdir, peername)
 	if err != nil {
 		logger.Fatalf("init node option failed: %s", err)
 	}
-	nodeoptions.SetJWTTokenMap(name, token)
+
+	if role == "node" {
+		return nodeoptions.NewNodeJWT(groupid, name, time.Now().Add(duration))
+	} else if role == "chain" {
+		return nodeoptions.NewChainJWT(name, time.Now().Add(duration))
+	} else {
+		return "", fmt.Errorf("invalid token role: %s", role)
+	}
 }
 
-func createNodeToken(configDir string, peerName string, name string, duration time.Duration, allowgroups []string) {
-	key := getJWTKey(configDir, peerName)
-	_tokenStr := newToken(name, "node", allowgroups, key, time.Now().Add(duration))
-	logger.Infof("new nodesdk token: %s", _tokenStr)
-	saveToken(name, _tokenStr, configDir, peerName)
+func createNodeToken(configDir string, peerName string, name string, duration time.Duration, groupid string) {
+	token, err := newToken("node", groupid, name, duration, configDir, peerName)
+	if err != nil {
+		logger.Fatalf("create node token failed: %s", err)
+	}
+	fmt.Printf("new nodesdk token: %s\n", token)
 }
 
 func createChainToken(configDir string, peerName string, name string, duration time.Duration) {
-	key := getJWTKey(configDir, peerName)
-	_tokenStr := newToken(name, "chain", []string{}, key, time.Now().Add(duration))
-	logger.Infof("new chainsdk token: %s", _tokenStr)
-	saveToken(name, _tokenStr, configDir, peerName)
+	token, err := newToken("chain", "", name, duration, configDir, peerName)
+	if err != nil {
+		logger.Fatalf("create chain token failed: %s", err)
+	}
+	fmt.Printf("new chain token: %s\n", token)
 }
 
 func parseToken(configDir string, peerName string, token string) {
@@ -139,5 +141,5 @@ func parseToken(configDir string, peerName string, token string) {
 	if err != nil {
 		logger.Fatalf("parse token failed: %s", err)
 	}
-	logger.Infof("parse token: %+v\n", *claims)
+	fmt.Printf("parse token: %+v\n", *claims)
 }

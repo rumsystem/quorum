@@ -9,9 +9,9 @@ import (
 )
 
 func getUserEncryptPubKeys(urls []string, groupID string) (*GetUserEncryptPubKeysResult, error) {
-	urlSuffix := fmt.Sprintf("/api/v1/node/getencryptpubkeys/%s", groupID)
+	path := fmt.Sprintf("/api/v1/node/%s/encryptpubkeys", groupID)
 	var result GetUserEncryptPubKeysResult
-	if _, _, err := requestNSdk(urls, urlSuffix, "GET", nil, nil, &result, false); err != nil {
+	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, false); err != nil {
 		return nil, err
 	}
 
