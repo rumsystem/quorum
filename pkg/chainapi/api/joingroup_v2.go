@@ -37,7 +37,7 @@ type JoinGroupResult struct {
 
 // @Tags Groups
 // @Summary JoinGroup
-// @Description Join a group
+// @Description Join a group by using group seed
 // @Accept json
 // @Produce json
 // @Param data body handlers.JoinGroupParamV2 true "JoinGroupParamV2"

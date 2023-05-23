@@ -27,13 +27,13 @@ type UpdGrpUserParam struct {
 }
 
 // @Tags Management
-// @Summary AddUsers
-// @Description add a user to a private group users list
+// @Summary UpdGroupUser
+// @Description add or remove a user(pubkey) to/from a private group
 // @Accept json
 // @Produce json
-// @Param data body GrpUserParam true "GrpUserParam"
-// @Success 200 {object} GrpUserResult
-// @Router /api/v1/group/user [post]
+// @Param data body UpdGrpUserParam true "UpdGrpUserParam"
+// @Success 200 {object} UpdGrpUserResult
+// @Router /api/v1/group/upduser [post]
 func (h *Handler) UpdGroupUser(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 

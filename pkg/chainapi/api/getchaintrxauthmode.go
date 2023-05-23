@@ -11,7 +11,7 @@ import (
 
 // @Tags Management
 // @Summary GetChainTrxAuthMode
-// @Description GetChainTrxAuthMode
+// @Description Get Chain Trx Auth Mode (follow allowlist or blocklist)
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Param trx_type path string  true "trxType"

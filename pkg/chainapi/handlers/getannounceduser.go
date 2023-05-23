@@ -11,12 +11,12 @@ import (
 )
 
 type AnnouncedUsers struct {
-	users []*quorumpb.AnnounceItem `json:"users"`
+	Users []*quorumpb.AnnounceItem `json:"users"`
 }
 
 func GetAnnouncedUsers(chainapidb def.APIHandlerIface, groupid string) (*AnnouncedUsers, error) {
 	if groupid == "" {
-		return nil, errors.New("group_id can't be nil.")
+		return nil, errors.New("group_id can't be nil")
 	}
 
 	groupmgr := chain.GetGroupMgr()
@@ -27,7 +27,7 @@ func GetAnnouncedUsers(chainapidb def.APIHandlerIface, groupid string) (*Announc
 		}
 
 		result := &AnnouncedUsers{
-			users: usrList,
+			Users: usrList,
 		}
 		return result, nil
 	} else {
@@ -37,7 +37,7 @@ func GetAnnouncedUsers(chainapidb def.APIHandlerIface, groupid string) (*Announc
 
 func GetAnnouncedUser(chainapidb def.APIHandlerIface, groupid string, pubkey string) (*AnnouncedUsers, error) {
 	if groupid == "" || pubkey == "" {
-		return nil, errors.New("group_id or sign_pubkey can't be nil.")
+		return nil, errors.New("group_id or sign_pubkey can't be nil")
 	}
 
 	groupmgr := chain.GetGroupMgr()
@@ -48,7 +48,7 @@ func GetAnnouncedUser(chainapidb def.APIHandlerIface, groupid string, pubkey str
 		}
 
 		result := &AnnouncedUsers{
-			users: []*quorumpb.AnnounceItem{usr},
+			Users: []*quorumpb.AnnounceItem{usr},
 		}
 		return result, nil
 	} else {

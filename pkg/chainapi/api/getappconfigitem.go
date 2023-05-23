@@ -10,7 +10,7 @@ import (
 
 // @Tags Management
 // @Summary GetAppConfigItem
-// @Description get app config item
+// @Description get an app config item by using itemkey
 // @Produce json
 // @Param group_id path string true "Group Id"
 // @Param key path string true "itemKey"

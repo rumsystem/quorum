@@ -23,7 +23,7 @@ type (
 
 // @Tags LightNode
 // @Summary AnnounceUserPubkey
-// @Description Announce User's encryption Pubkey to the group for light node
+// @Description User/producer announce itself to the group (for light node)
 // @Accept json
 // @Produce json
 // @Param data body AnnounceNodeSDKParam true "AnnounceParam"

@@ -19,12 +19,12 @@ type GetBlockResponse struct {
 
 // @Tags Chain
 // @Summary GetBlock
-// @Description Get a block from a group
+// @Description Get a block from a group by block id
 // @Produce json
 // @Param group_id path string  true "Group Id"
-// @Param block_id path string  true "Epoch"
+// @Param block_id path string  true "Block Id"
 // @Success 200 {object} pb.Block
-// @Router /api/v1/block/{group_id}/{epoch} [get]
+// @Router /api/v1/block/{group_id}/{block_id} [get]
 func (h *Handler) GetBlock(c echo.Context) (err error) {
 	groupid := c.Param("group_id")
 	if groupid == "" {

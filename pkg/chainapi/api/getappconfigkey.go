@@ -10,7 +10,7 @@ import (
 
 // @Tags Management
 // @Summary GetAppConfigKey
-// @Description get app config key list
+// @Description get all app config key list for a group
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Success 200 {array} handlers.AppConfigKeyListItem

@@ -11,7 +11,7 @@ import (
 
 // @Tags Groups
 // @Summary LeaveGroup
-// @Description Leave a new group
+// @Description Leave a group
 // @Accept json
 // @Produce json
 // @Param data body handlers.LeaveGroupParam true "LeaveGroupParam"

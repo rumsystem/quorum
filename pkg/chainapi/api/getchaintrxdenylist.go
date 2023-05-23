@@ -10,7 +10,7 @@ import (
 
 // @Tags Management
 // @Summary GetDeniedUserList
-// @Description Get the list of denied users
+// @Description Get the list of denied users of a group
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Success 200 {array} handlers.ChainSendTrxRuleListItem

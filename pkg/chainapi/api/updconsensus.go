@@ -10,13 +10,13 @@ import (
 )
 
 // @Tags Management
-// @Summary AddProducer
-// @Description add a peer to the group producer list
+// @Summary UpdConsensus
+// @Description	Update group consensus configuration
 // @Accept json
 // @Produce json
-// @Param data body handlers.GrpProducerParam true "GrpProducerParam"
-// @Success 200 {object} handlers.GrpProducerResult
-// @Router /api/v1/group/producer [post]
+// @Param data body handlers.UpdConsensusParam true "UpdConsensusParam"
+// @Success 200 {object} handlers.UpdConsensusResult
+// @Router /api/v1/group/updconsensus [post]
 func (h *Handler) UpdConsensus(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
 	params := new(handlers.UpdConsensusParam)

@@ -10,7 +10,7 @@ import (
 
 // @Tags Management
 // @Summary GetChainTrxAllowList
-// @Description Get group allow list
+// @Description Get group allowed user list
 // @Produce json
 // @Param group_id path string  true "Group Id"
 // @Success 200 {array} handlers.ChainSendTrxRuleListItem

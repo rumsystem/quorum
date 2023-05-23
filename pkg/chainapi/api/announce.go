@@ -10,8 +10,8 @@ import (
 )
 
 // @Tags User
-// @Summary AnnounceUserPubkey
-// @Description Announce User's encryption Pubkey to the group
+// @Summary Announce
+// @Description user/producer self announce it sign pubkey/encrypt key to the group
 // @Accept json
 // @Produce json
 // @Param data body handlers.AnnounceParam true "AnnounceParam"
