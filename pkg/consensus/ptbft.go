@@ -18,6 +18,7 @@ import (
 var ptbft_log = logging.Logger("ptbft")
 
 var EMPTY_TRX_BUNDLE = "EMPTY_TRX_BUNDLE"
+var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
 
 type PTBft struct {
 	Config
@@ -64,17 +65,27 @@ func (bft *PTBft) getNextTask() (*PTTask, error) {
 		return nil, err
 	}
 
-	trxBundle := &quorumpb.HBTrxBundle{}
-	trxBundle.Trxs = append(trxBundle.Trxs, trxs...)
+	var datab []byte
+	for {
+		trxBundle := &quorumpb.HBTrxBundle{}
+		trxBundle.Trxs = append(trxBundle.Trxs, trxs...)
 
-	datab, err := proto.Marshal(trxBundle)
-	if err != nil {
-		ptbft_log.Debugf("<%s> Marshal failed with error <%s>", bft.GroupId, err.Error())
-		return nil, err
-	}
+		datab, err = proto.Marshal(trxBundle)
+		if err != nil {
+			ptbft_log.Debugf("<%s> Marshal failed with error <%s>", bft.GroupId, err.Error())
+			return nil, err
+		}
 
-	if len(datab) == 0 {
-		datab = []byte(EMPTY_TRX_BUNDLE)
+		if len(datab) == 0 {
+			datab = []byte(EMPTY_TRX_BUNDLE)
+			break
+		} else if len(datab) <= MAXIMUM_TRX_BUNDLE_LENGTH {
+			ptbft_log.Debugf("<%s> datab length <%d> is ok, continue", bft.GroupId, len(datab))
+			break
+		}
+
+		ptbft_log.Debugf("<%s> datab length <%d> is too long, remove last trx and try again", bft.GroupId, len(datab))
+		trxs = trxs[:len(trxs)-1]
 	}
 
 	currEpoch := bft.cIface.GetCurrEpoch()
@@ -265,7 +276,26 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 	ptbft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.GroupId, epoch)
 	//try build block by using trxs
 	//ptbft_log.Debugf("<%s> sort trx", bft.GroupId)
-	trxToPackage := bft.sortTrx(trxs)
+	sortedTrxs := bft.sortTrx(trxs)
+	var trxToPackage []*quorumpb.Trx
+
+	//check total trxs size
+	totalTrxSizeInBytes := 0
+	for _, trx := range sortedTrxs {
+		datab, _ := proto.Marshal(trx)
+		if totalTrxSizeInBytes+len(datab) <= MAXIMUM_TRX_BUNDLE_LENGTH {
+			trxToPackage = append(trxToPackage, trx)
+			totalTrxSizeInBytes = totalTrxSizeInBytes + len(datab)
+		} else {
+			break
+		}
+	}
+
+	ptbft_log.Debugf("<%s> trxs to package, total size in bytes <%d>", bft.GroupId, totalTrxSizeInBytes)
+	for _, trx := range trxToPackage {
+		ptbft_log.Debugf("---> <%s>", trx.TrxId)
+	}
+
 	currBlockId := bft.cIface.GetCurrBlockId()
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.GroupId, currBlockId, false, bft.NodeName)
 
