@@ -64,7 +64,7 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 	}
 }
 
-func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
+func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
@@ -76,6 +76,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 		InputFunc: opaInputFunc,
 	}))
 	r := e.Group("/api")
+	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
 	//r.POST("/v1/group", h.CreateGroupUrl())
@@ -112,6 +113,13 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
 	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
 	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
+
+	//app api
+	a.POST("/v1/token", apph.CreateToken)
+	a.DELETE("/v1/token", apph.RemoveToken)
+	a.POST("/v1/token/refresh", apph.RefreshToken)
+	a.POST("/v1/token/revoke", apph.RevokeToken)
+	a.GET("/v1/token/list", apph.ListToken)
 
 	// start https or http server
 	host := config.APIHost

@@ -21,6 +21,7 @@ import (
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
+	"github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
 )
@@ -186,6 +187,17 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 	}
 
 	//run local http api service
+	apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
+	apph := &appapi.Handler{
+		Appdb:     appdb,
+		Trxdb:     newchainstorage,
+		GitCommit: utils.GitCommit,
+		Apiroot:   apiaddress,
+		ConfigDir: config.ConfigDir,
+		PeerName:  config.PeerName,
+		NodeName:  nodectx.GetNodeCtx().Name,
+	}
+
 	h := &api.Handler{
 		Node:       producerNode,
 		NodeCtx:    nodectx.GetNodeCtx(),
@@ -203,7 +215,7 @@ func runProducerNode(config cli.ProducerNodeFlag) {
 		ZeroAccessKey: config.ZeroAccessKey,
 	}
 
-	go api.StartProducerServer(startParam, producerSignalCh, h, producerNode, nodeoptions, ks, ethaddr)
+	go api.StartProducerServer(startParam, producerSignalCh, h, apph, producerNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
 	signal.Notify(producerSignalCh, os.Interrupt, os.Kill, syscall.SIGTERM)
