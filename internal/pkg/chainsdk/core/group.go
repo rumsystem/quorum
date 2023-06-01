@@ -89,7 +89,7 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 		AgreementTickLenInMs: 0,
 		AgreementTickCount:   0,
 		StartFromEpoch:       0,
-		TrxEpochTickLenInMs:  1000,
+		TrxEpochTickLenInMs:  uint64(DEFAULT_PROPOSE_TRX_INTERVAL),
 		Contract:             nil,
 		SenderPubkey:         item.OwnerPubKey,
 	}

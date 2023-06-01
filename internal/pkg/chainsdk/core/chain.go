@@ -332,12 +332,12 @@ func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
 	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
 
-// handle psync consensus req from PsConn
+// handle consensus req from PsConn
 func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
 	//chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
 
 	if chain.Consensus.ConsensusProposer() == nil {
-		chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)
+		//chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)
 		return nil
 	}
 
@@ -347,7 +347,7 @@ func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
 func (chain *Chain) HandleChangeConsensusReqPsConn(msg *quorumpb.ChangeConsensusReqMsg) error {
 	//chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
 	if chain.Consensus.ConsensusProposer() == nil {
-		chain_log.Warningf("<%s> Consensus ConsensusProposer is nil", chain.groupItem.GroupId)
+		//chain_log.Warningf("<%s> Consensus ConsensusProposer is nil", chain.groupItem.GroupId)
 		return nil
 	}
 	return chain.Consensus.ConsensusProposer().HandleCCReq(msg)
@@ -564,9 +564,11 @@ func (chain *Chain) updateProducerPool() {
 
 func (chain *Chain) updChainConsensus(trxId string, proof *quorumpb.ChangeConsensusResultBundle) error {
 	chain_log.Debugf("<%s> updProducerConfig called", chain.groupItem.GroupId)
-	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
-		return fmt.Errorf("updProducerConfig failed, consensus is nil")
-	}
+	/*
+		if chain.Consensus == nil || chain.Consensus.Producer() == nil {
+			return fmt.Errorf("updProducerConfig failed, consensus is nil")
+		}
+	*/
 
 	//remove current producers
 	err := nodectx.GetNodeCtx().GetChainStorage().RemoveAllProducers(chain.groupItem.GroupId, chain.nodename)

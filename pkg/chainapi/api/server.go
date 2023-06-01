@@ -104,11 +104,6 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 
-	r.GET("/v1/group/:group_id/consensus/history", h.GetConsensusHistory)
-	r.GET("/v1/group/:group_id/consensus/last", h.GetLatestConsensusChangeResult)
-	r.GET("/v1/group/:group_id/consensus/:reqid", h.GetConsensusResultByReqId)
-	r.GET("/v1/group/:group_id/consensus/current", h.GetCurrentConsensus)
-
 	r.GET("/v1/group/:group_id/consensus/proof/history", h.GetConsensusHistory)
 	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
 	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
