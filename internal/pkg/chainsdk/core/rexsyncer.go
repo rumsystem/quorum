@@ -9,30 +9,29 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
-	"github.com/rumsystem/quorum/internal/pkg/logging"
 
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var rex_syncer_log = logging.Logger("rsyncer")
+//var rex_syncer_old_log = logging.Logger("rsyncer")
 
-var REQ_BLOCKS_PER_REQUEST = int32(10) // ask for n blocks per request
-var TASK_DURATION_ADJ = 5 * 1000       // in millseconds
-var MAXIMUM_TASK_DURATION = 60 * 1000  // is millseconds
-var MINIMUM_TASK_DURATION = 5 * 10000  // is millseconds
+//var REQ_BLOCKS_PER_REQUEST = int32(10) // ask for n blocks per request
+//var TASK_DURATION_ADJ = 5 * 1000       // in millseconds
+//var MAXIMUM_TASK_DURATION = 60 * 1000  // is millseconds
+//var MINIMUM_TASK_DURATION = 5 * 10000  // is millseconds
 
-type SyncResult struct {
-	TaskId uint64
-	Data   interface{}
-}
-
-type SyncerStatus uint
-
-const (
-	RUNNING SyncerStatus = iota
-	IDLE
-	CLOSED
-)
+//type SyncResult struct {
+//	TaskId uint64
+//	Data   interface{}
+//}
+//
+//type SyncerStatus uint
+//
+//const (
+//	RUNNING SyncerStatus = iota
+//	IDLE
+//	CLOSED
+//)
 
 type SyncTask struct {
 	TaskId       uint64 //blockId
@@ -127,6 +126,7 @@ func (rs *RexSyncer) Start() {
 				}
 
 				//get next task
+				fmt.Println("===========ok, getNextSyncTask")
 				newTask := rs.getNextSyncTask()
 				rs.chSyncTask <- newTask
 				<-newTask.taskDone
@@ -199,8 +199,36 @@ func (rs *RexSyncer) SyncWorker(chainCtx context.Context, chSyncTask <-chan *Syn
 			if err != nil {
 				rex_syncer_log.Warningf("<%s> SyncWorker run task get connMgr failed, err <%s>", rs.GroupId, err.Error())
 			}
+			blockBundles := &quorumpb.BlocksBundle{}
+			err = fmt.Errorf("FOR TEST, disable SendReq. try DSCache")
+			block, err := rs.chain.GetBlockFromDSCache(rs.GroupId, task.TaskId, rs.nodename)
+			for block != nil {
+				blockBundles.Blocks = append(blockBundles.Blocks, block)
+				block, err = rs.chain.GetBlockFromDSCache(rs.GroupId, block.BlockId+1, rs.nodename)
+			}
 
-			err = connMgr.SendReqTrxRex(trx)
+			if len(blockBundles.Blocks) > 0 { // blocks find from cache, apply blocks
+				rs.chain.ApplyBlocks(blockBundles.Blocks)
+				//update last sync result
+				//TODO: update sync info, set pubkey as myself
+				//rs.LastSyncResult = &def.RexSyncResult{
+				//	Provider:              winnerResp.ProviderPubkey,
+				//	FromBlock:             winnerResp.FromBlock,
+				//	BlockProvided:         winnerResp.BlksProvided,
+				//	SyncResult:            winnerResp.Result.String(),
+				//	LastSyncTaskTimestamp: time.Now().Unix(),
+				//}
+
+				//reset continue fail cnt
+				rs.currContinueFailCnt = 0
+				task.taskDone <- true
+			} else {
+				fmt.Println("=======sync from network...")
+				// err = connMgr.SendReqTrxRex(trx)
+			}
+
+			_ = trx
+			_ = connMgr
 			if err != nil {
 				rex_syncer_log.Warningf("<%s> SyncWorker run task sendReq failed , err <%s>", rs.GroupId, err.Error())
 			}
