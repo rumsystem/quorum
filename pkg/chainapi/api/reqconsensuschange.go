@@ -17,14 +17,14 @@ import (
 // @Param data body handlers.UpdConsensusParam true "UpdConsensusParam"
 // @Success 200 {object} handlers.UpdConsensusResult
 // @Router /api/v1/group/updconsensus [post]
-func (h *Handler) UpdConsensus(c echo.Context) (err error) {
+func (h *Handler) ReqConsensusChange(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	params := new(handlers.UpdConsensusParam)
+	params := new(handlers.ReqConsensusChangeParam)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
 	}
 
-	res, err := handlers.UpdConsensus(h.ChainAPIdb, params)
+	res, err := handlers.ReqConsensusChange(h.ChainAPIdb, params)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}

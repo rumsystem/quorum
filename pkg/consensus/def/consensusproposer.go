@@ -10,6 +10,6 @@ type ConsensusProposer interface {
 	NewConsensusProposer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	HandleHBMsg(msg *quorumpb.HBMsgv1) error
 	HandleCCReq(req *quorumpb.ChangeConsensusReqMsg) error
-	StartChangeConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error
+	ReqChangeConsensus(producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (string, uint64, error)
 	StopAllTasks()
 }

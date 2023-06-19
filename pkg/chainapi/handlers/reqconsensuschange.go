@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
@@ -10,27 +11,29 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 )
 
-type UpdConsensusResult struct {
-	GroupId      string `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
-	Producers    []string
-	FromEpoch    uint64 `json:"start_from_epoch" validate:"required" example:"100"`
-	TrxEpochTick uint64 `json:"trx_epoch_tick" validate:"required" example:"100"`
-	TrxId        string `json:"trx_id" validate:"required,uuid4" example:"6bff5556-4dc9-4cb6-a595-2181aaebdc26"`
-	Failable     *int   `json:"failable_producers" validate:"required" example:"1"`
-	Memo         string `json:"memo" example:"comment/remark"`
+type ReqConsensusChangeResult struct {
+	GroupId   string   `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	ReqId     string   `json:"req_id"   validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	Nonce     uint64   `json:"nonce"    validate:"required"`
+	Producers []string `json:"producers" validate:"required"`
+	FromBlock uint64   `json:"from_block" validate:"required" example:"100"`
+	FromEpoch uint64   `json:"from_epoch" validate:"required" example:"100"`
+	Epoch     uint64   `json:"epoch" validate:"required" example:"100"`
+	StartFrom int64    `json:"start_from"`
 }
 
-type UpdConsensusParam struct {
+type ReqConsensusChangeParam struct {
 	GroupId             string   `json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	ProducerPubkey      []string `from:"producer_pubkey" json:"producer_pubkey"  validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
-	FromNewEpoch        uint64   `from:"start_from_epoch" json:"start_from_epoch" validate:"required" example:"100"`
-	TrxEpochTick        uint64   `from:"trx_epoch_tick" json:"trx_epoch_tick" validate:"required" example:"100"`
+	FromBlock           uint64   `from:"from_block" json:"from_block" validate:"required" example:"1000"`
+	FromEpoch           uint64   `from:"from_epoch" json:"start_from_epoch" validate:"required" example:"100"`
+	Epoch               uint64   `from:"epoch" json:"trx_epoch_tick" validate:"required" example:"100"`
 	AgreementTickLength uint64   `from:"agreement_tick_length" json:"agreement_tick_length" validate:"required"`
 	AgreementTickCount  uint64   `from:"agreement_tick_count" json:"agreement_tick_count" validate:"required"`
 	Memo                string   `from:"memo" json:"memo" example:"comment/remark"`
 }
 
-func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*UpdConsensusResult, error) {
+func ReqConsensusChange(chainapidb def.APIHandlerIface, params *ReqConsensusChangeParam) (*ReqConsensusChangeResult, error) {
 	validate := validator.New()
 
 	if err := validate.Struct(params); err != nil {
@@ -83,24 +86,25 @@ func UpdConsensus(chainapidb def.APIHandlerIface, params *UpdConsensusParam) (*U
 		}
 
 		//check trx epoch tick length
-		if params.TrxEpochTick < 500 {
+		if params.Epoch < 500 {
 			return nil, errors.New("trx epoch tick length should be greater than 500(ms)")
 		}
 
-		trxId, err := group.UpdConsensus(params.ProducerPubkey, params.AgreementTickLength, params.AgreementTickCount, params.FromNewEpoch, params.TrxEpochTick)
+		reqId, nonce, err := group.ReqChangeConsensus(params.ProducerPubkey, params.AgreementTickLength, params.AgreementTickCount, params.FromBlock, params.FromEpoch, params.Epoch)
+
 		if err != nil {
 			return nil, err
 		}
 
-		failable := (len(bundle) - 1) / 3 /* 3F < N */
-		result := &UpdConsensusResult{
-			TrxId:        trxId,
-			GroupId:      group.Item.GroupId,
-			Producers:    params.ProducerPubkey,
-			Failable:     &failable,
-			Memo:         params.Memo,
-			FromEpoch:    params.FromNewEpoch,
-			TrxEpochTick: params.TrxEpochTick,
+		result := &ReqConsensusChangeResult{
+			GroupId:   group.Item.GroupId,
+			ReqId:     reqId,
+			Nonce:     nonce,
+			Producers: params.ProducerPubkey,
+			FromBlock: params.FromBlock,
+			FromEpoch: params.FromEpoch,
+			Epoch:     params.Epoch,
+			StartFrom: time.Now().UnixNano(),
 		}
 
 		return result, nil

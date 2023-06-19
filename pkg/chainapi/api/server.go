@@ -167,9 +167,9 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-	r.POST("/v1/group/updconsensus", h.UpdConsensus)
 	r.POST("/v1/group/upduser", h.UpdGroupUser)
 	r.POST("/v1/group/announce", h.Announce)
+	r.POST("/v1/group/reqconsensuschange", h.ReqConsensusChange)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))

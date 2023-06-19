@@ -418,10 +418,9 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) UpdConsensus(producers []string, agrmTickLength, agrmTickCount, fromNewEpoch uint64, trxEpochTick uint64) (string, error) {
-	group_log.Debugf("<%s> UpdConsensus called", grp.Item.GroupId)
-	trxId := guuid.New().String()
-	return trxId, grp.ChainCtx.UpdConsensus(producers, trxId, agrmTickLength, agrmTickCount, fromNewEpoch, trxEpochTick)
+func (grp *Group) ReqChangeConsensus(producers []string, agrmTickLength, agrmTickCount, fromBlock uint64, fromEpoch uint64, epoch uint64) (string, uint64, error) {
+	group_log.Debugf("<%s> ReqChangeConsensus called", grp.Item.GroupId)
+	return grp.ChainCtx.ReqChangeConsensus(producers, agrmTickLength, agrmTickCount, fromBlock, fromEpoch, epoch)
 }
 
 func (grp *Group) UpdGroupUser(item *quorumpb.UpdGroupUserItem) (string, error) {

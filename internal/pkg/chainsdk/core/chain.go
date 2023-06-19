@@ -144,14 +144,14 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) UpdConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen uint64) error {
-	chain_log.Debugf("<%s> UpdConsensus called", chain.groupItem.GroupId)
+func (chain *Chain) ReqChangeConsensus(producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (reqId string, nonce uint64, err error) {
+	chain_log.Debugf("<%s> ReqChangeConsensus called", chain.groupItem.GroupId)
 
 	if chain.Consensus.ConsensusProposer() == nil {
-		return fmt.Errorf("consensus proposer is nil")
+		return "", 0, fmt.Errorf("consensus proposer is nil")
 	}
 
-	return chain.Consensus.ConsensusProposer().StartChangeConsensus(producers, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochLen)
+	return chain.Consensus.ConsensusProposer().ReqChangeConsensus(producers, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch)
 }
 
 // PSConn msg handler

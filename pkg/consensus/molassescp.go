@@ -20,7 +20,6 @@ import (
 var molacp_log = logging.Logger("cp")
 
 type ConsensusProposeTask struct {
-	TrxId    string
 	Req      *quorumpb.ChangeConsensusReq
 	ReqBytes []byte
 	ctx      context.Context
@@ -195,16 +194,16 @@ func (cp *MolassesConsensusProposer) BftWorker(chainCtx context.Context, chBftTa
 	}
 }
 
-func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) error {
+func (cp *MolassesConsensusProposer) ReqChangeConsensus(producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (string, error) {
 	molacp_log.Debugf("<%s> StartChangeConsensus called", cp.groupId)
 
 	cp.lock.Lock()
 	defer cp.lock.Unlock()
 
-	cpTask, err := cp.createProposeTask(cp.chainCtx, producers, trxId, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen)
+	cpTask, err := cp.createProposeTask(cp.chainCtx, producers, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch)
 	if err != nil {
 		molacp_log.Errorf("<%s> createProposeTask failed", cp.groupId)
-		return err
+		return "", err
 	}
 
 	if cp.currCpTask != nil {
@@ -214,7 +213,7 @@ func (cp *MolassesConsensusProposer) StartChangeConsensus(producers []string, tr
 	cp.chProposeTask <- cpTask
 	cp.currCpTask = cpTask
 
-	return nil
+	return cpTask.Req.ReqId, nil
 }
 
 func (cp *MolassesConsensusProposer) StopAllTasks() {
@@ -261,7 +260,7 @@ func (cp *MolassesConsensusProposer) HandleCCReq(msg *quorumpb.ChangeConsensusRe
 	return nil
 }
 
-func (cp *MolassesConsensusProposer) createProposeTask(ctx context.Context, producers []string, trxId string, agrmTickLen, agrmTickCnt, fromNewEpoch, trxEpochTickLen uint64) (*ConsensusProposeTask, error) {
+func (cp *MolassesConsensusProposer) createProposeTask(ctx context.Context, producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (*ConsensusProposeTask, error) {
 	molacp_log.Debugf("<%s> createProposeTask called", cp.groupId)
 	nonce, err := nodectx.GetNodeCtx().GetChainStorage().GetNextConsensusNonce(cp.groupId, cp.nodename)
 	if err != nil {
@@ -286,14 +285,15 @@ func (cp *MolassesConsensusProposer) createProposeTask(ctx context.Context, prod
 
 	//create req
 	req := &quorumpb.ChangeConsensusReq{
-		ReqId:                guuid.New().String(),
 		GroupId:              cp.groupId,
+		ReqId:                guuid.New().String(),
 		Nonce:                nonce,
 		ProducerPubkeyList:   producers,
 		AgreementTickLenInMs: agrmTickLen,
 		AgreementTickCount:   agrmTickCnt,
-		StartFromEpoch:       fromNewEpoch,
-		TrxEpochTickLenInMs:  trxEpochTickLen,
+		FromBlock:            fromBlock,
+		FromEpoch:            fromEpoch,
+		Epoch:                epoch,
 		SenderPubkey:         cp.grpItem.UserSignPubkey,
 	}
 

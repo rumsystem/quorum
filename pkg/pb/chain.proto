@@ -27,19 +27,19 @@ enum ActionType {
 }
 
 enum TrxStroageType {
-    CHAIN    = 0;
+    CHAIN = 0;
     CACHE = 1;
 }
 
 enum TrxType {
     POST               = 0; // post to group
     ANNOUNCE           = 1; // producer or user self announce
-    CONSENSUS          = 2; // owner update group consensus
     USER               = 3; // owner update group user
     REQ_BLOCK          = 4; // request block 
     REQ_BLOCK_RESP     = 5; // response request block
     CHAIN_CONFIG       = 6; // chain configuration
     APP_CONFIG         = 7; // app configuration
+    FORK               = 8; // owner fork chain with new consensus configuration
 }
 
 message Trx {
@@ -59,14 +59,13 @@ message Trx {
 
 message Block {    
     string      GroupId            = 1;     
-    uint64      BlockId            = 2;     
-    uint64      Epoch              = 3;  
-    bytes       PrevHash           = 4;  
-    string      ProducerPubkey     = 5;
-    repeated    Trx Trxs           = 6;
-    int64       TimeStamp          = 8;       
-    bytes       BlockHash          = 9;
-    bytes       ProducerSign       = 10;  
+    uint64      BlockId            = 2;
+    bytes       PrevHash           = 3;  
+    string      ProducerPubkey     = 4;
+    repeated    Trx Trxs           = 5;
+    int64       TimeStamp          = 6;       
+    bytes       BlockHash          = 7;
+    bytes       ProducerSign       = 8;  
 }
 
 enum GroupBroadcastType {
@@ -106,14 +105,15 @@ message ConsensusContract {
 }
 
 message ChangeConsensusReq {
-    string            ReqId                = 1;
-    string            GroupId              = 2;
+    string            GroupId              = 1;    
+    string            ReqId                = 2;
     uint64            Nonce                = 3;
     repeated string   ProducerPubkeyList   = 4;  
-    uint64            AgreementTickLenInMs = 6;
-    uint64            AgreementTickCount   = 7;
-    uint64            StartFromEpoch       = 8;
-    uint64            TrxEpochTickLenInMs  = 9;
+    uint64            AgreementTickLenInMs = 5;
+    uint64            AgreementTickCount   = 6;
+    uint64            FromBlock            = 7;
+    uint64            FromEpoch            = 8;
+    uint64            Epoch                = 9;
     ConsensusContract Contract             = 10;    
     string            SenderPubkey         = 11;
     bytes             MsgHash              = 12; 
@@ -121,8 +121,8 @@ message ChangeConsensusReq {
 }
 
 message ChangeConsensusReqMsg {
-    uint64             Epoch  = 1;
-    ChangeConsensusReq Req    = 2;
+    ChangeConsensusReq Req   = 1;
+    int32              Round = 2;
 }
 
 message ChangeConsensusResp {
@@ -134,16 +134,19 @@ message ChangeConsensusResp {
     bytes              SenderSign   = 6;
 }
 
+message ChangeConsensusRespMsg {
+    ChangeConsensusResp Resp  = 1;
+    int32               Round = 2;
+}
+
 message ConsensusProof{
-    uint64               Epoch  = 1;
-    ChangeConsensusReq   Req    = 2;
-    ChangeConsensusResp  Resp   = 3;
+    ChangeConsensusReq   Req  = 1;
+    ChangeConsensusResp  Resp = 2;
 }
 
 enum ChangeConsensusResult {
     SUCCESS = 0;
     FAIL    = 1;
-    TIMEOUT = 2;
 }
 
 message ChangeConsensusResultBundle{
