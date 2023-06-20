@@ -19,7 +19,6 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorum
 	newBlock := &quorumpb.Block{
 		GroupId:        parentBlk.GroupId,
 		BlockId:        parentBlk.BlockId + 1,
-		Epoch:          epoch,
 		PrevHash:       parentBlk.BlockHash,
 		ProducerPubkey: groupPublicKey,
 		Trxs:           trxs,
@@ -89,7 +88,6 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 	genesisBlock := &quorumpb.Block{
 		GroupId:        groupId,
 		BlockId:        0,
-		Epoch:          0,
 		PrevHash:       nil,
 		ProducerPubkey: groupPublicKey,
 		Trxs:           nil,
@@ -127,7 +125,6 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 	blkWithOutHashAndSign := &quorumpb.Block{
 		GroupId:        newBlock.GroupId,
 		BlockId:        newBlock.BlockId,
-		Epoch:          newBlock.Epoch,
 		PrevHash:       newBlock.PrevHash,
 		ProducerPubkey: newBlock.ProducerPubkey,
 		Trxs:           newBlock.Trxs,
@@ -175,10 +172,6 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 		return false, fmt.Errorf("blockId for genesis block must be 0")
 	}
 
-	if genesisBlock.Epoch != 0 {
-		return false, fmt.Errorf("epoch for genesis block must be 0")
-	}
-
 	if genesisBlock.PrevHash != nil {
 		return false, fmt.Errorf("prevhash for genesis block must be nil")
 	}
@@ -186,7 +179,6 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 	genesisBlockWithoutHashAndSign := &quorumpb.Block{
 		GroupId:        genesisBlock.GroupId,
 		BlockId:        genesisBlock.BlockId,
-		Epoch:          genesisBlock.Epoch,
 		PrevHash:       genesisBlock.PrevHash,
 		ProducerPubkey: genesisBlock.ProducerPubkey,
 		Trxs:           genesisBlock.Trxs,

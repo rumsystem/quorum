@@ -87,14 +87,13 @@ func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chP
 
 			retryCnt := 0
 			isCanceled := false
-			//handle it
-			var err error
+
 		RETRY:
 
 			for retryCnt < int(task.Req.AgreementTickCount) {
 				reqMsg := &quorumpb.ChangeConsensusReqMsg{
 					Req:   task.Req,
-					Epoch: uint64(retryCnt),
+					Round: uint64(retryCnt),
 				}
 
 				molacp_log.Debugf("<%s> change consensus ROUND <%d> req <%s>", cp.groupId, retryCnt, task.Req.ReqId)
@@ -115,30 +114,18 @@ func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chP
 				}
 			}
 
-			if err != nil {
-				molacp_log.Errorf("<%s> ProposerWorker: change consensus failed, err <%v>", cp.groupId, err)
+			if isCanceled {
+				molacp_log.Debugf("<%s> ProposerWorker: taskCtx canceled", cp.groupId)
+			} else {
+				//if goes here, means no consensus reached, notify chain
+				molacp_log.Debugf("<%s> ProposerWorker: req consensus failed, notify chain", cp.groupId)
 				resultBundle := &quorumpb.ChangeConsensusResultBundle{
 					Result:             quorumpb.ChangeConsensusResult_FAIL,
 					Req:                task.Req,
 					Resps:              nil,
 					ResponsedProducers: nil,
 				}
-				cp.cIface.ChangeConsensusDone(resultBundle, cp.currCpTask.TrxId)
-
-			} else {
-				if isCanceled {
-					molacp_log.Debugf("<%s> ProposerWorker: taskCtx canceled", cp.groupId)
-				} else {
-					//if goes here, means no consensus reached and timeout, notify chain and quit
-					molacp_log.Debugf("<%s> ProposerWorker: timeout and no consensus reached, notify chain", cp.groupId)
-					resultBundle := &quorumpb.ChangeConsensusResultBundle{
-						Result:             quorumpb.ChangeConsensusResult_TIMEOUT,
-						Req:                task.Req,
-						Resps:              nil,
-						ResponsedProducers: nil,
-					}
-					cp.cIface.ChangeConsensusDone(resultBundle, cp.currCpTask.TrxId)
-				}
+				cp.cIface.ReqConsensusChangeDone(resultBundle)
 			}
 
 			molacp_log.Debugf("<%s> ProposerWorker: task done", cp.groupId)
@@ -175,9 +162,9 @@ func (cp *MolassesConsensusProposer) BftWorker(chainCtx context.Context, chBftTa
 			case result := <-task.chBftDone:
 				molacp_log.Debugf("<%s> HandleCCReq bft done with result", cp.groupId)
 				if cp.currCpTask != nil {
-					cp.cIface.ChangeConsensusDone(result, cp.currCpTask.TrxId)
+					cp.cIface.ReqConsensusChangeDone(result)
 				} else {
-					cp.cIface.ChangeConsensusDone(result, "")
+					cp.cIface.ReqConsensusChangeDone(result)
 				}
 			}
 
@@ -194,7 +181,7 @@ func (cp *MolassesConsensusProposer) BftWorker(chainCtx context.Context, chBftTa
 	}
 }
 
-func (cp *MolassesConsensusProposer) ReqChangeConsensus(producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (string, error) {
+func (cp *MolassesConsensusProposer) ReqChangeConsensus(producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (string, uint64, error) {
 	molacp_log.Debugf("<%s> StartChangeConsensus called", cp.groupId)
 
 	cp.lock.Lock()
@@ -203,7 +190,7 @@ func (cp *MolassesConsensusProposer) ReqChangeConsensus(producers []string, agrm
 	cpTask, err := cp.createProposeTask(cp.chainCtx, producers, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch)
 	if err != nil {
 		molacp_log.Errorf("<%s> createProposeTask failed", cp.groupId)
-		return "", err
+		return "", 0, err
 	}
 
 	if cp.currCpTask != nil {
@@ -213,7 +200,7 @@ func (cp *MolassesConsensusProposer) ReqChangeConsensus(producers []string, agrm
 	cp.chProposeTask <- cpTask
 	cp.currCpTask = cpTask
 
-	return cpTask.Req.ReqId, nil
+	return cpTask.Req.ReqId, cpTask.Req.Nonce, nil
 }
 
 func (cp *MolassesConsensusProposer) StopAllTasks() {
@@ -237,7 +224,7 @@ func (cp *MolassesConsensusProposer) StopAllTasks() {
 }
 
 func (cp *MolassesConsensusProposer) HandleCCReq(msg *quorumpb.ChangeConsensusReqMsg) error {
-	molacp_log.Debugf("<%s> HandleCCReq called reqId <%s>, epoch <%d>", cp.groupId, msg.Req.ReqId, msg.Epoch)
+	molacp_log.Debugf("<%s> HandleCCReq called reqId <%s>, epoch <%d>", cp.groupId, msg.Req.ReqId, msg.Round)
 	cp.lock.Lock()
 	defer cp.lock.Unlock()
 
@@ -316,7 +303,6 @@ func (cp *MolassesConsensusProposer) createProposeTask(ctx context.Context, prod
 	}
 
 	cpTask := &ConsensusProposeTask{
-		TrxId:    trxId,
 		Req:      req,
 		ReqBytes: reqBytes,
 	}
@@ -357,8 +343,9 @@ func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quo
 		ProducerPubkeyList:   msg.Req.ProducerPubkeyList,
 		AgreementTickLenInMs: msg.Req.AgreementTickLenInMs,
 		AgreementTickCount:   msg.Req.AgreementTickCount,
-		StartFromEpoch:       msg.Req.StartFromEpoch,
-		TrxEpochTickLenInMs:  msg.Req.TrxEpochTickLenInMs,
+		FromBlock:            msg.Req.FromBlock,
+		FromEpoch:            msg.Req.FromEpoch,
+		Epoch:                msg.Req.Epoch,
 		SenderPubkey:         msg.Req.SenderPubkey,
 		MsgHash:              nil,
 		SenderSign:           nil,
@@ -431,9 +418,8 @@ func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quo
 
 	// create Proof
 	proofBundle := &quorumpb.ConsensusProof{
-		Epoch: msg.Epoch,
-		Req:   msg.Req,
-		Resp:  resp,
+		Req:  msg.Req,
+		Resp: resp,
 	}
 
 	participants := make([]string, 0)
@@ -486,7 +472,7 @@ func (cp *MolassesConsensusProposer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error 
 	if cp.currBftTask != nil {
 		cp.currBftTask.bft.HandleHBMsg(hbmsg)
 	} else {
-		molacp_log.Debug("<%s> currBftTask is nil, ??????", cp.groupId)
+		molacp_log.Debug("<%s> currBftTask is nil", cp.groupId)
 	}
 	return nil
 }

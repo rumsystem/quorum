@@ -21,12 +21,12 @@ type PCAcs struct {
 	Epoch     uint64
 }
 
-func NewPCAcs(ctx context.Context, cfg Config, epoch uint64, chAcsDone chan *AcsResult) *PCAcs {
-	pcacs_log.Debugf("NewPCAcs called, epoch <%d>", epoch)
+func NewPCAcs(ctx context.Context, cfg Config, round int32, chAcsDone chan *AcsResult) *PCAcs {
+	pcacs_log.Debugf("NewPCAcs called, round <%d>", round)
 
 	acs := &PCAcs{
 		Config:     cfg,
-		Epoch:      epoch,
+		Round:      round,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
@@ -72,7 +72,7 @@ func (a *PCAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ptacs_log.Debugf("ACS HandleHBMessage called, Epoch <%d>, msgType <%s>", a.Epoch, hbmsg.PayloadType.String())
+	ptacs_log.Debugf("ACS HandleHBMessage called, Round <%d>, msgType <%s>", a.Round, hbmsg.PayloadType.String())
 
 	if hbmsg.Epoch != a.Epoch {
 		ptacs_log.Debugf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.Epoch)

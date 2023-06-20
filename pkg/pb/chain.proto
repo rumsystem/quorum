@@ -121,8 +121,8 @@ message ChangeConsensusReq {
 }
 
 message ChangeConsensusReqMsg {
-    ChangeConsensusReq Req   = 1;
-    int32              Round = 2;
+    ChangeConsensusReq Req                     = 1;
+    uint64             ReqChangeConsensusEpoch = 2;
 }
 
 message ChangeConsensusResp {
@@ -135,8 +135,8 @@ message ChangeConsensusResp {
 }
 
 message ChangeConsensusRespMsg {
-    ChangeConsensusResp Resp  = 1;
-    int32               Round = 2;
+    ChangeConsensusResp Resp                    = 1;
+    uint64              ReqChangeConsensusEpoch = 2;
 }
 
 message ConsensusProof{

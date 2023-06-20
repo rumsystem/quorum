@@ -236,7 +236,7 @@ func (producer *MolassesProducer) saveBlock(block *quorumpb.Block, rmFromCache b
 	//update chain info
 	molauser_log.Debugf("<%s> UpdChainInfo, upd highest blockId from <%d> to <%d>", producer.groupId, producer.cIface.GetCurrBlockId(), block.BlockId)
 	producer.cIface.SetCurrBlockId(block.BlockId)
-	producer.cIface.SetCurrEpoch(block.Epoch)
+	//producer.cIface.SetCurrEpoch(block.Epoch)
 	producer.cIface.SetLastUpdate(block.TimeStamp)
 	producer.cIface.SaveChainInfoToDb()
 

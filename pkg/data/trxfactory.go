@@ -23,10 +23,6 @@ func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []by
 	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, 0, data, keyalias, encryptto...)
 }
 
-func (fcatory *TrxFactory) CreateTrxWithTrxIdByEthKey(msgType quorumpb.TrxType, trxId string, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	return CreateTrxWithTrxIdByEthKey(fcatory.nodename, fcatory.version, fcatory.groupItem, trxId, msgType, 0, data, keyalias, encryptto...)
-}
-
 func (factory *TrxFactory) GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
@@ -44,16 +40,6 @@ func (factory *TrxFactory) GetChainConfigTrx(keyalias string, item *quorumpb.Cha
 
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent, keyalias)
 }
-
-/*
-func (factory *TrxFactory) GetRegProducerBundleTrx(keyalias string, item *quorumpb.BFTProducerBundleItem) (*quorumpb.Trx, error) {
-	encodedcontent, err := proto.Marshal(item)
-	if err != nil {
-		return nil, err
-	}
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_PRODUCER, encodedcontent, keyalias)
-}
-*/
 
 func (factory *TrxFactory) GetUpdGroupUserTrx(keyalias string, item *quorumpb.UpdGroupUserItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
@@ -109,18 +95,13 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, keyalias)
 }
 
-func (factory *TrxFactory) GetChangeConsensusResultTrx(keyalias string, trxId string, item *quorumpb.ChangeConsensusResultBundle) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetForkTrx(keyalias string, item *quorumpb.ChangeConsensusResultBundle) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	trx, err := factory.CreateTrxWithTrxIdByEthKey(quorumpb.TrxType_CONSENSUS, trxId, encodedcontent, keyalias)
-	if err != nil {
-		return nil, err
-	}
-
-	return trx, nil
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_FORK, encodedcontent, keyalias)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {

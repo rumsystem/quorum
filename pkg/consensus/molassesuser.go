@@ -150,7 +150,7 @@ func (user *MolassesUser) saveBlock(block *quorumpb.Block, rmFromCache bool) err
 	//update chain info
 	molauser_log.Debugf("<%s> UpdChainInfo, upd highest blockId from <%d> to <%d>", user.groupId, user.cIface.GetCurrBlockId(), block.BlockId)
 	user.cIface.SetCurrBlockId(block.BlockId)
-	user.cIface.SetCurrEpoch(block.Epoch)
+	//user.cIface.SetCurrEpoch(block.Epoch)
 	user.cIface.SetLastUpdate(block.TimeStamp)
 	user.cIface.SaveChainInfoToDb()
 
