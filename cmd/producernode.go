@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
@@ -64,7 +65,7 @@ func init() {
 }
 
 func runProducerNode(config cli.ProducerNodeFlag) {
-	logger.Infof("Version:%s", utils.GitCommit)
+	color.Green("Version:%s", utils.GitCommit)
 	const defaultKeyName = "default"
 
 	producerSignalCh = make(chan os.Signal, 1)

@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
@@ -59,7 +60,7 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
-	logger.Infof("Version: %s", utils.GitCommit)
+	color.Green("Version: %s", utils.GitCommit)
 
 	bootstrapSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
