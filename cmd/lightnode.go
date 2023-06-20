@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fatih/color"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
@@ -53,7 +54,7 @@ func init() {
 }
 
 func runLightnode(config cli.LightnodeFlag) {
-	logger.Infof("Version: %s", utils.GitCommit)
+	color.Green("Version: %s", utils.GitCommit)
 	const defaultKeyName = "nodesdk_default"
 
 	lightnodeSignalch = make(chan os.Signal, 1)
