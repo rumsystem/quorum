@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/fatih/color"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/spf13/viper"
@@ -34,6 +35,11 @@ func InitNodeOptions(configdir, peername string) (*NodeOptions, error) {
 		nodeconfigdir = configdir
 		nodepeername = peername
 	}
+
+	if nodeopts.EnableDevNetwork {
+		color.Red("WARNING! dev network mode is enabled!!!")
+	}
+
 	return nodeopts, err
 }
 
