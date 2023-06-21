@@ -2,6 +2,7 @@ package chain
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -28,17 +29,19 @@ import (
 var chain_log = logging.Logger("chain")
 
 type Chain struct {
-	groupItem    *quorumpb.GroupItem
-	nodename     string
-	producerPool map[string]*quorumpb.ProducerItem
-	userPool     map[string]*quorumpb.UserItem
-	trxFactory   *rumchaindata.TrxFactory
-	rexSyncer    *RexSyncer
-	chaindata    *ChainData
-	Consensus    def.Consensus
-	CurrBlock    uint64
-	CurrEpoch    uint64
-	LatestUpdate int64
+	groupItem     *quorumpb.GroupItem
+	nodename      string
+	producerPool  map[string]*quorumpb.ProducerItem
+	userPool      map[string]*quorumpb.UserItem
+	trxFactory    *rumchaindata.TrxFactory
+	rexSyncer     *RexLiteSyncer
+	chaindata     *ChainData
+	Consensus     def.Consensus
+	CurrBlock     uint64
+	CurrEpoch     uint64
+	LatestUpdate  int64
+	ChainCtx      context.Context
+	CtxCancelFunc context.CancelFunc
 }
 
 func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChainInfo bool) error {
@@ -51,8 +54,11 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	chain.trxFactory = &rumchaindata.TrxFactory{}
 	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
 
+	//create context with cancel function, chainCtx will be ctx parent of all underlay components
+	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
+
 	//initial Syncer
-	chain.rexSyncer = NewRexSyncer(chain.groupItem.GroupId, chain.nodename, chain, chain)
+	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 
 	//initial chaindata manager
 	chain.chaindata = &ChainData{
@@ -83,7 +89,9 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	}
 
 	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
-
+	//initial Syncer
+	// chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 	return nil
 }
 
@@ -143,7 +151,10 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		if err != nil {
 			chain_log.Warning(err.Error())
 		} else {
-			err = chain.HandleBlockPsConn(blk)
+			//TODO: save to cache, waitting for syncer to pickup it
+			nodectx.GetNodeCtx().GetChainStorage().AddBlockToDSCache(blk, chain.nodename)
+			chain.rexSyncer.TaskTrigger()
+			// err = chain.HandleBlockPsConn(blk)
 		}
 	} else if pkg.Type == quorumpb.PackageType_TRX {
 		trx := &quorumpb.Trx{}
@@ -414,6 +425,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
 }
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
+	chain_log.Warningf("<%s> TODO: add a lock in ApplyBlocks()", chain.groupItem.GroupId)
 	//PRODUCER_NODE add SYNC
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		for _, block := range blocks {
@@ -613,7 +625,7 @@ func (chain *Chain) GetRexSyncerStatus() string {
 	switch status {
 	case IDLE:
 		statusStr = "IDLE"
-	case SYNCING:
+	case RUNNING:
 		statusStr = "SYNCING"
 	case CLOSED:
 		statusStr = "CLOSED"
@@ -796,6 +808,11 @@ func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, err
 	return true, nil
 }
 
+func (chain *Chain) IsProducerByPubkey(pubkey string) bool {
+	_, ok := chain.producerPool[pubkey]
+	return ok
+}
+
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
 
@@ -813,6 +830,10 @@ func (chain *Chain) StopSync() {
 	if chain.rexSyncer != nil {
 		chain.rexSyncer.Stop()
 	}
+}
+
+func (chain *Chain) GetBlockFromDSCache(groupId string, blockId uint64, prefix ...string) (*quorumpb.Block, error) {
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlockFromDSCache(groupId, blockId, chain.nodename)
 }
 
 //local sync

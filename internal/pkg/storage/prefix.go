@@ -10,22 +10,24 @@ import (
 )
 
 const (
-	TRX_PREFIX           = "trx"       //trx
-	BLK_PREFIX           = "blk"       //block
-	GRP_PREFIX           = "grp"       //group
-	CHNINFO_PREFIX       = "chain"     //chaininfo
-	CNT_PREFIX           = "cnt"       //content
-	PRD_PREFIX           = "prd"       //producer
-	USR_PREFIX           = "usr"       //user
-	ANN_PREFIX           = "ann"       //announce
-	SMA_PREFIX           = "sma"       //schema
-	CHD_PREFIX           = "chd"       //cached
-	APP_CONFIG_PREFIX    = "app_conf"  //group configuration
-	CHAIN_CONFIG_PREFIX  = "chn_conf"  //chain configuration
-	TRX_AUTH_TYPE_PREFIX = "trx_auth"  //trx auth type
-	ALLW_LIST_PREFIX     = "alw_list"  //allow list
-	DENY_LIST_PREFIX     = "dny_list"  //deny list
-	PRD_TRX_ID_PREFIX    = "prd_trxid" //trxid of latest trx which update group producer list
+	TRX_PREFIX             = "trx"             //trx
+	BLK_PREFIX             = "blk"             //block
+	GRP_PREFIX             = "grp"             //group
+	CHNINFO_PREFIX         = "chain"           //chaininfo
+	CNT_PREFIX             = "cnt"             //content
+	PRD_PREFIX             = "prd"             //producer
+	USR_PREFIX             = "usr"             //user
+	ANN_PREFIX             = "ann"             //announce
+	SMA_PREFIX             = "sma"             //schema
+	CHD_PREFIX             = "chd"             //cached
+	APP_CONFIG_PREFIX      = "app_conf"        //group configuration
+	CHAIN_CONFIG_PREFIX    = "chn_conf"        //chain configuration
+	TRX_AUTH_TYPE_PREFIX   = "trx_auth"        //trx auth type
+	ALLW_LIST_PREFIX       = "alw_list"        //allow list
+	DENY_LIST_PREFIX       = "dny_list"        //deny list
+	PRD_TRX_ID_PREFIX      = "prd_trxid"       //trxid of latest trx which update group producer list
+	DSCHD_PREFIX           = "dschd"           //cache datasource
+	CONSENSUS_NONCE_PREFIX = "consensus_nonce" //group consensus nonce
 
 	// groupinfo db
 	GROUPITEM_PREFIX = "grpitem"
@@ -66,6 +68,16 @@ func GetCachedBlockPrefix(groupId string, prefix ...string) string {
 	key := nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
 	if groupId != "" {
 		return key + groupId + "_"
+	}
+	return key
+}
+
+func GetDSCachedBlockPrefix(groupId string, blockId uint64, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	blockIdstr := strconv.FormatUint(blockId, 10)
+	key := nodeprefix + DSCHD_PREFIX + "_" + BLK_PREFIX + "_"
+	if groupId != "" {
+		return key + groupId + "_" + blockIdstr
 	}
 	return key
 }

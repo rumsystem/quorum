@@ -53,6 +53,53 @@ func (dbMgr *DbMgr) GetBlock(groupId string, blockId uint64, cached bool, prefix
 	return &block, err
 }
 
+// save block chunk to cache datasource
+func (dbMgr *DbMgr) SaveBlockToDSCache(block *quorumpb.Block, prefix ...string) error {
+	// TODO PrevHash bytes to string
+	key := GetDSCachedBlockPrefix(block.GroupId, block.BlockId, prefix...)
+	dbmgr_log.Debugf("try save block to cache datasource with key <%s>", key)
+
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	if isExist {
+		return rumerrors.ErrBlockExist
+	}
+
+	value, err := proto.Marshal(block)
+	if err != nil {
+		return err
+	}
+	return dbMgr.Db.Set([]byte(key), value)
+}
+
+// get block chunk from cache datasource
+func (dbMgr *DbMgr) GetBlockFromDSCache(groupId string, blockId uint64, prefix ...string) (*quorumpb.Block, error) {
+	key := GetDSCachedBlockPrefix(groupId, blockId, prefix...)
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	if !isExist {
+		return nil, rumerrors.ErrBlockExist
+	}
+
+	value, err := dbMgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	block := quorumpb.Block{}
+	err = proto.Unmarshal(value, &block)
+	if err != nil {
+		return nil, err
+	}
+
+	return &block, err
+}
+
 // save block chunk
 func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
 	var key string
