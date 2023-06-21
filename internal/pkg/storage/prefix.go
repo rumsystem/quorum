@@ -20,6 +20,7 @@ const (
 	ANN_PREFIX             = "ann"             //announce
 	SMA_PREFIX             = "sma"             //schema
 	CHD_PREFIX             = "chd"             //cached
+	DSCHD_PREFIX           = "dschd"           //cache datasource
 	APP_CONFIG_PREFIX      = "app_conf"        //group configuration
 	CHAIN_CONFIG_PREFIX    = "chn_conf"        //chain configuration
 	TRX_AUTH_TYPE_PREFIX   = "trx_auth"        //trx auth type
@@ -69,6 +70,16 @@ func GetCachedBlockPrefix(groupId string, prefix ...string) string {
 	key := nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
 	if groupId != "" {
 		return key + groupId + "_"
+	}
+	return key
+}
+
+func GetDSCachedBlockPrefix(groupId string, blockId uint64, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	blockIdstr := strconv.FormatUint(blockId, 10)
+	key := nodeprefix + DSCHD_PREFIX + "_" + BLK_PREFIX + "_"
+	if groupId != "" {
+		return key + groupId + "_" + blockIdstr
 	}
 	return key
 }

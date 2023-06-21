@@ -35,7 +35,7 @@ type Chain struct {
 	producerPool  map[string]*quorumpb.ProducerItem
 	userPool      map[string]*quorumpb.UserItem
 	trxFactory    *rumchaindata.TrxFactory
-	rexSyncer     *RexSyncer
+	rexSyncer     *RexLiteSyncer
 	chaindata     *ChainData
 	Consensus     def.Consensus
 	CurrBlock     uint64
@@ -93,7 +93,8 @@ func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChai
 	}
 
 	//initial Syncer
-	chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+	// chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 
 	return nil
 }
@@ -164,7 +165,10 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		if err != nil {
 			chain_log.Warning(err.Error())
 		} else {
-			err = chain.HandleBlockPsConn(blk)
+			//TODO: save to cache, waitting for syncer to pickup it
+			nodectx.GetNodeCtx().GetChainStorage().AddBlockToDSCache(blk, chain.nodename)
+			chain.rexSyncer.TaskTrigger()
+			// err = chain.HandleBlockPsConn(blk)
 		}
 
 	} else if pkg.Type == quorumpb.PackageType_TRX {
@@ -485,6 +489,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
 }
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
+	chain_log.Warningf("<%s> TODO: add a lock in ApplyBlocks()", chain.groupItem.GroupId)
 	//PRODUCER_NODE add SYNC
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		for _, block := range blocks {
@@ -1016,6 +1021,10 @@ func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, err
 	}
 
 	return true, nil
+}
+
+func (chain *Chain) GetBlockFromDSCache(groupId string, blockId uint64, prefix ...string) (*quorumpb.Block, error) {
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlockFromDSCache(groupId, blockId, chain.nodename)
 }
 
 //local sync

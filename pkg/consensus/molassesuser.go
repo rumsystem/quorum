@@ -28,6 +28,7 @@ func (user *MolassesUser) NewUser(item *quorumpb.GroupItem, nodename string, ifa
 }
 
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
+	fmt.Println("=============user add block call")
 	molauser_log.Debugf("<%s> AddBlock called, BlockId <%d>", user.groupId, block.BlockId)
 
 	//check if block already exist in chain
