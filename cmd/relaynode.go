@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fatih/color"
 	"github.com/rumsystem/quorum/internal/pkg/cli"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -58,7 +59,7 @@ func runRelaynode(config cli.RelayNodeFlag) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger.Infof("Version: %s", utils.GitCommit)
+	color.Green("Version: %s", utils.GitCommit)
 	peername := config.PeerName
 
 	relayNodeOpt, err := options.InitRelayNodeOptions(config.ConfigDir, peername)
