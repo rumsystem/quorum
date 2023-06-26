@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -34,24 +35,24 @@ type NodeInfoMem struct {
 }
 
 func (v ByteSize) MarshalJSON() ([]byte, error) {
-	i := int64(v)
-	s := b2m(i)
+	i := uint64(v)
+	s := humanize.Bytes(i)
 	return json.Marshal(s)
 }
 
-func b2m(i int64) string {
-	const unit = 1024
-
-	if i < unit {
-		return fmt.Sprintf("%d B", i)
+func (v *ByteSize) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	n, err := humanize.ParseBytes(s)
+	if err != nil {
+		return err
 	}
 
-	div, exp := int64(unit), 0
-	for n := i / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %ciB", float64(i)/float64(div), "KMGTPE"[exp])
+	*v = ByteSize(n)
+
+	return nil
 }
 
 func updateNodeStatus(nodenetworkname string) {
