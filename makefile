@@ -2,7 +2,7 @@ PROTOC_GEN_GO = $(GOPATH)/bin/protoc-gen-go
 PROTOC = $(shell which protoc)
 
 install-goreleaser:
-	go install github.com/goreleaser/goreleaser@latest
+	go install github.com/goreleaser/goreleaser@v1.18.2
 
 linux: install-goreleaser
 	GOOS=linux GOARCH=amd64 goreleaser build --snapshot --clean --single-target
