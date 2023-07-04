@@ -85,15 +85,15 @@ func (cp *MolassesConsensusProposer) ProposeWorker(chainCtx context.Context, chP
 				return
 			}
 
-			retryCnt := 0
+			var retryCnt uint64 = 0
 			isCanceled := false
 
 		RETRY:
 
-			for retryCnt < int(task.Req.AgreementTickCount) {
+			for retryCnt < task.Req.AgreementTickCount {
 				reqMsg := &quorumpb.ChangeConsensusReqMsg{
-					Req:   task.Req,
-					Round: uint64(retryCnt),
+					Req:                     task.Req,
+					ReqChangeConsensusEpoch: retryCnt,
 				}
 
 				molacp_log.Debugf("<%s> change consensus ROUND <%d> req <%s>", cp.groupId, retryCnt, task.Req.ReqId)
@@ -463,7 +463,7 @@ func (cp *MolassesConsensusProposer) createBftTask(ctx context.Context, msg *quo
 		Proof:     proofBundle,
 	}
 
-	bftTask.bft.AddProof(proofBundle)
+	bftTask.bft.AddProof(proofBundle, msg.ReqChangeConsensusEpoch)
 	return bftTask, nil
 }
 

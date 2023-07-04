@@ -44,7 +44,7 @@ func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensus
 	}
 }
 
-func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof, round int32) {
+func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof, round uint64) {
 	pcbft_log.Debugf("AddProof called, reqid <%s>, nonce <%d> ", proof.Req.ReqId, proof.Req.Nonce)
 	bft.currProof = proof
 	datab, _ := proto.Marshal(proof)

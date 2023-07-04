@@ -18,15 +18,15 @@ type PCAcs struct {
 	rbcResults map[string][]byte
 
 	chAcsDone chan *AcsResult
-	Epoch     uint64
+	round     uint64
 }
 
-func NewPCAcs(ctx context.Context, cfg Config, round int32, chAcsDone chan *AcsResult) *PCAcs {
+func NewPCAcs(ctx context.Context, cfg Config, round uint64, chAcsDone chan *AcsResult) *PCAcs {
 	pcacs_log.Debugf("NewPCAcs called, round <%d>", round)
 
 	acs := &PCAcs{
 		Config:     cfg,
-		Round:      round,
+		round:      round,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
