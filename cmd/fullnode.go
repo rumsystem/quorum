@@ -28,11 +28,13 @@ import (
 	appapi "github.com/rumsystem/quorum/pkg/chainapi/appapi"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
 	fnodeFlag        = cli.FullNodeFlag{ProtocolID: "/quorum/1.0.0"}
 	fullNode         *p2p.Node
+	fullNodeViper    *viper.Viper
 	fullNodeSignalch chan os.Signal
 )
 
@@ -40,6 +42,29 @@ var fullnodeCmd = &cobra.Command{
 	Use:   "fullnode",
 	Short: "Run fullnode",
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := fullNodeViper.Unmarshal(&fnodeFlag); err != nil {
+			logger.Fatalf("viper unmarshal failed: %s", err)
+		}
+
+		if len(fnodeFlag.ListenAddresses) == 0 {
+			if len(fullNodeViper.GetStringSlice("listen")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(fullNodeViper.GetStringSlice("listen"), ","))
+				if err != nil {
+					logger.Fatalf("parse listen addr list failed: %s", err)
+				}
+				fnodeFlag.ListenAddresses = *addrlist
+			}
+		}
+		if len(fnodeFlag.BootstrapPeers) == 0 {
+			if len(fullNodeViper.GetStringSlice("peer")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(fullNodeViper.GetStringSlice("peer"), ","))
+				if err != nil {
+					logger.Fatalf("parse bootstrap peer addr list failed: %s", err)
+				}
+				fnodeFlag.BootstrapPeers = *addrlist
+			}
+		}
+
 		if fnodeFlag.KeyStorePwd == "" {
 			fnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
@@ -54,22 +79,27 @@ func init() {
 	flags := fullnodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&fnodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&fnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "data dir")
-	flags.StringVar(&fnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&fnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&fnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.Var(&fnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&fnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&fnodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&fnodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
-	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
-	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.StringVar(&fnodeFlag.SkipPeers, "skippeers", "", "peer id lists, will be skipped in the pubsub connection")
-	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
-	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
+	flags.String("peername", "peer", "peername")
+	flags.String("configdir", "./config/", "config and keys dir")
+	flags.String("datadir", "./data/", "data dir")
+	flags.String("keystoredir", "./keystore/", "keystore dir")
+	flags.String("keystorename", "default", "keystore name")
+	flags.String("keystorepass", "", "keystore password")
+	flags.StringSlice("listen", nil, "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip4/127.0.0.1/tcp/5215/ws")
+	flags.String("apihost", "localhost", "Domain or public ip addresses for api server")
+	flags.Uint("apiport", 5215, "api server listen port")
+	flags.String("certdir", "certs", "ssl certificate directory")
+	flags.String("zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
+	flags.StringSlice("peer", nil, "bootstrap peer address")
+	flags.String("skippeers", "", "peer id lists, will be skipped in the pubsub connection")
+	flags.String("jsontracer", "", "output tracer data to a json file")
+	flags.Bool("autoack", true, "auto ack the transactions in pubqueue")
+	flags.Bool("autorelay", true, "enable relay")
+
+	fullNodeViper = options.NewViper()
+	if err := fullNodeViper.BindPFlags(flags); err != nil {
+		logger.Fatalf("viper bind flags failed: %s", err)
+	}
 }
 
 func runFullnode(config cli.FullNodeFlag) {

@@ -107,18 +107,30 @@ func (al *AddrList) String() string {
 }
 
 func (al *AddrList) Set(value string) error {
-	addrlist := strings.Split(value, ",")
-
-	for _, v := range addrlist {
-		addr, err := maddr.NewMultiaddr(v)
-		if err != nil {
-			return err
-		}
-		*al = append(*al, addr)
+	tmpAL, err := ParseAddrList(value)
+	if err != nil {
+		return err
 	}
+
+	*al = *tmpAL
 	return nil
 }
 
 func (al *AddrList) Type() string {
 	return "AddrList"
+}
+
+func ParseAddrList(s string) (*AddrList, error) {
+	addrlist := strings.Split(s, ",")
+	var al AddrList
+
+	for _, v := range addrlist {
+		addr, err := maddr.NewMultiaddr(v)
+		if err != nil {
+			return nil, err
+		}
+		al = append(al, addr)
+	}
+
+	return &al, nil
 }

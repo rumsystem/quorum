@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	//"path/filepath"
 )
@@ -19,6 +20,7 @@ var nodeopts *NodeOptions
 var nodeconfigdir string
 var nodepeername string
 
+const RumEnvPrefix = "RUM"
 const JWTKeyLength = 32
 const defaultNetworkName = "staten"
 const defaultMaxPeers = 50
@@ -53,17 +55,18 @@ func GetConfigDir() (string, error) {
 }
 
 func (opt *NodeOptions) writeToconfig() error {
-	v, err := initConfigfile(nodeconfigdir, nodepeername)
+	err := initConfigfile(nodeconfigdir, nodepeername)
 	if err != nil {
 		return err
 	}
 
-	v.Set("EnableNat", opt.EnableNat)
-	v.Set("EnableRumExchange", opt.EnableRumExchange)
-	v.Set("EnableDevNetwork", opt.EnableDevNetwork)
-	v.Set("SignKeyMap", opt.SignKeyMap)
-	v.Set("JWT", opt.JWT)
-	return v.WriteConfig()
+	viper.Set("EnableNat", opt.EnableNat)
+	viper.Set("EnableRumExchange", opt.EnableRumExchange)
+	viper.Set("EnableDevNetwork", opt.EnableDevNetwork)
+	viper.Set("SignKeyMap", opt.SignKeyMap)
+	viper.Set("JWT", opt.JWT)
+
+	return viper.WriteConfig()
 }
 
 func (opt *NodeOptions) SetSignKeyMap(keyname, addr string) error {
@@ -80,88 +83,105 @@ func (opt *NodeOptions) DelSignKeyMap(keyname string) error {
 	return opt.writeToconfig()
 }
 
-func writeDefaultToconfig(v *viper.Viper) error {
-	v.Set("EnableNat", true)
-	v.Set("EnableRumExchange", false)
-	v.Set("EnableDevNetwork", false)
-	v.Set("NetworkName", defaultNetworkName)
-	v.Set("MaxPeers", defaultMaxPeers)
-	v.Set("ConnsHi", defaultConnsHi)
-	v.Set("SignKeyMap", map[string]string{})
-	v.Set("JWT", JWT{
+func writeDefaultToconfig() error {
+	return viper.SafeWriteConfig()
+}
+
+func initConfigfile(dir, keyname string) error {
+	if dir == "" || keyname == "" {
+		logger.Fatalf("config dir: %s or peername: %s is empty", dir, keyname)
+	}
+	if err := utils.EnsureDir(dir); err != nil {
+		optionslog.Errorf("check config directory failed: %s", err)
+		return err
+	}
+
+	viper.SetConfigFile(keyname + "_options.toml")
+	viper.SetConfigName(keyname + "_options")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(dir)
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			optionslog.Infof("config file not found, generating...")
+			writeDefaultToconfig()
+		} else {
+			return err
+		}
+	}
+
+	// get from environnent variable
+	viper.SetEnvPrefix(RumEnvPrefix)
+	viper.AutomaticEnv()
+	viper.AllowEmptyEnv(true)
+
+	// set default value
+	viper.SetDefault("EnableNat", true)
+	viper.SetDefault("EnableRumExchange", false)
+	viper.SetDefault("EnableDevNetwork", false)
+	viper.SetDefault("NetworkName", defaultNetworkName)
+	viper.SetDefault("MaxPeers", defaultMaxPeers)
+	viper.SetDefault("ConnsHi", defaultConnsHi)
+	viper.SetDefault("SignKeyMap", map[string]string{})
+	viper.SetDefault("JWT", JWT{
 		Key:   utils.GetRandomStr(JWTKeyLength),
 		Chain: &JWTListItem{},
 		Node:  map[string]*JWTListItem{},
 	})
-	return v.SafeWriteConfig()
+	viper.SetDefault("EnableSnapshot", true)
+	viper.SetDefault("EnablePubQue", true)
+
+	return nil
 }
 
-func initConfigfile(dir string, keyname string) (*viper.Viper, error) {
-	if err := utils.EnsureDir(dir); err != nil {
-		optionslog.Errorf("check config directory failed: %s", err)
-		return nil, err
-	}
-
-	v := viper.New()
-	v.SetConfigFile(keyname + "_options.toml")
-	v.SetConfigName(keyname + "_options")
-	v.SetConfigType("toml")
-	v.AddConfigPath(dir)
-	v.SetEnvPrefix("RUM") // NOTE: hardcode
-	v.AutomaticEnv()
-
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			optionslog.Infof("config file not found, generating...")
-			writeDefaultToconfig(v)
-		} else {
-			return nil, err
-		}
-	}
-
-	return v, nil
-}
-
-func load(dir string, keyname string) (*NodeOptions, error) {
-	v, err := initConfigfile(dir, keyname)
-	if err != nil {
-		return nil, err
-	}
-
-	err = v.ReadInConfig()
+func load(configdir, peername string) (*NodeOptions, error) {
+	err := initConfigfile(configdir, peername)
 	if err != nil {
 		return nil, err
 	}
 
 	options := &NodeOptions{}
-	if err := v.Unmarshal(&options); err != nil {
+	if err := viper.Unmarshal(options); err != nil {
 		panic(err)
 	}
 
-	if options.JWT == nil {
-		options.JWT = &JWT{
-			Key:   utils.GetRandomStr(JWTKeyLength),
-			Chain: &JWTListItem{},
-			Node:  map[string]*JWTListItem{},
-		}
-	}
-	if v.Get("EnableSnapshot") == nil {
-		options.EnableSnapshot = true
-	}
-
-	if v.Get("EnablePubQue") == nil {
-		options.EnablePubQue = true
-	}
-
-	if options.NetworkName == "" {
-		options.NetworkName = defaultNetworkName
-	}
-	if options.MaxPeers == 0 {
-		options.MaxPeers = defaultMaxPeers
-	}
-	if options.ConnsHi == 0 {
-		options.ConnsHi = defaultConnsHi
-	}
-
 	return options, nil
+}
+
+func init() {
+	// pflag.String("peername", "peer", "peername")
+	// pflag.String("configdir", "./config/", "config and keys dir")
+	// pflag.String("datadir", "./data/", "data dir")
+	// pflag.String("keystoredir", "./keystore/", "keystore dir")
+	// pflag.String("keystorename", "default", "keystore name")
+	// pflag.String("keystorepass", "", "keystore password")
+	// // pflag.Var("listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	// pflag.String("apihost", "localhost", "api server ip or hostname")
+	// pflag.Int("apiport", 5215, "api server listen port")
+	// pflag.Var("peer", "bootstrap peer address")
+	pflag.String("password", "", "keystore password")
+	pflag.Bool("enablerelay", true, "enable relay")
+	pflag.Bool("enablenat", true, "enable nat")
+	pflag.Bool("enablerumexchange", true, "enable rumexchange")
+	pflag.Bool("enabledevnetwork", true, "enable dev network")
+	pflag.Bool("enablesnapshot", true, "enable snapshot")
+	pflag.Bool("enablepubque", true, "enable pubque")
+	pflag.Int("maxpeers", defaultMaxPeers, "max peer number")
+	pflag.Int("connshi", defaultConnsHi, "max connshi")
+	pflag.String("networkname", defaultNetworkName, "peer network name")
+	// pflag.String("skippeers", "", "peer id lists, will be skipped in the pubsub connection")
+	pflag.String("jsontracer", "", "output tracer data to a json file")
+
+	// pflag.Parse()
+	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
+		logger.Fatalf("viper bind flags failed: %s", err)
+	}
+}
+
+func NewViper() *viper.Viper {
+	v := viper.New()
+	v.AutomaticEnv()
+	v.SetEnvPrefix(RumEnvPrefix)
+
+	return v
 }
