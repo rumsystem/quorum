@@ -16,10 +16,12 @@ import (
 	nodesdkapi "github.com/rumsystem/quorum/pkg/nodesdk/api"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
 	lnodeFlag         = cli.LightnodeFlag{}
+	lnodeViper        *viper.Viper
 	lightnodeSignalch chan os.Signal
 )
 
@@ -28,6 +30,10 @@ var lightnodeCmd = &cobra.Command{
 	Use:   "lightnode",
 	Short: "Run lightnode",
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := lnodeViper.Unmarshal(&lnodeFlag); err != nil {
+			logger.Fatalf("viper unmarshal failed: %s", err)
+		}
+
 		if lnodeFlag.KeyStorePwd == "" {
 			lnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
@@ -37,20 +43,26 @@ var lightnodeCmd = &cobra.Command{
 }
 
 func init() {
+	lnodeViper = options.NewViper()
+
 	rootCmd.AddCommand(lightnodeCmd)
 
 	flags := lightnodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&lnodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&lnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&lnodeFlag.DataDir, "datadir", "./data/", "config dir")
-	flags.StringVar(&lnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&lnodeFlag.KeyStoreName, "keystorename", "defaultkeystore", "keystore name")
-	flags.StringVar(&lnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.StringVar(&lnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&lnodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&lnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
+	flags.String("peername", "peer", "peername")
+	flags.String("configdir", "./config/", "config and keys dir")
+	flags.String("datadir", "./data/", "config dir")
+	flags.String("keystoredir", "./keystore/", "keystore dir")
+	flags.String("keystorename", "defaultkeystore", "keystore name")
+	flags.String("keystorepass", "", "keystore password")
+	flags.String("apihost", "", "Domain or public ip addresses for api server")
+	flags.Int("apiport", 5215, "api server listen port")
+	flags.String("jsontracer", "", "output tracer data to a json file")
+
+	if err := lnodeViper.BindPFlags(flags); err != nil {
+		logger.Fatalf("viper bind flags failed: %s", err)
+	}
 }
 
 func runLightnode(config cli.LightnodeFlag) {

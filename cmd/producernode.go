@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,11 +25,13 @@ import (
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
 	producerNodeFlag = cli.ProducerNodeFlag{ProtocolID: "/quorum/1.0.0"}
 	producerNode     *p2p.Node
+	producerViper    *viper.Viper
 	producerSignalCh chan os.Signal
 )
 
@@ -36,6 +39,29 @@ var producerNodeCmd = &cobra.Command{
 	Use:   "producernode",
 	Short: "Run producernode",
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := producerViper.Unmarshal(&producerNodeFlag); err != nil {
+			logger.Fatalf("viper unmarshal failed: %s", err)
+		}
+
+		if len(producerNodeFlag.ListenAddresses) == 0 {
+			if len(producerViper.GetStringSlice("listen")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(producerViper.GetStringSlice("listen"), ","))
+				if err != nil {
+					logger.Fatalf("parse listen addr list failed: %s", err)
+				}
+				producerNodeFlag.ListenAddresses = *addrlist
+			}
+		}
+		if len(producerNodeFlag.BootstrapPeers) == 0 {
+			if len(producerViper.GetStringSlice("peer")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(producerViper.GetStringSlice("peer"), ","))
+				if err != nil {
+					logger.Fatalf("parse bootstrap peer addr list failed: %s", err)
+				}
+				producerNodeFlag.BootstrapPeers = *addrlist
+			}
+		}
+
 		if producerNodeFlag.KeyStorePwd == "" {
 			producerNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
@@ -44,24 +70,30 @@ var producerNodeCmd = &cobra.Command{
 }
 
 func init() {
+	producerViper = options.NewViper()
+
 	rootCmd.AddCommand(producerNodeCmd)
 	flags := producerNodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&producerNodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&producerNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&producerNodeFlag.DataDir, "datadir", "./data/", "config dir")
-	flags.StringVar(&producerNodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&producerNodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&producerNodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.Var(&producerNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&producerNodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&producerNodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&producerNodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
-	flags.StringVar(&producerNodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
-	flags.Var(&producerNodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.StringVar(&producerNodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&producerNodeFlag.IsDebug, "debug", false, "show debug log")
+	flags.String("peername", "peer", "peername")
+	flags.String("configdir", "./config/", "config and keys dir")
+	flags.String("datadir", "./data/", "config dir")
+	flags.String("keystoredir", "./keystore/", "keystore dir")
+	flags.String("keystorename", "default", "keystore name")
+	flags.String("keystorepass", "", "keystore password")
+	flags.StringSlice("listen", nil, "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.String("apihost", "localhost", "Domain or public ip addresses for api server")
+	flags.Int("apiport", 5215, "api server listen port")
+	flags.String("certdir", "certs", "ssl certificate directory")
+	flags.String("zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
+	flags.StringSlice("peer", nil, "bootstrap peer address")
+	flags.String("jsontracer", "", "output tracer data to a json file")
+	flags.Bool("debug", false, "show debug log")
+
+	if err := producerViper.BindPFlags(flags); err != nil {
+		logger.Fatalf("viper bind flags failed: %s", err)
+	}
 }
 
 func runProducerNode(config cli.ProducerNodeFlag) {

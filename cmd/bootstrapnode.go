@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,18 +20,43 @@ import (
 	"github.com/rumsystem/quorum/pkg/chainapi/api"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
 	bootstrapNodeFlag = cli.BootstrapNodeFlag{ProtocolID: "/quorum/1.0.0"}
 	bootstrapNode     *p2p.Node
 	bootstrapSignalch chan os.Signal
+	bootstrapViper    *viper.Viper
 )
 
 var bootstrapNodeCmd = &cobra.Command{
 	Use:   "bootstrapnode",
 	Short: "Run bootstrapnode",
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := bootstrapViper.Unmarshal(&bootstrapNodeFlag); err != nil {
+			logger.Fatalf("viper unmarshal failed: %s", err)
+		}
+
+		if len(bootstrapNodeFlag.ListenAddresses) == 0 {
+			if len(bootstrapViper.GetStringSlice("listen")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(bootstrapViper.GetStringSlice("listen"), ","))
+				if err != nil {
+					logger.Fatalf("parse listen addr list failed: %s", err)
+				}
+				bootstrapNodeFlag.ListenAddresses = *addrlist
+			}
+		}
+		if len(bootstrapNodeFlag.BootstrapPeers) == 0 {
+			if len(bootstrapViper.GetStringSlice("peer")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(bootstrapViper.GetStringSlice("peer"), ","))
+				if err != nil {
+					logger.Fatalf("parse bootstrap peer addr list failed: %s", err)
+				}
+				bootstrapNodeFlag.BootstrapPeers = *addrlist
+			}
+		}
+
 		if bootstrapNodeFlag.KeyStorePwd == "" {
 			bootstrapNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
@@ -39,21 +65,27 @@ var bootstrapNodeCmd = &cobra.Command{
 }
 
 func init() {
+	bootstrapViper = options.NewViper()
+
 	rootCmd.AddCommand(bootstrapNodeCmd)
 
 	flags := bootstrapNodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&bootstrapNodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&bootstrapNodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&bootstrapNodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.StringVar(&bootstrapNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&bootstrapNodeFlag.DataDir, "datadir", "./data/", "config dir")
-	flags.Var(&bootstrapNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.String("keystoredir", "./keystore/", "keystore dir")
+	flags.String("keystorename", "default", "keystore name")
+	flags.String("keystorepass", "", "keystore password")
+	flags.String("configdir", "./config/", "config and keys dir")
+	flags.String("datadir", "./data/", "data dir")
+	flags.StringSlice("listen", nil, "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
 
-	flags.StringVar(&bootstrapNodeFlag.APIHost, "apihost", "127.0.0.1", "Domain or public ip addresses for api server")
-	flags.UintVar(&bootstrapNodeFlag.APIPort, "apiport", 4216, "api server listen port")
-	flags.BoolVar(&bootstrapNodeFlag.EnableRelay, "autorelay", true, "enable relay")
+	flags.String("apihost", "127.0.0.1", "Domain or public ip addresses for api server")
+	flags.Int("apiport", 4216, "api server listen port")
+	flags.Bool("autorelay", true, "enable relay")
+
+	if err := bootstrapViper.BindPFlags(flags); err != nil {
+		logger.Fatalf("viper bind flags failed: %s", err)
+	}
 }
 
 func runBootstrapNode(config cli.BootstrapNodeFlag) {

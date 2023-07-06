@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/fatih/color"
@@ -16,13 +17,38 @@ import (
 	"github.com/rumsystem/quorum/pkg/autorelay/api"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var rnodeFlag = cli.RelayNodeFlag{}
+var rnodeViper *viper.Viper
 var relaynodeCmd = &cobra.Command{
 	Use:   "relaynode",
 	Short: "Run relaynode",
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := rnodeViper.Unmarshal(&rnodeFlag); err != nil {
+			logger.Fatalf("viper unmarshal failed: %s", err)
+		}
+
+		if len(rnodeFlag.ListenAddresses) == 0 {
+			if len(rnodeViper.GetStringSlice("listen")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(rnodeViper.GetStringSlice("listen"), ","))
+				if err != nil {
+					logger.Fatalf("parse listen addr list failed: %s", err)
+				}
+				rnodeFlag.ListenAddresses = *addrlist
+			}
+		}
+		if len(rnodeFlag.BootstrapPeers) == 0 {
+			if len(rnodeViper.GetStringSlice("peer")) != 0 {
+				addrlist, err := cli.ParseAddrList(strings.Join(rnodeViper.GetStringSlice("peer"), ","))
+				if err != nil {
+					logger.Fatalf("parse bootstrap peer addr list failed: %s", err)
+				}
+				rnodeFlag.BootstrapPeers = *addrlist
+			}
+		}
+
 		if rnodeFlag.KeyStorePwd == "" {
 			rnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
@@ -31,24 +57,28 @@ var relaynodeCmd = &cobra.Command{
 }
 
 func init() {
+	rnodeViper = options.NewViper()
+
 	rootCmd.AddCommand(relaynodeCmd)
 
 	flags := relaynodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.Var(&rnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.Var(&rnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&rnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&rnodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&rnodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&rnodeFlag.DataDir, "datadir", "./data/", "data dir")
-	flags.StringVar(&rnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&rnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&rnodeFlag.KeyStoreName, "keystorename", "defaultkeystore", "keystore name")
-	flags.StringVar(&rnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.BoolVar(&rnodeFlag.IsDebug, "debug", false, "show debug log")
+	flags.StringSlice("peer", nil, "bootstrap peer address")
+	flags.StringSlice("listen", nil, "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.String("apihost", "", "Domain or public ip addresses for api server")
+	flags.Int("apiport", 5215, "api server listen port")
+	flags.String("peername", "peer", "peername")
+	flags.String("datadir", "./data/", "data dir")
+	flags.String("configdir", "./config/", "config and keys dir")
+	flags.String("keystoredir", "./keystore/", "keystore dir")
+	flags.String("keystorename", "defaultkeystore", "keystore name")
+	flags.String("keystorepass", "", "keystore password")
+	flags.Bool("debug", false, "show debug log")
 
-	relaynodeCmd.MarkFlagRequired("peer")
+	if err := rnodeViper.BindPFlags(flags); err != nil {
+		logger.Fatalf("viper bind flags failed: %s", err)
+	}
 }
 
 func runRelaynode(config cli.RelayNodeFlag) {
