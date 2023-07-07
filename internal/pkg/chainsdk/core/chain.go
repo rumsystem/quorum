@@ -175,39 +175,32 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleTrxPsConn(trx)
 		}
-	} else if pkg.Type == quorumpb.PackageType_HBB_PT {
-		hb := &quorumpb.HBMsgv1{}
-		err = proto.Unmarshal(pkg.Data, hb)
+	} else if pkg.Type == quorumpb.PackageType_BFT_MSG {
+		bftMsg := &quorumpb.BftMsg{}
+		err = proto.Unmarshal(pkg.Data, bftMsg)
 		if err != nil {
 			chain_log.Warningf(err.Error())
 		} else {
-			err = chain.HandleHBPTPsConn(hb)
+			err = chain.HandleBftMsgPsConn(bftMsg)
 		}
-	} else if pkg.Type == quorumpb.PackageType_HBB_PC {
-		hb := &quorumpb.HBMsgv1{}
-		err = proto.Unmarshal(pkg.Data, hb)
+	} else if pkg.Type == quorumpb.PackageType_CC_MSG {
+		ccMsg := &quorumpb.CCMsg{}
+		err = proto.Unmarshal(pkg.Data, ccMsg)
 		if err != nil {
 			chain_log.Warnf(err.Error())
 		} else {
-			err = chain.HandleHBPCPsConn(hb)
+			err = chain.HandleCCMsgPsConn(ccMsg)
 		}
-	} else if pkg.Type == quorumpb.PackageType_CHANGE_CONSENSUS_REQ {
-		req := &quorumpb.ChangeConsensusReqMsg{}
-		err = proto.Unmarshal(pkg.Data, req)
+	} else if pkg.Type == quorumpb.PackageType_BROADCAST_MSG {
+		broadcastMsg := &quorumpb.BroadcastMsg{}
+		err = proto.Unmarshal(pkg.Data, broadcastMsg)
 		if err != nil {
 			chain_log.Warnf(err.Error())
 		} else {
-			err = chain.HandleChangeConsensusReqPsConn(req)
+			err = chain.HandleBroadcastMsgPsConn(broadcastMsg)
 		}
-
-	} else if pkg.Type == quorumpb.PackageType_GROUP_BROADCAST {
-		gb := &quorumpb.GroupBroadcast{}
-		err = proto.Unmarshal(pkg.Data, gb)
-		if err != nil {
-			chain_log.Warnf(err.Error())
-		} else {
-			err = chain.HandleGroupBroadcastPsConn(gb)
-		}
+	} else {
+		chain_log.Warningf("invalid pkg type <%s> for psconn", pkg.Type.String())
 	}
 
 	return err
@@ -250,10 +243,10 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	case
 		quorumpb.TrxType_POST,
 		quorumpb.TrxType_ANNOUNCE,
-		quorumpb.TrxType_FORK,
-		quorumpb.TrxType_USER,
+		quorumpb.TrxType_UPD_GRP_USER,
+		quorumpb.TrxType_CHAIN_CONFIG,
 		quorumpb.TrxType_APP_CONFIG,
-		quorumpb.TrxType_CHAIN_CONFIG:
+		quorumpb.TrxType_FORK:
 		chain.producerAddTrx(trx)
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.groupItem.GroupId)
@@ -316,8 +309,7 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	return nil
 }
 
-// handle HBB msg from PsConn
-func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
+func (chain *Chain) HandleBftMsgPsConn(msg *quorumpb.BftMsg) error {
 	//chain_log.Debugf("<%s> HandleHBPTPsConn called", chain.groupItem.GroupId)
 
 	//only producers(owner) need to handle HBB message
@@ -329,98 +321,97 @@ func (chain *Chain) HandleHBPTPsConn(hb *quorumpb.HBMsgv1) error {
 		chain_log.Warningf("<%s> Consensus Producer is null", chain.groupItem.GroupId)
 		return nil
 	}
-	return chain.Consensus.Producer().HandleHBMsg(hb)
+	return chain.Consensus.Producer().HandleBftMsg(msg)
 }
 
-// handle consensus req from PsConn
-func (chain *Chain) HandleHBPCPsConn(hb *quorumpb.HBMsgv1) error {
-	//chain_log.Debugf("<%s> HandleHBPCPsConn called", chain.groupItem.GroupId)
-
-	if chain.Consensus.ConsensusProposer() == nil {
-		//chain_log.Warningf("<%s> Consensus ProducerProposer is null", chain.groupItem.GroupId)
-		return nil
-	}
-
-	return chain.Consensus.ConsensusProposer().HandleHBMsg(hb)
-}
-
-func (chain *Chain) HandleChangeConsensusReqPsConn(msg *quorumpb.ChangeConsensusReqMsg) error {
+func (chain *Chain) HandleCCMsgPsConn(msg *quorumpb.CCMsg) error {
 	//chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
 	if chain.Consensus.ConsensusProposer() == nil {
 		//chain_log.Warningf("<%s> Consensus ConsensusProposer is nil", chain.groupItem.GroupId)
 		return nil
 	}
-	return chain.Consensus.ConsensusProposer().HandleCCReq(msg)
+
+	return chain.Consensus.ConsensusProposer().HandleCCMsg(msg)
 }
 
-func (chain *Chain) HandleGroupBroadcastPsConn(brd *quorumpb.GroupBroadcast) error {
+func (chain *Chain) HandleBroadcastMsgPsConn(brd *quorumpb.BroadcastMsg) error {
 	chain_log.Debugf("<%s> HandleGroupBroadcastPsConn called", chain.groupItem.GroupId)
-	//save broadcast msg to db
 	return nil
 }
 
-// handler trx from rex (for sync only)
-func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
-	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupItem.GroupId)
-	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Warningf("HandleTrxRex called, Trx Version mismatch, trxid <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
-		return fmt.Errorf("trx Version mismatch")
+// handler syncMsg from rex
+func (chain *Chain) HandleSyncMsgRex(msg *quorumpb.SyncMsg, s network.Stream) error {
+	chain_log.Debugf("<%s> HandleSyncMsgRex called", chain.groupItem.GroupId)
+
+	switch msg.Type {
+	case quorumpb.SyncMsgType_REQ_BLOCK:
+		chain.handleSyncMsgReq(msg, s)
+	case quorumpb.SyncMsgType_REQ_BLOCK_RESP:
+		chain.handleSyncMsgResp(msg)
 	}
 
-	// decompress
-	content := new(bytes.Buffer)
-	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
-		e := fmt.Errorf("utils.Decompress failed: %s", err)
-		chain_log.Error(e)
-		return e
+	/*
+		if trx.Version != nodectx.GetNodeCtx().Version {
+			chain_log.Warningf("HandleTrxRex called, Trx Version mismatch, trxid <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
+			return fmt.Errorf("trx Version mismatch")
+		}
+
+		// decompress
+		content := new(bytes.Buffer)
+		if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+			e := fmt.Errorf("utils.Decompress failed: %s", err)
+			chain_log.Error(e)
+			return e
+		}
+		trx.Data = content.Bytes()
+
+		//ignore msg from myself
+		if trx.SenderPubkey == chain.groupItem.UserSignPubkey {
+			return nil
+		}
+
+		//TBD should check if requester from block list
+		verified, err := rumchaindata.VerifyTrx(trx)
+		if err != nil {
+			chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
+			return fmt.Errorf("verify Trx failed")
+		}
+
+		if !verified {
+			chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
+			return fmt.Errorf("invalid Trx")
+		}
+
+		//Rex Channel only support the following trx type
+		switch trx.Type {
+		case quorumpb.TrxType_REQ_BLOCK:
+			chain.handleReqBlocks(trx, s)
+		case quorumpb.TrxType_REQ_BLOCK_RESP:
+			chain.handleReqBlockResp(trx)
+		default:
+			//do nothing
+		}
+	*/
+	return nil
+}
+
+func (chain *Chain) handleSyncMsgReq(msg *quorumpb.SyncMsg, s network.Stream) error {
+	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
+
+	//unmarshal data to reqBlocks
+	reqBlock := &quorumpb.ReqBlock{}
+	if err := proto.Unmarshal(msg.Data, reqBlock); err != nil {
+		chain_log.Warningf("<%s> unmarshal reqBlocks failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
 	}
-	trx.Data = content.Bytes()
 
 	//ignore msg from myself
-	if trx.SenderPubkey == chain.groupItem.UserSignPubkey {
+	if reqBlock.ReqPubkey == chain.groupItem.UserSignPubkey {
 		return nil
 	}
 
-	//TBD should check if requester from block list
-	verified, err := rumchaindata.VerifyTrx(trx)
-	if err != nil {
-		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-		return fmt.Errorf("verify Trx failed")
-	}
-
-	if !verified {
-		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
-		return fmt.Errorf("invalid Trx")
-	}
-
-	//Rex Channel only support the following trx type
-	switch trx.Type {
-	case quorumpb.TrxType_REQ_BLOCK:
-		chain.handleReqBlocks(trx, s)
-	case quorumpb.TrxType_REQ_BLOCK_RESP:
-		chain.handleReqBlockResp(trx)
-	default:
-		//do nothing
-	}
-
-	return nil
-}
-
-// ununsed
-func (chain *Chain) HandleBlockRex(block *quorumpb.Block, s network.Stream) error {
-	chain_log.Debugf("<%s> HandleBlockRex called", chain.groupItem.GroupId)
-	return nil
-}
-
-// unused
-func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsgv1) error {
-	chain_log.Debugf("<%s> HandleBlockRex called", chain.groupItem.GroupId)
-	return nil
-}
-
-func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
-	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
-	requester, fromBlock, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
+	//generate reqBlocksResp
+	requester, fromBlock, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(reqBlock)
 	if err != nil {
 		return err
 	}
@@ -429,56 +420,47 @@ func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
 	chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", requester, fromBlock, blkReqs)
 	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", fromBlock, len(blocks), result.String())
 
-	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
-	if err != nil {
-		return err
-	}
+	var resp quorumpb.ReqBlockResp
+	resp.GroupId = reqBlock.GroupId
+	resp.RequesterPubkey = requester
+	resp.ProviderPubkey = chain.groupItem.UserSignPubkey
+	resp.Result = result
+	resp.FromBlock = fromBlock
+	resp.BlksRequested = blkReqs
+	resp.BlksProvided = int32(len(blocks))
+	blockBundles := &quorumpb.BlocksBundle{}
+	blockBundles.Blocks = blocks
+	resp.Blocks = blockBundles
+
+	syncMsg := &quorumpb.SyncMsg{}
+	syncMsg.Type = quorumpb.SyncMsgType_REQ_BLOCK_RESP
+	syncMsg.Data, err = proto.Marshal(&resp)
 
 	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId); err != nil {
 		return err
 	} else {
-		return cmgr.SendRespTrxRex(trx, s)
+		return cmgr.SendReqBlockRespRex(syncMsg, s)
 	}
 }
 
-func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
+func (chain *Chain) handleSyncMsgResp(msg *quorumpb.SyncMsg) error {
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupItem.GroupId)
 
-	//decode resp
-	var err error
-	ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
-	if err != nil {
-		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
-		return
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
-		return
-	}
-
-	reqBlockResp := &quorumpb.ReqBlockResp{}
-	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
-		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
-		return
+	resp := &quorumpb.ReqBlockResp{}
+	if err := proto.Unmarshal(msg.Data, resp); err != nil {
+		chain_log.Warningf("<%s> unmarshal reqBlocks failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
 	}
 
 	//if not asked by me, ignore it
-	if reqBlockResp.RequesterPubkey != chain.groupItem.UserSignPubkey {
+	if resp.RequesterPubkey != chain.groupItem.UserSignPubkey {
 		//chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.Group.GroupId, rumerrors.ErrSenderMismatch.Error())
-		return
-	}
-
-	//check trx sender
-	if trx.SenderPubkey != reqBlockResp.ProviderPubkey {
-		chain_log.Debugf("<%s> HandleReqBlockResp - Trx Sender/blocks providers mismatch <%s>", chain.groupItem.GroupId)
-		return
+		return nil
 	}
 
 	result := &SyncResult{
-		TaskId: reqBlockResp.FromBlock,
-		Data:   reqBlockResp,
+		TaskId: resp.FromBlock,
+		Data:   resp,
 	}
 
 	chain.rexSyncer.AddResult(result)
@@ -798,7 +780,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		//for chain config, consensus, user, only owner can apply
 		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
 			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_USER {
+			trx.Type == quorumpb.TrxType_UPD_GRP_USER {
 			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
@@ -834,7 +816,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, decodedData, nodename)
-		case quorumpb.TrxType_USER:
+		case quorumpb.TrxType_UPD_GRP_USER:
 			chain_log.Debugf("<%s> apply UpdGroupUser trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
 			chain.updUserList()
@@ -895,7 +877,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		//for chain config, consensus, user, only owner can apply
 		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
 			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_USER {
+			trx.Type == quorumpb.TrxType_UPD_GRP_USER {
 			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
@@ -913,7 +895,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 
 		chain_log.Debugf("<%s> apply trx <%s>", chain.groupItem.GroupId, trx.TrxId)
 		switch trx.Type {
-		case quorumpb.TrxType_USER:
+		case quorumpb.TrxType_UPD_GRP_USER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
 			chain.updUserList()

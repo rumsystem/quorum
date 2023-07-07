@@ -46,7 +46,7 @@ func (factory *TrxFactory) GetUpdGroupUserTrx(keyalias string, item *quorumpb.Up
 	if err != nil {
 		return nil, err
 	}
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_USER, encodedcontent, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_USER, encodedcontent, keyalias)
 }
 
 func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.AnnounceItem) (*quorumpb.Trx, error) {
@@ -58,6 +58,7 @@ func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.Announ
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_ANNOUNCE, encodedcontent, keyalias)
 }
 
+/*
 func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, fromBlock uint64, blkReq int32) (*quorumpb.Trx, error) {
 	var reqBlockItem quorumpb.ReqBlock
 	reqBlockItem.GroupId = groupId
@@ -94,6 +95,8 @@ func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, 
 	//send ask next block trx out
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, keyalias)
 }
+
+*/
 
 func (factory *TrxFactory) GetForkTrx(keyalias string, item *quorumpb.ChangeConsensusResultBundle) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)

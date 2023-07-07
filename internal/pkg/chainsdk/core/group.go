@@ -10,8 +10,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-
-	guuid "github.com/google/uuid"
 )
 
 var group_log = logging.Logger("group")
@@ -79,74 +77,77 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) error {
 		return err
 	}
 
-	//add consensus info for group owner
-	//create consensus req
-	consensusReq := &quorumpb.ChangeConsensusReq{
-		ReqId:                guuid.New().String(),
-		GroupId:              item.GroupId,
-		Nonce:                0,
-		ProducerPubkeyList:   []string{item.OwnerPubKey},
-		AgreementTickLenInMs: 0,
-		AgreementTickCount:   0,
-		StartFromEpoch:       0,
-		TrxEpochTickLenInMs:  uint64(DEFAULT_PROPOSE_TRX_INTERVAL),
-		Contract:             nil,
-		SenderPubkey:         item.OwnerPubKey,
-	}
+	/*
+		//add consensus info for group owner
+		//create consensus req
+		consensusReq := &quorumpb.ChangeConsensusReq{
+			ReqId:                guuid.New().String(),
+			GroupId:              item.GroupId,
+			Nonce:                0,
+			ProducerPubkeyList:   []string{item.OwnerPubKey},
+			AgreementTickLenInMs: 0,
+			AgreementTickCount:   0,
+			StartFromEpoch:       0,
+			TrxEpochTickLenInMs:  uint64(DEFAULT_PROPOSE_TRX_INTERVAL),
+			Contract:             nil,
+			SenderPubkey:         item.OwnerPubKey,
+		}
 
-	//create hash for consensus req
-	byts, err = proto.Marshal(consensusReq)
-	if err != nil {
-		return err
-	}
+		//create hash for consensus req
+		byts, err = proto.Marshal(consensusReq)
+		if err != nil {
+			return err
+		}
 
-	consensusReq.MsgHash = localcrypto.Hash(byts)
+		consensusReq.MsgHash = localcrypto.Hash(byts)
 
-	//sign hash
-	signature, err = ks.EthSignByKeyName(item.GroupId, consensusReq.MsgHash)
-	if err != nil {
-		return err
-	}
+		//sign hash
+		signature, err = ks.EthSignByKeyName(item.GroupId, consensusReq.MsgHash)
+		if err != nil {
+			return err
+		}
 
-	consensusReq.SenderSign = signature
+		consensusReq.SenderSign = signature
 
-	//creaet consensus resp
-	consensusResp := &quorumpb.ChangeConsensusResp{
-		RespId:       guuid.New().String(),
-		GroupId:      item.GroupId,
-		SenderPubkey: item.OwnerPubKey,
-		Req:          consensusReq,
-	}
+		//creaet consensus resp
+		consensusResp := &quorumpb.ChangeConsensusResp{
+			RespId:       guuid.New().String(),
+			GroupId:      item.GroupId,
+			SenderPubkey: item.OwnerPubKey,
+			Req:          consensusReq,
+		}
 
-	//create hash for consensus resp
-	byts, err = proto.Marshal(consensusResp)
-	if err != nil {
-		return err
-	}
+		//create hash for consensus resp
+		byts, err = proto.Marshal(consensusResp)
+		if err != nil {
+			return err
+		}
 
-	consensusResp.MsgHash = localcrypto.Hash(byts)
-	//sign hash
-	signature, err = ks.EthSignByKeyName(item.GroupId, consensusResp.MsgHash)
-	if err != nil {
-		return err
-	}
+		consensusResp.MsgHash = localcrypto.Hash(byts)
+		//sign hash
+		signature, err = ks.EthSignByKeyName(item.GroupId, consensusResp.MsgHash)
+		if err != nil {
+			return err
+		}
 
-	consensusResp.SenderSign = signature
-	//create ResultBundle
-	resultBundle := &quorumpb.ChangeConsensusResultBundle{
-		Result:             quorumpb.ChangeConsensusResult_SUCCESS,
-		Req:                consensusReq,
-		Resps:              []*quorumpb.ChangeConsensusResp{consensusResp},
-		ResponsedProducers: []string{item.OwnerPubKey},
-	}
+		consensusResp.SenderSign = signature
+		//create ResultBundle
+		resultBundle := &quorumpb.ChangeConsensusResultBundle{
+			Result:             quorumpb.ChangeConsensusResult_SUCCESS,
+			Req:                consensusReq,
+			Resps:              []*quorumpb.ChangeConsensusResp{consensusResp},
+			ResponsedProducers: []string{item.OwnerPubKey},
+		}
 
-	group_log.Debugf("<%s> save consensus result", grp.Item.GroupId)
-	//save resultBundle to db
-	err = nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(item.GroupId, resultBundle, grp.Nodename)
-	if err != nil {
-		group_log.Debugf("<%s> save consensus result failed", grp.Item.GroupId)
-		return err
-	}
+		group_log.Debugf("<%s> save consensus result", grp.Item.GroupId)
+		//save resultBundle to db
+		err = nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(item.GroupId, resultBundle, grp.Nodename)
+		if err != nil {
+			group_log.Debugf("<%s> save consensus result failed", grp.Item.GroupId)
+			return err
+		}
+
+	*/
 
 	//add group owner as the first group producer
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)

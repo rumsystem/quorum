@@ -140,6 +140,13 @@ func (cs *Storage) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb
 	return chainConfigList, sendTrxRuleList, nil
 }
 
+func (cs *Storage) CheckPackageTypeAuth(groupId, pubkey string, packageType quorumpb.PackageType, prefix ...string) (bool, error) {
+	//tbd implement package type auth
+
+	//current just return true
+	return true, nil
+}
+
 func (cs *Storage) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.TrxType, prefix ...string) (bool, error) {
 	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(pubkey)
 	if pk == "" {

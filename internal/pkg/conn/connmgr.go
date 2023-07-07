@@ -259,8 +259,8 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, channelpeers, rummsg)
 }
 
-func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) error {
-	conn_log.Debugf("<%s> SendRespTrxRex called", connMgr.GroupId)
+func (connMgr *ConnMgr) SendReqBlockRespRex(msg *quorumpb.SyncMsg, s network.Stream) error {
+	conn_log.Debugf("<%s> SendReqBlockRespRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
@@ -271,17 +271,17 @@ func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) erro
 
 	// compress trx.Data
 	compressedContent := new(bytes.Buffer)
-	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+	if err := utils.Compress(bytes.NewReader(msg.Data), compressedContent); err != nil {
 		return err
 	}
-	trx.Data = compressedContent.Bytes()
+	msg.Data = compressedContent.Bytes()
 
-	pbBytes, err := proto.Marshal(trx)
+	pbBytes, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
 	pkg := &quorumpb.Package{
-		Type: quorumpb.PackageType_TRX,
+		Type: quorumpb.PackageType_SYNC_MSG,
 		Data: pbBytes,
 	}
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
@@ -332,7 +332,7 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) BroadcastCCReqMsg(msg *quorumpb.ChangeConsensusReqMsg) error {
+func (connMgr *ConnMgr) BroadcastCCReqMsg(msg *quorumpb.CCMsg) error {
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(msg)
@@ -340,7 +340,7 @@ func (connMgr *ConnMgr) BroadcastCCReqMsg(msg *quorumpb.ChangeConsensusReqMsg) e
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_CHANGE_CONSENSUS_REQ
+	pkg.Type = quorumpb.PackageType_CC_MSG
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)
