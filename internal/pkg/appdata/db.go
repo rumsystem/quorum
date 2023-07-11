@@ -223,11 +223,7 @@ func (appdb *AppDb) AddMetaByTrx(blockId uint64, groupid string, trxs []*quorump
 			//cnt_grp_-6d028f63-d2d0-49aa-9a56-4480ef5a7f2a-_CAISIQKDY1R5hZ09yG1+i/Kdk8E/KDT8Wm/PrKmgtsdtXFHXEg==:b2a3b9aa-bd16-4e80-8497-6d95eddfec52:1
 			//cnt_grp_-6d028f63-d2d0-49aa-9a56-4480ef5a7f2a-_CAISIQKDY1R5hZ09yG1+i/Kdk8E/KDT8Wm/PrKmgtsdtXFHXEg==:b2a3b9aa-bd16-4e80-8497-6d95eddfec52
 			var tail string
-			if trx.Nonce == 0 {
-				tail = fmt.Sprintf("%s:%s", trx.SenderPubkey, trx.TrxId)
-			} else {
-				tail = fmt.Sprintf("%s:%s:%d", trx.SenderPubkey, trx.TrxId, trx.Nonce)
-			}
+			tail = fmt.Sprintf("%s:%s", trx.SenderPubkey, trx.TrxId)
 			key, err := getKey(fmt.Sprintf("%s%s-%s", CNT_PREFIX, GRP_PREFIX, groupid), seqid, tail)
 			if err != nil {
 				return err

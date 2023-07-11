@@ -20,23 +20,23 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 	frompeerid := s.Conn().RemotePeer()
 	pkg := rummsg.DataPackage
 
-	if pkg.Type == quorumpb.PackageType_TRX {
-		rumexchangelog.Debugf("receive a trx, from %s", frompeerid)
-		trx := &quorumpb.Trx{}
-		err := proto.Unmarshal(pkg.Data, trx)
+	if pkg.Type == quorumpb.PackageType_SYNC_MSG {
+		rumexchangelog.Debugf("receive a SYNC_MSG, from %s", frompeerid)
+		syncMsg := &quorumpb.SyncMsg{}
+		err := proto.Unmarshal(pkg.Data, syncMsg)
 		if err == nil {
-			targetchain, ok := r.rex.chainmgr[trx.GroupId]
-			if ok == true {
-				return targetchain.HandleTrxRex(trx, s)
+			targetchain, ok := r.rex.chainmgr[syncMsg.GroupId]
+			if ok {
+				return targetchain.HandleSyncMsgRex(syncMsg, s)
 			} else {
-				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
+				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", syncMsg.GroupId, frompeerid)
 			}
 		} else {
 			rumexchangelog.Warningf(err.Error())
 		}
 	} else {
-		rumexchangelog.Warningf("receive a non-trx package, %s", pkg.Type)
+		rumexchangelog.Warningf("receive a non syncMsg type package, %s", pkg.Type)
 	}
 
-	return fmt.Errorf("unsupported trx type: %s", pkg.Type)
+	return fmt.Errorf("unsupported package type: %s", pkg.Type)
 }

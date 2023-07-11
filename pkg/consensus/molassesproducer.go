@@ -260,7 +260,7 @@ func (producer *MolassesProducer) AddTrxToTxBuffer(trx *quorumpb.Trx) {
 	//check if trx with same trxid exist (already packaged)
 	isExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, producer.nodename)
 	if isExist {
-		molaproducer_log.Debugf("<%s> trx <%s> with nonce <%d> already packaged, ignore", producer.groupId, trx.TrxId, trx.Nonce)
+		molaproducer_log.Debugf("<%s> trx <%s> already packaged, ignore", producer.groupId, trx.TrxId)
 		return
 	}
 

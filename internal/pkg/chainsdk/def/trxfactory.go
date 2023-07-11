@@ -10,7 +10,9 @@ type TrxFactoryIface interface {
 	GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
 	GetUpdGroupUserTrx(keyalias string, item *quorumpb.UpdGroupUserItem) (*quorumpb.Trx, error)
 	GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error)
-	GetReqBlocksTrx(keyalias string, groupId string, fromBlock uint64, blkReq int32) (*quorumpb.Trx, error)
-	GetReqBlocksRespTrx(keyalias string, groupId string, requester string, fromBlock uint64, blkReq int32, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error)
-	GetChangeConsensusResultTrx(keyalias string, trxId string, item *quorumpb.ChangeConsensusResultBundle) (*quorumpb.Trx, error)
+	GetForkTrx(trxId string, keyalias string, item *quorumpb.ForkItem) (*quorumpb.Trx, error)
 }
+
+//GetReqBlocksTrx(keyalias string, groupId string, fromBlock uint64, blkReq int32) (*quorumpb.Trx, error)
+//GetReqBlocksRespTrx(keyalias string, groupId string, requester string, fromBlock uint64, blkReq int32, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error)
+//GetChangeConsensusResultTrx(keyalias string, trxId string, item *quorumpb.ChangeConsensusResultBundle) (*quorumpb.Trx, error)

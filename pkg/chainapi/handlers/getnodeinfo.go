@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"runtime"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	p2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -17,6 +20,39 @@ type NodeInfo struct {
 	NodeType      string              `json:"node_type" validate:"required" example:"peer"`
 	NodeVersion   string              `json:"node_version" validate:"required" example:"1.0.0 - 99bbd8e65105c72b5ca57e94ae5be117eaf05f0d"`
 	Peers         map[string][]string `json:"peers" validate:"required"` // Example: {"/quorum/nevis/meshsub/1.1.0": ["16Uiu2HAmM4jFjs5EjakvGgJkHS6Lg9jS6miNYPgJ3pMUvXGWXeTc"]}
+	Mem           NodeInfoMem         `json:"mem"`
+}
+
+type ByteSize uint64
+type NodeInfoMem struct {
+	Sys        ByteSize `json:"sys"` // OS memory being used
+	HeapSys    ByteSize `json:"heap_sys"`
+	HeapAlloc  ByteSize `json:"heap_alloc"`
+	HeapInuse  ByteSize `json:"heap_inuse"`
+	StackSys   ByteSize `json:"stack_sys"`
+	StackInuse ByteSize `json:"stack_inuse"`
+	NumGC      uint32   `json:"num_gc"`
+}
+
+func (v ByteSize) MarshalJSON() ([]byte, error) {
+	i := uint64(v)
+	s := humanize.Bytes(i)
+	return json.Marshal(s)
+}
+
+func (v *ByteSize) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	n, err := humanize.ParseBytes(s)
+	if err != nil {
+		return err
+	}
+
+	*v = ByteSize(n)
+
+	return nil
 }
 
 func updateNodeStatus(nodenetworkname string) {
@@ -58,6 +94,18 @@ func GetNodeInfo(networkName string) (*NodeInfo, error) {
 
 	peers := nodectx.GetNodeCtx().PeersProtocol()
 	info.Peers = *peers
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	info.Mem = NodeInfoMem{
+		Sys:        ByteSize(m.Sys),
+		HeapSys:    ByteSize(m.HeapSys),
+		HeapAlloc:  ByteSize(m.HeapAlloc),
+		HeapInuse:  ByteSize(m.HeapInuse),
+		StackSys:   ByteSize(m.StackSys),
+		StackInuse: ByteSize(m.StackInuse),
+		NumGC:      m.NumGC,
+	}
 
 	return &info, nil
 }

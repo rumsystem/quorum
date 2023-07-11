@@ -229,7 +229,10 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 		n.GET("/:group_id/appconfig/by/:key", h.GetNSdkAppconfigByKey)
 
 		// announce
-		n.POST("/:group_id/announce", h.AnnounceNodeSDK)
+		n.POST("/:group_id/announce", h.NSdkAnnounce)
+		n.GET("/:group_id/announced/producer", h.GetNSdkAnnouncedProducer)
+		n.GET("/:group_id/announced/user", h.GetNSdkAnnouncedUser)
+		n.GET("/:group_id/producers", h.GetNSdkGroupProducers)
 
 		n.GET("/:group_id/info", h.GetNSdkGroupInfo)
 		n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)

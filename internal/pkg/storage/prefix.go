@@ -25,8 +25,9 @@ const (
 	TRX_AUTH_TYPE_PREFIX   = "trx_auth"        //trx auth type
 	ALLW_LIST_PREFIX       = "alw_list"        //allow list
 	DENY_LIST_PREFIX       = "dny_list"        //deny list
-	CONSENSUS_NONCE_PREFIX = "consensus_nonce" //group consensus nonce
 	PRD_TRX_ID_PREFIX      = "prd_trxid"       //trxid of latest trx which update group producer list
+	DSCHD_PREFIX           = "dschd"           //cache datasource
+	CONSENSUS_NONCE_PREFIX = "consensus_nonce" //group consensus nonce
 
 	// groupinfo db
 	GROUPITEM_PREFIX = "grpitem"
@@ -35,7 +36,8 @@ const (
 
 	// consensus db
 	CNS_BUFD_TRX          = "cns_bf_trx"     //buffered trx (used by acs)
-	CNS_CCR_RESULT_PREFIX = "cns_ccr_result" //consensus result
+	CNS_CCR_RESULT_PREFIX = "cns_ccr_result" //change consensus result
+	CNS_INFO_PREFIX       = "cns_info"       //consensus info
 
 	CNS_PROPOSE_TRX_INTERVAL = "cns_prop_trx_interval" //consensus propose trx interval
 )
@@ -69,6 +71,16 @@ func GetCachedBlockPrefix(groupId string, prefix ...string) string {
 	key := nodeprefix + CHD_PREFIX + "_" + BLK_PREFIX + "_"
 	if groupId != "" {
 		return key + groupId + "_"
+	}
+	return key
+}
+
+func GetDSCachedBlockPrefix(groupId string, blockId uint64, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	blockIdstr := strconv.FormatUint(blockId, 10)
+	key := nodeprefix + DSCHD_PREFIX + "_" + BLK_PREFIX + "_"
+	if groupId != "" {
+		return key + groupId + "_" + blockIdstr
 	}
 	return key
 }
@@ -286,4 +298,9 @@ func GetChangeConsensusResultPrefix(groupId string, prefix ...string) string {
 func GetChangeConsensusResultKey(groupId string, reqId string, prefix ...string) string {
 	_prefix := GetChangeConsensusResultPrefix(groupId, prefix...)
 	return _prefix + reqId
+}
+
+func GetGroupConsensusInfoKey(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + CNS_INFO_PREFIX + "_" + groupId + "_"
 }

@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	"fmt"
 
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
@@ -21,6 +22,17 @@ func (cs *Storage) AddGensisBlock(block *quorumpb.Block, cached bool, prefix ...
 		return nil
 	}
 	return err
+}
+
+// save block to cache datasource
+func (cs *Storage) AddBlockToDSCache(block *quorumpb.Block, prefix ...string) error {
+	fmt.Println("=======TODO: check if block exist")
+	return cs.dbmgr.SaveBlockToDSCache(block, prefix...)
+}
+
+// get block by block_id
+func (cs *Storage) GetBlockFromDSCache(groupId string, blockId uint64, prefix ...string) (*quorumpb.Block, error) {
+	return cs.dbmgr.GetBlockFromDSCache(groupId, blockId, prefix...)
 }
 
 // remove block

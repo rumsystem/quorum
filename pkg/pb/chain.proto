@@ -143,6 +143,23 @@ message AppConfigItem{
     int64         TimeStamp   = 9;
 }
 
+message ConsensusInfo {
+    string ConsensusId   = 1;    
+    uint64 ChainVer      = 2; 
+    string InTrx         = 3;
+    uint64 ForkFromBlock = 4;
+}
+
+message ForkItem {
+    string        GroupId          = 1;
+    ConsensusInfo Consensus        = 2;
+    uint64        StartFromBlock   = 3;
+    uint64        StartFromEpoch   = 4;
+    uint64        EpochDuration    = 5;
+    repeated      string producers = 6;
+    string        Memo             = 7;
+}
+
 message Trx {
     string         TrxId        = 1;
     TrxType        Type         = 2;    
@@ -150,24 +167,24 @@ message Trx {
     bytes          Data         = 4; 
     int64          TimeStamp    = 5;
     string         Version      = 6;
-    int64          Expired      = 7;
-    int64          ResendCount  = 8;
-    int64          Nonce        = 9;
-    string         SenderPubkey = 10;  
-    bytes          SenderSign   = 11;
-    TrxStroageType StorageType  = 12;
+    int64          ResendCount  = 7;
+    int64          Nonce        = 8;
+    string         SenderPubkey = 9;  
+    bytes          SenderSign   = 10;
+    TrxStroageType StorageType  = 11;
 }
 
 //BLOCK
 message Block {    
-    string      GroupId            = 1;     
-    uint64      BlockId            = 2;
-    bytes       PrevHash           = 3;  
-    string      ProducerPubkey     = 4;
-    repeated    Trx Trxs           = 5;
-    int64       TimeStamp          = 6;       
-    bytes       BlockHash          = 7;
-    bytes       ProducerSign       = 8;  
+    string        GroupId        = 1;
+    uint64        BlockId        = 2;
+    bytes         PrevHash       = 3;  
+    string        ProducerPubkey = 4;
+    repeated      Trx Trxs       = 5;
+    int64         TimeStamp      = 6;
+    ConsensusInfo Consensus      = 7;    
+    bytes         BlockHash      = 8;
+    bytes         ProducerSign   = 9;  
 }
 
 //BFT_MSG
@@ -177,14 +194,14 @@ enum BftMsgType {
 
 message BftMsg {
     BftMsgType Type = 1;
-    bytes      Data = 2;
+    bytes      Data = 2; 
 }
 
 //CC_MSG
 enum CCMsgType {
     CHANGE_CONSENSUS_REQ  = 0; // request change consensus
     CHANGE_CONSENSUS_RESP = 1; // response request change consensus
-    HB_FORK               = 2; // HB msg for fork
+    HB_CC                 = 2; // HB msg for change consensus
 }
 
 message CCMsg {
@@ -252,8 +269,9 @@ enum SyncMsgType {
 }
 
 message SyncMsg {
-    SyncMsgType Type = 1;
-    bytes       Data = 2;
+    SyncMsgType Type    = 1;
+    string      GroupId = 2;
+    bytes       Data    = 3;
 }
 
 message ReqBlock {
@@ -323,10 +341,10 @@ message GroupSeed {
     string GroupId        = 2;
     string GroupName      = 3;
     string OwnerPubkey    = 4;
-    string ConsensusType  = 5;
+    string ConsensusType  = 5;    
     string EncryptionType = 6;
     string CipherKey      = 7;
-    string AppKey         = 8;
+    string AppKey         = 8; 
     string Signature      = 9;
 }
 
@@ -347,7 +365,7 @@ message HBTrxBundle {
 
 message HBMsgv1 {
     string           MsgId       = 1;
-    string           ScopeId     = 2;
+    string           ScopeId     = 2;    //for bft is consensusid, for change consensus is reqid
     uint64           Epoch       = 3;
     HBMsgPayloadType PayloadType = 4;   // RBC or BBA
     bytes            Payload     = 5; 

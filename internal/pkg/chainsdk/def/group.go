@@ -8,6 +8,8 @@ type GroupIface interface {
 	SendRawTrx(trx *quorumpb.Trx) (string, error)
 	GetTrx(trxId string) (*quorumpb.Trx, bool, error)
 	GetRexSyncerStatus() string
+	StartSync() error
+	StopSync() error
 }
 
 type RexSyncResult struct {

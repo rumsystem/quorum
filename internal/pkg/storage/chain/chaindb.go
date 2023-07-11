@@ -165,6 +165,31 @@ func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, cu
 	return block, epoch, last, nil
 }
 
+func (cs *Storage) SaveGroupConsensusInfo(groupId string, info *quorumpb.ConsensusInfo, prefix ...string) error {
+	key := s.GetGroupConsensusInfoKey(groupId, prefix...)
+	chaindb_log.Debugf("Save GroupConsensusInfo, key <%s>", key)
+	data, err := proto.Marshal(info)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.Db.Set([]byte(key), data)
+}
+
+func (cs *Storage) GetGroupConsensusInfo(groupId string, prefix ...string) (info *quorumpb.ConsensusInfo, err error) {
+	key := s.GetGroupConsensusInfoKey(groupId, prefix...)
+	chaindb_log.Debugf("Get GroupConsensusInfo, key <%s>", key)
+	data, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	info = &quorumpb.ConsensusInfo{}
+	err = proto.Unmarshal(data, info)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
 func (cs *Storage) UpdateChangeConsensusResult(groupId string, result *quorumpb.ChangeConsensusResultBundle, prefix ...string) error {
 	key := s.GetChangeConsensusResultKey(groupId, result.Req.ReqId, prefix...)
 	chaindb_log.Debugf("UpdateChangeConsensusResult key %s", key)

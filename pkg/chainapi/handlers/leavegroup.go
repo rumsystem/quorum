@@ -28,6 +28,7 @@ func LeaveGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*LeaveGroupResul
 		return nil, fmt.Errorf("Group %s not exist", params.GroupId)
 	}
 
+	group.StopSync()
 	if err := group.LeaveGrp(); err != nil {
 		return nil, err
 	}

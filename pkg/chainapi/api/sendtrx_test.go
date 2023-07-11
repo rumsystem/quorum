@@ -39,10 +39,11 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-nodesdk-group",
-		ConsensusType:  "poa",
-		EncryptionType: "public",
-		AppKey:         "default",
+		GroupName:       "test-nodesdk-group",
+		ConsensusType:   "poa",
+		EncryptionType:  "public",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {
@@ -79,7 +80,10 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		Data:         encryptData,
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
+<<<<<<< HEAD
 		Nonce:        0, // Note: hardcode
+=======
+>>>>>>> syncer-lite
 		SenderPubkey: ethPubkey,
 	}
 
@@ -114,10 +118,11 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 
 	// create group
 	createGroupParam := handlers.CreateGroupParam{
-		GroupName:      "test-nodesdk-group",
-		ConsensusType:  "poa",
-		EncryptionType: "private",
-		AppKey:         "default",
+		GroupName:       "test-nodesdk-group",
+		ConsensusType:   "poa",
+		EncryptionType:  "private",
+		AppKey:          "default",
+		IncludeChainUrl: true,
 	}
 	group, err := createGroup(peerapi, createGroupParam)
 	if err != nil {
@@ -164,7 +169,10 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		Data:         encryptData.Bytes(),
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
+<<<<<<< HEAD
 		Nonce:        0, // Note: hardcode
+=======
+>>>>>>> syncer-lite
 		SenderPubkey: ethPubkey,
 	}
 

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
@@ -75,7 +76,7 @@ func runFullnode(config cli.FullNodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
-	logger.Errorf("Version: %s", utils.GitCommit)
+	color.Green("Version: %s", utils.GitCommit)
 
 	fullNodeSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
