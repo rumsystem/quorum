@@ -200,8 +200,7 @@ message BftMsg {
 //CC_MSG
 enum CCMsgType {
     CHANGE_CONSENSUS_REQ  = 0; // request change consensus
-    CHANGE_CONSENSUS_RESP = 1; // response request change consensus
-    HB_CC                 = 2; // HB msg for change consensus
+    CC_PROOF_HB           = 1; // HB msg for change consensus
 }
 
 message CCMsg {
@@ -247,8 +246,9 @@ message ChangeConsensusRespMsg {
 }
 
 message ChangeConsensusProof{
-    ChangeConsensusReq   Req  = 1;
-    ChangeConsensusResp  Resp = 2;
+    uint64 ReqChangeConsensusRetryCnt = 1;
+    ChangeConsensusReq           Req  = 2;
+    ChangeConsensusResp          Resp = 3;
 }
 
 enum ChangeConsensusResult {

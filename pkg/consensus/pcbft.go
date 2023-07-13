@@ -21,7 +21,7 @@ type AcsResult struct {
 type PCBft struct {
 	Config
 
-	currProof     *quorumpb.ConsensusProof
+	currProof     *quorumpb.ChangeConsensusProof
 	currProotData []byte
 
 	chBftDone chan *quorumpb.ChangeConsensusResultBundle
@@ -44,12 +44,13 @@ func NewPCBft(ctx context.Context, cfg Config, ch chan *quorumpb.ChangeConsensus
 	}
 }
 
-func (bft *PCBft) AddProof(proof *quorumpb.ConsensusProof, round uint64) {
+func (bft *PCBft) AddProof(proof *quorumpb.ChangeConsensusProof) {
 	pcbft_log.Debugf("AddProof called, reqid <%s>, nonce <%d> ", proof.Req.ReqId, proof.Req.Nonce)
 	bft.currProof = proof
 	datab, _ := proto.Marshal(proof)
 	bft.currProotData = datab
-	acs := NewPCAcs(bft.bftCtx, bft.Config, bft.currProof.Req, bft.chAcsDone)
+	//for HB, RetryCnt work as Epoch, ReqId work as ScopeId
+	acs := NewPCAcs(bft.bftCtx, bft.Config, proof.ReqChangeConsensusRetryCnt, proof.Req.ReqId, bft.chAcsDone)
 	bft.acsInst = acs
 	pcbft_log.Debug("AddProof done")
 
@@ -70,10 +71,9 @@ func (bft *PCBft) Propose() error {
 			if !ok {
 				pcbft_log.Errorf("<%s> verify raw result failed", bft.GroupId)
 				resultBundle := &quorumpb.ChangeConsensusResultBundle{
-					Result:             quorumpb.ChangeConsensusResult_FAIL,
-					Req:                bft.currProof.Req,
-					Resps:              nil,
-					ResponsedProducers: nil,
+					Result: quorumpb.ChangeConsensusResult_FAIL,
+					Req:    bft.currProof.Req,
+					Resps:  nil,
 				}
 
 				//notify bft done
@@ -89,10 +89,9 @@ func (bft *PCBft) Propose() error {
 			}
 
 			resultBundle := &quorumpb.ChangeConsensusResultBundle{
-				Result:             quorumpb.ChangeConsensusResult_SUCCESS,
-				Req:                bft.currProof.Req,
-				Resps:              resps,
-				ResponsedProducers: producers,
+				Result: quorumpb.ChangeConsensusResult_SUCCESS,
+				Req:    bft.currProof.Req,
+				Resps:  resps,
 			}
 			//notify bft done
 			bft.chBftDone <- resultBundle
@@ -113,13 +112,13 @@ func (bft *PCBft) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
 	return nil
 }
 
-func (bft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[string]*quorumpb.ConsensusProof) {
+func (bft *PCBft) verifyRawResult(rawResult map[string][]byte) (bool, map[string]*quorumpb.ChangeConsensusProof) {
 	pcbft_log.Debugf("<%s> verifyRawResult called", bft.GroupId)
 
 	//convert rawResultMap to proof map
-	proofMap := make(map[string]*quorumpb.ConsensusProof)
+	proofMap := make(map[string]*quorumpb.ChangeConsensusProof)
 	for k, v := range rawResult {
-		proof := &quorumpb.ConsensusProof{}
+		proof := &quorumpb.ChangeConsensusProof{}
 		err := proto.Unmarshal(v, proof)
 		if err != nil {
 			pcbft_log.Errorf("<%s> unmarshal consensus proof failed", bft.GroupId)

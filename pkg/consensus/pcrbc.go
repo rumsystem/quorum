@@ -91,7 +91,7 @@ func (r *PCRbc) InputValue(data []byte) error {
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
 		pcrbc_log.Debugf("<%s> send InitProposeMsgs", r.rbcInstPubkey)
-		err := r.SendHBRBCMsg(initMsg, r.acs.Epoch)
+		err := r.SendHBRBCMsg(initMsg)
 		if err != nil {
 			pcrbc_log.Debugf(err.Error())
 			return err
@@ -124,7 +124,7 @@ func (r *PCRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	pcrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return r.SendHBRBCMsg(proofMsg, r.acs.Epoch)
+	return r.SendHBRBCMsg(proofMsg)
 }
 
 func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
@@ -195,7 +195,7 @@ func (r *PCRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 			return err
 		}
 
-		err = r.SendHBRBCMsg(readyMsg, r.acs.Epoch)
+		err = r.SendHBRBCMsg(readyMsg)
 		if err != nil {
 			return err
 		}
@@ -247,7 +247,7 @@ func (r *PCRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 				return err
 			}
 
-			err = r.SendHBRBCMsg(readyMsg, r.acs.Epoch)
+			err = r.SendHBRBCMsg(readyMsg)
 			if err != nil {
 				return err
 			}
@@ -313,7 +313,7 @@ func (r *PCRbc) VerifySign() bool {
 	return true
 }
 
-func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg, nonce uint64) error {
+func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
 		return err
@@ -321,16 +321,29 @@ func (r *PCRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg, nonce uint64) error {
 
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
-		Epoch:       nonce,
+		ScopeId:     r.acs.scopeId,
+		Epoch:       r.acs.round,
 		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
 	}
 
-	connMgr, err := conn.GetConn().GetConnMgr(r.GroupId)
+	//marshall hbmsg to bytes
+	hbmsgb, err := proto.Marshal(hbmsg)
 	if err != nil {
-		pcrbc_log.Debugf("?????????????????? %s", err.Error())
 		return err
 	}
-	connMgr.BroadcastHBMsg(hbmsg, quorumpb.PackageType_HBB_PC)
+
+	//build ccMsg
+	ccMsg := &quorumpb.CCMsg{
+		Type: quorumpb.CCMsgType_CC_PROOF_HB,
+		Data: hbmsgb,
+	}
+
+	connMgr, err := conn.GetConn().GetConnMgr(r.GroupId)
+	if err != nil {
+		return err
+	}
+
+	connMgr.BroadcastCCMsg(ccMsg)
 	return nil
 }

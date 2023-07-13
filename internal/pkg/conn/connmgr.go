@@ -291,32 +291,6 @@ func (connMgr *ConnMgr) SendReqBlockRespRex(msg *quorumpb.SyncMsg, s network.Str
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 
-func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1, typ quorumpb.PackageType) error {
-	//conn_log.Debugf("<%s> BroadcastHBMsg called, type <%s>", connMgr.GroupId, typ.String())
-	pkg := &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(hbb)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = typ
-	pkg.Data = pbBytes
-
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		conn_log.Errorf("BroadcastHBMsg failed, err: %v", err)
-		return err
-	}
-
-	psconn := connMgr.getUserConn()
-	err = psconn.Publish(pkgBytes)
-	if err != nil {
-		conn_log.Errorf("BroadcastHBMsg failed, err: %v", err)
-	}
-	return err
-}
-
 func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
@@ -335,7 +309,7 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) BroadcastCCReqMsg(msg *quorumpb.CCMsg) error {
+func (connMgr *ConnMgr) BroadcastCCMsg(msg *quorumpb.CCMsg) error {
 	pkg := &quorumpb.Package{}
 
 	pbBytes, err := proto.Marshal(msg)

@@ -19,14 +19,16 @@ type PCAcs struct {
 
 	chAcsDone chan *AcsResult
 	round     uint64
+	scopeId   string
 }
 
-func NewPCAcs(ctx context.Context, cfg Config, round uint64, chAcsDone chan *AcsResult) *PCAcs {
+func NewPCAcs(ctx context.Context, cfg Config, round uint64, scopeId string, chAcsDone chan *AcsResult) *PCAcs {
 	pcacs_log.Debugf("NewPCAcs called, round <%d>", round)
 
 	acs := &PCAcs{
 		Config:     cfg,
 		round:      round,
+		scopeId:    scopeId,
 		rbcInsts:   make(map[string]*PCRbc),
 		rbcOutput:  make(map[string]bool),
 		rbcResults: make(map[string][]byte),
@@ -72,18 +74,24 @@ func (a *PCAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PCAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	ptacs_log.Debugf("ACS HandleHBMessage called, Round <%d>, msgType <%s>", a.Round, hbmsg.PayloadType.String())
+	ptacs_log.Debugf("ACS HandleHBMessage called, acs round <%d>, msgType <%s>", a.round, hbmsg.PayloadType.String())
 
-	if hbmsg.Epoch != a.Epoch {
-		ptacs_log.Debugf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.Epoch)
-		return fmt.Errorf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.Epoch)
+	//check epoch(round) and scopeId (reqId)
+	if hbmsg.Epoch != a.round {
+		ptacs_log.Debugf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.round)
+		return fmt.Errorf("received HB msg epoch <%d> not match with acs epoch <%d>", hbmsg.Epoch, a.round)
+	}
+
+	if hbmsg.ScopeId != a.scopeId {
+		ptacs_log.Debugf("received HB msg scopeId <%s> not match with acs scopeId <%s>", hbmsg.ScopeId, a.scopeId)
+		return fmt.Errorf("received HB msg scopeId <%s> not match with acs scopeId <%s>", hbmsg.ScopeId, a.scopeId)
 	}
 
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
 		return a.handleRbcMsg(hbmsg.Payload)
-	case quorumpb.HBMsgPayloadType_BBA:
-		return a.handleBbaMsg(hbmsg.Payload)
+		//	case quorumpb.HBMsgPayloadType_BBA:
+		//		return a.handleBbaMsg(hbmsg.Payload)
 	default:
 		return fmt.Errorf("received unknown type msg <%s>", hbmsg.PayloadType.String())
 	}
@@ -144,9 +152,4 @@ func (a *PCAcs) handleRbcMsg(payload []byte) error {
 	default:
 		return fmt.Errorf("received unknown rbc message, type (%s)", rbcMsg.Type)
 	}
-}
-
-// TBD
-func (a *PCAcs) handleBbaMsg(payload []byte) error {
-	return nil
 }
