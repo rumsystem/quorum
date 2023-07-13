@@ -189,7 +189,7 @@ message Block {
 
 //BFT_MSG
 enum BftMsgType {
-    HB_BFT = 0;
+    HB_BFT = 0; //HBMsgV1
 }
 
 message BftMsg {

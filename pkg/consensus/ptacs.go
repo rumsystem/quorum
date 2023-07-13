@@ -12,23 +12,25 @@ var ptacs_log = logging.Logger("ptacs")
 
 type PTAcs struct {
 	Config
-	epoch      uint64
-	rbcInsts   map[string]*PTRbc
-	rbcOutput  map[string]bool
-	rbcResults map[string][]byte
+	consensusInfo *quorumpb.ConsensusInfo
+	epoch         uint64
+	rbcInsts      map[string]*PTRbc
+	rbcOutput     map[string]bool
+	rbcResults    map[string][]byte
 
 	chAcsDone chan *PTAcsResult
 }
 
-func NewPTACS(cfg Config, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
+func NewPTACS(cfg Config, consensusInfo *quorumpb.ConsensusInfo, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
 	//ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 	acs := &PTAcs{
-		Config:     cfg,
-		epoch:      epoch,
-		rbcInsts:   make(map[string]*PTRbc),
-		rbcOutput:  make(map[string]bool),
-		rbcResults: make(map[string][]byte),
-		chAcsDone:  chAcsDone,
+		Config:        cfg,
+		epoch:         epoch,
+		consensusInfo: consensusInfo,
+		rbcInsts:      make(map[string]*PTRbc),
+		rbcOutput:     make(map[string]bool),
+		rbcResults:    make(map[string][]byte),
+		chAcsDone:     chAcsDone,
 	}
 
 	for _, rbcInstPubkey := range cfg.Nodes {
@@ -73,6 +75,10 @@ func (a *PTAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
+	if hbmsg.ScopeId != a.consensusInfo.ConsensusId {
+		ptacs_log.Debugf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
+		return fmt.Errorf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
+	}
 
 	if hbmsg.Epoch != a.epoch {
 		ptacs_log.Debugf("received message from epoch <%d>, but current epoch is <%d>", hbmsg.Epoch, a.epoch)
@@ -82,8 +88,6 @@ func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 	switch hbmsg.PayloadType {
 	case quorumpb.HBMsgPayloadType_RBC:
 		return a.handleRbcMsg(hbmsg.Payload)
-	case quorumpb.HBMsgPayloadType_BBA:
-		return a.handleBbaMsg(hbmsg.Payload)
 	default:
 		return fmt.Errorf("received unknown type msg <%s>", hbmsg.PayloadType.String())
 	}
@@ -145,10 +149,4 @@ func (a *PTAcs) handleRbcMsg(payload []byte) error {
 	default:
 		return fmt.Errorf("received unknown rbc message, type (%s)", rbcMsg.Type)
 	}
-}
-
-func (a *PTAcs) handleBbaMsg(payload []byte) error {
-	//TBD
-	//Implement BBA
-	return nil
 }

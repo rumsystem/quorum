@@ -22,12 +22,13 @@ var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
 
 type PTBft struct {
 	Config
-	cIface        def.ChainMolassesIface
-	txBuffer      *TrxBuffer
-	chainCtx      context.Context
-	currTask      *PTTask
-	bftCtx        context.Context
-	bftCancelFunc context.CancelFunc
+	cIface            def.ChainMolassesIface
+	txBuffer          *TrxBuffer
+	chainCtx          context.Context
+	currTask          *PTTask
+	bftCtx            context.Context
+	bftCancelFunc     context.CancelFunc
+	CurrConsensusInfo *quorumpb.ConsensusInfo
 }
 
 type PTTask struct {
@@ -44,14 +45,15 @@ type PTAcsResult struct {
 	result map[string][]byte
 }
 
-func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PTBft {
+func NewPTBft(ctx context.Context, cfg Config, consensusInfo *quorumpb.ConsensusInfo, iface def.ChainMolassesIface) *PTBft {
 	ptbft_log.Debugf("<%s> NewPTBft called", cfg.GroupId)
 	ptbft := &PTBft{
-		Config:   cfg,
-		cIface:   iface,
-		txBuffer: NewTrxBuffer(cfg.GroupId),
-		chainCtx: ctx,
-		currTask: nil,
+		Config:            cfg,
+		cIface:            iface,
+		txBuffer:          NewTrxBuffer(cfg.GroupId),
+		chainCtx:          ctx,
+		currTask:          nil,
+		CurrConsensusInfo: consensusInfo,
 	}
 	return ptbft
 }
@@ -104,7 +106,7 @@ func (bft *PTBft) getNextTask() (*PTTask, error) {
 	task := &PTTask{
 		Epoch:          proposedEpoch,
 		ProposedData:   datab,
-		acsInsts:       NewPTACS(bft.Config, proposedEpoch, chAcsDone),
+		acsInsts:       NewPTACS(bft.Config, bft.CurrConsensusInfo, proposedEpoch, chAcsDone),
 		chAcsDone:      chAcsDone,
 		taskCtx:        ctx,
 		taskCancelFunc: cancel,
@@ -205,10 +207,10 @@ func (bft *PTBft) Stop() {
 	}
 }
 
-func (bft *PTBft) HandleMessage(hbmsg *quorumpb.HBMsgv1) error {
+func (bft *PTBft) HandleHBMessage(hbMsg *quorumpb.HBMsgv1) error {
 	//ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
 	if bft.currTask != nil {
-		return bft.currTask.acsInsts.HandleHBMessage(hbmsg)
+		return bft.currTask.acsInsts.HandleHBMessage(hbMsg)
 	}
 	return nil
 }
@@ -306,7 +308,8 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		ptbft_log.Debugf("<%s> start build block with parent <%d> ", bft.GroupId, parent.BlockId)
 		ks := localcrypto.GetKeystore()
 
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, epoch, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
+		//TBD add consensus info here
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
 		if err != nil {
 			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err

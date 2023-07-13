@@ -328,3 +328,23 @@ func (connMgr *ConnMgr) BroadcastCCMsg(msg *quorumpb.CCMsg) error {
 	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
 }
+
+func (connMgr *ConnMgr) BroadcastBftMsg(msg *quorumpb.BftMsg) error {
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_BFT_MSG
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	psconn := connMgr.getUserConn()
+	return psconn.Publish(pkgBytes)
+}

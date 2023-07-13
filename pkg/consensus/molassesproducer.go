@@ -10,6 +10,7 @@ import (
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 var molaproducer_log = logging.Logger("producer")
@@ -236,7 +237,6 @@ func (producer *MolassesProducer) saveBlock(block *quorumpb.Block, rmFromCache b
 	//update chain info
 	molauser_log.Debugf("<%s> UpdChainInfo, upd highest blockId from <%d> to <%d>", producer.groupId, producer.cIface.GetCurrBlockId(), block.BlockId)
 	producer.cIface.SetCurrBlockId(block.BlockId)
-	//producer.cIface.SetCurrEpoch(block.Epoch)
 	producer.cIface.SetLastUpdate(block.TimeStamp)
 	producer.cIface.SaveChainInfoToDb()
 
@@ -271,10 +271,22 @@ func (producer *MolassesProducer) AddTrxToTxBuffer(trx *quorumpb.Trx) {
 	}
 }
 
-func (producer *MolassesProducer) HandleHBMsg(hbmsg *quorumpb.HBMsgv1) error {
-	//molaproducer_log.Debugf("<%s> HandleHBMsg, Epoch <%d>", producer.groupId, hbmsg.Epoch)
-	if producer.ptbft != nil {
-		producer.ptbft.HandleMessage(hbmsg)
+func (producer *MolassesProducer) HandleBFTMsg(bftMsg *quorumpb.BftMsg) error {
+	molaproducer_log.Debugf("<%s> HandleBFTMsg called", producer.groupId)
+
+	if bftMsg.Type != quorumpb.BftMsgType_HB_BFT {
+		//unmarshal bft msg
+		hbMsg := &quorumpb.HBMsgv1{}
+		err := proto.Unmarshal(bftMsg.Data, hbMsg)
+		if err != nil {
+			molaproducer_log.Errorf("unmarshal bft msg failed with error: %s", err.Error())
+			return err
+		}
+
+		if producer.ptbft != nil {
+			producer.ptbft.HandleHBMessage(hbMsg)
+		}
 	}
+
 	return nil
 }

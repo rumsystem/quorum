@@ -331,8 +331,19 @@ func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
 		Epoch:       r.acs.epoch,
+		ScopeId:     r.acs.consensusInfo.ConsensusId,
 		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
+	}
+
+	hbmsgb, err := proto.Marshal(hbmsg)
+	if err != nil {
+		return err
+	}
+
+	bftMsg := &quorumpb.BftMsg{
+		Type: quorumpb.BftMsgType_HB_BFT,
+		Data: hbmsgb,
 	}
 
 	connMgr, err := conn.GetConn().GetConnMgr(r.GroupId)
@@ -340,10 +351,7 @@ func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 
 		return err
 	}
-	connMgr.BroadcastHBMsg(hbmsg, quorumpb.PackageType_HBB_PT)
-	return nil
-}
 
-func (bft *PTBft) SendHBAABMsg(msg *quorumpb.BBAMsg) error {
+	connMgr.BroadcastBFTMsg(bftMsg)
 	return nil
 }
