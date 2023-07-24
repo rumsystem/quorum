@@ -225,28 +225,41 @@ func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
-	conn_log.Debugf("<%s> SendTrxRex called", connMgr.GroupId)
+func (connMgr *ConnMgr) SendSyncReqMsgRex(req *quorumpb.ReqBlock) error {
+	conn_log.Debugf("<%s> SendSyncReqMsgRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
 
-	// compress trx.Data
-	compressedContent := new(bytes.Buffer)
-	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
-		return err
-	}
-	trx.Data = compressedContent.Bytes()
-
-	pbBytes, err := proto.Marshal(trx)
+	//create sync msg
+	pbBytes, err := proto.Marshal(req)
 	if err != nil {
 		return err
 	}
 
-	pkg := &quorumpb.Package{
-		Type: quorumpb.PackageType_TRX,
+	syncMsg := &quorumpb.SyncMsg{
+		Type: quorumpb.SyncMsgType_REQ_BLOCK,
 		Data: pbBytes,
 	}
+
+	//marshal sync msg
+	syncMsgBytes, err := proto.Marshal(syncMsg)
+	if err != nil {
+		return err
+	}
+
+	//compress
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(syncMsgBytes), compressedContent); err != nil {
+		return err
+	}
+
+	//create pkg
+	pkg := &quorumpb.Package{
+		Type: quorumpb.PackageType_SYNC,
+		Data: compressedContent.Bytes(),
+	}
+
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 
 	psconn := connMgr.getUserConn()
@@ -254,34 +267,48 @@ func (connMgr *ConnMgr) SendReqTrxRex(trx *quorumpb.Trx) error {
 		return fmt.Errorf("no user conn for %s. (can be ignored)", connMgr.GroupId)
 	}
 	channelpeers := psconn.Topic.ListPeers()
-	return nodectx.GetNodeCtx().Node.RumExchange.Publish(trx.GroupId, channelpeers, rummsg)
+	return nodectx.GetNodeCtx().Node.RumExchange.Publish(req.GroupId, channelpeers, rummsg)
 }
 
-func (connMgr *ConnMgr) SendRespTrxRex(trx *quorumpb.Trx, s network.Stream) error {
-	conn_log.Debugf("<%s> SendRespTrxRex called", connMgr.GroupId)
+func (connMgr *ConnMgr) SendSyncRespMsgRex(resp *quorumpb.ReqBlockResp, s network.Stream) error {
+	conn_log.Debugf("<%s> SendSyncRespMsgRex called", connMgr.GroupId)
 	if nodectx.GetNodeCtx().Node.RumExchange == nil {
 		return errors.New("RumExchange is nil, please set enablerumexchange as true")
 	}
 
 	if s == nil {
-		return errors.New("Resp peer steam can't be nil")
+		return errors.New("resp peer steam can't be nil")
 	}
 
-	// compress trx.Data
-	compressedContent := new(bytes.Buffer)
-	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
-		return err
-	}
-	trx.Data = compressedContent.Bytes()
-
-	pbBytes, err := proto.Marshal(trx)
+	//create sync msg
+	pbBytes, err := proto.Marshal(resp)
 	if err != nil {
 		return err
 	}
-	pkg := &quorumpb.Package{
-		Type: quorumpb.PackageType_TRX,
+
+	syncMsg := &quorumpb.SyncMsg{
+		Type: quorumpb.SyncMsgType_REQ_BLOCK_RESP,
 		Data: pbBytes,
 	}
+
+	//marshal sync msg
+	syncMsgBytes, err := proto.Marshal(syncMsg)
+	if err != nil {
+		return err
+	}
+
+	//compress
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(syncMsgBytes), compressedContent); err != nil {
+		return err
+	}
+
+	//create pkg
+	pkg := &quorumpb.Package{
+		Type: quorumpb.PackageType_SYNC,
+		Data: compressedContent.Bytes(),
+	}
+
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }

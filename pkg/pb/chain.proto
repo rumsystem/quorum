@@ -5,7 +5,8 @@ option go_package = "github.com/rumsystem/quorum/pkg/pb";
 enum PackageType {
     TRX             = 0;
     BLOCK           = 1;
-    HBB             = 2;
+    SYNC            = 2;
+    HBB             = 3;
 }
 
 message Package {
@@ -39,8 +40,6 @@ enum TrxType {
     ANNOUNCE           = 1; // producer or user self announce
     PRODUCER           = 2; // owner update group producer
     USER               = 3; // owner update group user
-    REQ_BLOCK          = 4; // request block 
-    REQ_BLOCK_RESP     = 5; // response request block
     CHAIN_CONFIG       = 6; // chain configuration
     APP_CONFIG         = 7; // app configuration
 }
@@ -73,21 +72,25 @@ message Block {
     bytes       ProducerSign       = 10;        
 }
 
+//SYNC_MSG
+enum SyncMsgType {
+    REQ_BLOCK          = 0; // request block 
+    REQ_BLOCK_RESP     = 1; // response request block
+}
+
+message SyncMsg {
+    string      GroupId = 1;    
+    SyncMsgType Type    = 2;
+    bytes       Data    = 3;
+}
+
 message ReqBlock {
     string GroupId       = 1; //group id
     uint64 FromBlock     = 2; //from which block
     int32  BlksRequested = 3; //how many blocks requested, "-1" means many as possible
     string ReqPubkey     = 4; //requester pubkey
-}
-
-message BlocksBundle {
-    repeated Block Blocks = 1;
-}
-
-enum ReqBlkResult {
-    BLOCK_IN_RESP         = 0; //"block(s) in resp and I may have more"
-    BLOCK_IN_RESP_ON_TOP  = 1; //"block(s) in resp and I have no more block(when get req)" 
-    BLOCK_NOT_FOUND       = 2; //"no block in resp and I don't have the requested block"
+    bytes  Hash          = 5; 
+    bytes  Sign          = 6;
 }
 
 message ReqBlockResp {
@@ -99,6 +102,18 @@ message ReqBlockResp {
     int32        BlksRequested   = 6;     
     int32        BlksProvided    = 7;
     BlocksBundle Blocks          = 8;
+    bytes        Hash            = 9;
+    bytes        Sign            = 10;
+}
+
+message BlocksBundle {
+    repeated Block Blocks = 1;
+}
+
+enum ReqBlkResult {
+    BLOCK_IN_RESP         = 0; //"block(s) in resp and I may have more"
+    BLOCK_IN_RESP_ON_TOP  = 1; //"block(s) in resp and I have no more block(when get req)" 
+    BLOCK_NOT_FOUND       = 2; //"no block in resp and I don't have the requested block"
 }
 
 message PostItem {

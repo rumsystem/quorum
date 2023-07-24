@@ -298,51 +298,26 @@ func (chain *Chain) HandleHBPsConn(hb *quorumpb.HBMsgv1) error {
 	return chain.Consensus.Producer().HandleHBMsg(hb)
 }
 
-// handler trx from rex (for sync only)
-func (chain *Chain) HandleTrxRex(trx *quorumpb.Trx, s network.Stream) error {
+// handler SyncMsg from rex
+func (chain *Chain) HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupItem.GroupId)
-	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Warningf("HandleTrxRex called, Trx Version mismatch, trxid <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
-		return fmt.Errorf("trx Version mismatch")
-	}
 
 	// decompress
 	content := new(bytes.Buffer)
-	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+	if err := utils.Decompress(bytes.NewReader(syncMsg.Data), content); err != nil {
 		e := fmt.Errorf("utils.Decompress failed: %s", err)
 		chain_log.Error(e)
 		return e
 	}
-	trx.Data = content.Bytes()
 
-	//TBD should check if requester from block list
+	syncMsg.Data = content.Bytes()
 
-	verified, err := rumchaindata.VerifyTrx(trx)
-	if err != nil {
-		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-		return fmt.Errorf("verify Trx failed")
+	switch syncMsg.Type {
+	case quorumpb.SyncMsgType_REQ_BLOCK:
+		chain.handleReqBlockRex(syncMsg, s)
+	case quorumpb.SyncMsgType_REQ_BLOCK_RESP:
+		chain.handleReqBlockRespRex(syncMsg)
 	}
-
-	if !verified {
-		chain_log.Warnf("<%s> Invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
-		return fmt.Errorf("invalid Trx")
-	}
-
-	if trx.SenderPubkey == chain.groupItem.UserSignPubkey {
-		//ignore msg from myself
-		return nil
-	}
-
-	//Rex Channel only support the following trx type
-	switch trx.Type {
-	case quorumpb.TrxType_REQ_BLOCK:
-		chain.handleReqBlocks(trx, s)
-	case quorumpb.TrxType_REQ_BLOCK_RESP:
-		chain.handleReqBlockResp(trx)
-	default:
-		//do nothing
-	}
-
 	return nil
 }
 
@@ -358,18 +333,46 @@ func (chain *Chain) HandleHBRex(hb *quorumpb.HBMsgv1) error {
 	return nil
 }
 
-func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
+func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
-	requester, fromBlock, blkReqs, blocks, result, err := chain.chaindata.GetReqBlocks(trx)
+	//unmarshall req
+	req := &quorumpb.ReqBlock{}
+	err := proto.Unmarshal(syncMsg.Data, req)
+	if err != nil {
+		chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+
+	//do nothing is req is from myself
+	if req.ReqPubkey == chain.groupItem.UserSignPubkey {
+		return nil
+	}
+
+	//verify req
+	verified, err := rumchaindata.VerifyReqBlock(req)
+	if err != nil {
+		chain_log.Warningf("<%s> verify ReqBlock failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+
+	if !verified {
+		chain_log.Warningf("<%s> Invalid ReqBlock, signature verify failed, sender <%s>", chain.groupItem.GroupId, req.ReqPubkey)
+		return errors.New("invalid ReqBlock")
+	}
+
+	//get resp
+	blocks, result, err := chain.chaindata.GetReqBlocks(req)
 	if err != nil {
 		return err
 	}
 
 	chain_log.Debugf("<%s> send REQ_BLOCKS_RESP", chain.groupItem.GroupId)
-	chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", requester, fromBlock, blkReqs)
-	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", fromBlock, len(blocks), result.String())
+	chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", req.ReqPubkey, req.FromBlock, req.BlksRequested)
+	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", req.FromBlock, len(blocks), result.String())
 
-	trx, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
+	//resp, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
+	resp, err := rumchaindata.GetReqBlocksRespMsg("", req, chain.groupItem.UserSignPubkey, blocks, result)
+
 	if err != nil {
 		return err
 	}
@@ -377,43 +380,35 @@ func (chain *Chain) handleReqBlocks(trx *quorumpb.Trx, s network.Stream) error {
 	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId); err != nil {
 		return err
 	} else {
-		return cmgr.SendRespTrxRex(trx, s)
+		return cmgr.SendSyncRespMsgRex(resp, s)
 	}
 }
 
-func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
+func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupItem.GroupId)
 
-	//decode resp
-	var err error
-	ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
-	if err != nil {
-		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
-		return
-	}
-
-	decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
-		return
-	}
-
 	reqBlockResp := &quorumpb.ReqBlockResp{}
-	if err := proto.Unmarshal(decryptData, reqBlockResp); err != nil {
+	if err := proto.Unmarshal(syncMsg.Data, reqBlockResp); err != nil {
 		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
-		return
+		return err
 	}
 
 	//if not asked by me, ignore it
 	if reqBlockResp.RequesterPubkey != chain.groupItem.UserSignPubkey {
 		//chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.Group.GroupId, rumerrors.ErrSenderMismatch.Error())
-		return
+		return nil
 	}
 
-	//check trx sender
-	if trx.SenderPubkey != reqBlockResp.ProviderPubkey {
-		chain_log.Debugf("<%s> HandleReqBlockResp - Trx Sender/blocks providers mismatch <%s>", chain.groupItem.GroupId)
-		return
+	//verify resp
+	verified, err := rumchaindata.VerifyReqBlockResp(reqBlockResp)
+	if err != nil {
+		chain_log.Warningf("<%s> verify ReqBlockResp failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+
+	if !verified {
+		chain_log.Warningf("<%s> Invalid ReqBlockResp, signature verify failed, sender <%s>", chain.groupItem.GroupId, reqBlockResp.ProviderPubkey)
+		return errors.New("invalid ReqBlockResp")
 	}
 
 	result := &SyncResult{
@@ -422,6 +417,7 @@ func (chain *Chain) handleReqBlockResp(trx *quorumpb.Trx) {
 	}
 
 	chain.rexSyncer.AddResult(result)
+	return nil
 }
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
