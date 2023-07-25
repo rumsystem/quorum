@@ -7,7 +7,7 @@ enum PackageType {
     BLOCK                 = 1;
     BFT_MSG               = 2;
     CC_MSG                = 3;  //Change Consensus 
-    SYNC              = 4;
+    SYNC                  = 4;
     BROADCAST_MSG         = 5;
 }
 

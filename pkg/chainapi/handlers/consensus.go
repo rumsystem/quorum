@@ -29,9 +29,8 @@ func GetConsensusHistoryHandler(chainapidb def.APIHandlerIface, groupId string) 
 
 		for _, item := range consensusHistory {
 			proof := &ConsensusChangeResultBundle{
-				Result:              item.Result.String(),
-				Req:                 item.Req,
-				RepononsedProducers: item.ResponsedProducers,
+				Result: item.Result.String(),
+				Req:    item.Req,
 			}
 			proofs = append(proofs, proof)
 		}
@@ -64,9 +63,8 @@ func GetLatestConsensusChangeResultHandler(chainapidb def.APIHandlerIface, group
 		}
 
 		result := &ConsensusChangeResultBundle{
-			Result:              latestConsensusResult.Result.String(),
-			Req:                 latestConsensusResult.Req,
-			RepononsedProducers: latestConsensusResult.ResponsedProducers,
+			Result: latestConsensusResult.Result.String(),
+			Req:    latestConsensusResult.Req,
 		}
 
 		return result, nil
@@ -98,10 +96,9 @@ func GetConsensusResultByReqIdHandler(chainapidb def.APIHandlerIface, groupId st
 		}
 
 		resunlt := &GetConsensusResultByReqIdResult{
-			Result:             consensusResult.Result.String(),
-			Req:                consensusResult.Req,
-			Resps:              consensusResult.Resps,
-			ResponsedProducers: consensusResult.ResponsedProducers,
+			Result: consensusResult.Result.String(),
+			Req:    consensusResult.Req,
+			Resps:  consensusResult.Resps,
 		}
 		return resunlt, nil
 	}

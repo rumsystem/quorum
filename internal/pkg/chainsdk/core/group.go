@@ -67,7 +67,7 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) (*quorumpb.Block, error) {
 		Memo:           "genesis fork",
 	}
 
-	forkTrx, err := grp.ChainCtx.GetTrxFactory().GetForkTrx(INIT_FORK_TRX_ID, "", forkItem)
+	forkTrx, err := grp.ChainCtx.GetTrxFactory().GetForkTrx("", forkItem)
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +510,7 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 }
 
 func (grp *Group) GetInitForkTrx(trxId string, item *quorumpb.ForkItem) (*quorumpb.Trx, error) {
-	return grp.ChainCtx.GetTrxFactory().GetForkTrx("", trxId, item)
+	return grp.ChainCtx.GetTrxFactory().GetForkTrx("", item)
 }
 
 func (grp *Group) ReqChangeConsensus(producers []string, agrmTickLength, agrmTickCount, fromBlock uint64, fromEpoch uint64, epoch uint64) (string, uint64, error) {

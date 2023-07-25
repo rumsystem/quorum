@@ -28,6 +28,8 @@ import (
 
 var chain_log = logging.Logger("chain")
 
+var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
+
 type Chain struct {
 	groupItem     *quorumpb.GroupItem
 	nodename      string
@@ -421,8 +423,8 @@ func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Strea
 func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 	chain_log.Debugf("<%s> handleReqBlockResp called", chain.groupItem.GroupId)
 
-	reqBlockResp := &quorumpb.ReqBlockResp{}
-	if err := proto.Unmarshal(syncMsg.Data, reqBlockResp); err != nil {
+	resp := &quorumpb.ReqBlockResp{}
+	if err := proto.Unmarshal(syncMsg.Data, resp); err != nil {
 		chain_log.Warningf("<%s> HandleReqBlockResp error <%s>", chain.groupItem.GroupId, err.Error())
 		return err
 	}
@@ -434,14 +436,14 @@ func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 	}
 
 	//verify resp
-	verified, err := rumchaindata.VerifyReqBlockResp(reqBlockResp)
+	verified, err := rumchaindata.VerifyReqBlockResp(resp)
 	if err != nil {
 		chain_log.Warningf("<%s> verify ReqBlockResp failed with err <%s>", chain.groupItem.GroupId, err.Error())
 		return err
 	}
 
 	if !verified {
-		chain_log.Warningf("<%s> Invalid ReqBlockResp, signature verify failed, sender <%s>", chain.groupItem.GroupId, reqBlockResp.ProviderPubkey)
+		chain_log.Warningf("<%s> Invalid ReqBlockResp, signature verify failed, sender <%s>", chain.groupItem.GroupId, resp.ProviderPubkey)
 		return errors.New("invalid ReqBlockResp")
 	}
 
@@ -663,24 +665,28 @@ func (chain *Chain) ReqConsensusChangeDone(bundle *quorumpb.ChangeConsensusResul
 
 	switch bundle.Result {
 	case quorumpb.ChangeConsensusResult_SUCCESS:
+		chain_log.Debugf("<%s> ReqChangeConsensus SUCCESSFUL", chain.groupItem.GroupId)
+		/*
+			TBD
+			fix implement later
+			//stop current propose
+			chain.Consensus.Producer().StopPropose()
+			//update producer list
+			chain.updChainConsensus(trxId, bundle)
+			chain.Consensus.Producer().StartPropose()
 
-		//stop current propose
-		chain.Consensus.Producer().StopPropose()
-		//update producer list
-		//chain.updChainConsensus(trxId, bundle)
-		//chain.Consensus.Producer().StartPropose()
+			//owner create the fork block and broadcast to all nodes
+			if chain.IsOwner() {
+				trx, err := chain.trxFactory.GetForkTrx("", bundle)
+				if err != nil {
+					chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
+					return
+				}
 
-		//owner create the fork block and broadcast to all nodes
-		if chain.IsOwner() {
-			trx, err := chain.trxFactory.GetForkTrx("", bundle)
-			if err != nil {
-				chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-				return
+				chain_log.Debugf("<%s> ReqChangeConsensus SUCCESSFUL, trx created %x", chain.groupItem.GroupId, trx)
+				//TBD create fork block and broadcast
 			}
-
-			chain_log.Debugf("<%s> ReqChangeConsensus SUCCESSFUL, trx created %x", chain.groupItem.GroupId, trx)
-			//TBD create fork block and broadcast
-		}
+		*/
 	case quorumpb.ChangeConsensusResult_FAIL:
 		chain_log.Debug("<%s> ReqChangeConsensus FAIL", chain.groupItem.GroupId)
 	}
@@ -702,19 +708,6 @@ func (chain *Chain) IsOwner() bool {
 
 func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
 	return chain.groupItem.OwnerPubKey == pubkey
-}
-
-func (chain *Chain) StartSync() error {
-	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
-	chain.rexSyncer.Start()
-	return nil
-}
-
-func (chain *Chain) StopSync() {
-	chain_log.Debugf("<%s> StopSync called", chain.groupItem.GroupId)
-	if chain.rexSyncer != nil {
-		chain.rexSyncer.Stop()
-	}
 }
 
 func (chain *Chain) GetRexSyncerStatus() string {
@@ -981,19 +974,8 @@ func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, err
 	return true, nil
 }
 
-func (chain *Chain) IsProducerByPubkey(pubkey string) bool {
-	_, ok := chain.producerPool[pubkey]
-	return ok
-}
-
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
-
-	if chain.isOwner() {
-		chain_log.Debugf("<%s> owner no need to sync", chain.groupItem.GroupId)
-		return nil
-	}
-
 	chain.rexSyncer.Start()
 	return nil
 }

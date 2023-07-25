@@ -45,15 +45,14 @@ type PTAcsResult struct {
 	result map[string][]byte
 }
 
-func NewPTBft(ctx context.Context, cfg Config, consensusInfo *quorumpb.ConsensusInfo, iface def.ChainMolassesIface) *PTBft {
+func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PTBft {
 	ptbft_log.Debugf("<%s> NewPTBft called", cfg.GroupId)
 	ptbft := &PTBft{
-		Config:            cfg,
-		cIface:            iface,
-		txBuffer:          NewTrxBuffer(cfg.GroupId),
-		chainCtx:          ctx,
-		currTask:          nil,
-		CurrConsensusInfo: consensusInfo,
+		Config:   cfg,
+		cIface:   iface,
+		txBuffer: NewTrxBuffer(cfg.GroupId),
+		chainCtx: ctx,
+		currTask: nil,
 	}
 	return ptbft
 }

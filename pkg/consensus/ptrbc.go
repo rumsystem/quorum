@@ -352,6 +352,6 @@ func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 		return err
 	}
 
-	connMgr.BroadcastBFTMsg(bftMsg)
+	connMgr.BroadcastBftMsg(bftMsg)
 	return nil
 }
