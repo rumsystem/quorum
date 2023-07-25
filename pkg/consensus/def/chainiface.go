@@ -18,4 +18,8 @@ type ChainMolassesIface interface {
 	GetCurrBlockId() uint64
 	SetLastUpdate(lastUpdate int64)
 	GetLastUpdate() int64
+	IsProducer() bool
+	IsOwner() bool
+	VerifySign(hash, signature []byte, pubkey string) (bool, error)
+	ReqConsensusChangeDone(bundle *quorumpb.ChangeConsensusResultBundle)
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/constants"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -133,6 +132,8 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	return nil
 }
 
+//commented by cuicat
+/*
 func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
 	connMgr.ProducerPool = make(map[string]string)
@@ -152,6 +153,7 @@ func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
 	}
 	return nil
 }
+*/
 
 func (connMgr *ConnMgr) LeaveAllChannels() error {
 	conn_log.Debugf("LeaveChannel called, groupId <%s>", connMgr.GroupId)
@@ -172,8 +174,10 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 }
 
+//commented by cuicat
+/*
 func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
-	conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
+	//conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
 	defer connMgr.pscounsmu.Unlock()
 	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
@@ -184,6 +188,7 @@ func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
 		return producerPsconn
 	}
 }
+*/
 
 func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)
@@ -220,7 +225,7 @@ func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string
 		return err
 	}
 
-	conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+	//conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
 	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
 }
@@ -313,26 +318,6 @@ func (connMgr *ConnMgr) SendSyncRespMsgRex(resp *quorumpb.ReqBlockResp, s networ
 	return nodectx.GetNodeCtx().Node.RumExchange.PublishToStream(rummsg, s) //publish to a stream
 }
 
-func (connMgr *ConnMgr) BroadcastHBMsg(hbb *quorumpb.HBMsgv1) error {
-	pkg := &quorumpb.Package{}
-
-	pbBytes, err := proto.Marshal(hbb)
-	if err != nil {
-		return err
-	}
-
-	pkg.Type = quorumpb.PackageType_HBB
-	pkg.Data = pbBytes
-
-	pkgBytes, err := proto.Marshal(pkg)
-	if err != nil {
-		return err
-	}
-
-	psconn := connMgr.getProducerPsConn()
-	return psconn.Publish(pkgBytes)
-}
-
 func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	pbBytes, err := proto.Marshal(blk)
 	if err != nil {
@@ -342,6 +327,46 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 	pkg := &quorumpb.Package{}
 	pkg.Type = quorumpb.PackageType_BLOCK
 	pkg.Data = pbBytes
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	psconn := connMgr.getUserConn()
+	return psconn.Publish(pkgBytes)
+}
+
+func (connMgr *ConnMgr) BroadcastCCMsg(msg *quorumpb.CCMsg) error {
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_CC_MSG
+	pkg.Data = pbBytes
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	psconn := connMgr.getUserConn()
+	return psconn.Publish(pkgBytes)
+}
+
+func (connMgr *ConnMgr) BroadcastBftMsg(msg *quorumpb.BftMsg) error {
+	pkg := &quorumpb.Package{}
+
+	pbBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	pkg.Type = quorumpb.PackageType_BFT_MSG
+	pkg.Data = pbBytes
+
 	pkgBytes, err := proto.Marshal(pkg)
 	if err != nil {
 		return err

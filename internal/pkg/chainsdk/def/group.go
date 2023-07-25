@@ -6,10 +6,9 @@ import (
 
 type GroupIface interface {
 	SendRawTrx(trx *quorumpb.Trx) (string, error)
-	GetTrx(trxId string) (*quorumpb.Trx, error)
-	GetTrxFromCache(trxId string) (*quorumpb.Trx, error)
+	GetTrx(trxId string) (*quorumpb.Trx, bool, error)
 	GetRexSyncerStatus() string
-	StartSync(restart bool) error
+	StartSync() error
 	StopSync() error
 }
 
@@ -19,5 +18,4 @@ type RexSyncResult struct {
 	BlockProvided         int32
 	SyncResult            string
 	LastSyncTaskTimestamp int64
-	NextSyncTaskTimeStamp int64
 }

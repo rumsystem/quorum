@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"fmt"
+
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
@@ -28,97 +30,129 @@ func (user *MolassesUser) NewUser(item *quorumpb.GroupItem, nodename string, ifa
 func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	molauser_log.Debugf("<%s> AddBlock called, BlockId <%d>", user.groupId, block.BlockId)
 
-	//check if block exist
-	blockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.BlockId, false, user.nodename)
-	if blockExist { // check if we need to apply trxs again
-		// block already saved
-		molauser_log.Debugf("Block exist, ignore")
-	} else {
-		//check if block cached
-		isBlockCatched, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.BlockId, true, user.nodename)
+	//check if block already exist in chain
+	isBlockExist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, block.BlockId, false, user.nodename)
+	if err != nil {
+		return err
+	}
+	if isBlockExist {
+		//block already on chain, ignore
+		molauser_log.Debugf("<%s> block <%d> already on chain, ignore", user.groupId, block.BlockId)
+		return nil
+	}
 
-		//check if block parent exist
-		parentBlockId := block.BlockId - 1
-		parentExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentBlockId, false, user.nodename)
+	//try add new block
+	parentBlockId := block.BlockId - 1
+	isParentOnChain, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(block.GroupId, parentBlockId, false, user.nodename)
+	if !isParentOnChain {
+		molauser_log.Debugf("<%s> parent block <%d> not valid, save this block to cache, Trxs inside this block ARE NOT APPLIED", user.groupId, parentBlockId)
+		err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
+		if err != nil {
+			return err
+		}
 
-		if !parentExist {
-			if isBlockCatched {
-				molauser_log.Debugf("Block already catched but parent not exist, wait more rexsyncer to fill the hole")
-				return nil
-			} else {
-				molauser_log.Debugf("parent of block <%d> is not exist and block not catched, catch it.", block.BlockId)
-				//add this block to cache
-				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			//get parent block
-			parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.GroupId, parentBlockId, false, user.nodename)
-			if err != nil {
-				return err
-			}
+		return nil
+	}
+	//get parent block
+	parentBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.GroupId, parentBlockId, false, user.nodename)
+	if err != nil {
+		molauser_log.Errorf("<%s> Get Parent Block failed, err <%s>", user.groupId, err.Error())
+		return err
+	}
 
-			//valid block with parent block
-			valid, err := rumchaindata.ValidBlockWithParent(block, parentBlock)
-			if !valid {
-				molauser_log.Warningf("<%s> invalid block <%s>", user.groupId, err.Error())
-				molauser_log.Debugf("<%s> remove invalid block <%d> from cache", user.groupId, block.BlockId)
-				return nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.BlockId, true, user.nodename)
-			} else {
-				molauser_log.Debugf("block is validated")
-			}
+	//valid block with parent block
+	valid, err := rumchaindata.ValidBlockWithParent(block, parentBlock)
+	if err != nil {
+		molauser_log.Errorf("<%s> ValidBlockWithParent failed, err <%s>", user.groupId, err.Error())
+		return err
+	}
 
-			//add this block to cache
-			if !isBlockCatched {
-				err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, true, user.nodename)
-				if err != nil {
-					return err
-				}
-			}
+	if !valid {
+		molauser_log.Warningf("<%s> invalid block <%s>, ignore", user.groupId, err.Error())
+		return fmt.Errorf("invalid block")
+	}
 
-			//search cache, gather all blocks can be connected with this block (this block is the first one in the returned block list)
-			blockfromcache, err := nodectx.GetNodeCtx().GetChainStorage().GatherBlocksFromCache(block, user.nodename)
-			if err != nil {
-				return err
-			}
+	molauser_log.Debugf("block is validated, save it to chain")
+	err = user.saveBlock(block, false)
+	if err != nil {
+		molauser_log.Errorf("<%s> save block failed, err <%s>", user.groupId, err.Error())
+		return err
+	}
 
-			//move collected blocks from cache to chain
-			for _, bc := range blockfromcache {
-				molauser_log.Debugf("<%s> move block <%d> from cache to chain", user.groupId, bc.BlockId)
-				err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(bc, false, user.nodename)
-				if err != nil {
-					return err
-				}
+	//search if any cached block can be chainned with this block
+	currBlock := block
+	for {
+		nextBlockId := currBlock.BlockId + 1
+		nextBlockExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(currBlock.GroupId, nextBlockId, true, user.nodename)
+		if !nextBlockExist {
+			//next block not exist, break
+			break
+		}
 
-				err = nodectx.GetNodeCtx().GetChainStorage().RmBlock(bc.GroupId, bc.BlockId, true, user.nodename)
-				if err != nil {
-					return err
-				}
+		//get next block
+		nextBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(block.GroupId, nextBlockId, true, user.nodename)
+		if err != nil {
+			molaproducer_log.Warningf("get next block failed with error: %s", err.Error())
+			break
+		}
 
-				if bc.BlockId > user.cIface.GetCurrBlockId() {
-					//update latest group epoch
-					molauser_log.Debugf("<%s> UpdChainInfo, upd highest blockId from <%d> to <%d>", user.groupId, user.cIface.GetCurrBlockId(), bc.BlockId)
-					user.cIface.SetCurrBlockId(bc.BlockId)
-					user.cIface.SetCurrEpoch(bc.Epoch)
-					user.cIface.SetLastUpdate(bc.TimeStamp)
-					user.cIface.SaveChainInfoToDb()
-				}
+		//valid next block with currblock
+		valid, err := rumchaindata.ValidBlockWithParent(nextBlock, currBlock)
+		if err != nil {
+			molaproducer_log.Warningf("valid next block failed with error: %s", err.Error())
+			break
+		}
 
-			}
+		if !valid {
+			molaproducer_log.Warningf("<%s> invalid block <%s>, ignore", user.groupId, err.Error())
+			break
+		}
 
-			//get all trxs from blocks
-			var trxs []*quorumpb.Trx
-			trxs, err = rumchaindata.GetAllTrxs(blockfromcache)
-			if err != nil {
-				return err
-			}
+		//move block from cache to chain and apply all trxs
+		err = user.saveBlock(nextBlock, true)
+		if err != nil {
+			molaproducer_log.Warningf("save next block failed with error: %s", err.Error())
+			break
+		}
 
-			//apply trxs
-			return user.cIface.ApplyTrxsFullNode(trxs, user.nodename)
+		//start next round
+		currBlock = nextBlock
+	}
+
+	molauser_log.Debugf("<%s> AddBlock done", user.groupId)
+	return nil
+}
+
+func (user *MolassesUser) saveBlock(block *quorumpb.Block, rmFromCache bool) error {
+	//add block to chain
+	if rmFromCache {
+		molauser_log.Debugf("<%s> move block <%d> from cache to chain", user.groupId, block.BlockId)
+		err := nodectx.GetNodeCtx().GetChainStorage().RmBlock(block.GroupId, block.BlockId, true, user.nodename)
+		if err != nil {
+			return err
 		}
 	}
-	return nil
 
+	molauser_log.Debugf("<%s> add block <%d> to chain", user.groupId, block.BlockId)
+	err := nodectx.GetNodeCtx().GetChainStorage().AddBlock(block, false, user.nodename)
+	if err != nil {
+		return err
+	}
+
+	//apply trxs
+	molauser_log.Debugf("<%s> apply trxs", user.groupId)
+	err = user.cIface.ApplyTrxsFullNode(block.Trxs, user.nodename)
+	if err != nil {
+		molauser_log.Errorf("apply trxs failed with error: %s", err.Error())
+		return err
+	}
+
+	//update chain info
+	molauser_log.Debugf("<%s> UpdChainInfo, upd highest blockId from <%d> to <%d>", user.groupId, user.cIface.GetCurrBlockId(), block.BlockId)
+	user.cIface.SetCurrBlockId(block.BlockId)
+	//user.cIface.SetCurrEpoch(block.Epoch)
+	user.cIface.SetLastUpdate(block.TimeStamp)
+	user.cIface.SaveChainInfoToDb()
+
+	return nil
 }

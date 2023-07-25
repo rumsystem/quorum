@@ -9,51 +9,11 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
-type GetDataNodeSDKItem struct {
-	GroupId string `param:"group_id" json:"-" validate:"required"`
-	ReqType string `json:"ReqType" validate:"required,oneof=auth_type auth_allowlist auth_denylist appconfig_listlist appconfig_item_bykey announced_producer announced_user group_producer group_info"`
-	Req     []byte `json:"Req" validate:"required" swaggertype:"primitive,string"` // base64 encoded req
-}
-
-type GrpInfo struct {
-	GroupId string
-}
-
 type (
 	GetNSdkGroupInfoParams struct {
 		GroupId string `param:"group_id" json:"group_id" validate:"required,uuid4"`
 	}
 )
-
-type AppConfigKeyListItem struct {
-	GroupId string
-}
-
-type AppConfigItem struct {
-	GroupId string
-	Key     string
-}
-
-type AnnGrpProducer struct {
-	GroupId string
-}
-
-type GrpProducer struct {
-	GroupId string
-}
-
-type AnnGrpUser struct {
-	GroupId    string
-	SignPubkey string
-}
-
-type GrpInfoNodeSDK struct {
-	GroupId      string `json:"group_id"`
-	Owner        string `json:"owner"`
-	LatestUpdate int64  `json:"latest_update"`
-	Provider     string `json:"provider"`
-	Singature    string `json:"singature"`
-}
 
 // @Tags LightNode
 // @Summary GetNSdkGroupInfo

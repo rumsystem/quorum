@@ -45,7 +45,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	} else {
 		ks := nodectx.GetNodeCtx().Keystore
 
-		base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
+		base64key, _ := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 		groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
 		//pubkeybytes, err := hex.DecodeString(hexkey)
 		//p2ppubkey, err := p2pcrypto.UnmarshalSecp256k1PublicKey(pubkeybytes)

@@ -6,82 +6,72 @@ import (
 )
 
 const (
-	namespace = "quorum"
+	pubsubNS = "pubsub"
 )
 
 var (
-	ActionType = struct {
+	PubSubActionType = struct {
 		ConnectPeer      string
 		JoinTopic        string
 		SubscribeTopic   string
 		PublishToTopic   string
-		PublishToPeerid  string
-		PublishToStream  string
 		ReceiveFromTopic string
-		RumChainData     string
-		RumRelayReq      string
-		RumRelayResp     string
 	}{
 		ConnectPeer:      "connect_peer",
 		JoinTopic:        "join_topic",
 		SubscribeTopic:   "subscribe_topic",
 		PublishToTopic:   "publish_to_topic",
-		PublishToPeerid:  "publish_to_peerid",
-		PublishToStream:  "publish_to_stream",
 		ReceiveFromTopic: "receive_from_topic",
-		RumChainData:     "rum_chain_data",
-		RumRelayReq:      "rum_relay_req",
-		RumRelayResp:     "rum_relay_resp",
 	}
 
-	SuccessCount = promauto.NewCounterVec(
+	PubSubSuccessCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: pubsubNS,
 			Name:      "success_total",
 			Help:      "The total number of successful action",
 		},
 		[]string{"action"},
 	)
 
-	FailedCount = promauto.NewCounterVec(
+	PubSubFailedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: pubsubNS,
 			Name:      "failed_total",
 			Help:      "The total number of failed action",
 		},
 		[]string{"action"},
 	)
 
-	InBytes = promauto.NewGaugeVec(
+	PubSubInBytes = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: pubsubNS,
 			Name:      "in_bytes",
 			Help:      "Current count of bytes received",
 		},
 		[]string{"action"},
 	)
 
-	InBytesTotal = promauto.NewCounterVec(
+	PubSubInBytesTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: pubsubNS,
 			Name:      "in_bytes_total",
 			Help:      "Total count of bytes received",
 		},
 		[]string{"action"},
 	)
 
-	OutBytes = promauto.NewGaugeVec(
+	PubSubOutBytes = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: pubsubNS,
 			Name:      "out_bytes",
 			Help:      "Current count of bytes sent",
 		},
 		[]string{"action"},
 	)
 
-	OutBytesTotal = promauto.NewCounterVec(
+	PubSubOutBytesTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: pubsubNS,
 			Name:      "out_bytes_total",
 			Help:      "Total count of bytes sent",
 		},

@@ -15,12 +15,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	Hours = 0
-	Mins  = 0
-	Sec   = 30
-)
-
 func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
 	var trx quorumpb.Trx
 
@@ -101,7 +95,6 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		Data:         trx.Data,
 		TimeStamp:    trx.TimeStamp,
 		Version:      trx.Version,
-		Expired:      trx.Expired,
 	}
 
 	bytes, err := proto.Marshal(clonetrxmsg)

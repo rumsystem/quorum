@@ -6,7 +6,6 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -24,42 +23,29 @@ func NewChainStorage(dbmgr *s.DbMgr) (storage *Storage) {
 	return storage
 }
 
-func (cs *Storage) UpdateAnnounceResult(announcetype quorumpb.AnnounceType, groupId, signPubkey string, result bool, prefix ...string) error {
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(signPubkey)
-	if pk == "" {
-		pk = signPubkey
-	}
-	key := s.GetAnnouncedKey(groupId, announcetype.String(), pk, prefix...)
-	pAnnounced := &quorumpb.AnnounceItem{}
-
-	value, err := cs.dbmgr.Db.Get([]byte(key))
-	if err != nil {
-		//patch for old keyformat
-		key := s.GetAnnouncedKey(groupId, announcetype.String(), signPubkey, prefix...)
-		value, err = cs.dbmgr.Db.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-		//update to the new keyformat
-		key = s.GetAnnouncedKey(groupId, announcetype.String(), pk, prefix...)
-	}
-
-	err = proto.Unmarshal(value, pAnnounced)
-	if err != nil {
-		return err
-	}
-
-	if result {
-		pAnnounced.Result = quorumpb.ApproveType_APPROVED
+func (cs *Storage) AddAnnounceItem(item *quorumpb.AnnounceItem, prefix ...string) (err error) {
+	var key string
+	if item.Content.Type == quorumpb.AnnounceType_AS_USER {
+		key = s.GetAnnounceAsUserKey(item.GroupId, item.Content.SignPubkey, prefix...)
+	} else if item.Content.Type == quorumpb.AnnounceType_AS_PRODUCER {
+		key = s.GetAnnounceAsProducerKey(item.GroupId, item.Content.SignPubkey, prefix...)
 	} else {
-		pAnnounced.Result = quorumpb.ApproveType_ANNOUNCED
+		return fmt.Errorf("unknown announce type %d", item.Content.Type)
 	}
 
-	value, err = proto.Marshal(pAnnounced)
+	data, err := proto.Marshal(item)
 	if err != nil {
+		chaindb_log.Debugf(err.Error())
 		return err
 	}
-	return cs.dbmgr.Db.Set([]byte(key), value)
+
+	err = cs.dbmgr.Db.Set([]byte(key), data)
+	if err != nil {
+		chaindb_log.Debugf(err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
@@ -68,91 +54,58 @@ func (cs *Storage) UpdateAnnounce(data []byte, prefix ...string) (err error) {
 		chaindb_log.Debugf(err.Error())
 		return err
 	}
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.SignPubkey)
-	if pk == "" {
-		pk = item.SignPubkey
-	}
-	key := s.GetAnnouncedKey(item.GroupId, item.Type.Enum().String(), pk, prefix...)
-	err = cs.dbmgr.Db.Set([]byte(key), data)
-	if err != nil {
-		chaindb_log.Debugf("error %s", err.Error())
-	}
 
-	return err
-}
-
-func (cs *Storage) GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserItem, error) {
-	var pList []*quorumpb.UserItem
-	key := s.GetUserPrefix(groupId, prefix...)
-
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := quorumpb.UserItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		pList = append(pList, &item)
-		return nil
-	})
-	return pList, err
-}
-
-func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error) {
-	var pList []*quorumpb.ProducerItem
-	key := s.GetProducerPrefix(groupId, prefix...)
-
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := quorumpb.ProducerItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		pList = append(pList, &item)
-		return nil
-	})
-
-	return pList, err
-}
-
-func (cs *Storage) GetAnnounceProducersByGroup(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
-	var aList []*quorumpb.AnnounceItem
-	key := s.GetAnnounceAsProducerPrefix(groupId, prefix...)
-
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := quorumpb.AnnounceItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		aList = append(aList, &item)
-		return nil
-	})
-
-	if err != nil {
-		chaindb_log.Debugf("error %s", err.Error())
+	var key string
+	if item.Content.Type == quorumpb.AnnounceType_AS_USER {
+		key = s.GetAnnounceAsUserKey(item.GroupId, item.Content.SignPubkey, prefix...)
+	} else if item.Content.Type == quorumpb.AnnounceType_AS_PRODUCER {
+		key = s.GetAnnounceAsProducerKey(item.GroupId, item.Content.SignPubkey, prefix...)
+	} else {
+		return fmt.Errorf("unknown announce type %d", item.Content.Type)
 	}
 
-	return aList, err
+	if item.Action == quorumpb.ActionType_ADD {
+		//check if already exist
+		exist, err := cs.dbmgr.Db.IsExist([]byte(key))
+		if exist {
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("announce item already exist")
+		}
+		//add item to db
+		err = cs.dbmgr.Db.Set([]byte(key), data)
+		if err != nil {
+			chaindb_log.Debugf("error %s", err.Error())
+		}
+	} else if item.Action == quorumpb.ActionType_REMOVE {
+		exist, err := cs.dbmgr.Db.IsExist([]byte(key))
+		if !exist {
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("announce item not exist")
+		}
+		//remove item from db
+		err = cs.dbmgr.Db.Delete([]byte(key))
+		if err != nil {
+			chaindb_log.Debugf("error %s", err.Error())
+		}
+	} else {
+		return fmt.Errorf("unknown action type %d", item.Action.Type())
+	}
+
+	return nil
 }
 
-func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
+func (cs *Storage) AddPost(trx *quorumpb.Trx, decodedData []byte, prefix ...string) error {
 	key := s.GetPostKey(trx.GroupId, fmt.Sprint(trx.TimeStamp), trx.TrxId, prefix...)
-	chaindb_log.Debugf("Add POST with key %s", key)
 
 	ctnItem := &quorumpb.PostItem{}
 
 	ctnItem.TrxId = trx.TrxId
 	ctnItem.SenderPubkey = trx.SenderPubkey
-	ctnItem.Content = trx.Data
+	ctnItem.Content = decodedData
 	ctnItem.TimeStamp = trx.TimeStamp
 	ctnBytes, err := proto.Marshal(ctnItem)
 	if err != nil {
@@ -162,23 +115,21 @@ func (cs *Storage) AddPost(trx *quorumpb.Trx, prefix ...string) error {
 	return cs.dbmgr.Db.Set([]byte(key), ctnBytes)
 }
 
-// TBD
 func (cs *Storage) SaveChainInfo(currBlock, currEpoch uint64, lastUpdate int64, groupId string, prefix ...string) error {
-
 	key := s.GetChainInfoEpoch(groupId, prefix...)
-	chaindb_log.Debugf("Save ChainInfo, currEpoch <%d>", currEpoch)
+	//chaindb_log.Debugf("Save ChainInfo, currEpoch <%d>", currEpoch)
 	e := make([]byte, 8)
 	binary.LittleEndian.PutUint64(e, currEpoch)
 	cs.dbmgr.Db.Set([]byte(key), e)
 
 	key = s.GetChainInfoBlock(groupId, prefix...)
-	chaindb_log.Debugf("Save ChainInfo, currBlock <%d>", currBlock)
+	//chaindb_log.Debugf("Save ChainInfo, currBlock <%d>", currBlock)
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, currBlock)
 	cs.dbmgr.Db.Set([]byte(key), b)
 
 	key = s.GetChainInfoLastUpdate(groupId, prefix...)
-	chaindb_log.Debugf("Save ChainInfo, LastUpdate <%d>", lastUpdate)
+	//chaindb_log.Debugf("Save ChainInfo, LastUpdate <%d>", lastUpdate)
 	l := make([]byte, 8)
 	binary.LittleEndian.PutUint64(l, uint64(lastUpdate))
 	cs.dbmgr.Db.Set([]byte(key), l)
@@ -186,7 +137,6 @@ func (cs *Storage) SaveChainInfo(currBlock, currEpoch uint64, lastUpdate int64, 
 	return nil
 }
 
-// TBD
 func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, currEpoch uint64, lastUpdate int64, err error) {
 	key := s.GetChainInfoEpoch(groupId, prefix...)
 	e, err := cs.dbmgr.Db.Get([]byte(key))
@@ -213,4 +163,75 @@ func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, cu
 	last := int64(binary.LittleEndian.Uint64(l))
 	chaindb_log.Debugf("Load ChainInfo, LastUpdate <%d>", last)
 	return block, epoch, last, nil
+}
+
+func (cs *Storage) SaveGroupConsensusInfo(groupId string, info *quorumpb.ConsensusInfo, prefix ...string) error {
+	key := s.GetGroupConsensusInfoKey(groupId, prefix...)
+	chaindb_log.Debugf("Save GroupConsensusInfo, key <%s>", key)
+	data, err := proto.Marshal(info)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.Db.Set([]byte(key), data)
+}
+
+func (cs *Storage) GetGroupConsensusInfo(groupId string, prefix ...string) (info *quorumpb.ConsensusInfo, err error) {
+	key := s.GetGroupConsensusInfoKey(groupId, prefix...)
+	chaindb_log.Debugf("Get GroupConsensusInfo, key <%s>", key)
+	data, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	info = &quorumpb.ConsensusInfo{}
+	err = proto.Unmarshal(data, info)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func (cs *Storage) UpdateChangeConsensusResult(groupId string, result *quorumpb.ChangeConsensusResultBundle, prefix ...string) error {
+	key := s.GetChangeConsensusResultKey(groupId, result.Req.ReqId, prefix...)
+	chaindb_log.Debugf("UpdateChangeConsensusResult key %s", key)
+	data, err := proto.Marshal(result)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.Db.Set([]byte(key), data)
+}
+
+func (cs *Storage) GetAllChangeConsensusResult(groupId string, prefix ...string) ([]*quorumpb.ChangeConsensusResultBundle, error) {
+	var rList []*quorumpb.ChangeConsensusResultBundle
+	//chaindb_log.Debugf("GetAllChangeConsensusResult called")
+
+	key := s.GetChangeConsensusResultPrefix(groupId, prefix...)
+	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		item := quorumpb.ChangeConsensusResultBundle{}
+		perr := proto.Unmarshal(v, &item)
+		if perr != nil {
+			return perr
+		}
+		rList = append(rList, &item)
+		return nil
+	})
+
+	return rList, err
+}
+
+func (cs *Storage) GetChangeConsensusResultByReqId(groupId, reqId string, prefix ...string) (*quorumpb.ChangeConsensusResultBundle, error) {
+	key := s.GetChangeConsensusResultKey(groupId, reqId, prefix...)
+	chaindb_log.Debugf("GetChangeConsensusResultByReqId key %s", key)
+	data, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	item := quorumpb.ChangeConsensusResultBundle{}
+	perr := proto.Unmarshal(data, &item)
+	if perr != nil {
+		return nil, perr
+	}
+	return &item, nil
 }

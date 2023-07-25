@@ -51,7 +51,7 @@ func (h *Handler) GetNSdkContent(c echo.Context) (err error) {
 
 	trxList := []*quorumpb.Trx{}
 	for _, trxid := range trxids {
-		trx, err := group.GetTrx(trxid)
+		trx, _, err := group.GetTrx(trxid)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue

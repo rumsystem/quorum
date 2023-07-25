@@ -40,6 +40,16 @@ func (dbMgr *DbMgr) GetBlock(groupId string, blockId uint64, cached bool, prefix
 	} else {
 		key = GetBlockKey(groupId, blockId, prefix...)
 	}
+
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	if !isExist {
+		return nil, rumerrors.ErrBlockExist
+	}
+
 	value, err := dbMgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
@@ -238,4 +248,20 @@ func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, prefi
 func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (pubkeylist []string, err error) {
 	keys := []string{}
 	return keys, nil
+}
+
+// get next nonce
+func (dbMgr *DbMgr) GetNextConsensusNonce(groupId string, prefix ...string) (uint64, error) {
+	key := GetConsensusNonceKey(groupId, prefix...)
+	nonceseq, succ := dbMgr.seq.Load(key)
+	if !succ {
+		newseq, err := dbMgr.Db.GetSequence([]byte(key), 1)
+		if err != nil {
+			return 0, err
+		}
+		dbMgr.seq.Store(key, newseq)
+		return newseq.Next()
+	} else {
+		return nonceseq.(Sequence).Next()
+	}
 }

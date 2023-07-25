@@ -3,10 +3,12 @@ package quorum.pb;
 option go_package = "github.com/rumsystem/quorum/pkg/pb";
 
 enum PackageType {
-    TRX             = 0;
-    BLOCK           = 1;
-    SYNC            = 2;
-    HBB             = 3;
+    TRX                   = 0;
+    BLOCK                 = 1;
+    BFT_MSG               = 2;
+    CC_MSG                = 3;  //Change Consensus 
+    SYNC              = 4;
+    BROADCAST_MSG         = 5;
 }
 
 message Package {
@@ -14,15 +16,10 @@ message Package {
     bytes       Data = 2;
 }
 
+//TRX
 enum AnnounceType {
    AS_USER     = 0;
    AS_PRODUCER = 1;
-}
-
-enum ApproveType {
-    ANNOUNCED = 0;
-    APPROVED  = 1;
-    REJECTED  = 2;
 }
 
 enum ActionType {
@@ -31,89 +28,17 @@ enum ActionType {
 }
 
 enum TrxStroageType {
-    CHAIN    = 0;
+    CHAIN = 0;
     CACHE = 1;
 }
 
 enum TrxType {
     POST               = 0; // post to group
     ANNOUNCE           = 1; // producer or user self announce
-    PRODUCER           = 2; // owner update group producer
-    USER               = 3; // owner update group user
-    CHAIN_CONFIG       = 6; // chain configuration
-    APP_CONFIG         = 7; // app configuration
-}
-
-message Trx {
-    string         TrxId        = 1;
-    TrxType        Type         = 2;    
-    string         GroupId      = 3;
-    bytes          Data         = 4; 
-    int64          TimeStamp    = 5;
-    string         Version      = 6;
-    int64          Expired      = 7;
-    int64          ResendCount  = 8;
-    string         SenderPubkey = 10;  
-    bytes          SenderSign   = 11;
-    TrxStroageType StorageType  = 12;
-    reserved 9; 
-}
-
-message Block {    
-    string      GroupId            = 1;     
-    uint64      BlockId            = 2;     
-    uint64      Epoch              = 3;  
-    bytes       PrevHash           = 4;  
-    string      ProducerPubkey     = 5;
-    repeated    Trx Trxs           = 6;    
-    bool        Sudo               = 7;    
-    int64       TimeStamp          = 8;       
-    bytes       BlockHash          = 9;
-    bytes       ProducerSign       = 10;        
-}
-
-//SYNC_MSG
-enum SyncMsgType {
-    REQ_BLOCK          = 0; // request block 
-    REQ_BLOCK_RESP     = 1; // response request block
-}
-
-message SyncMsg {
-    string      GroupId = 1;    
-    SyncMsgType Type    = 2;
-    bytes       Data    = 3;
-}
-
-message ReqBlock {
-    string GroupId       = 1; //group id
-    uint64 FromBlock     = 2; //from which block
-    int32  BlksRequested = 3; //how many blocks requested, "-1" means many as possible
-    string ReqPubkey     = 4; //requester pubkey
-    bytes  Hash          = 5; 
-    bytes  Sign          = 6;
-}
-
-message ReqBlockResp {
-    string       GroupId         = 1;   
-    string       RequesterPubkey = 2;
-    string       ProviderPubkey  = 3;
-    ReqBlkResult Result          = 4;        
-    uint64       FromBlock       = 5;
-    int32        BlksRequested   = 6;     
-    int32        BlksProvided    = 7;
-    BlocksBundle Blocks          = 8;
-    bytes        Hash            = 9;
-    bytes        Sign            = 10;
-}
-
-message BlocksBundle {
-    repeated Block Blocks = 1;
-}
-
-enum ReqBlkResult {
-    BLOCK_IN_RESP         = 0; //"block(s) in resp and I may have more"
-    BLOCK_IN_RESP_ON_TOP  = 1; //"block(s) in resp and I have no more block(when get req)" 
-    BLOCK_NOT_FOUND       = 2; //"no block in resp and I don't have the requested block"
+    UPD_GRP_USER       = 2; // owner update group user
+    CHAIN_CONFIG       = 3; // chain configuration
+    APP_CONFIG         = 4; // app configuration
+    FORK               = 5; // fork chain
 }
 
 message PostItem {
@@ -124,72 +49,43 @@ message PostItem {
 }
 
 message ProducerItem {
-   string     GroupId             = 1;
-   string     ProducerPubkey      = 2;
-   string     GroupOwnerPubkey    = 3;   
-   string     GroupOwnerSign      = 4;
-   ActionType Action              = 5;
-   int64      WithnessBlocks      = 6;
-   int64      TimeStamp           = 7;       
-   string     Memo                = 8;
+   string     GroupId        = 1;
+   string     ProducerPubkey = 2;
+   string     ProofTrxId     = 3;
+   int64      BlkCnt         = 4;   
+   string     Memo           = 5;
 }
 
-message BFTProducerBundleItem {
-    repeated ProducerItem Producers = 1;
+message UpdGroupUserItem {
+    string     GroupId    = 1;
+    string     UserPubkey = 2;
+    ActionType Action     = 3;
+    string     Memo       = 4;
 }
 
 message UserItem {
    string     GroupId             = 1;
    string     UserPubkey          = 2;
    string     EncryptPubkey       = 3;
-   string     GroupOwnerPubkey    = 4;
-   string     GroupOwnerSign      = 5;
-   int64      TimeStamp           = 6;
-   ActionType Action              = 7;
-   string     Memo                = 8;
+   string     ProofTrxId          = 4;
+   int64      TxCnt               = 5; //how many trx send by this user
+   string     Memo                = 6;
 }
 
 message AnnounceItem {
-    string       GroupId            = 1;
-    string       SignPubkey         = 2;
-    string       EncryptPubkey      = 3;
-    string       AnnouncerSignature = 4;
-    AnnounceType Type               = 5;
-    string       OwnerPubkey        = 6;
-    string       OwnerSignature     = 7;
-    ApproveType  Result             = 8;    
-    int64        TimeStamp          = 9; 
-    ActionType   Action             = 10;
-    string       Memo               = 11;
+    string          GroupId         = 1;    
+    ActionType      Action          = 2;
+    AnnounceContent Content         = 3;
+    string          AnnouncerPubkey = 4;
+    bytes           Hash            = 5;
+    bytes           Signature       = 6;
 }
 
-enum GroupEncryptType {
-    PUBLIC   = 0;
-    PRIVATE  = 1;
-}
-
-enum GroupConsenseType {
-    POA = 0;
-    POS = 1;
-}
-
-message GroupItem {
-    string            GroupId                 = 1;
-    string            GroupName               = 2;
-    string            OwnerPubKey             = 3;
-    string            UserSignPubkey          = 4;
-    string            UserEncryptPubkey       = 5;
-    int64             LastUpdate              = 6;
-    Block             GenesisBlock            = 7;
-    GroupEncryptType  EncryptType   = 8;
-    GroupConsenseType ConsenseType = 9;
-    string            CipherKey               = 10;
-    string            AppKey                  = 11;
-}
-
-enum RoleV0 {
-    GROUP_PRODUCER = 0;
-    GROUP_USER     = 1;
+message AnnounceContent {
+    AnnounceType    Type          = 1;    
+    string          SignPubkey    = 2;
+    string          EncryptPubkey = 3;
+    string          Memo          = 4;
 }
 
 enum ChainConfigType {
@@ -247,15 +143,212 @@ message AppConfigItem{
     int64         TimeStamp   = 9;
 }
 
+message ConsensusInfo {
+    string ConsensusId   = 1;    
+    uint64 ChainVer      = 2; 
+    string InTrx         = 3;
+    uint64 ForkFromBlock = 4;
+}
+
+message ForkItem {
+    string        GroupId          = 1;
+    ConsensusInfo Consensus        = 2;
+    uint64        StartFromBlock   = 3;
+    uint64        StartFromEpoch   = 4;
+    uint64        EpochDuration    = 5;
+    repeated      string producers = 6;
+    string        Memo             = 7;
+}
+
+message Trx {
+    string         TrxId        = 1;
+    TrxType        Type         = 2;    
+    string         GroupId      = 3;
+    bytes          Data         = 4; 
+    int64          TimeStamp    = 5;
+    string         Version      = 6;
+    int64          ResendCount  = 7;
+    int64          Nonce        = 8;
+    string         SenderPubkey = 9;  
+    bytes          SenderSign   = 10;
+    TrxStroageType StorageType  = 11;
+}
+
+//BLOCK
+message Block {    
+    string        GroupId        = 1;
+    uint64        BlockId        = 2;
+    bytes         PrevHash       = 3;  
+    string        ProducerPubkey = 4;
+    repeated      Trx Trxs       = 5;
+    int64         TimeStamp      = 6;
+    ConsensusInfo Consensus      = 7;    
+    bytes         BlockHash      = 8;
+    bytes         ProducerSign   = 9;  
+}
+
+//BFT_MSG
+enum BftMsgType {
+    HB_BFT = 0; //HBMsgV1
+}
+
+message BftMsg {
+    BftMsgType Type = 1;
+    bytes      Data = 2; 
+}
+
+//CC_MSG
+enum CCMsgType {
+    CHANGE_CONSENSUS_REQ  = 0; // request change consensus
+    CC_PROOF_HB           = 1; // HB msg for change consensus
+}
+
+message CCMsg {
+    CCMsgType Type = 1;
+    bytes     Data = 2;
+}
+
+message ChangeConsensusReq {
+    string            ReqId                = 1;    
+    string            GroupId              = 2;
+    uint64            Nonce                = 3;
+    repeated string   ProducerPubkeyList   = 4;  
+    uint64            AgreementTickLenInMs = 5;
+    uint64            AgreementTickCount   = 6;
+    uint64            FromBlock            = 7;
+    uint64            FromEpoch            = 8;
+    uint64            EpochDuration        = 9;
+    string            Contract             = 10;
+    string            SenderPubkey         = 12;
+    string            Memo                 = 13;
+    bytes             MsgHash              = 14; 
+    bytes             SenderSign           = 15;
+}
+
+message ChangeConsensusReqMsg {
+    ChangeConsensusReq Req                        = 1;
+    uint64             ReqChangeConsensusRetryCnt = 2;
+}
+
+message ChangeConsensusResp {
+    string             RespId       = 1;
+    string             GroupId      = 2;
+    ChangeConsensusReq Req          = 3;
+    string             SenderPubkey = 4;
+    string             Memo         = 5;    
+    bytes              MsgHash      = 6;
+    bytes              SenderSign   = 7;
+}
+
+message ChangeConsensusRespMsg {
+    ChangeConsensusResp Resp                       = 1;
+    uint64              ReqChangeConsensusRetryCnt = 2;
+}
+
+message ChangeConsensusProof{
+    uint64 ReqChangeConsensusRetryCnt = 1;
+    ChangeConsensusReq           Req  = 2;
+    ChangeConsensusResp          Resp = 3;
+}
+
+enum ChangeConsensusResult {
+    SUCCESS = 0;
+    FAIL    = 1;
+}
+
+message ChangeConsensusResultBundle{
+    ChangeConsensusReq            Req                = 1;
+    repeated ChangeConsensusResp  Resps              = 2;
+    ChangeConsensusResult         Result             = 3;
+}
+
+//SYNC_MSG
+enum SyncMsgType {
+    REQ_BLOCK          = 0; // request block 
+    REQ_BLOCK_RESP     = 1; // response request block
+}
+
+message SyncMsg {
+    string      GroupId = 1;    
+    SyncMsgType Type    = 2;
+    bytes       Data    = 3;
+}
+
+message ReqBlock {
+    string GroupId       = 1; //group id
+    uint64 FromBlock     = 2; //from which block
+    int32  BlksRequested = 3; //how many blocks requested, "-1" means many as possible
+    string ReqPubkey     = 4; //requester pubkey
+    bytes  Hash          = 5; 
+    bytes  Sign          = 6;
+}
+
+message ReqBlockResp {
+    string       GroupId         = 1;   
+    string       RequesterPubkey = 2;
+    string       ProviderPubkey  = 3;
+    ReqBlkResult Result          = 4;        
+    uint64       FromBlock       = 5;
+    int32        BlksRequested   = 6;     
+    int32        BlksProvided    = 7;
+    BlocksBundle Blocks          = 8;
+    bytes        Hash            = 9;
+    bytes        Sign            = 10;
+}
+
+message BlocksBundle {
+    repeated Block Blocks = 1;
+}
+
+enum ReqBlkResult {
+    BLOCK_IN_RESP         = 0; //"block(s) in resp and I may have more"
+    BLOCK_IN_RESP_ON_TOP  = 1; //"block(s) in resp and I have no more block(when get req)" 
+    BLOCK_NOT_FOUND       = 2; //"no block in resp and I don't have the requested block"
+}    
+
+//BROADCAST_MSG
+enum BroadcastType {
+    GENERAL                = 0; // general broadcast
+}
+
+message BroadcastMsg {
+    BroadcastType Type = 1;
+    bytes         Data = 2;
+}
+
+enum GroupEncryptType {
+    PUBLIC   = 0;
+    PRIVATE  = 1;
+}
+
+enum GroupConsenseType {
+    POA = 0;
+    POS = 1;
+}
+
+message GroupItem {
+    string            GroupId                 = 1;
+    string            GroupName               = 2;
+    string            OwnerPubKey             = 3;
+    string            UserSignPubkey          = 4;
+    string            UserEncryptPubkey       = 5;
+    int64             LastUpdate              = 6;
+    Block             GenesisBlock            = 7;
+    GroupEncryptType  EncryptType             = 8;
+    GroupConsenseType ConsenseType            = 9;
+    string            CipherKey               = 10;
+    string            AppKey                  = 11;
+}
+
 message GroupSeed {
     Block  GenesisBlock   = 1;
     string GroupId        = 2;
     string GroupName      = 3;
     string OwnerPubkey    = 4;
-    string ConsensusType  = 5;
+    string ConsensusType  = 5;    
     string EncryptionType = 6;
     string CipherKey      = 7;
-    string AppKey         = 8;
+    string AppKey         = 8; 
     string Signature      = 9;
 }
 
@@ -267,15 +360,19 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
+
+//HB_MSG
+//HB protocol is used for both change consensus and bft
 message HBTrxBundle {
     repeated Trx Trxs = 1;
 }  
 
 message HBMsgv1 {
-    string           MsgId       = 1;   
-    uint64           Epoch       = 2;
-    HBMsgPayloadType PayloadType = 3;   // RBC or BBA
-    bytes            Payload     = 4; 
+    string           MsgId       = 1;
+    string           ScopeId     = 2;    //for bft is consensusid, for change consensus is reqid
+    uint64           Epoch       = 3;
+    HBMsgPayloadType PayloadType = 4;   // RBC or BBA
+    bytes            Payload     = 5; 
 }
 
 enum HBMsgPayloadType {
@@ -347,24 +444,6 @@ message Aux {
     string     SenderPubkey = 2;
     uint64     Epoch        = 3;    
     bool       Value        = 4;
-}
-
-//old proto msg
-message GroupItemV0 {
-    string GroupId                 = 1;
-    string GroupName               = 2;
-    string OwnerPubKey             = 3;
-    string UserSignPubkey          = 4;
-    string UserEncryptPubkey       = 5;
-    RoleV0 UserRole                = 6;
-    int64  LastUpdate              = 7;
-    int64  HighestHeight           = 8;
-    string HighestBlockId          = 9;
-    Block  GenesisBlock            = 10;
-    GroupEncryptType EncryptType   = 11;
-    GroupConsenseType ConsenseType = 12;
-    string CipherKey               = 13;
-    string AppKey                  = 14;
 }
 
 
