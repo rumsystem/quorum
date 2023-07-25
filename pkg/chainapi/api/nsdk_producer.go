@@ -52,7 +52,7 @@ func (h *Handler) GetNSdkAnnouncedProducer(c echo.Context) (err error) {
 // @Produce json
 // @Param   group_id path string true "Group Id"
 // @Param   get_announced_user_params  query GetNSdkAnnouncedUserParams true  "get announced user params"
-// @Success 200 {object} []handlers.AnnouncedUserListItem
+// @Success 200 {object} []handlers.AnnouncedUsers
 // @Router  /api/v1/node/{group_id}/announced/user [get]
 func (h *Handler) GetNSdkAnnouncedUser(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)

@@ -14,8 +14,8 @@ import (
 // @Description	Update group consensus configuration
 // @Accept json
 // @Produce json
-// @Param data body handlers.UpdConsensusParam true "UpdConsensusParam"
-// @Success 200 {object} handlers.UpdConsensusResult
+// @Param data body handlers.ReqConsensusChangeParam true "UpdConsensusParam"
+// @Success 200 {object} handlers.ReqConsensusChangeResult
 // @Router /api/v1/group/updconsensus [post]
 func (h *Handler) ReqConsensusChange(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
