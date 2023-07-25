@@ -9,7 +9,7 @@ type ChainDataSyncIface interface {
 	HandlePsConnMessage(pkg *quorumpb.Package) error
 	HandleTrxPsConn(trx *quorumpb.Trx) error
 	HandleBlockPsConn(block *quorumpb.Block) error
-	HandleTrxRex(trx *quorumpb.Trx, fromstream network.Stream) error
+	HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, fromstream network.Stream) error
 	HandleBlockRex(block *quorumpb.Block, fromstream network.Stream) error
 	HandleHBPsConn(hb *quorumpb.HBMsgv1) error
 	HandleHBRex(hb *quorumpb.HBMsgv1) error

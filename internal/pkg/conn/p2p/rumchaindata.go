@@ -20,16 +20,16 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 	frompeerid := s.Conn().RemotePeer()
 	pkg := rummsg.DataPackage
 
-	if pkg.Type == quorumpb.PackageType_TRX {
-		rumexchangelog.Debugf("receive a trx, from %s", frompeerid)
-		trx := &quorumpb.Trx{}
-		err := proto.Unmarshal(pkg.Data, trx)
+	if pkg.Type == quorumpb.PackageType_SYNC {
+		rumexchangelog.Debugf("receive a Sync Msg, from %s", frompeerid)
+		syncMsg := &quorumpb.SyncMsg{}
+		err := proto.Unmarshal(pkg.Data, syncMsg)
 		if err == nil {
-			targetchain, ok := r.rex.chainmgr[trx.GroupId]
+			targetchain, ok := r.rex.chainmgr[syncMsg.GroupId]
 			if ok == true {
-				return targetchain.HandleTrxRex(trx, s)
+				return targetchain.HandleSyncMsgRex(syncMsg, s)
 			} else {
-				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", trx.GroupId, frompeerid)
+				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", syncMsg.GroupId, frompeerid)
 			}
 		} else {
 			rumexchangelog.Warningf(err.Error())

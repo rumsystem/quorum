@@ -66,43 +66,6 @@ func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.Announ
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_ANNOUNCE, encodedcontent, keyalias)
 }
 
-func (factory *TrxFactory) GetReqBlocksTrx(keyalias string, groupId string, fromBlock uint64, blkReq int32) (*quorumpb.Trx, error) {
-	var reqBlockItem quorumpb.ReqBlock
-	reqBlockItem.GroupId = groupId
-	reqBlockItem.FromBlock = fromBlock
-	reqBlockItem.BlksRequested = blkReq
-	reqBlockItem.ReqPubkey = factory.groupItem.UserSignPubkey
-
-	bItemBytes, err := proto.Marshal(&reqBlockItem)
-	if err != nil {
-		return nil, err
-	}
-
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK, bItemBytes, keyalias)
-}
-
-func (factory *TrxFactory) GetReqBlocksRespTrx(keyalias string, groupId string, requester string, fromBlock uint64, blkReq int32, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.Trx, error) {
-	var reqBlockRespItem quorumpb.ReqBlockResp
-	reqBlockRespItem.GroupId = groupId
-	reqBlockRespItem.RequesterPubkey = requester
-	reqBlockRespItem.ProviderPubkey = factory.groupItem.UserSignPubkey
-	reqBlockRespItem.Result = result
-	reqBlockRespItem.FromBlock = fromBlock
-	reqBlockRespItem.BlksRequested = blkReq
-	reqBlockRespItem.BlksProvided = int32(len(blocks))
-	blockBundles := &quorumpb.BlocksBundle{}
-	blockBundles.Blocks = blocks
-	reqBlockRespItem.Blocks = blockBundles
-
-	bItemBytes, err := proto.Marshal(&reqBlockRespItem)
-	if err != nil {
-		return nil, err
-	}
-
-	//send ask next block trx out
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_REQ_BLOCK_RESP, bItemBytes, keyalias)
-}
-
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
 	if _, err := IsTrxDataWithinSizeLimit(content); err != nil {
 		return nil, err

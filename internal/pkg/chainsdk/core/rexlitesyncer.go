@@ -12,6 +12,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"go.uber.org/atomic"
+
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 )
 
 var rex_syncer_log = logging.Logger("rsyncer")
@@ -146,13 +148,15 @@ func (rs *RexLiteSyncer) Start() {
 			select {
 			case <-rs.chSyncTask:
 				//TODO: check timeout?
-				var trx *quorumpb.Trx
-				var trxerr error
+				var req *quorumpb.ReqBlock
+				var reqerr error
 
 				nextBlock := rs.cdnIface.GetCurrBlockId() + uint64(1)
-				trx, trxerr = rs.chain.GetTrxFactory().GetReqBlocksTrx("", rs.GroupId, nextBlock, REQ_BLOCKS_PER_REQUEST)
-				if trxerr != nil {
-					rex_syncer_log.Warningf("<%s> SyncWorker run task get trx failed, err <%s>", rs.GroupId, trxerr.Error())
+				//trx, trxerr = rs.chain.GetTrxFactory().GetReqBlocksTrx("", rs.GroupId, nextBlock, REQ_BLOCKS_PER_REQUEST)
+				req, reqerr = rumchaindata.GetReqBlocksMsg("", rs.GroupId, rs.GroupItem.UserSignPubkey, nextBlock, REQ_BLOCKS_PER_REQUEST)
+
+				if reqerr != nil {
+					rex_syncer_log.Warningf("<%s> SyncWorker run task get trx failed, err <%s>", rs.GroupId, reqerr.Error())
 				}
 
 				blockBundles := &quorumpb.BlocksBundle{}
@@ -188,7 +192,7 @@ func (rs *RexLiteSyncer) Start() {
 					if err != nil {
 						rex_syncer_log.Warningf("<%s> SyncWorker run task get connMgr failed, err <%s>", rs.GroupId, err.Error())
 					}
-					err = connMgr.SendReqTrxRex(trx)
+					err = connMgr.SendSyncReqMsgRex(req)
 					if err != nil {
 						rex_syncer_log.Warningf("<%s> SyncWorker run task sendReq failed , err <%s>", rs.GroupId, err.Error())
 					}

@@ -186,8 +186,6 @@ func getTrxTypeByString(typ string) (quorumpb.TrxType, error) {
 		return quorumpb.TrxType_ANNOUNCE, nil
 	case "PRODUCER":
 		return -1, errors.New("this trx type can not be configured")
-	case "REQ_BLOCK":
-		return quorumpb.TrxType_REQ_BLOCK, nil
 	case "USER":
 		return -1, errors.New("this trx type can not be configured")
 	case "CHAIN_CONFIG":
