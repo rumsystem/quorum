@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -35,8 +34,7 @@ type Conn struct {
 
 type ConnMgr struct {
 	GroupId            string
-	UserChannelId      string
-	ProducerChannelId  string
+	ChannelId          string
 	OwnerPubkey        string
 	UserSignPubkey     string
 	ProviderPeerIdPool map[string]string // key: group owner PubKey; value: group owner peerId
@@ -49,28 +47,6 @@ type ConnMgr struct {
 	PsConns   map[string]*pubsubconn.P2pPubSubConn // key: channelId
 	//Rex     *p2p.RexService
 }
-
-type PsConnChanel uint
-
-const (
-	UserChannel PsConnChanel = iota
-	ProducerChannel
-)
-
-func (t PsConnChanel) String() string {
-	switch t {
-	case UserChannel:
-		return "UserChannel"
-	case ProducerChannel:
-		return "ProducerChannel"
-	default:
-		return fmt.Sprintf("%d", int(t))
-	}
-}
-
-const (
-	CLOSE_PRD_CHANN_TIMER time.Duration = 20 * time.Second
-)
 
 func InitConn() error {
 	conn_log.Debug("Initconn called")
@@ -110,8 +86,7 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 
 func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
-	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
+	connMgr.ChannelId = constants.CHANNEL_PREFIX + groupId
 	connMgr.GroupId = groupId
 	connMgr.OwnerPubkey = ownerPubkey
 	connMgr.UserSignPubkey = userSignPubkey
@@ -132,29 +107,6 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	return nil
 }
 
-//commented by cuicat
-/*
-func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
-	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
-	connMgr.ProducerPool = make(map[string]string)
-
-	for _, pubkey := range pubkeys {
-		connMgr.ProducerPool[pubkey] = pubkey
-	}
-
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(connMgr.UserSignPubkey)
-	if pk == "" {
-		pk = connMgr.UserSignPubkey
-	}
-
-	if _, ok := connMgr.ProducerPool[pk]; ok {
-		conn_log.Debugf("I am producer, create producer psconn, groupId <%s>", connMgr.GroupId)
-		connMgr.getProducerPsConn()
-	}
-	return nil
-}
-*/
-
 func (connMgr *ConnMgr) LeaveAllChannels() error {
 	conn_log.Debugf("LeaveChannel called, groupId <%s>", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
@@ -170,29 +122,13 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
 	defer connMgr.pscounsmu.Unlock()
-	userPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.UserChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
-	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
+	conn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.ChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
+	connMgr.PsConns[connMgr.ChannelId] = conn
 }
 
-//commented by cuicat
-/*
-func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
-	//conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
-	connMgr.pscounsmu.Lock()
-	defer connMgr.pscounsmu.Unlock()
-	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
-		return psconn
-	} else {
-		producerPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.ProducerChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
-		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsconn
-		return producerPsconn
-	}
-}
-*/
-
-func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
+func (connMgr *ConnMgr) getConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)
-	return connMgr.PsConns[connMgr.UserChannelId]
+	return connMgr.PsConns[connMgr.ChannelId]
 }
 
 func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string) error {
@@ -226,7 +162,7 @@ func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string
 	}
 
 	//conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
-	psconn := connMgr.getUserConn()
+	psconn := connMgr.getConn()
 	return psconn.Publish(pkgBytes)
 }
 
@@ -267,7 +203,7 @@ func (connMgr *ConnMgr) SendSyncReqMsgRex(req *quorumpb.ReqBlock) error {
 
 	rummsg := &quorumpb.RumDataMsg{MsgType: quorumpb.RumDataMsgType_CHAIN_DATA, DataPackage: pkg}
 
-	psconn := connMgr.getUserConn()
+	psconn := connMgr.getConn()
 	if psconn == nil {
 		return fmt.Errorf("no user conn for %s. (can be ignored)", connMgr.GroupId)
 	}
@@ -332,7 +268,7 @@ func (connMgr *ConnMgr) BroadcastBlock(blk *quorumpb.Block) error {
 		return err
 	}
 
-	psconn := connMgr.getUserConn()
+	psconn := connMgr.getConn()
 	return psconn.Publish(pkgBytes)
 }
 
@@ -344,7 +280,7 @@ func (connMgr *ConnMgr) BroadcastCCMsg(msg *quorumpb.CCMsg) error {
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_CC_MSG
+	pkg.Type = quorumpb.PackageType_CC
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)
@@ -352,7 +288,7 @@ func (connMgr *ConnMgr) BroadcastCCMsg(msg *quorumpb.CCMsg) error {
 		return err
 	}
 
-	psconn := connMgr.getUserConn()
+	psconn := connMgr.getConn()
 	return psconn.Publish(pkgBytes)
 }
 
@@ -364,7 +300,7 @@ func (connMgr *ConnMgr) BroadcastBftMsg(msg *quorumpb.BftMsg) error {
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_BFT_MSG
+	pkg.Type = quorumpb.PackageType_BFT
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)
@@ -372,6 +308,6 @@ func (connMgr *ConnMgr) BroadcastBftMsg(msg *quorumpb.BftMsg) error {
 		return err
 	}
 
-	psconn := connMgr.getUserConn()
+	psconn := connMgr.getConn()
 	return psconn.Publish(pkgBytes)
 }

@@ -44,12 +44,12 @@ var nodeCtx *NodeCtx
 
 var dbMgr *storage.DbMgr
 
-//singlaton
+// singlaton
 func GetNodeCtx() *NodeCtx {
 	return nodeCtx
 }
 
-//singlaton
+// singlaton
 func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }
@@ -85,7 +85,7 @@ func (nodeCtx *NodeCtx) UpdateOnlineStatus(status NodeStatus) {
 }
 
 func (nodeCtx *NodeCtx) ListGroupPeers(groupid string) []peer.ID {
-	userChannelId := constants.USER_CHANNEL_PREFIX + groupid
+	userChannelId := constants.CHANNEL_PREFIX + groupid
 	return nodeCtx.Node.Pubsub.ListPeers(userChannelId)
 }
 

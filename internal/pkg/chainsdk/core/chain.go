@@ -183,7 +183,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleTrxPsConn(trx)
 		}
-	} else if pkg.Type == quorumpb.PackageType_BFT_MSG {
+	} else if pkg.Type == quorumpb.PackageType_BFT {
 		bftMsg := &quorumpb.BftMsg{}
 		err = proto.Unmarshal(pkg.Data, bftMsg)
 		if err != nil {
@@ -191,7 +191,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleBftMsgPsConn(bftMsg)
 		}
-	} else if pkg.Type == quorumpb.PackageType_CC_MSG {
+	} else if pkg.Type == quorumpb.PackageType_CC {
 		ccMsg := &quorumpb.CCMsg{}
 		err = proto.Unmarshal(pkg.Data, ccMsg)
 		if err != nil {
