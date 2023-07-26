@@ -118,14 +118,14 @@ func (r *RexService) PublishToStream(msg *quorumpb.RumDataMsg, s network.Stream)
 	err := wc.WriteMsg(msg)
 	if err != nil {
 		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
-		metric.FailedCount.WithLabelValues(metric.ActionType.PublishToStream).Inc()
+		metric.RexFailedCount.WithLabelValues(metric.RexActionType.PublishToStream).Inc()
 		return err
 	} else {
 		rumexchangelog.Debugf("writemsg to network stream succ: %s.", remotePeer)
 		size := float64(metric.GetProtoSize(msg))
-		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToStream).Inc()
-		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToStream).Set(size)
-		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToStream).Add(size)
+		metric.RexSuccessCount.WithLabelValues(metric.RexActionType.PublishToStream).Inc()
+		metric.RexOutBytes.WithLabelValues(metric.RexActionType.PublishToStream).Set(size)
+		metric.RexOutBytesTotal.WithLabelValues(metric.RexActionType.PublishToStream).Add(size)
 	}
 	bufw.Flush()
 	return nil
@@ -151,16 +151,16 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumDataMsg, to string) error 
 	wc := protoio.NewDelimitedWriter(bufw)
 	err = wc.WriteMsg(msg)
 	if err != nil {
-		metric.FailedCount.WithLabelValues(metric.ActionType.PublishToPeerid).Inc()
+		metric.RexFailedCount.WithLabelValues(metric.RexActionType.PublishToPeerid).Inc()
 		rumexchangelog.Debugf("writemsg to network stream err: %s", err)
 		r.peerstore.Scorers().BadResponsesScorer().Increment(toid)
 		s.Close()
 		return err
 	} else {
 		size := float64(metric.GetProtoSize(msg))
-		metric.SuccessCount.WithLabelValues(metric.ActionType.PublishToPeerid).Inc()
-		metric.OutBytes.WithLabelValues(metric.ActionType.PublishToPeerid).Set(size)
-		metric.OutBytesTotal.WithLabelValues(metric.ActionType.PublishToPeerid).Add(size)
+		metric.RexSuccessCount.WithLabelValues(metric.RexActionType.PublishToPeerid).Inc()
+		metric.RexOutBytes.WithLabelValues(metric.RexActionType.PublishToPeerid).Set(size)
+		metric.RexOutBytesTotal.WithLabelValues(metric.RexActionType.PublishToPeerid).Add(size)
 		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
 	}
 	bufw.Flush()
@@ -204,9 +204,9 @@ func (r *RexService) HandleRumExchangeMsg(rummsg *quorumpb.RumDataMsg, s network
 	rumMsgSize := float64(metric.GetProtoSize(rummsg))
 	switch rummsg.MsgType {
 	case quorumpb.RumDataMsgType_CHAIN_DATA:
-		metric.SuccessCount.WithLabelValues(metric.ActionType.RumChainData).Inc()
-		metric.InBytes.WithLabelValues(metric.ActionType.RumChainData).Set(rumMsgSize)
-		metric.InBytesTotal.WithLabelValues(metric.ActionType.RumChainData).Add(rumMsgSize)
+		metric.RexSuccessCount.WithLabelValues(metric.RexActionType.RumChainData).Inc()
+		metric.RexInBytes.WithLabelValues(metric.RexActionType.RumChainData).Set(rumMsgSize)
+		metric.RexInBytesTotal.WithLabelValues(metric.RexActionType.RumChainData).Add(rumMsgSize)
 
 		for _, v := range r.msgtypehandlers {
 			if v.Name == "rumchaindata" {

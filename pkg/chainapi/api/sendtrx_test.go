@@ -80,6 +80,10 @@ func TestNodesdkSendTrxToPublicGroup(t *testing.T) {
 		Data:         encryptData,
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
+<<<<<<< HEAD
+		Nonce:        0, // Note: hardcode
+=======
+>>>>>>> syncer-lite
 		SenderPubkey: ethPubkey,
 	}
 
@@ -165,6 +169,10 @@ func TestNodesdkSendTrxToPrivateGroup(t *testing.T) {
 		Data:         encryptData.Bytes(),
 		TimeStamp:    now.UnixNano(),
 		Version:      "2.0.0",
+<<<<<<< HEAD
+		Nonce:        0, // Note: hardcode
+=======
+>>>>>>> syncer-lite
 		SenderPubkey: ethPubkey,
 	}
 

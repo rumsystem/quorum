@@ -64,7 +64,7 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 	}
 }
 
-func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
+func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
@@ -76,6 +76,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 		InputFunc: opaInputFunc,
 	}))
 	r := e.Group("/api")
+	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
 	//r.POST("/v1/group", h.CreateGroupUrl())
@@ -96,11 +97,24 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
-	r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
-	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
-	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
-	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
+	//TBD
+	//r.GET("/v1/group/:group_id/conensus", h.GetGroupConsensus)
+	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
+	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUser)
+	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
+
+	r.GET("/v1/group/:group_id/consensus/proof/history", h.GetConsensusHistory)
+	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
+	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
+	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
+
+	//app api
+	a.POST("/v1/token", apph.CreateToken)
+	a.DELETE("/v1/token", apph.RemoveToken)
+	a.POST("/v1/token/refresh", apph.RefreshToken)
+	a.POST("/v1/token/revoke", apph.RevokeToken)
+	a.GET("/v1/token/list", apph.ListToken)
 
 	// start https or http server
 	host := config.APIHost
@@ -151,15 +165,14 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
+
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-	r.POST("/v1/group/producer", h.GroupProducer)
-	r.POST("/v1/group/user", h.GroupUser)
+	r.POST("/v1/group/upduser", h.UpdGroupUser)
 	r.POST("/v1/group/announce", h.Announce)
+	r.POST("/v1/group/reqconsensuschange", h.ReqConsensusChange)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
-	//r.GET("/v1/network/stats", h.GetNetworkStatsSummary)
-	//r.GET("/v1/network/peers/ping", h.PingPeers(node))
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 	r.GET("/v1/groups", h.GetGroups)
@@ -167,13 +180,18 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
-	r.GET("/v1/group/:group_id/producers", h.GetGroupProducers)
-	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedGroupUsers)
-	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedGroupUser)
-	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedGroupProducer)
+
+	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
+	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUser)
+	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
+
+	r.GET("/v1/group/:group_id/consensus/proof/history", h.GetConsensusHistory)
+	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
+	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
+	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
 
 	//app api
 	a.POST("/v1/token", apph.CreateToken)

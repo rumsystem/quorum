@@ -95,7 +95,7 @@ func (appsync *AppSync) RunSync(groupid string, lastSyncBlock uint64, highestBlo
 		if err == nil {
 			err := appsync.ParseBlockTrxs(groupid, block)
 			if err != nil {
-				appsynclog.Errorf("<%s> epoch %d ParseBlockTrxs error %s", groupid, block.Epoch, err)
+				appsynclog.Errorf("<%s> BlockId %d ParseBlockTrxs error %s", groupid, block.BlockId, err)
 				break
 			}
 

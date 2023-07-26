@@ -3,21 +3,19 @@ package consensus
 import (
 	"fmt"
 
+	guuid "github.com/google/uuid"
 	"github.com/klauspost/reedsolomon"
+	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
+	"google.golang.org/protobuf/proto"
 
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-var trx_rbc_log = logging.Logger("trbc")
+var ptrbc_log = logging.Logger("ptrbc")
 
-const TRXS_TOTAL_SIZE int = 900 * 1024
-
-type TrxRBC struct {
+type PTRbc struct {
 	Config
-
-	groupId       string
-	myPubkey      string
 	rbcInstPubkey string
 
 	numParityShards int
@@ -32,7 +30,7 @@ type TrxRBC struct {
 	readySent    map[string]bool
 	consenusDone bool
 
-	acs *TrxACS //for callback when finished
+	acs *PTAcs //for callback when finished
 }
 
 // f : maximum failable node
@@ -45,8 +43,8 @@ type TrxRBC struct {
 //	10 producers node (owner included), 3 * 3 < 10, 3 failable node
 //
 // ecc will encode data bytes into (N) pieces, each node needs (N - 2f) pieces to recover data
-func NewTrxRBC(cfg Config, acs *TrxACS, groupId, myPubkey, rbcInstPubkey string) (*TrxRBC, error) {
-	trx_rbc_log.Infof("NewTrxRBC called, EPOCH <%d>, RBC Instance pubkey <%s>", acs.Epoch, rbcInstPubkey)
+func NewPTRBC(cfg Config, acs *PTAcs, rbcInstPubkey string) (*PTRbc, error) {
+	//ptrbc_log.Infof("NewPTRBC called, epoch <%d> pubkey <%s>", acs.epoch, rbcInstPubkey)
 
 	var (
 		parityShards = 2 * cfg.f            //2f
@@ -59,13 +57,11 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, myPubkey, rbcInstPubkey string)
 		return nil, err
 	}
 
-	trx_rbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
+	//ptrbc_log.Infof("Init reedsolomon codec, datashards <%d>, parityShards<%d>", dataShards, parityShards)
 
-	rbc := &TrxRBC{
+	rbc := &PTRbc{
 		Config:          cfg,
 		acs:             acs,
-		groupId:         groupId,
-		myPubkey:        myPubkey,
 		rbcInstPubkey:   rbcInstPubkey,
 		ecc:             ecc,
 		recvEchos:       make(map[string]Echos),
@@ -83,8 +79,8 @@ func NewTrxRBC(cfg Config, acs *TrxACS, groupId, myPubkey, rbcInstPubkey string)
 // 1. seperate bytes to [][]bytes by using reed solomon codec
 // 2. make InitPropose for each nodes
 // 3. broadcast all InitPropose
-func (r *TrxRBC) InputValue(data []byte) error {
-	trx_rbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
+func (r *PTRbc) InputValue(data []byte) error {
+	//ptrbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
 
 	//create shards
 	shards, err := MakeShards(r.ecc, data)
@@ -94,16 +90,16 @@ func (r *TrxRBC) InputValue(data []byte) error {
 
 	//create InitPropoeMsgs
 	originalDataSize := len(data)
-	initProposeMsgs, err := MakeRBCInitProposeMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, shards, r.Config.Nodes, originalDataSize)
+	initProposeMsgs, err := MakeRBCInitProposeMessage(r.GroupId, r.NodeName, r.MyPubkey, shards, r.Nodes, originalDataSize)
 
 	if err != nil {
-		trx_rbc_log.Debugf(err.Error())
+		ptrbc_log.Debugf(err.Error())
 		return err
 	}
 
 	// broadcast RBC msg out via pubsub
 	for _, initMsg := range initProposeMsgs {
-		err := SendHBRBCMsg(r.groupId, initMsg, r.acs.Epoch)
+		r.SendHBRBCMsg(initMsg)
 		if err != nil {
 			return err
 		}
@@ -112,8 +108,8 @@ func (r *TrxRBC) InputValue(data []byte) error {
 	return nil
 }
 
-func (r *TrxRBC) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
-	trx_rbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>, epoch <%d>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey, r.acs.Epoch)
+func (r *PTRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
+	//ptrbc_log.Infof("<%s> handleInitProposeMsg: Proposer <%s>, receiver <%s>, epoch <%d>", r.rbcInstPubkey, initp.ProposerPubkey, initp.RecvNodePubkey, r.acs.Epoch)
 	if !r.IsProducer(initp.ProposerPubkey) {
 		return fmt.Errorf("<%s> receive proof from non producer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
 	}
@@ -128,17 +124,17 @@ func (r *TrxRBC) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	//make proof
-	proofMsg, err := MakeRBCEchoMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, initp, int(initp.OriginalDataSize))
+	proofMsg, err := MakeRBCEchoMessage(r.GroupId, r.NodeName, r.MyPubkey, initp, int(initp.OriginalDataSize))
 	if err != nil {
 		return err
 	}
 
-	trx_rbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
-	return SendHBRBCMsg(r.groupId, proofMsg, r.acs.Epoch)
+	//ptrbc_log.Infof("<%s> create and send Echo msg for proposer <%s>", r.rbcInstPubkey, initp.ProposerPubkey)
+	return r.SendHBRBCMsg(proofMsg)
 }
 
-func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
-	trx_rbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.Epoch)
+func (r *PTRbc) handleEchoMsg(echo *quorumpb.Echo) error {
+	//ptrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.Epoch)
 
 	if !r.IsProducer(echo.EchoProviderPubkey) {
 		return fmt.Errorf("<%s> receive ECHO from non producer node <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
@@ -154,23 +150,25 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 
 	roothashS := string(echo.RootHash)
 	//save echo by using roothash
-	trx_rbc_log.Debugf("<%s> Save ECHO with roothash <%v>", r.rbcInstPubkey, echo.RootHash[:8])
+	//ptrbc_log.Debugf("<%s> Save ECHO with roothash <%v>", r.rbcInstPubkey, echo.RootHash[:8])
 
 	r.recvEchos[roothashS] = append(r.recvEchos[roothashS], echo)
 
-	trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> ECHO", r.rbcInstPubkey, echo.RootHash[:8], r.recvEchos[roothashS].Len())
+	//ptrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> ECHO", r.rbcInstPubkey, echo.RootHash[:8], r.recvEchos[roothashS].Len())
 
 	if len(r.recvReadys[roothashS]) == 2*r.f+1 && r.recvEchos[roothashS].Len() >= r.N-2*r.f {
-		trx_rbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, roothashS, len(r.recvReadys))
-		trx_rbc_log.Debugf("<%s> RootHash <%s>, Received <%d> ECHO, which is morn than N - 2F", r.rbcInstPubkey, roothashS, r.recvEchos[roothashS].Len())
-		trx_rbc_log.Debugf("<%s> RootHash <%s>, try decode", r.rbcInstPubkey)
+		/*
+			ptrbc_log.Debugf("<%s> RootHash <%s>, Recvived <%d> READY, which is 2F + 1", r.rbcInstPubkey, roothashS, len(r.recvReadys))
+			ptrbc_log.Debugf("<%s> RootHash <%s>, Received <%d> ECHO, which is morn than N - 2F", r.rbcInstPubkey, roothashS, r.recvEchos[roothashS].Len())
+			ptrbc_log.Debugf("<%s> RootHash <%s>, try decode", r.rbcInstPubkey)
 
+		*/
 		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
 		}
 
-		trx_rbc_log.Debugf("<%s> RBC for roothash <%s> is done", r.rbcInstPubkey, roothashS)
+		//ptrbc_log.Debugf("<%s> RBC for roothash <%s> is done", r.rbcInstPubkey, roothashS)
 		r.acs.RbcDone(r.rbcInstPubkey)
 		r.consenusDone = true
 		r.output = output
@@ -185,7 +183,7 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 		– if READY(h) has not yet been sent, multicast READY(h)
 	*/
 	if r.recvEchos[roothashS].Len() == r.N-r.f {
-		trx_rbc_log.Debugf("<%s> get N-F echo for rootHash <%v>, try decode", r.rbcInstPubkey, echo.RootHash[:8])
+		//ptrbc_log.Debugf("<%s> get N-F echo for rootHash <%v>, try decode", r.rbcInstPubkey, echo.RootHash[:8])
 		output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 		if err != nil {
 			return err
@@ -199,13 +197,13 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 		}
 
 		//multicast READY msg
-		trx_rbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
-		readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
+		//ptrbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
+		readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
 		if err != nil {
 			return err
 		}
 
-		err = SendHBRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
+		err = r.SendHBRBCMsg(readyMsg)
 		if err != nil {
 			return err
 		}
@@ -220,8 +218,8 @@ func (r *TrxRBC) handleEchoMsg(echo *quorumpb.Echo) error {
 	return nil
 }
 
-func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
-	trx_rbc_log.Debugf("<%s> handle READY_MSG, ReadyProviderPubkey <%s>,  epoch <%d>", r.rbcInstPubkey, ready.ReadyProviderPubkey, r.acs.Epoch)
+func (r *PTRbc) handleReadyMsg(ready *quorumpb.Ready) error {
+	//ptrbc_log.Debugf("<%s> handle READY_MSG, ReadyProviderPubkey <%s>,  epoch <%d>", r.rbcInstPubkey, ready.ReadyProviderPubkey, r.acs.Epoch)
 
 	if !r.IsProducer(ready.ReadyProviderPubkey) {
 		return fmt.Errorf("<%s> receive READY from non producer node <%s>", r.rbcInstPubkey, ready.ReadyProviderPubkey)
@@ -234,13 +232,13 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	roothashS := string(ready.RootHash)
 
 	//save it
-	trx_rbc_log.Debugf("<%s> Save READY with roothash <%v>", r.rbcInstPubkey, ready.RootHash[:8])
+	//ptrbc_log.Debugf("<%s> Save READY with roothash <%v>", r.rbcInstPubkey, ready.RootHash[:8])
 	r.recvReadys[roothashS] = append(r.recvReadys[roothashS], ready)
 
-	trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys[roothashS]))
+	//ptrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys[roothashS]))
 
 	if r.consenusDone {
-		trx_rbc_log.Debugf("<%s> RootHash <%v>, RBC is done, do nothing", r.rbcInstPubkey, ready.RootHash[:8])
+		//ptrbc_log.Debugf("<%s> RootHash <%v>, RBC is done, do nothing", r.rbcInstPubkey, ready.RootHash[:8])
 		return nil
 	}
 
@@ -249,15 +247,15 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 	*/
 
 	if len(r.recvReadys[roothashS]) == r.f+1 {
-		trx_rbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
+		//ptrbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
 		if !r.readySent[roothashS] {
-			trx_rbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
-			readyMsg, err := MakeRBCReadyMessage(r.groupId, r.acs.bft.producer.nodename, r.myPubkey, ready.OriginalProposerPubkey, ready.RootHash)
+			//ptrbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
+			readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.Config.MyPubkey, ready.OriginalProposerPubkey, ready.RootHash)
 			if err != nil {
 				return err
 			}
 
-			err = SendHBRBCMsg(r.groupId, readyMsg, r.acs.Epoch)
+			err = r.SendHBRBCMsg(readyMsg)
 			if err != nil {
 				return err
 			}
@@ -271,37 +269,37 @@ func (r *TrxRBC) handleReadyMsg(ready *quorumpb.Ready) error {
 		upon receiving 2 f +1 matching READY(h) messages, wait for (at least) N −2f ECHO messages, then decode v
 	*/
 	if len(r.recvReadys[roothashS]) >= 2*r.f+1 {
-		trx_rbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is more than 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
+		//ptrbc_log.Debugf("<%s> RootHash <%v>, Recvived <%d> READY, which is more than 2F + 1", r.rbcInstPubkey, ready.RootHash[:8], len(r.recvReadys))
 		if r.recvEchos[roothashS].Len() >= r.N-2*r.f {
-			trx_rbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+			//	ptrbc_log.Debugf("<%s> RootHash <%v>, Received <%d> ECHO, which is more than N - 2F", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
 			if r.output == nil {
-				trx_rbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
+				//	ptrbc_log.Debugf("<%s> RootHash <%v>, not decoded yet, try decode", r.rbcInstPubkey, ready.RootHash[:8])
 				output, err := TryDecodeValue(r.recvEchos[roothashS], r.ecc, r.numParityShards, r.numDataShards)
 				if err != nil {
 					return err
 				}
 				r.output = output
 			} else {
-				trx_rbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
+				//ptrbc_log.Debugf("<%s> RootHash <%v>, already decoded", r.rbcInstPubkey, ready.RootHash[:8])
 			}
 
-			trx_rbc_log.Debugf("<%s> Roothash <%v>, RBC is done", r.rbcInstPubkey, ready.RootHash[:8])
+			//ptrbc_log.Debugf("<%s> Roothash <%v>, RBC is done", r.rbcInstPubkey, ready.RootHash[:8])
 			r.consenusDone = true
 			r.acs.RbcDone(r.rbcInstPubkey)
 
 			return nil
 		} else {
-			trx_rbc_log.Debugf("<%s> RootHash <%v> get enough READY but wait for more ECHO(now has <%d> ECHO)", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
+			//ptrbc_log.Debugf("<%s> RootHash <%v> get enough READY but wait for more ECHO(now has <%d> ECHO)", r.rbcInstPubkey, ready.RootHash[:8], r.recvEchos[roothashS].Len())
 			return nil
 		}
 	}
 
 	//wait till get enough READY
-	trx_rbc_log.Debugf("<%s> RootHash <%v> wait for more READY", r.rbcInstPubkey, ready.RootHash[:8])
+	//ptrbc_log.Debugf("<%s> RootHash <%v> wait for more READY", r.rbcInstPubkey, ready.RootHash[:8])
 	return nil
 }
 
-func (r *TrxRBC) Output() []byte {
+func (r *PTRbc) Output() []byte {
 	if r.output != nil {
 		output := r.output
 		r.output = nil
@@ -310,7 +308,7 @@ func (r *TrxRBC) Output() []byte {
 	return nil
 }
 
-func (r *TrxRBC) IsProducer(pubkey string) bool {
+func (r *PTRbc) IsProducer(pubkey string) bool {
 	for _, nodePubkey := range r.Nodes {
 		if nodePubkey == pubkey {
 			return true
@@ -319,6 +317,41 @@ func (r *TrxRBC) IsProducer(pubkey string) bool {
 	return false
 }
 
-func (r *TrxRBC) VerifySign() bool {
+func (r *PTRbc) VerifySign() bool {
 	return true
+}
+
+func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
+	//hbmsgsender_log.Debugf("<%s> SendHBRBCMsg called", r.GroupId)
+	rbcb, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	hbmsg := &quorumpb.HBMsgv1{
+		MsgId:       guuid.New().String(),
+		Epoch:       r.acs.epoch,
+		ScopeId:     r.acs.consensusInfo.ConsensusId,
+		PayloadType: quorumpb.HBMsgPayloadType_RBC,
+		Payload:     rbcb,
+	}
+
+	hbmsgb, err := proto.Marshal(hbmsg)
+	if err != nil {
+		return err
+	}
+
+	bftMsg := &quorumpb.BftMsg{
+		Type: quorumpb.BftMsgType_HB_BFT,
+		Data: hbmsgb,
+	}
+
+	connMgr, err := conn.GetConn().GetConnMgr(r.GroupId)
+	if err != nil {
+
+		return err
+	}
+
+	connMgr.BroadcastBftMsg(bftMsg)
+	return nil
 }

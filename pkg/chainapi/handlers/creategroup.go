@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
-	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	"github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -68,28 +68,26 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 		return nil, errors.New("consensus_type must be poa, other types are not supported yet")
 	}
 
-	groupid := guuid.New()
+	//create groupid
+	groupid := guuid.New().String()
 
+	//init keystore
 	ks := nodectx.GetNodeCtx().Keystore
 
-	/* init sign key */
-	b64key, err := initSignKey(groupid.String(), ks, nodeoptions)
+	//init sign key
+	ownerpubkey, err := initSignKey(groupid, ks, nodeoptions)
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
 	}
 
-	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid.String(), b64key, ks, "")
-	if err != nil {
-		return nil, err
-	}
-
+	//init cipher key
 	cipherKey, err := localcrypto.CreateAesKey()
 	if err != nil {
 		return nil, err
 	}
 
-	/* init encode key */
-	groupEncryptPubkey, err := initEncryptKey(groupid.String(), ks)
+	//init encode key
+	groupEncryptPubkey, err := initEncryptKey(groupid, ks)
 	if err != nil {
 		return nil, err
 	}
@@ -97,9 +95,9 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	//create group item
 	var item *pb.GroupItem
 	item = &pb.GroupItem{}
-	item.GroupId = groupid.String()
+	item.GroupId = groupid
 	item.GroupName = params.GroupName
-	item.OwnerPubKey = b64key
+	item.OwnerPubKey = ownerpubkey
 	item.UserSignPubkey = item.OwnerPubKey
 	item.UserEncryptPubkey = groupEncryptPubkey
 	item.ConsenseType = pb.GroupConsenseType_POA
@@ -113,10 +111,9 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	item.CipherKey = hex.EncodeToString(cipherKey)
 	item.AppKey = params.AppKey
 	item.LastUpdate = time.Now().UnixNano()
-	item.GenesisBlock = genesisBlock
 
 	group := &chain.Group{}
-	err = group.NewGroup(item)
+	genesisBlock, err := group.NewGroup(item)
 	if err != nil {
 		return nil, err
 	}
@@ -129,20 +126,34 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 
 	createGrpResult := &GroupSeed{
 		GenesisBlock:   genesisBlock,
-		GroupId:        groupid.String(),
+		GroupId:        groupid,
 		GroupName:      params.GroupName,
 		OwnerPubkey:    item.OwnerPubKey,
 		ConsensusType:  params.ConsensusType,
 		EncryptionType: params.EncryptionType,
 		CipherKey:      encodedCipherKey,
 		AppKey:         params.AppKey,
-		//Signature:      "", // updated by GenerateGroupSeedSignature
 	}
 
-	// generate signature
-	//if err := GenerateGroupSeedSignature(createGrpResult); err != nil {
-	//	return nil, err
-	//}
+	//get seed hash
+	seedByts, err := json.Marshal(createGrpResult)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := localcrypto.Hash(seedByts)
+
+	var signature []byte
+	signature, err = ks.EthSignByKeyName(genesisBlock.GroupId, hash)
+	if err != nil {
+		return nil, err
+	}
+	if len(signature) == 0 {
+		return nil, errors.New("create signature on group seed failed")
+	}
+
+	//set signature
+	createGrpResult.Signature = hex.EncodeToString(signature)
 
 	// save group seed to appdata
 	pbGroupSeed := ToPbGroupSeed(*createGrpResult)

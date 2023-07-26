@@ -13,6 +13,7 @@ var (
 	ErrClearJoinedGroup = errors.New("Can not clear joined group")
 	ErrInvalidGroupData = errors.New("Invalid group data")
 	ErrOnlyGroupOwner   = errors.New("Only group owner can do this")
+	ErrGroupNotPrivate  = errors.New("Group is not private")
 
 	ErrInvalidBlockID  = errors.New("Invalid block id")
 	ErrBlockIDNotFound = errors.New("Block id not found")
@@ -21,6 +22,7 @@ var (
 	ErrInvalidTrxID     = errors.New("Invalid trx id")
 	ErrInvalidTrxIDList = errors.New("Invalid trx id list")
 	ErrInvalidTrxData   = errors.New("Invalid trx data")
+	ErrTrxIdNotFound    = errors.New("Trx id not found")
 
 	ErrPrivateGroupNotSupported   = errors.New("Private group is not supported")
 	ErrEncryptionTypeNotSupported = errors.New("Encryption type is not supported")

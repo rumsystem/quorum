@@ -38,7 +38,7 @@ func (h *Handler) GetNSdkAnnouncedProducer(c echo.Context) (err error) {
 	if err := cc.BindAndValidate(params); err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
-	res, err := handlers.GetAnnouncedGroupProducer(h.ChainAPIdb, params.GroupId)
+	res, err := handlers.GetAnnouncedProducers(h.ChainAPIdb, params.GroupId)
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
@@ -52,7 +52,7 @@ func (h *Handler) GetNSdkAnnouncedProducer(c echo.Context) (err error) {
 // @Produce json
 // @Param   group_id path string true "Group Id"
 // @Param   get_announced_user_params  query GetNSdkAnnouncedUserParams true  "get announced user params"
-// @Success 200 {object} []handlers.AnnouncedUserListItem
+// @Success 200 {object} []handlers.AnnouncedUsers
 // @Router  /api/v1/node/{group_id}/announced/user [get]
 func (h *Handler) GetNSdkAnnouncedUser(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
@@ -61,15 +61,17 @@ func (h *Handler) GetNSdkAnnouncedUser(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	var res = []*handlers.AnnouncedUserListItem{}
+	var res = &handlers.AnnouncedUsers{}
 	if params.PubKey == "" {
-		res, err = handlers.GetAnnouncedGroupUsers(h.ChainAPIdb, params.GroupId)
-	} else {
-		item, err := handlers.GetAnnouncedGroupUser(params.GroupId, params.PubKey)
+		res, err = handlers.GetAnnouncedUsers(h.ChainAPIdb, params.GroupId)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
-		res = append(res, item)
+	} else {
+		res, err = handlers.GetAnnouncedUser(h.ChainAPIdb, params.GroupId, params.PubKey)
+		if err != nil {
+			return rumerrors.NewBadRequestError(err)
+		}
 	}
 	return c.JSON(http.StatusOK, res)
 }

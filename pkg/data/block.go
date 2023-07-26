@@ -11,19 +11,16 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
-	//"strings"
 	"time"
 )
 
-func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorumpb.Trx, sudo bool, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.ConsensusInfo, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	newBlock := &quorumpb.Block{
 		GroupId:        parentBlk.GroupId,
 		BlockId:        parentBlk.BlockId + 1,
-		Epoch:          epoch,
 		PrevHash:       parentBlk.BlockHash,
 		ProducerPubkey: groupPublicKey,
 		Trxs:           trxs,
-		Sudo:           sudo,
 		TimeStamp:      time.Now().UnixNano(),
 	}
 
@@ -54,48 +51,15 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, epoch uint64, trxs []*quorum
 	return newBlock, nil
 }
 
-// regenerate block with parent info
-func RegenrateBlockWithParent(parentBlock *quorumpb.Block, orphanBlock *quorumpb.Block, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
-	orphanBlock.PrevHash = parentBlock.BlockHash
-	orphanBlock.BlockId = parentBlock.BlockId + 1
-
-	tbytes, err := proto.Marshal(orphanBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	hash := localcrypto.Hash(tbytes)
-	orphanBlock.BlockHash = hash
-
-	var signature []byte
-	if keyalias == "" {
-		signature, err = keystore.EthSignByKeyName(orphanBlock.GroupId, hash, opts...)
-	} else {
-		signature, err = keystore.EthSignByKeyAlias(keyalias, hash, opts...)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(signature) == 0 {
-		return nil, errors.New("create signature failed")
-	}
-
-	orphanBlock.ProducerSign = signature
-	return orphanBlock, nil
-}
-
-func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
+func CreateGenesisBlockByEthKey(groupId string, consensusInfo *quorumpb.ConsensusInfo, forkTrx *quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
 	genesisBlock := &quorumpb.Block{
 		GroupId:        groupId,
 		BlockId:        0,
-		Epoch:          0,
 		PrevHash:       nil,
 		ProducerPubkey: groupPublicKey,
-		Trxs:           nil,
-		Sudo:           true,
+		Trxs:           []*quorumpb.Trx{forkTrx},
 		TimeStamp:      time.Now().UnixNano(),
+		Consensus:      consensusInfo,
 	}
 
 	bbytes, err := proto.Marshal(genesisBlock)
@@ -124,41 +88,42 @@ func CreateGenesisBlockByEthKey(groupId string, groupPublicKey string, keystore 
 }
 
 func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
-
-	//step 1, check hash for newBlock
+	//dump block without hash and sign
 	blkWithOutHashAndSign := &quorumpb.Block{
 		GroupId:        newBlock.GroupId,
 		BlockId:        newBlock.BlockId,
-		Epoch:          newBlock.Epoch,
 		PrevHash:       newBlock.PrevHash,
 		ProducerPubkey: newBlock.ProducerPubkey,
 		Trxs:           newBlock.Trxs,
-		Sudo:           newBlock.Sudo,
 		TimeStamp:      newBlock.TimeStamp,
+		Consensus:      newBlock.Consensus,
 		BlockHash:      nil,
 		ProducerSign:   nil,
 	}
 
+	//get hash
 	tbytes, err := proto.Marshal(blkWithOutHashAndSign)
 	if err != nil {
 		return false, err
 	}
-
 	hash := localcrypto.Hash(tbytes)
+
+	//check hash for block
 	if !bytes.Equal(hash, newBlock.BlockHash) {
 		return false, fmt.Errorf("hash for new block is invalid")
 	}
 
-	//step 2, check blockid and prevhash
+	//check blockid
 	if newBlock.BlockId != parentBlock.BlockId+1 {
 		return false, fmt.Errorf("blockid mismatch with parent block")
 	}
 
+	//check prevhash
 	if !bytes.Equal(newBlock.PrevHash, parentBlock.BlockHash) {
 		return false, errors.New("prevhash mismatch with parent block")
 	}
 
-	//step 3, check producer sign
+	//verify producer sign
 	bytespubkey, err := base64.RawURLEncoding.DecodeString(newBlock.ProducerPubkey)
 	if err == nil { //try eth key
 		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
@@ -174,41 +139,42 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 }
 
 func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
+	//check blockid is 0
 	if genesisBlock.BlockId != 0 {
 		return false, fmt.Errorf("blockId for genesis block must be 0")
 	}
 
-	if genesisBlock.Epoch != 0 {
-		return false, fmt.Errorf("epoch for genesis block must be 0")
-	}
-
+	//check prevhash is nil
 	if genesisBlock.PrevHash != nil {
 		return false, fmt.Errorf("prevhash for genesis block must be nil")
 	}
 
+	//dump block without hash and sign
 	genesisBlockWithoutHashAndSign := &quorumpb.Block{
 		GroupId:        genesisBlock.GroupId,
 		BlockId:        genesisBlock.BlockId,
-		Epoch:          genesisBlock.Epoch,
 		PrevHash:       genesisBlock.PrevHash,
 		ProducerPubkey: genesisBlock.ProducerPubkey,
 		Trxs:           genesisBlock.Trxs,
-		Sudo:           genesisBlock.Sudo,
 		TimeStamp:      genesisBlock.TimeStamp,
+		Consensus:      genesisBlock.Consensus,
 		BlockHash:      nil,
 		ProducerSign:   nil,
 	}
 
+	//get hash
 	bts, err := proto.Marshal(genesisBlockWithoutHashAndSign)
 	if err != nil {
 		return false, err
 	}
-
 	hash := localcrypto.Hash(bts)
+
+	//check hash for block
 	if !bytes.Equal(hash, genesisBlock.BlockHash) {
 		return false, fmt.Errorf("hash for new block is invalid")
 	}
 
+	//verify producer sign
 	bytespubkey, err := base64.RawURLEncoding.DecodeString(genesisBlock.ProducerPubkey)
 	if err == nil { //try eth key
 		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
@@ -221,13 +187,4 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 	}
 
 	return true, nil
-}
-
-// get all trxs from the blocks list
-func GetAllTrxs(blocks []*quorumpb.Block) ([]*quorumpb.Trx, error) {
-	var trxs []*quorumpb.Trx
-	for _, block := range blocks {
-		trxs = append(trxs, block.Trxs...)
-	}
-	return trxs, nil
 }

@@ -37,7 +37,7 @@ type JoinGroupResult struct {
 
 // @Tags Groups
 // @Summary JoinGroup
-// @Description Join a group
+// @Description Join a group by using group seed
 // @Accept json
 // @Produce json
 // @Param data body handlers.JoinGroupParamV2 true "JoinGroupParamV2"
@@ -55,6 +55,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
+
 		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
 		if err != nil {
 			msg := fmt.Sprintf("unmarshal genesis block failed with msg: %s" + err.Error())
@@ -137,11 +138,10 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		item := &quorumpb.GroupItem{}
-
-		//item.OwnerPubKey = seed.GenesisBlock.ProducerPubKey
-		item.OwnerPubKey = seed.OwnerPubkey
-		item.GroupId = seed.GenesisBlock.GroupId
+		item.GroupId = seed.GroupId
 		item.GroupName = seed.GroupName
+		item.OwnerPubKey = seed.OwnerPubkey
+
 		item.CipherKey = seed.CipherKey
 		item.AppKey = seed.AppKey
 
@@ -179,14 +179,14 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 
 		//create the group
 		group := &chain.Group{}
-		err = group.NewGroup(item)
+		err = group.JoinGroup(item)
 
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
 		//start sync
-		err = group.StartSync(false)
+		err = group.StartSync()
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

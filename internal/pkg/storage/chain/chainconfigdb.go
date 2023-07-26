@@ -9,10 +9,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) UpdateChainConfigTrx(trx *quorumpb.Trx, prefix ...string) (err error) {
-	return cs.UpdateChainConfig(trx.Data, prefix...)
-}
-
 func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) {
 	chaindb_log.Infof("UpdateChainConfig called")
 	item := &quorumpb.ChainConfigItem{}
@@ -65,7 +61,7 @@ func (cs *Storage) UpdateChainConfig(data []byte, prefix ...string) (err error) 
 
 		return cs.dbmgr.Db.Delete([]byte(key))
 	} else {
-		return errors.New("Unsupported ChainConfig type")
+		return errors.New("unsupported ChainConfig type")
 	}
 }
 
@@ -142,6 +138,13 @@ func (cs *Storage) GetSendTrxAuthListByGroupId(groupId string, listType quorumpb
 	}
 
 	return chainConfigList, sendTrxRuleList, nil
+}
+
+func (cs *Storage) CheckPackageTypeAuth(groupId, pubkey string, packageType quorumpb.PackageType, prefix ...string) (bool, error) {
+	//tbd implement package type auth
+
+	//current just return true
+	return true, nil
 }
 
 func (cs *Storage) CheckTrxTypeAuth(groupId, pubkey string, trxType quorumpb.TrxType, prefix ...string) (bool, error) {

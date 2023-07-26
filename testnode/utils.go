@@ -12,7 +12,6 @@ import (
 
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 func RequestAPI(baseUrl string, endpoint string, method string, data string) (int, []byte, error) {
@@ -93,6 +92,7 @@ func CheckApiServerRunning(ctx context.Context, baseUrl string) bool {
 	}
 }
 
+/*
 func GetAllGroupTrxIds(ctx context.Context, baseUrl string, group_id string, height_blockid string) *[]string {
 	trxids := []string{}
 	_, resp, err := RequestAPI(baseUrl, fmt.Sprintf("/api/v1/block/%s/%s", group_id, height_blockid), "GET", "")
@@ -125,6 +125,7 @@ func GetAllGroupTrxIds(ctx context.Context, baseUrl string, group_id string, hei
 
 	return &trxids
 }
+*/
 
 func SeedUrlToGroupId(seedurl string) string {
 	if !strings.HasPrefix(seedurl, "rum://seed?") {

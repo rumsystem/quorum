@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"encoding/binary"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
@@ -62,7 +63,7 @@ func (cs *Storage) RemoveTrxHBB(trxId, queueId string) error {
 	}
 
 	if !exist {
-		return errors.New("Trx not exist")
+		return errors.New("trx not exist")
 	}
 
 	_, err = cs.dbmgr.Db.PrefixDelete([]byte(key))
@@ -98,4 +99,23 @@ func (cs *Storage) GetTrxByIdHBB(trxId string, queueId string) (*quorumpb.Trx, e
 	}
 
 	return trx, nil
+}
+
+func (cs *Storage) UpdConsensusProposeNonce(queueId string, nonce uint64) error {
+	key := s.GetConsensusNonceKey(queueId)
+	e := make([]byte, 8)
+	binary.LittleEndian.PutUint64(e, nonce)
+	cs.dbmgr.Db.Set([]byte(key), e)
+	return cs.dbmgr.Db.Set([]byte(key), e)
+}
+
+func (cs *Storage) GetConsensusProposeNonce(queueId string) (uint64, error) {
+	key := s.GetConsensusNonceKey(queueId)
+	nonceInBytes, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return 0, err
+	}
+
+	nonce := binary.LittleEndian.Uint64(nonceInBytes)
+	return nonce, nil
 }

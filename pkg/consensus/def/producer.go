@@ -1,14 +1,16 @@
 package def
 
 import (
+	"context"
+
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type Producer interface {
-	NewProducer(item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
-	RecreateBft()
-	AddBlock(block *quorumpb.Block) error
-	AddTrx(trx *quorumpb.Trx)
-	HandleHBMsg(hb *quorumpb.HBMsgv1) error
+	NewProducer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	StartPropose()
+	StopPropose()
+	AddBlock(block *quorumpb.Block) error
+	AddTrxToTxBuffer(trx *quorumpb.Trx)
+	HandleBftMsg(hb *quorumpb.BftMsg) error
 }

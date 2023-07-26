@@ -35,8 +35,8 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 			rumexchangelog.Warningf(err.Error())
 		}
 	} else {
-		rumexchangelog.Warningf("receive a non-trx package, %s", pkg.Type)
+		rumexchangelog.Warningf("receive a non syncMsg type package, %s", pkg.Type)
 	}
 
-	return fmt.Errorf("unsupported trx type: %s", pkg.Type)
+	return fmt.Errorf("unsupported package type: %s", pkg.Type)
 }

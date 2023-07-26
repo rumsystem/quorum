@@ -365,7 +365,6 @@ returns:
       "Expired": 1669719649538026708,
       "SenderPubkey": "A9MSO6MW0m-m-h7GQlH6fk34jsxNOzoUayJlws3lRTqF",
       "SenderSign": "EWLt3Y7hPS11JyuturM2ZTZ5/nZJyQxOiybGSSqmkIMibXThLQdcYK3hvY5JTPKQCcv1ZnM09qHq0FgpVdIKGwA=",
-      "SudoTrx": true
     }
   ],
   "EpochHash": "QmVuGCZWgWYMbACaXKReWjb107f7eQuu+F6M10AM3x4=",
@@ -390,7 +389,7 @@ node with trx applied returns:
 curl http://127.0.0.1:50613/api/v1/trx/7858e218-09c1-4303-a1dd-9a1636aa9a6e/c712d274-e158-4ff2-86ef-7bb77cc76a52
 
 
-{"TrxId":"c712d274-e158-4ff2-86ef-7bb77cc76a52","Type":"POST","GroupId":"7858e218-09c1-4303-a1dd-9a1636aa9a6e","Data":"IsHuc/RRwz6Qqg2bEMlA6aS5F/oraX9oFUuvyM+8lGTy5QoN95JZ80YZpEcOLou+tAB8NwZwkzY/zDnOaullkzZLci2klG7Az1umPibKL3Uf+tLSfpxPJBO00RvF90zS","TimeStamp":"1669719619538026628","Version":"2.0.0","Expired":"1669719649538026708","ResendCount":"0","Nonce":"0","SenderPubkey":"A9MSO6MW0m-m-h7GQlH6fk34jsxNOzoUayJlws3lRTqF","SenderSign":"EWLt3Y7hPS11JyuturM2ZTZ5/nZJyQxOiybGSSqmkIMibXThLQdcYK3hvY5JTPKQCcv1ZnM09qHq0FgpVdIKGwA=","StorageType":"CHAIN","SudoTrx":true}
+{"TrxId":"c712d274-e158-4ff2-86ef-7bb77cc76a52","Type":"POST","GroupId":"7858e218-09c1-4303-a1dd-9a1636aa9a6e","Data":"IsHuc/RRwz6Qqg2bEMlA6aS5F/oraX9oFUuvyM+8lGTy5QoN95JZ80YZpEcOLou+tAB8NwZwkzY/zDnOaullkzZLci2klG7Az1umPibKL3Uf+tLSfpxPJBO00RvF90zS","TimeStamp":"1669719619538026628","Version":"2.0.0","Expired":"1669719649538026708","ResendCount":"0","Nonce":"0","SenderPubkey":"A9MSO6MW0m-m-h7GQlH6fk34jsxNOzoUayJlws3lRTqF","SenderSign":"EWLt3Y7hPS11JyuturM2ZTZ5/nZJyQxOiybGSSqmkIMibXThLQdcYK3hvY5JTPKQCcv1ZnM09qHq0FgpVdIKGwA=","StorageType":"CHAIN"}
 
 ```
 
@@ -399,7 +398,7 @@ node with trx not applied returns:
 ```sh
 curl http://127.0.0.1:50613/api/v1/trx/7858e218-09c1-4303-a1dd-9a1636aa9a6e/d24853e1-67d7-4cf4-9d4b-a41c14d00d8b
 
-{"TrxId":"","Type":"POST","GroupId":"","Data":"","TimeStamp":"0","Version":"","Expired":"0","ResendCount":"0","Nonce":"0","SenderPubkey":"","SenderSign":"","StorageType":"CHAIN","SudoTrx":false}
+{"TrxId":"","Type":"POST","GroupId":"","Data":"","TimeStamp":"0","Version":"","Expired":"0","ResendCount":"0","Nonce":"0","SenderPubkey":"","SenderSign":"","StorageType":"CHAIN"}
 
 ```
 

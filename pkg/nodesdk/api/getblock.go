@@ -6,10 +6,15 @@ import (
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 const GET_BLOCK_URI string = "/api/v1/block"
+
+type GetBlockResponse struct {
+	Block  *pb.Block `json:"block"`
+	Status string    `json:"status"`
+}
 
 func (h *NodeSDKHandler) GetBlock() echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -40,7 +45,7 @@ func (h *NodeSDKHandler) GetBlock() echo.HandlerFunc {
 
 		path := GET_BLOCK_URI + "/" + groupid + "/" + blockid
 
-		result := new(quorumpb.Block)
+		result := new(GetBlockResponse)
 		err = httpClient.RequestChainAPI(path, http.MethodGet, nil, nil, result)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)

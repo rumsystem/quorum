@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/hex"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -47,13 +48,13 @@ func (h *Handler) NSdkAnnounce(c echo.Context) (err error) {
 	}
 	var result *handlers.AnnounceResult
 	result = &handlers.AnnounceResult{
-		GroupId:                item.GroupId,
-		AnnouncedSignPubkey:    item.SignPubkey,
-		AnnouncedEncryptPubkey: item.EncryptPubkey,
-		Type:                   item.Type.String(),
-		Action:                 item.Action.String(),
-		Sign:                   item.AnnouncerSignature,
-		TrxId:                  trxId,
+		GroupId:       item.GroupId,
+		SignPubkey:    item.Content.SignPubkey,
+		EncryptPubkey: item.Content.EncryptPubkey,
+		Type:          item.Content.Type.String(),
+		Action:        item.Action.String(),
+		Sign:          hex.EncodeToString(item.Signature),
+		TrxId:         trxId,
 	}
 
 	return c.JSON(http.StatusOK, result)

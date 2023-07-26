@@ -10,7 +10,7 @@ import (
 
 // @Tags Groups
 // @Summary ClearGroupData
-// @Description Clear group data
+// @Description Clear all group data
 // @Produce json
 // @Accept json
 // @Param data body handlers.ClearGroupDataParam true "ClearGroupParam"

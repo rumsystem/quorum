@@ -10,8 +10,8 @@ import (
 )
 
 // @Tags Management
-// @Summary chainconfig
-// @Description chain config
+// @Summary MgrChainConfig
+// @Description set chain config
 // @Accept json
 // @Produce json
 // @Param data body handlers.ChainConfigParams true "ChainConfigParams"
