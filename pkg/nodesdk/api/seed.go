@@ -7,6 +7,7 @@ import (
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type SeedUrlextendParam struct {
@@ -14,8 +15,8 @@ type SeedUrlextendParam struct {
 }
 
 type SeedUrlextendResult struct {
-	Seed         handlers.GroupSeed `json:"seed" validate:"required"`
-	ChainapiUrls []string           `json:"urls" validate:"required,gte=1,dive,required,url"`
+	Seed         *quorumpb.GroupSeed `json:"seed" validate:"required"`
+	ChainapiUrls []string            `json:"urls" validate:"required,gte=1,dive,required,url"`
 }
 
 func (h *NodeSDKHandler) SeedUrlextend(c echo.Context) error {
@@ -32,7 +33,7 @@ func (h *NodeSDKHandler) SeedUrlextend(c echo.Context) error {
 	}
 
 	res := SeedUrlextendResult{
-		Seed:         *seed,
+		Seed:         seed,
 		ChainapiUrls: urls,
 	}
 

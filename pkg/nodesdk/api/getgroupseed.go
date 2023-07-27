@@ -25,14 +25,13 @@ func (h *NodeSDKHandler) GetGroupSeed() echo.HandlerFunc {
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
-		seed := handlers.FromPbGroupSeed(pbseed)
 
 		groupInfo, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(groupid)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		seedurl, err := handlers.GroupSeedToUrl(1, groupInfo.GetApiUrl(), &seed)
+		seedurl, err := handlers.GroupSeedToUrl(1, groupInfo.GetApiUrl(), pbseed)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

@@ -51,42 +51,6 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Cons
 	return newBlock, nil
 }
 
-func CreateGenesisBlockByEthKey(groupId string, consensusInfo *quorumpb.ConsensusInfo, forkTrx *quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
-	genesisBlock := &quorumpb.Block{
-		GroupId:        groupId,
-		BlockId:        0,
-		PrevHash:       nil,
-		ProducerPubkey: groupPublicKey,
-		Trxs:           []*quorumpb.Trx{forkTrx},
-		TimeStamp:      time.Now().UnixNano(),
-		Consensus:      consensusInfo,
-	}
-
-	bbytes, err := proto.Marshal(genesisBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	blockHash := localcrypto.Hash(bbytes)
-	genesisBlock.BlockHash = blockHash
-
-	var signature []byte
-	if keyalias == "" {
-		signature, err = keystore.EthSignByKeyName(genesisBlock.GroupId, blockHash)
-	} else {
-		signature, err = keystore.EthSignByKeyAlias(keyalias, blockHash)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if len(signature) == 0 {
-		return nil, errors.New("create signature on genesisblock failed")
-	}
-
-	genesisBlock.ProducerSign = signature
-	return genesisBlock, nil
-}
-
 func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 	//dump block without hash and sign
 	blkWithOutHashAndSign := &quorumpb.Block{
@@ -187,4 +151,29 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func GetGenesisBlock(ks localcrypto.Keystore, item *quorumpb.GroupItem, announceTrx, forkTrx *quorumpb.Trx, consensusInfo *quorumpb.ConsensusInfo) (*quorumpb.Block, error) {
+	genesisBlock := &quorumpb.Block{
+		GroupId:        item.GroupId,
+		BlockId:        0,
+		PrevHash:       nil,
+		ProducerPubkey: item.OwnerPubKey,
+		Trxs:           []*quorumpb.Trx{announceTrx, forkTrx},
+		TimeStamp:      time.Now().UnixNano(),
+		Consensus:      consensusInfo,
+	}
+
+	bbytes, err := proto.Marshal(genesisBlock)
+	if err != nil {
+		return nil, err
+	}
+	genesisBlock.BlockHash = localcrypto.Hash(bbytes)
+	signature, err := ks.EthSignByKeyName(genesisBlock.GroupId, genesisBlock.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	genesisBlock.ProducerSign = signature
+	return genesisBlock, nil
 }

@@ -7,6 +7,7 @@ import (
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type SeedUrlextendParam struct {
@@ -14,8 +15,8 @@ type SeedUrlextendParam struct {
 }
 
 type SeedUrlextendResult struct {
-	Seed         handlers.GroupSeed `json:"seed" validate:"required"`
-	ChainapiUrls []string           `json:"urls" validate:"required,gte=1,dive,required,url" example:"http://1.2.3.4:6090?jwt=xxx|https://xxx.com?jwt=yyy"` // multi items separate by `|`
+	Seed         *quorumpb.GroupSeed `json:"seed" validate:"required"`
+	ChainapiUrls []string            `json:"urls" validate:"required,gte=1,dive,required,url" example:"http://1.2.3.4:6090?jwt=xxx|https://xxx.com?jwt=yyy"` // multi items separate by `|`
 }
 
 func (h *Handler) SeedUrlextend(c echo.Context) error {
@@ -32,7 +33,7 @@ func (h *Handler) SeedUrlextend(c echo.Context) error {
 	}
 
 	res := SeedUrlextendResult{
-		Seed:         *seed,
+		Seed:         seed,
 		ChainapiUrls: urls,
 	}
 

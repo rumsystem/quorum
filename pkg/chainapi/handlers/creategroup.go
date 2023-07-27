@@ -12,21 +12,18 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	"github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-const DEFAULT_EPOCH_DURATION = 1000 //ms
-const INIT_ANNOUNCE_TRX_ID = "00000000-0000-0000-0000-000000000001"
-const INIT_FORK_TRX_ID = "00000000-0000-0000-0000-000000000000"
-
 type CreateGroupParam struct {
-	GroupName       string `from:"group_name"      json:"group_name"      validate:"required,max=100,min=2" example:"demo group"`
-	ConsensusType   string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa" example:"poa"`
-	EncryptionType  string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private" example:"public"`
-	AppKey          string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4" example:"test_app"`
-	IncludeChainUrl bool   `json:"include_chain_url" example:"true"`
-	JoinGroup       bool   `json:"join_group" example:"true"`
+	GroupName            string `from:"group_name"      json:"group_name"      validate:"required,max=100,min=2" example:"demo group"`
+	ConsensusType        string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa" example:"poa"`
+	EncryptionType       string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private" example:"public"`
+	AppKey               string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4" example:"test_app"`
+	IncludeChainUrl      bool   `json:"include_chain_url" example:"true"`
+	JoinGroupAfterCreate bool   `json:"join_group" example:"true"`
 }
 
 type JoinGroupParamV2 struct {
@@ -98,19 +95,19 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	}
 
 	//create announce trx
-	announceTrx, err := createAnnounceTrx(ks, item)
+	announceTrx, err := rumchaindata.GetAnnounceTrx(ks, item)
 	if err != nil {
 		return nil, err
 	}
 
 	//create fork trx
-	forkTrx, err := createForkTrx(ks, item)
+	forkTrx, consensusInfo, err := rumchaindata.GetForkTrx(ks, item)
 	if err != nil {
 		return nil, err
 	}
 
 	//create genesis block
-	genesisBlock, err := createGenesisBlock(ks, item, announceTrx, forkTrx)
+	genesisBlock, err := rumchaindata.GetGenesisBlock(ks, item, announceTrx, forkTrx, consensusInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +135,7 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	seed.Sign = sign
 
 	//check if join the group just created
-	if !params.JoinGroup {
+	if !params.JoinGroupAfterCreate {
 		return seed, nil
 	}
 
@@ -186,68 +183,3 @@ func FromPbGroupSeed(s *pb.GroupSeed) GroupSeed {
 	}
 }
 */
-
-func createForkTrx(ks localcrypto.Keystore, item *pb.GroupItem) (*pb.Trx, error) {
-	/*
-
-		//create initial consensus for genesis block
-		consensusInfo := &pb.ConsensusInfo{
-			ConsensusId:   uuid.New().String(),
-			ChainVer:      0,
-			InTrx:         INIT_FORK_TRX_ID,
-			ForkFromBlock: 0,
-		}
-
-		//create fork info for genesis block
-		forkItem := &pb.ForkItem{
-			GroupId:        item.GroupId,
-			Consensus:      consensusInfo,
-			StartFromBlock: 0,
-			StartFromEpoch: 0,
-			EpochDuration:  DEFAULT_EPOCH_DURATION,
-			Producers:      []string{item.OwnerPubKey}, //owner is the first producer
-			Memo:           "genesis fork",
-		}
-	*/
-
-	return nil, nil
-}
-
-func createAnnounceTrx(ks localcrypto.Keystore, item *pb.GroupItem) (*pb.Trx, error) {
-
-	/*
-		//owner announce as the first group producer
-		group_log.Debugf("<%s> owner announce as the first group producer", grp.Item.GroupId)
-		aContent := &quorumpb.AnnounceContent{
-			Type:          quorumpb.AnnounceType_AS_PRODUCER,
-			SignPubkey:    item.OwnerPubKey,
-			EncryptPubkey: item.UserEncryptPubkey,
-			Memo:          "owner announce as the first group producer",
-		}
-
-		aItem := &quorumpb.AnnounceItem{
-			GroupId:         item.GroupId,
-			Action:          quorumpb.ActionType_ADD,
-			Content:         aContent,
-			AnnouncerPubkey: item.OwnerPubKey,
-		}
-
-		//create hash
-		byts, err := proto.Marshal(aItem)
-		if err != nil {
-			return nil, err
-		}
-		aItem.Hash = localcrypto.Hash(byts)
-		signature, err := ks.EthSignByKeyName(item.GroupId, aItem.Hash)
-		if err != nil {
-			return nil, err
-		}
-
-		aItem.Signature = signature
-	*/
-	return nil, nil
-}
-
-func createGenesisBlock(ks localcrypto.Keystore, item *pb.GroupItem, announceTrx, forkTrx *pb.Trx) (*pb.Block, error) {
-	return nil, nil
-}

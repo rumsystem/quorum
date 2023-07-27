@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 var pcbft_log = logging.Logger("pcbft")

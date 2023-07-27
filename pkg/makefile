@@ -1,5 +1,5 @@
-PROTOC_GEN_GO = $(GOPATH)/bin/protoc-gen-go
-PROTOC = $(shell which protoc)
+#PROTOC_GEN_GO = $(GOPATH)/bin/protoc-gen-go
+#PROTOC = $(shell which protoc)
 
 compile: chain.proto activity_stream.proto rumexchange.proto
 

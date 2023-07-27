@@ -5,7 +5,7 @@ option go_package = "github.com/rumsystem/quorum/pkg/pb";
 
 message RumDataMsg {
  RumDataMsgType MsgType = 1;
- optional Package DataPackage = 2;
+ Package DataPackage = 2;
 }
 
 enum RumDataMsgType {

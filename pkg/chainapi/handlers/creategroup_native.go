@@ -38,7 +38,7 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 
 	var chainUrls []string
 	if params.IncludeChainUrl {
-		jwt, err := GetOrCreateGroupNodeJwt(createGrpResult.GroupId)
+		jwt, err := GetOrCreateGroupNodeJwt(createGrpResult.GroupItem.GroupId)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,7 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 
 	result := CreateGroupResult{
 		Seed:    seedurl,
-		GroupId: createGrpResult.GroupId,
+		GroupId: createGrpResult.GroupItem.GroupId,
 	}
 	return &result, nil
 }

@@ -2,9 +2,10 @@ package pb
 
 import (
 	"fmt"
+	"strings"
+
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	"strings"
 )
 
 func ContentToBytes(content proto.Message) ([]byte, error) {
