@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"time"
 
@@ -14,7 +13,12 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
+
+const DEFAULT_EPOCH_DURATION = 1000 //ms
+const INIT_ANNOUNCE_TRX_ID = "00000000-0000-0000-0000-000000000001"
+const INIT_FORK_TRX_ID = "00000000-0000-0000-0000-000000000000"
 
 type CreateGroupParam struct {
 	GroupName       string `from:"group_name"      json:"group_name"      validate:"required,max=100,min=2" example:"demo group"`
@@ -22,31 +26,11 @@ type CreateGroupParam struct {
 	EncryptionType  string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private" example:"public"`
 	AppKey          string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4" example:"test_app"`
 	IncludeChainUrl bool   `json:"include_chain_url" example:"true"`
+	JoinGroup       bool   `json:"join_group" example:"true"`
 }
 
 type JoinGroupParamV2 struct {
 	Seed string `json:"seed" validate:"required" example:"rum://seed?v=1&e=0&n=0&b=tknSczG2RC6hEBTXZyig7w&c=Za8zI2nAWaTNSvSv6cnPPxHCZef9sGtKtgsZ8iSxj0E&g=SfGcugfLTZ68Hc-xscFwMQ&k=AnRP4sojIvAH-Ugqnd7ZaM1H8j_c1pX6clyeXgAORiGZ&s=mrcA0LDzo54zUujZTINvWM_k2HSifv2T4JfYHAY2EzsCRGdR5vxHbvVNStlJOOBK_ohT6vFGs0FDk2pWYVRPUQE&t=FyvyFrtDGC0&a=timeline.dev&y=group_timeline&u=http%3A%2F%2F1.2.3.4%3A6090%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI0OWYxOWNiYS0wN2NiLTRkOWUtYmMxZC1jZmIxYjFjMTcwMzEiXSwiZXhwIjoxODI3Mzc0MjgyLCJuYW1lIjoiYWxsb3ctNDlmMTljYmEtMDdjYi00ZDllLWJjMWQtY2ZiMWIxYzE3MDMxIiwicm9sZSI6Im5vZGUifQ.rr_tYm0aUdmOeM0EYVzNpKmoNDOpSGzD38s6tjlxuCo"` // seed url
-}
-
-type GroupSeed struct {
-	/* Example: {
-	       "BlockId": "80e3dbd6-24de-46cd-9290-ed2ae93ec3ac",
-	       "GroupId": "c0020941-e648-40c9-92dc-682645acd17e",
-	       "ProducerPubKey": "CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg==",
-	       "Hash": "LOZa0CLITIpuQqpvXb6LyXV9z+2rSoU4JwBq0BCXttc=",
-	       "Signature": "MEQCICAXCicQ6f4hRNSoJR89DF3a6AKpe6ZgLXsjXqH9H3jxAiA8dpukcriwEu8amouh2ZEKA2peXr3ctKQwxI3R6+nrfg==",
-	       "Timestamp": 1632503907836381400
-	   }
-	*/
-	GenesisBlock   *pb.Block `json:"genesis_block" validate:"required"`
-	GroupId        string    `json:"group_id" validate:"required,uuid4" example:"c0020941-e648-40c9-92dc-682645acd17e"`
-	GroupName      string    `json:"group_name" validate:"required" example:"demo group"`
-	OwnerPubkey    string    `json:"owner_pubkey" validate:"required" example:"CAISIQLW2nWw+IhoJbTUmoq2ioT5plvvw/QmSeK2uBy090/3hg"`
-	ConsensusType  string    `json:"consensus_type" validate:"required,oneof=pos poa" example:"poa"`
-	EncryptionType string    `json:"encryption_type" validate:"required,oneof=public private" example:"public"`
-	CipherKey      string    `json:"cipher_key" validate:"required" example:"8e9bd83f84cf1408484d24f486861947a1db3fbe6eb3c61e31af55a4803aedc1"`
-	AppKey         string    `json:"app_key" validate:"required" example:"test_app"`
-	Signature      string    `json:"signature" validate:"required" example:"304502206897c3c67247cba2e8d5991501b3fd471fcca06f15915efdcd814b9e99c9a48a022100aa3024eb5663da6cbbde150132a4ff52c6c6aeeb49e0c039b4c28e72b071382f"`
 }
 
 type CreateGroupResult struct {
@@ -58,7 +42,7 @@ type GetGroupSeedResult struct {
 	Seed string `json:"seed" validate:"required" example:"rum://seed?v=1&e=0&n=0&b=tknSczG2RC6hEBTXZyig7w&c=Za8zI2nAWaTNSvSv6cnPPxHCZef9sGtKtgsZ8iSxj0E&g=SfGcugfLTZ68Hc-xscFwMQ&k=AnRP4sojIvAH-Ugqnd7ZaM1H8j_c1pX6clyeXgAORiGZ&s=mrcA0LDzo54zUujZTINvWM_k2HSifv2T4JfYHAY2EzsCRGdR5vxHbvVNStlJOOBK_ohT6vFGs0FDk2pWYVRPUQE&t=FyvyFrtDGC0&a=timeline.dev&y=group_timeline&u=http%3A%2F%2F1.2.3.4%3A6090%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI0OWYxOWNiYS0wN2NiLTRkOWUtYmMxZC1jZmIxYjFjMTcwMzEiXSwiZXhwIjoxODI3Mzc0MjgyLCJuYW1lIjoiYWxsb3ctNDlmMTljYmEtMDdjYi00ZDllLWJjMWQtY2ZiMWIxYzE3MDMxIiwicm9sZSI6Im5vZGUifQ.rr_tYm0aUdmOeM0EYVzNpKmoNDOpSGzD38s6tjlxuCo"` // seed url
 }
 
-func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*GroupSeed, error) {
+func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*pb.GroupSeed, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -74,10 +58,16 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 	//init keystore
 	ks := nodectx.GetNodeCtx().Keystore
 
-	//init sign key
+	//init owner sign key
 	ownerpubkey, err := initSignKey(groupid, ks, nodeoptions)
 	if err != nil {
 		return nil, errors.New("group key can't be decoded, err:" + err.Error())
+	}
+
+	//init owner encrypt key
+	encryptPubkey, err := initEncryptKey(groupid, ks)
+	if err != nil {
+		return nil, err
 	}
 
 	//init cipher key
@@ -86,84 +76,86 @@ func CreateGroup(params *CreateGroupParam, nodeoptions *options.NodeOptions, app
 		return nil, err
 	}
 
-	//init encode key
-	groupEncryptPubkey, err := initEncryptKey(groupid, ks)
-	if err != nil {
-		return nil, err
+	var encryptType pb.GroupEncryptType
+	if params.EncryptionType == "public" {
+		encryptType = pb.GroupEncryptType_PUBLIC
+	} else {
+		encryptType = pb.GroupEncryptType_PRIVATE
 	}
 
 	//create group item
-	var item *pb.GroupItem
-	item = &pb.GroupItem{}
-	item.GroupId = groupid
-	item.GroupName = params.GroupName
-	item.OwnerPubKey = ownerpubkey
-	item.UserSignPubkey = item.OwnerPubKey
-	item.UserEncryptPubkey = groupEncryptPubkey
-	item.ConsenseType = pb.GroupConsenseType_POA
-
-	if params.EncryptionType == "public" {
-		item.EncryptType = pb.GroupEncryptType_PUBLIC
-	} else {
-		item.EncryptType = pb.GroupEncryptType_PRIVATE
+	item := &pb.GroupItem{
+		GroupId:           groupid,
+		GroupName:         params.GroupName,
+		OwnerPubKey:       ownerpubkey,
+		UserSignPubkey:    ownerpubkey,
+		UserEncryptPubkey: encryptPubkey,
+		ConsenseType:      pb.GroupConsenseType_POA,
+		CipherKey:         hex.EncodeToString(cipherKey),
+		AppKey:            params.AppKey,
+		EncryptType:       encryptType,
+		LastUpdate:        time.Now().UnixNano(),
 	}
 
-	item.CipherKey = hex.EncodeToString(cipherKey)
-	item.AppKey = params.AppKey
-	item.LastUpdate = time.Now().UnixNano()
+	//create announce trx
+	announceTrx, err := createAnnounceTrx(ks, item)
+	if err != nil {
+		return nil, err
+	}
+
+	//create fork trx
+	forkTrx, err := createForkTrx(ks, item)
+	if err != nil {
+		return nil, err
+	}
+
+	//create genesis block
+	genesisBlock, err := createGenesisBlock(ks, item, announceTrx, forkTrx)
+	if err != nil {
+		return nil, err
+	}
+
+	//add genesis block to group item
+	item.GenesisBlock = genesisBlock
+
+	//create group seed
+	seed := &pb.GroupSeed{
+		GroupItem: item,
+		Hash:      nil,
+		Sign:      nil,
+	}
+
+	//hash and sign seed
+	seedByts, err := proto.Marshal(seed)
+	if err != nil {
+		return nil, err
+	}
+	seed.Hash = localcrypto.Hash(seedByts)
+	sign, err := ks.EthSignByKeyName(genesisBlock.GroupId, seed.Hash)
+	if err != nil {
+		return nil, err
+	}
+	seed.Sign = sign
+
+	//check if join the group just created
+	if !params.JoinGroup {
+		return seed, nil
+	}
 
 	group := &chain.Group{}
-	genesisBlock, err := group.NewGroup(item)
+	err = group.JoinGroup(item)
 	if err != nil {
 		return nil, err
 	}
 
-	groupmgr := chain.GetGroupMgr()
-	groupmgr.Groups[group.Item.GroupId] = group
-
-	//create result
-	encodedCipherKey := hex.EncodeToString(cipherKey)
-
-	createGrpResult := &GroupSeed{
-		GenesisBlock:   genesisBlock,
-		GroupId:        groupid,
-		GroupName:      params.GroupName,
-		OwnerPubkey:    item.OwnerPubKey,
-		ConsensusType:  params.ConsensusType,
-		EncryptionType: params.EncryptionType,
-		CipherKey:      encodedCipherKey,
-		AppKey:         params.AppKey,
-	}
-
-	//get seed hash
-	seedByts, err := json.Marshal(createGrpResult)
-	if err != nil {
+	if err := appdb.SetGroupSeed(seed); err != nil {
 		return nil, err
 	}
 
-	hash := localcrypto.Hash(seedByts)
-
-	var signature []byte
-	signature, err = ks.EthSignByKeyName(genesisBlock.GroupId, hash)
-	if err != nil {
-		return nil, err
-	}
-	if len(signature) == 0 {
-		return nil, errors.New("create signature on group seed failed")
-	}
-
-	//set signature
-	createGrpResult.Signature = hex.EncodeToString(signature)
-
-	// save group seed to appdata
-	pbGroupSeed := ToPbGroupSeed(*createGrpResult)
-	if err := appdb.SetGroupSeed(&pbGroupSeed); err != nil {
-		return nil, err
-	}
-
-	return createGrpResult, err
+	return seed, err
 }
 
+/*
 // ToPbGroupSeed convert `api.GroupSeed` to `pb.GroupSeed`
 func ToPbGroupSeed(s GroupSeed) pb.GroupSeed {
 	return pb.GroupSeed{
@@ -192,4 +184,70 @@ func FromPbGroupSeed(s *pb.GroupSeed) GroupSeed {
 		AppKey:         s.AppKey,
 		Signature:      s.Signature,
 	}
+}
+*/
+
+func createForkTrx(ks localcrypto.Keystore, item *pb.GroupItem) (*pb.Trx, error) {
+	/*
+
+		//create initial consensus for genesis block
+		consensusInfo := &pb.ConsensusInfo{
+			ConsensusId:   uuid.New().String(),
+			ChainVer:      0,
+			InTrx:         INIT_FORK_TRX_ID,
+			ForkFromBlock: 0,
+		}
+
+		//create fork info for genesis block
+		forkItem := &pb.ForkItem{
+			GroupId:        item.GroupId,
+			Consensus:      consensusInfo,
+			StartFromBlock: 0,
+			StartFromEpoch: 0,
+			EpochDuration:  DEFAULT_EPOCH_DURATION,
+			Producers:      []string{item.OwnerPubKey}, //owner is the first producer
+			Memo:           "genesis fork",
+		}
+	*/
+
+	return nil, nil
+}
+
+func createAnnounceTrx(ks localcrypto.Keystore, item *pb.GroupItem) (*pb.Trx, error) {
+
+	/*
+		//owner announce as the first group producer
+		group_log.Debugf("<%s> owner announce as the first group producer", grp.Item.GroupId)
+		aContent := &quorumpb.AnnounceContent{
+			Type:          quorumpb.AnnounceType_AS_PRODUCER,
+			SignPubkey:    item.OwnerPubKey,
+			EncryptPubkey: item.UserEncryptPubkey,
+			Memo:          "owner announce as the first group producer",
+		}
+
+		aItem := &quorumpb.AnnounceItem{
+			GroupId:         item.GroupId,
+			Action:          quorumpb.ActionType_ADD,
+			Content:         aContent,
+			AnnouncerPubkey: item.OwnerPubKey,
+		}
+
+		//create hash
+		byts, err := proto.Marshal(aItem)
+		if err != nil {
+			return nil, err
+		}
+		aItem.Hash = localcrypto.Hash(byts)
+		signature, err := ks.EthSignByKeyName(item.GroupId, aItem.Hash)
+		if err != nil {
+			return nil, err
+		}
+
+		aItem.Signature = signature
+	*/
+	return nil, nil
+}
+
+func createGenesisBlock(ks localcrypto.Keystore, item *pb.GroupItem, announceTrx, forkTrx *pb.Trx) (*pb.Block, error) {
+	return nil, nil
 }

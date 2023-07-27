@@ -199,7 +199,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleCCMsgPsConn(ccMsg)
 		}
-	} else if pkg.Type == quorumpb.PackageType_BROADCAST_MSG {
+	} else if pkg.Type == quorumpb.PackageType_BROADCAST {
 		broadcastMsg := &quorumpb.BroadcastMsg{}
 		err = proto.Unmarshal(pkg.Data, broadcastMsg)
 		if err != nil {
@@ -210,7 +210,6 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 	} else {
 		chain_log.Warningf("invalid pkg type <%s> for psconn", pkg.Type.String())
 	}
-
 	return err
 }
 
@@ -585,7 +584,7 @@ func (chain *Chain) updateProducerPool() {
 		return nil
 	}
 */
-func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
+func (chain *Chain) GetUserEncryptPubKeys() ([]string, error) {
 	keys := []string{}
 	ks := nodectx.GetNodeCtx().Keystore
 	mypubkey, err := ks.GetEncodedPubkey(chain.groupItem.GroupId, localcrypto.Encrypt)
@@ -811,9 +810,9 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
-		//case quorumpb.TrxType_CONSENSUS:
-		//	chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-		//	chain.applyConseususTrx(trx, decodedData, nodename)
+		case quorumpb.TrxType_FORK:
+			chain_log.Debugf("<%s> apply FORK trx", chain.groupItem.GroupId)
+			chain.applyForkTrx(trx, decodedData, nodename)
 		default:
 			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupItem.GroupId, trx.Type.String())
 		}
@@ -900,59 +899,85 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 	return nil
 }
 
-/*
-func (chain *Chain) applyConseususTrx(trx *quorumpb.Trx, decodeData []byte, nodename string) error {
-	chain_log.Debugf("<%s> applyConseususTrx called", chain.groupItem.GroupId)
+func (chain *Chain) applyForkTrx(trx *quorumpb.Trx, decodeData []byte, nodename string) error {
+	chain_log.Debugf("<%s> applyForkTrx called", chain.groupItem.GroupId)
 
-	//decode change consensus result
-	resultBundle := &quorumpb.ChangeConsensusResultBundle{}
-	err := proto.Unmarshal(decodeData, resultBundle)
-	if err != nil {
-		return err
-	}
+	/*
+		//load and update group producers
+		grp.ChainCtx.updateProducerPool()
+	*/
 
-	//check if change consensus result is valid
-	if resultBundle.Result != quorumpb.ChangeConsensusResult_SUCCESS {
-		chain_log.Warningf("<%s> change consensus result is not success, skip", chain.groupItem.GroupId)
-		return nil
-	}
+	/*
+		//save consensus info to db
+		group_log.Debugf("<%s> save consensus info", grp.Item.GroupId)
+		err = nodectx.GetNodeCtx().GetChainStorage().SaveGroupConsensusInfo(item.GroupId, forkItem.Consensus, grp.Nodename)
+		if err != nil {
+			group_log.Debugf("<%s> save consensus info failed", grp.Item.GroupId)
+			return err
+		}
+	*/
 
-	history, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(chain.groupItem.GroupId, nodename)
-	if err != nil {
-		return err
-	}
+	/*
+		//save consensus info to db
+		group_log.Debugf("<%s> save consensus info", grp.Item.GroupId)
+		err = nodectx.GetNodeCtx().GetChainStorage().SaveGroupConsensusInfo(item.GroupId, forkItem.Consensus, grp.Nodename)
+		if err != nil {
+			group_log.Debugf("<%s> save consensus info failed", grp.Item.GroupId)
+			return err
+		}
+	*/
 
-	shouldAccept := true
-	for _, item := range history {
-		if item.Req.ReqId == resultBundle.Req.ReqId {
-			chain_log.Debugf("<%s> change consensus result with reqId <%s> already exist, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId)
-			shouldAccept = false
-			break
+	/*
+		//decode change consensus result
+		resultBundle := &quorumpb.Fork{}
+		err := proto.Unmarshal(decodeData, resultBundle)
+		if err != nil {
+			return err
 		}
 
-		if item.Req.Nonce > resultBundle.Req.Nonce {
-			chain_log.Debugf("<%s> change consensus result with reqId <%d> nonce <%d> is smaller than current nonce <%d>, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId, resultBundle.Req.Nonce, item.Req.Nonce)
-			shouldAccept = false
-			break
+		//check if change consensus result is valid
+		if resultBundle.Result != quorumpb.ChangeConsensusResult_SUCCESS {
+			chain_log.Warningf("<%s> change consensus result is not success, skip", chain.groupItem.GroupId)
+			return nil
 		}
-	}
 
-	if shouldAccept {
-		//save change consensus result
-		nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, resultBundle, nodename)
-		//update consensus
-		chain.updChainConsensus(trx.TrxId, resultBundle)
-		//stop current propose
-		if chain.Consensus.Producer() != nil {
-			chain.Consensus.Producer().StopPropose()
-			//update producer list
-			chain.Consensus.Producer().StartPropose()
+		history, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(chain.groupItem.GroupId, nodename)
+		if err != nil {
+			return err
 		}
-	}
 
+		shouldAccept := true
+		for _, item := range history {
+			if item.Req.ReqId == resultBundle.Req.ReqId {
+				chain_log.Debugf("<%s> change consensus result with reqId <%s> already exist, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId)
+				shouldAccept = false
+				break
+			}
+
+			if item.Req.Nonce > resultBundle.Req.Nonce {
+				chain_log.Debugf("<%s> change consensus result with reqId <%d> nonce <%d> is smaller than current nonce <%d>, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId, resultBundle.Req.Nonce, item.Req.Nonce)
+				shouldAccept = false
+				break
+			}
+		}
+
+		if shouldAccept {
+			//save change consensus result
+			nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, resultBundle, nodename)
+			//update consensus
+			chain.updChainConsensus(trx.TrxId, resultBundle)
+			//stop current propose
+			if chain.Consensus.Producer() != nil {
+				chain.Consensus.Producer().StopPropose()
+				//update producer list
+				chain.Consensus.Producer().StartPropose()
+			}
+		}
+
+
+	*/
 	return nil
 }
-*/
 
 func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, error) {
 	//check signature

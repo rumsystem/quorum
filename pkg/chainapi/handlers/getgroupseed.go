@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	"github.com/rumsystem/quorum/pkg/pb"
 )
 
 type GetGroupSeedParam struct {
@@ -12,7 +13,7 @@ type GetGroupSeedParam struct {
 	IncludeChainUrl bool   `query:"include_chain_url" example:"true"`
 }
 
-func GetGroupSeed(groupId string, appdb *appdata.AppDb) (*GroupSeed, error) {
+func GetGroupSeed(groupId string, appdb *appdata.AppDb) (*pb.GroupSeed, error) {
 	pbSeed, err := appdb.GetGroupSeed(groupId)
 	if err != nil {
 		return nil, fmt.Errorf("get group seeds failed: %s", err)
@@ -22,7 +23,5 @@ func GetGroupSeed(groupId string, appdb *appdata.AppDb) (*GroupSeed, error) {
 		return nil, errors.New("group seed not found")
 	}
 
-	seed := FromPbGroupSeed(pbSeed)
-
-	return &seed, nil
+	return pbSeed, nil
 }

@@ -179,7 +179,7 @@ func (appdb *AppDb) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
 }
 
 func (appdb *AppDb) SetGroupSeed(seed *quorumpb.GroupSeed) error {
-	key := groupSeedKey(seed.GroupId)
+	key := groupSeedKey(seed.GroupItem.GroupId)
 
 	value, err := json.Marshal(seed)
 	if err != nil {

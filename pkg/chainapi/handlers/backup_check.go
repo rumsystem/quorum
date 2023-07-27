@@ -4,7 +4,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +14,8 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/crypto"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	"github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 func CheckSignAndEncryptWithKeystore(keystoreName, keystoreDir, configDir, peerName, password string) error {
@@ -196,16 +197,16 @@ func loadAndDecryptTrx(dir, seedDir string, ks *localcrypto.DirKeyStore) error {
 	return nil
 }
 
-func loadGroupSeed(path string) (*GroupSeed, error) {
-	var seed GroupSeed
+func loadGroupSeed(path string) (*pb.GroupSeed, error) {
+	var seed *pb.GroupSeed
 	seedByte, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := json.Unmarshal(seedByte, &seed); err != nil {
+	if err := proto.Unmarshal(seedByte, seed); err != nil {
 		return nil, err
 	}
 
-	return &seed, nil
+	return seed, nil
 }

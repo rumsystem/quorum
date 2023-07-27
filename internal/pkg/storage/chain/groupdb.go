@@ -203,7 +203,7 @@ func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
 }
 
 func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
-	key := s.GetSeedKey(seed.GenesisBlock.GroupId)
+	key := s.GetSeedKey(seed.GroupItem.GenesisBlock.GroupId)
 	value, err := proto.Marshal(seed)
 	if err != nil {
 		return err

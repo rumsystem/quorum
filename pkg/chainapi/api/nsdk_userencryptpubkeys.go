@@ -39,7 +39,7 @@ func (h *Handler) GetNSdkUserEncryptPubKeys(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError("INVALID_GROUP")
 	}
 
-	keys, err := group.ChainCtx.GetUsesEncryptPubKeys()
+	keys, err := group.ChainCtx.GetUserEncryptPubKeys()
 	if err != nil {
 		return err
 	}

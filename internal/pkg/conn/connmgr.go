@@ -45,7 +45,6 @@ type ConnMgr struct {
 
 	pscounsmu sync.RWMutex
 	PsConns   map[string]*pubsubconn.P2pPubSubConn // key: channelId
-	//Rex     *p2p.RexService
 }
 
 func InitConn() error {
@@ -101,7 +100,7 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 		nodectx.GetNodeCtx().Node.RumExchange.ChainReg(connMgr.GroupId, cIface)
 	}
 
-	//initial ps conn for user channel
+	//initial ps conn for group
 	connMgr.InitialPsConn()
 
 	return nil

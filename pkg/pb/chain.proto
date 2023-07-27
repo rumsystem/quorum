@@ -8,7 +8,7 @@ enum PackageType {
     BFT                   = 2;
     CC                    = 3; 
     SYNC                  = 4;
-    BROADCAST_MSG         = 5;
+    BROADCAST             = 5;
 }
 
 message Package {
@@ -332,24 +332,18 @@ message GroupItem {
     string            OwnerPubKey             = 3;
     string            UserSignPubkey          = 4;
     string            UserEncryptPubkey       = 5;
-    int64             LastUpdate              = 6;
-    Block             GenesisBlock            = 7;
-    GroupEncryptType  EncryptType             = 8;
-    GroupConsenseType ConsenseType            = 9;
-    string            CipherKey               = 10;
-    string            AppKey                  = 11;
+    GroupEncryptType  EncryptType             = 6;
+    GroupConsenseType ConsenseType            = 7;
+    string            CipherKey               = 8;
+    string            AppKey                  = 9;
+    int64             LastUpdate              = 10;
+    Block             GenesisBlock            = 11;
 }
 
 message GroupSeed {
-    Block  GenesisBlock   = 1;
-    string GroupId        = 2;
-    string GroupName      = 3;
-    string OwnerPubkey    = 4;
-    string ConsensusType  = 5;    
-    string EncryptionType = 6;
-    string CipherKey      = 7;
-    string AppKey         = 8; 
-    string Signature      = 9;
+    GroupItem  GroupItem  = 1;
+    bytes  Hash           = 2;
+    bytes  Sign           = 3;
 }
 
 message NodeSDKGroupItem {
