@@ -23,14 +23,15 @@ func GetAllGroupSeeds(appdb *appdata.AppDb) ([]CreateGroupResult, error) {
 		//seed := FromPbGroupSeed(value)
 
 		// FIXME: hardcode version 1
-		seedUrl, err := GroupSeedToUrl(1, nil, seed)
-		if err != nil {
-			logger.Errorf("GroupSeedToUrl failed: %s", err)
-			return nil, err
-		}
+		//seedUrl, err := GroupSeedToUrl(1, nil, seed)
+		//if err != nil {
+		//	logger.Errorf("GroupSeedToUrl failed: %s", err)
+		//	return nil, err
+		//}
 
 		item := CreateGroupResult{
-			Seed:    seedUrl,
+			//Seed:    seedUrl,
+			Seed:    seed,
 			GroupId: seed.GroupItem.GroupId,
 		}
 		seeds = append(seeds, item)

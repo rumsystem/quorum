@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -47,13 +46,14 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 		chainUrls = append(chainUrls, chainapiUrl)
 	}
 
-	seedurl, err := handlers.GroupSeedToUrl(1, chainUrls, seed)
-	if err != nil {
-		return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
-	}
+	//seedurl, err := handlers.GroupSeedToUrl(1, chainUrls, seed)
+	//if err != nil {
+	//	return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
+	//}
 
 	result := handlers.GetGroupSeedResult{
-		Seed: seedurl,
+		//Seed: seedurl,
+		Seed: seed,
 	}
 	return c.JSON(http.StatusOK, result)
 }

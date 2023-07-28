@@ -46,10 +46,12 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 
 		//get seed from url
-		seed, _, err := handlers.UrlToGroupSeed(payload.Seed)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+		//seed, _, err := handlers.UrlToGroupSeed(payload.Seed)
+		//if err != nil {
+		//	return rumerrors.NewBadRequestError(err)
+		//}
+
+		seed := payload.Seed
 
 		//verify seed
 		seedBytes, err := proto.Marshal(seed)

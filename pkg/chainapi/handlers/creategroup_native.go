@@ -55,13 +55,14 @@ func CreateGroupUrl(baseUrl string, params *CreateGroupParam, nodeoptions *optio
 	}
 
 	// convert group seed to url
-	seedurl, err := GroupSeedToUrl(1, chainUrls, createGrpResult)
-	if err != nil {
-		return nil, err
-	}
+	//seedurl, err := GroupSeedToUrl(1, chainUrls, createGrpResult)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	result := CreateGroupResult{
-		Seed:    seedurl,
+		//Seed:    seedurl,
+		Seed:    createGrpResult,
 		GroupId: createGrpResult.GroupItem.GroupId,
 	}
 	return &result, nil
