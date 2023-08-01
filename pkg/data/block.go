@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.ConsensusInfo, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(parentBlk *quorumpb.Block, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	newBlock := &quorumpb.Block{
 		GroupId:        parentBlk.GroupId,
 		BlockId:        parentBlk.BlockId + 1,
@@ -51,15 +51,16 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Cons
 	return newBlock, nil
 }
 
-func CreateGenesisBlockByEthKey(groupId string, consensusInfo *quorumpb.ConsensusInfo, forkTrx *quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
+func CreateGenesisBlockByEthKey(groupId string, producerPubkey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
 	genesisBlock := &quorumpb.Block{
 		GroupId:        groupId,
 		BlockId:        0,
 		PrevHash:       nil,
-		ProducerPubkey: groupPublicKey,
-		Trxs:           []*quorumpb.Trx{forkTrx},
+		ProducerPubkey: producerPubkey,
+		Trxs:           nil,
 		TimeStamp:      time.Now().UnixNano(),
-		Consensus:      consensusInfo,
+		BlockHash:      nil,
+		ProducerSign:   nil,
 	}
 
 	bbytes, err := proto.Marshal(genesisBlock)
@@ -96,7 +97,6 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 		ProducerPubkey: newBlock.ProducerPubkey,
 		Trxs:           newBlock.Trxs,
 		TimeStamp:      newBlock.TimeStamp,
-		Consensus:      newBlock.Consensus,
 		BlockHash:      nil,
 		ProducerSign:   nil,
 	}
@@ -157,7 +157,6 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 		ProducerPubkey: genesisBlock.ProducerPubkey,
 		Trxs:           genesisBlock.Trxs,
 		TimeStamp:      genesisBlock.TimeStamp,
-		Consensus:      genesisBlock.Consensus,
 		BlockHash:      nil,
 		ProducerSign:   nil,
 	}

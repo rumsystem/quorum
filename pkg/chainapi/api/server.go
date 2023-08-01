@@ -84,6 +84,8 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
+	r.POST("/v2/group/newseed", h.NewSeed())
+
 	r.POST("/v1/group", h.CreateGroupUrl())
 	r.POST("/v2/group/join", h.JoinGroupV2())
 	r.POST("/v1/group/leave", h.LeaveGroup)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
@@ -17,106 +16,11 @@ import (
 
 var group_log = logging.Logger("group")
 
-const DEFAULT_EPOCH_DURATION = 1000 //ms
-const INIT_FORK_TRX_ID = "00000000-0000-0000-0000-000000000000"
-
 type Group struct {
 	Item     *quorumpb.GroupItem
 	ChainCtx *Chain
 	GroupId  string
 	Nodename string
-}
-
-func (grp *Group) NewGroup(item *quorumpb.GroupItem) (*quorumpb.Block, error) {
-	group_log.Debugf("<%s> NewGroup called", item.GroupId)
-
-	grp.Item = item
-	grp.GroupId = item.GroupId
-	grp.Nodename = nodectx.GetNodeCtx().Name
-
-	//create and initial chain
-	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(item, grp.Nodename, false)
-
-	ks := nodectx.GetNodeCtx().Keystore
-
-	//create initial consensus for genesis block
-	consensusInfo := &quorumpb.ConsensusInfo{
-		ConsensusId:   uuid.New().String(),
-		ChainVer:      0,
-		InTrx:         INIT_FORK_TRX_ID,
-		ForkFromBlock: 0,
-	}
-
-	//save consensus info to db
-	group_log.Debugf("<%s> save consensus result", grp.Item.GroupId)
-	err := nodectx.GetNodeCtx().GetChainStorage().SaveGroupConsensusInfo(item.GroupId, consensusInfo, grp.Nodename)
-	if err != nil {
-		group_log.Debugf("<%s> save consensus result failed", grp.Item.GroupId)
-		return nil, err
-	}
-
-	//create fork trx
-	forkItem := &quorumpb.ForkItem{
-		GroupId:        item.GroupId,
-		Consensus:      consensusInfo,
-		StartFromBlock: 0,
-		StartFromEpoch: 0,
-		EpochDuration:  DEFAULT_EPOCH_DURATION,
-		Producers:      []string{item.OwnerPubKey}, //owner is the first producer
-		Memo:           "genesis fork",
-	}
-
-	forkTrx, err := grp.ChainCtx.GetTrxFactory().GetForkTrx("", forkItem)
-	if err != nil {
-		return nil, err
-	}
-
-	//create and save genesis block
-	group_log.Debugf("<%s> create and save genesis block", grp.Item.GroupId)
-	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(item.GroupId, consensusInfo, forkTrx, item.OwnerPubKey, ks, "")
-	err = nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(genesisBlock, false, grp.Nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	//add group owner as the first group producer
-	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
-	pItem := &quorumpb.ProducerItem{}
-	pItem.GroupId = item.GroupId
-	pItem.ProducerPubkey = item.OwnerPubKey
-	pItem.ProofTrxId = ""
-	pItem.BlkCnt = 0
-	pItem.Memo = "Owner Registated as the first group producer"
-	err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	//load and update group producers
-	grp.ChainCtx.updateProducerPool()
-
-	//create and register ConnMgr for chainctx
-	conn.GetConn().RegisterChainCtx(item.GroupId,
-		item.OwnerPubKey,
-		item.UserSignPubkey,
-		grp.ChainCtx)
-
-	//commented by cuicat
-	//update producer list for ConnMgr just created
-	//grp.ChainCtx.UpdConnMgrProducer()
-
-	//create group consensus
-	grp.ChainCtx.CreateConsensus()
-
-	//save groupItem to db
-	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
-	if err != nil {
-		return nil, err
-	}
-
-	group_log.Debugf("Group <%s> created", grp.Item.GroupId)
-	return genesisBlock, nil
 }
 
 func (grp *Group) JoinGroup(item *quorumpb.GroupItem) error {
