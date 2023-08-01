@@ -6,7 +6,6 @@ import (
 
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 const (
@@ -17,8 +16,6 @@ const (
 	CNT_PREFIX             = "cnt"             //content
 	PRD_PREFIX             = "prd"             //producer
 	USR_PREFIX             = "usr"             //user
-	ANN_PREFIX             = "ann"             //announce
-	SMA_PREFIX             = "sma"             //schema
 	CHD_PREFIX             = "chd"             //cached
 	APP_CONFIG_PREFIX      = "app_conf"        //group configuration
 	CHAIN_CONFIG_PREFIX    = "chn_conf"        //chain configuration
@@ -148,42 +145,6 @@ func GetUserKey(groupId string, pubkey string, prefix ...string) string {
 	_prefix := GetUserPrefix(groupId, prefix...)
 	pk := _getEthPubkey(pubkey)
 	return _prefix + pk
-}
-
-func GetAnnouncedPrefix(groupId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + ANN_PREFIX + "_" + groupId + "_"
-}
-func GetAnnounceAsProducerPrefix(groupId string, prefix ...string) string {
-	_prefix := GetAnnouncedPrefix(groupId, prefix...)
-	return _prefix + quorumpb.AnnounceType_AS_PRODUCER.String()
-}
-
-func GetAnnounceAsProducerKey(groupId string, pubkey string, prefix ...string) string {
-	_prefix := GetAnnounceAsProducerPrefix(groupId, prefix...)
-	pk := _getEthPubkey(pubkey)
-	return _prefix + "_" + pk
-}
-
-func GetAnnounceAsUserPrefix(groupId string, prefix ...string) string {
-	_prefix := GetAnnouncedPrefix(groupId, prefix...)
-	return _prefix + quorumpb.AnnounceType_AS_USER.String()
-}
-
-func GetAnnounceAsUserKey(groupId string, pubkey string, prefix ...string) string {
-	_prefix := GetAnnounceAsUserPrefix(groupId, prefix...)
-	pk := _getEthPubkey(pubkey)
-	return _prefix + "_" + pk
-}
-
-func GetAnnouncedKey(groupId string, _type string, pk string, prefix ...string) string {
-	_prefix := GetAnnouncedPrefix(groupId, prefix...)
-	return _prefix + _type + "_" + pk
-}
-
-func GetSchemaPrefix(groupId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + SMA_PREFIX + "_" + groupId
 }
 
 func GetChainConfigPrefix(groupId string, prefix ...string) string {

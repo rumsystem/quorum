@@ -4,11 +4,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-
-	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 type UpdGrpUserResult struct {
@@ -35,59 +30,64 @@ type UpdGrpUserParam struct {
 // @Success 200 {object} UpdGrpUserResult
 // @Router /api/v1/group/upduser [post]
 func (h *Handler) UpdGroupUser(c echo.Context) (err error) {
-	cc := c.(*utils.CustomContext)
 
-	params := new(UpdGrpUserParam)
-	if err := cc.BindAndValidate(params); err != nil {
-		return err
-	}
+	/*
+		cc := c.(*utils.CustomContext)
 
-	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
-		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
-	} else if group.Item.EncryptType.Enum() != quorumpb.GroupEncryptType_PRIVATE.Enum() {
-		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotPrivate)
-	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
-		return rumerrors.NewBadRequestError(rumerrors.ErrOnlyGroupOwner)
-	} else {
-		var action quorumpb.ActionType
-		if params.Action == "add" {
-			action = quorumpb.ActionType_ADD
-		} else if params.Action == "remove" {
-			action = quorumpb.ActionType_REMOVE
+		params := new(UpdGrpUserParam)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
+		}
+
+		groupmgr := chain.GetGroupMgr()
+		if group, ok := groupmgr.Groups[params.GroupId]; !ok {
+			return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
+		} else if group.Item.EncryptType.Enum() != quorumpb.GroupEncryptType_PRIVATE.Enum() {
+			return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotPrivate)
+		} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
+			return rumerrors.NewBadRequestError(rumerrors.ErrOnlyGroupOwner)
 		} else {
-			return rumerrors.NewBadRequestError("Invalid action")
-		}
+			var action quorumpb.ActionType
+			if params.Action == "add" {
+				action = quorumpb.ActionType_ADD
+			} else if params.Action == "remove" {
+				action = quorumpb.ActionType_REMOVE
+			} else {
+				return rumerrors.NewBadRequestError("Invalid action")
+			}
 
-		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.Nodename)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.Nodename)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		if action == quorumpb.ActionType_ADD && !isAnnounced {
-			return rumerrors.NewBadRequestError("update group user failed, user is not announced")
-		}
+			if action == quorumpb.ActionType_ADD && !isAnnounced {
+				return rumerrors.NewBadRequestError("update group user failed, user is not announced")
+			}
 
-		item := &quorumpb.UpdGroupUserItem{
-			GroupId:    params.GroupId,
-			UserPubkey: params.UserPubkey,
-			Action:     action,
-			Memo:       params.Memo,
-		}
+			item := &quorumpb.UpdGroupUserItem{
+				GroupId:    params.GroupId,
+				UserPubkey: params.UserPubkey,
+				Action:     action,
+				Memo:       params.Memo,
+			}
 
-		trxId, err := group.UpdGroupUser(item)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			trxId, err := group.UpdGroupUser(item)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		result := &UpdGrpUserResult{
-			GroupId:    item.GroupId,
-			UserPubkey: item.UserPubkey,
-			Action:     item.Action.String(),
-			Memo:       item.Memo,
-			TrxId:      trxId,
-		}
+			result := &UpdGrpUserResult{
+				GroupId:    item.GroupId,
+				UserPubkey: item.UserPubkey,
+				Action:     item.Action.String(),
+				Memo:       item.Memo,
+				TrxId:      trxId,
+			}
 
-		return c.JSON(http.StatusOK, result)
-	}
+			return c.JSON(http.StatusOK, result)
+		}
+	*/
+
+	return c.JSON(http.StatusOK, nil)
 }

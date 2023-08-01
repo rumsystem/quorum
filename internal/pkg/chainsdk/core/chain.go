@@ -250,7 +250,6 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	switch trx.Type {
 	case
 		quorumpb.TrxType_POST,
-		quorumpb.TrxType_ANNOUNCE,
 		quorumpb.TrxType_UPD_GRP_USER,
 		quorumpb.TrxType_CHAIN_CONFIG,
 		quorumpb.TrxType_APP_CONFIG,
@@ -802,9 +801,6 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 			chain_log.Debugf("<%s> apply UpdGroupUser trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
 			chain.updUserList()
-		case quorumpb.TrxType_ANNOUNCE:
-			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(decodedData, nodename)
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfig(decodedData, nodename)
@@ -881,9 +877,6 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
 			chain.updUserList()
-		case quorumpb.TrxType_ANNOUNCE:
-			chain_log.Debugf("<%s> apply ANNOUNCE trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateAnnounce(decodedData, nodename)
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)

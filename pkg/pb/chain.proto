@@ -17,11 +17,6 @@ message Package {
 }
 
 //TRX
-enum AnnounceType {
-   AS_USER     = 0;
-   AS_PRODUCER = 1;
-}
-
 enum ActionType {
     ADD    = 0;
     REMOVE = 1;
@@ -34,7 +29,6 @@ enum TrxStroageType {
 
 enum TrxType {
     POST               = 0; // post to group
-    ANNOUNCE           = 1; // producer or user self announce
     UPD_GRP_USER       = 2; // owner update group user
     CHAIN_CONFIG       = 3; // chain configuration
     APP_CONFIG         = 4; // app configuration
@@ -70,22 +64,6 @@ message UserItem {
    string     ProofTrxId          = 4;
    int64      TxCnt               = 5; //how many trx send by this user
    string     Memo                = 6;
-}
-
-message AnnounceItem {
-    string          GroupId         = 1;    
-    ActionType      Action          = 2;
-    AnnounceContent Content         = 3;
-    string          AnnouncerPubkey = 4;
-    bytes           Hash            = 5;
-    bytes           Signature       = 6;
-}
-
-message AnnounceContent {
-    AnnounceType    Type          = 1;    
-    string          SignPubkey    = 2;
-    string          EncryptPubkey = 3;
-    string          Memo          = 4;
 }
 
 enum ChainConfigType {

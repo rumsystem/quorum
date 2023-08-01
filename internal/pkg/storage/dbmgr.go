@@ -180,21 +180,6 @@ func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	return groupItemList, err
 }
 
-func (dbMgr *DbMgr) GetAllAnnounceInBytes(groupId string, Prefix ...string) ([][]byte, error) {
-	key := GetAnnouncedPrefix(groupId, Prefix...)
-	var announceByteList [][]byte
-
-	err := dbMgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		announceByteList = append(announceByteList, v)
-		return nil
-	})
-
-	return announceByteList, err
-}
-
 func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, prefix ...string) (int, error) {
 	key := GetAppConfigKey(groupId, itemKey, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))

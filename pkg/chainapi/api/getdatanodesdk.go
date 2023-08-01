@@ -23,8 +23,6 @@ const AUTH_DENYLIST string = "auth_denylist"
 const APPCONFIG_KEYLIST string = "appconfig_listlist"
 const APPCONFIG_ITEM_BYKEY string = "appconfig_item_bykey"
 
-const ANNOUNCED_PRODUCER string = "announced_producer"
-const ANNOUNCED_USER string = "announced_user"
 const GROUP_PRODUCER string = "group_producer"
 
 type GetDataNodeSDKItem struct {
@@ -175,36 +173,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			return rumerrors.NewBadRequestError(err)
 		}
 		return c.JSON(http.StatusOK, res)
-	case ANNOUNCED_PRODUCER:
-		item := new(AnnGrpProducer)
-		err = json.Unmarshal(decryptData, item)
-		if err != nil {
-			return rumerrors.NewBadRequestError("INVALID_DATA")
-		}
-		res, err := handlers.GetAnnouncedProducers(h.ChainAPIdb, item.GroupId)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-		return c.JSON(http.StatusOK, res)
-	case ANNOUNCED_USER:
-		item := new(AnnGrpUser)
-		err = json.Unmarshal(decryptData, item)
-		if err != nil {
-			return rumerrors.NewBadRequestError("INVALID_DATA")
-		}
-		if item.SignPubkey == "" {
-			res, err := handlers.GetAnnouncedUsers(h.ChainAPIdb, item.GroupId)
-			if err != nil {
-				return rumerrors.NewBadRequestError(err)
-			}
-			return c.JSON(http.StatusOK, res)
-		} else {
-			res, err := handlers.GetAnnouncedUser(h.ChainAPIdb, item.GroupId, item.SignPubkey)
-			if err != nil {
-				return rumerrors.NewBadRequestError(err)
-			}
-			return c.JSON(http.StatusOK, res)
-		}
 	case GROUP_PRODUCER:
 		item := new(GrpProducer)
 		err = json.Unmarshal(decryptData, item)

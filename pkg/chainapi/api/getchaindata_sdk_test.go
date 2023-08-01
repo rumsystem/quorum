@@ -84,60 +84,6 @@ func getChainDataByAppConfigItemByKey(urls []string, payload GetNSdkAppconfigByK
 	return &result, nil
 }
 
-func getChainDataByAnnouncedProducer(urls []string, payload GetNSdkAnnouncedProducerParams) ([]*handlers.AnnouncedProducerListItem, error) {
-	path := fmt.Sprintf("/api/v1/node/%s/announced/producer", payload.GroupId)
-	var result []*handlers.AnnouncedProducerListItem
-	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
-		return nil, err
-	}
-
-	for _, item := range result {
-		validate := validator.New()
-		if err := validate.Struct(item); err != nil {
-			e := fmt.Errorf("validate.Struct failed: %s, struct: %+v", err, item)
-			return nil, e
-		}
-	}
-
-	return result, nil
-}
-
-func getChainDataByAnnouncedUser(urls []string, payload GetNSdkAnnouncedUserParams) ([]*handlers.AnnouncedUserListItem, error) {
-	path := fmt.Sprintf("/api/v1/node/%s/announced/user", payload.GroupId)
-	var result []*handlers.AnnouncedUserListItem
-	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
-		return nil, err
-	}
-
-	for _, item := range result {
-		validate := validator.New()
-		if err := validate.Struct(item); err != nil {
-			e := fmt.Errorf("validate.Struct failed: %s, struct: %+v", err, item)
-			return nil, e
-		}
-	}
-
-	return result, nil
-}
-
-func getChainDataByGroupProducer(urls []string, payload GetNSdkGroupProducersParams) ([]*handlers.ProducerListItem, error) {
-	path := fmt.Sprintf("/api/v1/node/%s/producers", payload.GroupId)
-	var result []*handlers.ProducerListItem
-	if _, _, err := requestNSdk(urls, path, "GET", nil, nil, &result, true); err != nil {
-		return nil, err
-	}
-
-	for _, item := range result {
-		validate := validator.New()
-		if err := validate.Struct(item); err != nil {
-			e := fmt.Errorf("validate.Struct failed: %s, struct: %+v", err, item)
-			return nil, e
-		}
-	}
-
-	return result, nil
-}
-
 func getChainDataByGroupInfo(urls []string, payload GetNSdkGroupInfoParams) (*GrpInfoNodeSDK, error) {
 	path := fmt.Sprintf("/api/v1/node/%s/info", payload.GroupId)
 	var result GrpInfoNodeSDK

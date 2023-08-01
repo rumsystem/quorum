@@ -29,42 +29,6 @@ func (cs *Storage) RemoveAllProducers(groupId string, prefix ...string) error {
 	return err
 }
 
-func (cs *Storage) GetAnnouncedProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.AnnounceItem, error) {
-	key := s.GetAnnounceAsProducerKey(groupId, pubkey, prefix...)
-
-	value, err := cs.dbmgr.Db.Get([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-
-	var ann quorumpb.AnnounceItem
-	err = proto.Unmarshal(value, &ann)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ann, err
-}
-
-func (cs *Storage) GetAnnouncedProducers(groupId string, prefix ...string) ([]*quorumpb.AnnounceItem, error) {
-	var aList []*quorumpb.AnnounceItem
-	key := s.GetAnnounceAsProducerPrefix(groupId, prefix...)
-	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		item := quorumpb.AnnounceItem{}
-		perr := proto.Unmarshal(v, &item)
-		if perr != nil {
-			return perr
-		}
-		aList = append(aList, &item)
-		return nil
-	})
-
-	return aList, err
-}
-
 func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error) {
 	var pList []*quorumpb.ProducerItem
 	key := s.GetProducerPrefix(groupId, prefix...)
@@ -104,11 +68,6 @@ func (cs *Storage) GetProducer(groupId string, pubkey string, prefix ...string) 
 
 func (cs *Storage) IsProducer(groupId, pubkey string, prefix ...string) (bool, error) {
 	key := s.GetProducerKey(groupId, pubkey, prefix...)
-	return cs.dbmgr.Db.IsExist([]byte(key))
-}
-
-func (cs *Storage) IsProducerAnnounced(groupId, pubkey string, prefix ...string) (bool, error) {
-	key := s.GetAnnounceAsProducerKey(groupId, pubkey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }
 
