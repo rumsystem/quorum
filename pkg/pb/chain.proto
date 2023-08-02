@@ -157,9 +157,9 @@ message Block {
     uint64        BlockId        = 1;
     string        GroupId        = 2;
     bytes         PrevHash       = 3;  
-    repeated      Trx Trxs       = 4;
-    string        ProducerPubkey = 5;    
-    int64         TimeStamp      = 6;    
+    repeated      Trx Trxs       = 4;  
+    int64         TimeStamp      = 6;
+    string        ProducerPubkey = 5;          
     bytes         BlockHash      = 7;
     bytes         ProducerSign   = 8;  
 }
@@ -339,51 +339,58 @@ message NodeSDKGroupItem {
 
 //GroupItem Rum_lite
 
-enum GroupType {
-    PUBLIC_POA  = 0;
-    PRIVATE_POA = 1;
-}
-
-message PoaGroupConsensusInfo {
-    uint64            EpochDuration  = 1;
-    repeated string   Producers      = 2;
-    uint64            CurrEpoch      = 3;
-    uint64            CurrBlockId    = 4;
-}
-
-message PublicPOAGroupItem {
-    string                AppKey        = 1;
-    string                GroupId       = 2;
-    string                GroupName     = 3;
-    string                OwnerPubKey   = 4;
-    string                SignPubkey    = 5;
-    string                CipherKey     = 6;
-    Block                 GenesisBlock  = 7; 
-    PoaGroupConsensusInfo ConsensusInfo = 8;
-    int64                 LastUpdate    = 9;    
-}
-
-message PrivatePOAGroupItem {
-    string                AppKey            = 1;
-    string                GroupId           = 2;
-    string                GroupName         = 3;
-    string                OwnerPubKey       = 4;
-    string                UserSignPubkey    = 5;
-    string                UserEncryptPubkey = 6;
-    Block                 GenesisBlock      = 7;
-    PoaGroupConsensusInfo ConsensusInfo     = 8;
-    int64                 LastUpdate        = 9;    
+enum GroupSyncType {
+    PUBLIC_SYNC  = 0;
+    PRIVATE_SYNC = 1;
 }
 
 message GroupItemRumLite {
-    GroupType        Type      = 1;
-    bytes            GroupData = 2;
+    string               GroupId         = 1;
+    string               AppId           = 2;
+    string               AppName         = 3;
+    string               OwnerPubKey     = 4;
+    string               UserSignPubkey  = 5; 
+    bool                 EncryptTrx      = 6;
+    string               CipherKey       = 7;
+    GroupSyncType        SyncType        = 8;
+    GroupConsenseType    ConsenseType    = 9;
+    ConsensusInfoRumLite ConsensusInfo   = 10;
+    BlockRumLite         GenesisBlock    = 11;
+    int64                LastUpdate      = 12;
+}
+
+message ConsensusInfoRumLite {
+    reserved 2 to 100; //for other consensus type
+    POAConsensusInfo Poa = 1;
+}
+
+message POAConsensusInfo {  
+    string            ConsensusId    = 1;    
+    uint64            ChainVer       = 2;       
+    uint64            EpochDuration  = 3;
+    repeated string   Producers      = 4;
+    uint64            CurrEpoch      = 5;
+    uint64            CurrBlockId    = 6;
 }
 
 message GroupSeedRumLite {
     GroupItemRumLite  Group     = 1;
     bytes             Hash      = 2;
     bytes             Signature = 3;
+}
+
+//Block Rum_lite
+//BLOCK
+message BlockRumLite {    
+    uint64               BlockId        = 1;
+    string               GroupId        = 2;
+    bytes                PrevHash       = 3;  
+    repeated             Trx Trxs       = 4;  
+    int64                TimeStamp      = 5;
+    string               ProducerPubkey = 6;
+    ConsensusInfoRumLite ConsensusInfo  = 7;          
+    bytes                BlockHash      = 8;
+    bytes                ProducerSign   = 9;
 }
 
 //HB_MSG

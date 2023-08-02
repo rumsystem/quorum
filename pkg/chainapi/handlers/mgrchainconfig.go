@@ -13,7 +13,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
@@ -58,7 +57,7 @@ func MgrChainConfig(params *ChainConfigParams) (*ChainConfigResult, error) {
 
 	group := groupmgr.Groups[params.GroupId]
 
-	ks := nodectx.GetNodeCtx().Keystore
+	ks := localcrypto.GetKeystore()
 	base64key, err := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 	groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
 

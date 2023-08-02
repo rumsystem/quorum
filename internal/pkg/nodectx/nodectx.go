@@ -9,7 +9,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	chainstorage "github.com/rumsystem/quorum/internal/pkg/storage/chain"
 	"github.com/rumsystem/quorum/pkg/constants"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
 
 type NodeStatus int8
@@ -23,15 +22,13 @@ type NODE_TYPE int
 
 const (
 	BOOTSTRAP_NODE NODE_TYPE = iota
-	PRODUCER_NODE
-	FULL_NODE
+	RUM_NODE
 )
 
 type NodeCtx struct {
 	Node      *p2p.Node
 	NodeType  NODE_TYPE
 	PeerId    peer.ID
-	Keystore  localcrypto.Keystore
 	PublicKey p2pcrypto.PubKey
 	Name      string
 	Ctx       context.Context
@@ -44,12 +41,12 @@ var nodeCtx *NodeCtx
 
 var dbMgr *storage.DbMgr
 
-//singlaton
+// singlaton
 func GetNodeCtx() *NodeCtx {
 	return nodeCtx
 }
 
-//singlaton
+// singlaton
 func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }

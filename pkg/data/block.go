@@ -187,3 +187,105 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 
 	return true, nil
 }
+
+func CreateGenesisBlockRumLiteByEthKey(groupId string, producerPubkey string, consensus *quorumpb.ConsensusInfoRumLite, keystore localcrypto.Keystore, keyalias string) (*quorumpb.BlockRumLite, error) {
+	genesisBlockRumLite := &quorumpb.BlockRumLite{
+		BlockId:        0,
+		GroupId:        groupId,
+		PrevHash:       nil,
+		Trxs:           nil,
+		TimeStamp:      time.Now().UnixNano(),
+		ProducerPubkey: producerPubkey,
+		ConsensusInfo:  consensus,
+		BlockHash:      nil,
+		ProducerSign:   nil,
+	}
+
+	bbytes, err := proto.Marshal(genesisBlockRumLite)
+	if err != nil {
+		return nil, err
+	}
+
+	genesisBlockRumLite.BlockHash = localcrypto.Hash(bbytes)
+
+	signature, err := keystore.EthSignByKeyAlias(keyalias, genesisBlockRumLite.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	genesisBlockRumLite.ProducerSign = signature
+	return genesisBlockRumLite, nil
+}
+
+func ValidGenesisBlockRumLite(genesisBlock *quorumpb.BlockRumLite) (bool, error) {
+	//check blockid is 0
+	if genesisBlock.BlockId != 0 {
+		return false, fmt.Errorf("blockId for genesis block must be 0")
+	}
+
+	//check prevhash is nil
+	if genesisBlock.PrevHash != nil {
+		return false, fmt.Errorf("prevhash for genesis block must be nil")
+	}
+
+	if genesisBlock.ConsensusInfo == nil {
+		return false, fmt.Errorf("consensus info for genesis block must not be nil")
+	}
+
+	if genesisBlock.ConsensusInfo.Poa == nil {
+		return false, fmt.Errorf("consensus type for genesis block must be poa")
+	}
+
+	//check consensus info
+	if genesisBlock.ConsensusInfo.Poa.EpochDuration <= 0 ||
+		genesisBlock.ConsensusInfo.Poa.CurrBlockId != 0 ||
+		genesisBlock.ConsensusInfo.Poa.ChainVer != 0 ||
+		genesisBlock.ConsensusInfo.Poa.CurrEpoch != 0 ||
+		genesisBlock.ConsensusInfo.Poa.ConsensusId == "" ||
+		genesisBlock.ConsensusInfo.Poa.Producers == nil ||
+		len(genesisBlock.ConsensusInfo.Poa.Producers) != 1 {
+		return false, fmt.Errorf("consensus info for genesis block is invalid")
+	}
+
+	//dump block without hash and sign
+	genesisBlockWithoutHashAndSign := &quorumpb.BlockRumLite{
+		BlockId:        genesisBlock.BlockId,
+		GroupId:        genesisBlock.GroupId,
+		PrevHash:       genesisBlock.PrevHash,
+		Trxs:           genesisBlock.Trxs,
+		TimeStamp:      genesisBlock.TimeStamp,
+		ProducerPubkey: genesisBlock.ProducerPubkey,
+		ConsensusInfo:  genesisBlock.ConsensusInfo,
+		BlockHash:      nil,
+		ProducerSign:   nil,
+	}
+
+	//get hash
+	bts, err := proto.Marshal(genesisBlockWithoutHashAndSign)
+	if err != nil {
+		return false, err
+	}
+	hash := localcrypto.Hash(bts)
+
+	//check hash for block
+	if !bytes.Equal(hash, genesisBlock.BlockHash) {
+		return false, fmt.Errorf("hash for new block is invalid")
+	}
+
+	return VerifySign(genesisBlock.ProducerPubkey, genesisBlock.BlockHash, genesisBlock.ProducerSign)
+}
+
+func VerifySign(key string, hash, sign []byte) (bool, error) {
+	//verify signature
+	ks := localcrypto.GetKeystore()
+	bytespubkey, err := base64.RawURLEncoding.DecodeString(key)
+	if err == nil { //try eth key
+		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
+		if err == nil {
+			r := ks.EthVerifySign(hash, sign, ethpubkey)
+			return r, nil
+		}
+		return false, err
+	}
+	return false, err
+}

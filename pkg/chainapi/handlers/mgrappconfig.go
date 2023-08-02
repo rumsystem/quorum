@@ -11,7 +11,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
@@ -43,8 +42,7 @@ func MgrAppConfig(params *AppConfigParam) (*AppConfigResult, error) {
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return nil, rumerrors.ErrOnlyGroupOwner
 	} else {
-		ks := nodectx.GetNodeCtx().Keystore
-
+		ks := localcrypto.GetKeystore()
 		base64key, _ := ks.GetEncodedPubkey(params.GroupId, localcrypto.Sign)
 		groupSignPubkey, err := base64.RawURLEncoding.DecodeString(base64key)
 		//pubkeybytes, err := hex.DecodeString(hexkey)

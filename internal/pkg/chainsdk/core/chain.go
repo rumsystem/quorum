@@ -15,7 +15,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	"github.com/rumsystem/quorum/pkg/consensus"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
@@ -283,35 +282,37 @@ func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 // handle block msg from PSconn
 func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 	chain_log.Debugf("<%s> HandleBlockPsConn called", chain.groupItem.GroupId)
+	/*
 
-	//check if block is from a valid group producer
-	if !chain.IsProducerByPubkey(block.ProducerPubkey) {
-		chain_log.Warningf("<%s> received blockid <%d> from unknown producer <%s>, reject it", chain.groupItem.GroupId, block.BlockId, block.ProducerPubkey)
-		return nil
-	}
+		//check if block is from a valid group producer
+		if !chain.IsProducerByPubkey(block.ProducerPubkey) {
+			chain_log.Warningf("<%s> received blockid <%d> from unknown producer <%s>, reject it", chain.groupItem.GroupId, block.BlockId, block.ProducerPubkey)
+			return nil
+		}
 
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
-		err := chain.Consensus.Producer().AddBlock(block)
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+			chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
+			err := chain.Consensus.Producer().AddBlock(block)
+			if err != nil {
+				chain_log.Warningf("<%s> producer node add block error <%s>", chain.groupItem.GroupId, err.Error())
+				if err.Error() == "PARENT_NOT_EXIST" {
+					chain_log.Debugf("<%s> announced producer add block, parent not exist, blockId <%d>, currBlockId <%d>, wait syncing",
+						chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
+				}
+			}
+			return err
+		}
+
+		//Fullnode at block
+		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
-			chain_log.Warningf("<%s> producer node add block error <%s>", chain.groupItem.GroupId, err.Error())
+			chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
 			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Debugf("<%s> announced producer add block, parent not exist, blockId <%d>, currBlockId <%d>, wait syncing",
+				chain_log.Infof("<%s> block parent not exist, blockId <%s>, currBlockId <%d>, wait syncing",
 					chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
 			}
 		}
-		return err
-	}
-
-	//Fullnode at block
-	err := chain.Consensus.User().AddBlock(block)
-	if err != nil {
-		chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
-		if err.Error() == "PARENT_NOT_EXIST" {
-			chain_log.Infof("<%s> block parent not exist, blockId <%s>, currBlockId <%d>, wait syncing",
-				chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
-		}
-	}
+	*/
 
 	return nil
 }
@@ -457,26 +458,28 @@ func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 	chain_log.Warningf("<%s> TODO: add a lock in ApplyBlocks()", chain.groupItem.GroupId)
-	//PRODUCER_NODE add SYNC
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+	/*
+		//PRODUCER_NODE add SYNC
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
+			for _, block := range blocks {
+				err := chain.Consensus.Producer().AddBlock(block)
+				if err != nil {
+					chain_log.Warningf("<%s> ApplyBlocks error <%s>", chain.groupItem.GroupId, err.Error())
+					return err
+				}
+			}
+			return nil
+		}
+
+		//FULLNODE (include owner) Add synced Block
 		for _, block := range blocks {
-			err := chain.Consensus.Producer().AddBlock(block)
+			err := chain.Consensus.User().AddBlock(block)
 			if err != nil {
 				chain_log.Warningf("<%s> ApplyBlocks error <%s>", chain.groupItem.GroupId, err.Error())
 				return err
 			}
 		}
-		return nil
-	}
-
-	//FULLNODE (include owner) Add synced Block
-	for _, block := range blocks {
-		err := chain.Consensus.User().AddBlock(block)
-		if err != nil {
-			chain_log.Warningf("<%s> ApplyBlocks error <%s>", chain.groupItem.GroupId, err.Error())
-			return err
-		}
-	}
+	*/
 
 	return nil
 }
@@ -586,7 +589,7 @@ func (chain *Chain) updateProducerPool() {
 */
 func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
 	keys := []string{}
-	ks := nodectx.GetNodeCtx().Keystore
+	ks := localcrypto.GetKeystore()
 	mypubkey, err := ks.GetEncodedPubkey(chain.groupItem.GroupId, localcrypto.Encrypt)
 	if err != nil {
 		return nil, err
@@ -604,51 +607,52 @@ func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
 func (chain *Chain) CreateConsensus() error {
 	chain_log.Debugf("<%s> CreateConsensus called", chain.groupItem.GroupId)
 
-	var user def.User
-	var producer def.Producer
-	var consensusProposer def.ConsensusProposer
+	/*
+		var user def.User
+		var producer def.Producer
+		var consensusProposer def.ConsensusProposer
 
-	var shouldCreateUser, shouldCreateProducer, shouldCreateConsensusProposer bool
+		var shouldCreateUser, shouldCreateProducer, shouldCreateConsensusProposer bool
 
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		shouldCreateProducer = true
-		shouldCreateUser = false
-		shouldCreateConsensusProposer = true
-	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-		//check if I am owner of the Group
-		if chain.groupItem.UserSignPubkey == chain.groupItem.OwnerPubKey {
+		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 			shouldCreateProducer = true
+			shouldCreateUser = false
 			shouldCreateConsensusProposer = true
+		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
+			//check if I am owner of the Group
+			if chain.groupItem.UserSignPubkey == chain.groupItem.OwnerPubKey {
+				shouldCreateProducer = true
+				shouldCreateConsensusProposer = true
+			} else {
+				shouldCreateProducer = false
+				shouldCreateConsensusProposer = false
+			}
+			shouldCreateUser = true
 		} else {
-			shouldCreateProducer = false
-			shouldCreateConsensusProposer = false
+			return fmt.Errorf("unknow nodetype")
 		}
-		shouldCreateUser = true
-	} else {
-		return fmt.Errorf("unknow nodetype")
-	}
 
-	if shouldCreateProducer {
-		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
-		producer = &consensus.MolassesProducer{}
-		producer.NewProducer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
-	}
+		if shouldCreateProducer {
+			chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
+			producer = &consensus.MolassesProducer{}
+			producer.NewProducer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
+		}
 
-	if shouldCreateUser {
-		chain_log.Infof("<%s> Create and initial molasses user", chain.groupItem.GroupId)
-		user = &consensus.MolassesUser{}
-		user.NewUser(chain.groupItem, chain.nodename, chain)
-	}
+		if shouldCreateUser {
+			chain_log.Infof("<%s> Create and initial molasses user", chain.groupItem.GroupId)
+			user = &consensus.MolassesUser{}
+			user.NewUser(chain.groupItem, chain.nodename, chain)
+		}
 
-	if shouldCreateConsensusProposer {
-		chain_log.Infof("<%s> Create and initial molasses consensusproposer", chain.groupItem.GroupId)
-		consensusProposer = &consensus.MolassesConsensusProposer{}
-		consensusProposer.NewConsensusProposer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
-	}
+		if shouldCreateConsensusProposer {
+			chain_log.Infof("<%s> Create and initial molasses consensusproposer", chain.groupItem.GroupId)
+			consensusProposer = &consensus.MolassesConsensusProposer{}
+			consensusProposer.NewConsensusProposer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
+		}
 
-	chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)
-	chain.Consensus.StartProposeTrx()
-
+		chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)
+		chain.Consensus.StartProposeTrx()
+	*/
 	return nil
 }
 

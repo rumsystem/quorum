@@ -31,54 +31,54 @@ import (
 )
 
 var (
-	fnodeFlag        = cli.FullNodeFlag{ProtocolID: "/quorum/1.0.0"}
-	fullNode         *p2p.Node
-	fullNodeSignalch chan os.Signal
+	rumNodeFlag     = cli.RumNodeFlag{ProtocolID: "/quorum/1.0.0"}
+	rumNode         *p2p.Node
+	rumNodeSignalch chan os.Signal
 )
 
-var fullnodeCmd = &cobra.Command{
-	Use:   "fullnode",
-	Short: "Run fullnode",
+var rumNodeCmd = &cobra.Command{
+	Use:   "rumNode",
+	Short: "Run rumNode",
 	Run: func(cmd *cobra.Command, args []string) {
-		if fnodeFlag.KeyStorePwd == "" {
-			fnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
+		if rumNodeFlag.KeyStorePwd == "" {
+			rumNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
-		fnodeFlag.IsDebug = isDebug
-		runFullnode(fnodeFlag)
+		rumNodeFlag.IsDebug = isDebug
+		runRumnode(rumNodeFlag)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(fullnodeCmd)
+	rootCmd.AddCommand(rumNodeCmd)
 
-	flags := fullnodeCmd.Flags()
+	flags := rumNodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&fnodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&fnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "data dir")
-	flags.StringVar(&fnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&fnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&fnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.Var(&fnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&fnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&fnodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&fnodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
-	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
-	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.StringVar(&fnodeFlag.SkipPeers, "skippeers", "", "peer id lists, will be skipped in the pubsub connection")
-	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
-	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
+	flags.StringVar(&rumNodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&rumNodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flags.StringVar(&rumNodeFlag.DataDir, "datadir", "./data/", "data dir")
+	flags.StringVar(&rumNodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
+	flags.StringVar(&rumNodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
+	flags.StringVar(&rumNodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
+	flags.Var(&rumNodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&rumNodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&rumNodeFlag.APIPort, "apiport", 5215, "api server listen port")
+	flags.StringVar(&rumNodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
+	flags.StringVar(&rumNodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
+	flags.Var(&rumNodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.StringVar(&rumNodeFlag.SkipPeers, "skippeers", "", "peer id lists, will be skipped in the pubsub connection")
+	flags.StringVar(&rumNodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
+	flags.BoolVar(&rumNodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
+	flags.BoolVar(&rumNodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 
-func runFullnode(config cli.FullNodeFlag) {
+func runRumnode(config cli.RumNodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
 	color.Green("Version: %s", utils.GitCommit)
 
-	fullNodeSignalch = make(chan os.Signal, 1)
+	rumNodeSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -132,7 +132,7 @@ func runFullnode(config cli.FullNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	nodename := "fullnode_default"
+	nodename := "rumNode_default"
 
 	datapath := config.DataDir + "/" + config.PeerName
 	dbManager, err := storage.CreateDb(datapath)
@@ -148,19 +148,18 @@ func runFullnode(config cli.FullNodeFlag) {
 	}
 
 	SkipPeerIdList := strings.Split(config.SkipPeers, ",")
-	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, SkipPeerIdList, config.JsonTracer)
-	//fullnode must enable rumexchange for sync block
+	rumNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, SkipPeerIdList, config.JsonTracer)
+	//rumNode must enable rumexchange for sync block
 	if err == nil {
-		fullNode.SetRumExchange(ctx)
+		rumNode.SetRumExchange(ctx)
 	}
 
-	for _, addr := range fullNode.Host.Addrs() {
-		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), fullNode.Host.ID())
-		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", fullNode.Host.ID(), p2paddr)
+	for _, addr := range rumNode.Host.Addrs() {
+		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), rumNode.Host.ID())
+		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", rumNode.Host.ID(), p2paddr)
 	}
 
-	nodectx.InitCtx(ctx, nodename, fullNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.FULL_NODE)
-	nodectx.GetNodeCtx().Keystore = ks
+	nodectx.InitCtx(ctx, nodename, rumNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.RUM_NODE)
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
 
@@ -179,15 +178,15 @@ func runFullnode(config cli.FullNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	if err := fullNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+	if err := rumNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
 		logger.Fatal(err)
 	}
 	//Discovery and Advertise had been replaced by PeerExchange
 	logger.Infof("Announcing ourselves...")
-	discovery.Advertise(ctx, fullNode.RoutingDiscovery, config.RendezvousString)
+	discovery.Advertise(ctx, rumNode.RoutingDiscovery, config.RendezvousString)
 	logger.Infof("Successfully announced!")
 	peerok := make(chan struct{})
-	go fullNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
+	go rumNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 
 	appdb, err := appdata.CreateAppDb(datapath)
 	if err != nil {
@@ -208,7 +207,7 @@ func runFullnode(config cli.FullNodeFlag) {
 
 	//run local http api service
 	h := &api.Handler{
-		Node:             fullNode,
+		Node:             rumNode,
 		NodeCtx:          nodectx.GetNodeCtx(),
 		Ctx:              ctx,
 		GitCommit:        utils.GitCommit,
@@ -236,12 +235,12 @@ func runFullnode(config cli.FullNodeFlag) {
 		CertDir:       config.CertDir,
 		ZeroAccessKey: config.ZeroAccessKey,
 	}
-	go api.StartFullNodeServer(startParam, fullNodeSignalch, h, apph, fullNode, nodeoptions, ks, ethaddr)
+	go api.StartRumNodeServer(startParam, rumNodeSignalch, h, apph, rumNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
-	signal.Notify(fullNodeSignalch, os.Interrupt, syscall.SIGTERM)
-	signalType := <-fullNodeSignalch
-	signal.Stop(fullNodeSignalch)
+	signal.Notify(rumNodeSignalch, os.Interrupt, syscall.SIGTERM)
+	signalType := <-rumNodeSignalch
+	signal.Stop(rumNodeSignalch)
 
 	chain.GetGroupMgr().StopSyncAllGroups()
 	//teardown all groups

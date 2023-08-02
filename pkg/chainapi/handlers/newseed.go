@@ -6,28 +6,30 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	guuid "github.com/google/uuid"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	"github.com/rumsystem/quorum/pkg/pb"
+	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
 type NewSeedParams struct {
-	AppKey         string `from:"app_key"         json:"app_key"         validate:"required,max=20,min=4" example:"test_app"`
-	GroupName      string `from:"group_name"      json:"group_name"      validate:"required,max=100,min=2" example:"demo group"`
-	ConsensusType  string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa" example:"poa"`
-	EncryptionType string `from:"encryption_type" json:"encryption_type" validate:"required,oneof=public private" example:"public"`
+	AppId         string `from:"app_id"          json:"app_id"          validate:"required"` //uuid
+	AppName       string `from:"app_name"        json:"app_name"        validate:"required,max=100,min=2" example:"demo app"`
+	ConsensusType string `from:"consensus_type"  json:"consensus_type"  validate:"required,oneof=pos poa" example:"poa"`
+	SyncType      string `from:"sync_type"       json:"sync_type"       validate:"required,oneof=public private" example:"public"`
+	EncryptTrx    bool   `from:"encrypt_trx"     json:"encrypt_trx"     validate:"required" example:"true"`
+	Url           string `from:"url"             json:"url"             example:"https://www.rumdemo.com"` //point to somewhere, like app website
 }
 
 type NewSeedResult struct {
-	AppKey  string               `json:"app_key"           validate:"required" example:"test_app"`
-	GroupId string               `json:"group_id" validate:"required,uuid4" example:"c0020941-e648-40c9-92dc-682645acd17e"`
-	Seed    *pb.GroupSeedRumLite `json:"seed" validate:"required"`
+	GroupId string `json:"group_id" validate:"required,uuid4" example:"c0020941-e648-40c9-92dc-682645acd17e"`
+	Seed    []byte `json:"seed" validate:"required"`
 }
 
 const DEFAULT_EPOCH_DURATION = 1000 //ms
+const NEO_PRODUCER_SIGNKEY_SURFIX = "_neo_producer_signkey"
 
 func NewSeed(params *NewSeedParams, nodeoptions *options.NodeOptions) (*NewSeedResult, error) {
 	validate := validator.New()
@@ -35,96 +37,113 @@ func NewSeed(params *NewSeedParams, nodeoptions *options.NodeOptions) (*NewSeedR
 		return nil, err
 	}
 
+	var consensusType quorumpb.GroupConsenseType
 	if params.ConsensusType != "poa" {
 		return nil, errors.New("consensus_type must be poa, other types are not supported in rum-lite")
 	}
+	consensusType = quorumpb.GroupConsenseType_POA
 
-	if params.EncryptionType != "public" {
-		return nil, errors.New("encryption_type must be public, other types are not supported in rum-lite")
+	var syncType quorumpb.GroupSyncType
+
+	if params.SyncType != "public" {
+		syncType = quorumpb.GroupSyncType_PUBLIC_SYNC
+	} else {
+		syncType = quorumpb.GroupSyncType_PRIVATE_SYNC
 	}
 
 	//create groupid
 	groupid := guuid.New().String()
 
 	//init keystore
-	ks := nodectx.GetNodeCtx().Keystore
+	ks := localcrypto.GetKeystore()
 
 	//init ownerpubkey
-	ownerpubkey, err := initSignKey(groupid, ks, nodeoptions)
+	ownerpubkey, err := localcrypto.InitSignKeyWithKeyName(groupid, nodeoptions)
 	if err != nil {
-		return nil, errors.New("group key can't be decoded, err:" + err.Error())
+		return nil, errors.New("initial group owner keypair failed, err:" + err.Error())
 	}
 
-	//init cipher key
-	cipherKey, err := localcrypto.CreateAesKey()
+	//initial first producer pubkey
+	neoProducerPubkey, err := localcrypto.InitSignKeyWithKeyName(groupid+NEO_PRODUCER_SIGNKEY_SURFIX, nodeoptions)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("initial group  neo producer keypari failed, err:" + err.Error())
 	}
 
-	//create genesis block
-	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid, ownerpubkey, ks, "")
-	if err != nil {
-		return nil, err
+	var cipherKey string
+	if params.EncryptTrx {
+		//init cipher key
+		cipherKeyBytes, err := localcrypto.CreateAesKey()
+		if err != nil {
+			return nil, err
+		}
+		cipherKey = hex.EncodeToString(cipherKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		cipherKey = ""
 	}
 
-	groupConsensusInfo := &pb.PoaGroupConsensusInfo{
+	poaConsensusInfo := &pb.POAConsensusInfo{
+		ConsensusId:   guuid.New().String(),
+		ChainVer:      0,
 		EpochDuration: DEFAULT_EPOCH_DURATION,
-		Producers:     []string{ownerpubkey},
+		Producers:     []string{neoProducerPubkey},
 		CurrEpoch:     0,
 		CurrBlockId:   0,
 	}
 
-	//initial PublicPoaGroupItem
-	publicPoaGroup := &pb.PublicPOAGroupItem{
-		AppKey:        params.AppKey,
-		GroupId:       groupid,
-		GroupName:     params.GroupName,
-		OwnerPubKey:   ownerpubkey,
-		SignPubkey:    ownerpubkey,
-		CipherKey:     hex.EncodeToString(cipherKey),
-		GenesisBlock:  genesisBlock,
-		ConsensusInfo: groupConsensusInfo,
+	consensusInfo := &pb.ConsensusInfoRumLite{
+		Poa: poaConsensusInfo,
 	}
 
-	//marshal PublicPoaGroupItem
-	publicPoaGroupByts, err := proto.Marshal(publicPoaGroup)
+	//create genesis block
+	genesisBlock, err := rumchaindata.CreateGenesisBlockRumLiteByEthKey(groupid, neoProducerPubkey, consensusInfo, ks, neoProducerPubkey)
 	if err != nil {
 		return nil, err
-	} //
+	}
 
 	//create GroupItemRumLite
 	groupItem := &pb.GroupItemRumLite{
-		Type:      pb.GroupType_PUBLIC_POA,
-		GroupData: publicPoaGroupByts,
+		AppId:   params.AppId,
+		AppName: params.AppName,
+		GroupId: groupid,
+
+		OwnerPubKey:    ownerpubkey,
+		UserSignPubkey: ownerpubkey,
+		EncryptTrx:     params.EncryptTrx,
+		CipherKey:      cipherKey,
+		SyncType:       syncType,
+		ConsenseType:   consensusType,
+		ConsensusInfo:  consensusInfo,
+		GenesisBlock:   genesisBlock,
+		LastUpdate:     genesisBlock.TimeStamp,
 	}
 
-	//marshal GroupItemRumLite
+	//hash groupItem
 	groupItemByts, err := proto.Marshal(groupItem)
 	if err != nil {
 		return nil, err
 	}
 
-	//create hash
 	hash := localcrypto.Hash(groupItemByts)
 
-	//create signature
+	//sign hash by owner key (groupId)
 	signature, err := ks.EthSignByKeyAlias(groupid, hash)
-	if err != nil {
-		return nil, err
-	}
 
-	//create GroupSeedRumLite
-	groupSeed := &pb.GroupSeedRumLite{
+	seed := &pb.GroupSeedRumLite{
 		Group:     groupItem,
 		Hash:      hash,
 		Signature: signature,
 	}
 
-	result := &NewSeedResult{
-		AppKey:  params.AppKey,
-		GroupId: groupid,
-		Seed:    groupSeed,
+	seedByts, err := proto.Marshal(seed)
+	if err != nil {
+		return nil, err
 	}
 
-	return result, nil
+	return &NewSeedResult{
+		GroupId: groupid,
+		Seed:    seedByts,
+	}, nil
 }
