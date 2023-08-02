@@ -54,17 +54,16 @@ func NewSeed(params *NewSeedParams, nodeoptions *options.NodeOptions) (*NewSeedR
 	//create groupid
 	groupid := guuid.New().String()
 
-	//init keystore
-	ks := localcrypto.GetKeystore()
-
 	//init ownerpubkey
-	ownerpubkey, err := localcrypto.InitSignKeyWithKeyName(groupid, nodeoptions)
+	ownerKeyname := groupid
+	ownerpubkey, err := localcrypto.InitSignKeyWithKeyName(ownerKeyname, nodeoptions)
 	if err != nil {
 		return nil, errors.New("initial group owner keypair failed, err:" + err.Error())
 	}
 
 	//initial first producer pubkey
-	neoProducerPubkey, err := localcrypto.InitSignKeyWithKeyName(groupid+NEO_PRODUCER_SIGNKEY_SURFIX, nodeoptions)
+	neoProducerKeyname := groupid + NEO_PRODUCER_SIGNKEY_SURFIX
+	neoProducerPubkey, err := localcrypto.InitSignKeyWithKeyName(neoProducerKeyname, nodeoptions)
 	if err != nil {
 		return nil, errors.New("initial group  neo producer keypari failed, err:" + err.Error())
 	}
@@ -98,17 +97,16 @@ func NewSeed(params *NewSeedParams, nodeoptions *options.NodeOptions) (*NewSeedR
 	}
 
 	//create genesis block
-	genesisBlock, err := rumchaindata.CreateGenesisBlockRumLiteByEthKey(groupid, neoProducerPubkey, consensusInfo, ks, neoProducerPubkey)
+	genesisBlock, err := rumchaindata.CreateGenesisBlockRumLiteByEthKey(groupid, neoProducerPubkey, neoProducerKeyname, consensusInfo)
 	if err != nil {
 		return nil, err
 	}
 
 	//create GroupItemRumLite
 	groupItem := &pb.GroupItemRumLite{
-		AppId:   params.AppId,
-		AppName: params.AppName,
-		GroupId: groupid,
-
+		AppId:          params.AppId,
+		AppName:        params.AppName,
+		GroupId:        groupid,
 		OwnerPubKey:    ownerpubkey,
 		UserSignPubkey: ownerpubkey,
 		EncryptTrx:     params.EncryptTrx,
@@ -126,10 +124,13 @@ func NewSeed(params *NewSeedParams, nodeoptions *options.NodeOptions) (*NewSeedR
 		return nil, err
 	}
 
-	hash := localcrypto.Hash(groupItemByts)
-
 	//sign hash by owner key (groupId)
-	signature, err := ks.EthSignByKeyAlias(groupid, hash)
+	hash := localcrypto.Hash(groupItemByts)
+	signature, err := localcrypto.GetKeystore().EthSignByKeyName(ownerKeyname, hash)
+
+	if err != nil {
+		return nil, err
+	}
 
 	seed := &pb.GroupSeedRumLite{
 		Group:     groupItem,
