@@ -37,8 +37,8 @@ var (
 )
 
 var rumNodeCmd = &cobra.Command{
-	Use:   "rumNode",
-	Short: "Run rumNode",
+	Use:   "rumnode",
+	Short: "Run rumnode",
 	Run: func(cmd *cobra.Command, args []string) {
 		if rumNodeFlag.KeyStorePwd == "" {
 			rumNodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")

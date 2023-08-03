@@ -84,10 +84,11 @@ func StartRumNodeServer(config StartServerParam, signalch chan os.Signal, h *Han
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
-	r.POST("/v2/group/newseed", h.NewSeed())
-	r.POST("/v2/group/joinbyseed", h.JoinGroupBySeed())
+	r.POST("/v2/rumlite/group/newseed", h.NewSeed())
+	r.POST("/v2/rumlite/group/joinbyseed", h.JoinGroupBySeed())
+	r.POST("/v2/rumlite/keystore/createsignkey", h.CreateSignKey())
 
-	r.POST("/v2/group/joinbyurl", h.JoinGroupByUrl())
+	//r.POST("/v2/group/joinbyurl", h.JoinGroupByUrl()) TBD
 
 	r.POST("/v1/group", h.CreateGroupUrl())
 
