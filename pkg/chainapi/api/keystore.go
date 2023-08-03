@@ -27,11 +27,49 @@ func (h *Handler) CreateSignKey() echo.HandlerFunc {
 			return err
 		}
 
-		seed, err := handlers.CreateSignKey(params, options.GetNodeOptions())
+		result, err := handlers.CreateSignKey(params, options.GetNodeOptions())
 		if err != nil {
 			return err
 		}
 
-		return c.JSON(http.StatusOK, seed)
+		return c.JSON(http.StatusOK, result)
 	}
 }
+
+/*
+func (h *Handler) RmSignKeyByKeyName() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		cc := c.(*utils.CustomContext)
+
+		params := new(handlers.RmSignKeyByKeyNameParams)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
+		}
+
+		result, err := handlers.RmSignKeyByKeyName(params, options.GetNodeOptions())
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(http.StatusOK, result)
+	}
+}
+
+func (h *Handler) RmSignKeyByAlias() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		cc := c.(*utils.CustomContext)
+
+		params := new(handlers.RmSignKeyByAliasParams)
+		if err := cc.BindAndValidate(params); err != nil {
+			return err
+		}
+
+		result, err := handlers.RmSignKeyByAlias(params, options.GetNodeOptions())
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(http.StatusOK, result)
+	}
+}
+*/

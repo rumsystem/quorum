@@ -188,7 +188,7 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 	return true, nil
 }
 
-func CreateGenesisBlockRumLiteByEthKey(groupId string, neoProducerPubkey, neoProducerPubkeyName string, consensus *quorumpb.ConsensusInfoRumLite) (*quorumpb.BlockRumLite, error) {
+func CreateGenesisBlockRumLiteByEthKey(groupId string, ownerPubkey, ownerKeyName string, consensus *quorumpb.ConsensusInfoRumLite) (*quorumpb.BlockRumLite, error) {
 	ks := localcrypto.GetKeystore()
 	genesisBlockRumLite := &quorumpb.BlockRumLite{
 		BlockId:        0,
@@ -196,7 +196,7 @@ func CreateGenesisBlockRumLiteByEthKey(groupId string, neoProducerPubkey, neoPro
 		PrevHash:       nil,
 		Trxs:           nil,
 		TimeStamp:      time.Now().UnixNano(),
-		ProducerPubkey: neoProducerPubkey,
+		ProducerPubkey: ownerPubkey,
 		ConsensusInfo:  consensus,
 		BlockHash:      nil,
 		ProducerSign:   nil,
@@ -209,7 +209,7 @@ func CreateGenesisBlockRumLiteByEthKey(groupId string, neoProducerPubkey, neoPro
 
 	genesisBlockRumLite.BlockHash = localcrypto.Hash(bbytes)
 
-	signature, err := ks.EthSignByKeyName(neoProducerPubkeyName, genesisBlockRumLite.BlockHash)
+	signature, err := ks.EthSignByKeyName(ownerKeyName, genesisBlockRumLite.BlockHash)
 	if err != nil {
 		return nil, err
 	}

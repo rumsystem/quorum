@@ -22,12 +22,12 @@ func (h *Handler) NewSeed() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
 
-		params := new(handlers.NewSeedParams)
+		params := new(handlers.NewGroupSeedParams)
 		if err := cc.BindAndValidate(params); err != nil {
 			return err
 		}
 
-		seed, err := handlers.NewSeed(params, options.GetNodeOptions())
+		seed, err := handlers.NewGroupSeed(params, options.GetNodeOptions())
 		if err != nil {
 			return err
 		}

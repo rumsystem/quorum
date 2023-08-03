@@ -338,10 +338,14 @@ message NodeSDKGroupItem {
 }
 
 //GroupItem Rum_lite
-
 enum GroupSyncType {
     PUBLIC_SYNC  = 0;
     PRIVATE_SYNC = 1;
+}
+
+enum GroupChainType {
+    ARCHIVE_CHAIN = 0;
+    DYNAMIC_CHAIN = 1;
 }
 
 message GroupItemRumLite {
@@ -349,14 +353,15 @@ message GroupItemRumLite {
     string               AppId           = 2;
     string               AppName         = 3;
     string               OwnerPubKey     = 4;
-    string               UserSignPubkey  = 5; 
+    string               TrxSignPubkey   = 5; 
     bool                 EncryptTrx      = 6;
     string               CipherKey       = 7;
     GroupSyncType        SyncType        = 8;
     GroupConsenseType    ConsenseType    = 9;
-    ConsensusInfoRumLite ConsensusInfo   = 10;
-    BlockRumLite         GenesisBlock    = 11;
-    int64                LastUpdate      = 12;
+    GroupChainType       ChainType       = 10;
+    ConsensusInfoRumLite ConsensusInfo   = 11;
+    BlockRumLite         GenesisBlock    = 12;
+    int64                LastUpdate      = 13;
 }
 
 message ConsensusInfoRumLite {

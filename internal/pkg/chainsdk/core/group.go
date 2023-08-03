@@ -37,7 +37,7 @@ func (grp *GroupRumLite) JoinGroup(groupItem *quorumpb.GroupItemRumLite) error {
 		return err
 	}
 
-	groupItem.UserSignPubkey = myGroupSignPubkey
+	groupItem.TrxSignPubkey = myGroupSignPubkey
 	grp.Item = groupItem
 	grp.GroupId = groupItem.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
