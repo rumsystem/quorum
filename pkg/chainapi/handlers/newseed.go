@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/go-playground/validator/v10"
 	guuid "github.com/google/uuid"
 	"github.com/rumsystem/quorum/internal/pkg/options"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
@@ -22,7 +21,6 @@ type NewGroupSeedParams struct {
 	EncryptTrx         bool   `from:"encrypt_trx"               json:"encrypt_trx"               validate:"required" example:"true"`
 	CtnType            string `from:"ctn_type"                  json:"ctn_type"                  validate:"required,oneof=blob service" example:"blob"`
 	OwnerKeyName       string `from:"owner_keyname"             json:"owner_keyname"             example:"group_owner_key_name"`
-	TrxSignKeyName     string `from:"trx_sign_keyname"          json:"trx_sign_keyname"          example:"my_sign_pubkey_name"`
 	NeoProducerKeyName string `from:"neoproducer_sign_keyname"  json:"neoproducer_sign_keyname"  example:"general_producer_pubkey_name"`
 	EpochDuration      int64  `from:"epoch_duration"            json:"epoch_duration"            validate:"required" example:"1000"` //ms
 	Url                string `from:"url"                       json:"url"                       example:"https://www.rumdemo.com"`  //point to somewhere, like app website
@@ -31,22 +29,15 @@ type NewGroupSeedParams struct {
 type NewGroupSeedResult struct {
 	GroupId         string               `json:"group_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
 	OwnerKeyName    string               `json:"owner_keyname" validate:"required" example:"group_owner_key_name"`
-	TrxSignKeyName  string               `json:"trx_sign_keyname" validate:"required" example:"my_sign_pubkey_name"`
 	ProducerKeyName string               `json:"producer_sign_keyname" validate:"required" example:"general_producer_pubkey_name"`
 	Seed            *pb.GroupSeedRumLite `json:"seed" validate:"required"`
 	SeedByts        []byte               `json:"seed_byts" validate:"required"`
 }
 
 const DEFAULT_EPOCH_DURATION = 1000 //ms
-const TRX_SIGNKEY_SURFIX = "_trx_sign_keyname"
 const NEOPROUDCER_SIGNKEY_SURFIX = "_neoproducer_sign_keyname"
 
 func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) (*NewGroupSeedResult, error) {
-	validate := validator.New()
-	if err := validate.Struct(params); err != nil {
-		return nil, err
-	}
-
 	var consensusType quorumpb.GroupConsenseType
 	if params.ConsensusType != "poa" {
 		return nil, errors.New("consensus_type must be poa, other types are not supported in rum-lite")
@@ -89,22 +80,6 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 		ownerPubkey, err = ks.GetEncodedPubkey(ownerKeyName, localcrypto.Sign)
 		if err != nil {
 			return nil, errors.New("owner_keyname not found in local keystore")
-		}
-	}
-
-	var trxSignKeyName, trxSignPubkey string
-	if params.TrxSignKeyName == "" {
-		//init trx sign key
-		trxSignKeyName = groupid + TRX_SIGNKEY_SURFIX
-		trxSignPubkey, err = localcrypto.InitSignKeyWithKeyName(trxSignKeyName, nodeoptions)
-		if err != nil {
-			return nil, errors.New("initial group trx sign keypair failed, err:" + err.Error())
-		}
-	} else {
-		trxSignKeyName = params.TrxSignKeyName
-		trxSignPubkey, err = ks.GetEncodedPubkey(trxSignKeyName, localcrypto.Sign)
-		if err != nil {
-			return nil, errors.New("trx_sign_keyname not found in local keystore")
 		}
 	}
 
@@ -166,7 +141,7 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 		AppName:       params.AppName,
 		GroupId:       groupid,
 		OwnerPubKey:   ownerPubkey,
-		TrxSignPubkey: trxSignPubkey,
+		TrxSignPubkey: "",
 		EncryptTrxCtn: params.EncryptTrx,
 		CipherKey:     cipherKey,
 		SyncType:      syncType,
@@ -205,7 +180,6 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 	return &NewGroupSeedResult{
 		GroupId:         groupid,
 		OwnerKeyName:    ownerKeyName,
-		TrxSignKeyName:  trxSignKeyName,
 		ProducerKeyName: producerKeyName,
 		Seed:            seed,
 		SeedByts:        seedByts,

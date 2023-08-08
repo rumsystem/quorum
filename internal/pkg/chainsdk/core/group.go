@@ -6,13 +6,14 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/conn"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/options"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 var group_log = logging.Logger("group")
+
+const TRX_SIGNKEY_SURFIX = "_trx_sign_keyname"
 
 type Group struct {
 	Item     *quorumpb.GroupItem
@@ -31,13 +32,6 @@ type GroupRumLite struct {
 func (grp *GroupRumLite) JoinGroup(groupItem *quorumpb.GroupItemRumLite) error {
 	group_log.Debugf("<%s> JoinGoup called", groupItem.GroupId)
 
-	//initial my sign key
-	myGroupSignPubkey, err := localcrypto.InitSignKeyWithKeyName(groupItem.GroupId, options.GetNodeOptions())
-	if err != nil {
-		return err
-	}
-
-	groupItem.TrxSignPubkey = myGroupSignPubkey
 	grp.Item = groupItem
 	grp.GroupId = groupItem.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name

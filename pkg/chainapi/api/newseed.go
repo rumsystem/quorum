@@ -15,7 +15,7 @@ import (
 // @Description Create a new group seed
 // @Accept json
 // @Produce json
-// @Param data body handlers.NewGroupSeedParams true "GroupInfo"
+// @Param data body handlers.NewGroupSeedParams true "NewGroupSeedParams"
 // @Success 200 {object} handlers.NewGroupSeedResult
 // @Router /api/v2/rumlite/group/newseed [post]
 func (h *Handler) NewSeed() echo.HandlerFunc {
