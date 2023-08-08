@@ -11,13 +11,13 @@ import (
 )
 
 // @Tags Groups
-// @Summary CreateGroupUrl
-// @Description Create a new group
+// @Summary NewSeed
+// @Description Create a new group seed
 // @Accept json
 // @Produce json
-// @Param data body handlers.CreateGroupParam true "GroupInfo"
-// @Success 200 {object} handlers.CreateGroupResult
-// @Router /api/v1/group [post]
+// @Param data body handlers.NewGroupSeedParams true "GroupInfo"
+// @Success 200 {object} handlers.NewGroupSeedResult
+// @Router /api/v2/rumlite/group/newseed [post]
 func (h *Handler) NewSeed() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)

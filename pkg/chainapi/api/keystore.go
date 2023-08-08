@@ -11,13 +11,13 @@ import (
 )
 
 // @Tags Groups
-// @Summary CreateGroupUrl
-// @Description Create a new group
+// @Summary CreateSignKey
+// @Description Create a new eth sign key pair
 // @Accept json
 // @Produce json
-// @Param data body handlers.CreateGroupParam true "GroupInfo"
-// @Success 200 {object} handlers.CreateGroupResult
-// @Router /api/v1/group [post]
+// @Param data body handlers.CreateSignKeyParams true "SignKeyInfo"
+// @Success 200 {object} handlers.CreateSignKeyResult
+// @Router /api/v2/rumlite/keystore/createsignkey [post]
 func (h *Handler) CreateSignKey() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)

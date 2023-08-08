@@ -20,7 +20,7 @@ type NewGroupSeedParams struct {
 	ConsensusType      string `from:"consensus_type"            json:"consensus_type"            validate:"required,oneof=pos poa" example:"poa"`
 	SyncType           string `from:"sync_type"                 json:"sync_type"                 validate:"required,oneof=public private" example:"public"`
 	EncryptTrx         bool   `from:"encrypt_trx"               json:"encrypt_trx"               validate:"required" example:"true"`
-	ChainType          string `from:"chain_type"                json:"chain_type"                validate:"required,oneof=archive dynamic" example:"archive"`
+	CtnType            string `from:"ctn_type"                  json:"ctn_type"                  validate:"required,oneof=blob service" example:"blob"`
 	OwnerKeyName       string `from:"owner_keyname"             json:"owner_keyname"             example:"group_owner_key_name"`
 	TrxSignKeyName     string `from:"trx_sign_keyname"          json:"trx_sign_keyname"          example:"my_sign_pubkey_name"`
 	NeoProducerKeyName string `from:"neoproducer_sign_keyname"  json:"neoproducer_sign_keyname"  example:"general_producer_pubkey_name"`
@@ -62,13 +62,13 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 		return nil, errors.New("sync_type must be public or private")
 	}
 
-	var chainType quorumpb.GroupChainType
-	if params.ChainType == "archive" {
-		chainType = quorumpb.GroupChainType_ARCHIVE_CHAIN
-	} else if params.ChainType == "dynamic" {
-		chainType = quorumpb.GroupChainType_DYNAMIC_CHAIN
+	var ctnType quorumpb.GroupCtnType
+	if params.CtnType == "blob" {
+		ctnType = quorumpb.GroupCtnType_BLOB
+	} else if params.CtnType == "service" {
+		ctnType = quorumpb.GroupCtnType_SERVICE
 	} else {
-		return nil, errors.New("chain_type must be archive or dynamic")
+		return nil, errors.New("chain_type must be \"blob\" or \"service\"")
 	}
 
 	groupid := guuid.New().String()
@@ -108,18 +108,19 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 		}
 	}
 
-	var producers []string
+	var producerPubkey string
 	var producerKeyName string
+	var producers []string
 	if params.NeoProducerKeyName != "" {
 		producerKeyName = params.NeoProducerKeyName
-		producerPubkey, err := ks.GetEncodedPubkey(producerKeyName, localcrypto.Sign)
+		producerPubkey, err = ks.GetEncodedPubkey(producerKeyName, localcrypto.Sign)
 		if err != nil {
 			return nil, errors.New("producer_sign_keyname not found in local keystore")
 		}
 		producers = append(producers, producerPubkey)
 	} else {
 		producerKeyName = groupid + NEOPROUDCER_SIGNKEY_SURFIX
-		producerPubkey, err := localcrypto.InitSignKeyWithKeyName(producerKeyName, nodeoptions)
+		producerPubkey, err = localcrypto.InitSignKeyWithKeyName(producerKeyName, nodeoptions)
 		if err != nil {
 			return nil, errors.New("initial group producer sign key failed, err:" + err.Error())
 		}
@@ -154,7 +155,7 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 	}
 
 	//create genesis block
-	genesisBlock, err := rumchaindata.CreateGenesisBlockRumLiteByEthKey(groupid, ownerPubkey, ownerKeyName, consensusInfo)
+	genesisBlock, err := rumchaindata.CreateGenesisBlockRumLiteByEthKey(groupid, producerPubkey, producerKeyName, consensusInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +167,10 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 		GroupId:       groupid,
 		OwnerPubKey:   ownerPubkey,
 		TrxSignPubkey: trxSignPubkey,
-		EncryptTrx:    params.EncryptTrx,
+		EncryptTrxCtn: params.EncryptTrx,
 		CipherKey:     cipherKey,
 		SyncType:      syncType,
-		ChainType:     chainType,
+		CtnType:       ctnType,
 		ConsenseType:  consensusType,
 		ConsensusInfo: consensusInfo,
 		GenesisBlock:  genesisBlock,

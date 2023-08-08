@@ -343,9 +343,9 @@ enum GroupSyncType {
     PRIVATE_SYNC = 1;
 }
 
-enum GroupChainType {
-    ARCHIVE_CHAIN = 0;
-    DYNAMIC_CHAIN = 1;
+enum GroupCtnType {
+    BLOB    = 0;
+    SERVICE = 1;
 }
 
 message GroupItemRumLite {
@@ -354,11 +354,11 @@ message GroupItemRumLite {
     string               AppName         = 3;
     string               OwnerPubKey     = 4;
     string               TrxSignPubkey   = 5; 
-    bool                 EncryptTrx      = 6;
-    string               CipherKey       = 7;
+    string               CipherKey       = 6;    
+    bool                 EncryptTrxCtn   = 7;
     GroupSyncType        SyncType        = 8;
-    GroupConsenseType    ConsenseType    = 9;
-    GroupChainType       ChainType       = 10;
+    GroupCtnType         CtnType         = 9;
+    GroupConsenseType    ConsenseType    = 10;    
     ConsensusInfoRumLite ConsensusInfo   = 11;
     BlockRumLite         GenesisBlock    = 12;
     int64                LastUpdate      = 13;
