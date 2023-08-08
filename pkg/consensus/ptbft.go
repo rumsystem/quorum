@@ -308,7 +308,7 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		ks := localcrypto.GetKeystore()
 
 		//TBD add consensus info here
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
 		if err != nil {
 			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err

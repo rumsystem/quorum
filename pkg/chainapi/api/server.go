@@ -65,7 +65,7 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 }
 
 // StartAPIServer : Start local web server
-func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
+func StartRumNodeServer(config StartServerParam, signalch chan os.Signal, h *Handler, apph *appapi.Handler, node *p2p.Node, nodeopt *options.NodeOptions, ks localcrypto.Keystore, ethaddr string) {
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
@@ -84,8 +84,14 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
+	r.POST("/v2/rumlite/group/newseed", h.NewSeed())
+	r.POST("/v2/rumlite/group/joingroupbyseed", h.JoinGroupBySeed())
+	r.POST("/v2/rumlite/keystore/createsignkey", h.CreateSignKey())
+
+	//r.POST("/v2/group/joinbyurl", h.JoinGroupByUrl()) TBD
+
 	r.POST("/v1/group", h.CreateGroupUrl())
-	r.POST("/v2/group/join", h.JoinGroupV2())
+
 	r.POST("/v1/group/leave", h.LeaveGroup)
 	r.POST("/v1/group/clear", h.ClearGroupData)
 	r.POST("/v1/network/peers", h.AddPeers)

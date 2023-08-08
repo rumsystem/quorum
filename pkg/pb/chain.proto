@@ -154,15 +154,14 @@ message Trx {
 
 //BLOCK
 message Block {    
-    string        GroupId        = 1;
-    uint64        BlockId        = 2;
+    uint64        BlockId        = 1;
+    string        GroupId        = 2;
     bytes         PrevHash       = 3;  
-    string        ProducerPubkey = 4;
-    repeated      Trx Trxs       = 5;
+    repeated      Trx Trxs       = 4;  
     int64         TimeStamp      = 6;
-    ConsensusInfo Consensus      = 7;    
-    bytes         BlockHash      = 8;
-    bytes         ProducerSign   = 9;  
+    string        ProducerPubkey = 5;          
+    bytes         BlockHash      = 7;
+    bytes         ProducerSign   = 8;  
 }
 
 //BFT_MSG
@@ -338,6 +337,66 @@ message NodeSDKGroupItem {
     string    GroupSeed      = 5;
 }
 
+//GroupItem Rum_lite
+enum GroupSyncType {
+    PUBLIC_SYNC  = 0;
+    PRIVATE_SYNC = 1;
+}
+
+enum GroupCtnType {
+    BLOB    = 0;
+    SERVICE = 1;
+}
+
+message GroupItemRumLite {
+    string               GroupId         = 1;
+    string               AppId           = 2;
+    string               AppName         = 3;
+    string               OwnerPubKey     = 4;
+    string               TrxSignPubkey   = 5; 
+    string               CipherKey       = 6;    
+    bool                 EncryptTrxCtn   = 7;
+    GroupSyncType        SyncType        = 8;
+    GroupCtnType         CtnType         = 9;
+    GroupConsenseType    ConsenseType    = 10;    
+    ConsensusInfoRumLite ConsensusInfo   = 11;
+    BlockRumLite         GenesisBlock    = 12;
+    int64                LastUpdate      = 13;
+}
+
+message ConsensusInfoRumLite {
+    reserved 2 to 100; //for other consensus type
+    POAConsensusInfo Poa = 1;
+}
+
+message POAConsensusInfo {  
+    string            ConsensusId    = 1;    
+    uint64            ChainVer       = 2;       
+    uint64            EpochDuration  = 3;
+    repeated string   Producers      = 4;
+    uint64            CurrEpoch      = 5;
+    uint64            CurrBlockId    = 6;
+}
+
+message GroupSeedRumLite {
+    GroupItemRumLite  Group     = 1;
+    bytes             Hash      = 2;
+    bytes             Signature = 3;
+}
+
+//Block Rum_lite
+//BLOCK
+message BlockRumLite {    
+    uint64               BlockId        = 1;
+    string               GroupId        = 2;
+    bytes                PrevHash       = 3;  
+    repeated             Trx Trxs       = 4;  
+    int64                TimeStamp      = 5;
+    string               ProducerPubkey = 6;
+    ConsensusInfoRumLite ConsensusInfo  = 7;          
+    bytes                BlockHash      = 8;
+    bytes                ProducerSign   = 9;
+}
 
 //HB_MSG
 //HB protocol is used for both change consensus and bft

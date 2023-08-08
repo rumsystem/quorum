@@ -1,24 +1,12 @@
 package api
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v4"
-	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/options"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
-	rumchaindata "github.com/rumsystem/quorum/pkg/data"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/rumsystem/quorum/testnode"
 )
 
@@ -32,7 +20,6 @@ type JoinGroupResult struct {
 	EncryptionType    string `json:"encryption_type" validate:"required" example:"public"`
 	CipherKey         string `json:"cipher_key" validate:"required" example:"076a3cee50f3951744fbe6d973a853171139689fb48554b89f7765c0c6cbf15a"`
 	AppKey            string `json:"app_key" validate:"required" example:"test_app"`
-	Signature         string `json:"signature" validate:"required" example:"3045022100a819a627237e0bb0de1e69e3b29119efbf8677173f7e4d3a20830fc366c5bfd702200ad71e34b53da3ac5bcf3f8a46f1964b058ef36c2687d3b8effe4baec2acd2a6"`
 }
 
 // @Tags Groups
@@ -43,191 +30,174 @@ type JoinGroupResult struct {
 // @Param data body handlers.JoinGroupParamV2 true "JoinGroupParamV2"
 // @Success 200 {object} JoinGroupResult
 // @Router /api/v2/group/join [post]
-func (h *Handler) JoinGroupV2() echo.HandlerFunc {
+func (h *Handler) JoinGroupByUrl() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		cc := c.(*utils.CustomContext)
 
-		payload := new(handlers.JoinGroupParamV2)
-		if err := cc.BindAndValidate(payload); err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-		seed, _, err := handlers.UrlToGroupSeed(payload.Seed)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+		/*
+			cc := c.(*utils.CustomContext)
 
-		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
-		if err != nil {
-			msg := fmt.Sprintf("unmarshal genesis block failed with msg: %s" + err.Error())
-			return rumerrors.NewBadRequestError(msg)
-		}
-
-		//TBD check if group already exist
-		groupmgr := chain.GetGroupMgr()
-		if _, ok := groupmgr.Groups[seed.GroupId]; ok {
-			msg := fmt.Sprintf("group with group_id <%s> already exist", seed.GroupId)
-			return rumerrors.NewBadRequestError(msg)
-		}
-
-		nodeoptions := options.GetNodeOptions()
-
-		var groupSignPubkey []byte
-		ks := nodectx.GetNodeCtx().Keystore
-		dirks, ok := ks.(*localcrypto.DirKeyStore)
-		if ok {
-			base64key, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
-			if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
-				newsignaddr, err := dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Sign)
-				if err == nil && newsignaddr != "" {
-					_, _ = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
-					err = nodeoptions.SetSignKeyMap(seed.GenesisBlock.GroupId, newsignaddr)
-					if err != nil {
-						msg := fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
-						return rumerrors.NewBadRequestError(msg)
-					}
-					base64key, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
-				} else {
-					_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(seed.GenesisBlock.GroupId))
-					if err != nil {
-						msg := "create new group key err:" + err.Error()
-						return rumerrors.NewBadRequestError(msg)
-					}
-					base64key, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
-				}
+			payload := new(handlers.JoinGroupParamV2)
+			if err := cc.BindAndValidate(payload); err != nil {
+				return rumerrors.NewBadRequestError(err)
 			}
-			groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
+			seed, _, err := handlers.UrlToGroupSeed(payload.Seed)
 			if err != nil {
-				msg := "group key can't be decoded, err:" + err.Error()
+				return rumerrors.NewBadRequestError(err)
+			}
+
+			return h.JoinGroupBySeed(seed)
+
+			//TBD check if group already exist
+			groupmgr := chain.GetGroupMgr()
+			if _, ok := groupmgr.Groups[seed.GroupId]; ok {
+				msg := fmt.Sprintf("group with group_id <%s> already exist", seed.GroupId)
 				return rumerrors.NewBadRequestError(msg)
 			}
-		} else {
-			msg := fmt.Sprintf("unknown keystore type  %v:", ks)
-			return rumerrors.NewBadRequestError(msg)
-		}
 
-		ownerPubkeyBytes, err := base64.RawURLEncoding.DecodeString(seed.GenesisBlock.ProducerPubkey)
-		if err != nil {
-			msg := "Decode OwnerPubkey failed: " + err.Error()
-			return rumerrors.NewBadRequestError(msg)
-		}
+			nodeoptions := options.GetNodeOptions()
 
-		groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
-		if err != nil {
-			if strings.HasPrefix(err.Error(), "key not exist") {
-				_, _ = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
-				_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(seed.GenesisBlock.GroupId))
-				if err != nil {
-					msg := "Create key pair failed with msg:" + err.Error()
-					return rumerrors.NewBadRequestError(msg)
+			var groupSignPubkey []byte
+			ks := nodectx.GetNodeCtx().Keystore
+			dirks, ok := ks.(*localcrypto.DirKeyStore)
+			if ok {
+				base64key, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+				if err != nil && strings.HasPrefix(err.Error(), "key not exist") {
+					newsignaddr, err := dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					if err == nil && newsignaddr != "" {
+						_, _ = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+						err = nodeoptions.SetSignKeyMap(seed.GenesisBlock.GroupId, newsignaddr)
+						if err != nil {
+							msg := fmt.Sprintf("save key map %s err: %s", newsignaddr, err.Error())
+							return rumerrors.NewBadRequestError(msg)
+						}
+						base64key, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					} else {
+						_, err := dirks.GetKeyFromUnlocked(localcrypto.Sign.NameString(seed.GenesisBlock.GroupId))
+						if err != nil {
+							msg := "create new group key err:" + err.Error()
+							return rumerrors.NewBadRequestError(msg)
+						}
+						base64key, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Sign)
+					}
 				}
-				groupEncryptkey, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
-			} else {
-				msg := "Create key pair failed with msg:" + err.Error()
-				return rumerrors.NewBadRequestError(msg)
-			}
-		}
-
-		r, err := rumchaindata.ValidGenesisBlock(seed.GenesisBlock)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		if !r {
-			msg := "Join Group failed, verify genesis block failed"
-			return rumerrors.NewBadRequestError(msg)
-		}
-
-		item := &quorumpb.GroupItem{}
-		item.GroupId = seed.GroupId
-		item.GroupName = seed.GroupName
-		item.OwnerPubKey = seed.OwnerPubkey
-
-		item.CipherKey = seed.CipherKey
-		item.AppKey = seed.AppKey
-
-		if seed.ConsensusType == "poa" {
-			item.ConsenseType = quorumpb.GroupConsenseType_POA
-		} else if seed.ConsensusType == "pos" {
-			item.ConsenseType = quorumpb.GroupConsenseType_POS
-		}
-
-		item.UserSignPubkey = base64.RawURLEncoding.EncodeToString(groupSignPubkey)
-
-		userEncryptKey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
-		if err != nil {
-			if strings.HasPrefix(err.Error(), "key not exist") {
-				userEncryptKey, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+				groupSignPubkey, err = base64.RawURLEncoding.DecodeString(base64key)
 				if err != nil {
-					msg := "Create key pair failed with msg:" + err.Error()
+					msg := "group key can't be decoded, err:" + err.Error()
 					return rumerrors.NewBadRequestError(msg)
 				}
 			} else {
-				msg := "Create key pair failed with msg:" + err.Error()
+				msg := fmt.Sprintf("unknown keystore type  %v:", ks)
 				return rumerrors.NewBadRequestError(msg)
 			}
-		}
 
-		item.UserEncryptPubkey = userEncryptKey
-		if seed.EncryptionType == "public" {
-			item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
-		} else {
-			item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
-		}
+			groupEncryptkey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "key not exist") {
+					_, _ = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+					_, err := dirks.GetKeyFromUnlocked(localcrypto.Encrypt.NameString(seed.GenesisBlock.GroupId))
+					if err != nil {
+						msg := "Create key pair failed with msg:" + err.Error()
+						return rumerrors.NewBadRequestError(msg)
+					}
+					groupEncryptkey, _ = dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+				} else {
+					msg := "Create key pair failed with msg:" + err.Error()
+					return rumerrors.NewBadRequestError(msg)
+				}
+			}
 
-		item.LastUpdate = seed.GenesisBlock.TimeStamp
-		item.GenesisBlock = seed.GenesisBlock
+			r, err := rumchaindata.ValidGenesisBlock(seed.GenesisBlock)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		//create the group
-		group := &chain.Group{}
-		err = group.JoinGroup(item)
+			if !r {
+				msg := "Join Group failed, verify genesis block failed"
+				return rumerrors.NewBadRequestError(msg)
+			}
 
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			item := &quorumpb.GroupItem{}
+			item.GroupId = seed.GroupId
+			item.GroupName = seed.GroupName
+			item.OwnerPubKey = seed.OwnerPubkey
 
-		//start sync
-		err = group.StartSync()
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			item.CipherKey = seed.CipherKey
+			item.AppKey = seed.AppKey
 
-		//add group to context
-		groupmgr.Groups[group.Item.GroupId] = group
+			if seed.ConsensusType == "poa" {
+				item.ConsenseType = quorumpb.GroupConsenseType_POA
+			} else if seed.ConsensusType == "pos" {
+				item.ConsenseType = quorumpb.GroupConsenseType_POS
+			}
 
-		var bufferResult bytes.Buffer
-		bufferResult.Write(genesisBlockBytes)
-		bufferResult.Write([]byte(item.GroupId))
-		bufferResult.Write([]byte(item.GroupName))
-		bufferResult.Write(ownerPubkeyBytes)
-		bufferResult.Write(groupSignPubkey)
-		bufferResult.Write([]byte(groupEncryptkey))
-		bufferResult.Write([]byte(item.CipherKey))
-		hashResult := localcrypto.Hash(bufferResult.Bytes())
-		signature, _ := ks.EthSignByKeyName(item.GroupId, hashResult)
-		encodedSign := hex.EncodeToString(signature)
+			item.UserSignPubkey = base64.RawURLEncoding.EncodeToString(groupSignPubkey)
 
-		joinGrpResult := &JoinGroupResult{
-			GroupId:           item.GroupId,
-			GroupName:         item.GroupName,
-			OwnerPubkey:       item.OwnerPubKey,
-			ConsensusType:     seed.ConsensusType,
-			EncryptionType:    seed.EncryptionType,
-			UserPubkey:        item.UserSignPubkey,
-			UserEncryptPubkey: groupEncryptkey,
-			CipherKey:         item.CipherKey,
-			AppKey:            item.AppKey,
-			Signature:         encodedSign,
-		}
+			userEncryptKey, err := dirks.GetEncodedPubkey(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+			if err != nil {
+				if strings.HasPrefix(err.Error(), "key not exist") {
+					userEncryptKey, err = dirks.NewKeyWithDefaultPassword(seed.GenesisBlock.GroupId, localcrypto.Encrypt)
+					if err != nil {
+						msg := "Create key pair failed with msg:" + err.Error()
+						return rumerrors.NewBadRequestError(msg)
+					}
+				} else {
+					msg := "Create key pair failed with msg:" + err.Error()
+					return rumerrors.NewBadRequestError(msg)
+				}
+			}
 
-		// save group seed to appdata
-		pbGroupSeed := handlers.ToPbGroupSeed(*seed)
-		if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
-			msg := fmt.Sprintf("save group seed failed: %s", err)
-			return rumerrors.NewBadRequestError(msg)
-		}
+			item.UserEncryptPubkey = userEncryptKey
+			if seed.EncryptionType == "public" {
+				item.EncryptType = quorumpb.GroupEncryptType_PUBLIC
+			} else {
+				item.EncryptType = quorumpb.GroupEncryptType_PRIVATE
+			}
 
-		return c.JSON(http.StatusOK, joinGrpResult)
+			item.LastUpdate = seed.GenesisBlock.TimeStamp
+			item.GenesisBlock = seed.GenesisBlock
+
+			//create the group
+			group := &chain.Group{}
+			err = group.JoinGroup(item)
+
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
+
+			//start sync
+			err = group.StartSync()
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
+
+			//add group to context
+			groupmgr.Groups[group.Item.GroupId] = group
+
+			joinGrpResult := &JoinGroupResult{
+				GroupId:           item.GroupId,
+				GroupName:         item.GroupName,
+				OwnerPubkey:       item.OwnerPubKey,
+				ConsensusType:     seed.ConsensusType,
+				EncryptionType:    seed.EncryptionType,
+				UserPubkey:        item.UserSignPubkey,
+				UserEncryptPubkey: groupEncryptkey,
+				CipherKey:         item.CipherKey,
+				AppKey:            item.AppKey,
+			}
+
+			// save group seed to appdata
+			pbGroupSeed := handlers.ToPbGroupSeed(*seed)
+			if err := h.Appdb.SetGroupSeed(&pbGroupSeed); err != nil {
+				msg := fmt.Sprintf("save group seed failed: %s", err)
+				return rumerrors.NewBadRequestError(msg)
+			}
+
+			return c.JSON(http.StatusOK, joinGrpResult)
+		*/
+
+		return c.JSON(http.StatusOK, nil)
 	}
+
 }
 
 // JoinGroupByHTTPRequest restore cli use it

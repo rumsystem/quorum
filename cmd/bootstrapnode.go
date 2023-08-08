@@ -135,7 +135,6 @@ func runBootstrapNode(config cli.BootstrapNodeFlag) {
 	}
 
 	nodectx.InitCtx(ctx, "", bootstrapNode, dbManager, chainstorage.NewChainStorage(dbManager), "pubsub", utils.GitCommit, nodectx.BOOTSTRAP_NODE)
-	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
 

@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 )
@@ -110,7 +109,7 @@ func (h *Handler) SignTx(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError("both key alias and key name are empty")
 	}
 
-	ks := nodectx.GetNodeCtx().Keystore
+	ks := localcrypto.GetKeystore()
 	dirks, ok := ks.(*localcrypto.DirKeyStore)
 	if !ok {
 		return rumerrors.NewBadRequestError("Open keystore failed")
