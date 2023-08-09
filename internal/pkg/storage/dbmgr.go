@@ -136,6 +136,32 @@ func (dbMgr *DbMgr) SaveBlock(block *quorumpb.Block, cached bool, prefix ...stri
 	return dbMgr.Db.Set([]byte(key), value)
 }
 
+// save blockrumlite
+func (dbMgr *DbMgr) SaveBlockRumLite(block *quorumpb.BlockRumLite, cached bool, prefix ...string) error {
+	var key string
+	if cached {
+		key = GetCachedBlockKey(block.GroupId, block.BlockId, prefix...)
+	} else {
+		key = GetBlockKey(block.GroupId, block.BlockId, prefix...)
+	}
+	dbmgr_log.Debugf("try save block with key <%s>", key)
+
+	isExist, err := dbMgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return err
+	}
+
+	if isExist {
+		return rumerrors.ErrBlockExist
+	}
+
+	value, err := proto.Marshal(block)
+	if err != nil {
+		return err
+	}
+	return dbMgr.Db.Set([]byte(key), value)
+}
+
 func (dbMgr *DbMgr) RmBlock(groupId string, blockId uint64, cached bool, prefix ...string) error {
 	var key string
 	if cached {

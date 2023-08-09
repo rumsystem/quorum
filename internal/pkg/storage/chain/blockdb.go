@@ -16,8 +16,8 @@ func (cs *Storage) AddBlock(block *quorumpb.Block, cached bool, prefix ...string
 }
 
 // add genesis block
-func (cs *Storage) AddGensisBlock(block *quorumpb.Block, cached bool, prefix ...string) error {
-	err := cs.dbmgr.SaveBlock(block, cached, prefix...)
+func (cs *Storage) AddGensisBlockRumLite(block *quorumpb.BlockRumLite, prefix ...string) error {
+	err := cs.dbmgr.SaveBlockRumLite(block, false, prefix...)
 	if err == rumerrors.ErrBlockExist {
 		return nil
 	}

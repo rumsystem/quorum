@@ -16,6 +16,14 @@ type ChainData struct {
 	dbmgr          *storage.DbMgr
 }
 
+type ChainDataRumLite struct {
+	nodename      string
+	groupId       string
+	cipherKey     string
+	trxSignPubkey string
+	dbmgr         *storage.DbMgr
+}
+
 // TBD, move this to chain confi
 const MAX_BLOCK_IN_RESP_BYTES = 10485760 //10MB
 

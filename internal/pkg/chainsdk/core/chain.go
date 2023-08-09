@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/rumsystem/quorum/internal/pkg/conn"
@@ -45,60 +44,45 @@ type Chain struct {
 	CtxCancelFunc context.CancelFunc
 }
 
-func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChainInfo bool) error {
-	chain_log.Debugf("<%s> NewChain called", item.GroupId)
+type ChainRumLite struct {
+	groupItem     *quorumpb.GroupItemRumLite
+	nodename      string
+	trxFactory    *rumchaindata.TrxFactory
+	syncWhiteList map[string]bool
+	rexSyncer     *RexLiteSyncer
+	chainData     *ChainDataRumLite
+	LastUpdate    int64
+	ChainCtx      context.Context
+	CtxCancelFunc context.CancelFunc
+}
+
+func (chain *ChainRumLite) NewChainRumLite(item *quorumpb.GroupItemRumLite, nodename string) error {
+	chain_log.Debugf("<%s> NewChainRumLite called", item.GroupId)
 
 	chain.groupItem = item
 	chain.nodename = nodename
 
-	//initial TrxFactory
-	chain.trxFactory = &rumchaindata.TrxFactory{}
-	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
-
-	//create context with cancel function, chainCtx will be ctx parent of all underlay components
 	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
 
+	//initial TrxFactory
+	//chain.trxFactory = &rumchaindata.TrxFactory{}
+	//chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
+
+	//create context with cancel function, chainCtx will be ctx parent of all underlay components
+
 	//initial Syncer
-	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+	//chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 
 	//initial chaindata manager
-	chain.chaindata = &ChainData{
-		nodename:       chain.nodename,
-		groupId:        chain.groupItem.GroupId,
-		groupCipherKey: chain.groupItem.CipherKey,
-		userSignPubkey: chain.groupItem.UserSignPubkey,
-		dbmgr:          nodectx.GetDbMgr()}
-
-	if loadChainInfo {
-		chain_log.Debugf("<%s> load chain config", item.GroupId)
-		currBlockId, currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
-		if err != nil {
-			return err
-		}
-		chain.SetCurrEpoch(currEpoch)
-		chain.SetLastUpdate(lastUpdate)
-		chain.SetCurrBlockId(currBlockId)
-		chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
-	} else {
-		chain_log.Debugf("<%s> initial chain config", item.GroupId)
-		currEpoch := uint64(0)
-		currBlockId := uint64(0)
-		lastUpdate := time.Now().UnixNano()
-		chain.SetCurrEpoch(currEpoch)
-		chain.SetCurrBlockId(currBlockId)
-		chain.SetLastUpdate(lastUpdate)
-		chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
-		chain.SaveChainInfoToDb()
-
-		//initial consensus
-		chain_log.Debugf("<%s> initial consensus", item.GroupId)
-		nodectx.GetNodeCtx().GetChainStorage().SetProducerConsensusConfInterval(chain.groupItem.GroupId, uint64(DEFAULT_PROPOSE_TRX_INTERVAL), chain.nodename)
+	chain.chainData = &ChainDataRumLite{
+		nodename:      chain.nodename,
+		groupId:       chain.groupItem.GroupId,
+		cipherKey:     chain.groupItem.CipherKey,
+		trxSignPubkey: chain.groupItem.TrxSignPubkey,
+		dbmgr:         nodectx.GetDbMgr(),
 	}
 
 	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
-	//initial Syncer
-	// chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 	return nil
 }
 

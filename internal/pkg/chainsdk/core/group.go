@@ -7,7 +7,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -23,97 +22,99 @@ type Group struct {
 }
 
 type GroupRumLite struct {
-	Item     *quorumpb.GroupItemRumLite
-	ChainCtx *Chain
-	GroupId  string
-	Nodename string
+	groupItem *quorumpb.GroupItemRumLite
+	ChainCtx  *ChainRumLite
+	GroupId   string
+	Nodename  string
 }
 
 func (grp *GroupRumLite) JoinGroup(groupItem *quorumpb.GroupItemRumLite) error {
 	group_log.Debugf("<%s> JoinGoup called", groupItem.GroupId)
 
-	grp.Item = groupItem
+	grp.groupItem = groupItem
 	grp.GroupId = groupItem.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
 
-	group_log.Debugf("<%s> create and initial chainCtx", grp.Item.GroupId)
+	group_log.Debugf("<%s> create and initial chainCtx", grp.GroupId)
 	//create and initial chain
-	grp.ChainCtx = &Chain{}
-	//grp.ChainCtx.NewChain(item, grp.Nodename, false)
+	grp.ChainCtx = &ChainRumLite{}
+	grp.ChainCtx.NewChainRumLite(groupItem, grp.Nodename)
 
 	//save genesis block
-	group_log.Debugf("<%s> save genesis block", grp.Item.GroupId)
-	//err = nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(groupItem.GenesisBlock, false, grp.Nodename)
-	//if err != nil {
-	//	return err
-	//}
+	group_log.Debugf("<%s> save genesis block", grp.GroupId)
+	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlockRumLite(groupItem.GenesisBlock, grp.Nodename)
+	if err != nil {
+		return err
+	}
 
-	group_log.Debugf("<%s> create and register ConnMgr for chainctx", grp.Item.GroupId)
+	group_log.Debugf("<%s> create and register ConnMgr for chainctx", grp.groupItem.GroupId)
 	//create and register ConnMgr for chainctx
 	//conn.GetConn().RegisterChainCtx(groupItem.GroupId,
 	//	groupItem.OwnerPubKey,
 	//	groupItem.UserSignPubkey,
 	//	grp.ChainCtx)
 
-	group_log.Debugf("<%s> create group consensus", grp.Item.GroupId)
+	group_log.Debugf("<%s> create group consensus", grp.GroupId)
 	//create group consensus
 	//grp.ChainCtx.CreateConsensus()
 
-	group_log.Debugf("<%s> Save GroupInfo", grp.Item.GroupId)
+	group_log.Debugf("<%s> Save GroupInfo", grp.GroupId)
 	//save groupItem to db
 	//err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
 	//if err != nil {
 	//	return err
 	//}
 
-	group_log.Debugf("Join Group <%s> done", grp.Item.GroupId)
+	group_log.Debugf("Join Group <%s> done", grp.GroupId)
 	return nil
 }
 
 func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	group_log.Debugf("<%s> LoadGroup called", item.GroupId)
-	//save groupItem
-	grp.Item = item
-	grp.GroupId = item.GroupId
-	grp.Nodename = nodectx.GetNodeCtx().Name
+	/*
+		//save groupItem
+		grp.Item = item
+		grp.GroupId = item.GroupId
+		grp.Nodename = nodectx.GetNodeCtx().Name
 
-	//create and initial chain
-	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(item, grp.Nodename, true)
+		//create and initial chain
+		grp.ChainCtx = &Chain{}
+		grp.ChainCtx.NewChain(item, grp.Nodename, true)
 
-	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
-	if opk != "" {
-		item.OwnerPubKey = opk
-	}
+		opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
+		if opk != "" {
+			item.OwnerPubKey = opk
+		}
 
-	upk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserSignPubkey)
-	if upk != "" {
-		item.UserSignPubkey = upk
-	}
+		upk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.UserSignPubkey)
+		if upk != "" {
+			item.UserSignPubkey = upk
+		}
 
-	//reload all announced user(if private)
-	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		group_log.Debugf("<%s> Private group load announced user key", grp.GroupId)
-		grp.ChainCtx.updUserList()
-	}
+		//reload all announced user(if private)
+		if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
+			group_log.Debugf("<%s> Private group load announced user key", grp.GroupId)
+			grp.ChainCtx.updUserList()
+		}
 
-	//reload producers
-	grp.ChainCtx.updateProducerPool()
+		//reload producers
+		grp.ChainCtx.updateProducerPool()
 
-	//create and register ConnMgr for chainctx
-	conn.GetConn().RegisterChainCtx(item.GroupId,
-		item.OwnerPubKey,
-		item.UserSignPubkey,
-		grp.ChainCtx)
+		//create and register ConnMgr for chainctx
+		conn.GetConn().RegisterChainCtx(item.GroupId,
+			item.OwnerPubKey,
+			item.UserSignPubkey,
+			grp.ChainCtx)
 
-	//commented by cuicat
-	//update producer list for ConnMgr just created
-	//grp.ChainCtx.UpdConnMgrProducer()
+		//commented by cuicat
+		//update producer list for ConnMgr just created
+		//grp.ChainCtx.UpdConnMgrProducer()
 
-	//create group consensus
-	grp.ChainCtx.CreateConsensus()
+		//create group consensus
+		grp.ChainCtx.CreateConsensus()
 
-	group_log.Infof("Group <%s> loaded", grp.Item.GroupId)
+		group_log.Infof("Group <%s> loaded", grp.Item.GroupId)
+	*/
 }
 
 // teardown group
