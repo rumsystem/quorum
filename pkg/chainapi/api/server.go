@@ -87,6 +87,8 @@ func StartRumNodeServer(config StartServerParam, signalch chan os.Signal, h *Han
 	r.POST("/v2/rumlite/group/newseed", h.NewSeed())
 	r.POST("/v2/rumlite/group/joingroupbyseed", h.JoinGroupBySeed())
 	r.POST("/v2/rumlite/keystore/createsignkey", h.CreateSignKey())
+	r.POST("/v2/rumlite/keystore/getkeybykeyname", h.GetPubkeyByKeyName())
+	r.POST("/v2/rumlite/keystore/getallkeys", h.GetAllKeys())
 
 	//r.POST("/v2/group/joinbyurl", h.JoinGroupByUrl()) TBD
 

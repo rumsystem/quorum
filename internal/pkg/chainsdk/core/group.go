@@ -36,10 +36,9 @@ func (grp *GroupRumLite) JoinGroup(groupItem *quorumpb.GroupItemRumLite) error {
 	grp.GroupId = groupItem.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
 
-	//TBD
 	group_log.Debugf("<%s> create and initial chainCtx", grp.Item.GroupId)
 	//create and initial chain
-	//grp.ChainCtx = &Chain{}
+	grp.ChainCtx = &Chain{}
 	//grp.ChainCtx.NewChain(item, grp.Nodename, false)
 
 	//save genesis block
@@ -149,8 +148,6 @@ func (grp *Group) IsOwner() bool {
 
 func (grp *Group) ClearGroupData() error {
 	group_log.Debugf("<%s> ClearGroupData called", grp.Item.GroupId)
-
-	//remove group data from local db
 	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.Item.GroupId, grp.Nodename)
 }
 
