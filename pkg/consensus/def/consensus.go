@@ -11,3 +11,13 @@ type Consensus interface {
 	StartProposeTrx()
 	StopProposeTrx()
 }
+
+type ConsensusRumLite interface {
+	Name() string
+	Producer() ProducerRumLite
+	User() UserRumLite
+	SetProducer(p ProducerRumLite)
+	SetUser(u UserRumLite)
+	StartProposeTrx()
+	StopProposeTrx()
+}

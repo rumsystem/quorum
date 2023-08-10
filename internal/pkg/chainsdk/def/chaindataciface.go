@@ -5,6 +5,20 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
+// rumlite
+type ChainDataSyncIfaceRumLite interface {
+	HandlePsConnMessage(pkg *quorumpb.Package) error
+	HandleTrxPsConn(trx *quorumpb.Trx) error
+	HandleBlockPsConn(block *quorumpb.BlockRumLite) error
+	HandleBftMsgPsConn(hb *quorumpb.BftMsg) error
+	HandleBroadcastMsgPsConn(c *quorumpb.BroadcastMsg) error
+	HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, fromstream network.Stream) error
+	StartSync() error
+	StopSync()
+	//GetCurrBlockId() uint64
+}
+
+// rum
 type ChainDataSyncIface interface {
 	HandlePsConnMessage(pkg *quorumpb.Package) error
 	HandleTrxPsConn(trx *quorumpb.Trx) error

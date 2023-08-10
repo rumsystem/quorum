@@ -56,6 +56,7 @@ type KeyItem struct {
 	Alias   []string
 	Type    KeyType
 }
+
 type Keystore interface {
 	Unlock(signkeymap map[string]string, password string) error
 	Lock() error

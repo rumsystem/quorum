@@ -10,8 +10,6 @@ import (
 	"sync/atomic"
 
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/rumsystem/quorum/internal/pkg/conn"
-	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
@@ -23,10 +21,6 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 )
-
-var chain_log = logging.Logger("chain")
-
-var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
 
 type Chain struct {
 	groupItem     *quorumpb.GroupItem
@@ -42,48 +36,6 @@ type Chain struct {
 	LatestUpdate  int64
 	ChainCtx      context.Context
 	CtxCancelFunc context.CancelFunc
-}
-
-type ChainRumLite struct {
-	groupItem     *quorumpb.GroupItemRumLite
-	nodename      string
-	trxFactory    *rumchaindata.TrxFactory
-	syncWhiteList map[string]bool
-	rexSyncer     *RexLiteSyncer
-	chainData     *ChainDataRumLite
-	LastUpdate    int64
-	ChainCtx      context.Context
-	CtxCancelFunc context.CancelFunc
-}
-
-func (chain *ChainRumLite) NewChainRumLite(item *quorumpb.GroupItemRumLite, nodename string) error {
-	chain_log.Debugf("<%s> NewChainRumLite called", item.GroupId)
-
-	chain.groupItem = item
-	chain.nodename = nodename
-
-	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
-
-	//initial TrxFactory
-	//chain.trxFactory = &rumchaindata.TrxFactory{}
-	//chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
-
-	//create context with cancel function, chainCtx will be ctx parent of all underlay components
-
-	//initial Syncer
-	//chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-
-	//initial chaindata manager
-	chain.chainData = &ChainDataRumLite{
-		nodename:      chain.nodename,
-		groupId:       chain.groupItem.GroupId,
-		cipherKey:     chain.groupItem.CipherKey,
-		trxSignPubkey: chain.groupItem.TrxSignPubkey,
-		dbmgr:         nodectx.GetDbMgr(),
-	}
-
-	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
-	return nil
 }
 
 // atomic opt for currEpoch
@@ -233,7 +185,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	switch trx.Type {
 	case
 		quorumpb.TrxType_POST,
-		quorumpb.TrxType_UPD_GRP_USER,
+		quorumpb.TrxType_UPD_SYNCER,
 		quorumpb.TrxType_CHAIN_CONFIG,
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_FORK:
@@ -338,6 +290,7 @@ func (chain *Chain) HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, s network.Stream
 	}
 	return nil
 }
+
 func (chain *Chain) HandleCCMsgPsConn(msg *quorumpb.CCMsg) error {
 	//chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
 	if chain.Consensus.ConsensusProposer() == nil {
@@ -355,53 +308,56 @@ func (chain *Chain) HandleBroadcastMsgPsConn(brd *quorumpb.BroadcastMsg) error {
 
 func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Stream) error {
 	chain_log.Debugf("<%s> handleReqBlocks called", chain.groupItem.GroupId)
-	//unmarshall req
-	req := &quorumpb.ReqBlock{}
-	err := proto.Unmarshal(syncMsg.Data, req)
-	if err != nil {
-		chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, err.Error())
-		return err
-	}
+	/*
+		//unmarshall req
+		req := &quorumpb.ReqBlock{}
+		err := proto.Unmarshal(syncMsg.Data, req)
+		if err != nil {
+			chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, err.Error())
+			return err
+		}
 
-	//do nothing is req is from myself
-	if req.ReqPubkey == chain.groupItem.UserSignPubkey {
-		return nil
-	}
+		//do nothing is req is from myself
+		if req.ReqPubkey == chain.groupItem.UserSignPubkey {
+			return nil
+		}
 
-	//verify req
-	verified, err := rumchaindata.VerifyReqBlock(req)
-	if err != nil {
-		chain_log.Warningf("<%s> verify ReqBlock failed with err <%s>", chain.groupItem.GroupId, err.Error())
-		return err
-	}
+		//verify req
+		verified, err := rumchaindata.VerifyReqBlock(req)
+		if err != nil {
+			chain_log.Warningf("<%s> verify ReqBlock failed with err <%s>", chain.groupItem.GroupId, err.Error())
+			return err
+		}
 
-	if !verified {
-		chain_log.Warningf("<%s> Invalid ReqBlock, signature verify failed, sender <%s>", chain.groupItem.GroupId, req.ReqPubkey)
-		return errors.New("invalid ReqBlock")
-	}
+		if !verified {
+			chain_log.Warningf("<%s> Invalid ReqBlock, signature verify failed, sender <%s>", chain.groupItem.GroupId, req.ReqPubkey)
+			return errors.New("invalid ReqBlock")
+		}
 
-	//get resp
-	blocks, result, err := chain.chaindata.GetReqBlocks(req)
-	if err != nil {
-		return err
-	}
+		//get resp
+		blocks, result, err := chain.chaindata.GetReqBlocks(req)
+		if err != nil {
+			return err
+		}
 
-	chain_log.Debugf("<%s> send REQ_BLOCKS_RESP", chain.groupItem.GroupId)
-	chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", req.ReqPubkey, req.FromBlock, req.BlksRequested)
-	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", req.FromBlock, len(blocks), result.String())
+		chain_log.Debugf("<%s> send REQ_BLOCKS_RESP", chain.groupItem.GroupId)
+		chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", req.ReqPubkey, req.FromBlock, req.BlksRequested)
+		chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", req.FromBlock, len(blocks), result.String())
 
-	//resp, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
-	resp, err := rumchaindata.GetReqBlocksRespMsg("", req, chain.groupItem.UserSignPubkey, blocks, result)
+		//resp, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
+		resp, err := rumchaindata.GetReqBlocksRespMsg("", req, chain.groupItem.UserSignPubkey, blocks, result)
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	if cmgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId); err != nil {
-		return err
-	} else {
-		return cmgr.SendSyncRespMsgRex(resp, s)
-	}
+		if cmgr, err := conn.GetConn().GetConnMgr(chain.groupItem.GroupId); err != nil {
+			return err
+		} else {
+			return cmgr.SendSyncRespMsgRex(resp, s)
+		}
+	*/
+	return nil
 }
 
 func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
@@ -749,7 +705,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		//for chain config, consensus, user, only owner can apply
 		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
 			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_UPD_GRP_USER {
+			trx.Type == quorumpb.TrxType_UPD_SYNCER {
 			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
@@ -785,7 +741,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, decodedData, nodename)
-		case quorumpb.TrxType_UPD_GRP_USER:
+		case quorumpb.TrxType_UPD_SYNCER:
 			chain_log.Debugf("<%s> apply UpdGroupUser trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
 			chain.updUserList()
@@ -843,7 +799,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 		//for chain config, consensus, user, only owner can apply
 		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
 			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_UPD_GRP_USER {
+			trx.Type == quorumpb.TrxType_UPD_SYNCER {
 			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
@@ -861,7 +817,7 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 
 		chain_log.Debugf("<%s> apply trx <%s>", chain.groupItem.GroupId, trx.TrxId)
 		switch trx.Type {
-		case quorumpb.TrxType_UPD_GRP_USER:
+		case quorumpb.TrxType_UPD_SYNCER:
 			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
 			chain.updUserList()

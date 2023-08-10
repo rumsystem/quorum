@@ -1,5 +1,7 @@
 package consensus
 
+/*
+
 import (
 	"bytes"
 	"context"
@@ -528,3 +530,4 @@ func (cp *MolassesConsensusProposer) createBftConfig(producers []string) (*Confi
 
 	return config, nil
 }
+*/

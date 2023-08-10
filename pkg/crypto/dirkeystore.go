@@ -516,6 +516,10 @@ func (ks *DirKeyStore) EthSignByKeyName(keyname string, digestHash []byte, opts 
 	return ethcrypto.Sign(digestHash, signk.PrivateKey)
 }
 
+func (ks *DirKeyStore) EthSignByPubkey(pubkey string, digiestHash []byte, opts ...string) ([]byte, error) {
+	return nil, nil
+}
+
 // SignTxByKeyName sign tx with keyname
 func (ks *DirKeyStore) SignTxByKeyName(keyname string, nonce uint64, to common.Address, value *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, chainID *big.Int) (string, error) {
 	key, err := ks.GetKeyFromUnlocked(Sign.NameString(keyname))

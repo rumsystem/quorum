@@ -21,7 +21,7 @@ type P2pPubSubConn struct {
 	Cid          string
 	Topic        *pubsub.Topic
 	Subscription *pubsub.Subscription
-	chain        chaindef.ChainDataSyncIface
+	chain        chaindef.ChainDataSyncIfaceRumLite
 	ps           *pubsub.PubSub
 	nodename     string
 	Ctx          context.Context
@@ -29,7 +29,7 @@ type P2pPubSubConn struct {
 	cancel       context.CancelFunc
 }
 
-func GetPubSubConnByChannelId(ctx context.Context, ps *pubsub.PubSub, channelId string, cdhIface chaindef.ChainDataSyncIface, nodename string) *P2pPubSubConn {
+func GetPubSubConnByChannelId(ctx context.Context, ps *pubsub.PubSub, channelId string, cdhIface chaindef.ChainDataSyncIfaceRumLite, nodename string) *P2pPubSubConn {
 	ctxwithcancel, cancel := context.WithCancel(ctx)
 	psconn := &P2pPubSubConn{Ctx: ctxwithcancel, cancel: cancel, ps: ps, nodename: nodename}
 	if cdhIface != nil {
@@ -57,7 +57,7 @@ func (psconn *P2pPubSubConn) LeaveChannel() {
 	channel_log.Infof("Leave channel <%s> done", channelId)
 }
 
-func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataSyncIface) error {
+func (psconn *P2pPubSubConn) JoinChannel(cId string, cdhIface chaindef.ChainDataSyncIfaceRumLite) error {
 	psconn.Cid = cId
 
 	// cdhIface == nil, join channel as exchange

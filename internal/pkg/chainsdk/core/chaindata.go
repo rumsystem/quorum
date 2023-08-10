@@ -27,18 +27,8 @@ type ChainDataRumLite struct {
 // TBD, move this to chain confi
 const MAX_BLOCK_IN_RESP_BYTES = 10485760 //10MB
 
-func (d *ChainData) GetReqBlocks(req *quorumpb.ReqBlock) (blocks []*quorumpb.Block, result quorumpb.ReqBlkResult, err error) {
+func (d *ChainDataRumLite) GetReqBlocks(req *quorumpb.ReqBlock) (blocks []*quorumpb.Block, result quorumpb.ReqBlkResult, err error) {
 	chain_log.Debugf("<%s> GetReqBlocks called", d.groupId)
-
-	//isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(req.GroupId, req.ReqPubkey, quorumpb. TrxType_REQ_BLOCK, d.nodename)
-	//if err != nil {
-	//	return "", 0, 0, nil, -1, err
-	//}
-
-	//if !isAllow {
-	//		chain_log.Debugf("<%s> user <%s>: trxType <%s> is denied", d.groupId, trx.SenderPubkey, quorumpb.TrxType_REQ_BLOCK.String())
-	//		return "", 0, 0, nil, -1, errors.New("requester don't have sufficient privileges")
-	//	}
 
 	exist := false
 	exist, err = nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(req.GroupId, req.FromBlock, false, d.nodename)

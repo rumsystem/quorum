@@ -49,10 +49,10 @@ func (grp *GroupRumLite) JoinGroup(groupItem *quorumpb.GroupItemRumLite) error {
 
 	group_log.Debugf("<%s> create and register ConnMgr for chainctx", grp.groupItem.GroupId)
 	//create and register ConnMgr for chainctx
-	//conn.GetConn().RegisterChainCtx(groupItem.GroupId,
-	//	groupItem.OwnerPubKey,
-	//	groupItem.UserSignPubkey,
-	//	grp.ChainCtx)
+	conn.GetConn().RegisterChainCtx(groupItem.GroupId,
+		groupItem.OwnerPubKey,
+		groupItem.TrxSignPubkey,
+		grp.ChainCtx)
 
 	group_log.Debugf("<%s> create group consensus", grp.GroupId)
 	//create group consensus
@@ -327,7 +327,7 @@ func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = connMgr.SendUserTrxPubsub(trx)
+	err = connMgr.SendTrxPubsub(trx)
 	if err != nil {
 		return "", err
 	}

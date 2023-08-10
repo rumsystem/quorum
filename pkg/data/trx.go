@@ -15,68 +15,74 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
-	var trx quorumpb.Trx
-
-	trx.TrxId = guuid.New().String()
-	trx.Type = msgType
-	trx.GroupId = groupItem.GroupId
-	trx.SenderPubkey = groupItem.UserSignPubkey
-
-	var encryptdData []byte
-	if msgType == quorumpb.TrxType_POST && groupItem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		//for post, private group, encrypted by age for all announced group users
-		if len(encryptto) == 1 {
-			var err error
-			ks := localcrypto.GetKeystore()
-			if len(encryptto[0]) == 0 {
-				return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", groupItem.GroupId)
-			}
-			encryptdData, err = ks.EncryptTo(encryptto[0], data)
-			if err != nil {
-				return &trx, []byte(""), err
-			}
-		} else {
-			return &trx, []byte(""), fmt.Errorf("must have encrypt pubkeys for private group %s", groupItem.GroupId)
-		}
-	} else {
-		var err error
+func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItemRumLite, msgType quorumpb.TrxType, data []byte) (*quorumpb.Trx, []byte, error) {
+	var trxData []byte
+	if groupItem.EncryptTrxCtn {
 		ciperKey, err := hex.DecodeString(groupItem.CipherKey)
 		if err != nil {
-			return &trx, []byte(""), err
+			return nil, nil, err
 		}
-		encryptdData, err = localcrypto.AesEncrypt(data, ciperKey)
+		trxData, err = localcrypto.AesEncrypt(data, ciperKey)
 		if err != nil {
-			return &trx, []byte(""), err
+			return nil, nil, err
 		}
+	} else {
+		trxData = data
 	}
 
-	trx.Data = encryptdData
-	trx.Version = version
-	trx.TimeStamp = time.Now().UnixNano()
+	trx := &quorumpb.Trx{
+		TrxId:        guuid.New().String(),
+		Type:         msgType,
+		GroupId:      groupItem.GroupId,
+		SenderPubkey: groupItem.TrxSignPubkey,
+		Version:      version,
+		TimeStamp:    time.Now().UnixNano(),
+		Data:         trxData,
+	}
 
-	bytes, err := proto.Marshal(&trx)
+	bytes, err := proto.Marshal(trx)
 	if err != nil {
-		return &trx, []byte(""), err
+		return nil, nil, err
 	}
+
 	hashed := localcrypto.Hash(bytes)
-	return &trx, hashed, nil
+
+	return trx, hashed, nil
 }
 
-func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, data, encryptto...)
+func CreateTrx(nodename string, version string, groupItem *quorumpb.GroupItemRumLite, msgType quorumpb.TrxType, data []byte) (*quorumpb.Trx, error) {
+	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, data)
 	if err != nil {
 		return trx, err
 	}
 
+	//workaround for eth_sig, can we sign the hash by given pubkey
 	ks := localcrypto.GetKeystore()
-	var signature []byte
-	if keyalias == "" {
-		keyname := groupItem.GroupId
-		signature, err = ks.EthSignByKeyName(keyname, hash)
-	} else {
-		signature, err = ks.EthSignByKeyAlias(keyalias, hash)
+
+	//get keyname by using pubkey
+	allKeys, err := ks.ListAll()
+	if err != nil {
+		return nil, err
 	}
+
+	keyname := ""
+	for _, keyItem := range allKeys {
+		pubkey, err := ks.GetEncodedPubkey(keyItem.Keyname, localcrypto.Sign)
+		if err != nil {
+			continue
+		}
+		if pubkey == groupItem.TrxSignPubkey {
+			keyname = keyItem.Keyname
+			break
+		}
+	}
+
+	if keyname == "" {
+		return nil, fmt.Errorf("keyname not found")
+	}
+
+	//sign it
+	signature, err := ks.EthSignByKeyName(keyname, hash)
 	if err != nil {
 		return trx, err
 	}
@@ -125,7 +131,6 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 	}
 
 	bytespubkey, err := base64.RawURLEncoding.DecodeString(trx.SenderPubkey)
-
 	if err == nil { //try eth key
 		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
 		if err == nil {
@@ -134,5 +139,6 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 		}
 		return false, err
 	}
+
 	return false, err
 }

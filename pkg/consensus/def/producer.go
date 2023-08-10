@@ -6,11 +6,18 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
+type ProducerRumLite interface {
+	NewProducer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
+	StartPropose()
+	StopPropose()
+	AddTrxToTxBuffer(trx *quorumpb.Trx)
+	HandleBftMsg(hb *quorumpb.BftMsg) error
+}
+
 type Producer interface {
 	NewProducer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	StartPropose()
 	StopPropose()
-	AddBlock(block *quorumpb.Block) error
 	AddTrxToTxBuffer(trx *quorumpb.Trx)
 	HandleBftMsg(hb *quorumpb.BftMsg) error
 }

@@ -44,7 +44,7 @@ type RexService struct {
 	Host host.Host
 	//pubSubConnMgr      *pubsubconn.PubSubConnMgr
 	ProtocolId         protocol.ID
-	chainmgr           map[string]chaindef.ChainDataSyncIface
+	chainmgr           map[string]chaindef.ChainDataSyncIfaceRumLite
 	peerstore          *RumGroupPeerStore
 	msgtypehandlers    []RumHandler
 	msgtypehandlerlock sync.RWMutex
@@ -52,7 +52,7 @@ type RexService struct {
 
 func NewRexService(h host.Host, Networkname string, ProtocolPrefix string) *RexService {
 	customprotocol := fmt.Sprintf("%s/%s/rex/%s", ProtocolPrefix, Networkname, IDVer)
-	chainmgr := make(map[string]chaindef.ChainDataSyncIface)
+	chainmgr := make(map[string]chaindef.ChainDataSyncIfaceRumLite)
 	rumpeerstore := NewRumGroupPeerStore()
 	rexs := &RexService{Host: h, peerstore: rumpeerstore, ProtocolId: protocol.ID(customprotocol), chainmgr: chainmgr}
 	rumexchangelog.Debug("new rex service")
@@ -101,7 +101,7 @@ func (r *RexService) NewStream(peerid peer.ID) (network.Stream, error) {
 	return s, nil
 }
 
-func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataSyncIface) {
+func (r *RexService) ChainReg(groupid string, cdhIface chaindef.ChainDataSyncIfaceRumLite) {
 	_, ok := r.chainmgr[groupid]
 	if ok == false {
 		r.chainmgr[groupid] = cdhIface
