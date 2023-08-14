@@ -16,10 +16,11 @@ import (
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
+
+	consensus "github.com/rumsystem/quorum/pkg/consensus/def"
 )
 
 var chain_log = logging.Logger("chain")
-var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
 
 // rum lite
 type ChainRumLite struct {
@@ -48,9 +49,6 @@ func (chain *ChainRumLite) NewChainRumLite(item *quorumpb.GroupItemRumLite, node
 	//initial sync white list
 	chain.syncerWhiteList = make(map[string]bool)
 
-	//initial Syncer
-	//chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-
 	//initial chaindata manager
 	chain.chainData = &ChainDataRumLite{
 		nodename:      chain.nodename,
@@ -59,6 +57,9 @@ func (chain *ChainRumLite) NewChainRumLite(item *quorumpb.GroupItemRumLite, node
 		trxSignPubkey: chain.groupItem.TrxSignPubkey,
 		dbmgr:         nodectx.GetDbMgr(),
 	}
+
+	//initial Syncer
+	//chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 
 	//create context with cancel function, chainCtx will be ctx parent of all underlay components
 	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
@@ -96,7 +97,7 @@ func (chain *ChainRumLite) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleTrxPsConn(trx)
 		}
-	} else if pkg.Type == quorumpb.PackageType_BFT_MSG {
+	} else if pkg.Type == quorumpb.PackageType_BFT {
 		bftMsg := &quorumpb.BftMsg{}
 		err = proto.Unmarshal(pkg.Data, bftMsg)
 		if err != nil {
@@ -104,7 +105,7 @@ func (chain *ChainRumLite) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleBftMsgPsConn(bftMsg)
 		}
-	} else if pkg.Type == quorumpb.PackageType_BROADCAST_MSG {
+	} else if pkg.Type == quorumpb.PackageType_BROADCAST {
 		broadcastMsg := &quorumpb.BroadcastMsg{}
 		err = proto.Unmarshal(pkg.Data, broadcastMsg)
 		if err != nil {
@@ -157,7 +158,7 @@ func (chain *ChainRumLite) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		quorumpb.TrxType_UPD_SYNCER,
 		quorumpb.TrxType_CHAIN_CONFIG,
 		quorumpb.TrxType_APP_CONFIG,
-		quorumpb.TrxType_FORK:
+		quorumpb.TrxType_CELLA_REQ:
 		chain.Consensus.Producer().AddTrxToTxBuffer(trx)
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.groupItem.GroupId)
@@ -258,7 +259,7 @@ func (chain *ChainRumLite) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s networ
 	}
 }
 
-// check if syncer is allowed
+// check if sync is allowed
 func (chain *ChainRumLite) canSync(req *quorumpb.ReqBlock) bool {
 	if chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC_SYNC {
 		return true
@@ -337,6 +338,21 @@ func (chain *ChainRumLite) HandleBlockPsConn(block *quorumpb.BlockRumLite) error
 			}
 		}
 	*/
+
+	return nil
+}
+
+func (chain *ChainRumLite) CreateConsensus() error {
+	chain_log.Debugf("<%s> CreateConsensus called", chain.groupItem.GroupId)
+
+	producer := consensus.ProducerRumLite{}
+	producer.NewProducer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
+
+	user := &consensus.MolassesUserRumLite{}
+	user.NewUser(chain.groupItem, chain.nodename, chain)
+
+	chain.Consensus = consensus.NewMolassesRumLite(producer, user, consensusProposer)
+	chain.Consensus.StartProposeTrx()
 
 	return nil
 }

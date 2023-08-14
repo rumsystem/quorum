@@ -24,7 +24,10 @@ type MolassesPoaProducer struct {
 	locker sync.RWMutex
 }
 
-func (producer *MolassesProducer) NewPoaProducer(ctx context.Context, item *quorumpb.GroupItemRumLite, nodename string, iface def.ChainMolassesIfaceRumLite) {
+type PoaConsensusInfo struct {
+}
+
+func (producer *MolassesPoaProducer) NewPoaProducer(ctx context.Context, item *quorumpb.GroupItemRumLite, nodename string, iface def.ChainMolassesIfaceRumLite) {
 	molaproducer_log.Debugf("<%s> NewPoaProducer called", item.GroupId)
 	producer.nodename = nodename
 	producer.groupId = item.GroupId
@@ -33,16 +36,13 @@ func (producer *MolassesProducer) NewPoaProducer(ctx context.Context, item *quor
 	producer.ctx = ctx
 }
 
-func (producer *MolassesProducer) StartPropose() {
+func (producer *MolassesPoaProducer) StartPropose() {
 	molaproducer_log.Debugf("<%s> StartPropose called", producer.groupId)
 
 	producer.locker.Lock()
 	defer producer.locker.Unlock()
 
-	producers := producer.grpItem.ConsensusInfo.Poa.Producers
-
-
-	if !producer.cIface.HasKey(producer.grpItem.ConsensusInfo.) {
+	if !producer.cIface.HasProducersKey(producer.grpItem.ConsensusInfo.Poa.Producers...) {
 		molaproducer_log.Debugf("<%s> unapproved producer do nothing", producer.groupId)
 		return
 	}
@@ -58,7 +58,7 @@ func (producer *MolassesProducer) StartPropose() {
 	producer.ptbft.Start()
 }
 
-func (producer *MolassesProducer) StopPropose() {
+func (producer *MolassesPoaProducer) StopPropose() {
 	molaproducer_log.Debug("StopPropose called")
 	producer.locker.Lock()
 	defer producer.locker.Unlock()
@@ -69,7 +69,7 @@ func (producer *MolassesProducer) StopPropose() {
 	producer.ptbft = nil
 }
 
-func (producer *MolassesProducer) createBftConfig() (*Config, error) {
+func (producer *MolassesPoaProducer) createBftConfig() (*Config, error) {
 	molaproducer_log.Debugf("<%s> createBftConfig called", producer.groupId)
 	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
 	if err != nil {

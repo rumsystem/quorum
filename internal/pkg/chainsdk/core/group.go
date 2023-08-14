@@ -28,47 +28,6 @@ type GroupRumLite struct {
 	Nodename  string
 }
 
-func (grp *GroupRumLite) JoinGroup(groupItem *quorumpb.GroupItemRumLite) error {
-	group_log.Debugf("<%s> JoinGoup called", groupItem.GroupId)
-
-	grp.groupItem = groupItem
-	grp.GroupId = groupItem.GroupId
-	grp.Nodename = nodectx.GetNodeCtx().Name
-
-	group_log.Debugf("<%s> create and initial chainCtx", grp.GroupId)
-	//create and initial chain
-	grp.ChainCtx = &ChainRumLite{}
-	grp.ChainCtx.NewChainRumLite(groupItem, grp.Nodename)
-
-	//save genesis block
-	group_log.Debugf("<%s> save genesis block", grp.GroupId)
-	err := nodectx.GetNodeCtx().GetChainStorage().AddGensisBlockRumLite(groupItem.GenesisBlock, grp.Nodename)
-	if err != nil {
-		return err
-	}
-
-	group_log.Debugf("<%s> create and register ConnMgr for chainctx", grp.groupItem.GroupId)
-	//create and register ConnMgr for chainctx
-	conn.GetConn().RegisterChainCtx(groupItem.GroupId,
-		groupItem.OwnerPubKey,
-		groupItem.TrxSignPubkey,
-		grp.ChainCtx)
-
-	group_log.Debugf("<%s> create group consensus", grp.GroupId)
-	//create group consensus
-	//grp.ChainCtx.CreateConsensus()
-
-	group_log.Debugf("<%s> Save GroupInfo", grp.GroupId)
-	//save groupItem to db
-	//err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
-	//if err != nil {
-	//	return err
-	//}
-
-	group_log.Debugf("Join Group <%s> done", grp.GroupId)
-	return nil
-}
-
 func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	group_log.Debugf("<%s> LoadGroup called", item.GroupId)
 	/*

@@ -5,10 +5,9 @@ option go_package = "github.com/rumsystem/quorum/pkg/pb";
 enum PackageType {
     TRX                   = 0;
     BLOCK                 = 1;
-    BFT_MSG               = 2;
-    CC_MSG                = 3;  //Change Consensus 
-    SYNC                  = 4;
-    BROADCAST_MSG         = 5;
+    BFT                   = 2;
+    SYNC                  = 3;
+    BROADCAST             = 4;
 }
 
 message Package {
@@ -32,7 +31,42 @@ enum TrxType {
     UPD_SYNCER         = 1; // owner update group
     CHAIN_CONFIG       = 2; // chain configuration
     APP_CONFIG         = 3; // app configuration
-    FORK               = 4; // fork chain
+    CELLA_REQ          = 4; // request put a group seed in a cella
+    CELLA_RESP         = 5; // cella response for CELLA_REQ
+}
+
+message CellaReqItem {
+    string           CellaId = 1;
+    GroupSeedRumLite ReqSeed = 2;
+    CellaReqItemMeta ReqMeta = 3;
+    bytes  Hash              = 4;
+    bytes  Sign              = 5;
+}
+
+message CellaReqItemMeta {
+    GroupCtnType Type = 1;
+    bytes        Meta = 2;
+}
+
+message BlobGroupMeta {
+    uint64 BlocksToSync = 1;
+    reserved 2;
+}
+
+message ServiceGroupMeta {
+    uint64   BlocksToSync     = 1;
+    repeated string Producers = 2;
+    uint64   EpochDuration    = 3;
+    reserved 4 to 100; 
+}
+
+message CellaRespItem {
+    string ReqGroupId        = 1;
+    string CellaId           = 2;
+    CellaReqItemMeta ReqMeta = 3;
+    string CellaOwnerPubkey  = 4;
+    bytes  Hash              = 5;
+    bytes  Sign              = 6;
 }
 
 message PostItem {
@@ -80,8 +114,6 @@ message SyncerItem {
     uint64 BlockRequested = 4;
     string Memo           = 5;
 }
-
-
 
 enum ChainConfigType {
     SET_TRX_AUTH_MODE = 0;

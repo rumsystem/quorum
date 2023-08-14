@@ -22,7 +22,7 @@ var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
 
 type PTBft struct {
 	Config
-	cIface            def.ChainMolassesIface
+	cIface            def.ChainMolassesIfaceRumLite
 	txBuffer          *TrxBuffer
 	chainCtx          context.Context
 	currTask          *PTTask
@@ -45,7 +45,7 @@ type PTAcsResult struct {
 	result map[string][]byte
 }
 
-func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PTBft {
+func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIfaceRumLite) *PTBft {
 	ptbft_log.Debugf("<%s> NewPTBft called", cfg.GroupId)
 	ptbft := &PTBft{
 		Config:   cfg,

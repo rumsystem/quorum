@@ -145,3 +145,106 @@ curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43
   "seed_byts": "CoQFCiQyMTRiY2M5NC1hMDE3LTQwZjEtOWUzYi01MjZjOTQwN2FiNDkSJDRjMGJkNWM1LTM1YjYtNDNiNC05MmE3LWUwNjdhOGU3ODY1ZRoOZHVtbXlfYXBwX25hbWUiLEF0dndiNTdkcVJFMWExaFVTUEh3aWt5cVhiR3BJREtwWUg4UTJKUTJheHpqKixBNGtsQ1dhUVRPWjF1YUlaMU5kUFRHeUxybjdTOGViZTIyOWxlMFo1RWx2YTJANjZhMjM5ZGRlMTY2YjI1NjFhMzg5MmMyZmNmNWMxNDNmOWFmMDk3MjA3ZmFlOGM3NTJhMDg3NWQyM2E0MzlkOTgBQAFaWQpXCiRhZTdiNGQ2ZS0xMDZmLTQyN2ItYTQzOC04YTNjYjQzNDIwZWQY6AciLEF6Smh4WnpIbjFFaklPVzc0cVZvZGlBandET3dPdFFwbzh5VEo3Q2U2X0lFYp4CEiQyMTRiY2M5NC1hMDE3LTQwZjEtOWUzYi01MjZjOTQwN2FiNDkos5CLvtzP3rwXMixBekpoeFp6SG4xRWpJT1c3NHFWb2RpQWp3RE93T3RRcG84eVRKN0NlNl9JRTpZClcKJGFlN2I0ZDZlLTEwNmYtNDI3Yi1hNDM4LThhM2NiNDM0MjBlZBjoByIsQXpKaHhaekhuMUVqSU9XNzRxVm9kaUFqd0RPd090UXBvOHlUSjdDZTZfSUVCIGoH5Zka0qYcrzBUK3jJ/zggf1loZ9hdSH07WpBE53qlSkFdfixH0drAUDwAGPgIOIUa8mtnacakB7NsBJOFUFM0xCUTUMwBu5eygvIvQbQ6CUA9pHUau9KLuayQW0Gq9/92AGizkIu+3M/evBcSILVsX3bl23gNAGyxZEihj5yhm6ocKy+nI3FqD30sZW14GkEnXsIBZXgTNntd7juhuPDL5t+JIH37lrJkzQiBd6g1eVPnL3iJn7JNVRLgQNcQIGtFoYcJCSE91TiNAY3moi6LAQ=="
 }
 
+组的同步类型：
+
+任何人可以加入并同步一个public组的数据
+任何人都可以加入一根private组，但是需要经过owner同意才能同步该组的数据
+
+组的内容类型：
+
+blob：静态类型，内容可以增长，但是不可以更换producer和consensus相关的其他参数，不可以fork。blob组的用处是存储文件类型的数据
+
+service：动态类型，内容可以增长，可更换producer和consensus相关的参数（通过fork)。service组的用处是host某种动态服务
+
+酒窖（cella）
+酒窖其实也是一个group，类型为service，同步类型可以是public或者private，producer可以是一个或者多个（一旦确定则不可更改，除非停机fork）
+酒窖会同步放入其中的所有Seed
+酒窖中的所有组会保持打开状态，以随时给不同业务提供block同步或者出块服务
+一个酒窖本身的group不能放入其他酒窖
+一个酒窖可以同意其他酒窖加入自己并同步酒窖group本身的block
+
+============================================================================================================================
+
+节点，酒窖和种子的互动过程
+
+user story 1：
+节点A创建一个blob类型的种子B
+- 节点A在本地调用CreateSeed API创建一个种子B
+
+
+user story2:
+节点A向一个Blob类型的种子B添加内容
+- 节点A在本地调用JoinGroupBySeed加入group B
+- 节点A将内容打散并以POST trx的形式存入 group B （add blocks)
+- 节点A在调用CloseGroup关闭group B
+
+
+user story3:
+节点A向一个存在的group B添加内容
+- 节点A调用LoadGroupById打开groupB
+- 节点A将新内容打散并以POST trx的形式追加到group B
+- 节点A在调用Close Group关闭group B
+
+user story4:
+节点A创建一个Blob类型的种子B并将B加入酒窖C
+-节点A创建group B并添加内容（us1 to us3）
+-节点A保持Group B在本地运行
+-节点A获取酒窖C的种子
+-节点A加载酒窖C的种子，在本地创建一个酒窖C的实例（为了向酒窖C发trx），节点A并不同步酒窖C的block
+-节点A向酒窖C的group 发送一条 CELLA_REQ类型的trx，包括
+	- Group B的 seed
+	-需要酒窖C同步的块数
+	-支付凭证（optional）
+-节点A持续检查并试图获取自己的CELLA_REQ trx被酒窖C上链（意味着Cella接受并开始同步Group block)
+- 酒窖C获取该Trx，检查支付凭证，如果同意同步，则将该Trx上链（add trx to cella group)
+	- 通过seed B加入GroupB
+	- 试图开始同步
+- 如果种子B的类型为private，则节点A需要发送UPD_SYNCER Trx到group B，将Cella C的pubkey加入同步白名单
+- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
+** 和节点不同，一个Cella在完成同步某个group后，并不关闭这个group，而且作为一个在线服务，提供该group的block（follow group同步名单设置）
+
+- 如果需要，节点A可以在收到CELLA_RESP后，关闭本地的group B （关闭本地文件）
+- 如果需要，节点A可以在收到CELLA_RESP后，关闭本地的group C （退出酒窖）
+
+user story5:
+节点A在将blob group B添加到Cella C后，添加 Group B的内容
+-节点A在本地调用LoadGroupById打开group B
+-节点A向Group B中添加一些新的block (POST trx or other type trx)
+-节点A向酒窖C的group发送一条CELLA_REQ类型的trx，包括
+	- Group B的seed
+	- 需要酒窖C同步的块数 
+	- 支付凭证（optional
+- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
+
+user story6:
+节点A在将blob group B添加到Cella C后，修改可以同步groupB block的syncer名单
+-节点A在本地调用LoadGroupById打开group B
+-节点A向Group B中发送一条UPD_SYNCER类型的trx并正确出块，得以更新可以sync本组的pubkey名单
+-节点A向酒窖C的group发送一条CELLA_REQ类型的trx，包括
+	- Group B的seed
+	- 需要酒窖C同步的块数 （包含新打包的UPD_SYNCER trx）
+	- 支付凭证（optional）
+- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
+- Cella C通过apply trx的方式，更新本地的group B的syncer名单
+
+user story7:
+节点A在blob group B同时添加内容和修改syncer 白名单
+
+
+user story 8：
+节点A创建一个Service类型的种子B并将B加入酒窖C
+- 节点A在本地创建一个Service类型的种子B
+- 节点A加载这个种子，在本地创建Group B
+- 节点A自己作为producer（host the group producer key at local keychain)，生产一些group block
+...  
+
+
+
+节点可能提供的酒窖API
+	- 创建一个酒窖（公开/私有）
+	- 删除一个酒窖
+	- 列出所有酒窖
+	- 列出某个酒窖的所有组
+	- 列出某个酒窖的所有申请
+	- 批准/拒绝某个种子的加入申请
+	- 列出一个酒窖里所有group的状态
