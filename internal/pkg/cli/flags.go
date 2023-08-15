@@ -8,7 +8,7 @@ import (
 
 type AddrList []maddr.Multiaddr
 
-type FullNodeFlag struct {
+type RumLiteNodeFlag struct {
 	RendezvousString string
 	BootstrapPeers   AddrList
 	ListenAddresses  AddrList
@@ -77,25 +77,6 @@ type RelayNodeFlag struct {
 	KeyStoreName    string
 	KeyStorePwd     string
 	IsDebug         bool
-}
-
-type ProducerNodeFlag struct {
-	RendezvousString string
-	BootstrapPeers   AddrList
-	ListenAddresses  AddrList
-	APIHost          string
-	APIPort          uint
-	CertDir          string
-	ZeroAccessKey    string
-	ProtocolID       string
-	PeerName         string
-	JsonTracer       string
-	IsDebug          bool
-	ConfigDir        string
-	DataDir          string
-	KeyStoreDir      string
-	KeyStoreName     string
-	KeyStorePwd      string
 }
 
 func (al *AddrList) String() string {

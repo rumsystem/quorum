@@ -31,48 +31,48 @@ import (
 )
 
 var (
-	fnodeFlag        = cli.FullNodeFlag{ProtocolID: "/quorum/1.0.0"}
+	rlnodeFlag       = cli.RumLiteNodeFlag{ProtocolID: "/quorum/1.0.0"}
 	fullNode         *p2p.Node
 	fullNodeSignalch chan os.Signal
 )
 
-var fullnodeCmd = &cobra.Command{
-	Use:   "fullnode",
-	Short: "Run fullnode",
+var rumlitenodeCmd = &cobra.Command{
+	Use:   "rumlitenode",
+	Short: "Run rumlite node",
 	Run: func(cmd *cobra.Command, args []string) {
-		if fnodeFlag.KeyStorePwd == "" {
-			fnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
+		if rlnodeFlag.KeyStorePwd == "" {
+			rlnodeFlag.KeyStorePwd = os.Getenv("RUM_KSPASSWD")
 		}
-		fnodeFlag.IsDebug = isDebug
-		runFullnode(fnodeFlag)
+		rlnodeFlag.IsDebug = isDebug
+		runRumLiteNode(rlnodeFlag)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(fullnodeCmd)
+	rootCmd.AddCommand(rumlitenodeCmd)
 
-	flags := fullnodeCmd.Flags()
+	flags := rumlitenodeCmd.Flags()
 	flags.SortFlags = false
 
-	flags.StringVar(&fnodeFlag.PeerName, "peername", "peer", "peername")
-	flags.StringVar(&fnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
-	flags.StringVar(&fnodeFlag.DataDir, "datadir", "./data/", "data dir")
-	flags.StringVar(&fnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
-	flags.StringVar(&fnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
-	flags.StringVar(&fnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
-	flags.Var(&fnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
-	flags.StringVar(&fnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
-	flags.UintVar(&fnodeFlag.APIPort, "apiport", 5215, "api server listen port")
-	flags.StringVar(&fnodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
-	flags.StringVar(&fnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
-	flags.Var(&fnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
-	flags.StringVar(&fnodeFlag.SkipPeers, "skippeers", "", "peer id lists, will be skipped in the pubsub connection")
-	flags.StringVar(&fnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
-	flags.BoolVar(&fnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
-	flags.BoolVar(&fnodeFlag.EnableRelay, "autorelay", true, "enable relay")
+	flags.StringVar(&rlnodeFlag.PeerName, "peername", "peer", "peername")
+	flags.StringVar(&rlnodeFlag.ConfigDir, "configdir", "./config/", "config and keys dir")
+	flags.StringVar(&rlnodeFlag.DataDir, "datadir", "./data/", "data dir")
+	flags.StringVar(&rlnodeFlag.KeyStoreDir, "keystoredir", "./keystore/", "keystore dir")
+	flags.StringVar(&rlnodeFlag.KeyStoreName, "keystorename", "default", "keystore name")
+	flags.StringVar(&rlnodeFlag.KeyStorePwd, "keystorepass", "", "keystore password")
+	flags.Var(&rlnodeFlag.ListenAddresses, "listen", "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip/127.0.0.1/tcp/5215/ws")
+	flags.StringVar(&rlnodeFlag.APIHost, "apihost", "", "Domain or public ip addresses for api server")
+	flags.UintVar(&rlnodeFlag.APIPort, "apiport", 5215, "api server listen port")
+	flags.StringVar(&rlnodeFlag.CertDir, "certdir", "certs", "ssl certificate directory")
+	flags.StringVar(&rlnodeFlag.ZeroAccessKey, "zerosslaccesskey", "", "zerossl access key, get from: https://app.zerossl.com/developer")
+	flags.Var(&rlnodeFlag.BootstrapPeers, "peer", "bootstrap peer address")
+	flags.StringVar(&rlnodeFlag.SkipPeers, "skippeers", "", "peer id lists, will be skipped in the pubsub connection")
+	flags.StringVar(&rlnodeFlag.JsonTracer, "jsontracer", "", "output tracer data to a json file")
+	flags.BoolVar(&rlnodeFlag.AutoAck, "autoack", true, "auto ack the transactions in pubqueue")
+	flags.BoolVar(&rlnodeFlag.EnableRelay, "autorelay", true, "enable relay")
 }
 
-func runFullnode(config cli.FullNodeFlag) {
+func runRumLiteNode(config cli.RumLiteNodeFlag) {
 	// NOTE: hardcode
 	const defaultKeyName = "default"
 
@@ -132,7 +132,7 @@ func runFullnode(config cli.FullNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	nodename := "fullnode_default"
+	nodename := "rumlitenode_default"
 
 	datapath := config.DataDir + "/" + config.PeerName
 	dbManager, err := storage.CreateDb(datapath)
@@ -236,7 +236,7 @@ func runFullnode(config cli.FullNodeFlag) {
 		CertDir:       config.CertDir,
 		ZeroAccessKey: config.ZeroAccessKey,
 	}
-	go api.StartFullNodeServer(startParam, fullNodeSignalch, h, apph, fullNode, nodeoptions, ks, ethaddr)
+	go api.StartRumLiteNodeServer(startParam, fullNodeSignalch, h, apph, fullNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
 	signal.Notify(fullNodeSignalch, os.Interrupt, syscall.SIGTERM)
