@@ -104,11 +104,6 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
 
-	r.GET("/v1/group/:group_id/consensus/proof/history", h.GetConsensusHistory)
-	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
-	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
-	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
-
 	//app api
 	a.POST("/v1/token", apph.CreateToken)
 	a.DELETE("/v1/token", apph.RemoveToken)
@@ -169,7 +164,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 	r.POST("/v1/group/upduser", h.UpdGroupUser)
 	r.POST("/v1/group/announce", h.Announce)
-	r.POST("/v1/group/reqconsensuschange", h.ReqConsensusChange)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
@@ -187,11 +181,6 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
-
-	r.GET("/v1/group/:group_id/consensus/proof/history", h.GetConsensusHistory)
-	r.GET("/v1/group/:group_id/consensus/proof/last", h.GetLatestConsensusChangeResult)
-	r.GET("/v1/group/:group_id/consensus/proof/:req_id", h.GetConsensusResultByReqId)
-	r.GET("/v1/group/:group_id/consensus/", h.GetCurrentConsensus)
 
 	//app api
 	a.POST("/v1/token", apph.CreateToken)

@@ -6,9 +6,8 @@ enum PackageType {
     TRX                   = 0;
     BLOCK                 = 1;
     BFT_MSG               = 2;
-    CC_MSG                = 3;  //Change Consensus 
-    SYNC                  = 4;
-    BROADCAST_MSG         = 5;
+    SYNC                  = 3;
+    BROADCAST_MSG         = 4;
 }
 
 message Package {
@@ -197,71 +196,6 @@ message BftMsg {
     bytes      Data = 2; 
 }
 
-//CC_MSG
-enum CCMsgType {
-    CHANGE_CONSENSUS_REQ  = 0; // request change consensus
-    CC_PROOF_HB           = 1; // HB msg for change consensus
-}
-
-message CCMsg {
-    CCMsgType Type = 1;
-    bytes     Data = 2;
-}
-
-message ChangeConsensusReq {
-    string            ReqId                = 1;    
-    string            GroupId              = 2;
-    uint64            Nonce                = 3;
-    repeated string   ProducerPubkeyList   = 4;  
-    uint64            AgreementTickLenInMs = 5;
-    uint64            AgreementTickCount   = 6;
-    uint64            FromBlock            = 7;
-    uint64            FromEpoch            = 8;
-    uint64            EpochDuration        = 9;
-    string            Contract             = 10;
-    string            SenderPubkey         = 12;
-    string            Memo                 = 13;
-    bytes             MsgHash              = 14; 
-    bytes             SenderSign           = 15;
-}
-
-message ChangeConsensusReqMsg {
-    ChangeConsensusReq Req                        = 1;
-    uint64             ReqChangeConsensusRetryCnt = 2;
-}
-
-message ChangeConsensusResp {
-    string             RespId       = 1;
-    string             GroupId      = 2;
-    ChangeConsensusReq Req          = 3;
-    string             SenderPubkey = 4;
-    string             Memo         = 5;    
-    bytes              MsgHash      = 6;
-    bytes              SenderSign   = 7;
-}
-
-message ChangeConsensusRespMsg {
-    ChangeConsensusResp Resp                       = 1;
-    uint64              ReqChangeConsensusRetryCnt = 2;
-}
-
-message ChangeConsensusProof{
-    uint64 ReqChangeConsensusRetryCnt = 1;
-    ChangeConsensusReq           Req  = 2;
-    ChangeConsensusResp          Resp = 3;
-}
-
-enum ChangeConsensusResult {
-    SUCCESS = 0;
-    FAIL    = 1;
-}
-
-message ChangeConsensusResultBundle{
-    ChangeConsensusReq            Req                = 1;
-    repeated ChangeConsensusResp  Resps              = 2;
-    ChangeConsensusResult         Result             = 3;
-}
-
 //SYNC_MSG
 enum SyncMsgType {
     REQ_BLOCK          = 0; // request block 
@@ -362,7 +296,6 @@ message NodeSDKGroupItem {
 
 
 //HB_MSG
-//HB protocol is used for both change consensus and bft
 message HBTrxBundle {
     repeated Trx Trxs = 1;
 }  

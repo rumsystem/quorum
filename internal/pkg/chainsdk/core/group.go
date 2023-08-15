@@ -261,10 +261,6 @@ func (grp *Group) JoinGroup(item *quorumpb.GroupItem) error {
 		item.UserSignPubkey,
 		grp.ChainCtx)
 
-	//commented by cuicat
-	//update producer list for ConnMgr just created
-	//grp.ChainCtx.UpdConnMgrProducer()
-
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
 
@@ -435,44 +431,8 @@ func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, err
 	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigItem(keyName, grp.Item.GroupId, grp.Nodename)
 }
 
-func (grp *Group) GetAllChangeConsensusResultBundle() ([]*quorumpb.ChangeConsensusResultBundle, error) {
-	group_log.Debugf("<%s> GetAllChangeConsensusResultBundle called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(grp.Item.GroupId, grp.Nodename)
-}
-
 func (grp *Group) GetCurrentTrxProposeInterval() (uint64, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(grp.Item.GroupId, grp.Nodename)
-}
-
-func (grp *Group) GetLastChangeConsensusResult(isSuccess bool) (*quorumpb.ChangeConsensusResultBundle, error) {
-	group_log.Debugf("<%s> GetLastSuccessChangeConsensusResult called", grp.Item.GroupId)
-	results, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(grp.Item.GroupId, grp.Nodename)
-	if err != nil {
-		return nil, err
-	}
-
-	//if there is only 1 proof and nonce is 0, return it (added by owner when create group)
-	if len(results) == 1 && results[0].Req.Nonce == 0 {
-		return results[0], nil
-	}
-
-	nonce := uint64(0)
-	last := &quorumpb.ChangeConsensusResultBundle{}
-	for _, result := range results {
-		if isSuccess && result.Result != quorumpb.ChangeConsensusResult_SUCCESS {
-			continue
-		}
-		if result.Req.Nonce > nonce {
-			last = result
-			nonce = result.Req.Nonce
-		}
-	}
-	return last, nil
-}
-
-func (grp *Group) GetChangeConsensusResultById(id string) (*quorumpb.ChangeConsensusResultBundle, error) {
-	group_log.Debugf("<%s> GetChangeConsensusResultById called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetChangeConsensusResultByReqId(grp.Item.GroupId, id, grp.Nodename)
 }
 
 // send update announce trx
@@ -511,11 +471,6 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 
 func (grp *Group) GetInitForkTrx(trxId string, item *quorumpb.ForkItem) (*quorumpb.Trx, error) {
 	return grp.ChainCtx.GetTrxFactory().GetForkTrx("", item)
-}
-
-func (grp *Group) ReqChangeConsensus(producers []string, agrmTickLength, agrmTickCount, fromBlock uint64, fromEpoch uint64, epoch uint64) (string, uint64, error) {
-	group_log.Debugf("<%s> ReqChangeConsensus called", grp.Item.GroupId)
-	return grp.ChainCtx.ReqChangeConsensus(producers, agrmTickLength, agrmTickCount, fromBlock, fromEpoch, epoch)
 }
 
 func (grp *Group) UpdGroupUser(item *quorumpb.UpdGroupUserItem) (string, error) {

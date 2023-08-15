@@ -149,16 +149,6 @@ func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
 	return chain.trxFactory
 }
 
-func (chain *Chain) ReqChangeConsensus(producers []string, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch uint64) (reqId string, nonce uint64, err error) {
-	chain_log.Debugf("<%s> ReqChangeConsensus called", chain.groupItem.GroupId)
-
-	if chain.Consensus.ConsensusProposer() == nil {
-		return "", 0, fmt.Errorf("consensus proposer is nil")
-	}
-
-	return chain.Consensus.ConsensusProposer().ReqChangeConsensus(producers, agrmTickLen, agrmTickCnt, fromBlock, fromEpoch, epoch)
-}
-
 // PSConn msg handler
 func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 	//chain_log.Debugf("<%s> HandlePsConnMessage called, <%s>", chain.groupItem.GroupId, pkg.Type.String())
@@ -190,14 +180,6 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 			chain_log.Warningf(err.Error())
 		} else {
 			err = chain.HandleBftMsgPsConn(bftMsg)
-		}
-	} else if pkg.Type == quorumpb.PackageType_CC_MSG {
-		ccMsg := &quorumpb.CCMsg{}
-		err = proto.Unmarshal(pkg.Data, ccMsg)
-		if err != nil {
-			chain_log.Warnf(err.Error())
-		} else {
-			err = chain.HandleCCMsgPsConn(ccMsg)
 		}
 	} else if pkg.Type == quorumpb.PackageType_BROADCAST_MSG {
 		broadcastMsg := &quorumpb.BroadcastMsg{}
@@ -353,15 +335,6 @@ func (chain *Chain) HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, s network.Stream
 		chain.handleReqBlockRespRex(syncMsg)
 	}
 	return nil
-}
-func (chain *Chain) HandleCCMsgPsConn(msg *quorumpb.CCMsg) error {
-	//chain_log.Debugf("<%s> HandleChangeConsensusReqPsConn called", chain.groupItem.GroupId)
-	if chain.Consensus.ConsensusProposer() == nil {
-		//chain_log.Warningf("<%s> Consensus ConsensusProposer is nil", chain.groupItem.GroupId)
-		return nil
-	}
-
-	return chain.Consensus.ConsensusProposer().HandleCCMsg(msg)
 }
 
 func (chain *Chain) HandleBroadcastMsgPsConn(brd *quorumpb.BroadcastMsg) error {
@@ -607,22 +580,18 @@ func (chain *Chain) CreateConsensus() error {
 
 	var user def.User
 	var producer def.Producer
-	var consensusProposer def.ConsensusProposer
 
-	var shouldCreateUser, shouldCreateProducer, shouldCreateConsensusProposer bool
+	var shouldCreateUser, shouldCreateProducer bool
 
 	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
 		shouldCreateProducer = true
 		shouldCreateUser = false
-		shouldCreateConsensusProposer = true
 	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
 		//check if I am owner of the Group
 		if chain.groupItem.UserSignPubkey == chain.groupItem.OwnerPubKey {
 			shouldCreateProducer = true
-			shouldCreateConsensusProposer = true
 		} else {
 			shouldCreateProducer = false
-			shouldCreateConsensusProposer = false
 		}
 		shouldCreateUser = true
 	} else {
@@ -641,55 +610,10 @@ func (chain *Chain) CreateConsensus() error {
 		user.NewUser(chain.groupItem, chain.nodename, chain)
 	}
 
-	if shouldCreateConsensusProposer {
-		chain_log.Infof("<%s> Create and initial molasses consensusproposer", chain.groupItem.GroupId)
-		consensusProposer = &consensus.MolassesConsensusProposer{}
-		consensusProposer.NewConsensusProposer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
-	}
-
-	chain.Consensus = consensus.NewMolasses(producer, user, consensusProposer)
+	chain.Consensus = consensus.NewMolasses(producer, user)
 	chain.Consensus.StartProposeTrx()
 
 	return nil
-}
-
-// update change consensus result
-func (chain *Chain) ReqConsensusChangeDone(bundle *quorumpb.ChangeConsensusResultBundle) {
-	chain_log.Debugf("<%s> ReqConsensusChangeDone called", chain.groupItem.GroupId)
-
-	//save change consensus result
-	nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, bundle, chain.nodename)
-
-	//stop all consensus tasks
-	chain.Consensus.ConsensusProposer().StopAllTasks()
-
-	switch bundle.Result {
-	case quorumpb.ChangeConsensusResult_SUCCESS:
-		chain_log.Debugf("<%s> ReqChangeConsensus SUCCESSFUL", chain.groupItem.GroupId)
-		/*
-			TBD
-			fix implement later
-			//stop current propose
-			chain.Consensus.Producer().StopPropose()
-			//update producer list
-			chain.updChainConsensus(trxId, bundle)
-			chain.Consensus.Producer().StartPropose()
-
-			//owner create the fork block and broadcast to all nodes
-			if chain.IsOwner() {
-				trx, err := chain.trxFactory.GetForkTrx("", bundle)
-				if err != nil {
-					chain_log.Warningf("<%s> GetChangeConsensusResultTrx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-					return
-				}
-
-				chain_log.Debugf("<%s> ReqChangeConsensus SUCCESSFUL, trx created %x", chain.groupItem.GroupId, trx)
-				//TBD create fork block and broadcast
-			}
-		*/
-	case quorumpb.ChangeConsensusResult_FAIL:
-		chain_log.Debug("<%s> ReqChangeConsensus FAIL", chain.groupItem.GroupId)
-	}
 }
 
 func (chain *Chain) IsProducer() bool {
@@ -899,60 +823,6 @@ func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string)
 
 	return nil
 }
-
-/*
-func (chain *Chain) applyConseususTrx(trx *quorumpb.Trx, decodeData []byte, nodename string) error {
-	chain_log.Debugf("<%s> applyConseususTrx called", chain.groupItem.GroupId)
-
-	//decode change consensus result
-	resultBundle := &quorumpb.ChangeConsensusResultBundle{}
-	err := proto.Unmarshal(decodeData, resultBundle)
-	if err != nil {
-		return err
-	}
-
-	//check if change consensus result is valid
-	if resultBundle.Result != quorumpb.ChangeConsensusResult_SUCCESS {
-		chain_log.Warningf("<%s> change consensus result is not success, skip", chain.groupItem.GroupId)
-		return nil
-	}
-
-	history, err := nodectx.GetNodeCtx().GetChainStorage().GetAllChangeConsensusResult(chain.groupItem.GroupId, nodename)
-	if err != nil {
-		return err
-	}
-
-	shouldAccept := true
-	for _, item := range history {
-		if item.Req.ReqId == resultBundle.Req.ReqId {
-			chain_log.Debugf("<%s> change consensus result with reqId <%s> already exist, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId)
-			shouldAccept = false
-			break
-		}
-
-		if item.Req.Nonce > resultBundle.Req.Nonce {
-			chain_log.Debugf("<%s> change consensus result with reqId <%d> nonce <%d> is smaller than current nonce <%d>, skip", chain.groupItem.GroupId, resultBundle.Req.ReqId, resultBundle.Req.Nonce, item.Req.Nonce)
-			shouldAccept = false
-			break
-		}
-	}
-
-	if shouldAccept {
-		//save change consensus result
-		nodectx.GetNodeCtx().GetChainStorage().UpdateChangeConsensusResult(chain.groupItem.GroupId, resultBundle, nodename)
-		//update consensus
-		chain.updChainConsensus(trx.TrxId, resultBundle)
-		//stop current propose
-		if chain.Consensus.Producer() != nil {
-			chain.Consensus.Producer().StopPropose()
-			//update producer list
-			chain.Consensus.Producer().StartPropose()
-		}
-	}
-
-	return nil
-}
-*/
 
 func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, error) {
 	//check signature

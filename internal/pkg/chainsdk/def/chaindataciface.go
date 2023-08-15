@@ -10,7 +10,6 @@ type ChainDataSyncIface interface {
 	HandleTrxPsConn(trx *quorumpb.Trx) error
 	HandleBlockPsConn(block *quorumpb.Block) error
 	HandleBftMsgPsConn(hb *quorumpb.BftMsg) error
-	HandleCCMsgPsConn(req *quorumpb.CCMsg) error
 	HandleBroadcastMsgPsConn(c *quorumpb.BroadcastMsg) error
 	HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, fromstream network.Stream) error
 	StartSync() error

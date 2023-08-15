@@ -30,6 +30,4 @@ type APIHandlerIface interface {
 	GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error)
 	GetUser(groupId, userSignPubkey string, prefix ...string) (*quorumpb.UserItem, error)
 	GetProducer(groupId, producerSignPubkey string, prefix ...string) (*quorumpb.ProducerItem, error)
-	GetAllChangeConsensusResult(groupId string, prefix ...string) ([]*quorumpb.ChangeConsensusResultBundle, error)
-	GetChangeConsensusResultByReqId(groupId, reqId string, prefix ...string) (*quorumpb.ChangeConsensusResultBundle, error)
 }
