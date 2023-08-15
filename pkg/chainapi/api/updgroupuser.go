@@ -59,15 +59,6 @@ func (h *Handler) UpdGroupUser(c echo.Context) (err error) {
 			return rumerrors.NewBadRequestError("Invalid action")
 		}
 
-		isAnnounced, err := h.ChainAPIdb.IsUserAnnounced(group.Item.GroupId, params.UserPubkey, group.Nodename)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		if action == quorumpb.ActionType_ADD && !isAnnounced {
-			return rumerrors.NewBadRequestError("update group user failed, user is not announced")
-		}
-
 		item := &quorumpb.UpdGroupUserItem{
 			GroupId:    params.GroupId,
 			UserPubkey: params.UserPubkey,

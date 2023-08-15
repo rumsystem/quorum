@@ -25,58 +25,6 @@ type (
 )
 
 // @Tags LightNode
-// @Summary GetNSdkAnnouncedProducer
-// @Description get announced producer from chain data
-// @Accept  json
-// @Produce json
-// @Param   group_id path string true "Group Id"
-// @Success 200 {object} []handlers.AppConfigKeyItem
-// @Router  /api/v1/node/{group_id}/announced/producer [get]
-func (h *Handler) GetNSdkAnnouncedProducer(c echo.Context) (err error) {
-	cc := c.(*utils.CustomContext)
-	params := new(GetNSdkAnnouncedProducerParams)
-	if err := cc.BindAndValidate(params); err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-	res, err := handlers.GetAnnouncedProducers(h.ChainAPIdb, params.GroupId)
-	if err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-// @Tags LightNode
-// @Summary GetNSdkAnnouncedUser
-// @Description get announced user from chain data
-// @Accept  json
-// @Produce json
-// @Param   group_id path string true "Group Id"
-// @Param   get_announced_user_params  query GetNSdkAnnouncedUserParams true  "get announced user params"
-// @Success 200 {object} []handlers.AnnouncedUsers
-// @Router  /api/v1/node/{group_id}/announced/user [get]
-func (h *Handler) GetNSdkAnnouncedUser(c echo.Context) (err error) {
-	cc := c.(*utils.CustomContext)
-	params := new(GetNSdkAnnouncedUserParams)
-	if err := cc.BindAndValidate(params); err != nil {
-		return rumerrors.NewBadRequestError(err)
-	}
-
-	var res = &handlers.AnnouncedUsers{}
-	if params.PubKey == "" {
-		res, err = handlers.GetAnnouncedUsers(h.ChainAPIdb, params.GroupId)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-	} else {
-		res, err = handlers.GetAnnouncedUser(h.ChainAPIdb, params.GroupId, params.PubKey)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-// @Tags LightNode
 // @Summary GetNSdkGroupProducers
 // @Description get group producers from chain data
 // @Accept  json

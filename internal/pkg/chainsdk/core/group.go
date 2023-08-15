@@ -80,41 +80,6 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) (*quorumpb.Block, error) {
 		return nil, err
 	}
 
-	//owner announce as the first group producer
-	group_log.Debugf("<%s> owner announce as the first group producer", grp.Item.GroupId)
-	aContent := &quorumpb.AnnounceContent{
-		Type:          quorumpb.AnnounceType_AS_PRODUCER,
-		SignPubkey:    item.OwnerPubKey,
-		EncryptPubkey: item.UserEncryptPubkey,
-		Memo:          "owner announce as the first group producer",
-	}
-
-	aItem := &quorumpb.AnnounceItem{
-		GroupId:         item.GroupId,
-		Action:          quorumpb.ActionType_ADD,
-		Content:         aContent,
-		AnnouncerPubkey: item.OwnerPubKey,
-	}
-
-	//create hash
-	byts, err := proto.Marshal(aItem)
-	if err != nil {
-		return nil, err
-	}
-	aItem.Hash = localcrypto.Hash(byts)
-	signature, err := ks.EthSignByKeyName(item.GroupId, aItem.Hash)
-	if err != nil {
-		return nil, err
-	}
-
-	aItem.Signature = signature
-
-	//save announce item to db
-	err = nodectx.GetNodeCtx().GetChainStorage().AddAnnounceItem(aItem, grp.Nodename)
-	if err != nil {
-		return nil, err
-	}
-
 	//add group owner as the first group producer
 	group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
 	pItem := &quorumpb.ProducerItem{}
@@ -165,8 +130,6 @@ func (grp *Group) JoinGroup(item *quorumpb.GroupItem) error {
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.NewChain(item, grp.Nodename, false)
 
-	ks := nodectx.GetNodeCtx().Keystore
-
 	//get consensusInfo from genesis block
 	//check there is only 1 trx(FORK) in genesis block
 	if len(item.GenesisBlock.Trxs) != 1 {
@@ -200,41 +163,6 @@ func (grp *Group) JoinGroup(item *quorumpb.GroupItem) error {
 	//save genesis block
 	group_log.Debugf("<%s> save genesis block", grp.Item.GroupId)
 	err = nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, false, grp.Nodename)
-	if err != nil {
-		return err
-	}
-
-	//owner announce as the first group producer
-	group_log.Debugf("<%s> owner announce as the first group producer", grp.Item.GroupId)
-	aContent := &quorumpb.AnnounceContent{
-		Type:          quorumpb.AnnounceType_AS_PRODUCER,
-		SignPubkey:    item.OwnerPubKey,
-		EncryptPubkey: item.UserEncryptPubkey,
-		Memo:          "owner announce as the first group producer",
-	}
-
-	aItem := &quorumpb.AnnounceItem{
-		GroupId:         item.GroupId,
-		Action:          quorumpb.ActionType_ADD,
-		Content:         aContent,
-		AnnouncerPubkey: item.OwnerPubKey,
-	}
-
-	//create hash
-	byts, err := proto.Marshal(aItem)
-	if err != nil {
-		return err
-	}
-	aItem.Hash = localcrypto.Hash(byts)
-	signature, err := ks.EthSignByKeyName(item.GroupId, aItem.Hash)
-	if err != nil {
-		return err
-	}
-
-	aItem.Signature = signature
-
-	//save announce item to db
-	err = nodectx.GetNodeCtx().GetChainStorage().AddAnnounceItem(aItem, grp.Nodename)
 	if err != nil {
 		return err
 	}
@@ -411,16 +339,6 @@ func (grp *Group) GetProducers() ([]*quorumpb.ProducerItem, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetProducers(grp.Item.GroupId, grp.Nodename)
 }
 
-func (grp *Group) GetAnnouncedProducer(pubkey string) (*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedProducer called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedProducer(grp.Item.GroupId, pubkey, grp.Nodename)
-}
-
-func (grp *Group) GetAnnouncedUser(pubkey string) (*quorumpb.AnnounceItem, error) {
-	group_log.Debugf("<%s> GetAnnouncedUser called", grp.Item.GroupId)
-	return nodectx.GetNodeCtx().GetChainStorage().GetAnnouncedUser(grp.Item.GroupId, pubkey, grp.Nodename)
-}
-
 func (grp *Group) GetAppConfigKeyList() (keyName []string, itemType []string, err error) {
 	group_log.Debugf("<%s> GetAppConfigKeyList called", grp.Item.GroupId)
 	return nodectx.GetNodeCtx().GetChainStorage().GetAppConfigKey(grp.Item.GroupId, grp.Nodename)
@@ -433,16 +351,6 @@ func (grp *Group) GetAppConfigItem(keyName string) (*quorumpb.AppConfigItem, err
 
 func (grp *Group) GetCurrentTrxProposeInterval() (uint64, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(grp.Item.GroupId, grp.Nodename)
-}
-
-// send update announce trx
-func (grp *Group) UpdAnnounce(item *quorumpb.AnnounceItem) (string, error) {
-	group_log.Debugf("<%s> UpdAnnounce called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetAnnounceTrx("", item)
-	if err != nil {
-		return "", nil
-	}
-	return grp.sendTrx(trx)
 }
 
 // send POST trx

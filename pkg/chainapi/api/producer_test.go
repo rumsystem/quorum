@@ -47,34 +47,6 @@ func announceProducer(api string, payload handlers.AnnounceParam) (*handlers.Ann
 	return &result, nil
 }
 
-func getAnnouncedProducers(api string, groupID string) ([]handlers.AnnouncedProducerListItem, error) {
-	urlSuffix := fmt.Sprintf("/api/v1/group/%s/announced/producers", groupID)
-
-	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")
-	if err != nil {
-		return nil, err
-	}
-
-	if err := getResponseError(resp); err != nil {
-		return nil, err
-	}
-
-	var result []handlers.AnnouncedProducerListItem
-	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
-	}
-
-	for _, item := range result {
-		validate := validator.New()
-		if err := validate.Struct(item); err != nil {
-			e := fmt.Errorf("validate.Struct failed: %s, result: %+v", err, item)
-			return nil, e
-		}
-	}
-
-	return result, nil
-}
-
 func getProducers(api string, groupID string) ([]handlers.ProducerListItem, error) {
 	urlSuffix := fmt.Sprintf("/api/v1/group/%s/producers", groupID)
 	_, resp, err := testnode.RequestAPI(api, urlSuffix, "GET", "")

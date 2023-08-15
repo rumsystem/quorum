@@ -49,15 +49,6 @@ func (factory *TrxFactory) GetUpdGroupUserTrx(keyalias string, item *quorumpb.Up
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_USER, encodedcontent, keyalias)
 }
 
-func (factory *TrxFactory) GetAnnounceTrx(keyalias string, item *quorumpb.AnnounceItem) (*quorumpb.Trx, error) {
-	encodedcontent, err := proto.Marshal(item)
-	if err != nil {
-		return nil, err
-	}
-
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_ANNOUNCE, encodedcontent, keyalias)
-}
-
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
 	if _, err := IsTrxDataWithinSizeLimit(content); err != nil {
 		return nil, err

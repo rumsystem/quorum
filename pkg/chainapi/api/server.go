@@ -97,7 +97,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 	r.POST("/v1/group/upduser", h.UpdGroupUser)
-	r.POST("/v1/group/announce", h.Announce)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
@@ -109,9 +108,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
-	r.GET("/v1/group/:group_id/announced/users", h.GetAnnouncedUsers)
-	r.GET("/v1/group/:group_id/announced/user/:sign_pubkey", h.GetAnnouncedUser)
-	r.GET("/v1/group/:group_id/announced/producers", h.GetAnnouncedProducers)
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
@@ -151,12 +147,7 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 		n.GET("/:group_id/appconfig/keylist", h.GetNSdkAppconfigKeylist)
 		n.GET("/:group_id/appconfig/by/:key", h.GetNSdkAppconfigByKey)
 
-		// announce
-		n.POST("/:group_id/announce", h.NSdkAnnounce)
-		n.GET("/:group_id/announced/producer", h.GetNSdkAnnouncedProducer)
-		n.GET("/:group_id/announced/user", h.GetNSdkAnnouncedUser)
 		n.GET("/:group_id/producers", h.GetNSdkGroupProducers)
-
 		n.GET("/:group_id/info", h.GetNSdkGroupInfo)
 		n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)
 	}

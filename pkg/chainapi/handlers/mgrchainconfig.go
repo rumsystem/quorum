@@ -182,8 +182,6 @@ func getTrxTypeByString(typ string) (quorumpb.TrxType, error) {
 	switch strings.ToUpper(typ) {
 	case "POST":
 		return quorumpb.TrxType_POST, nil
-	case "ANNOUNCE":
-		return quorumpb.TrxType_ANNOUNCE, nil
 	case "PRODUCER":
 		return -1, errors.New("this trx type can not be configured")
 	case "USER":

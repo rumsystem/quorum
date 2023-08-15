@@ -94,14 +94,6 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 	key = s.GetUserPrefix(groupId, prefix...)
 	keys = append(keys, key)
 
-	//all group announced item
-	key = s.GetAnnouncedPrefix(groupId, prefix...)
-	keys = append(keys, key)
-
-	//all group schema item
-	key = s.GetSchemaPrefix(groupId, prefix...)
-	keys = append(keys, key)
-
 	//all group chain_config item
 	key = s.GetChainConfigPrefix(groupId, prefix...)
 	keys = append(keys, key)
