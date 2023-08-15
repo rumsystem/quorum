@@ -22,7 +22,7 @@ type GroupInfo struct {
 	UserPubkey      string             `json:"user_pubkey" validate:"required" example:"CAISIQO7ury6x7aWpwUVn6mj2dZFqme3BAY5xDkYjqW/EbFFcA=="`
 	UserEthaddr     string             `json:"user_eth_addr" validate:"required" example:"0495180230ae0f585ca0b4fc0767e616eaed45e400f470ed50c91668e1ed76c278b7fc5a129ff154c6b200a26cc78b7b4acc5b3915cdf66286c942aa5b65166ff5"`
 	ConsensusType   string             `json:"consensus_type" validate:"required" example:"POA"`
-	EncryptionType  string             `json:"encryption_type" validate:"required" example:"PUBLIC"`
+	SyncType        string             `json:"sync_type" validate:"required" example:"PUBLIC"`
 	CipherKey       string             `json:"cipher_key" validate:"required" example:"58044622d48c4d91932583a05db3ff87f29acacb62e701916f7f0bbc6e446e5d"`
 	AppKey          string             `json:"app_key" validate:"required" example:"test_app"`
 	CurrtTopBlock   uint64             `json:"currt_top_block" validate:"required" example:"0"`
@@ -102,7 +102,7 @@ func getGroupInfo(groupId string) (*GroupInfo, error) {
 	group.OwnerPubKey = value.Item.OwnerPubKey
 	group.UserPubkey = value.Item.UserSignPubkey
 	group.ConsensusType = value.Item.ConsenseType.String()
-	group.EncryptionType = value.Item.EncryptType.String()
+	group.SyncType = value.Item.SyncType.String()
 	group.CipherKey = value.Item.CipherKey
 	group.AppKey = value.Item.AppKey
 

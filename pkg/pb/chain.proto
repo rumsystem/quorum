@@ -227,7 +227,7 @@ message BroadcastMsg {
     bytes         Data = 2;
 }
 
-enum GroupEncryptType {
+enum GroupSyncType {
     PUBLIC   = 0;
     PRIVATE  = 1;
 }
@@ -242,13 +242,12 @@ message GroupItem {
     string            GroupName               = 2;
     string            OwnerPubKey             = 3;
     string            UserSignPubkey          = 4;
-    string            UserEncryptPubkey       = 5;
-    int64             LastUpdate              = 6;
-    Block             GenesisBlock            = 7;
-    GroupEncryptType  EncryptType             = 8;
-    GroupConsenseType ConsenseType            = 9;
-    string            CipherKey               = 10;
-    string            AppKey                  = 11;
+    int64             LastUpdate              = 5;
+    Block             GenesisBlock            = 6;
+    GroupSyncType     SyncType                = 7;
+    GroupConsenseType ConsenseType            = 8;
+    string            CipherKey               = 9;
+    string            AppKey                  = 10;
 }
 
 message GroupSeed {
@@ -257,7 +256,7 @@ message GroupSeed {
     string GroupName      = 3;
     string OwnerPubkey    = 4;
     string ConsensusType  = 5;    
-    string EncryptionType = 6;
+    string SyncType       = 6;
     string CipherKey      = 7;
     string AppKey         = 8; 
     string Signature      = 9;
@@ -265,7 +264,6 @@ message GroupSeed {
 
 message NodeSDKGroupItem {
     GroupItem Group          = 1;
-    string    EncryptAlias   = 2;
     string    SignAlias      = 3;
     repeated  string ApiUrl  = 4;
     string    GroupSeed      = 5;

@@ -11,7 +11,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 const GROUP_INFO string = "group_info"
@@ -101,10 +100,6 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 	group, ok := groupmgr.Groups[getDataNodeSDKItem.GroupId]
 	if !ok {
 		return rumerrors.NewBadRequestError("INVALID_GROUP")
-	}
-
-	if group.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		return rumerrors.NewBadRequestError("FUNCTION_NOT_SUPPORTED")
 	}
 
 	ciperKey, err := hex.DecodeString(group.Item.CipherKey)

@@ -55,32 +55,17 @@ func (h *Handler) ContentByPeers(c echo.Context) (err error) {
 			continue
 		}
 
-		//decrypt trx data
-		if trx.Type == quorumpb.TrxType_POST && groupitem.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			//for post, private group, encrypted by age for all announced group user
-			ks := localcrypto.GetKeystore()
-			decryptData, err := ks.Decrypt(params.GroupId, trx.Data)
-			if err != nil {
-				//can't decrypt, replace it
-				trx.Data = nil
-				logger.Warnf("can not decrypt trx.Data for groupid: %s trxid: %s failed: %s", params.GroupId, trxid, err)
-			} else {
-				//set trx.Data to decrypted []byte
-				trx.Data = decryptData
-			}
-		} else {
-			//decode trx data
-			ciperKey, err := hex.DecodeString(groupitem.CipherKey)
-			if err != nil {
-				return err
-			}
-
-			decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-			if err != nil {
-				return err
-			}
-			trx.Data = decryptData
+		//decode trx data
+		ciperKey, err := hex.DecodeString(groupitem.CipherKey)
+		if err != nil {
+			return err
 		}
+
+		decryptData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+		if err != nil {
+			return err
+		}
+		trx.Data = decryptData
 
 		res = append(res, trx)
 	}

@@ -79,10 +79,6 @@ func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		if nodesdkGroupItem.Group.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-			return rumerrors.NewBadRequestError(rumerrors.ErrEncryptionTypeNotSupported)
-		}
-
 		trxFactory := &rumchaindata.TrxFactory{}
 		trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name)
 

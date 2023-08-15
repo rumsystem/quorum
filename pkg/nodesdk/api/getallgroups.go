@@ -11,18 +11,17 @@ import (
 )
 
 type GroupInfo struct {
-	GroupId        string   `json:"group_id" validate:"required,uuid4"`
-	GroupName      string   `json:"group_name" validate:"required"`
-	SignAlias      string   `json:"sign_alias" validate:"required"`
-	EncryptAlias   string   `json:"encrypt_alias" validate:"required"`
-	UserEthaddr    string   `json:"user_eth_addr" validate:"required"`
-	ConsensusType  string   `json:"consensus_type" validate:"required"`
-	EncryptionType string   `json:"encryption_type" validate:"required"`
-	CipherKey      string   `json:"cipher_key" validate:"required"`
-	AppKey         string   `json:"app_key" validate:"required"`
-	LastUpdated    int64    `json:"last_updated" validate:"required"`
-	Epoch          int64    `json:"epoch" validate:"required"`
-	ChainApis      []string `json:"chain_apis" validate:"required,uuid4"`
+	GroupId       string   `json:"group_id" validate:"required,uuid4"`
+	GroupName     string   `json:"group_name" validate:"required"`
+	SignAlias     string   `json:"sign_alias" validate:"required"`
+	UserEthaddr   string   `json:"user_eth_addr" validate:"required"`
+	ConsensusType string   `json:"consensus_type" validate:"required"`
+	SyncType      string   `json:"sync_type" validate:"required"`
+	CipherKey     string   `json:"cipher_key" validate:"required"`
+	AppKey        string   `json:"app_key" validate:"required"`
+	LastUpdated   int64    `json:"last_updated" validate:"required"`
+	Epoch         int64    `json:"epoch" validate:"required"`
+	ChainApis     []string `json:"chain_apis" validate:"required,uuid4"`
 }
 
 type GroupInfoList struct {
@@ -56,15 +55,13 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 			groupInfo.GroupId = groupItem.Group.GroupId
 			groupInfo.GroupName = groupItem.Group.GroupName
 			groupInfo.SignAlias = groupItem.SignAlias
-			groupInfo.EncryptAlias = groupItem.EncryptAlias
-
 			ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
 			if err != nil {
 				return rumerrors.NewBadRequestError(err)
 			}
 			groupInfo.UserEthaddr = ethaddr
 			groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()
-			groupInfo.EncryptionType = groupItem.Group.EncryptType.String()
+			groupInfo.SyncType = groupItem.Group.SyncType.String()
 			groupInfo.CipherKey = groupItem.Group.CipherKey
 			groupInfo.AppKey = groupItem.Group.AppKey
 			groupInfo.LastUpdated = groupItem.Group.LastUpdate

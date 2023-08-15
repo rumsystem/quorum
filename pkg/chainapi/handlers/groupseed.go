@@ -28,11 +28,11 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	}
 	genesisBlockB64 := base64.RawURLEncoding.EncodeToString(genesisBlockByt)
 
-	var intencrypttype int32
-	if seed.EncryptionType == "public" {
-		intencrypttype = int32(pb.GroupEncryptType_PUBLIC)
+	var synctype int32
+	if seed.SyncType == "public" {
+		synctype = int32(pb.GroupSyncType_PUBLIC)
 	} else {
-		intencrypttype = int32(pb.GroupEncryptType_PRIVATE)
+		synctype = int32(pb.GroupSyncType_PRIVATE)
 	}
 
 	var intconsensustype int32
@@ -62,7 +62,7 @@ func GroupSeedToUrl(version int, urls []string, seed *GroupSeed) (string, error)
 	values.Add("c", cipherB64)
 	values.Add("s", signB64)
 	query := values.Encode()
-	query = fmt.Sprintf("rum://seed?v=%d&e=%d&n=%d&%s&g=%s&a=%s&u=%s", version, intencrypttype, intconsensustype, query, url.QueryEscape(seed.GroupName), url.QueryEscape(seed.AppKey), strings.Join(urllist, "|"))
+	query = fmt.Sprintf("rum://seed?v=%d&e=%d&n=%d&%s&g=%s&a=%s&u=%s", version, synctype, intconsensustype, query, url.QueryEscape(seed.GroupName), url.QueryEscape(seed.AppKey), strings.Join(urllist, "|"))
 	return query, nil
 }
 
@@ -83,12 +83,12 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 		return nil, nil, errors.New("unsupport seed url version")
 	}
 
-	intencrypttype, _ := strconv.Atoi(q.Get("e"))
-	encryptiontype := "public"
-	if int32(intencrypttype) == int32(pb.GroupEncryptType_PUBLIC) {
-		encryptiontype = "public"
-	} else if int32(intencrypttype) == int32(pb.GroupEncryptType_PRIVATE) {
-		encryptiontype = "private"
+	intsynctype, _ := strconv.Atoi(q.Get("e"))
+	synctype := "public"
+	if int32(intsynctype) == int32(pb.GroupSyncType_PUBLIC) {
+		synctype = "public"
+	} else if int32(intsynctype) == int32(pb.GroupSyncType_PRIVATE) {
+		synctype = "private"
 	}
 
 	consensustype := "poa"
@@ -128,15 +128,15 @@ func UrlToGroupSeed(seedurl string) (*GroupSeed, []string, error) {
 	signStr := hex.EncodeToString(signByts)
 
 	seed := &GroupSeed{
-		GenesisBlock:   genesisBlock,
-		GroupId:        genesisBlock.GroupId,
-		GroupName:      groupName,
-		OwnerPubkey:    genesisBlock.ProducerPubkey,
-		ConsensusType:  consensustype,
-		EncryptionType: encryptiontype,
-		CipherKey:      cipherkeyStr,
-		AppKey:         appKey,
-		Signature:      signStr,
+		GenesisBlock:  genesisBlock,
+		GroupId:       genesisBlock.GroupId,
+		GroupName:     groupName,
+		OwnerPubkey:   genesisBlock.ProducerPubkey,
+		ConsensusType: consensustype,
+		SyncType:      synctype,
+		CipherKey:     cipherkeyStr,
+		AppKey:        appKey,
+		Signature:     signStr,
 	}
 
 	urlstr := q.Get("u")

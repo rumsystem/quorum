@@ -31,7 +31,6 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 		groupInfo.GroupId = groupItem.Group.GroupId
 		groupInfo.GroupName = groupItem.Group.GroupName
 		groupInfo.SignAlias = groupItem.SignAlias
-		groupInfo.EncryptAlias = groupItem.EncryptAlias
 
 		ethaddr, err := localcrypto.Libp2pPubkeyToEthaddr(groupItem.Group.UserSignPubkey)
 		if err != nil {
@@ -40,7 +39,7 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 
 		groupInfo.UserEthaddr = ethaddr
 		groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()
-		groupInfo.EncryptionType = groupItem.Group.EncryptType.String()
+		groupInfo.SyncType = groupItem.Group.SyncType.String()
 		groupInfo.CipherKey = groupItem.Group.CipherKey
 		groupInfo.AppKey = groupItem.Group.AppKey
 		groupInfo.LastUpdated = groupItem.Group.LastUpdate

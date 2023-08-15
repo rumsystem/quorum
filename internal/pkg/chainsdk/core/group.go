@@ -223,12 +223,6 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 		item.UserSignPubkey = upk
 	}
 
-	//reload all announced user(if private)
-	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		group_log.Debugf("<%s> Private group load announced user key", grp.GroupId)
-		grp.ChainCtx.updUserList()
-	}
-
 	//reload producers
 	grp.ChainCtx.updateProducerPool()
 
@@ -356,19 +350,6 @@ func (grp *Group) GetCurrentTrxProposeInterval() (uint64, error) {
 // send POST trx
 func (grp *Group) PostToGroup(content []byte) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
-	if grp.Item.EncryptType == quorumpb.GroupEncryptType_PRIVATE {
-		keys, err := grp.ChainCtx.GetUsesEncryptPubKeys()
-		if err != nil {
-			return "", err
-		}
-
-		trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content, keys)
-		if err != nil {
-			return "", err
-		}
-		return grp.sendTrx(trx)
-	}
-
 	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content)
 	if err != nil {
 		return "", err

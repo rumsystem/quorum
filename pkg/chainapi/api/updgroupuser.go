@@ -45,8 +45,6 @@ func (h *Handler) UpdGroupUser(c echo.Context) (err error) {
 	groupmgr := chain.GetGroupMgr()
 	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
 		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
-	} else if group.Item.EncryptType.Enum() != quorumpb.GroupEncryptType_PRIVATE.Enum() {
-		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotPrivate)
 	} else if group.Item.OwnerPubKey != group.Item.UserSignPubkey {
 		return rumerrors.NewBadRequestError(rumerrors.ErrOnlyGroupOwner)
 	} else {
