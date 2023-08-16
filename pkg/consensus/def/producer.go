@@ -10,7 +10,6 @@ type Producer interface {
 	NewProducer(ctx context.Context, item *quorumpb.GroupItem, nodename string, iface ChainMolassesIface)
 	StartPropose()
 	StopPropose()
-	AddBlock(block *quorumpb.Block) error
 	AddTrxToTxBuffer(trx *quorumpb.Trx)
 	HandleBftMsg(hb *quorumpb.BftMsg) error
 }

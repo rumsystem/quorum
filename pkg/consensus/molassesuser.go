@@ -35,9 +35,10 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 	if err != nil {
 		return err
 	}
+
 	if isBlockExist {
-		//block already on chain, ignore
-		molauser_log.Debugf("<%s> block <%d> already on chain, ignore", user.groupId, block.BlockId)
+		//TBD check block version
+		molauser_log.Debugf("<%s> TBD, checkblock <%d> already on chain, ignore", user.groupId, block.BlockId)
 		return nil
 	}
 
@@ -50,7 +51,6 @@ func (user *MolassesUser) AddBlock(block *quorumpb.Block) error {
 		if err != nil {
 			return err
 		}
-
 		return nil
 	}
 	//get parent block
@@ -150,7 +150,6 @@ func (user *MolassesUser) saveBlock(block *quorumpb.Block, rmFromCache bool) err
 	//update chain info
 	molauser_log.Debugf("<%s> UpdChainInfo, upd highest blockId from <%d> to <%d>", user.groupId, user.cIface.GetCurrBlockId(), block.BlockId)
 	user.cIface.SetCurrBlockId(block.BlockId)
-	//user.cIface.SetCurrEpoch(block.Epoch)
 	user.cIface.SetLastUpdate(block.TimeStamp)
 	user.cIface.SaveChainInfoToDb()
 
