@@ -16,12 +16,12 @@ type TrxStorageIface interface {
 }
 
 type APIHandlerIface interface {
-	IsUser(groupId, userSignPubkey string, prefix ...string) (bool, error)
+	IsSyncer(groupId, syncerPubkey string, prefix ...string) (bool, error)
 	IsProducer(groupId, producerSignPubkey string, prefix ...string) (bool, error)
 	GetSendTrxAuthListByGroupId(groupId string, listType quorumpb.AuthListType, prefix ...string) ([]*quorumpb.ChainConfigItem, []*quorumpb.ChainSendTrxRuleListItem, error)
 	GetTrxAuthModeByGroupId(groupId string, trxType quorumpb.TrxType, prefix ...string) (quorumpb.TrxAuthMode, error)
-	GetUsers(groupId string, prefix ...string) ([]*quorumpb.UserItem, error)
+	GetSyncers(groupId string, prefix ...string) ([]*quorumpb.Syncer, error)
 	GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error)
-	GetUser(groupId, userSignPubkey string, prefix ...string) (*quorumpb.UserItem, error)
+	GetSyncer(groupId, syncerPubkey string, prefix ...string) (*quorumpb.Syncer, error)
 	GetProducer(groupId, producerSignPubkey string, prefix ...string) (*quorumpb.ProducerItem, error)
 }

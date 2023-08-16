@@ -228,7 +228,7 @@ func (producer *MolassesProducer) saveBlock(block *quorumpb.Block, rmFromCache b
 
 	//apply trxs
 	molauser_log.Debugf("<%s> apply trxs", producer.groupId)
-	err = producer.cIface.ApplyTrxsProducerNode(block.Trxs, producer.nodename)
+	//err = producer.cIface.ApplyTrxsProducerNode(block.Trxs, producer.nodename)
 	if err != nil {
 		molaproducer_log.Errorf("apply trxs failed with error: %s", err.Error())
 		return err

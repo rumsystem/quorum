@@ -27,7 +27,7 @@ enum TrxStroageType {
 
 enum TrxType {
     POST               = 0; // post to group
-    UPD_GRP_USER       = 1; // owner update group user
+    UPD_GRP_SYNCER     = 1; // owner update group syncer
     CHAIN_CONFIG       = 2; // chain configuration
     APP_CONFIG         = 3; // app configuration
     FORK               = 4; // fork chain
@@ -48,20 +48,17 @@ message ProducerItem {
    string     Memo           = 5;
 }
 
-message UpdGroupUserItem {
-    string     GroupId    = 1;
-    string     UserPubkey = 2;
-    ActionType Action     = 3;
-    string     Memo       = 4;
+message UpdGroupSyncerItem {
+    Syncer     Syncer     = 1;
+    ActionType Action     = 2;
+    string     Memo       = 3;
 }
 
-message UserItem {
+message Syncer {
    string     GroupId             = 1;
-   string     UserPubkey          = 2;
-   string     EncryptPubkey       = 3;
-   string     ProofTrxId          = 4;
-   int64      TxCnt               = 5; //how many trx send by this user
-   string     Memo                = 6;
+   string     SyncerPubkey        = 2;
+   string     Memo                = 3;
+   reserved   4 to 100;
 }
 
 enum ChainConfigType {

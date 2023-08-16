@@ -323,9 +323,10 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 
 		//apply trxs
 		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-			bft.cIface.ApplyTrxsProducerNode(trxToPackage, bft.NodeName)
+			//bft.cIface.ApplyTrxsProducerNode(trxToPackage, bft.NodeName)
 		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-			bft.cIface.ApplyTrxsFullNode(trxToPackage, bft.NodeName)
+			//bft.cIface.ApplyTrxsFullNode(trxToPackage, bft.NodeName)
+			bft.cIface.ApplyTrxsRumLiteNode(trxToPackage, bft.NodeName)
 		}
 
 		//broadcast it

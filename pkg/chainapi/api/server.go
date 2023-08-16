@@ -96,7 +96,7 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-	r.POST("/v1/group/upduser", h.UpdGroupUser)
+	r.POST("/v1/group/updsyncer", h.UpdGroupSyncer)
 
 	r.GET("/v1/node", h.GetNodeInfo)
 	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
@@ -149,7 +149,7 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 
 		n.GET("/:group_id/producers", h.GetNSdkGroupProducers)
 		n.GET("/:group_id/info", h.GetNSdkGroupInfo)
-		n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)
+		//n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)
 	}
 
 	// start https or http server

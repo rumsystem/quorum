@@ -34,7 +34,7 @@ type Chain struct {
 	groupItem     *quorumpb.GroupItem
 	nodename      string
 	producerPool  map[string]*quorumpb.ProducerItem
-	userPool      map[string]*quorumpb.UserItem
+	syncerPool    map[string]*quorumpb.Syncer
 	trxFactory    *rumchaindata.TrxFactory
 	rexSyncer     *RexLiteSyncer
 	chaindata     *ChainData
@@ -232,7 +232,7 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	switch trx.Type {
 	case
 		quorumpb.TrxType_POST,
-		quorumpb.TrxType_UPD_GRP_USER,
+		quorumpb.TrxType_UPD_GRP_SYNCER,
 		quorumpb.TrxType_CHAIN_CONFIG,
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_FORK:
@@ -356,6 +356,12 @@ func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Strea
 		return nil
 	}
 
+	//check if req sender is allow to sync
+	if !(chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC) && !chain.IsGroupSyncer(req.ReqPubkey) {
+		chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "not a syncer")
+		return nil
+	}
+
 	//verify req
 	verified, err := rumchaindata.VerifyReqBlock(req)
 	if err != nil {
@@ -454,37 +460,19 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 	return nil
 }
 
-/*
-func (chain *Chain) UpdConnMgrProducer() {
-	chain_log.Debugf("<%s> UpdConnMgrProducer called", chain.groupItem.GroupId)
-	connMgr, _ := conn.GetConn().GetConnMgr(chain.groupItem.GroupId)
-
-	var producerspubkey []string
-	for key := range chain.producerPool {
-		producerspubkey = append(producerspubkey, key)
-	}
-
-	connMgr.UpdProducers(producerspubkey)
-}
-*/
-
-func (chain *Chain) updUserList() {
-	chain_log.Debugf("<%s> updUserList called", chain.groupItem.GroupId)
+func (chain *Chain) updSyncerList() {
+	chain_log.Debugf("<%s> updSyncerList called", chain.groupItem.GroupId)
 	//create and load Group user pool
-	chain.userPool = make(map[string]*quorumpb.UserItem)
-	users, err := nodectx.GetNodeCtx().GetChainStorage().GetUsers(chain.groupItem.GroupId, chain.nodename)
+	chain.syncerPool = make(map[string]*quorumpb.Syncer)
+	syncers, err := nodectx.GetNodeCtx().GetChainStorage().GetSyncers(chain.groupItem.GroupId, chain.nodename)
 	if err != nil {
-		chain_log.Debugf("Get users failed with err <%s>", err.Error())
+		chain_log.Debugf("Get syncers with err <%s>", err.Error())
 		return
 	}
 
-	for _, item := range users {
-		chain.userPool[item.UserPubkey] = item
-		isOwner := ""
-		if item.UserPubkey == chain.groupItem.OwnerPubKey {
-			isOwner = "(owner)"
-		}
-		chain_log.Infof("<%s> load user <%s_%s>", chain.groupItem.GroupId, item.UserPubkey, isOwner)
+	for _, syncer := range syncers {
+		chain.syncerPool[syncer.SyncerPubkey] = syncer
+		chain_log.Infof("<%s> load syncer <%s>", chain.groupItem.GroupId, syncer.SyncerPubkey)
 	}
 }
 
@@ -505,23 +493,6 @@ func (chain *Chain) updateProducerPool() {
 		}
 		chain_log.Debugf("<%s> load producer <%s%s>", chain.groupItem.GroupId, item.ProducerPubkey, isOwner)
 	}
-}
-
-func (chain *Chain) GetUsesEncryptPubKeys() ([]string, error) {
-	keys := []string{}
-	ks := nodectx.GetNodeCtx().Keystore
-	mypubkey, err := ks.GetEncodedPubkey(chain.groupItem.GroupId, localcrypto.Encrypt)
-	if err != nil {
-		return nil, err
-	}
-	keys = append(keys, mypubkey)
-	for _, usr := range chain.userPool {
-		if usr.EncryptPubkey != mypubkey {
-			keys = append(keys, usr.EncryptPubkey)
-		}
-	}
-
-	return keys, nil
 }
 
 func (chain *Chain) CreateConsensus() error {
@@ -583,6 +554,11 @@ func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
 	return chain.groupItem.OwnerPubKey == pubkey
 }
 
+func (chain *Chain) IsGroupSyncer(pubkey string) bool {
+	_, ok := chain.syncerPool[pubkey]
+	return ok
+}
+
 func (chain *Chain) GetRexSyncerStatus() string {
 	status := chain.rexSyncer.GetSyncerStatus()
 	statusStr := ""
@@ -605,7 +581,7 @@ func (chain *Chain) GetLastRexSyncResult() (*chaindef.RexSyncResult, error) {
 	return chain.rexSyncer.GetLastRexSyncResult()
 }
 
-func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error {
+func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) error {
 	chain_log.Debugf("<%s> ApplyTrxsFullNode called", chain.groupItem.GroupId)
 	for _, trx := range trxs {
 		//check if trx already applied
@@ -635,7 +611,7 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		//check if these type of TRX is send by owner
 		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
 			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_UPD_GRP_USER {
+			trx.Type == quorumpb.TrxType_UPD_GRP_SYNCER {
 			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
@@ -658,10 +634,10 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, decodedData, nodename)
-		case quorumpb.TrxType_UPD_GRP_USER:
-			chain_log.Debugf("<%s> apply UpdGroupUser trx", chain.groupItem.GroupId)
-			//nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
-			chain.updUserList()
+		case quorumpb.TrxType_UPD_GRP_SYNCER:
+			chain_log.Debugf("<%s> apply UPD_GRP_SYNCER trx", chain.groupItem.GroupId)
+			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupSyncer(trx.TrxId, decodedData, nodename)
+			chain.updSyncerList()
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfig(decodedData, nodename)
@@ -678,79 +654,6 @@ func (chain *Chain) ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) err
 		//save original trx to db
 		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
 	}
-	return nil
-}
-
-func (chain *Chain) ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error {
-	chain_log.Debugf("<%s> ApplyTrxsProducerNode called", chain.groupItem.GroupId)
-	for _, trx := range trxs {
-		//producer node does not handle APP_CONFIG and POST
-		if trx.Type == quorumpb.TrxType_APP_CONFIG || trx.Type == quorumpb.TrxType_POST {
-			chain_log.Infof("producer node skip trx <%s> with type <%s>", trx.TrxId, trx.Type.String())
-			continue
-		}
-
-		isExist, err := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, nodename)
-		if err != nil {
-			chain_log.Warningf("<%s> check trx <%s> exist failed with error <%s>", chain.groupItem.GroupId, trx.TrxId, err.Error())
-			continue
-		}
-
-		if isExist {
-			chain_log.Debugf("<%s> trx <%s> already applied, skip", chain.groupItem.GroupId, trx.TrxId)
-			continue
-		}
-
-		//verify trx
-		isTrxValid, err := rumchaindata.VerifyTrx(trx)
-		if err != nil {
-			chain_log.Warningf("<%s> verify trx <%s> failed with error <%s>", chain.groupItem.GroupId, trx.TrxId, err.Error())
-			continue
-		}
-
-		if !isTrxValid {
-			chain_log.Warningf("<%s> trx <%s> is not valid", chain.groupItem.GroupId, trx.TrxId)
-			continue
-		}
-
-		//for chain config, consensus, user, only owner can apply
-		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
-			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_UPD_GRP_USER {
-			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
-				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
-				continue
-			}
-		}
-		ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
-		if err != nil {
-			return err
-		}
-
-		decodedData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-		if err != nil {
-			return err
-		}
-
-		chain_log.Debugf("<%s> apply trx <%s>", chain.groupItem.GroupId, trx.TrxId)
-		switch trx.Type {
-		case quorumpb.TrxType_UPD_GRP_USER:
-			chain_log.Debugf("<%s> apply USER trx", chain.groupItem.GroupId)
-			//nodectx.GetNodeCtx().GetChainStorage().UpdateGroupUser(trx.TrxId, decodedData, nodename)
-			chain.updUserList()
-		case quorumpb.TrxType_CHAIN_CONFIG:
-			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
-		//case quorumpb.TrxType_CONSENSUS:
-		//	chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
-		//	chain.applyConseususTrx(trx, decodedData, nodename)
-		default:
-			chain_log.Warningf("<%s> unsupported msgType <%s>", chain.groupItem.GroupId, trx.Type)
-		}
-		//save trx to db
-		nodectx.GetNodeCtx().GetChainStorage().AddTrx(trx, nodename)
-	}
-
 	return nil
 }
 

@@ -15,7 +15,7 @@ const (
 	CHNINFO_PREFIX         = "chain"           //chaininfo
 	CNT_PREFIX             = "cnt"             //content
 	PRD_PREFIX             = "prd"             //producer
-	USR_PREFIX             = "usr"             //user
+	SYNCER_PREFIX          = "syncer"          //syncer
 	CHD_PREFIX             = "chd"             //cached
 	APP_CONFIG_PREFIX      = "app_conf"        //group configuration
 	CHAIN_CONFIG_PREFIX    = "chn_conf"        //chain configuration
@@ -136,13 +136,13 @@ func GetProducerConsensusConfInterval(groupId string, prefix ...string) string {
 	return nodeprefix + CNS_PROPOSE_TRX_INTERVAL + "_" + groupId + "_"
 }
 
-func GetUserPrefix(groupId string, prefix ...string) string {
+func GetSyncerPrefix(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + USR_PREFIX + "_" + groupId + "_"
+	return nodeprefix + SYNCER_PREFIX + "_" + groupId + "_"
 }
 
-func GetUserKey(groupId string, pubkey string, prefix ...string) string {
-	_prefix := GetUserPrefix(groupId, prefix...)
+func GetSyncerKey(groupId string, pubkey string, prefix ...string) string {
+	_prefix := GetSyncerPrefix(groupId, prefix...)
 	pk := _getEthPubkey(pubkey)
 	return _prefix + pk
 }

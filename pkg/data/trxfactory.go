@@ -41,12 +41,12 @@ func (factory *TrxFactory) GetChainConfigTrx(keyalias string, item *quorumpb.Cha
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent, keyalias)
 }
 
-func (factory *TrxFactory) GetUpdGroupUserTrx(keyalias string, item *quorumpb.UpdGroupUserItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetUpdGroupSyncerTrx(keyalias string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_USER, encodedcontent, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_SYNCER, encodedcontent, keyalias)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {

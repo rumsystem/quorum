@@ -13,7 +13,7 @@ var (
 	ErrClearJoinedGroup = errors.New("Can not clear joined group")
 	ErrInvalidGroupData = errors.New("Invalid group data")
 	ErrOnlyGroupOwner   = errors.New("Only group owner can do this")
-	ErrGroupNotPrivate  = errors.New("Group is not private")
+	ErrGroupNotPrivate  = errors.New("Only private group can do this")
 
 	ErrInvalidBlockID  = errors.New("Invalid block id")
 	ErrBlockIDNotFound = errors.New("Block id not found")

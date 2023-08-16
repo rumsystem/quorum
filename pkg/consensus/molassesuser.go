@@ -141,7 +141,7 @@ func (user *MolassesUser) saveBlock(block *quorumpb.Block, rmFromCache bool) err
 
 	//apply trxs
 	molauser_log.Debugf("<%s> apply trxs", user.groupId)
-	err = user.cIface.ApplyTrxsFullNode(block.Trxs, user.nodename)
+	err = user.cIface.ApplyTrxsRumLiteNode(block.Trxs, user.nodename)
 	if err != nil {
 		molauser_log.Errorf("apply trxs failed with error: %s", err.Error())
 		return err

@@ -8,8 +8,7 @@ import (
 type ChainMolassesIface interface {
 	GetTrxFactory() chaindef.TrxFactoryIface
 	SaveChainInfoToDb() error
-	ApplyTrxsFullNode(trxs []*quorumpb.Trx, nodename string) error
-	ApplyTrxsProducerNode(trxs []*quorumpb.Trx, nodename string) error
+	ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) error
 	SetCurrEpoch(currEpoch uint64)
 	IncCurrEpoch()
 	GetCurrEpoch() uint64

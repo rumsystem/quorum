@@ -75,6 +75,10 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) (*quorumpb.Block, error) {
 	//create and save genesis block
 	group_log.Debugf("<%s> create and save genesis block", grp.Item.GroupId)
 	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(item.GroupId, consensusInfo, forkTrx, item.OwnerPubKey, ks, "")
+	if err != nil {
+		return nil, err
+	}
+
 	err = nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(genesisBlock, false, grp.Nodename)
 	if err != nil {
 		return nil, err
@@ -101,10 +105,6 @@ func (grp *Group) NewGroup(item *quorumpb.GroupItem) (*quorumpb.Block, error) {
 		item.OwnerPubKey,
 		item.UserSignPubkey,
 		grp.ChainCtx)
-
-	//commented by cuicat
-	//update producer list for ConnMgr just created
-	//grp.ChainCtx.UpdConnMgrProducer()
 
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
@@ -232,10 +232,6 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 		item.UserSignPubkey,
 		grp.ChainCtx)
 
-	//commented by cuicat
-	//update producer list for ConnMgr just created
-	//grp.ChainCtx.UpdConnMgrProducer()
-
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
 
@@ -362,9 +358,9 @@ func (grp *Group) GetInitForkTrx(trxId string, item *quorumpb.ForkItem) (*quorum
 	return grp.ChainCtx.GetTrxFactory().GetForkTrx("", item)
 }
 
-func (grp *Group) UpdGroupUser(item *quorumpb.UpdGroupUserItem) (string, error) {
-	group_log.Debugf("<%s> UpdUser called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdGroupUserTrx("", item)
+func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, error) {
+	group_log.Debugf("<%s> UpdGroupSyncer called", grp.Item.GroupId)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdGroupSyncerTrx("", item)
 	if err != nil {
 		return "", nil
 	}
