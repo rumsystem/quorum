@@ -307,26 +307,10 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		ptbft_log.Debugf("<%s> start build block with parent <%d> ", bft.GroupId, parent.BlockId)
 		ks := localcrypto.GetKeystore()
 
-		//TBD add consensus info here
 		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
 		if err != nil {
 			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err
-		}
-
-		//save it
-		ptbft_log.Debugf("<%s> save block just built to local db", bft.GroupId)
-		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.NodeName)
-		if err != nil {
-			return err
-		}
-
-		//apply trxs
-		if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-			//bft.cIface.ApplyTrxsProducerNode(trxToPackage, bft.NodeName)
-		} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-			//bft.cIface.ApplyTrxsFullNode(trxToPackage, bft.NodeName)
-			bft.cIface.ApplyTrxsRumLiteNode(trxToPackage, bft.NodeName)
 		}
 
 		//broadcast it
@@ -340,7 +324,6 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 			ptbft_log.Debugf("<%s> Broadcast failed <%s>", bft.GroupId, err.Error())
 		}
 	}
-
 	return nil
 }
 

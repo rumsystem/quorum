@@ -23,8 +23,7 @@ type NODE_TYPE int
 
 const (
 	BOOTSTRAP_NODE NODE_TYPE = iota
-	PRODUCER_NODE
-	FULL_NODE
+	RUMLITE_NODE
 )
 
 type NodeCtx struct {
@@ -44,12 +43,12 @@ var nodeCtx *NodeCtx
 
 var dbMgr *storage.DbMgr
 
-//singlaton
+// singlaton
 func GetNodeCtx() *NodeCtx {
 	return nodeCtx
 }
 
-//singlaton
+// singlaton
 func GetDbMgr() *storage.DbMgr {
 	return dbMgr
 }
@@ -69,7 +68,7 @@ func InitCtx(ctx context.Context, name string, node *p2p.Node, db *storage.DbMgr
 
 	nodeCtx.Status = NODE_OFFLINE
 	nodeCtx.Ctx = ctx
-	nodeCtx.Version = "2.0.0"
+	nodeCtx.Version = "2.1.0"
 }
 
 func (nodeCtx *NodeCtx) PeersProtocol() *map[string][]string {

@@ -272,20 +272,6 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 		return nil
 	}
 
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		chain_log.Debugf("<%s> producer node add block", chain.groupItem.GroupId)
-		err := chain.Consensus.Producer().AddBlock(block)
-		if err != nil {
-			chain_log.Warningf("<%s> producer node add block error <%s>", chain.groupItem.GroupId, err.Error())
-			if err.Error() == "PARENT_NOT_EXIST" {
-				chain_log.Debugf("<%s> announced producer add block, parent not exist, blockId <%d>, currBlockId <%d>, wait syncing",
-					chain.groupItem.GroupId, block.BlockId, chain.GetCurrBlockId())
-			}
-		}
-		return err
-	}
-
-	//Fullnode at block
 	err := chain.Consensus.User().AddBlock(block)
 	if err != nil {
 		chain_log.Debugf("<%s> FULLNODE add block error <%s>", chain.groupItem.GroupId, err.Error())
@@ -300,16 +286,6 @@ func (chain *Chain) HandleBlockPsConn(block *quorumpb.Block) error {
 
 func (chain *Chain) HandleBftMsgPsConn(msg *quorumpb.BftMsg) error {
 	//chain_log.Debugf("<%s> HandleHBPTPsConn called", chain.groupItem.GroupId)
-
-	//only producers(owner) need to handle HBB message
-	if !chain.IsProducer() {
-		return nil
-	}
-
-	if chain.Consensus.Producer() == nil {
-		chain_log.Warningf("<%s> Consensus Producer is null", chain.groupItem.GroupId)
-		return nil
-	}
 	return chain.Consensus.Producer().HandleBftMsg(msg)
 }
 
@@ -436,19 +412,7 @@ func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 	chain_log.Warningf("<%s> TODO: add a lock in ApplyBlocks()", chain.groupItem.GroupId)
-	//PRODUCER_NODE add SYNC
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		for _, block := range blocks {
-			err := chain.Consensus.Producer().AddBlock(block)
-			if err != nil {
-				chain_log.Warningf("<%s> ApplyBlocks error <%s>", chain.groupItem.GroupId, err.Error())
-				return err
-			}
-		}
-		return nil
-	}
-
-	//FULLNODE (include owner) Add synced Block
+	//RumLite Node Add synced Block
 	for _, block := range blocks {
 		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
@@ -456,7 +420,6 @@ func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -501,34 +464,13 @@ func (chain *Chain) CreateConsensus() error {
 	var user def.User
 	var producer def.Producer
 
-	var shouldCreateUser, shouldCreateProducer bool
+	chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
+	producer = &consensus.MolassesProducer{}
+	producer.NewProducer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
 
-	if nodectx.GetNodeCtx().NodeType == nodectx.PRODUCER_NODE {
-		shouldCreateProducer = true
-		shouldCreateUser = false
-	} else if nodectx.GetNodeCtx().NodeType == nodectx.FULL_NODE {
-		//check if I am owner of the Group
-		if chain.groupItem.UserSignPubkey == chain.groupItem.OwnerPubKey {
-			shouldCreateProducer = true
-		} else {
-			shouldCreateProducer = false
-		}
-		shouldCreateUser = true
-	} else {
-		return fmt.Errorf("unknow nodetype")
-	}
-
-	if shouldCreateProducer {
-		chain_log.Infof("<%s> Create and initial molasses producer", chain.groupItem.GroupId)
-		producer = &consensus.MolassesProducer{}
-		producer.NewProducer(chain.ChainCtx, chain.groupItem, chain.nodename, chain)
-	}
-
-	if shouldCreateUser {
-		chain_log.Infof("<%s> Create and initial molasses user", chain.groupItem.GroupId)
-		user = &consensus.MolassesUser{}
-		user.NewUser(chain.groupItem, chain.nodename, chain)
-	}
+	chain_log.Infof("<%s> Create and initial molasses user", chain.groupItem.GroupId)
+	user = &consensus.MolassesUser{}
+	user.NewUser(chain.groupItem, chain.nodename, chain)
 
 	chain.Consensus = consensus.NewMolasses(producer, user)
 	chain.Consensus.StartProposeTrx()

@@ -31,9 +31,9 @@ import (
 )
 
 var (
-	rlnodeFlag       = cli.RumLiteNodeFlag{ProtocolID: "/quorum/1.0.0"}
-	fullNode         *p2p.Node
-	fullNodeSignalch chan os.Signal
+	rlnodeFlag     = cli.RumLiteNodeFlag{ProtocolID: "/quorum/1.0.0"}
+	rlNode         *p2p.Node
+	rlNodeSignalch chan os.Signal
 )
 
 var rumlitenodeCmd = &cobra.Command{
@@ -78,7 +78,7 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 
 	color.Green("Version: %s", utils.GitCommit)
 
-	fullNodeSignalch = make(chan os.Signal, 1)
+	rlNodeSignalch = make(chan os.Signal, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -148,18 +148,18 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 	}
 
 	SkipPeerIdList := strings.Split(config.SkipPeers, ",")
-	fullNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, SkipPeerIdList, config.JsonTracer)
-	//fullnode must enable rumexchange for sync block
+	rlNode, err = p2p.NewNode(ctx, nodename, nodeoptions, false, defaultkey, cm, config.ListenAddresses, SkipPeerIdList, config.JsonTracer)
+	//rlNode must enable rumexchange for sync block
 	if err == nil {
-		fullNode.SetRumExchange(ctx)
+		rlNode.SetRumExchange(ctx)
 	}
 
-	for _, addr := range fullNode.Host.Addrs() {
-		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), fullNode.Host.ID())
-		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", fullNode.Host.ID(), p2paddr)
+	for _, addr := range rlNode.Host.Addrs() {
+		p2paddr := fmt.Sprintf("%s/p2p/%s", addr.String(), rlNode.Host.ID())
+		logger.Infof("Peer ID:<%s>, Peer Address:<%s>", rlNode.Host.ID(), p2paddr)
 	}
 
-	nodectx.InitCtx(ctx, nodename, fullNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.FULL_NODE)
+	nodectx.InitCtx(ctx, nodename, rlNode, dbManager, newchainstorage, "pubsub", utils.GitCommit, nodectx.RUMLITE_NODE)
 	nodectx.GetNodeCtx().Keystore = ks
 	nodectx.GetNodeCtx().PublicKey = keys.PubKey
 	nodectx.GetNodeCtx().PeerId = peerid
@@ -179,15 +179,15 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 		logger.Fatalf(err.Error())
 	}
 
-	if err := fullNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
+	if err := rlNode.Bootstrap(ctx, config.BootstrapPeers); err != nil {
 		logger.Fatal(err)
 	}
 	//Discovery and Advertise had been replaced by PeerExchange
 	logger.Infof("Announcing ourselves...")
-	discovery.Advertise(ctx, fullNode.RoutingDiscovery, config.RendezvousString)
+	discovery.Advertise(ctx, rlNode.RoutingDiscovery, config.RendezvousString)
 	logger.Infof("Successfully announced!")
 	peerok := make(chan struct{})
-	go fullNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
+	go rlNode.ConnectPeers(ctx, peerok, nodeoptions.MaxPeers, config.RendezvousString)
 
 	appdb, err := appdata.CreateAppDb(datapath)
 	if err != nil {
@@ -208,7 +208,7 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 
 	//run local http api service
 	h := &api.Handler{
-		Node:             fullNode,
+		Node:             rlNode,
 		NodeCtx:          nodectx.GetNodeCtx(),
 		Ctx:              ctx,
 		GitCommit:        utils.GitCommit,
@@ -236,12 +236,12 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 		CertDir:       config.CertDir,
 		ZeroAccessKey: config.ZeroAccessKey,
 	}
-	go api.StartRumLiteNodeServer(startParam, fullNodeSignalch, h, apph, fullNode, nodeoptions, ks, ethaddr)
+	go api.StartRumLiteNodeServer(startParam, rlNodeSignalch, h, apph, rlNode, nodeoptions, ks, ethaddr)
 
 	//attach signal
-	signal.Notify(fullNodeSignalch, os.Interrupt, syscall.SIGTERM)
-	signalType := <-fullNodeSignalch
-	signal.Stop(fullNodeSignalch)
+	signal.Notify(rlNodeSignalch, os.Interrupt, syscall.SIGTERM)
+	signalType := <-rlNodeSignalch
+	signal.Stop(rlNodeSignalch)
 
 	chain.GetGroupMgr().StopSyncAllGroups()
 	//teardown all groups
