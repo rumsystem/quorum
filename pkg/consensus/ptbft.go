@@ -28,7 +28,7 @@ type PTBft struct {
 	currTask          *PTTask
 	bftCtx            context.Context
 	bftCancelFunc     context.CancelFunc
-	CurrConsensusInfo *quorumpb.ConsensusInfo
+	CurrConsensusInfo *quorumpb.PoaConsensusInfo
 }
 
 type PTTask struct {

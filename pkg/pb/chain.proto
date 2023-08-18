@@ -116,23 +116,6 @@ message AppConfigItem{
     int64         TimeStamp   = 9;
 }
 
-message ConsensusInfo {
-    string ConsensusId   = 1;    
-    uint64 ChainVer      = 2; 
-    string InTrx         = 3;
-    uint64 ForkFromBlock = 4;
-}
-
-message ForkItem {
-    string        GroupId          = 1;
-    ConsensusInfo Consensus        = 2;
-    uint64        StartFromBlock   = 3;
-    uint64        StartFromEpoch   = 4;
-    uint64        EpochDuration    = 5;
-    repeated      string producers = 6;
-    string        Memo             = 7;
-}
-
 message Trx {
     string         TrxId        = 1;
     TrxType        Type         = 2;    
@@ -155,7 +138,7 @@ message Block {
     string        ProducerPubkey = 4;
     repeated      Trx Trxs       = 5;
     int64         TimeStamp      = 6;
-    ConsensusInfo Consensus      = 7;    
+    Consensus     Consensus      = 7;    
     bytes         BlockHash      = 8;
     bytes         ProducerSign   = 9;  
 }
@@ -234,6 +217,27 @@ enum GroupConsenseType {
     POS = 1;
 }
 
+message Consensus {
+    GroupConsenseType Type = 1;
+    bytes             Data = 2;
+}
+
+message PoaConsensusInfo {
+    string ConsensusId   = 1;    
+    uint64 ChainVer      = 2; 
+    string InTrx         = 3;
+    ForkItem ForkInfo   = 4;
+}
+
+message ForkItem {
+    string        GroupId          = 1;
+    uint64        StartFromBlock   = 3;
+    uint64        StartFromEpoch   = 4;
+    uint64        EpochDuration    = 5;
+    repeated      string producers = 6;
+    string        Memo             = 7;
+}
+
 message GroupItem {
     string            GroupId                 = 1;
     string            GroupName               = 2;
@@ -245,18 +249,21 @@ message GroupItem {
     GroupConsenseType ConsenseType            = 8;
     string            CipherKey               = 9;
     string            AppKey                  = 10;
+    string            AppId                   = 11;
+    reserved          12 to 100;
 }
 
 message GroupSeed {
-    Block  GenesisBlock   = 1;
-    string GroupId        = 2;
-    string GroupName      = 3;
-    string OwnerPubkey    = 4;
-    string ConsensusType  = 5;    
-    string SyncType       = 6;
-    string CipherKey      = 7;
-    string AppKey         = 8; 
-    string Signature      = 9;
+    Block          GenesisBlock = 1;
+    string         GroupId      = 2;
+    string         GroupName    = 3;
+    string         OwnerPubkey  = 4;
+    GroupSyncType  SyncType     = 5;
+    string         CipherKey    = 6;
+    string         AppId        = 7;
+    string         AppName      = 8;
+    bytes          Hash         = 9;
+    bytes          Signature    = 10;
 }
 
 message NodeSDKGroupItem {
@@ -265,7 +272,6 @@ message NodeSDKGroupItem {
     repeated  string ApiUrl  = 4;
     string    GroupSeed      = 5;
 }
-
 
 //HB_MSG
 message HBTrxBundle {

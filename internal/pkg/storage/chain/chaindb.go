@@ -90,8 +90,8 @@ func (cs *Storage) GetChainInfo(groupId string, prefix ...string) (currBlock, cu
 	return block, epoch, last, nil
 }
 
-func (cs *Storage) SaveGroupConsensusInfo(groupId string, info *quorumpb.ConsensusInfo, prefix ...string) error {
-	key := s.GetGroupConsensusInfoKey(groupId, prefix...)
+func (cs *Storage) SaveGroupConsensus(groupId string, info *quorumpb.Consensus, prefix ...string) error {
+	key := s.GetGroupConsensusKey(groupId, prefix...)
 	chaindb_log.Debugf("Save GroupConsensusInfo, key <%s>", key)
 	data, err := proto.Marshal(info)
 	if err != nil {
@@ -100,14 +100,14 @@ func (cs *Storage) SaveGroupConsensusInfo(groupId string, info *quorumpb.Consens
 	return cs.dbmgr.Db.Set([]byte(key), data)
 }
 
-func (cs *Storage) GetGroupConsensusInfo(groupId string, prefix ...string) (info *quorumpb.ConsensusInfo, err error) {
-	key := s.GetGroupConsensusInfoKey(groupId, prefix...)
+func (cs *Storage) GetGroupConsensusInfo(groupId string, prefix ...string) (info *quorumpb.Consensus, err error) {
+	key := s.GetGroupConsensusKey(groupId, prefix...)
 	chaindb_log.Debugf("Get GroupConsensusInfo, key <%s>", key)
 	data, err := cs.dbmgr.Db.Get([]byte(key))
 	if err != nil {
 		return nil, err
 	}
-	info = &quorumpb.ConsensusInfo{}
+	info = &quorumpb.Consensus{}
 	err = proto.Unmarshal(data, info)
 	if err != nil {
 		return nil, err

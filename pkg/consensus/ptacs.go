@@ -12,7 +12,7 @@ var ptacs_log = logging.Logger("ptacs")
 
 type PTAcs struct {
 	Config
-	consensusInfo *quorumpb.ConsensusInfo
+	consensusInfo *quorumpb.PoaConsensusInfo
 	epoch         uint64
 	rbcInsts      map[string]*PTRbc
 	rbcOutput     map[string]bool
@@ -21,7 +21,7 @@ type PTAcs struct {
 	chAcsDone chan *PTAcsResult
 }
 
-func NewPTACS(cfg Config, consensusInfo *quorumpb.ConsensusInfo, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
+func NewPTACS(cfg Config, consensusInfo *quorumpb.PoaConsensusInfo, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
 	//ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 	acs := &PTAcs{
 		Config:        cfg,

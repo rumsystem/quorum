@@ -84,6 +84,9 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	a := e.Group("/app/api")
 	r.GET("/quit", quitapp)
 
+	r.POST("/v2//group/newseed", h.NewSeed())
+	//r.POST("/v2/group/joingroupbyseed", h.JoinGroupBySeed())
+
 	r.POST("/v2/keystore/createsignkey", h.CreateSignKey())
 	r.POST("/v2/keystore/getkeybykeyname", h.GetPubkeyByKeyName())
 	r.POST("/v2/keystore/getallkeys", h.GetAllKeys())

@@ -32,11 +32,8 @@ const (
 	RELAY_PREFIX     = "rly" //relay
 
 	// consensus db
-	CNS_BUFD_TRX          = "cns_bf_trx"     //buffered trx (used by acs)
-	CNS_CCR_RESULT_PREFIX = "cns_ccr_result" //change consensus result
-	CNS_INFO_PREFIX       = "cns_info"       //consensus info
-
-	CNS_PROPOSE_TRX_INTERVAL = "cns_prop_trx_interval" //consensus propose trx interval
+	BUFD_TRX        = "bfd_trx" //buffered trx (used by acs)
+	CNS_INFO_PREFIX = "cns_"    //consensus info
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -131,11 +128,6 @@ func GetProducerKey(groupId string, pk string, prefix ...string) string {
 	return _prefix + pk
 }
 
-func GetProducerConsensusConfInterval(groupId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + CNS_PROPOSE_TRX_INTERVAL + "_" + groupId + "_"
-}
-
 func GetSyncerPrefix(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	return nodeprefix + SYNCER_PREFIX + "_" + groupId + "_"
@@ -218,7 +210,7 @@ func GetSeedKey(groupID string) []byte {
 }
 
 func GetTrxHBBPrefix(queueId string) string {
-	return CNS_BUFD_TRX + "_" + queueId + "_"
+	return BUFD_TRX + "_" + queueId + "_"
 }
 
 func GetTrxHBBKey(queueId string, trxId string) string {
@@ -251,17 +243,7 @@ func GetRelayApprovedKey(groupId, _type string) string {
 	return GetRelayPrefix() + "_approved_" + groupId + "_" + _type
 }
 
-func GetChangeConsensusResultPrefix(groupId string, prefix ...string) string {
-	nodeprefix := utils.GetPrefix(prefix...)
-	return nodeprefix + CNS_CCR_RESULT_PREFIX + "_" + groupId + "_"
-}
-
-func GetChangeConsensusResultKey(groupId string, reqId string, prefix ...string) string {
-	_prefix := GetChangeConsensusResultPrefix(groupId, prefix...)
-	return _prefix + reqId
-}
-
-func GetGroupConsensusInfoKey(groupId string, prefix ...string) string {
+func GetGroupConsensusKey(groupId string, prefix ...string) string {
 	nodeprefix := utils.GetPrefix(prefix...)
 	return nodeprefix + CNS_INFO_PREFIX + "_" + groupId + "_"
 }

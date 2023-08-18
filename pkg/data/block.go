@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.ConsensusInfo, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Consensus, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
 	newBlock := &quorumpb.Block{
 		GroupId:        parentBlk.GroupId,
 		BlockId:        parentBlk.BlockId + 1,
@@ -51,15 +51,17 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Cons
 	return newBlock, nil
 }
 
-func CreateGenesisBlockByEthKey(groupId string, consensusInfo *quorumpb.ConsensusInfo, forkTrx *quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string) (*quorumpb.Block, error) {
+func CreateGenesisBlockByEthKey(groupId string, consensus *quorumpb.Consensus, producerPubkey string) (*quorumpb.Block, error) {
 	genesisBlock := &quorumpb.Block{
-		GroupId:        groupId,
 		BlockId:        0,
+		GroupId:        groupId,
 		PrevHash:       nil,
-		ProducerPubkey: groupPublicKey,
-		Trxs:           []*quorumpb.Trx{forkTrx},
+		Trxs:           []*quorumpb.Trx{},
 		TimeStamp:      time.Now().UnixNano(),
-		Consensus:      consensusInfo,
+		ProducerPubkey: producerPubkey,
+		Consensus:      consensus,
+		BlockHash:      nil,
+		ProducerSign:   nil,
 	}
 
 	bbytes, err := proto.Marshal(genesisBlock)
@@ -67,20 +69,12 @@ func CreateGenesisBlockByEthKey(groupId string, consensusInfo *quorumpb.Consensu
 		return nil, err
 	}
 
-	blockHash := localcrypto.Hash(bbytes)
-	genesisBlock.BlockHash = blockHash
+	genesisBlock.BlockHash = localcrypto.Hash(bbytes)
 
-	var signature []byte
-	if keyalias == "" {
-		signature, err = keystore.EthSignByKeyName(genesisBlock.GroupId, blockHash)
-	} else {
-		signature, err = keystore.EthSignByKeyAlias(keyalias, blockHash)
-	}
+	ks := localcrypto.GetKeystore()
+	signature, err := ks.EthSignByKeyName(producerPubkey, genesisBlock.BlockHash)
 	if err != nil {
 		return nil, err
-	}
-	if len(signature) == 0 {
-		return nil, errors.New("create signature on genesisblock failed")
 	}
 
 	genesisBlock.ProducerSign = signature
