@@ -1,0 +1,216 @@
+- a group needs 3 keys
+1. group owner sign key    - the owner of the group, trx sign by this key has the suprior previllage, this key should be used only when necessary
+2. group trx sign key      - group user's sign key, use to identify "who are you" in this group, after you join a group, trx send to this group should be signed by this key
+3. group producer sign key - the "producer" of a group, all blocks in this group should be created and sign by the node who has this key in local keystore
+
+let's try create the first group seed
+
+1. create owner key with given keyname
+curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_owner_key"}'  http://127.0.0.1:8002/api/v2/rumlite/keystore/createsignkey
+{
+  "key_alias": "f5aa0cf7-b406-4df4-bb1a-58083d98d5c0",
+  "key_name": "my_test_app_owner_key",
+  "pubkey": "A2gAvNbJexiJk3cjiaXtc5cmvIGgp5WzWUZmVq5VlvG1"
+}
+
+result for createsignkey api has 3 parameters:
+key_alias: UUID for the newly created key
+key_name: key_name
+pubkey: pubkey 
+
+2. create trx sign key with given keyname
+curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_sign_key"}'  http://127.0.0.1:8002/api/v2/rumlite/keystore/createsignkey
+{
+  "key_alias": "f5aa0cf7-b406-4df4-bb1a-58083d98d5c0",
+  "key_name": "my_test_app_sign_key",
+  "pubkey": "A2gAvNbJexiJk3cjiaXtc5cmvIGgp5WzWUZmVq5VlvG1"
+}
+
+3. create producer sign key with given keyname
+curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_producer_key"}'  http://127.0.0.1:8002/api/v2/rumlite/keystore/createsignkey
+{
+  "key_alias": "61bd981b-5559-4580-9220-52b9701d1af9",
+  "key_name": "my_test_app_producer_key",
+  "pubkey": "AqozPzhgYvIUqB6qbhQYKAhqmzOnPYdcQ3D5IvZEk4MY"
+}
+
+Now let's create the first group seed
+
+- parameters
+1. app_id : a group should belongs to an "app", even a "dummy_app", a uuid should be provided, the "cellar" will accept/reject  a group seed by using app_id
+2. app_name : app_name, app_id and app_name can be identical among different groups, these 2 parameters should be used based on your app design
+3. consensus_type : poa or pos, now only poa is supported
+4. sync_type: public or privatre, a public group can be synced by any node, sync from a private group is by request (each pubkey)=
+5. owner_keyname : who is the owner of this group, given by keyname and the keyname MUST be existed in local keystoree group
+6. neoproducer_sign_keyname : keyname for the first (neo) group producer, genesis block will be created and signed by using the key pair associated with this keyname 
+7. epoch_length: for how long the producer will wait to propose trxs in an epoch (in ms)
+7. url: a url point some where (for example the developer or app's website)
+
+curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43b4-92a7-e067a8e7865e", "app_name":"dummy_app", "group_name":"index_group", "consensus_type":"poa", "sync_type":"public", "epoch_duration":5000, "owner_keyname":"my_test_app_owner_key", "neoproducer_sign_keyname":"my_test_app_producer_key", "url":"dummy_url_point_to_mywebsite"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
+
+result:
+{
+  "group_id": "1a723930-93c8-459c-9048-05d8815bccd2",
+  "owner_keyname": "my_test_app_owner_key",
+  "producer_sign_keyname": "my_test_app_producer_key",
+  "seed": {
+    "GenesisBlock": {
+      "GroupId": "1a723930-93c8-459c-9048-05d8815bccd2",
+      "ProducerPubkey": "my_test_app_producer_key",
+      "TimeStamp": "1692647677555802581",
+      "Consensus": {
+        "Data": "CiRmYmRlYjU2OC1jZmVkLTQwNTMtOGI2ZC1jNjg5YTU3OTdkMGQiZQokMWE3MjM5MzAtOTNjOC00NTljLTkwNDgtMDVkODgxNWJjY2QyKIgnMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
+      },
+      "BlockHash": "SHCWskfc2UQrpBO/tEDf7eVAnC1Yf9LVRNgWmNLuvHo=",
+      "ProducerSign": "LtelHbeHnYA1wPkXDa2+tlqPqKOF2Lz/4CuINDT2CTNJjk0jxdx/Cst+0WOjumf2plidWeqvdGRCe8p2QtE1NAE="
+    },
+    "GroupId": "1a723930-93c8-459c-9048-05d8815bccd2",
+    "GroupName": "index_group",
+    "OwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+    "SyncType": 1,
+    "CipherKey": "5ce3e0d42d284049a2b12d44d6828548f90ebc1d869e89bbf9a83ae35f006c2d",
+    "AppId": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
+    "AppName": "dummy_app",
+    "Hash": "l0nsmswCZEmw9dbCEqYVmAzwBjH/zsLVCuIW8tbmxRU=",
+    "Signature": "LUxOVCyP+qyw1db3vQ8hK3p+uxGEQd/wOnCP98WCNYAK6PNfMtPkS8wa+433Bgks2sTL0kfTLGzzuxZukMcccQE="
+  },
+  "seed_byts": "CsICCiQxYTcyMzkzMC05M2M4LTQ1OWMtOTA0OC0wNWQ4ODE1YmNjZDIiGG15X3Rlc3RfYXBwX3Byb2R1Y2VyX2tleTDVg+r0g8Pfvhc6kAESjQEKJGZiZGViNTY4LWNmZWQtNDA1My04YjZkLWM2ODlhNTc5N2QwZCJlCiQxYTcyMzkzMC05M2M4LTQ1OWMtOTA0OC0wNWQ4ODE1YmNjZDIoiCcyLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkOgxJbml0aWFsIEZvcmtCIEhwlrJH3NlEK6QTv7RA3+3lQJwtWH/S1UTYFpjS7rx6SkEu16Udt4edgDXA+RcNrb62Wo+oo4XYvP/gK4g0NPYJM0mOTSPF3H8Ky37RY6O6Z/amWJ1Z6q90ZEJ7ynZC0TU0ARIkMWE3MjM5MzAtOTNjOC00NTljLTkwNDgtMDVkODgxNWJjY2QyGgtpbmRleF9ncm91cCIsQXE1ajkwN3hQel9xVjFzVEVRekIwUHhvazlENy12WENTSTlKR2JqVFowamUoATJANWNlM2UwZDQyZDI4NDA0OWEyYjEyZDQ0ZDY4Mjg1NDhmOTBlYmMxZDg2OWU4OWJiZjlhODNhZTM1ZjAwNmMyZDokNGMwYmQ1YzUtMzViNi00M2I0LTkyYTctZTA2N2E4ZTc4NjVlQglkdW1teV9hcHBKIJdJ7JrMAmRJsPXWwhKmFZgM8AYx/87C1QriFvLW5sUVUkEtTE5ULI/6rLDV1ve9DyEren67EYRB3/A6cI/3xYI1gAro818y0+RLzBr7jfcGCSzaxMvSR9MsbPO7Fm6QxxxxAQ=="
+}
+
+-. seed_byts is used for share the group
+-. all other items is for app developer to use
+
+when create a group, the owner_keyname and neoproducer_keyname are optional, if no keyname is given, a new keypair and key name will be created for you when create the group seed(work as the previous version)
+
+curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43b4-92a7-e067a8e7865e", "app_name":"dummy_app", "group_name":"index_group", "consensus_type":"poa", "sync_type":"public", "epoch_duration":5000, "url":"dummy_url_point_to_mywebsite"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
+
+result
+
+{
+  "group_id": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
+  "owner_keyname": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
+  "producer_sign_keyname": "8d8147b2-1ea7-4007-9cd5-69d3b345e055_neoproducer_sign_keyname",
+  "seed": {
+    "GenesisBlock": {
+      "GroupId": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
+      "ProducerPubkey": "8d8147b2-1ea7-4007-9cd5-69d3b345e055_neoproducer_sign_keyname",
+      "TimeStamp": "1692648418237287857",
+      "Consensus": {
+        "Data": "CiRiM2M4ZmFjNy02MmE1LTQ3YjctYmJiZC05ZTQ5ODBjYTMwMDYiZQokOGQ4MTQ3YjItMWVhNy00MDA3LTljZDUtNjlkM2IzNDVlMDU1KIgnMixBeFpYOFA4UkxGMHlqOHFycGhNYVJYWVB1RmIxcDZvb2I3TVZVcHJWd2lhTDoMSW5pdGlhbCBGb3Jr"
+      },
+      "BlockHash": "R5U/31emOiI036vsKC/f7WY8300EzN2DVdsK3YfBKn4=",
+      "ProducerSign": "UfLCw5FihLX84AejxG9vtlfnImVqOdNkIpl8dvn4+Ith4NVdwj0HFOCZBafo+pMTM+Hq+bf/Q5DKIcWBQi9uHwA="
+    },
+    "GroupId": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
+    "GroupName": "index_group",
+    "OwnerPubkey": "A2zDQIEHMWC0aTKyTGn-8PLDs2hljO8NJBbjVyy3abNy",
+    "SyncType": 1,
+    "CipherKey": "002668c5c250ecb764184fa53808c62af4a50f346b729faaaadb1d041e49c7cf",
+    "AppId": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
+    "AppName": "dummy_app",
+    "Hash": "Oz9nviK+suvsPn0IX6pj/x8EJOk0p6sZWNAHNPrxmzk=",
+    "Signature": "rpfYA8NDjQUDQMtrlpx7gu+NAEyDpD6MSaR/zAvBkghDrVmXfF4q3xelqsdni6pTHl7VBh5XfRJXpnxTxVbQIgE="
+  },
+  "seed_byts": "CucCCiQ4ZDgxNDdiMi0xZWE3LTQwMDctOWNkNS02OWQzYjM0NWUwNTUiPThkODE0N2IyLTFlYTctNDAwNy05Y2Q1LTY5ZDNiMzQ1ZTA1NV9uZW9wcm9kdWNlcl9zaWduX2tleW5hbWUwsZuklcvY374XOpABEo0BCiRiM2M4ZmFjNy02MmE1LTQ3YjctYmJiZC05ZTQ5ODBjYTMwMDYiZQokOGQ4MTQ3YjItMWVhNy00MDA3LTljZDUtNjlkM2IzNDVlMDU1KIgnMixBeFpYOFA4UkxGMHlqOHFycGhNYVJYWVB1RmIxcDZvb2I3TVZVcHJWd2lhTDoMSW5pdGlhbCBGb3JrQiBHlT/fV6Y6IjTfq+woL9/tZjzfTQTM3YNV2wrdh8EqfkpBUfLCw5FihLX84AejxG9vtlfnImVqOdNkIpl8dvn4+Ith4NVdwj0HFOCZBafo+pMTM+Hq+bf/Q5DKIcWBQi9uHwASJDhkODE0N2IyLTFlYTctNDAwNy05Y2Q1LTY5ZDNiMzQ1ZTA1NRoLaW5kZXhfZ3JvdXAiLEEyekRRSUVITVdDMGFUS3lUR24tOFBMRHMyaGxqTzhOSkJialZ5eTNhYk55KAEyQDAwMjY2OGM1YzI1MGVjYjc2NDE4NGZhNTM4MDhjNjJhZjRhNTBmMzQ2YjcyOWZhYWFhZGIxZDA0MWU0OWM3Y2Y6JDRjMGJkNWM1LTM1YjYtNDNiNC05MmE3LWUwNjdhOGU3ODY1ZUIJZHVtbXlfYXBwSiA7P2e+Ir6y6+w+fQhfqmP/HwQk6TSnqxlY0Ac0+vGbOVJBrpfYA8NDjQUDQMtrlpx7gu+NAEyDpD6MSaR/zAvBkghDrVmXfF4q3xelqsdni6pTHl7VBh5XfRJXpnxTxVbQIgE="
+}
+
+
+===== TO BE MODIFIED ======
+组的同步类型：
+
+任何人可以加入并同步一个public组的数据
+任何人都可以加入一根private组，但是需要经过owner同意才能同步该组的数据
+
+
+酒窖（cella）
+酒窖其实也是一个group，同步类型可以是public或者private，producer可以是一个或者多个（一旦确定则不可更改，除非停机fork）
+酒窖会同步放入其中的所有Seed
+酒窖中的所有组会保持打开状态，以随时给不同业务提供block同步或者出块服务
+一个酒窖本身的group不能放入其他酒窖
+一个酒窖可以同意其他酒窖加入自己并同步酒窖group本身的block
+
+============================================================================================================================
+
+节点，酒窖和种子的互动过程
+
+user story 1：
+节点A创建一个blob类型的种子B
+- 节点A在本地调用CreateSeed API创建一个种子B
+
+
+user story2:
+节点A向一个Blob类型的种子B添加内容
+- 节点A在本地调用JoinGroupBySeed加入group B
+- 节点A将内容打散并以POST trx的形式存入 group B （add blocks)
+- 节点A在调用CloseGroup关闭group B
+
+
+user story3:
+节点A向一个存在的group B添加内容
+- 节点A调用LoadGroupById打开groupB
+- 节点A将新内容打散并以POST trx的形式追加到group B
+- 节点A在调用Close Group关闭group B
+
+user story4:
+节点A创建一个Blob类型的种子B并将B加入酒窖C
+-节点A创建group B并添加内容（us1 to us3）
+-节点A保持Group B在本地运行
+-节点A获取酒窖C的种子
+-节点A加载酒窖C的种子，在本地创建一个酒窖C的实例（为了向酒窖C发trx），节点A并不同步酒窖C的block
+-节点A向酒窖C的group 发送一条 CELLA_REQ类型的trx，包括
+	- Group B的 seed
+	-需要酒窖C同步的块数
+	-支付凭证（optional）
+-节点A持续检查并试图获取自己的CELLA_REQ trx被酒窖C上链（意味着Cella接受并开始同步Group block)
+- 酒窖C获取该Trx，检查支付凭证，如果同意同步，则将该Trx上链（add trx to cella group)
+	- 通过seed B加入GroupB
+	- 试图开始同步
+- 如果种子B的类型为private，则节点A需要发送UPD_SYNCER Trx到group B，将Cella C的pubkey加入同步白名单
+- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
+** 和节点不同，一个Cella在完成同步某个group后，并不关闭这个group，而且作为一个在线服务，提供该group的block（follow group同步名单设置）
+
+- 如果需要，节点A可以在收到CELLA_RESP后，关闭本地的group B （关闭本地文件）
+- 如果需要，节点A可以在收到CELLA_RESP后，关闭本地的group C （退出酒窖）
+
+user story5:
+节点A在将blob group B添加到Cella C后，添加 Group B的内容
+-节点A在本地调用LoadGroupById打开group B
+-节点A向Group B中添加一些新的block (POST trx or other type trx)
+-节点A向酒窖C的group发送一条CELLA_REQ类型的trx，包括
+	- Group B的seed
+	- 需要酒窖C同步的块数 
+	- 支付凭证（optional
+- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
+
+user story6:
+节点A在将blob group B添加到Cella C后，修改可以同步groupB block的syncer名单
+-节点A在本地调用LoadGroupById打开group B
+-节点A向Group B中发送一条UPD_SYNCER类型的trx并正确出块，得以更新可以sync本组的pubkey名单
+-节点A向酒窖C的group发送一条CELLA_REQ类型的trx，包括
+	- Group B的seed
+	- 需要酒窖C同步的块数 （包含新打包的UPD_SYNCER trx）
+	- 支付凭证（optional）
+- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
+- Cella C通过apply trx的方式，更新本地的group B的syncer名单
+
+user story7:
+节点A在blob group B同时添加内容和修改syncer 白名单
+
+
+user story 8：
+节点A创建一个Service类型的种子B并将B加入酒窖C
+- 节点A在本地创建一个Service类型的种子B
+- 节点A加载这个种子，在本地创建Group B
+- 节点A自己作为producer（host the group producer key at local keychain)，生产一些group block
+...  
+
+
+
+节点可能提供的酒窖API
+	- 创建一个酒窖（公开/私有）
+	- 删除一个酒窖
+	- 列出所有酒窖
+	- 列出某个酒窖的所有组
+	- 列出某个酒窖的所有申请
+	- 批准/拒绝某个种子的加入申请
+	- 列出一个酒窖里所有group的状态
