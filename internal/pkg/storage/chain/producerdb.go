@@ -1,8 +1,6 @@
 package chainstorage
 
 import (
-	"encoding/binary"
-
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
@@ -69,22 +67,4 @@ func (cs *Storage) GetProducer(groupId string, pubkey string, prefix ...string) 
 func (cs *Storage) IsProducer(groupId, pubkey string, prefix ...string) (bool, error) {
 	key := s.GetProducerKey(groupId, pubkey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
-}
-
-func (cs *Storage) GetProducerConsensusConfInterval(groupId string, prefix ...string) (uint64, error) {
-	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
-	value, err := cs.dbmgr.Db.Get([]byte(key))
-	if err != nil {
-		return 0, err
-	}
-
-	interval := uint64(binary.LittleEndian.Uint64(value))
-	return interval, nil
-}
-
-func (cs *Storage) SetProducerConsensusConfInterval(groupId string, proposeTrxInterval uint64, prefix ...string) error {
-	key := s.GetProducerConsensusConfInterval(groupId, prefix...)
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, proposeTrxInterval)
-	return cs.dbmgr.Db.Set([]byte(key), b)
 }

@@ -134,23 +134,6 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 		return nil, err
 	}
 
-	//create group seed
-
-	/*
-	   message GroupSeed {
-	       Block  GenesisBlock   = 1;
-	       string GroupId        = 2;
-	       string GroupName      = 3;
-	       string OwnerPubkey    = 4;
-	       string ConsensusType  = 5;
-	       string SyncType       = 6;
-	       string CipherKey      = 7;
-	       string AppKey         = 8;
-	       bytes  Hash           = 9;
-	       bytes  Signature      = 10;
-	   }
-	*/
-
 	groupSeed := &pb.GroupSeed{
 		GenesisBlock: genesisBlock,
 		GroupId:      groupid,

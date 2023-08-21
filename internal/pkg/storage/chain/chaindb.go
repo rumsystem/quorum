@@ -100,7 +100,7 @@ func (cs *Storage) SaveGroupConsensus(groupId string, info *quorumpb.Consensus, 
 	return cs.dbmgr.Db.Set([]byte(key), data)
 }
 
-func (cs *Storage) GetGroupConsensusInfo(groupId string, prefix ...string) (info *quorumpb.Consensus, err error) {
+func (cs *Storage) GetGroupConsensus(groupId string, prefix ...string) (info *quorumpb.Consensus, err error) {
 	key := s.GetGroupConsensusKey(groupId, prefix...)
 	chaindb_log.Debugf("Get GroupConsensusInfo, key <%s>", key)
 	data, err := cs.dbmgr.Db.Get([]byte(key))

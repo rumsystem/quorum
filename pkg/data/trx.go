@@ -120,3 +120,18 @@ func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 	}
 	return false, err
 }
+
+func VerifySign(key string, hash, sign []byte) (bool, error) {
+	//verify signature
+	ks := localcrypto.GetKeystore()
+	bytespubkey, err := base64.RawURLEncoding.DecodeString(key)
+	if err == nil { //try eth key
+		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
+		if err == nil {
+			r := ks.EthVerifySign(hash, sign, ethpubkey)
+			return r, nil
+		}
+		return false, err
+	}
+	return false, err
+}

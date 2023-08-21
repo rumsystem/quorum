@@ -132,7 +132,7 @@ func ValidBlockWithParent(newBlock, parentBlock *quorumpb.Block) (bool, error) {
 	return true, nil
 }
 
-func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
+func ValidGenesisBlockPoa(genesisBlock *quorumpb.Block) (bool, error) {
 	//check blockid is 0
 	if genesisBlock.BlockId != 0 {
 		return false, fmt.Errorf("blockId for genesis block must be 0")
@@ -143,21 +143,46 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 		return false, fmt.Errorf("prevhash for genesis block must be nil")
 	}
 
-	//dump block without hash and sign
-	genesisBlockWithoutHashAndSign := &quorumpb.Block{
-		GroupId:        genesisBlock.GroupId,
-		BlockId:        genesisBlock.BlockId,
-		PrevHash:       genesisBlock.PrevHash,
-		ProducerPubkey: genesisBlock.ProducerPubkey,
-		Trxs:           genesisBlock.Trxs,
-		TimeStamp:      genesisBlock.TimeStamp,
-		Consensus:      genesisBlock.Consensus,
-		BlockHash:      nil,
-		ProducerSign:   nil,
+	if genesisBlock.Consensus == nil {
+		return false, fmt.Errorf("consensus info for genesis block must not be nil")
 	}
 
+	if genesisBlock.Consensus.Type == quorumpb.GroupConsenseType_POA {
+		return false, fmt.Errorf("consensus type for genesis block must be poa")
+	}
+
+	//convert to POA
+	poaConsensus := &quorumpb.PoaConsensusInfo{}
+	err := proto.Unmarshal(genesisBlock.Consensus.Data, poaConsensus)
+	if err != nil {
+		return false, err
+	}
+
+	if poaConsensus.ConsensusId == "" ||
+		poaConsensus.ChainVer != 0 ||
+		poaConsensus.ForkInfo == nil ||
+		poaConsensus.InTrx != "" {
+		return false, fmt.Errorf("consensus info for genesis block is invalid")
+	}
+
+	forkInfo := poaConsensus.ForkInfo
+
+	//check consensus info
+	if forkInfo.GroupId != genesisBlock.GroupId ||
+		forkInfo.EpochDuration <= 500 ||
+		forkInfo.StartFromBlock != 0 ||
+		forkInfo.StartFromEpoch != 0 ||
+		forkInfo.Producers == nil ||
+		len(forkInfo.Producers) != 1 {
+		return false, fmt.Errorf("consensus info for genesis block is invalid")
+	}
+
+	blockClone := proto.Clone(genesisBlock).(*quorumpb.Block)
+	blockClone.BlockHash = nil
+	blockClone.ProducerSign = nil
+
 	//get hash
-	bts, err := proto.Marshal(genesisBlockWithoutHashAndSign)
+	bts, err := proto.Marshal(blockClone)
 	if err != nil {
 		return false, err
 	}
@@ -168,17 +193,5 @@ func ValidGenesisBlock(genesisBlock *quorumpb.Block) (bool, error) {
 		return false, fmt.Errorf("hash for new block is invalid")
 	}
 
-	//verify producer sign
-	bytespubkey, err := base64.RawURLEncoding.DecodeString(genesisBlock.ProducerPubkey)
-	if err == nil { //try eth key
-		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
-		if err == nil {
-			ks := localcrypto.GetKeystore()
-			r := ks.EthVerifySign(hash, genesisBlock.ProducerSign, ethpubkey)
-			return r, nil
-		}
-		return false, err
-	}
-
-	return true, nil
+	return VerifySign(genesisBlock.ProducerPubkey, genesisBlock.BlockHash, genesisBlock.ProducerSign)
 }

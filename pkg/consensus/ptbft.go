@@ -116,11 +116,30 @@ func (bft *PTBft) getNextTask() (*PTTask, error) {
 
 func (bft *PTBft) ProposeWorker() {
 	ptbft_log.Debugf("<%s> ProposeWorker called", bft.GroupId)
-	interval, err := nodectx.GetNodeCtx().GetChainStorage().GetProducerConsensusConfInterval(bft.GroupId, bft.NodeName)
+
+	//get current conssensus
+	consensus, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupConsensus(bft.GroupId)
 	if err != nil {
-		ptbft_log.Debugf("<%s> GetProducerConsensusConfInterval failed with error <%s>", bft.GroupId, err.Error())
+		ptbft_log.Debugf("<%s> GetGroupConsensus failed with error <%s>", bft.GroupId, err.Error())
 		return
 	}
+
+	//check if consenes type is POA
+	if consensus.Type != quorumpb.GroupConsenseType_POA {
+		ptbft_log.Debugf("<%s> Consensus type is not POA, ProposeWorker exit", bft.GroupId)
+		return
+	}
+
+	//cast to POA consensus
+	poaConsensus := &quorumpb.PoaConsensusInfo{}
+	err = proto.Unmarshal(consensus.Data, poaConsensus)
+	if err != nil {
+		ptbft_log.Debugf("<%s> Unmarshal failed with error <%s>", bft.GroupId, err.Error())
+		return
+	}
+
+	forkItem := poaConsensus.ForkInfo
+	interval := forkItem.EpochDuration
 
 	for {
 		select {
