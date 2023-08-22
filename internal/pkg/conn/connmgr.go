@@ -344,7 +344,7 @@ func (connMgr *ConnMgr) BroadcastBftMsg(msg *quorumpb.BftMsg) error {
 		return err
 	}
 
-	pkg.Type = quorumpb.PackageType_BFT_MSG
+	pkg.Type = quorumpb.PackageType_BFT
 	pkg.Data = pbBytes
 
 	pkgBytes, err := proto.Marshal(pkg)

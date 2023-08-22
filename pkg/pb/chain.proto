@@ -5,7 +5,7 @@ option go_package = "github.com/rumsystem/quorum/pkg/pb";
 enum PackageType {
     TRX                   = 0;
     BLOCK                 = 1;
-    BFT_MSG               = 2;
+    BFT                   = 2;
     SYNC                  = 3;
     BROADCAST_MSG         = 4;
 }

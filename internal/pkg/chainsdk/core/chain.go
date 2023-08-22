@@ -29,20 +29,21 @@ var chain_log = logging.Logger("chain")
 var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
 
 type Chain struct {
-	groupItem     *quorumpb.GroupItem
-	nodename      string
-	producerPool  map[string]*quorumpb.ProducerItem
-	syncerPool    map[string]*quorumpb.Syncer
-	trxFactory    *rumchaindata.TrxFactory
-	rexSyncer     *RexLiteSyncer
-	chaindata     *ChainData
-	Consensus     def.Consensus
-	CurrBlock     uint64
-	CurrEpoch     uint64
-	LatestUpdate  int64
-	ChainCtx      context.Context
-	CtxCancelFunc context.CancelFunc
-	PoaConsensus  *quorumpb.PoaConsensusInfo
+	groupItem      *quorumpb.GroupItem
+	nodename       string
+	producerPool   map[string]*quorumpb.ProducerItem
+	syncerPool     map[string]*quorumpb.Syncer
+	trxFactory     *rumchaindata.TrxFactory
+	rexSyncer      *RexLiteSyncer
+	chaindata      *ChainData
+	Consensus      def.Consensus
+	CurrBlock      uint64
+	CurrEpoch      uint64
+	LatestUpdate   int64
+	ChainCtx       context.Context
+	CtxCancelFunc  context.CancelFunc
+	PoaConsensus   *quorumpb.PoaConsensusInfo
+	MyProducerKeys map[string]bool
 }
 
 func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.GroupItem, nodename string) error {
@@ -60,7 +61,6 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 			return err
 		}
 		forkItem = poaConsensus.ForkInfo
-
 	} else {
 		chain_log.Warnf("<%s> unsupported consensus type <%s>", chain.groupItem.GroupId, seed.GenesisBlock.Consensus.Type.String())
 		return errors.New("unsupported consensus type")
@@ -100,7 +100,6 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 
 	//initial Syncer
 	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-
 	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
 
 	return nil
@@ -245,7 +244,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleTrxPsConn(trx)
 		}
-	} else if pkg.Type == quorumpb.PackageType_BFT_MSG {
+	} else if pkg.Type == quorumpb.PackageType_BFT {
 		bftMsg := &quorumpb.BftMsg{}
 		err = proto.Unmarshal(pkg.Data, bftMsg)
 		if err != nil {
@@ -514,6 +513,7 @@ func (chain *Chain) updSyncerList() {
 func (chain *Chain) updateProducerPool() {
 	chain_log.Debugf("<%s> UpdProducerList called", chain.groupItem.GroupId)
 	chain.producerPool = make(map[string]*quorumpb.ProducerItem)
+	chain.MyProducerKeys = make(map[string]bool)
 	producers, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.groupItem.GroupId, chain.nodename)
 
 	if err != nil {
@@ -522,11 +522,38 @@ func (chain *Chain) updateProducerPool() {
 
 	for _, item := range producers {
 		chain.producerPool[item.ProducerPubkey] = item
-		isOwner := ""
-		if item.ProducerPubkey == chain.groupItem.OwnerPubKey {
-			isOwner = "(owner)"
+		chain.MyProducerKeys[item.ProducerPubkey] = false
+		chain_log.Debugf("<%s> load producer <%s>", chain.groupItem.GroupId, item.ProducerPubkey)
+	}
+
+	//update myproducer pubkey list
+	//check if I have any producerpubkey in my keychain
+	ks := localcrypto.GetKeystore()
+	allkeys, err := ks.ListAll()
+	if err != nil {
+		chain_log.Warningf("<%s> ListAll failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		return
+	}
+
+	//dump all pubkeys to a map
+	pubkeyMap := make(map[string]bool)
+	for _, key := range allkeys {
+		pubkey, err := ks.GetEncodedPubkey(key.Keyname, localcrypto.Sign)
+		if err != nil {
+			chain_log.Warningf("<%s> GetEncodedPubkey failed with error <%s>", chain.groupItem.GroupId, err.Error())
+			continue
 		}
-		chain_log.Debugf("<%s> load producer <%s%s>", chain.groupItem.GroupId, item.ProducerPubkey, isOwner)
+		pubkeyMap[pubkey] = true
+	}
+
+	for key, _ := range chain.MyProducerKeys {
+		if _, ok := pubkeyMap[key]; ok {
+			chain.MyProducerKeys[key] = true
+		}
+	}
+
+	for key, item := range chain.MyProducerKeys {
+		chain_log.Debugf("<%s> has ProducerKey <%s> <%t>", chain.groupItem.GroupId, key, item)
 	}
 }
 
@@ -550,9 +577,21 @@ func (chain *Chain) CreateConsensus() error {
 	return nil
 }
 
+// TBD, only 1 producer is allowd in RUMLITE
 func (chain *Chain) IsProducer() bool {
-	_, ok := chain.producerPool[chain.groupItem.UserSignPubkey]
-	return ok
+	currProducerPubkeys := chain.PoaConsensus.ForkInfo.Producers
+	currProducer := currProducerPubkeys[0]
+	return chain.MyProducerKeys[currProducer]
+}
+
+// TBD now just return the first true value in myproducerkeys
+func (chain *Chain) GetMyProducerPubkey() string {
+	for key, item := range chain.MyProducerKeys {
+		if item {
+			return key
+		}
+	}
+	return ""
 }
 
 func (chain *Chain) IsProducerByPubkey(pubkey string) bool {

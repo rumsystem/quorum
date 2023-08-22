@@ -20,5 +20,5 @@ type ChainMolassesIface interface {
 	IsProducer() bool
 	IsOwner() bool
 	GetCurrPoaConsensus() *quorumpb.PoaConsensusInfo
-	//VerifySign(hash, signature []byte, pubkey string) (bool, error)
+	GetMyProducerPubkey() string
 }

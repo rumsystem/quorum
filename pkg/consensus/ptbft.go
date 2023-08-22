@@ -22,13 +22,13 @@ var MAXIMUM_TRX_BUNDLE_LENGTH = 900 * 1024 //900Kib
 
 type PTBft struct {
 	Config
-	cIface            def.ChainMolassesIface
-	txBuffer          *TrxBuffer
-	chainCtx          context.Context
-	currTask          *PTTask
-	bftCtx            context.Context
-	bftCancelFunc     context.CancelFunc
-	CurrConsensusInfo *quorumpb.PoaConsensusInfo
+	cIface        def.ChainMolassesIface
+	txBuffer      *TrxBuffer
+	chainCtx      context.Context
+	currTask      *PTTask
+	bftCtx        context.Context
+	bftCancelFunc context.CancelFunc
+	CurrConsensus *quorumpb.Consensus
 }
 
 type PTTask struct {
@@ -47,12 +47,19 @@ type PTAcsResult struct {
 
 func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PTBft {
 	ptbft_log.Debugf("<%s> NewPTBft called", cfg.GroupId)
+	consensus, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupConsensus(cfg.GroupId, cfg.NodeName)
+	if err != nil {
+		ptbft_log.Debugf("<%s> GetGroupConsensus failed with error <%s>", cfg.GroupId, err.Error())
+		return nil
+	}
+
 	ptbft := &PTBft{
-		Config:   cfg,
-		cIface:   iface,
-		txBuffer: NewTrxBuffer(cfg.GroupId),
-		chainCtx: ctx,
-		currTask: nil,
+		Config:        cfg,
+		cIface:        iface,
+		txBuffer:      NewTrxBuffer(cfg.GroupId),
+		chainCtx:      ctx,
+		currTask:      nil,
+		CurrConsensus: consensus,
 	}
 	return ptbft
 }
@@ -105,7 +112,7 @@ func (bft *PTBft) getNextTask() (*PTTask, error) {
 	task := &PTTask{
 		Epoch:          proposedEpoch,
 		ProposedData:   datab,
-		acsInsts:       NewPTACS(bft.Config, bft.CurrConsensusInfo, proposedEpoch, chAcsDone),
+		acsInsts:       NewPTACS(bft.Config, bft.CurrConsensus, proposedEpoch, chAcsDone),
 		chAcsDone:      chAcsDone,
 		taskCtx:        ctx,
 		taskCancelFunc: cancel,
@@ -117,29 +124,8 @@ func (bft *PTBft) getNextTask() (*PTTask, error) {
 func (bft *PTBft) ProposeWorker() {
 	ptbft_log.Debugf("<%s> ProposeWorker called", bft.GroupId)
 
-	//get current conssensus
-	consensus, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupConsensus(bft.GroupId)
-	if err != nil {
-		ptbft_log.Debugf("<%s> GetGroupConsensus failed with error <%s>", bft.GroupId, err.Error())
-		return
-	}
-
-	//check if consenes type is POA
-	if consensus.Type != quorumpb.GroupConsenseType_POA {
-		ptbft_log.Debugf("<%s> Consensus type is not POA, ProposeWorker exit", bft.GroupId)
-		return
-	}
-
-	//cast to POA consensus
-	poaConsensus := &quorumpb.PoaConsensusInfo{}
-	err = proto.Unmarshal(consensus.Data, poaConsensus)
-	if err != nil {
-		ptbft_log.Debugf("<%s> Unmarshal failed with error <%s>", bft.GroupId, err.Error())
-		return
-	}
-
-	forkItem := poaConsensus.ForkInfo
-	interval := forkItem.EpochDuration
+	poaConsensus := bft.cIface.GetCurrPoaConsensus()
+	interval := poaConsensus.ForkInfo.EpochDuration
 
 	for {
 		select {
@@ -157,7 +143,6 @@ func (bft *PTBft) ProposeWorker() {
 				bft.currTask.taskCancelFunc()
 				bft.currTask = nil
 			}
-
 			return
 
 		case <-time.After(time.Duration(interval) * time.Millisecond):
@@ -226,7 +211,7 @@ func (bft *PTBft) Stop() {
 }
 
 func (bft *PTBft) HandleHBMessage(hbMsg *quorumpb.HBMsgv1) error {
-	//ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.groupId, hbmsg.Epoch)
+	ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.GroupId, hbMsg.Epoch)
 	if bft.currTask != nil {
 		return bft.currTask.acsInsts.HandleHBMessage(hbMsg)
 	}
@@ -234,7 +219,7 @@ func (bft *PTBft) HandleHBMessage(hbMsg *quorumpb.HBMsgv1) error {
 }
 
 func (bft *PTBft) acsDone(result *PTAcsResult) {
-	//ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
+	ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 
 	//decode trxs

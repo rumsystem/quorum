@@ -12,7 +12,7 @@ var ptacs_log = logging.Logger("ptacs")
 
 type PTAcs struct {
 	Config
-	consensusInfo *quorumpb.PoaConsensusInfo
+	consensusInfo *quorumpb.Consensus
 	epoch         uint64
 	rbcInsts      map[string]*PTRbc
 	rbcOutput     map[string]bool
@@ -21,12 +21,12 @@ type PTAcs struct {
 	chAcsDone chan *PTAcsResult
 }
 
-func NewPTACS(cfg Config, consensusInfo *quorumpb.PoaConsensusInfo, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
+func NewPTACS(cfg Config, consensus *quorumpb.Consensus, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
 	//ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 	acs := &PTAcs{
 		Config:        cfg,
 		epoch:         epoch,
-		consensusInfo: consensusInfo,
+		consensusInfo: consensus,
 		rbcInsts:      make(map[string]*PTRbc),
 		rbcOutput:     make(map[string]bool),
 		rbcResults:    make(map[string][]byte),
@@ -41,7 +41,7 @@ func NewPTACS(cfg Config, consensusInfo *quorumpb.PoaConsensusInfo, epoch uint64
 }
 
 func (a *PTAcs) InputValue(val []byte) error {
-	//ptacs_log.Info("InputValue called")
+	ptacs_log.Info("InputValue called")
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
 		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)
@@ -75,10 +75,13 @@ func (a *PTAcs) RbcDone(proposerPubkey string) {
 }
 
 func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
-	if hbmsg.ScopeId != a.consensusInfo.ConsensusId {
-		ptacs_log.Debugf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
-		return fmt.Errorf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
-	}
+	//TBD check consensus version match
+	/*
+		if hbmsg.ScopeId != a.consensusInfo.ConsensusId {
+			ptacs_log.Debugf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
+			return fmt.Errorf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
+		}
+	*/
 
 	if hbmsg.Epoch != a.epoch {
 		ptacs_log.Debugf("received message from epoch <%d>, but current epoch is <%d>", hbmsg.Epoch, a.epoch)

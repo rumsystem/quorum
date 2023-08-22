@@ -80,7 +80,7 @@ func NewPTRBC(cfg Config, acs *PTAcs, rbcInstPubkey string) (*PTRbc, error) {
 // 2. make InitPropose for each nodes
 // 3. broadcast all InitPropose
 func (r *PTRbc) InputValue(data []byte) error {
-	//ptrbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
+	ptrbc_log.Debugf("<%s> Input value called, data length <%d>", r.rbcInstPubkey, len(data))
 
 	//create shards
 	shards, err := MakeShards(r.ecc, data)
@@ -322,7 +322,7 @@ func (r *PTRbc) VerifySign() bool {
 }
 
 func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
-	//hbmsgsender_log.Debugf("<%s> SendHBRBCMsg called", r.GroupId)
+	ptrbc_log.Debugf("<%s> SendHBRBCMsg called", r.GroupId)
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
 		return err
@@ -331,7 +331,7 @@ func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
 	hbmsg := &quorumpb.HBMsgv1{
 		MsgId:       guuid.New().String(),
 		Epoch:       r.acs.epoch,
-		ScopeId:     r.acs.consensusInfo.ConsensusId,
+		ScopeId:     "", //r.acs.consensusInfo.ConsensusId,
 		PayloadType: quorumpb.HBMsgPayloadType_RBC,
 		Payload:     rbcb,
 	}

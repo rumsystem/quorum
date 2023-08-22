@@ -44,8 +44,10 @@ func (producer *MolassesProducer) StartPropose() {
 		return
 	}
 
+	producerPubkey := producer.cIface.GetMyProducerPubkey()
+
 	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, producer.grpItem.UserSignPubkey)
-	config, err := producer.createBftConfig()
+	config, err := producer.createBftConfig(producerPubkey)
 	if err != nil {
 		molaproducer_log.Error("create bft failed with error: %s", err.Error())
 		return
@@ -66,7 +68,7 @@ func (producer *MolassesProducer) StopPropose() {
 	producer.ptbft = nil
 }
 
-func (producer *MolassesProducer) createBftConfig() (*Config, error) {
+func (producer *MolassesProducer) createBftConfig(producerPubkey string) (*Config, error) {
 	molaproducer_log.Debugf("<%s> createBftConfig called", producer.groupId)
 	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
 	if err != nil {
@@ -98,7 +100,7 @@ func (producer *MolassesProducer) createBftConfig() (*Config, error) {
 	config := &Config{
 		GroupId:     producer.groupId,
 		NodeName:    producer.nodename,
-		MyPubkey:    producer.grpItem.UserSignPubkey,
+		MyPubkey:    producerPubkey,
 		OwnerPubKey: producer.grpItem.OwnerPubKey,
 
 		N:         N,
@@ -141,7 +143,7 @@ func (producer *MolassesProducer) AddTrxToTxBuffer(trx *quorumpb.Trx) {
 func (producer *MolassesProducer) HandleBftMsg(bftMsg *quorumpb.BftMsg) error {
 	molaproducer_log.Debugf("<%s> HandleBFTMsg called", producer.groupId)
 
-	if bftMsg.Type != quorumpb.BftMsgType_HB_BFT {
+	if bftMsg.Type == quorumpb.BftMsgType_HB_BFT {
 		//unmarshal bft msg
 		hbMsg := &quorumpb.HBMsgv1{}
 		err := proto.Unmarshal(bftMsg.Data, hbMsg)
@@ -153,6 +155,8 @@ func (producer *MolassesProducer) HandleBftMsg(bftMsg *quorumpb.BftMsg) error {
 		if producer.ptbft != nil {
 			producer.ptbft.HandleHBMessage(hbMsg)
 		}
+	} else {
+		molaproducer_log.Debug("????????????????????????????????")
 	}
 
 	return nil
