@@ -89,5 +89,8 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 		return nil, rumerrors.NewBadRequestError(err)
 	}
 
+	//add group to context
+	groupmgr.Groups[group.Item.GroupId] = group
+
 	return &JoinGroupBySeedResult{GroupItem: group.Item}, nil
 }

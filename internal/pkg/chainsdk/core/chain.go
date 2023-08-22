@@ -3,7 +3,6 @@ package chain
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -22,7 +21,6 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 )
 
@@ -44,15 +42,18 @@ type Chain struct {
 	LatestUpdate  int64
 	ChainCtx      context.Context
 	CtxCancelFunc context.CancelFunc
+	PoaConsensus  *quorumpb.PoaConsensusInfo
 }
 
 func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.GroupItem, nodename string) error {
 	chain_log.Debugf("<%s> NewChain called", item.GroupId)
 
-	var forkItem *quorumpb.ForkItem
+	chain.groupItem = item
+	chain.nodename = nodename
 
+	var forkItem *quorumpb.ForkItem
+	poaConsensus := &quorumpb.PoaConsensusInfo{}
 	if seed.GenesisBlock.Consensus.Type == quorumpb.GroupConsenseType_POA {
-		poaConsensus := &quorumpb.PoaConsensusInfo{}
 		err := proto.Unmarshal(seed.GenesisBlock.Consensus.Data, poaConsensus)
 		if err != nil {
 			chain_log.Debugf("<%s> Unmarshal failed with error <%s>", chain.groupItem.GroupId, err.Error())
@@ -65,8 +66,11 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 		return errors.New("unsupported consensus type")
 	}
 
-	chain.groupItem = item
-	chain.nodename = nodename
+	err := chain.SaveAndUpdCurrPoaConsensus(seed.GenesisBlock.Consensus, poaConsensus)
+	if err != nil {
+		chain_log.Debugf("<%s> SaveAndUpdCurrPoaConsensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
 
 	//initial TrxFactory
 	chain.trxFactory = &rumchaindata.TrxFactory{}
@@ -84,13 +88,8 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 		dbmgr:          nodectx.GetDbMgr(),
 	}
 
-	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
-	//initial Syncer
-	// chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-
 	chain_log.Debugf("<%s> initial chain config", item.GroupId)
-	currEpoch := forkItem.EpochDuration
+	currEpoch := forkItem.StartFromEpoch
 	currBlockId := forkItem.StartFromBlock
 	lastUpdate := time.Now().UnixNano()
 	chain.SetCurrEpoch(currEpoch)
@@ -98,6 +97,11 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 	chain.SetLastUpdate(lastUpdate)
 	chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
 	chain.SaveChainInfoToDb()
+
+	//initial Syncer
+	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+
+	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
 
 	return nil
 }
@@ -200,6 +204,16 @@ func (chain *Chain) SaveChainInfoToDb() error {
 	//chain_log.Debugf("<%s> SaveChainInfoToDb called", chain.groupItem.GroupId)
 	//chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, chain.GetCurrEpoch(), chain.GetCurrBlockId(), chain.GetLastUpdate())
 	return nodectx.GetNodeCtx().GetChainStorage().SaveChainInfo(chain.GetCurrBlockId(), chain.GetCurrEpoch(), chain.GetLastUpdate(), chain.groupItem.GroupId, chain.nodename)
+}
+
+func (chain *Chain) SaveAndUpdCurrPoaConsensus(consensus *quorumpb.Consensus, poa *quorumpb.PoaConsensusInfo) error {
+	//TBD protect with mutex
+	chain.PoaConsensus = poa
+	return nodectx.GetNodeCtx().GetChainStorage().SaveGroupConsensus(chain.groupItem.GroupId, consensus, chain.nodename)
+}
+
+func (chain *Chain) GetCurrPoaConsensus() *quorumpb.PoaConsensusInfo {
+	return chain.PoaConsensus
 }
 
 func (chain *Chain) GetTrxFactory() chaindef.TrxFactoryIface {
@@ -657,6 +671,7 @@ func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) 
 	return nil
 }
 
+/*
 func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, error) {
 	//check signature
 	bytespubkey, err := base64.RawURLEncoding.DecodeString(pubkey)
@@ -676,6 +691,7 @@ func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, err
 
 	return true, nil
 }
+*/
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
