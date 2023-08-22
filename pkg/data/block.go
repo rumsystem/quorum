@@ -51,7 +51,7 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Cons
 	return newBlock, nil
 }
 
-func CreateGenesisBlockByEthKey(groupId string, consensus *quorumpb.Consensus, producerPubkey string) (*quorumpb.Block, error) {
+func CreateGenesisBlockByEthKey(groupId string, consensus *quorumpb.Consensus, producerKeyName, producerPubkey string) (*quorumpb.Block, error) {
 	genesisBlock := &quorumpb.Block{
 		BlockId:        0,
 		GroupId:        groupId,
@@ -72,7 +72,7 @@ func CreateGenesisBlockByEthKey(groupId string, consensus *quorumpb.Consensus, p
 	genesisBlock.BlockHash = localcrypto.Hash(bbytes)
 
 	ks := localcrypto.GetKeystore()
-	signature, err := ks.EthSignByKeyName(producerPubkey, genesisBlock.BlockHash)
+	signature, err := ks.EthSignByKeyName(producerKeyName, genesisBlock.BlockHash)
 	if err != nil {
 		return nil, err
 	}
@@ -147,11 +147,11 @@ func ValidGenesisBlockPoa(genesisBlock *quorumpb.Block) (bool, error) {
 		return false, fmt.Errorf("consensus info for genesis block must not be nil")
 	}
 
-	if genesisBlock.Consensus.Type == quorumpb.GroupConsenseType_POA {
+	if genesisBlock.Consensus.Type != quorumpb.GroupConsenseType_POA {
 		return false, fmt.Errorf("consensus type for genesis block must be poa")
 	}
 
-	//convert to POA
+	//convert to POAConsensus
 	poaConsensus := &quorumpb.PoaConsensusInfo{}
 	err := proto.Unmarshal(genesisBlock.Consensus.Data, poaConsensus)
 	if err != nil {
@@ -186,6 +186,7 @@ func ValidGenesisBlockPoa(genesisBlock *quorumpb.Block) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	hash := localcrypto.Hash(bts)
 
 	//check hash for block

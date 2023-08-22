@@ -129,7 +129,7 @@ func NewGroupSeed(params *NewGroupSeedParams, nodeoptions *options.NodeOptions) 
 	}
 
 	//create genesis block
-	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid, consensus, producerKeyName)
+	genesisBlock, err := rumchaindata.CreateGenesisBlockByEthKey(groupid, consensus, producerKeyName, producerPubkey)
 	if err != nil {
 		return nil, err
 	}
