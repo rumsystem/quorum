@@ -10,7 +10,6 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/pkg/consensus/def"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	rumchaindata "github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
@@ -309,9 +308,8 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		return err
 	} else {
 		ptbft_log.Debugf("<%s> start build block with parent <%d> ", bft.GroupId, parent.BlockId)
-		ks := localcrypto.GetKeystore()
-
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyPubkey, ks, "", bft.NodeName)
+		mySignKeyName := bft.cIface.GetKeynameByPubkey(bft.MyKeyName)
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyKeyName, mySignKeyName, bft.NodeName)
 		if err != nil {
 			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err

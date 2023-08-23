@@ -5,11 +5,11 @@ import (
 )
 
 type TrxFactoryIface interface {
-	GetChainConfigTrx(keyalias string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error)
-	GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
-	GetUpdGroupSyncerTrx(keyalias string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error)
-	GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error)
-	GetForkTrx(keyalias string, item *quorumpb.ForkItem) (*quorumpb.Trx, error)
+	GetChainConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error)
+	GetUpdAppConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
+	GetUpdGroupSyncerTrx(senderPubkey, senderKeyname string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error)
+	GetPostAnyTrx(senderPubkey, senderKeyname string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error)
+	GetForkTrx(senderPubkey, senderKeyname string, item *quorumpb.ForkItem) (*quorumpb.Trx, error)
 }
 
 //GetReqBlocksTrx(keyalias string, groupId string, fromBlock uint64, blkReq int32) (*quorumpb.Trx, error)

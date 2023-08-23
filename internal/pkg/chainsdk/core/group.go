@@ -21,52 +21,6 @@ type Group struct {
 	Nodename string
 }
 
-/*
-message PoaConsensusInfo {
-    string ConsensusId   = 1;
-    uint64 ChainVer      = 2;
-    string InTrx         = 3;
-    ForkItem ForkInfo   = 4;
-}
-
-message ForkItem {
-    string        GroupId          = 1;
-    uint64        StartFromBlock   = 3;
-    uint64        StartFromEpoch   = 4;
-    uint64        EpochDuration    = 5;
-    repeated      string producers = 6;
-    string        Memo             = 7;
-}
-
-message GroupItem {
-    string            GroupId                 = 1;
-    string            GroupName               = 2;
-    string            OwnerPubKey             = 3;
-    string            UserSignPubkey          = 4;
-    int64             LastUpdate              = 5;
-    Block             GenesisBlock            = 6;
-    GroupSyncType     SyncType                = 7;
-    GroupConsenseType ConsenseType            = 8;
-    string            CipherKey               = 9;
-    string            AppKey                  = 10;
-    string            AppId                   = 11;
-    reserved          12 to 100;
-}
-
-message GroupSeed {
-    Block          GenesisBlock = 1;
-    string         GroupId      = 2;
-    string         GroupName    = 3;
-    string         OwnerPubkey  = 4;
-    GroupSyncType  SyncType     = 5;
-    string         CipherKey    = 6;
-    string         AppId        = 7;
-    string         AppName      = 8;
-    bytes          Hash         = 9;
-    bytes          Signature    = 10;
-}
-*/
-
 func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) error {
 	group_log.Debugf("<%s> JoinGoupBySeed called", seed.GroupId)
 
@@ -80,8 +34,8 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 		SyncType:       seed.SyncType,
 		ConsenseType:   seed.GenesisBlock.Consensus.Type,
 		CipherKey:      seed.CipherKey,
-		AppKey:         seed.AppName,
 		AppId:          seed.AppId,
+		AppName:        seed.AppName,
 	}
 
 	grp.Item = groupItem
@@ -137,6 +91,9 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 	if err != nil {
 		return err
 	}
+
+	//try start sync
+	grp.ChainCtx.StartSync()
 
 	group_log.Debugf("Join Group <%s> done", grp.Item.GroupId)
 	return nil
@@ -291,8 +248,8 @@ func (grp *Group) IsProducer() bool {
 	return grp.ChainCtx.IsProducer()
 }
 
-func (grp *Group) IsOwner() bool {
-	return grp.ChainCtx.IsOwner()
+func (grp *Group) HasOwnerKey() bool {
+	return grp.ChainCtx.HasOwnerKey()
 }
 
 func (grp *Group) ClearGroupData() error {
@@ -373,7 +330,14 @@ func (grp *Group) GetCurrentConsensus() (*quorumpb.Consensus, error) {
 // send POST trx
 func (grp *Group) PostToGroup(content []byte) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx("", content)
+
+	signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.UserSignPubkey)
+	if signKeyName == "" {
+		group_log.Debugf("<%s> PostToGroup failed, sign key not exist", grp.Item.GroupId)
+		return "", fmt.Errorf("sign key not exist")
+	}
+
+	trx, err := grp.ChainCtx.GetTrxFactory().GetPostAnyTrx(grp.Item.UserSignPubkey, signKeyName, content)
 	if err != nil {
 		return "", err
 	}
@@ -381,13 +345,16 @@ func (grp *Group) PostToGroup(content []byte) (string, error) {
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) GetInitForkTrx(trxId string, item *quorumpb.ForkItem) (*quorumpb.Trx, error) {
-	return grp.ChainCtx.GetTrxFactory().GetForkTrx("", item)
-}
-
 func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, error) {
 	group_log.Debugf("<%s> UpdGroupSyncer called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdGroupSyncerTrx("", item)
+
+	signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
+	if signKeyName == "" {
+		group_log.Debugf("<%s> UpdGroupSyncer failed, sign key not exist", grp.Item.GroupId)
+		return "", fmt.Errorf("sign key not exist")
+	}
+
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdGroupSyncerTrx(grp.Item.OwnerPubKey, signKeyName, item)
 	if err != nil {
 		return "", nil
 	}
@@ -396,7 +363,14 @@ func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, err
 
 func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdChainSendTrxRule called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx("", item)
+
+	signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
+	if signKeyName == "" {
+		group_log.Debugf("<%s> UpdChainConfig failed, sign key not exist", grp.Item.GroupId)
+		return "", fmt.Errorf("sign key not exist")
+	}
+
+	trx, err := grp.ChainCtx.GetTrxFactory().GetChainConfigTrx(grp.Item.OwnerPubKey, signKeyName, item)
 	if err != nil {
 		return "", err
 	}
@@ -406,7 +380,14 @@ func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error)
 // send update appconfig trx
 func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
 	group_log.Debugf("<%s> UpdAppConfig called", grp.Item.GroupId)
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx("", item)
+
+	signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
+	if signKeyName == "" {
+		group_log.Debugf("<%s> UpdAppConfig failed, sign key not exist", grp.Item.GroupId)
+		return "", fmt.Errorf("sign key not exist")
+	}
+
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx(grp.Item.OwnerPubKey, signKeyName, item)
 	if err != nil {
 		return "", nil
 	}

@@ -14,12 +14,12 @@ import (
 	"time"
 )
 
-func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Consensus, trxs []*quorumpb.Trx, groupPublicKey string, keystore localcrypto.Keystore, keyalias string, opts ...string) (*quorumpb.Block, error) {
+func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Consensus, trxs []*quorumpb.Trx, producerPubkey, producerKeyname string, opts ...string) (*quorumpb.Block, error) {
 	newBlock := &quorumpb.Block{
 		GroupId:        parentBlk.GroupId,
 		BlockId:        parentBlk.BlockId + 1,
 		PrevHash:       parentBlk.BlockHash,
-		ProducerPubkey: groupPublicKey,
+		ProducerPubkey: producerPubkey,
 		Trxs:           trxs,
 		TimeStamp:      time.Now().UnixNano(),
 	}
@@ -32,26 +32,17 @@ func CreateBlockByEthKey(parentBlk *quorumpb.Block, consensusInfo *quorumpb.Cons
 	hash := localcrypto.Hash(tbytes)
 	newBlock.BlockHash = hash
 
-	var signature []byte
-	if keyalias == "" {
-		signature, err = keystore.EthSignByKeyName(newBlock.GroupId, hash, opts...)
-	} else {
-		signature, err = keystore.EthSignByKeyAlias(keyalias, hash, opts...)
-	}
-
+	ks := localcrypto.GetKeystore()
+	signature, err := ks.EthSignByKeyName(producerKeyname, hash, opts...)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(signature) == 0 {
-		return nil, errors.New("create signature failed")
 	}
 
 	newBlock.ProducerSign = signature
 	return newBlock, nil
 }
 
-func CreateGenesisBlockByEthKey(groupId string, consensus *quorumpb.Consensus, producerKeyName, producerPubkey string) (*quorumpb.Block, error) {
+func CreateGenesisBlockByEthKey(groupId string, consensus *quorumpb.Consensus, producerPubkey, producerKeyName string) (*quorumpb.Block, error) {
 	genesisBlock := &quorumpb.Block{
 		BlockId:        0,
 		GroupId:        groupId,

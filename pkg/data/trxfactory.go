@@ -8,60 +8,60 @@ import (
 type TrxFactory struct {
 	nodename  string
 	groupId   string
-	groupItem *quorumpb.GroupItem
 	version   string
+	CipherKey string
 }
 
-func (factory *TrxFactory) Init(version string, groupItem *quorumpb.GroupItem, nodename string) {
-	factory.groupItem = groupItem
-	factory.groupId = groupItem.GroupId
+func (factory *TrxFactory) Init(nodename, version, groupId, CipheryKey string) {
+	factory.groupId = groupId
 	factory.nodename = nodename
 	factory.version = version
+	factory.CipherKey = CipheryKey
 }
 
-func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupItem, msgType, data, keyalias, encryptto...)
+func (factory *TrxFactory) CreateTrxByEthKey(msgType quorumpb.TrxType, data []byte, senderPubkey, senderKeyname string, encryptto ...[]string) (*quorumpb.Trx, error) {
+	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupId, senderPubkey, senderKeyname, factory.CipherKey, msgType, data, encryptto...)
 }
 
-func (factory *TrxFactory) GetUpdAppConfigTrx(keyalias string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetUpdAppConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_APP_CONFIG, encodedcontent, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_APP_CONFIG, encodedcontent, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetChainConfigTrx(keyalias string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetChainConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetUpdGroupSyncerTrx(keyalias string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetUpdGroupSyncerTrx(senderPubkey, senderKeyname string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_SYNCER, encodedcontent, keyalias)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_SYNCER, encodedcontent, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetPostAnyTrx(keyalias string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetPostAnyTrx(senderPubkey, senderKeyname string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
 	if _, err := IsTrxDataWithinSizeLimit(content); err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_POST, content, keyalias, encryptto...)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_POST, content, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetForkTrx(keyalis string, item *quorumpb.ForkItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetForkTrx(senderPubkey, senderKeyname string, item *quorumpb.ForkItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_FORK, encodedcontent, keyalis)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_FORK, encodedcontent, senderPubkey, senderKeyname)
 }

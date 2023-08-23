@@ -4,6 +4,7 @@ type Config struct {
 	GroupId     string   // group id
 	NodeName    string   // node name
 	MyPubkey    string   // my pubkey
+	MyKeyName   string   // my pubkey name
 	OwnerPubKey string   // owner pubkey
 	N           int      // participating producer nodes
 	f           int      // faulty nodes

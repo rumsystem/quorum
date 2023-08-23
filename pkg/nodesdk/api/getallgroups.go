@@ -18,7 +18,8 @@ type GroupInfo struct {
 	ConsensusType string   `json:"consensus_type" validate:"required"`
 	SyncType      string   `json:"sync_type" validate:"required"`
 	CipherKey     string   `json:"cipher_key" validate:"required"`
-	AppKey        string   `json:"app_key" validate:"required"`
+	AppId         string   `json:"app_id" validate:"required"`
+	AppName       string   `json:"app_name" validate:"required"`
 	LastUpdated   int64    `json:"last_updated" validate:"required"`
 	Epoch         int64    `json:"epoch" validate:"required"`
 	ChainApis     []string `json:"chain_apis" validate:"required,uuid4"`
@@ -63,10 +64,9 @@ func (h *NodeSDKHandler) GetAllGroups() echo.HandlerFunc {
 			groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()
 			groupInfo.SyncType = groupItem.Group.SyncType.String()
 			groupInfo.CipherKey = groupItem.Group.CipherKey
-			groupInfo.AppKey = groupItem.Group.AppKey
+			groupInfo.AppId = groupItem.Group.AppId
+			groupInfo.AppName = groupItem.Group.AppName
 			groupInfo.LastUpdated = groupItem.Group.LastUpdate
-			//TBD cuicat
-			//groupInfo.Epoch = groupItem.Group.Epoch
 			groupInfo.ChainApis = groupItem.ApiUrl
 			groups = append(groups, groupInfo)
 		}

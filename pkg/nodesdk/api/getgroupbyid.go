@@ -41,11 +41,9 @@ func (h *NodeSDKHandler) GetGroupById() echo.HandlerFunc {
 		groupInfo.ConsensusType = groupItem.Group.ConsenseType.String()
 		groupInfo.SyncType = groupItem.Group.SyncType.String()
 		groupInfo.CipherKey = groupItem.Group.CipherKey
-		groupInfo.AppKey = groupItem.Group.AppKey
+		groupInfo.AppId = groupItem.Group.AppId
+		groupInfo.AppName = groupItem.Group.AppName
 		groupInfo.LastUpdated = groupItem.Group.LastUpdate
-
-		//TBD cuicat
-		//groupInfo.Epoch = groupItem.Group.Epoch
 		groupInfo.ChainApis = groupItem.ApiUrl
 
 		return c.JSON(http.StatusOK, groupInfo)

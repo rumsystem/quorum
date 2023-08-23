@@ -29,21 +29,21 @@ var chain_log = logging.Logger("chain")
 var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
 
 type Chain struct {
-	groupItem      *quorumpb.GroupItem
-	nodename       string
-	producerPool   map[string]*quorumpb.ProducerItem
-	syncerPool     map[string]*quorumpb.Syncer
-	trxFactory     *rumchaindata.TrxFactory
-	rexSyncer      *RexLiteSyncer
-	chaindata      *ChainData
-	Consensus      def.Consensus
-	CurrBlock      uint64
-	CurrEpoch      uint64
-	LatestUpdate   int64
-	ChainCtx       context.Context
-	CtxCancelFunc  context.CancelFunc
-	PoaConsensus   *quorumpb.PoaConsensusInfo
-	MyProducerKeys map[string]bool
+	groupItem     *quorumpb.GroupItem
+	nodename      string
+	producerPool  map[string]*quorumpb.ProducerItem
+	syncerPool    map[string]*quorumpb.Syncer
+	trxFactory    *rumchaindata.TrxFactory
+	rexSyncer     *RexLiteSyncer
+	chaindata     *ChainData
+	Consensus     def.Consensus
+	CurrBlock     uint64
+	CurrEpoch     uint64
+	LatestUpdate  int64
+	ChainCtx      context.Context
+	CtxCancelFunc context.CancelFunc
+	PoaConsensus  *quorumpb.PoaConsensusInfo
+	KeyMap        map[string]string // key: pubkey; value: keyname
 }
 
 func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.GroupItem, nodename string) error {
@@ -74,7 +74,7 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 
 	//initial TrxFactory
 	chain.trxFactory = &rumchaindata.TrxFactory{}
-	chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
+	chain.trxFactory.Init(chain.nodename, nodectx.GetNodeCtx().Version, chain.groupItem.GroupId, chain.groupItem.CipherKey)
 
 	//create context with cancel function, chainCtx will be ctx parent of all underlay components
 	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
@@ -102,6 +102,23 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
 
+	//initial keymap
+	ks := localcrypto.GetKeystore()
+	pubkeys := []string(forkItem.Producers)
+	pubkeys = append(pubkeys, chain.groupItem.UserSignPubkey)
+	pubkeys = append(pubkeys, chain.groupItem.OwnerPubKey)
+	keymap, err := chain.findKeyNames(ks, pubkeys)
+
+	if err != nil {
+		chain_log.Debugf("<%s> findKeyNames failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+
+	chain.KeyMap = keymap
+	return nil
+}
+
+func (chain *Chain) LoadChain(item *quorumpb.GroupItem, nodename string) error {
 	return nil
 }
 
@@ -211,6 +228,27 @@ func (chain *Chain) SaveAndUpdCurrPoaConsensus(consensus *quorumpb.Consensus, po
 	return nodectx.GetNodeCtx().GetChainStorage().SaveGroupConsensus(chain.groupItem.GroupId, consensus, chain.nodename)
 }
 
+func (chain *Chain) LoadAndUpdCurrPoaConsensus() error {
+	consensus, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupConsensus(chain.groupItem.GroupId, chain.nodename)
+	if err != nil {
+		return err
+	}
+
+	if consensus.Type != quorumpb.GroupConsenseType_POA {
+		chain_log.Warnf("<%s> unsupported consensus type <%s>", chain.groupItem.GroupId, consensus.Type.String())
+		return errors.New("unsupported consensus type")
+	} else {
+		poaConsensus := &quorumpb.PoaConsensusInfo{}
+		err := proto.Unmarshal(consensus.Data, poaConsensus)
+		if err != nil {
+			chain_log.Debugf("<%s> Unmarshal failed with error <%s>", chain.groupItem.GroupId, err.Error())
+			return err
+		}
+		chain.PoaConsensus = poaConsensus
+	}
+	return nil
+}
+
 func (chain *Chain) GetCurrPoaConsensus() *quorumpb.PoaConsensusInfo {
 	return chain.PoaConsensus
 }
@@ -233,7 +271,6 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 			//TODO: save to cache, waitting for syncer to pickup it
 			nodectx.GetNodeCtx().GetChainStorage().AddBlockToDSCache(blk, chain.nodename)
 			chain.rexSyncer.TaskTrigger()
-			// err = chain.HandleBlockPsConn(blk)
 		}
 
 	} else if pkg.Type == quorumpb.PackageType_TRX {
@@ -432,7 +469,9 @@ func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Strea
 	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", req.FromBlock, len(blocks), result.String())
 
 	//resp, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
-	resp, err := rumchaindata.GetReqBlocksRespMsg("", req, chain.groupItem.UserSignPubkey, blocks, result)
+	userSignKeyname := chain.GetKeynameByPubkey(chain.groupItem.UserSignPubkey)
+
+	resp, err := rumchaindata.GetReqBlocksRespMsg(req, chain.groupItem.UserSignPubkey, userSignKeyname, blocks, result)
 
 	if err != nil {
 		return err
@@ -513,48 +552,63 @@ func (chain *Chain) updSyncerList() {
 func (chain *Chain) updateProducerPool() {
 	chain_log.Debugf("<%s> UpdProducerList called", chain.groupItem.GroupId)
 	chain.producerPool = make(map[string]*quorumpb.ProducerItem)
-	chain.MyProducerKeys = make(map[string]bool)
 	producers, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.groupItem.GroupId, chain.nodename)
 
 	if err != nil {
 		chain_log.Debugf("Get producer failed with err <%s>", err.Error())
 	}
 
+	producerPubkey := []string{}
 	for _, item := range producers {
 		chain.producerPool[item.ProducerPubkey] = item
-		chain.MyProducerKeys[item.ProducerPubkey] = false
+		producerPubkey = append(producerPubkey, item.ProducerPubkey)
 		chain_log.Debugf("<%s> load producer <%s>", chain.groupItem.GroupId, item.ProducerPubkey)
 	}
 
-	//update myproducer pubkey list
-	//check if I have any producerpubkey in my keychain
+	//check if I have the new producer pubkey in local keychain
 	ks := localcrypto.GetKeystore()
-	allkeys, err := ks.ListAll()
+	producerKeymap, err := chain.findKeyNames(ks, producerPubkey)
 	if err != nil {
-		chain_log.Warningf("<%s> ListAll failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		chain_log.Debugf("<%s> findKeyNames failed with error <%s>", chain.groupItem.GroupId, err.Error())
 		return
 	}
 
+	for key, value := range producerKeymap {
+		chain.KeyMap[key] = value
+	}
+}
+
+func (chain *Chain) findKeyNames(ks localcrypto.Keystore, pubkeys []string) (map[string]string, error) {
+	allkeys, err := ks.ListAll()
+	if err != nil {
+		chain_log.Warningf("<%s> ListAll failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		return nil, err
+	}
+
 	//dump all pubkeys to a map
-	pubkeyMap := make(map[string]bool)
+	pubkeyMap := make(map[string]string)
 	for _, key := range allkeys {
 		pubkey, err := ks.GetEncodedPubkey(key.Keyname, localcrypto.Sign)
 		if err != nil {
 			chain_log.Warningf("<%s> GetEncodedPubkey failed with error <%s>", chain.groupItem.GroupId, err.Error())
 			continue
 		}
-		pubkeyMap[pubkey] = true
+		pubkeyMap[pubkey] = key.Keyname
 	}
 
-	for key, _ := range chain.MyProducerKeys {
-		if _, ok := pubkeyMap[key]; ok {
-			chain.MyProducerKeys[key] = true
+	keymap := make(map[string]string) //key: pubkey; value: keyname
+	//find keyname by pubkey
+	for _, pubkey := range pubkeys {
+		if keyname, ok := pubkeyMap[pubkey]; ok {
+			keymap[pubkey] = keyname
 		}
 	}
 
-	for key, item := range chain.MyProducerKeys {
-		chain_log.Debugf("<%s> has ProducerKey <%s> <%t>", chain.groupItem.GroupId, key, item)
+	for pubkey, keyname := range keymap {
+		chain_log.Debugf("create keymap: <%s> -> <%s>", pubkey, keyname)
 	}
+
+	return keymap, nil
 }
 
 func (chain *Chain) CreateConsensus() error {
@@ -579,17 +633,26 @@ func (chain *Chain) CreateConsensus() error {
 
 // TBD, only 1 producer is allowd in RUMLITE
 func (chain *Chain) IsProducer() bool {
-	currProducerPubkeys := chain.PoaConsensus.ForkInfo.Producers
-	currProducer := currProducerPubkeys[0]
-	return chain.MyProducerKeys[currProducer]
+	for key, _ := range chain.producerPool {
+		if _, ok := chain.KeyMap[key]; ok {
+			return true
+		}
+	}
+	return false
 }
 
-// TBD now just return the first true value in myproducerkeys
 func (chain *Chain) GetMyProducerPubkey() string {
-	for key, item := range chain.MyProducerKeys {
-		if item {
+	for key := range chain.producerPool {
+		if _, ok := chain.KeyMap[key]; ok {
 			return key
 		}
+	}
+	return ""
+}
+
+func (chain *Chain) GetKeynameByPubkey(pubkey string) string {
+	if keyname, ok := chain.KeyMap[pubkey]; ok {
+		return keyname
 	}
 	return ""
 }
@@ -599,11 +662,12 @@ func (chain *Chain) IsProducerByPubkey(pubkey string) bool {
 	return ok
 }
 
-func (chain *Chain) IsOwner() bool {
-	return chain.groupItem.OwnerPubKey == chain.groupItem.UserSignPubkey
+func (chain *Chain) HasOwnerKey() bool {
+	_, ok := chain.KeyMap[chain.groupItem.OwnerPubKey]
+	return ok
 }
 
-func (chain *Chain) IsOwnerByPubkey(pubkey string) bool {
+func (chain *Chain) checkOwnerKey(pubkey string) bool {
 	return chain.groupItem.OwnerPubKey == pubkey
 }
 
@@ -665,7 +729,7 @@ func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) 
 		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
 			trx.Type == quorumpb.TrxType_FORK ||
 			trx.Type == quorumpb.TrxType_UPD_GRP_SYNCER {
-			if !chain.IsOwnerByPubkey(trx.SenderPubkey) {
+			if !chain.checkOwnerKey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
 			}

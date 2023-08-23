@@ -153,7 +153,8 @@ func (rs *RexLiteSyncer) Start() {
 
 				nextBlock := rs.cdnIface.GetCurrBlockId() + uint64(1)
 				//trx, trxerr = rs.chain.GetTrxFactory().GetReqBlocksTrx("", rs.GroupId, nextBlock, REQ_BLOCKS_PER_REQUEST)
-				req, reqerr = rumchaindata.GetReqBlocksMsg("", rs.GroupId, rs.GroupItem.UserSignPubkey, nextBlock, REQ_BLOCKS_PER_REQUEST)
+				userSignKeyname := rs.chain.GetKeynameByPubkey(rs.GroupItem.UserSignPubkey)
+				req, reqerr = rumchaindata.GetReqBlocksMsg(rs.GroupId, rs.GroupItem.UserSignPubkey, userSignKeyname, nextBlock, REQ_BLOCKS_PER_REQUEST)
 
 				if reqerr != nil {
 					rex_syncer_log.Warningf("<%s> SyncWorker run task get trx failed, err <%s>", rs.GroupId, reqerr.Error())
@@ -324,7 +325,7 @@ func (rs *RexLiteSyncer) TriggerSyncTask() {
 	defer cancel()
 	select {
 	case rs.chSyncTask <- struct{}{}:
-		rex_syncer_log.Debugf("<%s> fire a task", rs.GroupId, ctx.Err())
+		rex_syncer_log.Debugf("<%s> fire a task, err %s", rs.GroupId, ctx.Err())
 	case <-ctx.Done():
 		rex_syncer_log.Debugf("<%s> task trigger ticker timeout: %s", rs.GroupId, ctx.Err())
 	}

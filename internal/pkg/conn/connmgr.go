@@ -9,7 +9,6 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/network"
 	chaindef "github.com/rumsystem/quorum/internal/pkg/chainsdk/def"
 	"github.com/rumsystem/quorum/internal/pkg/conn/pubsubconn"
@@ -43,7 +42,7 @@ type ConnMgr struct {
 	ProducerPool       map[string]string // key: group producer Pubkey; value: group producer Pubkey
 	DataHandlerIface   chaindef.ChainDataSyncIface
 	//TODO: sync.map
-	ps *pubsub.PubSub
+	//ps *pubsub.PubSub
 
 	pscounsmu sync.RWMutex
 	PsConns   map[string]*pubsubconn.P2pPubSubConn // key: channelId
@@ -132,29 +131,6 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	return nil
 }
 
-//commented by cuicat
-/*
-func (connMgr *ConnMgr) UpdProducers(pubkeys []string) error {
-	conn_log.Debugf("UpdProducers, groupId <%s>", connMgr.GroupId)
-	connMgr.ProducerPool = make(map[string]string)
-
-	for _, pubkey := range pubkeys {
-		connMgr.ProducerPool[pubkey] = pubkey
-	}
-
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(connMgr.UserSignPubkey)
-	if pk == "" {
-		pk = connMgr.UserSignPubkey
-	}
-
-	if _, ok := connMgr.ProducerPool[pk]; ok {
-		conn_log.Debugf("I am producer, create producer psconn, groupId <%s>", connMgr.GroupId)
-		connMgr.getProducerPsConn()
-	}
-	return nil
-}
-*/
-
 func (connMgr *ConnMgr) LeaveAllChannels() error {
 	conn_log.Debugf("LeaveChannel called, groupId <%s>", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
@@ -173,22 +149,6 @@ func (connMgr *ConnMgr) InitialPsConn() {
 	userPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.UserChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
 	connMgr.PsConns[connMgr.UserChannelId] = userPsconn
 }
-
-//commented by cuicat
-/*
-func (connMgr *ConnMgr) getProducerPsConn() *pubsubconn.P2pPubSubConn {
-	//conn_log.Debugf("<%s> getProducerPsConn called", connMgr.GroupId)
-	connMgr.pscounsmu.Lock()
-	defer connMgr.pscounsmu.Unlock()
-	if psconn, ok := connMgr.PsConns[connMgr.ProducerChannelId]; ok {
-		return psconn
-	} else {
-		producerPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.ProducerChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
-		connMgr.PsConns[connMgr.ProducerChannelId] = producerPsconn
-		return producerPsconn
-	}
-}
-*/
 
 func (connMgr *ConnMgr) getUserConn() *pubsubconn.P2pPubSubConn {
 	//conn_log.Debugf("<%s> getUserConn called", connMgr.GroupId)

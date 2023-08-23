@@ -126,8 +126,10 @@ message Trx {
     int64          ResendCount  = 7;
     int64          Nonce        = 8;
     string         SenderPubkey = 9;  
-    bytes          SenderSign   = 10;
-    TrxStroageType StorageType  = 11;
+    bytes          Hash         = 10;
+    bytes          SenderSign   = 11;
+    TrxStroageType StorageType  = 12;
+    reserved       13 to 100;
 }
 
 //BLOCK
@@ -248,8 +250,8 @@ message GroupItem {
     GroupSyncType     SyncType                = 7;
     GroupConsenseType ConsenseType            = 8;
     string            CipherKey               = 9;
-    string            AppKey                  = 10;
-    string            AppId                   = 11;
+    string            AppId                   = 10;    
+    string            AppName                 = 11;
     reserved          12 to 100;
 }
 

@@ -24,7 +24,8 @@ type GroupInfo struct {
 	ConsensusType   string             `json:"consensus_type" validate:"required" example:"POA"`
 	SyncType        string             `json:"sync_type" validate:"required" example:"PUBLIC"`
 	CipherKey       string             `json:"cipher_key" validate:"required" example:"58044622d48c4d91932583a05db3ff87f29acacb62e701916f7f0bbc6e446e5d"`
-	AppKey          string             `json:"app_key" validate:"required" example:"test_app"`
+	AppId           string             `json:"app_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
+	AppName         string             `json:"app_name" validate:"required" example:"demo-app"`
 	CurrtTopBlock   uint64             `json:"currt_top_block" validate:"required" example:"0"`
 	LastUpdated     int64              `json:"last_updated" validate:"required" example:"1633022375303983600"`
 	RexSyncerStatus string             `json:"rex_syncer_status" validate:"required" example:"IDLE"`
@@ -104,10 +105,10 @@ func getGroupInfo(groupId string) (*GroupInfo, error) {
 	group.ConsensusType = value.Item.ConsenseType.String()
 	group.SyncType = value.Item.SyncType.String()
 	group.CipherKey = value.Item.CipherKey
-	group.AppKey = value.Item.AppKey
+	group.AppId = value.Item.AppId
+	group.AppName = value.Item.AppName
 
 	group.LastUpdated = value.GetLatestUpdate()
-	// group.CurrtEpoch = value.GetCurrentEpoch()
 	group.CurrtTopBlock = value.GetCurrentBlockId()
 
 	b, err := base64.RawURLEncoding.DecodeString(group.UserPubkey)

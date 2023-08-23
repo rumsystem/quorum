@@ -46,7 +46,7 @@ func (producer *MolassesProducer) StartPropose() {
 
 	producerPubkey := producer.cIface.GetMyProducerPubkey()
 
-	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, producer.grpItem.UserSignPubkey)
+	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, producerPubkey)
 	config, err := producer.createBftConfig(producerPubkey)
 	if err != nil {
 		molaproducer_log.Error("create bft failed with error: %s", err.Error())
@@ -97,16 +97,23 @@ func (producer *MolassesProducer) createBftConfig(producerPubkey string) (*Confi
 
 	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
+	//get producer keyname
+	keyname := producer.cIface.GetKeynameByPubkey(producerPubkey)
+	if keyname == "" {
+		molaproducer_log.Debugf("get keyname failed")
+		return nil, nil
+	}
+
 	config := &Config{
 		GroupId:     producer.groupId,
 		NodeName:    producer.nodename,
 		MyPubkey:    producerPubkey,
+		MyKeyName:   keyname,
 		OwnerPubKey: producer.grpItem.OwnerPubKey,
-
-		N:         N,
-		f:         f,
-		Nodes:     nodes,
-		BatchSize: batchSize,
+		N:           N,
+		f:           f,
+		Nodes:       nodes,
+		BatchSize:   batchSize,
 	}
 
 	return config, nil
@@ -155,8 +162,6 @@ func (producer *MolassesProducer) HandleBftMsg(bftMsg *quorumpb.BftMsg) error {
 		if producer.ptbft != nil {
 			producer.ptbft.HandleHBMessage(hbMsg)
 		}
-	} else {
-		molaproducer_log.Debug("????????????????????????????????")
 	}
 
 	return nil

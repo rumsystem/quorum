@@ -20,6 +20,7 @@ type JoinGroupBySeedParams struct {
 	Seed            []byte `from:"seed" json:"seed" validate:"required"`
 	UserSignKeyName string `from:"user_sign_keyname" json:"user_sign_keyname" validate:"required"`
 }
+
 type JoinGroupBySeedResult struct {
 	GroupItem *pb.GroupItem `json:"groupItem"`
 }

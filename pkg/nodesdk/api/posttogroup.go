@@ -1,18 +1,13 @@
 package nodesdkapi
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	rumchaindata "github.com/rumsystem/quorum/pkg/data"
-	nodesdkctx "github.com/rumsystem/quorum/pkg/nodesdk/nodesdkctx"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 type CustomValidatorPost struct {
@@ -63,78 +58,83 @@ func (cv *CustomValidatorPost) Validate(i interface{}) error {
 
 func (h *NodeSDKHandler) PostToGroup() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		paramspb := new(quorumpb.Activity)
 
-		if err := c.Bind(paramspb); err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+		/*
+			paramspb := new(quorumpb.Activity)
 
-		validate := &CustomValidatorPost{Validator: validator.New()}
-		if err := validate.Validate(paramspb); err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			if err := c.Bind(paramspb); err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(paramspb.Target.Id)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			validate := &CustomValidatorPost{Validator: validator.New()}
+			if err := validate.Validate(paramspb); err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		trxFactory := &rumchaindata.TrxFactory{}
-		trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name)
+			nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(paramspb.Target.Id)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		//assign type to paramspb.Object
-		if paramspb.Object.Type == "" {
-			paramspb.Object.Type = paramspb.Type
-		}
+			trxFactory := &rumchaindata.TrxFactory{}
+			//trxFactory.Init(nodesdkctx.GetCtx().Version, nodesdkGroupItem.Group, nodesdkctx.GetCtx().Name)
 
-		data, err := proto.Marshal(paramspb.Object)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			//assign type to paramspb.Object
+			if paramspb.Object.Type == "" {
+				paramspb.Object.Type = paramspb.Type
+			}
 
-		trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, data)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			data, err := proto.Marshal(paramspb.Object)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		trxBytes, err := proto.Marshal(trx)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			trx, err := trxFactory.GetPostAnyTrx(nodesdkGroupItem.SignAlias, data)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		trxItem := new(NodeSDKTrxItem)
-		trxItem.TrxBytes = trxBytes
+			trxBytes, err := proto.Marshal(trx)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		trxItemBytes, err := json.Marshal(trxItem)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			trxItem := new(NodeSDKTrxItem)
+			trxItem.TrxBytes = trxBytes
 
-		encryptData, err := getEncryptData(trxItemBytes, nodesdkGroupItem.Group.CipherKey)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			trxItemBytes, err := json.Marshal(trxItem)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		item := new(NodeSDKSendTrxItem)
-		groupId := nodesdkGroupItem.Group.GroupId
-		item.TrxItem = encryptData
+			encryptData, err := getEncryptData(trxItemBytes, nodesdkGroupItem.Group.CipherKey)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		//just get the first one
-		httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			item := new(NodeSDKSendTrxItem)
+			groupId := nodesdkGroupItem.Group.GroupId
+			item.TrxItem = encryptData
 
-		if err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl); err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			//just get the first one
+			httpClient, err := nodesdkctx.GetCtx().GetHttpClient(nodesdkGroupItem.Group.GroupId)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		res := new(TrxResult)
-		err = httpClient.RequestChainAPI(GetPostTrxURI(groupId), http.MethodPost, item, nil, res)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
+			if err = httpClient.UpdApiServer(nodesdkGroupItem.ApiUrl); err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
 
-		return c.JSON(http.StatusOK, res)
+			res := new(TrxResult)
+			err = httpClient.RequestChainAPI(GetPostTrxURI(groupId), http.MethodPost, item, nil, res)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
+
+			return c.JSON(http.StatusOK, res)
+		*/
+
+		return c.JSON(http.StatusOK, nil)
 	}
 }

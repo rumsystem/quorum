@@ -1,13 +1,11 @@
 package data
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
-	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	guuid "github.com/google/uuid"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
@@ -15,54 +13,52 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func CreateTrxWithoutSign(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, []byte, error) {
-	var trx quorumpb.Trx
+func CreateTrxWithoutSign(nodename, version, groupId, senderPubkey, CipherKey string, msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
+	trx := &quorumpb.Trx{}
 
 	trx.TrxId = guuid.New().String()
 	trx.Type = msgType
-	trx.GroupId = groupItem.GroupId
-	trx.SenderPubkey = groupItem.UserSignPubkey
+	trx.GroupId = groupId
+	trx.SenderPubkey = senderPubkey
 
 	var encryptdData []byte
 
 	var err error
-	ciperKey, err := hex.DecodeString(groupItem.CipherKey)
+	ciperKey, err := hex.DecodeString(CipherKey)
 	if err != nil {
-		return &trx, []byte(""), err
+		return trx, err
 	}
 	encryptdData, err = localcrypto.AesEncrypt(data, ciperKey)
 	if err != nil {
-		return &trx, []byte(""), err
+		return trx, err
 	}
 
 	trx.Data = encryptdData
 	trx.Version = version
 	trx.TimeStamp = time.Now().UnixNano()
 
-	bytes, err := proto.Marshal(&trx)
+	bytes, err := proto.Marshal(trx)
 	if err != nil {
-		return &trx, []byte(""), err
+		return trx, err
 	}
 	hashed := localcrypto.Hash(bytes)
-	return &trx, hashed, nil
+	trx.Hash = hashed
+
+	return trx, nil
 }
 
-func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.GroupItem, msgType quorumpb.TrxType, data []byte, keyalias string, encryptto ...[]string) (*quorumpb.Trx, error) {
-	trx, hash, err := CreateTrxWithoutSign(nodename, version, groupItem, msgType, data, encryptto...)
+func CreateTrxByEthKey(nodename, version, groupId, senderPubkey, senderKeyname, CipherKey string, msgType quorumpb.TrxType, data []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
+	trx, err := CreateTrxWithoutSign(nodename, version, groupId, senderPubkey, CipherKey, msgType, data, encryptto...)
 	if err != nil {
 		return trx, err
 	}
 
 	ks := localcrypto.GetKeystore()
 	var signature []byte
-	if keyalias == "" {
-		keyname := groupItem.GroupId
-		signature, err = ks.EthSignByKeyName(keyname, hash)
-	} else {
-		signature, err = ks.EthSignByKeyAlias(keyalias, hash)
-	}
+
+	signature, err = ks.EthSignByKeyName(senderKeyname, trx.Hash)
 	if err != nil {
-		return trx, err
+		return nil, err
 	}
 
 	trx.SenderSign = signature
@@ -71,54 +67,21 @@ func CreateTrxByEthKey(nodename string, version string, groupItem *quorumpb.Grou
 
 func VerifyTrx(trx *quorumpb.Trx) (bool, error) {
 	//clone trxMsg to verify
-	clonetrxmsg := &quorumpb.Trx{
-		TrxId:        trx.TrxId,
-		Type:         trx.Type,
-		GroupId:      trx.GroupId,
-		SenderPubkey: trx.SenderPubkey,
-		Data:         trx.Data,
-		TimeStamp:    trx.TimeStamp,
-		Version:      trx.Version,
-	}
 
-	bytes, err := proto.Marshal(clonetrxmsg)
+	trxClone := proto.Clone(trx).(*quorumpb.Trx)
+	trxClone.Hash = nil
+	trxClone.SenderSign = nil
+
+	byts, err := proto.Marshal(trxClone)
 	if err != nil {
 		return false, err
 	}
-	hash := localcrypto.Hash(bytes)
-	ks := localcrypto.GetKeystore()
-
-	if len(trx.SenderPubkey) == 42 && trx.SenderPubkey[:2] == "0x" { //try 0x address
-		//try verify 0x address
-		sig := trx.SenderSign
-		if sig[crypto.RecoveryIDOffset] == 27 || sig[crypto.RecoveryIDOffset] == 28 {
-			sig[crypto.RecoveryIDOffset] -= 27
-		}
-		sigpubkey, err := ethcrypto.SigToPub(hash, sig)
-		if err == nil {
-			ok := ks.EthVerifySign(hash, trx.SenderSign, sigpubkey)
-			if ok {
-				addressfrompubkey := ethcrypto.PubkeyToAddress(*sigpubkey).Hex()
-				if strings.EqualFold(addressfrompubkey, trx.SenderPubkey) {
-					return true, nil
-				} else {
-					return false, fmt.Errorf("sig not match with the 0x address")
-				}
-			}
-		}
+	hash := localcrypto.Hash(byts)
+	if !bytes.Equal(hash, trx.Hash) {
+		return false, nil
 	}
 
-	bytespubkey, err := base64.RawURLEncoding.DecodeString(trx.SenderPubkey)
-
-	if err == nil { //try eth key
-		ethpubkey, err := ethcrypto.DecompressPubkey(bytespubkey)
-		if err == nil {
-			r := ks.EthVerifySign(hash, trx.SenderSign, ethpubkey)
-			return r, nil
-		}
-		return false, err
-	}
-	return false, err
+	return VerifySign(trx.SenderPubkey, hash, trx.SenderSign)
 }
 
 func VerifySign(key string, hash, sign []byte) (bool, error) {

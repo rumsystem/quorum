@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func GetReqBlocksMsg(keyalias string, groupId string, requesterPubkey string, fromBlock uint64, blkReq int32) (*quorumpb.ReqBlock, error) {
+func GetReqBlocksMsg(groupId string, requesterPubkey, requesterKeyname string, fromBlock uint64, blkReq int32) (*quorumpb.ReqBlock, error) {
 	reqBlock := &quorumpb.ReqBlock{}
 	reqBlock.GroupId = groupId
 	reqBlock.FromBlock = fromBlock
@@ -29,7 +29,7 @@ func GetReqBlocksMsg(keyalias string, groupId string, requesterPubkey string, fr
 
 	//sign
 	ks := localcrypto.GetKeystore()
-	signature, err := ks.EthSignByKeyAlias(keyalias, hash)
+	signature, err := ks.EthSignByKeyName(requesterKeyname, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -37,11 +37,11 @@ func GetReqBlocksMsg(keyalias string, groupId string, requesterPubkey string, fr
 	return reqBlock, nil
 }
 
-func GetReqBlocksRespMsg(keyalias string, req *quorumpb.ReqBlock, provider string, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.ReqBlockResp, error) {
+func GetReqBlocksRespMsg(req *quorumpb.ReqBlock, providerPubkey, providerKeyName string, blocks []*quorumpb.Block, result quorumpb.ReqBlkResult) (*quorumpb.ReqBlockResp, error) {
 	reqBlockResp := &quorumpb.ReqBlockResp{}
 	reqBlockResp.GroupId = req.GroupId
 	reqBlockResp.RequesterPubkey = req.ReqPubkey
-	reqBlockResp.ProviderPubkey = provider
+	reqBlockResp.ProviderPubkey = providerPubkey
 	reqBlockResp.Result = result
 	reqBlockResp.FromBlock = req.FromBlock
 	reqBlockResp.BlksRequested = req.BlksRequested
@@ -61,7 +61,7 @@ func GetReqBlocksRespMsg(keyalias string, req *quorumpb.ReqBlock, provider strin
 
 	//sign
 	ks := localcrypto.GetKeystore()
-	signature, err := ks.EthSignByKeyAlias(keyalias, hash)
+	signature, err := ks.EthSignByKeyName(providerKeyName, hash)
 	if err != nil {
 		return nil, err
 	}
