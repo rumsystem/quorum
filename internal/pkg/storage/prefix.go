@@ -33,7 +33,7 @@ const (
 
 	// consensus db
 	BUFD_TRX        = "bfd_trx" //buffered trx (used by acs)
-	CNS_INFO_PREFIX = "cns_"    //consensus info
+	CNS_INFO_PREFIX = "cns"     //consensus info
 )
 
 func _getEthPubkey(libp2pPubkey string) string {

@@ -93,7 +93,7 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 	}
 
 	//try start sync
-	grp.ChainCtx.StartSync()
+	//grp.ChainCtx.StartSync()
 
 	group_log.Debugf("Join Group <%s> done", grp.Item.GroupId)
 	return nil
