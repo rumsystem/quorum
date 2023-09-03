@@ -406,17 +406,6 @@ func (chain *Chain) HandleBftMsgPsConn(msg *quorumpb.BftMsg) error {
 // handler SyncMsg from rex
 func (chain *Chain) HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, s network.Stream) error {
 	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupItem.GroupId)
-
-	// decompress
-	content := new(bytes.Buffer)
-	if err := utils.Decompress(bytes.NewReader(syncMsg.Data), content); err != nil {
-		e := fmt.Errorf("utils.Decompress failed: %s", err)
-		chain_log.Error(e)
-		return e
-	}
-
-	syncMsg.Data = content.Bytes()
-
 	switch syncMsg.Type {
 	case quorumpb.SyncMsgType_REQ_BLOCK:
 		chain.handleReqBlockRex(syncMsg, s)
@@ -443,6 +432,7 @@ func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Strea
 
 	//do nothing is req is from myself
 	if req.ReqPubkey == chain.groupItem.UserSignPubkey {
+		chain_log.Debugf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "req from myself")
 		return nil
 	}
 
@@ -527,8 +517,8 @@ func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 }
 
 func (chain *Chain) ApplyBlocks(blocks []*quorumpb.Block) error {
-	chain_log.Warningf("<%s> TODO: add a lock in ApplyBlocks()", chain.groupItem.GroupId)
 	//RumLite Node Add synced Block
+	chain_log.Warningf("<%s> TODO: add a lock in ApplyBlocks()", chain.groupItem.GroupId)
 	for _, block := range blocks {
 		err := chain.Consensus.User().AddBlock(block)
 		if err != nil {
@@ -643,6 +633,13 @@ func (chain *Chain) IsProducer() bool {
 		if _, ok := chain.KeyMap[key]; ok {
 			return true
 		}
+	}
+	return false
+}
+
+func (chain *Chain) IsPublicGroup() bool {
+	if chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC {
+		return true
 	}
 	return false
 }
@@ -780,27 +777,9 @@ func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) 
 	return nil
 }
 
-/*
-func (chain *Chain) VerifySign(hash, signature []byte, pubkey string) (bool, error) {
-	//check signature
-	bytespubkey, err := base64.RawURLEncoding.DecodeString(pubkey)
-	if err != nil {
-		return false, err
-	}
-	ethpbukey, err := ethcrypto.DecompressPubkey(bytespubkey)
-	if err == nil {
-		ks := localcrypto.GetKeystore()
-		r := ks.EthVerifySign(hash, signature, ethpbukey)
-		if !r {
-			return false, fmt.Errorf("verify signature failed")
-		}
-	} else {
-		return false, err
-	}
-
-	return true, nil
+func (chain *Chain) GetBlockFromDSCache(groupId string, blockId uint64, prefix ...string) (*quorumpb.Block, error) {
+	return nodectx.GetNodeCtx().GetChainStorage().GetBlockFromDSCache(groupId, blockId, chain.nodename)
 }
-*/
 
 func (chain *Chain) StartSync() error {
 	chain_log.Debugf("<%s> StartSync called", chain.groupItem.GroupId)
@@ -814,70 +793,3 @@ func (chain *Chain) StopSync() {
 		chain.rexSyncer.Stop()
 	}
 }
-
-func (chain *Chain) GetBlockFromDSCache(groupId string, blockId uint64, prefix ...string) (*quorumpb.Block, error) {
-	return nodectx.GetNodeCtx().GetChainStorage().GetBlockFromDSCache(groupId, blockId, chain.nodename)
-}
-
-//local sync
-//TODO
-//func (chain *Chain) SyncLocalBlock() error {
-//	startFrom := chain.Group.Item.HighestBlockId
-//	for {
-//		subblocks, err := nodectx.GetNodeCtx().GetChainStorage().GetSubBlock(chain.Group.Item.HighestBlockId, chain.nodename)
-//		if err != nil {
-//			chain_log.Debugf("<%s> GetSubBlock failed <%s>", chain.GroupId, err.Error())
-//			return err
-//		}
-//		if len(subblocks) > 0 {
-//			for _, block := range subblocks {
-//				err := chain.AddLocalBlock(block)
-//				if err != nil {
-//					chain_log.Debugf("<%s> AddLocalBlock failed <%s>", chain.GroupId, err.Error())
-//					break // for range subblocks
-//				}
-//			}
-//		} else {
-//			chain_log.Debugf("<%s> No more local blocks", chain.GroupId)
-//			return nil
-//		}
-//		topBlock, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(chain.Group.Item.HighestBlockId, false, chain.nodename)
-//		if err != nil {
-//			chain_log.Debugf("<%s> Get Top Block failed <%s>", chain.GroupId, err.Error())
-//			return err
-//		} else {
-//			if topBlock.BlockId == startFrom {
-//				return nil
-//			} else {
-//				startFrom = topBlock.BlockId
-//			}
-//		}
-//	}
-//
-//}
-
-//TODO
-//func (chain *Chain) AddLocalBlock(block *quorumpb.Block) error {
-//	chain_log.Debugf("<%s> AddLocalBlock called", chain.GroupId)
-//	signpkey, err := localcrypto.Libp2pPubkeyToEthBase64(chain.Group.Item.UserSignPubkey)
-//	if err != nil && signpkey == "" {
-//		chain_log.Warnf("<%s> Pubkey err <%s>", chain.GroupId, err)
-//	}
-//
-//	_, producer := chain.ProducerPool[signpkey]
-//
-//	if producer {
-//		chain_log.Debugf("<%s> PRODUCER ADD LOCAL BLOCK <%d>", chain.GroupId, block.Epoch)
-//		err := chain.AddBlock(block)
-//		if err != nil {
-//			chain_log.Infof(err.Error())
-//		}
-//	} else {
-//		chain_log.Debugf("<%s> USER ADD LOCAL BLOCK <%d>", chain.GroupId, block.Epoch)
-//		err := chain.Consensus.User().AddBlock(block)
-//		if err != nil {
-//			chain_log.Infof(err.Error())
-//		}
-//	}
-//	return nil
-//}

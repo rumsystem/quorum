@@ -6,7 +6,7 @@
 let's try create the first group seed
 
 1. create owner key with given keyname
-curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_owner_key"}'  http://127.0.0.1:8002/api/v2/rumlite/keystore/createsignkey
+curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_owner_key"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
 {
   "key_alias": "f5aa0cf7-b406-4df4-bb1a-58083d98d5c0",
   "key_name": "my_test_app_owner_key",
@@ -19,7 +19,7 @@ key_name: key_name
 pubkey: pubkey 
 
 2. create trx sign key with given keyname
-curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_sign_key"}'  http://127.0.0.1:8002/api/v2/rumlite/keystore/createsignkey
+curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_sign_key"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
 {
   "key_alias": "f5aa0cf7-b406-4df4-bb1a-58083d98d5c0",
   "key_name": "my_test_app_sign_key",
@@ -27,11 +27,63 @@ curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_si
 }
 
 3. create producer sign key with given keyname
-curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_producer_key"}'  http://127.0.0.1:8002/api/v2/rumlite/keystore/createsignkey
+curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_producer_key"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
 {
   "key_alias": "61bd981b-5559-4580-9220-52b9701d1af9",
   "key_name": "my_test_app_producer_key",
   "pubkey": "AqozPzhgYvIUqB6qbhQYKAhqmzOnPYdcQ3D5IvZEk4MY"
+}
+
+4. List all key pairs from local keystore
+ curl -X GET -H 'Content-Type: application/json'  -d '{}' http://127.0.0.1:8002/api/v2/keystore/getallkeys
+ {
+    "keys_list": [
+    {
+      "pubkey": "A4wTJWRtunlQ15fjwxUJUxySfNaoYuYYnhPELSo7ZiG0",
+      "key_name": "35a451d1-60dc-4503-bf30-ffb7a4013a61",
+      "alias": []
+    },
+    ...
+
+    {
+      "pubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+      "key_name": "my_test_app_owner_key",
+      "alias": [
+        "714fb1a5-e3c2-4281-b318-4885c900f4d2"
+      ]
+    },
+    {
+      "pubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+      "key_name": "my_test_app_producer_key",
+      "alias": [
+        "184bd896-faa8-4bea-a9ff-280d769e8432"
+     ]
+    },
+    {
+      "pubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
+      "key_name": "my_test_app_sign_key",
+      "alias": [
+        "7df85dfc-0b11-4c71-bc31-f56c18633890"
+      ]
+    },
+    {
+      "pubkey": "AhUoPM_ak59Z53_wypZ-fLyqr3khfdyCSdMYaa9WhiPQ",
+      "key_name": "my_test_app_trx_sign_key",
+      "alias": [
+        "7acc1940-0ad4-4bd1-952e-3a4abf78ec0a"
+      ] 
+    }
+  ]
+}
+
+5. List key pair by given keyname
+curl -X GET -H 'Content-Type: application/json'  -d '{"key_name":"my_test_app_trx_sign_key"}' http://127.0.0.1:8002/api/v2/keystore/getkeybykeyname
+{
+  "pubkey": "AhUoPM_ak59Z53_wypZ-fLyqr3khfdyCSdMYaa9WhiPQ",
+  "key_name": "my_test_app_trx_sign_key",
+  "alias": [
+    "7acc1940-0ad4-4bd1-952e-3a4abf78ec0a"
+  ]
 }
 
 Now let's create the first group seed
@@ -50,70 +102,199 @@ curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43
 
 result:
 {
-  "group_id": "1a723930-93c8-459c-9048-05d8815bccd2",
+  "group_id": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
   "owner_keyname": "my_test_app_owner_key",
   "producer_sign_keyname": "my_test_app_producer_key",
   "seed": {
     "GenesisBlock": {
-      "GroupId": "1a723930-93c8-459c-9048-05d8815bccd2",
-      "ProducerPubkey": "my_test_app_producer_key",
-      "TimeStamp": "1692647677555802581",
+      "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+      "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+      "TimeStamp": "1693419634998367277",
       "Consensus": {
-        "Data": "CiRmYmRlYjU2OC1jZmVkLTQwNTMtOGI2ZC1jNjg5YTU3OTdkMGQiZQokMWE3MjM5MzAtOTNjOC00NTljLTkwNDgtMDVkODgxNWJjY2QyKIgnMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
+        "Data": "CiRhNjZlZTBmMi1hYjY4LTQ5ZGYtYWU5OS1iMzNkNzUzN2E4MzEiZQokNjE3YzM5ZTQtNGQ2OS00MTlhLWJiYTYtZmJhZjlkMzVhZmIwKIgnMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
       },
-      "BlockHash": "SHCWskfc2UQrpBO/tEDf7eVAnC1Yf9LVRNgWmNLuvHo=",
-      "ProducerSign": "LtelHbeHnYA1wPkXDa2+tlqPqKOF2Lz/4CuINDT2CTNJjk0jxdx/Cst+0WOjumf2plidWeqvdGRCe8p2QtE1NAE="
+      "BlockHash": "VruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgAM=",
+      "ProducerSign": "5aac/iXJdxlNNa5ZuVFLitXqXpklNeA6/Zu5TAoqVR1s2KZOT+r9cLdvQoyl5iZNDkMyetZoK7Ag9+7mtziycwE="
     },
-    "GroupId": "1a723930-93c8-459c-9048-05d8815bccd2",
+    "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
     "GroupName": "index_group",
     "OwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
     "SyncType": 1,
-    "CipherKey": "5ce3e0d42d284049a2b12d44d6828548f90ebc1d869e89bbf9a83ae35f006c2d",
+    "CipherKey": "a4f74bc8a97f3f8ebc51222713fce0aa94d4994c9214f17bfee9bd6afc52d2d2",
     "AppId": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
     "AppName": "dummy_app",
-    "Hash": "l0nsmswCZEmw9dbCEqYVmAzwBjH/zsLVCuIW8tbmxRU=",
-    "Signature": "LUxOVCyP+qyw1db3vQ8hK3p+uxGEQd/wOnCP98WCNYAK6PNfMtPkS8wa+433Bgks2sTL0kfTLGzzuxZukMcccQE="
+    "Hash": "22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9Jacs=",
+    "Signature": "1/+/8VoMpIMSoJLJ6eGu+AaUEccvXg+zikL6jHGJMcsrTGsoFBMdxyDEl73JV8svSmuIA2YIrT0gVjTe2bFDQwE="
   },
-  "seed_byts": "CsICCiQxYTcyMzkzMC05M2M4LTQ1OWMtOTA0OC0wNWQ4ODE1YmNjZDIiGG15X3Rlc3RfYXBwX3Byb2R1Y2VyX2tleTDVg+r0g8Pfvhc6kAESjQEKJGZiZGViNTY4LWNmZWQtNDA1My04YjZkLWM2ODlhNTc5N2QwZCJlCiQxYTcyMzkzMC05M2M4LTQ1OWMtOTA0OC0wNWQ4ODE1YmNjZDIoiCcyLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkOgxJbml0aWFsIEZvcmtCIEhwlrJH3NlEK6QTv7RA3+3lQJwtWH/S1UTYFpjS7rx6SkEu16Udt4edgDXA+RcNrb62Wo+oo4XYvP/gK4g0NPYJM0mOTSPF3H8Ky37RY6O6Z/amWJ1Z6q90ZEJ7ynZC0TU0ARIkMWE3MjM5MzAtOTNjOC00NTljLTkwNDgtMDVkODgxNWJjY2QyGgtpbmRleF9ncm91cCIsQXE1ajkwN3hQel9xVjFzVEVRekIwUHhvazlENy12WENTSTlKR2JqVFowamUoATJANWNlM2UwZDQyZDI4NDA0OWEyYjEyZDQ0ZDY4Mjg1NDhmOTBlYmMxZDg2OWU4OWJiZjlhODNhZTM1ZjAwNmMyZDokNGMwYmQ1YzUtMzViNi00M2I0LTkyYTctZTA2N2E4ZTc4NjVlQglkdW1teV9hcHBKIJdJ7JrMAmRJsPXWwhKmFZgM8AYx/87C1QriFvLW5sUVUkEtTE5ULI/6rLDV1ve9DyEren67EYRB3/A6cI/3xYI1gAro818y0+RLzBr7jfcGCSzaxMvSR9MsbPO7Fm6QxxxxAQ=="
+  "seed_byts": "CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB"
 }
 
--. seed_byts is used for share the group
+-. seed_byts is used for
+  1. share the group 
+  2. provide seed_byts when request cella group to sync your group
+
 -. all other items is for app developer to use
 
 when create a group, the owner_keyname and neoproducer_keyname are optional, if no keyname is given, a new keypair and key name will be created for you when create the group seed(work as the previous version)
-
 curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43b4-92a7-e067a8e7865e", "app_name":"dummy_app", "group_name":"index_group", "consensus_type":"poa", "sync_type":"public", "epoch_duration":5000, "url":"dummy_url_point_to_mywebsite"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
 result
-
 {
-  "group_id": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
-  "owner_keyname": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
-  "producer_sign_keyname": "8d8147b2-1ea7-4007-9cd5-69d3b345e055_neoproducer_sign_keyname",
+  "group_id": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+  "owner_keyname": "my_test_app_owner_key",
+  "producer_sign_keyname": "my_test_app_producer_key",
   "seed": {
     "GenesisBlock": {
-      "GroupId": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
-      "ProducerPubkey": "8d8147b2-1ea7-4007-9cd5-69d3b345e055_neoproducer_sign_keyname",
-      "TimeStamp": "1692648418237287857",
+      "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+      "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+      "TimeStamp": "1693419634998367277",
       "Consensus": {
-        "Data": "CiRiM2M4ZmFjNy02MmE1LTQ3YjctYmJiZC05ZTQ5ODBjYTMwMDYiZQokOGQ4MTQ3YjItMWVhNy00MDA3LTljZDUtNjlkM2IzNDVlMDU1KIgnMixBeFpYOFA4UkxGMHlqOHFycGhNYVJYWVB1RmIxcDZvb2I3TVZVcHJWd2lhTDoMSW5pdGlhbCBGb3Jr"
+        "Data": "CiRhNjZlZTBmMi1hYjY4LTQ5ZGYtYWU5OS1iMzNkNzUzN2E4MzEiZQokNjE3YzM5ZTQtNGQ2OS00MTlhLWJiYTYtZmJhZjlkMzVhZmIwKIgnMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
       },
-      "BlockHash": "R5U/31emOiI036vsKC/f7WY8300EzN2DVdsK3YfBKn4=",
-      "ProducerSign": "UfLCw5FihLX84AejxG9vtlfnImVqOdNkIpl8dvn4+Ith4NVdwj0HFOCZBafo+pMTM+Hq+bf/Q5DKIcWBQi9uHwA="
+      "BlockHash": "VruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgAM=",
+      "ProducerSign": "5aac/iXJdxlNNa5ZuVFLitXqXpklNeA6/Zu5TAoqVR1s2KZOT+r9cLdvQoyl5iZNDkMyetZoK7Ag9+7mtziycwE="
     },
-    "GroupId": "8d8147b2-1ea7-4007-9cd5-69d3b345e055",
+    "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
     "GroupName": "index_group",
-    "OwnerPubkey": "A2zDQIEHMWC0aTKyTGn-8PLDs2hljO8NJBbjVyy3abNy",
+    "OwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
     "SyncType": 1,
-    "CipherKey": "002668c5c250ecb764184fa53808c62af4a50f346b729faaaadb1d041e49c7cf",
+    "CipherKey": "a4f74bc8a97f3f8ebc51222713fce0aa94d4994c9214f17bfee9bd6afc52d2d2",
     "AppId": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
     "AppName": "dummy_app",
-    "Hash": "Oz9nviK+suvsPn0IX6pj/x8EJOk0p6sZWNAHNPrxmzk=",
-    "Signature": "rpfYA8NDjQUDQMtrlpx7gu+NAEyDpD6MSaR/zAvBkghDrVmXfF4q3xelqsdni6pTHl7VBh5XfRJXpnxTxVbQIgE="
+    "Hash": "22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9Jacs=",
+    "Signature": "1/+/8VoMpIMSoJLJ6eGu+AaUEccvXg+zikL6jHGJMcsrTGsoFBMdxyDEl73JV8svSmuIA2YIrT0gVjTe2bFDQwE="
   },
-  "seed_byts": "CucCCiQ4ZDgxNDdiMi0xZWE3LTQwMDctOWNkNS02OWQzYjM0NWUwNTUiPThkODE0N2IyLTFlYTctNDAwNy05Y2Q1LTY5ZDNiMzQ1ZTA1NV9uZW9wcm9kdWNlcl9zaWduX2tleW5hbWUwsZuklcvY374XOpABEo0BCiRiM2M4ZmFjNy02MmE1LTQ3YjctYmJiZC05ZTQ5ODBjYTMwMDYiZQokOGQ4MTQ3YjItMWVhNy00MDA3LTljZDUtNjlkM2IzNDVlMDU1KIgnMixBeFpYOFA4UkxGMHlqOHFycGhNYVJYWVB1RmIxcDZvb2I3TVZVcHJWd2lhTDoMSW5pdGlhbCBGb3JrQiBHlT/fV6Y6IjTfq+woL9/tZjzfTQTM3YNV2wrdh8EqfkpBUfLCw5FihLX84AejxG9vtlfnImVqOdNkIpl8dvn4+Ith4NVdwj0HFOCZBafo+pMTM+Hq+bf/Q5DKIcWBQi9uHwASJDhkODE0N2IyLTFlYTctNDAwNy05Y2Q1LTY5ZDNiMzQ1ZTA1NRoLaW5kZXhfZ3JvdXAiLEEyekRRSUVITVdDMGFUS3lUR24tOFBMRHMyaGxqTzhOSkJialZ5eTNhYk55KAEyQDAwMjY2OGM1YzI1MGVjYjc2NDE4NGZhNTM4MDhjNjJhZjRhNTBmMzQ2YjcyOWZhYWFhZGIxZDA0MWU0OWM3Y2Y6JDRjMGJkNWM1LTM1YjYtNDNiNC05MmE3LWUwNjdhOGU3ODY1ZUIJZHVtbXlfYXBwSiA7P2e+Ir6y6+w+fQhfqmP/HwQk6TSnqxlY0Ac0+vGbOVJBrpfYA8NDjQUDQMtrlpx7gu+NAEyDpD6MSaR/zAvBkghDrVmXfF4q3xelqsdni6pTHl7VBh5XfRJXpnxTxVbQIgE="
+  "seed_byts": "CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB"
+
+You can join the group just created.
+curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB", "user_sign_keyname":"my_test_app_sign_key"}' http://127.0.0.1:8002/api/v2/group/joingroupbyseed
+
+result:
+{
+  "groupItem": {
+    "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+    "GroupName": "index_group",
+    "OwnerPubKey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+    "UserSignPubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
+    "LastUpdate": 1693425120194197436,
+    "GenesisBlock": {
+      "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+      "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+      "TimeStamp": "1693419634998367277",
+      "Consensus": {
+        "Data": "CiRhNjZlZTBmMi1hYjY4LTQ5ZGYtYWU5OS1iMzNkNzUzN2E4MzEiZQokNjE3YzM5ZTQtNGQ2OS00MTlhLWJiYTYtZmJhZjlkMzVhZmIwKIgnMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
+      },
+      "BlockHash": "VruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgAM=",
+      "ProducerSign": "5aac/iXJdxlNNa5ZuVFLitXqXpklNeA6/Zu5TAoqVR1s2KZOT+r9cLdvQoyl5iZNDkMyetZoK7Ag9+7mtziycwE="
+    },
+    "SyncType": 1,
+    "CipherKey": "a4f74bc8a97f3f8ebc51222713fce0aa94d4994c9214f17bfee9bd6afc52d2d2",
+    "AppId": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
+    "AppName": "dummy_app"
+  }
 }
 
+user_sign_keyname is the key you will use to sign all trx (send by you) in this group, it works like your "identity" in this group
+
+You can list the group just joined
+curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/groups
+result:
+{
+  "groups": [
+    {
+      "group_id": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+      "group_name": "index_group",
+      "owner_pubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+      "user_pubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
+      "user_eth_addr": "0x78e348170C471F848B1A4cdC987a57e3046313e8",
+      "consensus_type": "POA",
+      "sync_type": "PRIVATE",
+      "cipher_key": "a4f74bc8a97f3f8ebc51222713fce0aa94d4994c9214f17bfee9bd6afc52d2d2",
+      "app_id": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
+      "app_name": "dummy_app",
+      "currt_top_block": 0,
+      "last_updated": 1693425120202305215,
+      "rex_syncer_status": "SYNCING",
+      "rex_Syncer_result": null,
+      "peers": null
+    }
+  ]
+}
+
+Let's create your first post
+curl -X POST -H 'Content-Type: application/json'  -d '{"data":"xxxx"}'  http://127.0.0.1:8002/api/v1/group/617c39e4-4d69-419a-bba6-fbaf9d35afb0/content
+result:
+{
+  "trx_id": "a3f32c29-acce-45e2-8510-3e0f5115b4a7"
+}
+
+Now let's check current group status
+curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/groups
+{
+  "groups": [
+    {
+      "group_id": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+      "group_name": "index_group",
+      "owner_pubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+      "user_pubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
+      "user_eth_addr": "0x78e348170C471F848B1A4cdC987a57e3046313e8",
+      "consensus_type": "POA",
+      "sync_type": "PRIVATE",
+      "cipher_key": "a4f74bc8a97f3f8ebc51222713fce0aa94d4994c9214f17bfee9bd6afc52d2d2",
+      "app_id": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
+      "app_name": "dummy_app",
+      "currt_top_block": 1,     
+      "last_updated": 1693516068931679416,
+      "rex_syncer_status": "IDLE",
+      "rex_Syncer_result": null,
+      "peers": null
+    }
+  ]
+}
+current_top_block increase to 1, As you can see, a new block is created to package your trx
+
+you can check the block by using block_id
+curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/block/617c39e4-4d69-419a-bba6-fbaf9d35afb0/1
+{
+  "block": {
+    "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+    "BlockId": 1,
+    "PrevHash": "VruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgAM=",
+    "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+    "Trxs": [
+      {
+        "TrxId": "30bec1e2-d0ff-47a2-9381-0c21895307dc",
+        "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+        "Data": "b6Fou5PQaUZkgrrkNsyCtM+HuXDk6Ix5YGZeYOwaTw==",
+        "TimeStamp": "1693515861107843523",
+        "Version": "2.1.0",
+        "SenderPubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
+        "Hash": "3OG+3Ffmr9ccgBf0+DD0Qay3P1QyP1QfpfO4HqIvd50=",
+        "SenderSign": "ZXPg9ShGKFZjC363zzk3ph3geWVIPrmfLPlloc+LMnsqYwGe412ibcY/xiG1cnxqJ35SRkRe5LNKEzEn8WshAAE="
+      }
+    ],
+    "TimeStamp": "1693515863897080926",
+    "BlockHash": "Qr/1zUewJmOVRYY7BGVfe/ERSyPc5hHLycYbWqak42g=",
+    "ProducerSign": "Q30IyiXblcjkzErnBWNHMMtEkVhUDM6R7Od1LW//UDdumVLjKGNPLpNuMh2fGMCjS7omgGNAjeVUBjqs5bUXkAA="
+  },
+  "status": "onchain"
+}
+
+you can check the trx by using trx_id
+curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/trx/617c39e4-4d69-419a-bba6-fbaf9d35afb0/30bec1e2-d0ff-47a2-9381-0c21895307dc
+{
+  "trx": {
+    "TrxId": "30bec1e2-d0ff-47a2-9381-0c21895307dc",
+    "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+    "Data": "b6Fou5PQaUZkgrrkNsyCtM+HuXDk6Ix5YGZeYOwaTw==",
+    "TimeStamp": "1693515861107843523",
+    "Version": "2.1.0",
+    "SenderPubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
+    "Hash": "3OG+3Ffmr9ccgBf0+DD0Qay3P1QyP1QfpfO4HqIvd50=",
+    "SenderSign": "ZXPg9ShGKFZjC363zzk3ph3geWVIPrmfLPlloc+LMnsqYwGe412ibcY/xiG1cnxqJ35SRkRe5LNKEzEn8WshAAE="
+  },
+  "status": "onchain"
+}
 
 ===== TO BE MODIFIED ======
 组的同步类型：
@@ -126,84 +307,33 @@ result
 酒窖其实也是一个group，同步类型可以是public或者private，producer可以是一个或者多个（一旦确定则不可更改，除非停机fork）
 酒窖会同步放入其中的所有Seed
 酒窖中的所有组会保持打开状态，以随时给不同业务提供block同步或者出块服务
-一个酒窖本身的group不能放入其他酒窖
+一个酒窖本身不能放入其他酒窖
 一个酒窖可以同意其他酒窖加入自己并同步酒窖group本身的block
 
 ============================================================================================================================
 
 节点，酒窖和种子的互动过程
 
-user story 1：
-节点A创建一个blob类型的种子B
-- 节点A在本地调用CreateSeed API创建一个种子B
-
-
-user story2:
-节点A向一个Blob类型的种子B添加内容
-- 节点A在本地调用JoinGroupBySeed加入group B
-- 节点A将内容打散并以POST trx的形式存入 group B （add blocks)
-- 节点A在调用CloseGroup关闭group B
-
-
-user story3:
-节点A向一个存在的group B添加内容
-- 节点A调用LoadGroupById打开groupB
-- 节点A将新内容打散并以POST trx的形式追加到group B
-- 节点A在调用Close Group关闭group B
-
-user story4:
-节点A创建一个Blob类型的种子B并将B加入酒窖C
--节点A创建group B并添加内容（us1 to us3）
--节点A保持Group B在本地运行
--节点A获取酒窖C的种子
--节点A加载酒窖C的种子，在本地创建一个酒窖C的实例（为了向酒窖C发trx），节点A并不同步酒窖C的block
--节点A向酒窖C的group 发送一条 CELLA_REQ类型的trx，包括
-	- Group B的 seed
-	-需要酒窖C同步的块数
-	-支付凭证（optional）
--节点A持续检查并试图获取自己的CELLA_REQ trx被酒窖C上链（意味着Cella接受并开始同步Group block)
-- 酒窖C获取该Trx，检查支付凭证，如果同意同步，则将该Trx上链（add trx to cella group)
-	- 通过seed B加入GroupB
-	- 试图开始同步
-- 如果种子B的类型为private，则节点A需要发送UPD_SYNCER Trx到group B，将Cella C的pubkey加入同步白名单
-- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
-** 和节点不同，一个Cella在完成同步某个group后，并不关闭这个group，而且作为一个在线服务，提供该group的block（follow group同步名单设置）
-
-- 如果需要，节点A可以在收到CELLA_RESP后，关闭本地的group B （关闭本地文件）
-- 如果需要，节点A可以在收到CELLA_RESP后，关闭本地的group C （退出酒窖）
-
-user story5:
-节点A在将blob group B添加到Cella C后，添加 Group B的内容
--节点A在本地调用LoadGroupById打开group B
--节点A向Group B中添加一些新的block (POST trx or other type trx)
--节点A向酒窖C的group发送一条CELLA_REQ类型的trx，包括
-	- Group B的seed
-	- 需要酒窖C同步的块数 
-	- 支付凭证（optional
-- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
-
-user story6:
-节点A在将blob group B添加到Cella C后，修改可以同步groupB block的syncer名单
--节点A在本地调用LoadGroupById打开group B
--节点A向Group B中发送一条UPD_SYNCER类型的trx并正确出块，得以更新可以sync本组的pubkey名单
--节点A向酒窖C的group发送一条CELLA_REQ类型的trx，包括
-	- Group B的seed
-	- 需要酒窖C同步的块数 （包含新打包的UPD_SYNCER trx）
-	- 支付凭证（optional）
-- Cella在完成同步之后，发送一条 CELLA_RESP TRX 到 Group B和cella group 作为同步完成的证明
-- Cella C通过apply trx的方式，更新本地的group B的syncer名单
-
-user story7:
-节点A在blob group B同时添加内容和修改syncer 白名单
-
-
-user story 8：
-节点A创建一个Service类型的种子B并将B加入酒窖C
-- 节点A在本地创建一个Service类型的种子B
-- 节点A加载这个种子，在本地创建Group B
-- 节点A自己作为producer（host the group producer key at local keychain)，生产一些group block
-...  
-
+1. 节点A创建了一个group seed Group_A
+2. 节点A在本地调用JoinGroupBySeed加入 Group_A
+3. 节点A将一些内容切片，并以POST的形式存入 Group_A
+4. 节点A获取酒窖B的种子
+5. 节点A加入酒窖B（但是不要同步酒窖中的Block）
+6. 节点A向酒窖B发送类型为SYNC_REQ的trx，包括如下内容
+  a. Group_A的种子
+  b. 请求同步的块数
+  c. 支付凭证（或钱包地址）
+7. 酒窖B在接到这个请求后
+  a. 检查支付凭证
+  b. 加入这个组
+8. 酒窖B开始同步 Group_A
+  a. 酒窖B在Group_A 发送trx，SYNC_RESP（类型为 START)，以标识开始同步
+9. 酒窖B在同步Group_A的过程中，每隔一段会写入一个SYNC_RESP trx（类型为PROGRESS)，以标识同步的进度
+9. 当酒窖B完成同步 Group_A时，写入SYNC_RESP
+  a.如果SYNC_REQ里标明了块数，则当完成指定block_id时，写入DONE
+  b.如果为连续同步，则当同步到ON_TOP时，写入ON_TOP
+10. 节点A在完成同步后，可以按照app要求处理本地的Group_A，例如close Group_A以节省资源
+11. 酒窖B中的Group_A保持打开，为其他人提供Block
 
 
 节点可能提供的酒窖API

@@ -81,7 +81,7 @@ func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 			return fmt.Errorf("received message from scope <%s>, but current scope is <%s>", hbmsg.ScopeId, a.consensusInfo.ConsensusId)
 		}
 	*/
-	ptacs_log.Debugf("HandleHBMessage called, Epoch <%d>", hbmsg.Epoch)
+	//ptacs_log.Debugf("HandleHBMessage called, Epoch <%d>", hbmsg.Epoch)
 
 	if hbmsg.Epoch != a.epoch {
 		ptacs_log.Debugf("received message from epoch <%d>, but current epoch is <%d>", hbmsg.Epoch, a.epoch)
@@ -97,7 +97,7 @@ func (a *PTAcs) HandleHBMessage(hbmsg *quorumpb.HBMsgv1) error {
 }
 
 func (a *PTAcs) handleRbcMsg(payload []byte) error {
-	ptacs_log.Debugf("handleRbcMsg called")
+	//ptacs_log.Debugf("handleRbcMsg called")
 
 	//cast payload to RBC message
 	rbcMsg := &quorumpb.RBCMsg{}
@@ -113,9 +113,9 @@ func (a *PTAcs) handleRbcMsg(payload []byte) error {
 		if err != nil {
 			return err
 		}
-		ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
+		//ptacs_log.Debugf("epoch <%d> : INIT_PROPOSE: sender <%s> receiver <%s>", a.epoch, initp.ProposerPubkey, initp.RecvNodePubkey)
 		if initp.RecvNodePubkey != a.MyPubkey {
-			ptacs_log.Debugf("not for me")
+			//ptacs_log.Debugf("not for me")
 			return nil
 		}
 

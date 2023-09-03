@@ -96,9 +96,10 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 
 	r.POST("/v2/group/open", h.OpenGroup)
 	r.POST("/v2/group/close", h.CloseGroup)
+	r.POST("/v2/group/updsyncer", h.UpdGroupSyncer)
+
 	r.POST("/v1/group/leave", h.LeaveGroup)
 	r.POST("/v1/group/clear", h.ClearGroupData)
-	r.POST("/v2/group/updsyncer", h.UpdGroupSyncer)
 
 	r.POST("/v1/network/peers", h.AddPeers)
 	r.POST("/v1/group/:group_id/startsync", h.StartSync) //deprecated

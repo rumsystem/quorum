@@ -285,7 +285,7 @@ func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, err
 	signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
 	if signKeyName == "" {
 		group_log.Debugf("<%s> UpdGroupSyncer failed, sign key not exist", grp.Item.GroupId)
-		return "", fmt.Errorf("sign key not exist")
+		return "", fmt.Errorf("owner sign key not exist")
 	}
 
 	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdGroupSyncerTrx(grp.Item.OwnerPubKey, signKeyName, item)

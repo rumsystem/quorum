@@ -161,16 +161,15 @@ func (rs *RexLiteSyncer) Start() {
 				}
 
 				blockBundles := &quorumpb.BlocksBundle{}
-				//err = fmt.Errorf("FOR TEST, disable SendReq. try DSCache")
 				block, err := rs.chain.GetBlockFromDSCache(rs.GroupId, nextBlock, rs.nodename)
 				if err != nil {
-					rex_syncer_log.Warningf("<%s> SyncWorker sync from cache error <%s>", rs.GroupId, err.Error())
+					rex_syncer_log.Warningf("<%s> SyncWorker sync from local cache error <%s>", rs.GroupId, err.Error())
 				} else {
 					for block != nil {
 						blockBundles.Blocks = append(blockBundles.Blocks, block)
 						block, err = rs.chain.GetBlockFromDSCache(rs.GroupId, block.BlockId+1, rs.nodename)
 						if err != nil {
-							rex_syncer_log.Warningf("<%s> SyncWorker sync from cache error <%s>", rs.GroupId, err.Error())
+							rex_syncer_log.Warningf("<%s> SyncWorker sync from local cache error <%s>", rs.GroupId, err.Error())
 						}
 					}
 				}
@@ -319,15 +318,25 @@ func (rs *RexLiteSyncer) Start() {
 
 	rs.TriggerSyncTask()
 }
+
 func (rs *RexLiteSyncer) TriggerSyncTask() {
 	// 500 ms timeout
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Millisecond*5000))
 	defer cancel()
 	select {
 	case rs.chSyncTask <- struct{}{}:
-		rex_syncer_log.Debugf("<%s> fire a task, err %s", rs.GroupId, ctx.Err())
+		errorMsg := string("")
+		if ctx.Err() != nil {
+			errorMsg = ctx.Err().Error()
+		}
+
+		rex_syncer_log.Debugf("<%s> fire a task, err <%s>", rs.GroupId, errorMsg)
 	case <-ctx.Done():
-		rex_syncer_log.Debugf("<%s> task trigger ticker timeout: %s", rs.GroupId, ctx.Err())
+		errorMsg := string("")
+		if ctx.Err() != nil {
+			errorMsg = ctx.Err().Error()
+		}
+		rex_syncer_log.Debugf("<%s> task trigger ticker timeout: err <%s>", rs.GroupId, errorMsg)
 	}
 }
 

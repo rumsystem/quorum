@@ -148,8 +148,7 @@ func (producer *MolassesProducer) AddTrxToTxBuffer(trx *quorumpb.Trx) {
 }
 
 func (producer *MolassesProducer) HandleBftMsg(bftMsg *quorumpb.BftMsg) error {
-	molaproducer_log.Debugf("<%s> HandleBFTMsg called", producer.groupId)
-
+	//molaproducer_log.Debugf("<%s> HandleBFTMsg called", producer.groupId)
 	if bftMsg.Type == quorumpb.BftMsgType_HB_BFT {
 		//unmarshal bft msg
 		hbMsg := &quorumpb.HBMsgv1{}

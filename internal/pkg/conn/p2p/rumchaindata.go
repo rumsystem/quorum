@@ -1,9 +1,11 @@
 package p2p
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/rumsystem/quorum/internal/pkg/utils"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,21 +23,28 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 	pkg := rummsg.DataPackage
 
 	if pkg.Type == quorumpb.PackageType_SYNC {
-		rumexchangelog.Debugf("receive a Sync Msg, from %s", frompeerid)
+		rumexchangelog.Debugf("receive a Sync Msg, from <%s>", frompeerid)
+		//decompress syncmsg data
+		content := new(bytes.Buffer)
+		if err := utils.Decompress(bytes.NewReader(pkg.Data), content); err != nil {
+			rumexchangelog.Errorf("utils.Decompress failed: <%s>", err)
+			return fmt.Errorf("utils.Decompress failed: <%s>", err)
+		}
+		syncMsgByts := content.Bytes()
 		syncMsg := &quorumpb.SyncMsg{}
-		err := proto.Unmarshal(pkg.Data, syncMsg)
+		err := proto.Unmarshal(syncMsgByts, syncMsg)
 		if err == nil {
 			targetchain, ok := r.rex.chainmgr[syncMsg.GroupId]
-			if ok == true {
+			if ok {
 				return targetchain.HandleSyncMsgRex(syncMsg, s)
 			} else {
-				rumexchangelog.Warningf("receive a group unknown package, groupid: %s from: %s", syncMsg.GroupId, frompeerid)
+				rumexchangelog.Warningf("receive a syncMsg for unknown group <%s> from: <%s>", syncMsg.GroupId, frompeerid)
 			}
 		} else {
 			rumexchangelog.Warningf(err.Error())
 		}
 	} else {
-		rumexchangelog.Warningf("receive a non syncMsg type package, %s", pkg.Type)
+		rumexchangelog.Warningf("receive a non SYNC type package, %s", pkg.Type)
 	}
 
 	return fmt.Errorf("unsupported package type: %s", pkg.Type)

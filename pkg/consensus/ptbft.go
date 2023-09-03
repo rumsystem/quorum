@@ -210,7 +210,7 @@ func (bft *PTBft) Stop() {
 }
 
 func (bft *PTBft) HandleHBMessage(hbMsg *quorumpb.HBMsgv1) error {
-	ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.GroupId, hbMsg.Epoch)
+	//ptbft_log.Debugf("<%s> HandleMessage called, Epoch <%d>", bft.GroupId, hbMsg.Epoch)
 	if bft.currTask != nil {
 		return bft.currTask.acsInsts.HandleHBMessage(hbMsg)
 	}
@@ -327,16 +327,21 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		//apply trxs
 		bft.cIface.ApplyTrxsRumLiteNode(trxToPackage, bft.NodeName)
 
-		//broadcast it
-		ptbft_log.Debugf("<%s> broadcast block just built to user channel", bft.GroupId)
-		connMgr, err := conn.GetConn().GetConnMgr(bft.GroupId)
-		if err != nil {
-			return err
+		//check if should broadcast it
+		if bft.cIface.IsPublicGroup() {
+			ptbft_log.Debugf("<%s> public type sync group broadcast block just built", bft.GroupId)
+			connMgr, err := conn.GetConn().GetConnMgr(bft.GroupId)
+			if err != nil {
+				return err
+			}
+			err = connMgr.BroadcastBlock(newBlock)
+			if err != nil {
+				ptbft_log.Debugf("<%s> Broadcast failed <%s>", bft.GroupId, err.Error())
+			}
+		} else {
+			ptbft_log.Debugf("<%s> private type sync group keep silence", bft.GroupId)
 		}
-		err = connMgr.BroadcastBlock(newBlock)
-		if err != nil {
-			ptbft_log.Debugf("<%s> Broadcast failed <%s>", bft.GroupId, err.Error())
-		}
+
 	}
 	return nil
 }

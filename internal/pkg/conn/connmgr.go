@@ -203,8 +203,9 @@ func (connMgr *ConnMgr) SendSyncReqMsgRex(req *quorumpb.ReqBlock) error {
 	}
 
 	syncMsg := &quorumpb.SyncMsg{
-		Type: quorumpb.SyncMsgType_REQ_BLOCK,
-		Data: pbBytes,
+		Type:    quorumpb.SyncMsgType_REQ_BLOCK,
+		GroupId: req.GroupId,
+		Data:    pbBytes,
 	}
 
 	//marshal sync msg

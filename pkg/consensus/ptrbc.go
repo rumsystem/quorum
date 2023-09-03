@@ -134,7 +134,7 @@ func (r *PTRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 }
 
 func (r *PTRbc) handleEchoMsg(echo *quorumpb.Echo) error {
-	ptrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.epoch)
+	//ptrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.epoch)
 
 	if !r.IsProducer(echo.EchoProviderPubkey) {
 		return fmt.Errorf("<%s> receive ECHO from non producer node <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)

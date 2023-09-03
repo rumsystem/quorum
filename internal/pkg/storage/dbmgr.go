@@ -94,7 +94,7 @@ func (dbMgr *DbMgr) GetBlockFromDSCache(groupId string, blockId uint64, prefix .
 	}
 
 	if !isExist {
-		return nil, rumerrors.ErrBlockExist
+		return nil, rumerrors.ErrBlockIDNotFound
 	}
 
 	value, err := dbMgr.Db.Get([]byte(key))

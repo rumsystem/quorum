@@ -132,7 +132,7 @@ func (r *RexService) PublishToStream(msg *quorumpb.RumDataMsg, s network.Stream)
 }
 
 func (r *RexService) PublishToPeerId(msg *quorumpb.RumDataMsg, to string) error {
-	rumexchangelog.Debugf("PublishResponse msg to peer: %s", to)
+	//rumexchangelog.Debugf("PublishResponse msg to peer: %s", to)
 
 	toid, err := peer.Decode(to)
 	if err != nil {
@@ -161,7 +161,7 @@ func (r *RexService) PublishToPeerId(msg *quorumpb.RumDataMsg, to string) error 
 		metric.RexSuccessCount.WithLabelValues(metric.RexActionType.PublishToPeerid).Inc()
 		metric.RexOutBytes.WithLabelValues(metric.RexActionType.PublishToPeerid).Set(size)
 		metric.RexOutBytesTotal.WithLabelValues(metric.RexActionType.PublishToPeerid).Add(size)
-		rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
+		//	rumexchangelog.Debugf("writemsg to network stream succ: %s.", to)
 	}
 	bufw.Flush()
 
@@ -189,7 +189,7 @@ func (r *RexService) Publish(groupid string, channelpeers []peer.ID, msg *quorum
 	for _, p := range peers {
 		if err := r.PublishToPeerId(msg, peer.Encode(p)); err == nil {
 			r.peerstore.Scorers().BlockProviderScorer().Touch(p)
-			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
+			//rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
 			return nil
 		} else {
 			r.peerstore.Scorers().BadResponsesScorer().Increment(p)
@@ -223,10 +223,10 @@ func (r *RexService) Handler(s network.Stream) {
 }
 
 func (r *RexService) HandlerProcessStream(ctx context.Context, s network.Stream) {
-	remotePeer := s.Conn().RemotePeer()
-	rumexchangelog.Debugf("RumExchange stream handler %s start", remotePeer)
+	//remotePeer := s.Conn().RemotePeer()
+	//rumexchangelog.Debugf("RumExchange stream handler %s start", remotePeer)
 	defer func() {
-		rumexchangelog.Debugf("RumExchange stream handler %s exit", remotePeer)
+		//rumexchangelog.Debugf("RumExchange stream handler %s exit", remotePeer)
 		_ = s.Close()
 	}()
 
@@ -243,7 +243,7 @@ func (r *RexService) HandlerProcessStream(ctx context.Context, s network.Stream)
 				_ = s.Reset()
 				return
 			} else {
-				rumexchangelog.Debugf("RumExchange stream handler EOF %s", remotePeer)
+				//rumexchangelog.Debugf("RumExchange stream handler EOF %s", remotePeer)
 				//r.streampool.Delete(remotePeer)
 				return
 			}
