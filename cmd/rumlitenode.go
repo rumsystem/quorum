@@ -200,8 +200,9 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 	websocketManager := api.NewWebsocketManager()
 	go websocketManager.Start()
 
+	//Commented by cuicat
 	//start sync all groups
-	err = chain.GetGroupMgr().StartSyncAllGroups()
+	//err = chain.GetGroupMgr().StartSyncAllGroups()
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}

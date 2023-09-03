@@ -55,7 +55,7 @@ func LeaveGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*LeaveGroupResul
 
 	// delete group seed from appdata
 	if err := appdb.DelGroupSeed(params.GroupId); err != nil {
-		return nil, fmt.Errorf("save group seed failed: %s", err)
+		return nil, fmt.Errorf("delete group seed failed: %s", err)
 	}
 
 	return &LeaveGroupResult{GroupId: params.GroupId}, nil

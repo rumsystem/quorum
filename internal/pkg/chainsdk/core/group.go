@@ -99,93 +99,6 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 	return nil
 }
 
-func (grp *Group) JoinGroup(item *quorumpb.GroupItem) error {
-	group_log.Debugf("<%s> JoinGoup called", item.GroupId)
-	/*
-
-		grp.Item = item
-		grp.GroupId = item.GroupId
-		grp.Nodename = nodectx.GetNodeCtx().Name
-
-		//create and initial chain
-		grp.ChainCtx = &Chain{}
-		grp.ChainCtx.NewChain(item, grp.Nodename, false)
-
-		//get consensusInfo from genesis block
-		//check there is only 1 trx(FORK) in genesis block
-		if len(item.GenesisBlock.Trxs) != 1 {
-			return errors.New("genesis block should have only 1 trx")
-		}
-
-		//get the trx
-		forkTrx := item.GenesisBlock.Trxs[0]
-		verified, err := rumchaindata.VerifyTrx(forkTrx)
-		if err != nil {
-			return err
-		}
-		if !verified {
-			return errors.New("verify fork trx failed")
-		}
-
-		forkItem := &quorumpb.ForkItem{}
-		err = proto.Unmarshal(forkTrx.Data, forkItem)
-		if err != nil {
-			return err
-		}
-
-		//save consensus info to db
-		group_log.Debugf("<%s> save consensus info", grp.Item.GroupId)
-		err = nodectx.GetNodeCtx().GetChainStorage().SaveGroupConsensusInfo(item.GroupId, forkItem.Consensus, grp.Nodename)
-		if err != nil {
-			group_log.Debugf("<%s> save consensus info failed", grp.Item.GroupId)
-			return err
-		}
-
-		//save genesis block
-		group_log.Debugf("<%s> save genesis block", grp.Item.GroupId)
-		err = nodectx.GetNodeCtx().GetChainStorage().AddGensisBlock(item.GenesisBlock, false, grp.Nodename)
-		if err != nil {
-			return err
-		}
-
-		//add group owner as the first group producer
-		group_log.Debugf("<%s> add owner as the first producer", grp.Item.GroupId)
-		pItem := &quorumpb.ProducerItem{}
-		pItem.GroupId = item.GroupId
-		pItem.ProducerPubkey = item.OwnerPubKey
-		pItem.ProofTrxId = ""
-		pItem.BlkCnt = 0
-		pItem.Memo = "Owner Registated as the first group producer"
-		err = nodectx.GetNodeCtx().GetChainStorage().AddProducer(pItem, grp.Nodename)
-		if err != nil {
-			return err
-		}
-
-		//load and update group producers
-		grp.ChainCtx.updateProducerPool()
-
-		//create and register ConnMgr for chainctx
-		conn.GetConn().RegisterChainCtx(item.GroupId,
-			item.OwnerPubKey,
-			item.UserSignPubkey,
-			grp.ChainCtx)
-
-		//create group consensus
-		grp.ChainCtx.CreateConsensus()
-
-		//save groupItem to db
-		err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
-		if err != nil {
-			return err
-		}
-
-		group_log.Debugf("Join Group <%s> done", grp.Item.GroupId)
-	*/
-
-	group_log.Debugf("<%s> JoinGoup called (will be remove)", item.GroupId)
-	return nil
-}
-
 func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	group_log.Debugf("<%s> LoadGroup called", item.GroupId)
 	//save groupItem
@@ -195,7 +108,7 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
-	grp.ChainCtx.NewChain(item, grp.Nodename, true)
+	grp.ChainCtx.LoadChain(item, grp.Nodename)
 
 	opk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.OwnerPubKey)
 	if opk != "" {
@@ -218,18 +131,36 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
-
 	group_log.Infof("Group <%s> loaded", grp.Item.GroupId)
 }
 
+func (grp *Group) LoadGroupById(groupId string) error {
+
+	//load groupitem by groupid
+	groupItem, err := nodectx.GetDbMgr().GetGroupById(groupId)
+	if err != nil {
+		return err
+	}
+
+	grp.LoadGroup(groupItem)
+	return nil
+}
+
 // teardown group
-func (grp *Group) Teardown() {
+func (grp *Group) Teardown() error {
 	group_log.Debugf("<%s> Teardown called", grp.Item.GroupId)
 
 	//unregisted chainctx with conn
-	conn.GetConn().UnregisterChainCtx(grp.Item.GroupId)
+	if err := conn.GetConn().UnregisterChainCtx(grp.Item.GroupId); err != nil {
+		group_log.Debugf("<%s> UnregisterChainCtx failed", grp.Item.GroupId)
+		return err
+	}
 
+	//cancel ctx
+	grp.ChainCtx.CtxCancelFunc()
 	group_log.Infof("Group <%s> teardown peacefully", grp.Item.GroupId)
+
+	return nil
 }
 
 func (grp *Group) LeaveGrp() error {
@@ -239,6 +170,9 @@ func (grp *Group) LeaveGrp() error {
 	if err := conn.GetConn().UnregisterChainCtx(grp.Item.GroupId); err != nil {
 		return err
 	}
+
+	//cancel ctx
+	grp.ChainCtx.CtxCancelFunc()
 
 	//remove group from local db
 	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)

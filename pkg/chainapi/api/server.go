@@ -85,39 +85,67 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.GET("/quit", quitapp)
 
 	r.POST("/v2/keystore/createsignkey", h.CreateSignKey())
-	r.POST("/v2/keystore/getkeybykeyname", h.GetPubkeyByKeyName())
-	r.POST("/v2/keystore/getallkeys", h.GetAllKeys())
+	r.GET("/v2/keystore/getkeybykeyname", h.GetPubkeyByKeyName())
+	r.GET("/v2/keystore/getallkeys", h.GetAllKeys())
 
 	r.POST("/v2/group/newseed", h.NewSeed())
 	r.POST("/v2/group/joingroupbyseed", h.JoinGroupBySeed())
 
-	r.POST("/v1/group", h.CreateGroupUrl())
-	r.POST("/v2/group/join", h.JoinGroupV2())
+	//r.POST("/v1/group", h.CreateGroupUrl())
+	//r.POST("/v2/group/join", h.JoinGroupV2())
+
+	r.POST("/v2/group/open", h.OpenGroup)
+	r.POST("/v2/group/close", h.CloseGroup)
 	r.POST("/v1/group/leave", h.LeaveGroup)
 	r.POST("/v1/group/clear", h.ClearGroupData)
+	r.POST("/v2/group/updsyncer", h.UpdGroupSyncer)
+
 	r.POST("/v1/network/peers", h.AddPeers)
 	r.POST("/v1/group/:group_id/startsync", h.StartSync) //deprecated
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
-
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
-	r.POST("/v1/group/updsyncer", h.UpdGroupSyncer)
 
-	r.GET("/v1/node", h.GetNodeInfo)
-	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
+	//get block by id
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
+
+	//get trx by id
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
+
+	//get all groups
 	r.GET("/v1/groups", h.GetGroups)
+
+	//get group by id
 	r.GET("/v1/group/:group_id", h.GetGroupById)
+
+	//get trx allow list
 	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
+
+	//get trx deny list
 	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
+
+	//get trx auth mode
 	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
+	//get app config key list
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
+
+	//get app config item
 	r.GET("/v1/group/:group_id/appconfig/:key", h.GetAppConfigItem)
+
+	//get group seed
 	r.GET("/v1/group/:group_id/seed", h.GetGroupSeedHandler)
+
+	//get node info
+	r.GET("/v1/node", h.GetNodeInfo)
+
+	//get group content
+	a.GET("/v1/group/:group_id/content", apph.ContentByPeers)
+
+	//get network status
+	r.GET("/v1/network", h.GetNetwork(&node.Host, node.Info, nodeopt, ethaddr))
 
 	//app api
 	a.POST("/v1/token", apph.CreateToken)
@@ -125,8 +153,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	a.POST("/v1/token/refresh", apph.RefreshToken)
 	a.POST("/v1/token/revoke", apph.RevokeToken)
 	a.GET("/v1/token/list", apph.ListToken)
-
-	a.GET("/v1/group/:group_id/content", apph.ContentByPeers)
 
 	if nodeopt.EnableRelay {
 		r.POST("/v1/network/relay", h.AddRelayServers)

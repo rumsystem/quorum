@@ -119,65 +119,59 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 }
 
 func (chain *Chain) LoadChain(item *quorumpb.GroupItem, nodename string) error {
-	return nil
-}
+	chain_log.Debugf("<%s> LoadChain called", item.GroupId)
+	chain.groupItem = item
+	chain.nodename = nodename
 
-func (chain *Chain) NewChain(item *quorumpb.GroupItem, nodename string, loadChainInfo bool) error {
-	chain_log.Debugf("<%s> NewChain called, commented by cuicat", item.GroupId)
+	//initial TrxFactory
+	chain.trxFactory = &rumchaindata.TrxFactory{}
+	chain.trxFactory.Init(chain.nodename, nodectx.GetNodeCtx().Version, chain.groupItem.GroupId, chain.groupItem.CipherKey)
 
-	/*
-		chain.groupItem = item
-		chain.nodename = nodename
+	//create context with cancel function, chainCtx will be ctx parent of all underlay components
+	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
 
-		//initial TrxFactory
-		chain.trxFactory = &rumchaindata.TrxFactory{}
-		chain.trxFactory.Init(nodectx.GetNodeCtx().Version, chain.groupItem, chain.nodename)
+	//initial chaindata manager
+	chain.chaindata = &ChainData{
+		nodename:       chain.nodename,
+		groupId:        chain.groupItem.GroupId,
+		groupCipherKey: chain.groupItem.CipherKey,
+		userSignPubkey: chain.groupItem.UserSignPubkey,
+		dbmgr:          nodectx.GetDbMgr(),
+	}
 
-		//create context with cancel function, chainCtx will be ctx parent of all underlay components
-		chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
+	currBlockId, currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
+	if err != nil {
+		return err
+	}
+	chain.SetCurrEpoch(currEpoch)
+	chain.SetLastUpdate(lastUpdate)
+	chain.SetCurrBlockId(currBlockId)
+	chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
 
-		//initial Syncer
-		chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+	//load and update consensus
+	err = chain.LoadAndUpdCurrPoaConsensus()
+	if err != nil {
+		chain_log.Debugf("<%s> LoadAndUpdCurrPoaConsensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
 
-		//initial chaindata manager
-		chain.chaindata = &ChainData{
-			nodename:       chain.nodename,
-			groupId:        chain.groupItem.GroupId,
-			groupCipherKey: chain.groupItem.CipherKey,
-			userSignPubkey: chain.groupItem.UserSignPubkey,
-			dbmgr:          nodectx.GetDbMgr()}
+	//initial keymap
+	ks := localcrypto.GetKeystore()
+	pubkeys := []string(chain.PoaConsensus.ForkInfo.Producers)
+	pubkeys = append(pubkeys, chain.groupItem.UserSignPubkey)
+	pubkeys = append(pubkeys, chain.groupItem.OwnerPubKey)
+	keymap, err := chain.findKeyNames(ks, pubkeys)
 
-		if loadChainInfo {
-			chain_log.Debugf("<%s> load chain config", item.GroupId)
-			currBlockId, currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
-			if err != nil {
-				return err
-			}
-			chain.SetCurrEpoch(currEpoch)
-			chain.SetLastUpdate(lastUpdate)
-			chain.SetCurrBlockId(currBlockId)
-			chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
-		} else {
-			chain_log.Debugf("<%s> initial chain config", item.GroupId)
-			currEpoch := uint64(0)
-			currBlockId := uint64(0)
-			lastUpdate := time.Now().UnixNano()
-			chain.SetCurrEpoch(currEpoch)
-			chain.SetCurrBlockId(currBlockId)
-			chain.SetLastUpdate(lastUpdate)
-			chain_log.Debugf("<%s> CurrEpoch <%d> CurrBlockId <%d> lastUpdate <%d>", chain.groupItem.GroupId, currEpoch, currBlockId, lastUpdate)
-			chain.SaveChainInfoToDb()
+	if err != nil {
+		chain_log.Debugf("<%s> findKeyNames failed with error <%s>", chain.groupItem.GroupId, err.Error())
+		return err
+	}
+	chain.KeyMap = keymap
 
-			//initial consensus
-			chain_log.Debugf("<%s> initial consensus", item.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().SetProducerConsensusConfInterval(chain.groupItem.GroupId, uint64(DEFAULT_PROPOSE_TRX_INTERVAL), chain.nodename)
-		}
+	//initial Syncer
+	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
+	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
 
-		chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
-		//initial Syncer
-		// chain.rexSyncer = NewRexSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-		chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
-	*/
 	return nil
 }
 
@@ -269,10 +263,22 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 			chain_log.Warning(err.Error())
 		} else {
 			//TODO: save to cache, waitting for syncer to pickup it
-			nodectx.GetNodeCtx().GetChainStorage().AddBlockToDSCache(blk, chain.nodename)
-			chain.rexSyncer.TaskTrigger()
-		}
 
+			//check if block already exist
+			exist, err := nodectx.GetNodeCtx().GetChainStorage().IsBlockExist(chain.groupItem.GroupId, blk.BlockId, false, chain.nodename)
+			if err != nil {
+				chain_log.Warningf("IsBlockExist failed with error <%s>", err.Error())
+				return err
+			}
+
+			if exist {
+				//TBD, compare consensus info version
+				chain_log.Debugf("<%s> block already exist, blockId <%d>", chain.groupItem.GroupId, blk.BlockId)
+			} else {
+				nodectx.GetNodeCtx().GetChainStorage().AddBlockToDSCache(blk, chain.nodename)
+				chain.rexSyncer.TaskTrigger()
+			}
+		}
 	} else if pkg.Type == quorumpb.PackageType_TRX {
 		trx := &quorumpb.Trx{}
 		err = proto.Unmarshal(pkg.Data, trx)

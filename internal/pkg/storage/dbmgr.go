@@ -180,6 +180,23 @@ func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
 	return groupItemList, err
 }
 
+// get group by groupid
+func (dbMgr *DbMgr) GetGroupById(groupId string) (*quorumpb.GroupItem, error) {
+	key := GetGroupItemKey(groupId)
+	value, err := dbMgr.GroupInfoDb.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	groupItem := &quorumpb.GroupItem{}
+	err = proto.Unmarshal(value, groupItem)
+	if err != nil {
+		return nil, err
+	}
+
+	return groupItem, nil
+}
+
 func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, prefix ...string) (int, error) {
 	key := GetAppConfigKey(groupId, itemKey, prefix...)
 	value, err := dbMgr.Db.Get([]byte(key))

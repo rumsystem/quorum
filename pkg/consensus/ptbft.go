@@ -278,6 +278,7 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 
 func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error {
 	ptbft_log.Debugf("<%s> buildBlock called, epoch <%d>", bft.GroupId, epoch)
+
 	//try build block by using trxs
 	//ptbft_log.Debugf("<%s> sort trx", bft.GroupId)
 	sortedTrxs := bft.sortTrx(trxs)
@@ -301,6 +302,8 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 	}
 
 	currBlockId := bft.cIface.GetCurrBlockId()
+	ptbft_log.Debugf("<%s> get block parent, currBlockId <%d>", bft.GroupId, currBlockId)
+
 	parent, err := nodectx.GetNodeCtx().GetChainStorage().GetBlock(bft.GroupId, currBlockId, false, bft.NodeName)
 
 	if err != nil {
@@ -308,12 +311,21 @@ func (bft *PTBft) buildBlock(epoch uint64, trxs map[string]*quorumpb.Trx) error 
 		return err
 	} else {
 		ptbft_log.Debugf("<%s> start build block with parent <%d> ", bft.GroupId, parent.BlockId)
-		mySignKeyName := bft.cIface.GetKeynameByPubkey(bft.MyKeyName)
-		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyKeyName, mySignKeyName, bft.NodeName)
+		newBlock, err := rumchaindata.CreateBlockByEthKey(parent, nil, trxToPackage, bft.MyPubkey, bft.MyKeyName, bft.NodeName)
 		if err != nil {
 			ptbft_log.Debugf("<%s> build block failed <%s>", bft.GroupId, err.Error())
 			return err
 		}
+
+		//save it
+		ptbft_log.Debugf("<%s> save block just built to local db", bft.GroupId)
+		err = nodectx.GetNodeCtx().GetChainStorage().AddBlock(newBlock, false, bft.NodeName)
+		if err != nil {
+			return err
+		}
+
+		//apply trxs
+		bft.cIface.ApplyTrxsRumLiteNode(trxToPackage, bft.NodeName)
 
 		//broadcast it
 		ptbft_log.Debugf("<%s> broadcast block just built to user channel", bft.GroupId)

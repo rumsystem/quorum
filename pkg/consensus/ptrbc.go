@@ -90,7 +90,7 @@ func (r *PTRbc) InputValue(data []byte) error {
 
 	//create InitPropoeMsgs
 	originalDataSize := len(data)
-	initProposeMsgs, err := MakeRBCInitProposeMessage(r.GroupId, r.NodeName, r.MyPubkey, shards, r.Nodes, originalDataSize)
+	initProposeMsgs, err := MakeRBCInitProposeMessage(r.GroupId, r.NodeName, r.MyPubkey, r.MyKeyName, shards, r.Nodes, originalDataSize)
 
 	if err != nil {
 		ptrbc_log.Debugf(err.Error())
@@ -124,7 +124,7 @@ func (r *PTRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 	}
 
 	//make proof
-	proofMsg, err := MakeRBCEchoMessage(r.GroupId, r.NodeName, r.MyPubkey, initp, int(initp.OriginalDataSize))
+	proofMsg, err := MakeRBCEchoMessage(r.GroupId, r.NodeName, r.MyPubkey, r.MyKeyName, initp, int(initp.OriginalDataSize))
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (r *PTRbc) handleInitProposeMsg(initp *quorumpb.InitPropose) error {
 }
 
 func (r *PTRbc) handleEchoMsg(echo *quorumpb.Echo) error {
-	//ptrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.Epoch)
+	ptrbc_log.Infof("<%s> handleEchoMsg: EchoProviderPubkey <%s>, epoch <%d>", r.rbcInstPubkey, echo.EchoProviderPubkey, r.acs.epoch)
 
 	if !r.IsProducer(echo.EchoProviderPubkey) {
 		return fmt.Errorf("<%s> receive ECHO from non producer node <%s>", r.rbcInstPubkey, echo.EchoProviderPubkey)
@@ -198,7 +198,7 @@ func (r *PTRbc) handleEchoMsg(echo *quorumpb.Echo) error {
 
 		//multicast READY msg
 		//ptrbc_log.Debugf("<%s> broadcast READY msg", r.rbcInstPubkey)
-		readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, echo.OriginalProposerPubkey, echo.RootHash)
+		readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, r.MyKeyName, echo.OriginalProposerPubkey, echo.RootHash)
 		if err != nil {
 			return err
 		}
@@ -250,7 +250,7 @@ func (r *PTRbc) handleReadyMsg(ready *quorumpb.Ready) error {
 		//ptrbc_log.Debugf("<%s> RootHash <%v>, get f + 1 <%d> READY", r.rbcInstPubkey, ready.RootHash[:8], r.f+1)
 		if !r.readySent[roothashS] {
 			//ptrbc_log.Debugf("<%s> READY not send, boradcast now", r.rbcInstPubkey)
-			readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.Config.MyPubkey, ready.OriginalProposerPubkey, ready.RootHash)
+			readyMsg, err := MakeRBCReadyMessage(r.GroupId, r.NodeName, r.MyPubkey, r.MyKeyName, ready.OriginalProposerPubkey, ready.RootHash)
 			if err != nil {
 				return err
 			}

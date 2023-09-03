@@ -17,7 +17,7 @@ func (p Echos) Len() int           { return len(p) }
 func (p Echos) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p Echos) Less(i, j int) bool { return p[i].Index < p[j].Index }
 
-func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards [][]byte, producerList []string, originalDataSize int) ([]*quorumpb.RBCMsg, error) {
+func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey, proposerKeyname string, shards [][]byte, producerList []string, originalDataSize int) ([]*quorumpb.RBCMsg, error) {
 	msgs := make([]*quorumpb.RBCMsg, len(shards))
 
 	for i := 0; i < len(msgs); i++ {
@@ -91,7 +91,7 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 		//sign it
 		var signature []byte
 		ks := localcrypto.GetKeystore()
-		signature, err = ks.EthSignByKeyName(groupId, payloadhash, nodename)
+		signature, err = ks.EthSignByKeyName(proposerKeyname, payloadhash, nodename)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func MakeRBCInitProposeMessage(groupId, nodename, proposerPubkey string, shards 
 	return msgs, nil
 }
 
-func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey string, initP *quorumpb.InitPropose, originalDataSize int) (*quorumpb.RBCMsg, error) {
+func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey, echoProviderKeyname string, initP *quorumpb.InitPropose, originalDataSize int) (*quorumpb.RBCMsg, error) {
 	//just dump my part of InitPropose to ProofMsg and sign it
 	payload := &quorumpb.Echo{
 		RootHash:               initP.RootHash,
@@ -137,7 +137,7 @@ func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey string, initP *quo
 	//sign it
 	var signature []byte
 	ks := localcrypto.GetKeystore()
-	signature, err = ks.EthSignByKeyName(groupId, payloadhash, nodename)
+	signature, err = ks.EthSignByKeyName(echoProviderKeyname, payloadhash, nodename)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func MakeRBCEchoMessage(groupId, nodename, echoProviderPubkey string, initP *quo
 	}, nil
 }
 
-func MakeRBCReadyMessage(groupId, nodename, providerPubkey, originalProposerPubkey string, roothash []byte) (*quorumpb.RBCMsg, error) {
+func MakeRBCReadyMessage(groupId, nodename, providerPubkey, providerKeyname, originalProposerPubkey string, roothash []byte) (*quorumpb.RBCMsg, error) {
 	ready := &quorumpb.Ready{
 		RootHash:               roothash,
 		OriginalProposerPubkey: originalProposerPubkey,
@@ -173,7 +173,7 @@ func MakeRBCReadyMessage(groupId, nodename, providerPubkey, originalProposerPubk
 
 	var signature []byte
 	ks := localcrypto.GetKeystore()
-	signature, err = ks.EthSignByKeyName(groupId, readyHash, nodename)
+	signature, err = ks.EthSignByKeyName(providerKeyname, readyHash, nodename)
 	if err != nil {
 		return nil, err
 	}
