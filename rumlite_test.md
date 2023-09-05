@@ -1,9 +1,22 @@
-- a group needs 3 keys
-1. group owner sign key    - the owner of the group, trx sign by this key has the suprior previllage, this key should be used only when necessary
-2. group trx sign key      - group user's sign key, use to identify "who are you" in this group, after you join a group, trx send to this group should be signed by this key
-3. group producer sign key - the "producer" of a group, all blocks in this group should be created and sign by the node who has this key in local keystore
+Start a bootstrap node
+RUM_KSPASSWD=123 go run main.go bootstrapnode --listen /ip4/0.0.0.0/tcp/10666 --loglevel "debug"
 
-let's try create the first group seed
+you need the bootstrap id for the next step, try find 
+
+  ->bootstrap host created, ID:<16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2>
+
+Start the first rumlite node "o1"
+  
+  RUM_KSPASSWD=123 go run main.go rumlitenode --peername o1 --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir o1keystore  --loglevel "debug"
+
+Now we can create the group seed
+
+- a group needs 3 keys
+  1. group owner sign key    - the owner of the group, trx sign by this key has the suprior previllage, this key should be used only when necessary
+  2. group trx sign key      - group user's sign key, use to identify "who are you" in this group, after you join a group, trx send to this group should be signed by this key
+  3. group producer sign key - the "producer" of a group, all blocks in this group should be created and sign by the node who has this key in local keystore
+
+Create keys
 
 1. create owner key with given keyname
 curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_owner_key"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
@@ -14,9 +27,9 @@ curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_ow
 }
 
 result for createsignkey api has 3 parameters:
-key_alias: UUID for the newly created key
-key_name: key_name
-pubkey: pubkey 
+  key_alias: UUID for the newly created key
+  key_name:  key_name
+  pubkey:    pubkey 
 
 2. create trx sign key with given keyname
 curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_sign_key"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
@@ -34,10 +47,12 @@ curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_pr
   "pubkey": "AqozPzhgYvIUqB6qbhQYKAhqmzOnPYdcQ3D5IvZEk4MY"
 }
 
-4. List all key pairs from local keystore
- curl -X GET -H 'Content-Type: application/json'  -d '{}' http://127.0.0.1:8002/api/v2/keystore/getallkeys
- {
-    "keys_list": [
+You List all key pairs from local keystore
+curl -X GET -H 'Content-Type: application/json'  -d '{}' http://127.0.0.1:8002/api/v2/keystore/getallkeys
+
+result:
+{
+  "keys_list": [
     {
       "pubkey": "A4wTJWRtunlQ15fjwxUJUxySfNaoYuYYnhPELSo7ZiG0",
       "key_name": "35a451d1-60dc-4503-bf30-ffb7a4013a61",
@@ -57,7 +72,7 @@ curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_pr
       "key_name": "my_test_app_producer_key",
       "alias": [
         "184bd896-faa8-4bea-a9ff-280d769e8432"
-     ]
+      ]
     },
     {
       "pubkey": "AkO8otfcqU5nYPyrvWLY3ypdglA5GXW-pYjYmTuJfOMU",
@@ -76,8 +91,10 @@ curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"my_test_app_pr
   ]
 }
 
-5. List key pair by given keyname
+List key pair by given keyname
 curl -X GET -H 'Content-Type: application/json'  -d '{"key_name":"my_test_app_trx_sign_key"}' http://127.0.0.1:8002/api/v2/keystore/getkeybykeyname
+
+result:
 {
   "pubkey": "AhUoPM_ak59Z53_wypZ-fLyqr3khfdyCSdMYaa9WhiPQ",
   "key_name": "my_test_app_trx_sign_key",
@@ -87,18 +104,17 @@ curl -X GET -H 'Content-Type: application/json'  -d '{"key_name":"my_test_app_tr
 }
 
 Now let's create the first group seed
+curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43b4-92a7-e067a8e7865e", "app_name":"dummy_app", "group_name":"index_group", "consensus_type":"poa", "sync_type":"public", "epoch_duration":5000, "owner_keyname":"my_test_app_owner_key", "neoproducer_sign_keyname":"my_test_app_producer_key", "url":"dummy_url_point_to_mywebsite"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
 - parameters
 1. app_id : a group should belongs to an "app", even a "dummy_app", a uuid should be provided, the "cellar" will accept/reject  a group seed by using app_id
 2. app_name : app_name, app_id and app_name can be identical among different groups, these 2 parameters should be used based on your app design
 3. consensus_type : poa or pos, now only poa is supported
-4. sync_type: public or privatre, a public group can be synced by any node, sync from a private group is by request (each pubkey)=
+4. sync_type: public or privatre, a public group can be synced by any node, sync from a private group is by request (each pubkey)
 5. owner_keyname : who is the owner of this group, given by keyname and the keyname MUST be existed in local keystoree group
-6. neoproducer_sign_keyname : keyname for the first (neo) group producer, genesis block will be created and signed by using the key pair associated with this keyname 
+6. neoproducer_sign_keyname : keyname for the first (neo) group producer, genesis block will be created and signed by using the key pair associated with this keyname
 7. epoch_length: for how long the producer will wait to propose trxs in an epoch (in ms)
 7. url: a url point some where (for example the developer or app's website)
-
-curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43b4-92a7-e067a8e7865e", "app_name":"dummy_app", "group_name":"index_group", "consensus_type":"poa", "sync_type":"public", "epoch_duration":5000, "owner_keyname":"my_test_app_owner_key", "neoproducer_sign_keyname":"my_test_app_producer_key", "url":"dummy_url_point_to_mywebsite"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
 result:
 {
@@ -131,11 +147,12 @@ result:
 
 -. seed_byts is used for
   1. share the group 
-  2. provide seed_byts when request cella group to sync your group
-
+  2. provide seed_byts when register your group to a  cella
 -. all other items is for app developer to use
 
-when create a group, the owner_keyname and neoproducer_keyname are optional, if no keyname is given, a new keypair and key name will be created for you when create the group seed(work as the previous version)
+
+when create a group, the owner_keyname and neoproducer_keyname are optional, if no keyname is given, a new keypair and key name will be created for you when create the group seed
+
 curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"4c0bd5c5-35b6-43b4-92a7-e067a8e7865e", "app_name":"dummy_app", "group_name":"index_group", "consensus_type":"poa", "sync_type":"public", "epoch_duration":5000, "url":"dummy_url_point_to_mywebsite"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
 result
@@ -166,8 +183,13 @@ result
   },
   "seed_byts": "CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB"
 
-You can join the group just created.
+join the group just created
+
 curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB", "user_sign_keyname":"my_test_app_sign_key"}' http://127.0.0.1:8002/api/v2/group/joingroupbyseed
+
+parameters:
+  "seed" : seed_byts
+  "user_sign_keyname": user_sign_keyname is the key you will use to sign all trx (send by you) in this group, it works like your "identity" in this group, keyaname must be exit in local keystore
 
 result:
 {
@@ -194,7 +216,34 @@ result:
   }
 }
 
-user_sign_keyname is the key you will use to sign all trx (send by you) in this group, it works like your "identity" in this group
+
+You can get the group seed
+curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/group/617c39e4-4d69-419a-bba6-fbaf9d35afb0/seed
+result:
+{
+  "seed": {
+    "GenesisBlock": {
+      "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+      "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+      "TimeStamp": "1693419634998367277",
+      "Consensus": {
+        "Data": "CiRhNjZlZTBmMi1hYjY4LTQ5ZGYtYWU5OS1iMzNkNzUzN2E4MzEiZQokNjE3YzM5ZTQtNGQ2OS00MTlhLWJiYTYtZmJhZjlkMzVhZmIwKIgnMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
+      },
+      "BlockHash": "VruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgAM=",
+      "ProducerSign": "5aac/iXJdxlNNa5ZuVFLitXqXpklNeA6/Zu5TAoqVR1s2KZOT+r9cLdvQoyl5iZNDkMyetZoK7Ag9+7mtziycwE="
+    },
+    "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+    "GroupName": "index_group",
+    "OwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+    "SyncType": 1,
+    "CipherKey": "a4f74bc8a97f3f8ebc51222713fce0aa94d4994c9214f17bfee9bd6afc52d2d2",
+    "AppId": "4c0bd5c5-35b6-43b4-92a7-e067a8e7865e",
+    "AppName": "dummy_app",
+    "Hash": "22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9Jacs=",
+    "Signature": "1/+/8VoMpIMSoJLJ6eGu+AaUEccvXg+zikL6jHGJMcsrTGsoFBMdxyDEl73JV8svSmuIA2YIrT0gVjTe2bFDQwE="
+  },
+  "seed_byts": "CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB"
+}
 
 You can list the group just joined
 curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/groups
@@ -221,14 +270,16 @@ result:
   ]
 }
 
-Let's create your first post
+let's create your first post in this group
 curl -X POST -H 'Content-Type: application/json'  -d '{"data":"xxxx"}'  http://127.0.0.1:8002/api/v1/group/617c39e4-4d69-419a-bba6-fbaf9d35afb0/content
 result:
 {
   "trx_id": "a3f32c29-acce-45e2-8510-3e0f5115b4a7"
 }
 
-Now let's check current group status
+check current group status
+current_top_block increase to 1, As you can see, a new block is created to package your trx
+
 curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/groups
 {
   "groups": [
@@ -251,10 +302,13 @@ curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/
     }
   ]
 }
-current_top_block increase to 1, As you can see, a new block is created to package your trx
+
 
 you can check the block by using block_id
+
 curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/api/v1/block/617c39e4-4d69-419a-bba6-fbaf9d35afb0/1
+
+result:
 {
   "block": {
     "GroupId": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
@@ -296,24 +350,58 @@ curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8002/
   "status": "onchain"
 }
 
-===== TO BE MODIFIED ======
-组的同步类型：
+group sync type
+there 2 types of group sync types
+"public sync type": 
+  * any node who get the seed can join the group and request blocks in this group from other nodes
+  * newly created block will be broadcast via group channel all online node will recive the new block
 
-任何人可以加入并同步一个public组的数据
-任何人都可以加入一根private组，但是需要经过owner同意才能同步该组的数据
+"private sync type": 
+  * a node can join this group but it CAN NOT sync from other nodes, (sync request will be ignored by other nodes if the pubkey of requester is not in the syncer list)
+  * newly created block will NOT be broadcast via group channel.
+  * group owner can add/remove group sycners 
 
+Let's start a user node "u1"
+RUM_KSPASSWD=123 go run main.go rumlitenode --peername u1 --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir u1keystore  --loglevel "debug"
+
+u1 needs create a user sign pubkey with keyname "u1_test_app_sign_key"
+
+u1 join the group just created
+curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CtYCCiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMK2o/735hY/AFzqQARKNAQokYTY2ZWUwZjItYWI2OC00OWRmLWFlOTktYjMzZDc1MzdhODMxImUKJDYxN2MzOWU0LTRkNjktNDE5YS1iYmE2LWZiYWY5ZDM1YWZiMCiIJzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgVruDxry8tdHyKGjx6YTS3RDRrJ6o9jaX07f02UiRgANKQeWmnP4lyXcZTTWuWblRS4rV6l6ZJTXgOv2buUwKKlUdbNimTk/q/XC3b0KMpeYmTQ5DMnrWaCuwIPfu5rc4snMBEiQ2MTdjMzllNC00ZDY5LTQxOWEtYmJhNi1mYmFmOWQzNWFmYjAaC2luZGV4X2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkBhNGY3NGJjOGE5N2YzZjhlYmM1MTIyMjcxM2ZjZTBhYTk0ZDQ5OTRjOTIxNGYxN2JmZWU5YmQ2YWZjNTJkMmQyOiQ0YzBiZDVjNS0zNWI2LTQzYjQtOTJhNy1lMDY3YThlNzg2NWVCCWR1bW15X2FwcEog22Q2VX/VApu1HPdfeNHFtIOIA6wnvp2fsAxN+E9JactSQdf/v/FaDKSDEqCSyenhrvgGlBHHL14Ps4pC+oxxiTHLK0xrKBQTHccgxJe9yVfLL0priANmCK09IFY03tmxQ0MB", "user_sign_keyname":"u1_test_app_sign_key"}' http://127.0.0.1:8003/api/v2/group/joingroupbyseed
+
+Since our group is "private sync" type, u1 can not get any block (exepct genesis block), top block id is always 0
+
+
+Group Owner grant sync permisson for u1
+curl -X POST -H 'Content-Type: application/json' -d '{"group_id":"617c39e4-4d69-419a-bba6-fbaf9d35afb0", "syncer_pubkey":"AowfJhrIcD9H0X3-sHfANNB3hl8s3TQlHMj6eqFf2nwo", "action":"add", "memo":""}' http://127.0.0.1:8002/api/v2/group/updsyncer
+
+result:
+{
+  "group_id": "617c39e4-4d69-419a-bba6-fbaf9d35afb0",
+  "syncer_pubkey": "AowfJhrIcD9H0X3-sHfANNB3hl8s3TQlHMj6eqFf2nwo",
+  "action": "ADD",
+  "memo": "xxxx",
+  "trx_id": "b3d49509-1525-47d0-b2a0-d746dd459720"
+}
+
+Now u1 can sync group blocks, verify by check top block id and trx content
+
+
+===== TO BE MODIFIED =====
 
 酒窖（cella）
 酒窖其实也是一个group，同步类型可以是public或者private，producer可以是一个或者多个（一旦确定则不可更改，除非停机fork）
-酒窖会同步放入其中的所有Seed
+酒窖提供2种服务
+  - Storage, 只同注册的组的block
+  - Brew, 提供producer签名服务
+酒窖会根据放入其中的Seed的服务类型提供同步或者签名服务
 酒窖中的所有组会保持打开状态，以随时给不同业务提供block同步或者出块服务
 一个酒窖本身不能放入其他酒窖
-一个酒窖可以同意其他酒窖加入自己并同步酒窖group本身的block
+一个酒窖可以同意其他酒窖加入自己并同步酒窖group本身的block，加入的酒窖也同样需要给酒窖里的seed提供服务
 
 ============================================================================================================================
 
 节点，酒窖和种子的互动过程
-
 1. 节点A创建了一个group seed Group_A
 2. 节点A在本地调用JoinGroupBySeed加入 Group_A
 3. 节点A将一些内容切片，并以POST的形式存入 Group_A

@@ -31,6 +31,8 @@ enum TrxType {
     CHAIN_CONFIG       = 2; // chain configuration
     APP_CONFIG         = 3; // app configuration
     FORK               = 4; // fork chain
+    CELLA_REQ          = 5;
+    CELLA_RESP         = 6; 
 }
 
 message PostItem {
@@ -240,6 +242,11 @@ message ForkItem {
     string        Memo             = 7;
 }
 
+enum GroupServiceType {
+    GROUP = 0;
+    CELLA = 1;
+}
+
 message GroupItem {
     string            GroupId                 = 1;
     string            GroupName               = 2;
@@ -248,24 +255,84 @@ message GroupItem {
     int64             LastUpdate              = 5;
     Block             GenesisBlock            = 6;
     GroupSyncType     SyncType                = 7;
-    GroupConsenseType ConsenseType            = 8;
-    string            CipherKey               = 9;
-    string            AppId                   = 10;    
-    string            AppName                 = 11;
-    reserved          12 to 100;
+    GroupConsenseType ConsenseType            = 9;
+    string            CipherKey               = 10;
+    string            AppId                   = 11;    
+    string            AppName                 = 12;
+    reserved          14 to 100;
 }
 
 message GroupSeed {
-    Block          GenesisBlock = 1;
-    string         GroupId      = 2;
-    string         GroupName    = 3;
-    string         OwnerPubkey  = 4;
-    GroupSyncType  SyncType     = 5;
-    string         CipherKey    = 6;
-    string         AppId        = 7;
-    string         AppName      = 8;
-    bytes          Hash         = 9;
-    bytes          Signature    = 10;
+    Block             GenesisBlock = 1;
+    string            GroupId      = 2;
+    string            GroupName    = 3;
+    string            OwnerPubkey  = 4;
+    GroupSyncType     SyncType     = 5;
+    string            CipherKey    = 6;
+    string            AppId        = 7;
+    string            AppName      = 8;
+    bytes             Hash         = 9;
+    bytes             Signature    = 10;
+}
+
+enum CellaServiceType {
+    BREW    = 0;
+    STORAGE = 1;
+}
+
+message CellaServiceTermItem {
+    CellaServiceType   Type = 1;
+    string             Term = 2;
+}
+
+message CellaReqServiceProofItem {
+    CellaServiceType   Type  = 1;
+    string             Proof = 2;
+}
+
+message CellaItem {    
+    string CellaId                                  = 1;
+    string CellaName                                = 2;
+    string OwnerPubkey                              = 3;
+    string BrewerPubkey                             = 4;
+    int64  LastUpdate                               = 5;
+    Block GenesisBlock                              = 6;    
+    repeated CellaServiceTermItem CellaServiceTerms = 7;
+    string Memo                                     = 8;
+    reserved 9 to 100;
+}
+
+message CellaSeed {
+    Block             GenesisBlock = 1;
+    string            CellaId      = 2;
+    string            CellaName    = 3;
+    string            OwnerPubkey  = 4;
+    string            BrewerPubkey = 5;
+    repeated          CellaServiceTermItem CellaServiceTerms = 6;
+    string            Memo         = 7;   
+    bytes             Hash         = 8;
+    bytes             Signature    = 9;
+}
+
+message CellaRegisterAppIdItem {
+    string AppId                             = 1;
+    string OwnerPubkey                       = 2;
+    repeated CellaReqServiceProofItem  reqServiceProofs = 3;
+    string Memo                              = 4;
+    bytes Hash                               = 5;
+    bytes Signature                          = 6;
+    reserved 7 to 100;
+}
+
+message CellaRegisterGroupSeedItem {
+    string    CellaId   = 1;
+    string    GroupId   = 2;
+    GroupSeed Seed      = 3;
+    repeated  CellaReqServiceProofItem  reqServiceProofs = 4;
+    string    Proof     = 5;
+    string    Memo      = 6;
+    bytes     Hash      = 7;
+    bytes     Signature = 8;
 }
 
 message NodeSDKGroupItem {
