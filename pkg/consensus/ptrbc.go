@@ -322,7 +322,7 @@ func (r *PTRbc) VerifySign() bool {
 }
 
 func (r *PTRbc) SendHBRBCMsg(msg *quorumpb.RBCMsg) error {
-	ptrbc_log.Debugf("<%s> SendHBRBCMsg called", r.GroupId)
+	//ptrbc_log.Debugf("<%s> SendHBRBCMsg called", r.GroupId)
 	rbcb, err := proto.Marshal(msg)
 	if err != nil {
 		return err

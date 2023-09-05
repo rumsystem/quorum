@@ -91,9 +91,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v2/group/newseed", h.NewSeed())
 	r.POST("/v2/group/joingroupbyseed", h.JoinGroupBySeed())
 
-	//r.POST("/v1/group", h.CreateGroupUrl())
-	//r.POST("/v2/group/join", h.JoinGroupV2())
-
 	r.POST("/v2/group/open", h.OpenGroup)
 	r.POST("/v2/group/close", h.CloseGroup)
 	r.POST("/v2/group/updsyncer", h.UpdGroupSyncer)
@@ -102,7 +99,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v1/group/clear", h.ClearGroupData)
 
 	r.POST("/v1/network/peers", h.AddPeers)
-	r.POST("/v1/group/:group_id/startsync", h.StartSync) //deprecated
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
 	r.POST("/v1/group/:group_id/content", h.PostToGroup)
@@ -185,6 +181,11 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 		n.GET("/:group_id/info", h.GetNSdkGroupInfo)
 		//n.GET("/:group_id/encryptpubkeys", h.GetNSdkUserEncryptPubKeys)
 	}
+
+	//deprecated
+	//r.POST("/v1/group", h.CreateGroupUrl())
+	//r.POST("/v2/group/join", h.JoinGroupV2())
+	//r.POST("/v1/group/:group_id/startsync", h.StartSync)
 
 	// start https or http server
 	host := config.APIHost

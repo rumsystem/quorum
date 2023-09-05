@@ -1,13 +1,13 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/labstack/echo/v4"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
-	"github.com/rumsystem/quorum/pkg/chainapi/handlers"
+	handlers "github.com/rumsystem/quorum/pkg/chainapi/handlers"
 )
 
 // @Tags Groups
@@ -19,6 +19,7 @@ import (
 // @Success 200 {object} handlers.GetGroupSeedResult
 // @Router /api/v1/group/{group_id}/seed [get]
 func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
+
 	cc := c.(*utils.CustomContext)
 	var params handlers.GetGroupSeedParam
 	if err := cc.BindAndValidate(&params); err != nil {
@@ -30,30 +31,40 @@ func (h *Handler) GetGroupSeedHandler(c echo.Context) (err error) {
 		return rumerrors.NewBadRequestError(err)
 	}
 
-	var chainUrls []string
+	/*
+		var chainUrls []string
 
-	if params.IncludeChainUrl {
-		jwt, err := handlers.GetOrCreateGroupNodeJwt(params.GroupId)
-		if err != nil {
-			return rumerrors.NewInternalServerError(err)
+		if params.IncludeChainUrl {
+			jwt, err := handlers.GetOrCreateGroupNodeJwt(params.GroupId)
+			if err != nil {
+				return rumerrors.NewInternalServerError(err)
+			}
+
+			// get chain api url
+			baseUrl := cc.GetBaseURLFromRequest()
+			chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
+			if err != nil {
+				return rumerrors.NewBadRequestError(err)
+			}
+			chainUrls = append(chainUrls, chainapiUrl)
 		}
 
-		// get chain api url
-		baseUrl := cc.GetBaseURLFromRequest()
-		chainapiUrl, err := utils.GetChainapiURL(baseUrl, jwt)
+		//seedurl, err := handlers.GroupSeedToUrl(1, chainUrls, seed)
 		if err != nil {
-			return rumerrors.NewBadRequestError(err)
+			return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
 		}
-		chainUrls = append(chainUrls, chainapiUrl)
-	}
 
-	seedurl, err := handlers.GroupSeedToUrl(1, chainUrls, seed)
+	*/
+
+	seedByts, err := proto.Marshal(seed)
 	if err != nil {
-		return rumerrors.NewInternalServerError(fmt.Sprintf("seedurl output failed: %s", err))
+		return rumerrors.NewInternalServerError(err)
 	}
 
 	result := handlers.GetGroupSeedResult{
-		Seed: seedurl,
+		Seed:     seed,
+		SeedByts: seedByts,
 	}
+
 	return c.JSON(http.StatusOK, result)
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rumsystem/quorum/internal/pkg/appdata"
 	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/options"
@@ -25,7 +26,7 @@ type JoinGroupBySeedResult struct {
 	GroupItem *pb.GroupItem `json:"groupItem"`
 }
 
-func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOptions) (*JoinGroupBySeedResult, error) {
+func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOptions, appdb *appdata.AppDb) (*JoinGroupBySeedResult, error) {
 	ks := localcrypto.GetKeystore()
 
 	//check if trx sign keyname exist
@@ -92,6 +93,12 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 
 	//add group to context
 	groupmgr.Groups[group.Item.GroupId] = group
+
+	//save group seed
+	if err := appdb.SetGroupSeed(seed); err != nil {
+		msg := fmt.Sprintf("save group seed failed: %s", err)
+		return nil, rumerrors.NewBadRequestError(msg)
+	}
 
 	return &JoinGroupBySeedResult{GroupItem: group.Item}, nil
 }
