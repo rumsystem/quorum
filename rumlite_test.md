@@ -386,9 +386,118 @@ result:
 
 Now u1 can sync group blocks, verify by check top block id and trx content
 
+Time to create a Cella
+- Cella has a seed
+- Cella works as a service provider
+- Cella has term of services
+- When request service form a cella, node need fulfill the term of service and provide proof (for example, payment recipt)
+- Owner of cella should verify the proof by themselves (RUM doesn't provide verify service)
+
+A cella can provide 2 type of services
+1. STORAGE
+  - after accept a STORAGE request from a node, cella will check proof, join the group and start sync all blocks till reach the block number listed in the request
+  - Storage request for the same group can be send multiple time, each time cella receive the request, it will check proof, sync block till reach the block number in the request
+  - when finish sync, an ARCHIVE type trx will be send to this group
+  - STORAGE service requester should wait the ARCHIVE trx as a mark of sync with cella finished then the group can be closed to save some local resources
+
+2. BREW
+  - after accept a BREW request from a node, cella will 
+    a. check proof
+    b. join the provided group seed
+    c. sync certain mount of blocks till reach the block number listed in the request
+  - from that point, cella will  work as the producer of this group (collect trxs and build block) and sign all blocks by using brewer key
+  - when take over the group, an FORK type trx will be send to this group
+  - BREW service requester should wait for the ARCHIVE trx
+
+
+create a cella seed
+curl -X POST -H 'Content-Type: application/json' -d '{"cella_name":"dummy_cella", "epoch_duration":1000, "owner_keyname":"my_test_app_owner_key", "producer_keyname":"my_test_app_producer_key", "brewer_keyname":"my_brewer_key", "brew_service_term":"BREW FOR EVERYONE", "storage_service_term":"STORAGE FOR EVERYONE"}' http://127.0.0.1:8002/api/v2/cella/newseed | jq
+
+parameters:
+cella_name: name of the cella
+brewer_keyname : brewer keyname
+brew_service_term : term of brew service
+storage_service_term : term of storage service
+
+* all other parameters are as same as the parameters when create group seed
+
+result:
+{
+  "cella_id": "bc42ba3a-8972-4af5-b3a9-21b03e719280",
+  "owner_keyname": "my_test_app_owner_key",
+  "brewer_keyname": "bc42ba3a-8972-4af5-b3a9-21b03e719280_brewer_sign_keyname",
+  "producer_keyname": "my_test_app_producer_key",
+  "seed": {
+    "CellaId": "bc42ba3a-8972-4af5-b3a9-21b03e719280",
+    "CellaName": "dummy_cella",
+    "CellaOwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+    "CellaBrewerPubkey": "A8uxWZPMrH216FZhVOjQj7kZcnfaVtyUoJGNjE0tFfYd",
+    "CellaProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+    "ServiceTerms": [
+      {
+        "Type": 1,
+        "Term": "ChRTVE9SQUdFIEZPUiBFVkVSWU9ORQ=="
+      },
+      {
+        "Term": "ChFCUkVXIEZPUiBFVkVSWU9ORQ=="
+      }
+    ],
+    "Group": {
+      "GenesisBlock": {
+        "GroupId": "30dcc230-e468-4825-82dc-56e06199d5d9",
+        "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
+        "TimeStamp": "1694026288131981653",
+        "Consensus": {
+          "Data": "CiRkNGMzNTJiZi02ZmE1LTRlNmUtOGQzOC1iMDIyMTVlNmY5ZWMiZQokMzBkY2MyMzAtZTQ2OC00ODI1LTgyZGMtNTZlMDYxOTlkNWQ5KOgHMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
+        },
+        "BlockHash": "cXLFqIbp270vmPAFnGNzt5Tlso9W00+fKsxSxsXuXYk=",
+        "ProducerSign": "SAO4J3WL9W2JYwdpkHdggmLg0TuW3s/rIoJYpGtYqzMAH4jFP6NIQmqYhuOksmYpeCZLDhBKW51rMIsLyhLDXQE="
+      },
+      "GroupId": "30dcc230-e468-4825-82dc-56e06199d5d9",
+      "GroupName": "dummy_cella_group",
+      "OwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+      "SyncType": 1,
+      "CipherKey": "333e594f5afb800b910345af216f38106af02e686a220c205b72deb94b9f9da5",
+      "Hash": "vMqI5l+Cheh9+U22klpj4Oy499kV33gQC6QvArlmxYQ=",
+      "Signature": "/wwXm8qbsdEzLxNiBaKSXY95apf+hNd3x56IxiYGM0p709YFonLlqAMF2huaP6ofy3O+b7rPmhxt7AIkqw6EtAE="
+    },
+    "Hash": "tMOZqdMdVGz/SltXUwlrTH/nV76dLfZrXDY6U/k610Q=",
+    "Signature": "6B+uzAZZTHWofGwsE+pV9umeSf+INsuAdkF+rOkTjL9JBLPsSdO/feIO60DJTL0xFkUW6CAIJSQ/pAN+FXjFvQA="
+  },
+  "seed_byts": "CiRiYzQyYmEzYS04OTcyLTRhZjUtYjNhOS0yMWIwM2U3MTkyODASC2R1bW15X2NlbGxhGixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSIsQTh1eFdaUE1ySDIxNkZaaFZPalFqN2taY25mYVZ0eVVvSkdOakUwdEZmWWQqLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMhoIARIWChRTVE9SQUdFIEZPUiBFVkVSWU9ORTIVEhMKEUJSRVcgRk9SIEVWRVJZT05FOukECtYCCiQzMGRjYzIzMC1lNDY4LTQ4MjUtODJkYy01NmUwNjE5OWQ1ZDkiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMNWCn8Lw/ZjBFzqQARKNAQokZDRjMzUyYmYtNmZhNS00ZTZlLThkMzgtYjAyMjE1ZTZmOWVjImUKJDMwZGNjMjMwLWU0NjgtNDgyNS04MmRjLTU2ZTA2MTk5ZDVkOSjoBzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgcXLFqIbp270vmPAFnGNzt5Tlso9W00+fKsxSxsXuXYlKQUgDuCd1i/VtiWMHaZB3YIJi4NE7lt7P6yKCWKRrWKszAB+IxT+jSEJqmIbjpLJmKXgmSw4QSludazCLC8oSw10BEiQzMGRjYzIzMC1lNDY4LTQ4MjUtODJkYy01NmUwNjE5OWQ1ZDkaEWR1bW15X2NlbGxhX2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkAzMzNlNTk0ZjVhZmI4MDBiOTEwMzQ1YWYyMTZmMzgxMDZhZjAyZTY4NmEyMjBjMjA1YjcyZGViOTRiOWY5ZGE1SiC8yojmX4KF6H35TbaSWmPg7Lj32RXfeBALpC8CuWbFhFJB/wwXm8qbsdEzLxNiBaKSXY95apf+hNd3x56IxiYGM0p709YFonLlqAMF2huaP6ofy3O+b7rPmhxt7AIkqw6EtAFCILTDmanTHVRs/0pbV1MJa0x/51e+nS32a1w2OlP5OtdESkHoH67MBllMdah8bCwT6lX26Z5J/4g2y4B2QX6s6ROMv0kEs+xJ07994g7rQMlMvTEWRRboIAglJD+kA34VeMW9AA=="
+}
+
+cella_id  : cella id
+seed      : cella seed
+seed_byts : cella seed byts 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ===== TO BE MODIFIED =====
-
 酒窖（cella）
 酒窖其实也是一个group，同步类型可以是public或者private，producer可以是一个或者多个（一旦确定则不可更改，除非停机fork）
 酒窖提供2种服务

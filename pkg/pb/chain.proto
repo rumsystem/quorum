@@ -278,61 +278,68 @@ message GroupSeed {
 enum CellaServiceType {
     BREW    = 0;
     STORAGE = 1;
+    reserved 2 to 100;
+}
+
+message BrewServiceTermItem {
+    string Term = 1;
+    reserved 2 to 100;
+}
+
+message StorageServiceTermItem {
+    string Term = 1;
+    reserved 2 to 100;
 }
 
 message CellaServiceTermItem {
-    CellaServiceType   Type = 1;
-    string             Term = 2;
+    CellaServiceType   Type  = 1; 
+    bytes              Term  = 2;
 }
 
-message CellaReqServiceProofItem {
-    CellaServiceType   Type  = 1;
-    string             Proof = 2;
+message BrewServiceProofItem {
+    reserved 1 to 100;
 }
 
-message CellaItem {    
-    string CellaId                                  = 1;
-    string CellaName                                = 2;
-    string OwnerPubkey                              = 3;
-    string BrewerPubkey                             = 4;
-    int64  LastUpdate                               = 5;
-    Block GenesisBlock                              = 6;    
-    repeated CellaServiceTermItem CellaServiceTerms = 7;
-    string Memo                                     = 8;
-    reserved 9 to 100;
+message StorageServiceProofItem {
+    reserved 1 to 100;
+}
+message CellaReqProofItem {
+    CellaServiceType   Type  = 1; 
+    bytes              Proof = 2;
+}
+
+message CellaItem {   
+    string    CellaId                           = 1; 
+    GroupItem CellaGroup                        = 2;
+    repeated  CellaServiceTermItem ServiceTerms = 3;
+    repeated  GroupItem StorageGroups           = 4;
+    repeated  GroupItem BrewGroups              = 5;
+    reserved  6 to 100;
 }
 
 message CellaSeed {
-    Block             GenesisBlock = 1;
-    string            CellaId      = 2;
-    string            CellaName    = 3;
-    string            OwnerPubkey  = 4;
-    string            BrewerPubkey = 5;
-    repeated          CellaServiceTermItem CellaServiceTerms = 6;
-    string            Memo         = 7;   
-    bytes             Hash         = 8;
-    bytes             Signature    = 9;
+    string    CellaId                           = 1;
+    string    CellaName                         = 2;
+    string    CellaOwnerPubkey                  = 3;
+    string    CellaBrewerPubkey                 = 4;
+    string    CellaProducerPubkey               = 5;
+    repeated  CellaServiceTermItem ServiceTerms = 6;
+    GroupSeed Group                             = 7;
+    bytes     Hash                              = 8;
+    bytes     Signature                         = 9;
+    reserved  10 to 100;
 }
 
-message CellaRegisterAppIdItem {
-    string AppId                             = 1;
-    string OwnerPubkey                       = 2;
-    repeated CellaReqServiceProofItem  reqServiceProofs = 3;
-    string Memo                              = 4;
-    bytes Hash                               = 5;
-    bytes Signature                          = 6;
-    reserved 7 to 100;
-}
-
-message CellaRegisterGroupSeedItem {
-    string    CellaId   = 1;
-    string    GroupId   = 2;
-    GroupSeed Seed      = 3;
-    repeated  CellaReqServiceProofItem  reqServiceProofs = 4;
-    string    Proof     = 5;
-    string    Memo      = 6;
-    bytes     Hash      = 7;
-    bytes     Signature = 8;
+message CellaRegisterGroupReqItem {
+    string            CellaId         = 1;
+    GroupSeed         Seed            = 2;
+    uint64            CurrentBlockId  = 3;
+    string            SeedOwnerPubkey = 4;
+    CellaReqProofItem Proof           = 5;
+    string            Memo            = 6;
+    bytes             Hash            = 7;
+    bytes             Signature       = 8;
+    reserved  9 to 100;
 }
 
 message NodeSDKGroupItem {

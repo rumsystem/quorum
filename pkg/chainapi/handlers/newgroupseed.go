@@ -33,9 +33,6 @@ type NewGroupSeedResult struct {
 	SeedByts        []byte        `json:"seed_byts" validate:"required"`
 }
 
-type NewCellaSeedParams struct {
-}
-
 const DEFAULT_EPOCH_DURATION = 1000 //m
 const NEOPROUDCER_SIGNKEY_SURFIX = "_neoproducer_sign_keyname"
 

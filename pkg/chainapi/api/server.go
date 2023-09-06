@@ -88,8 +88,14 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.GET("/v2/keystore/getkeybykeyname", h.GetPubkeyByKeyName())
 	r.GET("/v2/keystore/getallkeys", h.GetAllKeys())
 
-	r.POST("/v2/group/newseed", h.NewSeed())
+	r.POST("/v2/group/newseed", h.NewGroupSeed())
 	r.POST("/v2/group/joingroupbyseed", h.JoinGroupBySeed())
+
+	r.POST("/v2/cella/newseed", h.NewCellaSeed())
+	//r.POST("/v2/cella/leave",h.LeaveCella)
+	//r.POST("/v2/cella/clear",h.ClearCellaData)
+	//r.GET("/v2/cellas", h.GetCellas)
+	//r.GET("/v2/cella/:cella_id", h.GetCellaById)
 
 	r.POST("/v2/group/open", h.OpenGroup)
 	r.POST("/v2/group/close", h.CloseGroup)
