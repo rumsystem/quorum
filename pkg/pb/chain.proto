@@ -259,7 +259,7 @@ message GroupItem {
     string            CipherKey               = 10;
     string            AppId                   = 11;    
     string            AppName                 = 12;
-    reserved          14 to 100;
+    reserved          13 to 100;
 }
 
 message GroupSeed {
@@ -275,70 +275,88 @@ message GroupSeed {
     bytes             Signature    = 10;
 }
 
-enum CellaServiceType {
+enum CellarServiceType {
     BREW    = 0;
     STORAGE = 1;
     reserved 2 to 100;
 }
 
 message BrewServiceTermItem {
-    string Term = 1;
-    reserved 2 to 100;
+    string Term     = 1;
+    bytes  Contract = 2;
+    reserved 3 to 100;
 }
 
 message StorageServiceTermItem {
-    string Term = 1;
-    reserved 2 to 100;
+    string Term    = 1;
+    bytes  Contract= 2;
+    reserved 3 to 100;
 }
 
-message CellaServiceTermItem {
-    CellaServiceType   Type  = 1; 
-    bytes              Term  = 2;
+message CellarServiceTermItem {
+    CellarServiceType   Type  = 1; 
+    bytes               Term  = 2;
 }
 
 message BrewServiceProofItem {
-    reserved 1 to 100;
+    bytes Proof = 1;
+    reserved 2 to 100;
 }
 
 message StorageServiceProofItem {
-    reserved 1 to 100;
+    bytes Proof = 1;
+    reserved 2 to 100;
 }
-message CellaReqProofItem {
-    CellaServiceType   Type  = 1; 
+message CellarReqProofItem {
+    CellarServiceType   Type  = 1; 
     bytes              Proof = 2;
 }
 
-message CellaItem {   
-    string    CellaId                           = 1; 
-    GroupItem CellaGroup                        = 2;
-    repeated  CellaServiceTermItem ServiceTerms = 3;
-    repeated  GroupItem StorageGroups           = 4;
-    repeated  GroupItem BrewGroups              = 5;
-    reserved  6 to 100;
+enum CellarGroupStatus {
+    INIT = 0;
+    SYNCING = 1;
 }
 
-message CellaSeed {
-    string    CellaId                           = 1;
-    string    CellaName                         = 2;
-    string    CellaOwnerPubkey                  = 3;
-    string    CellaBrewerPubkey                 = 4;
-    string    CellaProducerPubkey               = 5;
-    repeated  CellaServiceTermItem ServiceTerms = 6;
-    GroupSeed Group                             = 7;
-    bytes     Hash                              = 8;
-    bytes     Signature                         = 9;
+message CellarGroup {
+    CellarServiceType  Type         = 1;
+    GroupItem          Group        = 2;
+    CellarGroupStatus  Status       = 3;
+    int64              CurrTopBlock = 4;
+    int64              LastUpdate   = 5;
+}
+
+message CellarItem {   
+    string    CellarId                           = 1; 
+    GroupItem CellarGroup                        = 2;
+    string    CellarBrewerPubkey                 = 3;
+    repeated  CellarServiceTermItem ServiceTerms = 4;
+    repeated  GroupItem StorageGroups            = 5;
+    repeated  GroupItem BrewGroups               = 6;
+    reserved  7 to 100;
+}
+
+message CellarSeed {
+    string    CellarId                           = 1;
+    string    CellarName                         = 2;
+    string    CellarOwnerPubkey                  = 3;
+    string    CellarBrewerPubkey                 = 4;
+    string    CellarProducerPubkey               = 5;
+    repeated  CellarServiceTermItem ServiceTerms = 6;
+    GroupSeed CellarGroupSeed                    = 7;
+    bytes     Hash                               = 8;
+    bytes     Signature                          = 9;
     reserved  10 to 100;
 }
 
-message CellaRegisterGroupReqItem {
-    string            CellaId         = 1;
-    GroupSeed         Seed            = 2;
-    uint64            CurrentBlockId  = 3;
-    string            SeedOwnerPubkey = 4;
-    CellaReqProofItem Proof           = 5;
-    string            Memo            = 6;
-    bytes             Hash            = 7;
-    bytes             Signature       = 8;
+message CellarRegisterGroupReqItem {
+    string             CellarId        = 1;
+    GroupSeed          Seed            = 2;
+    uint64             CurrentBlockId  = 3;
+    string             SeedOwnerPubkey = 4;
+    CellarReqProofItem Proof           = 5;
+    string             Memo            = 6;
+    bytes              Hash            = 7;
+    bytes              Signature       = 8;
     reserved  9 to 100;
 }
 

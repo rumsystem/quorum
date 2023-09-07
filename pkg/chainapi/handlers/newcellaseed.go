@@ -12,8 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type NewCellaSeedParams struct {
-	CellaName          string `from:"cella_name"                json:"cella_name"                validate:"required"`
+type NewCellarSeedParams struct {
+	CellarName         string `from:"cella_name"                json:"cella_name"                validate:"required"`
 	OwnerKeyName       string `from:"owner_keyname"             json:"owner_keyname"             example:"group_owner_key_name"`
 	BrewerKeyName      string `from:"brewer_keyname"            json:"brewer_keyname"            example:"general_brewer_pubkey_name"`
 	ProducerKeyName    string `from:"producer_keyname"          json:"producer_keyname"          example:"general_producer_pubkey_name"`
@@ -23,19 +23,19 @@ type NewCellaSeedParams struct {
 	Memo               string `from:"memo"                      json:"memo"                      example:"cella memo"`
 }
 
-type NewCellaSeedResult struct {
-	CellaId         string        `json:"cella_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
-	OwnerKeyName    string        `json:"owner_keyname" validate:"required" example:"group_owner_key_name"`
-	BrewerkeyName   string        `json:"brewer_keyname" validate:"required" example:"general_brewer_pubkey_name"`
-	ProducerKeyName string        `json:"producer_keyname" validate:"required" example:"general_producer_pubkey_name"`
-	Seed            *pb.CellaSeed `json:"seed" validate:"required"`
-	SeedByts        []byte        `json:"seed_byts" validate:"required"`
+type NewCellarSeedResult struct {
+	CellarId        string         `json:"cella_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
+	OwnerKeyName    string         `json:"owner_keyname" validate:"required" example:"group_owner_key_name"`
+	BrewerkeyName   string         `json:"brewer_keyname" validate:"required" example:"general_brewer_pubkey_name"`
+	ProducerKeyName string         `json:"producer_keyname" validate:"required" example:"general_producer_pubkey_name"`
+	Seed            *pb.CellarSeed `json:"seed" validate:"required"`
+	SeedByts        []byte         `json:"seed_byts" validate:"required"`
 }
 
 const CELLA_BREWER_SIGNKEY_SURFIX = "_brewer_sign_keyname"
 
-func NewCellaSeed(params *NewCellaSeedParams, nodeoptions *options.NodeOptions) (*NewCellaSeedResult, error) {
-	cellaid := guuid.New().String()
+func NewCellarSeed(params *NewCellarSeedParams, nodeoptions *options.NodeOptions) (*NewCellarSeedResult, error) {
+	cellarid := guuid.New().String()
 	ks := localcrypto.GetKeystore()
 
 	//create ceall group
@@ -60,7 +60,7 @@ func NewCellaSeed(params *NewCellaSeedParams, nodeoptions *options.NodeOptions) 
 
 	var brewerKeyNanme, brewerPubkey string
 	if params.BrewerKeyName == "" {
-		brewerKeyNanme = cellaid + CELLA_BREWER_SIGNKEY_SURFIX
+		brewerKeyNanme = cellarid + CELLA_BREWER_SIGNKEY_SURFIX
 		brewerPubkey, err = localcrypto.InitSignKeyWithKeyName(brewerKeyNanme, nodeoptions)
 		if err != nil {
 			return nil, errors.New("initial group brewer keypair failed, err:" + err.Error())
@@ -140,7 +140,7 @@ func NewCellaSeed(params *NewCellaSeedParams, nodeoptions *options.NodeOptions) 
 	groupSeed := &pb.GroupSeed{
 		GenesisBlock: genesisBlock,
 		GroupId:      groupid,
-		GroupName:    params.CellaName + "_group",
+		GroupName:    params.CellarName + "_group",
 		OwnerPubkey:  ownerPubkey,
 		SyncType:     pb.GroupSyncType_PRIVATE,
 		CipherKey:    cipherKey,
@@ -178,8 +178,8 @@ func NewCellaSeed(params *NewCellaSeedParams, nodeoptions *options.NodeOptions) 
 		return nil, err
 	}
 
-	csst := &pb.CellaServiceTermItem{
-		Type: pb.CellaServiceType_STORAGE,
+	csst := &pb.CellarServiceTermItem{
+		Type: pb.CellarServiceType_STORAGE,
 		Term: ssByts,
 	}
 
@@ -192,49 +192,49 @@ func NewCellaSeed(params *NewCellaSeedParams, nodeoptions *options.NodeOptions) 
 		return nil, err
 	}
 
-	bsst := &pb.CellaServiceTermItem{
-		Type: pb.CellaServiceType_BREW,
+	bsst := &pb.CellarServiceTermItem{
+		Type: pb.CellarServiceType_BREW,
 		Term: bsByts,
 	}
 
-	cellaSeed := &pb.CellaSeed{
-		CellaId:             cellaid,
-		CellaName:           params.CellaName,
-		CellaOwnerPubkey:    ownerPubkey,
-		CellaBrewerPubkey:   brewerPubkey,
-		CellaProducerPubkey: producerPubkey,
-		ServiceTerms:        []*pb.CellaServiceTermItem{csst, bsst},
-		Group:               groupSeed,
-		Hash:                nil,
-		Signature:           nil,
+	cellarSeed := &pb.CellarSeed{
+		CellarId:             cellarid,
+		CellarName:           params.CellarName,
+		CellarOwnerPubkey:    ownerPubkey,
+		CellarBrewerPubkey:   brewerPubkey,
+		CellarProducerPubkey: producerPubkey,
+		ServiceTerms:         []*pb.CellarServiceTermItem{csst, bsst},
+		CellarGroupSeed:      groupSeed,
+		Hash:                 nil,
+		Signature:            nil,
 	}
 
-	cellaByts, err := proto.Marshal(cellaSeed)
+	cellarByts, err := proto.Marshal(cellarSeed)
 	if err != nil {
 		return nil, err
 	}
 
-	hashcella := localcrypto.Hash(cellaByts)
-	cellaSign, err := localcrypto.GetKeystore().EthSignByKeyName(ownerKeyName, hashcella)
+	hashcellar := localcrypto.Hash(cellarByts)
+	cellarSign, err := localcrypto.GetKeystore().EthSignByKeyName(ownerKeyName, hashcellar)
 	if err != nil {
 		return nil, err
 	}
 
-	cellaSeed.Hash = hashcella
-	cellaSeed.Signature = cellaSign
+	cellarSeed.Hash = hashcellar
+	cellarSeed.Signature = cellarSign
 
-	cellaSeedBytsWithSign, err := proto.Marshal(cellaSeed)
+	cellarSeedBytsWithSign, err := proto.Marshal(cellarSeed)
 	if err != nil {
 		return nil, err
 	}
 
-	return &NewCellaSeedResult{
-		CellaId:         cellaid,
+	return &NewCellarSeedResult{
+		CellarId:        cellarid,
 		OwnerKeyName:    ownerKeyName,
 		BrewerkeyName:   brewerKeyNanme,
 		ProducerKeyName: producerKeyName,
-		Seed:            cellaSeed,
-		SeedByts:        cellaSeedBytsWithSign,
+		Seed:            cellarSeed,
+		SeedByts:        cellarSeedBytsWithSign,
 	}, nil
 
 }

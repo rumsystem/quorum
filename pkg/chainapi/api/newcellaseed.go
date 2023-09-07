@@ -18,16 +18,16 @@ import (
 // @Param data body handlers.NewGroupSeedParams true "NewGroupSeedParams"
 // @Success 200 {object} handlers.NewGroupSeedResult
 // @Router /api/v2/rumlite/group/newseed [post]
-func (h *Handler) NewCellaSeed() echo.HandlerFunc {
+func (h *Handler) NewCellarSeed() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
 
-		params := new(handlers.NewCellaSeedParams)
+		params := new(handlers.NewCellarSeedParams)
 		if err := cc.BindAndValidate(params); err != nil {
 			return err
 		}
 
-		seed, err := handlers.NewCellaSeed(params, options.GetNodeOptions())
+		seed, err := handlers.NewCellarSeed(params, options.GetNodeOptions())
 		if err != nil {
 			return err
 		}
