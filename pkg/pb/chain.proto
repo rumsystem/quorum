@@ -275,6 +275,8 @@ message GroupSeed {
     bytes             Signature    = 10;
 }
 
+//Cellar
+
 enum CellarServiceType {
     BREW    = 0;
     STORAGE = 1;
@@ -330,9 +332,8 @@ message CellarItem {
     GroupItem CellarGroup                        = 2;
     string    CellarBrewerPubkey                 = 3;
     repeated  CellarServiceTermItem ServiceTerms = 4;
-    repeated  GroupItem StorageGroups            = 5;
-    repeated  GroupItem BrewGroups               = 6;
-    reserved  7 to 100;
+    repeated  CellarGroup Groups                 = 5;
+    reserved  6 to 100;
 }
 
 message CellarSeed {
