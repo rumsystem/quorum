@@ -242,11 +242,6 @@ message ForkItem {
     string        Memo             = 7;
 }
 
-enum GroupServiceType {
-    GROUP = 0;
-    CELLA = 1;
-}
-
 message GroupItem {
     string            GroupId                 = 1;
     string            GroupName               = 2;
@@ -263,41 +258,44 @@ message GroupItem {
 }
 
 message GroupSeed {
-    Block             GenesisBlock = 1;
-    string            GroupId      = 2;
-    string            GroupName    = 3;
-    string            OwnerPubkey  = 4;
-    GroupSyncType     SyncType     = 5;
-    string            CipherKey    = 6;
-    string            AppId        = 7;
-    string            AppName      = 8;
-    bytes             Hash         = 9;
-    bytes             Signature    = 10;
+    string        GroupId                   = 1;
+    string        GroupName                 = 2;
+    string        OwnerPubkey               = 3;
+    GroupSyncType SyncType                  = 4;
+    string        CipherKey                 = 5;
+    string        AppId                     = 6;
+    string        AppName                   = 7;
+    Block         GenesisBlock              = 8;
+    repeated      GroupServiceItem Services = 9;
+    bytes         Hash                      = 10;
+    bytes         Signature                 = 11;
 }
 
-//Cellar
-
-enum CellarServiceType {
-    BREW    = 0;
-    STORAGE = 1;
+//GroupService
+enum GroupServiceType {
+    BREW_SERVICE    = 0;
+    SYNC_SERVICE    = 1;
     reserved 2 to 100;
 }
 
-message BrewServiceTermItem {
-    string Term     = 1;
-    bytes  Contract = 2;
-    reserved 3 to 100;
+message BrewServiceItem {
+    string BrewerPubkey = 1;
+    string SyncerPubkey = 2;
+    string Term         = 3;    
+    bytes  Contract     = 4;
+    reserved 5 to 100;
 }
 
-message StorageServiceTermItem {
-    string Term    = 1;
-    bytes  Contract= 2;
-    reserved 3 to 100;
+message SyncServiceItem {
+    string SyncerPubkey  = 1;
+    string Term          = 2;
+    bytes  Contract      = 3;
+    reserved 4 to 100;
 }
 
-message CellarServiceTermItem {
-    CellarServiceType   Type  = 1; 
-    bytes               Term  = 2;
+message GroupServiceItem {
+    GroupServiceType   Type        = 1; 
+    bytes              Service     = 2;
 }
 
 message BrewServiceProofItem {
@@ -305,60 +303,25 @@ message BrewServiceProofItem {
     reserved 2 to 100;
 }
 
-message StorageServiceProofItem {
+message SyncServiceProofItem {
     bytes Proof = 1;
     reserved 2 to 100;
 }
-message CellarReqProofItem {
-    CellarServiceType   Type  = 1; 
-    bytes              Proof = 2;
+
+message ServiceReqProofItem {
+    GroupServiceType   Type  = 1; //BREW or STORAGE
+    bytes              Proof = 2; //StorageServiceProofItem or BrewServiceProofItem
 }
 
-enum CellarGroupStatus {
-    INIT = 0;
-    SYNCING = 1;
-}
-
-message CellarGroup {
-    CellarServiceType  Type         = 1;
-    GroupItem          Group        = 2;
-    CellarGroupStatus  Status       = 3;
-    int64              CurrTopBlock = 4;
-    int64              LastUpdate   = 5;
-}
-
-message CellarItem {   
-    string    CellarId                           = 1; 
-    GroupItem CellarGroup                        = 2;
-    string    CellarBrewerPubkey                 = 3;
-    repeated  CellarServiceTermItem ServiceTerms = 4;
-    repeated  CellarGroup Groups                 = 5;
-    reserved  6 to 100;
-}
-
-message CellarSeed {
-    string    CellarId                           = 1;
-    string    CellarName                         = 2;
-    string    CellarOwnerPubkey                  = 3;
-    string    CellarBrewerPubkey                 = 4;
-    string    CellarProducerPubkey               = 5;
-    repeated  CellarServiceTermItem ServiceTerms = 6;
-    GroupSeed CellarGroupSeed                    = 7;
-    bytes     Hash                               = 8;
-    bytes     Signature                          = 9;
-    reserved  10 to 100;
-}
-
-message CellarRegisterGroupReqItem {
-    string             CellarId        = 1;
-    GroupSeed          Seed            = 2;
-    uint64             CurrentBlockId  = 3;
-    string             SeedOwnerPubkey = 4;
-    CellarReqProofItem Proof           = 5;
-    string             Memo            = 6;
-    bytes              Hash            = 7;
-    bytes              Signature       = 8;
-    reserved  9 to 100;
+message RegisterGroupReqItem {
+    string              GroupId         = 1;
+    GroupSeed           Seed            = 2;
+    uint64              CurrentBlockId  = 3;
+    ServiceReqProofItem Proof           = 4;
+    string              Memo            = 5;
+    bytes               Hash            = 6;
+    bytes               Signature       = 7;
+    reserved  8 to 100;
 }
 
 message NodeSDKGroupItem {

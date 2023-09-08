@@ -91,17 +91,10 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v2/group/newseed", h.NewGroupSeed())
 	r.POST("/v2/group/joingroupbyseed", h.JoinGroupBySeed())
 
-	r.POST("/v2/cellar/newseed", h.NewCellarSeed())
-	r.POST("/v2/cellar/joincellarbyseed", h.JoinCellarBySeed())
-
-	//r.POST("/v2/cella/leave",h.LeaveCella)
-	//r.POST("/v2/cella/clear",h.ClearCellaData)
-	//r.GET("/v2/cellas", h.GetCellas)
-	//r.GET("/v2/cella/:cella_id", h.GetCellaById)
-
 	r.POST("/v2/group/open", h.OpenGroup)
 	r.POST("/v2/group/close", h.CloseGroup)
 	r.POST("/v2/group/updsyncer", h.UpdGroupSyncer)
+	//r.POST("/v2/group/updservicegroup", h.UpdGroupService)
 
 	r.POST("/v1/group/leave", h.LeaveGroup)
 	r.POST("/v1/group/clear", h.ClearGroupData)
