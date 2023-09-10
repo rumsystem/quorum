@@ -3,7 +3,6 @@ package appdata
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -133,73 +132,6 @@ func (appdb *AppDb) GetGroupContentBySenders(groupid string, senders []string, s
 	}
 
 	return trxids, err
-}
-
-func (appdb *AppDb) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
-	key := groupSeedKey(groupID)
-	exist, err := appdb.Db.IsExist(key)
-	if err != nil {
-		return nil, err
-	}
-	if !exist {
-		return nil, nil
-	}
-
-	value, err := appdb.Db.Get(key)
-	if err != nil {
-		return nil, err
-	}
-
-	var result quorumpb.GroupSeed
-	if err := json.Unmarshal(value, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-func (appdb *AppDb) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
-	var seeds map[string]*quorumpb.GroupSeed = make(map[string]*quorumpb.GroupSeed)
-
-	key := []byte(SED_PREFIX)
-	err := appdb.Db.PrefixForeach(key, func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		var pbSeed quorumpb.GroupSeed
-		if err := json.Unmarshal(v, &pbSeed); err != nil {
-			return err
-		}
-		seeds[string(k)] = &pbSeed
-
-		return nil
-	})
-
-	return seeds, err
-}
-
-func (appdb *AppDb) SetGroupSeed(seed *quorumpb.GroupSeed) error {
-	key := groupSeedKey(seed.GroupId)
-
-	value, err := json.Marshal(seed)
-	if err != nil {
-		return err
-	}
-	return appdb.Db.Set(key, value)
-}
-
-func (appdb *AppDb) DelGroupSeed(groupID string) error {
-	key := groupSeedKey(groupID)
-
-	exist, err := appdb.Db.IsExist(key)
-	if err != nil {
-		return err
-	}
-	if !exist { // skip
-		return nil
-	}
-
-	return appdb.Db.Delete(key)
 }
 
 func getKey(prefix string, seqid uint64, tailing string) ([]byte, error) {

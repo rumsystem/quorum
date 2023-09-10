@@ -92,9 +92,6 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 		return err
 	}
 
-	//try start sync
-	//grp.ChainCtx.StartSync()
-
 	group_log.Debugf("Join Group <%s> done", grp.Item.GroupId)
 	return nil
 }
@@ -293,6 +290,29 @@ func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, err
 		return "", nil
 	}
 	return grp.sendTrx(trx)
+}
+
+func (grp *Group) AddCellar(seed *quorumpb.GroupSeed, serviceType quorumpb.GroupServiceType, proof *quorumpb.ServiceReqProofItem) (string, error) {
+	group_log.Debugf("<%s> AddCellar called", grp.Item.GroupId)
+
+	/*
+		signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
+		if signKeyName == "" {
+			group_log.Debugf("<%s> AddGroupCellar failed, sign key not exist", grp.Item.GroupId)
+			return "", fmt.Errorf("sign key not exist")
+		}
+
+		myseed := nodectx.GetNodeCtx().Dbmgr.GetGroupSeed(grp.Item.GroupId)
+
+		trx, err := grp.ChainCtx.GetTrxFactory().GetAddCellarReqTrx(grp.Item.OwnerPubKey, signKeyName, seed, cellarType, proof)
+		if err != nil {
+			return "", err
+		}
+
+		return grp.sendTrx(trx)
+	*/
+
+	return "", nil
 }
 
 func (grp *Group) UpdChainConfig(item *quorumpb.ChainConfigItem) (string, error) {

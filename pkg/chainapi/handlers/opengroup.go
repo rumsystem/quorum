@@ -16,7 +16,7 @@ type OpenGroupResult struct {
 	GroupId string `json:"group_id" validate:"required,uuid4" example:"ac0eea7c-2f3c-4c67-80b3-136e46b924a8"`
 }
 
-func OpenGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*OpenGroupResult, error) {
+func OpenGroup(params *OpenGroupParam, appdb *appdata.AppDb) (*OpenGroupResult, error) {
 	validate := validator.New()
 	if err := validate.Struct(params); err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func OpenGroup(params *LeaveGroupParam, appdb *appdata.AppDb) (*OpenGroupResult,
 	_, ok := groupmgr.Groups[params.GroupId]
 
 	if ok {
-		return nil, fmt.Errorf("Group %s already open", params.GroupId)
+		return nil, fmt.Errorf("group <%s> already open", params.GroupId)
 	}
 
 	group := &chain.Group{}

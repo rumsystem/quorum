@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/rumsystem/quorum/internal/pkg/utils"
@@ -209,8 +208,12 @@ func GetTrxKey(groupId, trxId string, prefix ...string) string {
 	return key
 }
 
-func GetSeedKey(groupID string) []byte {
-	return []byte(fmt.Sprintf("%s_%s", GROUPSEED_PREFIX, groupID))
+func GetSeedKey(groupId string) string {
+	return GetSeedPrefix() + groupId
+}
+
+func GetSeedPrefix() string {
+	return GROUPSEED_PREFIX + "_"
 }
 
 func GetTrxHBBPrefix(queueId string) string {

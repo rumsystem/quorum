@@ -65,3 +65,12 @@ func (factory *TrxFactory) GetForkTrx(senderPubkey, senderKeyname string, item *
 
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_FORK, encodedcontent, senderPubkey, senderKeyname)
 }
+
+func (factory *TrxFactory) GetAddCellarReqTrx(senderPubkey, senderKeyname string, item *quorumpb.AddToCellarReqItem) (*quorumpb.Trx, error) {
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return nil, err
+	}
+
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_SERVICE_REQ, encodedcontent, senderPubkey, senderKeyname)
+}

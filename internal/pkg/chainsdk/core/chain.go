@@ -574,6 +574,10 @@ func (chain *Chain) updateProducerPool() {
 	}
 }
 
+func (chain *Chain) UpdateCellarpool() {
+	chain_log.Debugf("<%s> UpdateCellarpool called", chain.groupItem.GroupId)
+}
+
 func (chain *Chain) findKeyNames(ks localcrypto.Keystore, pubkeys []string) (map[string]string, error) {
 	allkeys, err := ks.ListAll()
 	if err != nil {

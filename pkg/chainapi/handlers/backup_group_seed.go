@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/utils"
 )
 
 // get myself group seeds
-func GetAllGroupSeeds(appdb *appdata.AppDb) ([]CreateGroupResult, error) {
+func GetAllGroupSeeds() ([]CreateGroupResult, error) {
 
-	pbSeeds, err := appdb.GetAllGroupSeeds()
+	pbSeeds, err := nodectx.GetNodeCtx().GetChainStorage().GetAllGroupSeeds()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func SaveAllGroupSeeds(appdb *appdata.AppDb, seedDir string) error {
 		return err
 	}
 
-	seeds, err := GetAllGroupSeeds(appdb)
+	seeds, err := GetAllGroupSeeds()
 	if err != nil {
 		return err
 	}

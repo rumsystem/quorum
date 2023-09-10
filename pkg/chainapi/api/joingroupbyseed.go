@@ -27,7 +27,7 @@ func (h *Handler) JoinGroupBySeed() echo.HandlerFunc {
 			return rumerrors.NewBadRequestError(err)
 		}
 
-		result, err := handlers.JoinGroupBySeed(params, options.GetNodeOptions(), h.Appdb)
+		result, err := handlers.JoinGroupBySeed(params, options.GetNodeOptions())
 		if err != nil {
 			return err
 		}

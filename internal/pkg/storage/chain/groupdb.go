@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"encoding/json"
 	"errors"
 
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
@@ -130,6 +131,10 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 		}
 	}
 
+	//delete group seed
+	seedKey := s.GetSeedKey(groupId)
+	db.Delete([]byte(seedKey))
+
 	return nil
 }
 
@@ -138,7 +143,7 @@ func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	key := s.GetGroupItemKey(groupItem.Group.GroupId)
 	exist, _ := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist {
-		return errors.New("Group with same GroupId existed")
+		return errors.New("group with same GroupId existed")
 	}
 
 	//add group to db
@@ -157,7 +162,7 @@ func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, e
 		if err != nil {
 			return nil, err
 		}
-		return nil, errors.New("Group Not Found")
+		return nil, errors.New("group Not Found")
 	}
 
 	groupInfoByte, err := cs.dbmgr.GroupInfoDb.Get([]byte(key))
@@ -165,8 +170,7 @@ func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, e
 		return nil, err
 	}
 
-	var groupInfo *quorumpb.NodeSDKGroupItem
-	groupInfo = &quorumpb.NodeSDKGroupItem{}
+	groupInfo := &quorumpb.NodeSDKGroupItem{}
 	err = proto.Unmarshal(groupInfoByte, groupInfo)
 	if err != nil {
 		return nil, err
@@ -194,38 +198,6 @@ func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
 	return result, err
 }
 
-func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
-	key := s.GetSeedKey(seed.GenesisBlock.GroupId)
-	value, err := proto.Marshal(seed)
-	if err != nil {
-		return err
-	}
-	return cs.dbmgr.GroupInfoDb.Set(key, value)
-}
-
-func (cs *Storage) GetGroupSeed(groupID string) (*quorumpb.GroupSeed, error) {
-	key := s.GetSeedKey(groupID)
-	exist, err := cs.dbmgr.GroupInfoDb.IsExist(key)
-	if err != nil {
-		return nil, err
-	}
-	if !exist {
-		return nil, errors.New("Group seed not exist")
-	}
-
-	value, err := cs.dbmgr.GroupInfoDb.Get(key)
-	if err != nil {
-		return nil, err
-	}
-
-	var result quorumpb.GroupSeed
-	if err := proto.Unmarshal(value, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
 func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 	value, err := proto.Marshal(groupItem)
 	if err != nil {
@@ -238,9 +210,62 @@ func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 		if err != nil {
 			return err
 		}
-		return errors.New("Group is not existed")
+		return errors.New("group is not existed")
 	}
 
 	//upd group to db
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
+}
+
+// group seed
+func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
+	key := s.GetSeedKey(seed.GenesisBlock.GroupId)
+	value, err := proto.Marshal(seed)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
+}
+
+func (cs *Storage) GetGroupSeed(groupId string) (*quorumpb.GroupSeed, error) {
+	key := s.GetSeedKey(groupId)
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New("group seed not exist")
+	}
+
+	value, err := cs.dbmgr.GroupInfoDb.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var result quorumpb.GroupSeed
+	if err := proto.Unmarshal(value, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (cs *Storage) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
+	var seeds map[string]*quorumpb.GroupSeed = make(map[string]*quorumpb.GroupSeed)
+
+	prefix := s.GetSeedPrefix()
+	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(prefix), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		var pbSeed quorumpb.GroupSeed
+		if err := json.Unmarshal(v, &pbSeed); err != nil {
+			return err
+		}
+		seeds[string(k)] = &pbSeed
+
+		return nil
+	})
+
+	return seeds, err
 }

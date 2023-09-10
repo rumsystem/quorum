@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/rumsystem/quorum/internal/pkg/appdata"
+	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -18,7 +19,7 @@ type GetGroupSeedResult struct {
 }
 
 func GetGroupSeed(groupId string, appdb *appdata.AppDb) (*quorumpb.GroupSeed, error) {
-	seed, err := appdb.GetGroupSeed(groupId)
+	seed, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupSeed(groupId)
 	if err != nil {
 		return nil, fmt.Errorf("get group seeds failed: %s", err)
 	}

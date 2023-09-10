@@ -19,7 +19,7 @@ import (
 // @Router /api/v1/group/leave [post]
 func (h *Handler) OpenGroup(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	params := new(handlers.LeaveGroupParam)
+	params := new(handlers.OpenGroupParam)
 
 	if err := cc.BindAndValidate(params); err != nil {
 		return err

@@ -31,8 +31,8 @@ enum TrxType {
     CHAIN_CONFIG       = 2; // chain configuration
     APP_CONFIG         = 3; // app configuration
     FORK               = 4; // fork chain
-    CELLA_REQ          = 5;
-    CELLA_RESP         = 6; 
+    SERVICE_REQ        = 5;
+    SERVICE_RESP       = 6; 
 }
 
 message PostItem {
@@ -313,7 +313,7 @@ message ServiceReqProofItem {
     bytes              Proof = 2; //StorageServiceProofItem or BrewServiceProofItem
 }
 
-message RegisterGroupReqItem {
+message  AddToCellarReqItem {
     string              GroupId         = 1;
     GroupSeed           Seed            = 2;
     uint64              CurrentBlockId  = 3;
@@ -322,6 +322,23 @@ message RegisterGroupReqItem {
     bytes               Hash            = 6;
     bytes               Signature       = 7;
     reserved  8 to 100;
+}
+
+message AddToCellarRespItem{
+    string GroupId                       = 1;
+    AddToCellarReqItem OrigReq           = 2;
+    uint64             TimeStamp         = 3;
+    string             CellarOwnerPubkey = 4;
+    bytes              Hash              = 5;
+    bytes              Signature         = 6;
+}
+
+message CellarSyncDoneItem {
+    string          GroupId      = 1;
+    ReqBlockResp    ReqBlockResp = 2;
+    string CellarOwnerPubkey     = 3;
+    bytes Hash                   = 4;
+    bytes Signature              = 5;
 }
 
 message NodeSDKGroupItem {
