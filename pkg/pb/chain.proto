@@ -7,7 +7,7 @@ enum PackageType {
     BLOCK                 = 1;
     BFT                   = 2;
     SYNC                  = 3;
-    BROADCAST_MSG         = 4;
+    BROADCAST             = 4;
 }
 
 message Package {
@@ -30,9 +30,10 @@ enum TrxType {
     UPD_GRP_SYNCER     = 1; // owner update group syncer
     CHAIN_CONFIG       = 2; // chain configuration
     APP_CONFIG         = 3; // app configuration
-    FORK               = 4; // fork chain
-    SERVICE_REQ        = 5;
-    SERVICE_RESP       = 6; 
+    FORK               = 4; 
+    ARCHIVE            = 5;
+    SERVICE_REQ        = 6;
+    SERVICE_RESP       = 7; 
 }
 
 message PostItem {

@@ -386,18 +386,19 @@ result:
 
 Now u1 can sync group blocks, verify by check top block id and trx content
 
-Time to create a Cellar
-- Cellar works as a service provider
-- Cellar has term of services
-- Cellar shard by using a seed
+------------------------------------------------------------------------------------------------------------------------------
 
-- When request service form a cellar, node need fulfill the term of service and provide proof (for example, payment recipt)
+Time to create a Cellar group
+- Cellar group works as a service provider
+- Cellar group has term of services
+
+- When request service form a cellar group, node need execute cellar group contractr and provide proof (for example, payment recipt)
 - Owner of cellar should verify the proof by themselves (RUM doesn't provide verify service)
 
-A cellar can provide 2 type of services
-1. STORAGE
-  - after accept a STORAGE request from a node, cellar will check proof, join the group and start sync all blocks till reach the block number listed in the request
-  - Storage request for the same group can be send multiple time, each time cellar receive the request, it will check proof, sync block till reach the block number in the request
+A cellar group can provide 2 type of services
+1. SYNC
+  - after accept a SYNC request from a node, cellar group will check proof provided by the req, join the group and start sync all blocks till reach the block number listed in the request
+  - SYNC request for the same group can be send multiple time, each time cellar receive the request, it will check proof, sync block till reach the block number in the request
   - when finish sync, an ARCHIVE type trx will be send to this group
   - STORAGE service requester should wait the ARCHIVE trx as a mark of sync with cellar finished then the group can be closed to save some local resources
 
@@ -405,78 +406,81 @@ A cellar can provide 2 type of services
   - after accept a BREW request from a node, cellar will 
     a. check proof
     b. join the provided group seed
-    c. sync certain mount of blocks till reach the block number listed in the request
+    c. sync certain amount of blocks till reach the block number listed in the request
   - from that point, cellar will  work as the producer of this group (collect trxs and build block) and sign all blocks by using brewer key
   - when take over the group, an FORK type trx will be send to this group
-  - BREW service requester should wait for the ARCHIVE trx
+  - BREW service requester should wait for the FORK trx till it can safely close the group locally
 
+create a cellar group
 
-create a cellar seed
-curl -X POST -H 'Content-Type: application/json' -d '{"cellar_name":"dummy_cellar", "epoch_duration":1000, "owner_keyname":"my_test_app_owner_key", "producer_keyname":"my_test_app_producer_key", "brewer_keyname":"my_brewer_key", "brew_service_term":"BREW FOR EVERYONE", "storage_service_term":"STORAGE FOR EVERYONE"}' http://127.0.0.1:8002/api/v2/cellar/newseed | jq
+curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"dummy_app_id", "app_name":"my_dummy_cellar", "group_name":"cellar_group","consensus_type":"poa", "sync_type":"private", "epoch_duration":1000, "owner_keyname":"my_test_app_owner_key", "producer_keyname":"my_test_app_producer_key", "cellar_"brew_service":{"term":"BREW FOR EVERYONE", "contract":""}, "sync_service":{"term":"SYNC FOR EVERYONE","contract":""} }' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
 parameters:
-cellar_name: name of the cellar
-brewer_keyname : brewer keyname
-brew_service_term : term of brew service
-storage_service_term : term of storage service
+4 new parmeters are requested to create a new cellar group seed
+  - BrewService   
+	- SyncService 
+	- BrewerKeyname 
+	- SyncerKeyname 
+  * all other parameters are as same as the parameters when create group seed
+  * if brewer_keyname or "syncer_keyname" are not given, a new keyname (and keypair) will be created for brewer and syncer
 
-* all other parameters are as same as the parameters when create group seed
+ BrewService:
+  - Term string : brew service term
+  - Contract    : A PRS contract (executable or not) for brew service
+
+ SyncService:
+  - Term string : sync service term
+  - Contract    : A PRS contract (executable or not) for sync service
+
+  BrewerKeyname string : keyname of cellar group brewer, the pubkey will be use to sign all new blocks and FORK trx when brew service is accepted
+  
+  SyncerKeyname string : keyname of cellar group syncer, the pubkey will be use to sign ARCHIVE trx when sync service is accepted
+
+  curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"dummy_app_id", "app_name":"my_dummy_cellar", "group_name":"cellar_group","consensus_type":"poa", "sync_type":"private", "epoch_duration":1000, "owner_keyname":"my_test_app_owner_key", "producer_keyname":"my_test_app_producer_key", "brew_service":{"term":"BREW FOR EVERYONE", "contract":""}, "sync_service":{"term":"SYNC FOR EVERYONE","contract":""}}' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
 result:
-{
-  "cellar_id": "bc42ba3a-8972-4af5-b3a9-21b03e719280",
-  "owner_keyname": "my_test_app_owner_key",
-  "brewer_keyname": "bc42ba3a-8972-4af5-b3a9-21b03e719280_brewer_sign_keyname",
-  "producer_keyname": "my_test_app_producer_key",
-  "seed": {
-    "CellarId": "bc42ba3a-8972-4af5-b3a9-21b03e719280",
-    "CellarName": "dummy_cella",
-    "CellarOwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
-    "CellarBrewerPubkey": "A8uxWZPMrH216FZhVOjQj7kZcnfaVtyUoJGNjE0tFfYd",
-    "CellarProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
-    "ServiceTerms": [
-      {
-        "Type": 1,
-        "Term": "ChRTVE9SQUdFIEZPUiBFVkVSWU9ORQ=="
-        "Contract":""
-      },
-      {
-        "Type":0
-        "Term": "ChFCUkVXIEZPUiBFVkVSWU9ORQ=="
-        "Contract":""
-      }
-    ],
-    "Group": {
-      "GenesisBlock": {
-        "GroupId": "30dcc230-e468-4825-82dc-56e06199d5d9",
-        "ProducerPubkey": "AsDE8vaQE8KqwKPku84KqQdCW1-_5mZot8V7_XQbNYAd",
-        "TimeStamp": "1694026288131981653",
-        "Consensus": {
-          "Data": "CiRkNGMzNTJiZi02ZmE1LTRlNmUtOGQzOC1iMDIyMTVlNmY5ZWMiZQokMzBkY2MyMzAtZTQ2OC00ODI1LTgyZGMtNTZlMDYxOTlkNWQ5KOgHMixBc0RFOHZhUUU4S3F3S1BrdTg0S3FRZENXMS1fNW1ab3Q4VjdfWFFiTllBZDoMSW5pdGlhbCBGb3Jr"
-        },
-        "BlockHash": "cXLFqIbp270vmPAFnGNzt5Tlso9W00+fKsxSxsXuXYk=",
-        "ProducerSign": "SAO4J3WL9W2JYwdpkHdggmLg0TuW3s/rIoJYpGtYqzMAH4jFP6NIQmqYhuOksmYpeCZLDhBKW51rMIsLyhLDXQE="
-      },
-      "GroupId": "30dcc230-e468-4825-82dc-56e06199d5d9",
-      "GroupName": "dummy_cellar_group",
+  {
+    "group_id": "98fd8081-ed85-4806-9a60-b107a13a066d",
+    "owner_keyname": "my_test_app_owner_key",
+    "producer_sign_keyname": "98fd8081-ed85-4806-9a60-b107a13a066d_neoproducer_sign_keyname",
+    "brewer_keyname": "98fd8081-ed85-4806-9a60-b107a13a066d_brewer_sign_keyname",
+    "syncer_keyname": "98fd8081-ed85-4806-9a60-b107a13a066d_syncer_sign_keyname",
+    "seed": {
+      "GroupId": "98fd8081-ed85-4806-9a60-b107a13a066d",
+      "GroupName": "cellar_group",
       "OwnerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
-      "SyncType": 1,
-      "CipherKey": "333e594f5afb800b910345af216f38106af02e686a220c205b72deb94b9f9da5",
-      "Hash": "vMqI5l+Cheh9+U22klpj4Oy499kV33gQC6QvArlmxYQ=",
-      "Signature": "/wwXm8qbsdEzLxNiBaKSXY95apf+hNd3x56IxiYGM0p709YFonLlqAMF2huaP6ofy3O+b7rPmhxt7AIkqw6EtAE="
+      "CipherKey": "e4d57865cd18223d3bed361a754e07bb2d05469aa5eaa925d41e55a2c6b923f4",
+      "AppId": "dummy_app_id",
+      "AppName": "my_dummy_cellar",
+      "GenesisBlock": {
+        "GroupId": "98fd8081-ed85-4806-9a60-b107a13a066d",
+        "ProducerPubkey": "Az4MCHXOg3-jA-CWJ26lJpQlclKYwQ8aIUw2ZDObF6li",
+        "TimeStamp": "1694449939617988775",
+        "Consensus": {
+          "Data": "CiRjMmVjM2ExMC0wNWQyLTRiZTYtODUzYi03NDMwOTFmZTQ4MmUiZQokOThmZDgwODEtZWQ4NS00ODA2LTlhNjAtYjEwN2ExM2EwNjZkKOgHMixBejRNQ0hYT2czLWpBLUNXSjI2bEpwUWxjbEtZd1E4YUlVdzJaRE9iRjZsaToMSW5pdGlhbCBGb3Jr"
+        },
+        "BlockHash": "Kw3Dnc1aIuUEdyeb+nDSAO+YacPFLmJxSUtzGBiZAHk=",
+        "ProducerSign": "UnyZ2R1zyKondPWDDTYdzNPqzFNofYFz4Z1bydz/a/5FRTthN9dF7Le+ecL3S4Nqv4WHoQVJr3bDgGow4SypGQA="
+      },
+      "Services": [
+        {
+          "Service": "CixBeHZJRld1MlpkRFUwNGZKTGJTLXJmUkd5OXNkdTB4amhLQ1lhb2V5NmJKdRIsQWdudWQ5NmZGT0lfZ0MyaS1jQUU2LU1wOXhELXRqdHU5eklzOTZhbkhsckQaEUJSRVcgRk9SIEVWRVJZT05F"
+        },
+        {
+          "Type": 1,
+          "Service": "CixBZ251ZDk2ZkZPSV9nQzJpLWNBRTYtTXA5eEQtdGp0dTl6SXM5NmFuSGxyRBIRQlJFVyBGT1IgRVZFUllPTkU="
+        }
+      ],
+      "Hash": "cUmhytj2uyAGBTZWxKR6QJdt/SMU0c5WXINWb4W9IGk=",
+      "Signature": "OY6KOPi7H8eP0D4rM4Uz9LmQAjiBf7BE6YaSa+ndJrpL6lDZ7SSqMOlBNqjAzPLfHMpnKMSZeQf3CYL6wxEJDgA="
     },
-    "Hash": "tMOZqdMdVGz/SltXUwlrTH/nV76dLfZrXDY6U/k610Q=",
-    "Signature": "6B+uzAZZTHWofGwsE+pV9umeSf+INsuAdkF+rOkTjL9JBLPsSdO/feIO60DJTL0xFkUW6CAIJSQ/pAN+FXjFvQA="
-  },
-  "seed_byts": "CiRiYzQyYmEzYS04OTcyLTRhZjUtYjNhOS0yMWIwM2U3MTkyODASC2R1bW15X2NlbGxhGixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSIsQTh1eFdaUE1ySDIxNkZaaFZPalFqN2taY25mYVZ0eVVvSkdOakUwdEZmWWQqLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMhoIARIWChRTVE9SQUdFIEZPUiBFVkVSWU9ORTIVEhMKEUJSRVcgRk9SIEVWRVJZT05FOukECtYCCiQzMGRjYzIzMC1lNDY4LTQ4MjUtODJkYy01NmUwNjE5OWQ1ZDkiLEFzREU4dmFRRThLcXdLUGt1ODRLcVFkQ1cxLV81bVpvdDhWN19YUWJOWUFkMNWCn8Lw/ZjBFzqQARKNAQokZDRjMzUyYmYtNmZhNS00ZTZlLThkMzgtYjAyMjE1ZTZmOWVjImUKJDMwZGNjMjMwLWU0NjgtNDgyNS04MmRjLTU2ZTA2MTk5ZDVkOSjoBzIsQXNERTh2YVFFOEtxd0tQa3U4NEtxUWRDVzEtXzVtWm90OFY3X1hRYk5ZQWQ6DEluaXRpYWwgRm9ya0IgcXLFqIbp270vmPAFnGNzt5Tlso9W00+fKsxSxsXuXYlKQUgDuCd1i/VtiWMHaZB3YIJi4NE7lt7P6yKCWKRrWKszAB+IxT+jSEJqmIbjpLJmKXgmSw4QSludazCLC8oSw10BEiQzMGRjYzIzMC1lNDY4LTQ4MjUtODJkYy01NmUwNjE5OWQ1ZDkaEWR1bW15X2NlbGxhX2dyb3VwIixBcTVqOTA3eFB6X3FWMXNURVF6QjBQeG9rOUQ3LXZYQ1NJOUpHYmpUWjBqZSgBMkAzMzNlNTk0ZjVhZmI4MDBiOTEwMzQ1YWYyMTZmMzgxMDZhZjAyZTY4NmEyMjBjMjA1YjcyZGViOTRiOWY5ZGE1SiC8yojmX4KF6H35TbaSWmPg7Lj32RXfeBALpC8CuWbFhFJB/wwXm8qbsdEzLxNiBaKSXY95apf+hNd3x56IxiYGM0p709YFonLlqAMF2huaP6ofy3O+b7rPmhxt7AIkqw6EtAFCILTDmanTHVRs/0pbV1MJa0x/51e+nS32a1w2OlP5OtdESkHoH67MBllMdah8bCwT6lX26Z5J/4g2y4B2QX6s6ROMv0kEs+xJ07994g7rQMlMvTEWRRboIAglJD+kA34VeMW9AA=="
-}
+    "seed_byts": "CiQ5OGZkODA4MS1lZDg1LTQ4MDYtOWE2MC1iMTA3YTEzYTA2NmQSDGNlbGxhcl9ncm91cBosQXE1ajkwN3hQel9xVjFzVEVRekIwUHhvazlENy12WENTSTlKR2JqVFowamUqQGU0ZDU3ODY1Y2QxODIyM2QzYmVkMzYxYTc1NGUwN2JiMmQwNTQ2OWFhNWVhYTkyNWQ0MWU1NWEyYzZiOTIzZjQyDGR1bW15X2FwcF9pZDoPbXlfZHVtbXlfY2VsbGFyQtYCCiQ5OGZkODA4MS1lZDg1LTQ4MDYtOWE2MC1iMTA3YTEzYTA2NmQiLEF6NE1DSFhPZzMtakEtQ1dKMjZsSnBRbGNsS1l3UThhSVV3MlpET2JGNmxpMKeB86Thp/nBFzqQARKNAQokYzJlYzNhMTAtMDVkMi00YmU2LTg1M2ItNzQzMDkxZmU0ODJlImUKJDk4ZmQ4MDgxLWVkODUtNDgwNi05YTYwLWIxMDdhMTNhMDY2ZCjoBzIsQXo0TUNIWE9nMy1qQS1DV0oyNmxKcFFsY2xLWXdROGFJVXcyWkRPYkY2bGk6DEluaXRpYWwgRm9ya0IgKw3Dnc1aIuUEdyeb+nDSAO+YacPFLmJxSUtzGBiZAHlKQVJ8mdkdc8iqJ3T1gw02HczT6sxTaH2Bc+GdW8nc/2v+RUU7YTfXRey3vnnC90uDar+Fh6EFSa92w4BqMOEsqRkASnESbwosQXh2SUZXdTJaZERVMDRmSkxiUy1yZlJHeTlzZHUweGpoS0NZYW9leTZiSnUSLEFnbnVkOTZmRk9JX2dDMmktY0FFNi1NcDl4RC10anR1OXpJczk2YW5IbHJEGhFCUkVXIEZPUiBFVkVSWU9ORUpFCAESQQosQWdudWQ5NmZGT0lfZ0MyaS1jQUU2LU1wOXhELXRqdHU5eklzOTZhbkhsckQSEUJSRVcgRk9SIEVWRVJZT05FUiBxSaHK2Pa7IAYFNlbEpHpAl239IxTRzlZcg1Zvhb0gaVpBOY6KOPi7H8eP0D4rM4Uz9LmQAjiBf7BE6YaSa+ndJrpL6lDZ7SSqMOlBNqjAzPLfHMpnKMSZeQf3CYL6wxEJDgA="
+  }
 
-cellar_id  : cellar id
-seed      : cellar seed
-seed_byts : cellar seed byts 
-
-
-
+Parameters:
+  brewer_keyname : keyname of brewer
+  syncer_keyname : keyname of syncer
+  * all other parameters are as same as group seed
 
 
 
