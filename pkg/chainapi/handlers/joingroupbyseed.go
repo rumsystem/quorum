@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -49,39 +47,14 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 		return nil, rumerrors.NewBadRequestError(msg)
 	}
 
-	seedClone := proto.Clone(seed).(*pb.GroupSeed)
-	seedClone.Hash = nil
-	seedClone.Signature = nil
+	verified, err := rumchaindata.VerifyGroupSeed(seed)
 
-	//verify hash and signature
-	seedCloneByts, err := proto.Marshal(seedClone)
-	if err != nil {
-		return nil, rumerrors.NewBadRequestError(err)
-	}
-	hash := localcrypto.Hash(seedCloneByts)
-	if !bytes.Equal(hash, seed.Hash) {
-		msg := fmt.Sprintf("hash not match, expect %s, got %s", hex.EncodeToString(hash), hex.EncodeToString(seed.Hash))
-		return nil, rumerrors.NewBadRequestError(msg)
-	}
-
-	verified, err := rumchaindata.VerifySign(seed.OwnerPubkey, hash, seed.Signature)
 	if err != nil {
 		return nil, rumerrors.NewBadRequestError(err)
 	}
 
 	if !verified {
-		return nil, rumerrors.NewBadRequestError("verify signature failed")
-	}
-
-	//verify genesis block
-	r, err := rumchaindata.ValidGenesisBlockPoa(seed.GenesisBlock)
-	if err != nil {
-		return nil, rumerrors.NewBadRequestError(err)
-	}
-
-	if !r {
-		msg := "Join Group failed, verify genesis block failed"
-		return nil, rumerrors.NewBadRequestError(msg)
+		return nil, rumerrors.NewBadRequestError("seed not verified")
 	}
 
 	//create empty group
