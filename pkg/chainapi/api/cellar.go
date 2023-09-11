@@ -42,7 +42,7 @@ func (h *Handler) AddCellar(c echo.Context) (err error) {
 			return rumerrors.NewBadRequestError("Invalid service type")
 		}
 
-		trxId, err := group.AddCellar(params.CellarSeed, serviceType, params.Proof)
+		trxId, err := group.ReqCellarServices(params.CellarSeed, serviceType, params.Proof)
 		if err != nil {
 			return err
 		}

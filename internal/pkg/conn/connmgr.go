@@ -35,9 +35,6 @@ type Conn struct {
 type ConnMgr struct {
 	GroupId            string
 	UserChannelId      string
-	ProducerChannelId  string
-	OwnerPubkey        string
-	UserSignPubkey     string
 	ProviderPeerIdPool map[string]string // key: group owner PubKey; value: group owner peerId
 	ProducerPool       map[string]string // key: group producer Pubkey; value: group producer Pubkey
 	DataHandlerIface   chaindef.ChainDataSyncIface
@@ -81,7 +78,7 @@ func InitConn() error {
 func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("RegisterChainCtx called, groupId <%s>", groupId)
 	connMgr := &ConnMgr{}
-	connMgr.InitGroupConnMgr(groupId, ownerPubkey, userSignPubkey, cIface)
+	connMgr.initGroupConnMgr(groupId, cIface)
 	conn.ConnMgrs[groupId] = connMgr
 	return nil
 }
@@ -107,13 +104,10 @@ func (conn *Conn) GetConnMgr(groupId string) (*ConnMgr, error) {
 	return nil, fmt.Errorf("connMgr for group <%s> not exist", groupId)
 }
 
-func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
+func (connMgr *ConnMgr) initGroupConnMgr(groupId string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("InitGroupConnMgr called, groupId <%s>", groupId)
 	connMgr.UserChannelId = constants.USER_CHANNEL_PREFIX + groupId
-	connMgr.ProducerChannelId = constants.PRODUCER_CHANNEL_PREFIX + groupId
 	connMgr.GroupId = groupId
-	connMgr.OwnerPubkey = ownerPubkey
-	connMgr.UserSignPubkey = userSignPubkey
 	connMgr.ProviderPeerIdPool = make(map[string]string)
 	connMgr.ProducerPool = make(map[string]string)
 	connMgr.PsConns = make(map[string]*pubsubconn.P2pPubSubConn)
@@ -126,8 +120,7 @@ func (connMgr *ConnMgr) InitGroupConnMgr(groupId string, ownerPubkey string, use
 	}
 
 	//initial ps conn for user channel
-	connMgr.InitialPsConn()
-
+	connMgr.initialPsConn()
 	return nil
 }
 
@@ -142,8 +135,8 @@ func (connMgr *ConnMgr) LeaveAllChannels() error {
 	return nil
 }
 
-func (connMgr *ConnMgr) InitialPsConn() {
-	conn_log.Debugf("<%s> InitialPsConn called", connMgr.GroupId)
+func (connMgr *ConnMgr) initialPsConn() {
+	conn_log.Debugf("<%s> initialPsConn called", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
 	defer connMgr.pscounsmu.Unlock()
 	userPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, connMgr.UserChannelId, connMgr.DataHandlerIface, nodectx.GetNodeCtx().Node.NodeName)
@@ -188,6 +181,53 @@ func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string
 	//conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
 	psconn := connMgr.getUserConn()
 	return psconn.Publish(pkgBytes)
+}
+
+func (connMgr *ConnMgr) SendCellarReqTrx(seed *quorumpb.GroupSeed, trx *quorumpb.Trx) error {
+	conn_log.Debugf("<%s> initialPsConn called", connMgr.GroupId)
+	connMgr.pscounsmu.Lock()
+	defer connMgr.pscounsmu.Unlock()
+	cellarChannelId := constants.USER_CHANNEL_PREFIX + seed.GroupId
+	cellarPsconn := pubsubconn.GetPubSubConnByChannelId(context.Background(), nodectx.GetNodeCtx().Node.Pubsub, cellarChannelId, nil, nodectx.GetNodeCtx().Node.NodeName)
+
+	// check trx.Data size
+	if _, err := data.IsTrxDataWithinSizeLimit(trx.Data); err != nil {
+		return err
+	}
+
+	// compress trx.Data
+	compressedContent := new(bytes.Buffer)
+	if err := utils.Compress(bytes.NewReader(trx.Data), compressedContent); err != nil {
+		return err
+	}
+	trx.Data = compressedContent.Bytes()
+
+	pbBytes, err := proto.Marshal(trx)
+	if err != nil {
+		return err
+	}
+
+	pkg := &quorumpb.Package{
+		Type: quorumpb.PackageType_TRX,
+		Data: pbBytes,
+	}
+
+	pkgBytes, err := proto.Marshal(pkg)
+	if err != nil {
+		return err
+	}
+
+	//conn_log.Debugf("<%s> Send trx via User_Channel", connMgr.GroupId)
+	err = cellarPsconn.Publish(pkgBytes)
+	if err != nil {
+		return err
+	}
+
+	//close cellar channel
+	cellarPsconn.LeaveChannel()
+	cellarPsconn = nil
+
+	return nil
 }
 
 func (connMgr *ConnMgr) SendSyncReqMsgRex(req *quorumpb.ReqBlock) error {

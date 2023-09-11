@@ -483,26 +483,62 @@ Parameters:
   * all other parameters are as same as group seed
 
 
+You can get the "plane text" version of a seed by using the following api
 
+  curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQ1ZWNmMWU5YS04YzI1LTQyMzktYmU1ZC1jMzM3NWE2YzQxMDMSDGNlbGxhcl9ncm91cBosQXE1ajkwN3hQel9xVjFzVEVRekIwUHhvazlENy12WENTSTlKR2JqVFowamUqQDVjOTQzYmU3MmZkZDlkODk2NTJlMTg0ZTdiN2RhZWYxMTNkNGEwOTM4Y2U5ZmE5OWJiMTU1MzI2M2Q0MTk0M2QyDGR1bW15X2FwcF9pZDoPbXlfZHVtbXlfY2VsbGFyQtYCCiQ1ZWNmMWU5YS04YzI1LTQyMzktYmU1ZC1jMzM3NWE2YzQxMDMiLEF1NHkwZ0FEUzFTN0Y2NmtCNXJxY1R3SU1LSHNYMmt5eGlJNmlVc20zeVpjMOa7yPewlPvBFzqQARKNAQokYWE0ZjUxNDQtNGNjZC00NTk2LWFjNmEtNjVmYWY4MTc4ZTQyImUKJDVlY2YxZTlhLThjMjUtNDIzOS1iZTVkLWMzMzc1YTZjNDEwMyjoBzIsQXU0eTBnQURTMVM3RjY2a0I1cnFjVHdJTUtIc1gya3l4aUk2aVVzbTN5WmM6DEluaXRpYWwgRm9ya0IgeVvC9zRV0jLldWdRhQaf8t0Adzmi4Ux+1HxjtVJjR+RKQZU+uN7AxjPu5cGuy7zSGks+PgbMq+dxUUMZdeqSOCFtLX5gX983bKywytktfVWyvdHtON5KqiTDcgS/x7RWmWIASnESbwosQXRTUVd2OWE0VDhMTlpIUG1TTjZlN2NUUXlycUhYSXlXb1B4N1BjbHdUV3ISLEF1RXlmMVBnQjBTZUJobUY1cWRKazROa1kycmdmNEZIWF9GTjVKWWxuNGJBGhFCUkVXIEZPUiBFVkVSWU9ORUpFCAESQQosQXVFeWYxUGdCMFNlQmhtRjVxZEprNE5rWTJyZ2Y0RkhYX0ZONUpZbG40YkESEUJSRVcgRk9SIEVWRVJZT05FUiAhy0ugVRfFEQOE/tt2ANEW+wgbfZS4L6CGZiznmsyhhFpBhRPQSZv4Rr6E9Les2yzUfcV3y8cMBxBQ0Zf9qt0NG1cfOFqYBOaigJ2H8NHZeDaKK++zxZWg+fThywjUAiKMwwE="}' http://127.0.0.1:8002/api/v2/group/parseseed
 
+  result
+  {
+    "groupId": "5ecf1e9a-8c25-4239-be5d-c3375a6c4103",
+    "groupName": "cellar_group",
+    "ownerPubkey": "Aq5j907xPz_qV1sTEQzB0Pxok9D7-vXCSI9JGbjTZ0je",
+    "producerPubkey": "Au4y0gADS1S7F66kB5rqcTwIMKHsX2kyxiI6iUsm3yZc",
+    "syncType": "PUBLIC",
+    "cipherKey": "5c943be72fdd9d89652e184e7b7daef113d4a0938ce9fa99bb1553263d41943d",
+    "appId": "dummy_app_id",
+    "appName": "my_dummy_cellar",
+    "consensusInfo": {
+      "ConsensusId": "aa4f5144-4ccd-4596-ac6a-65faf8178e42",
+      "ForkInfo": {
+        "GroupId": "5ecf1e9a-8c25-4239-be5d-c3375a6c4103",
+        "EpochDuration": 1000,
+        "producers": [
+          "Au4y0gADS1S7F66kB5rqcTwIMKHsX2kyxiI6iUsm3yZc"
+        ],
+        "Memo": "Initial Fork"
+      }
+    },
+    "brewService": {
+      "BrewerPubkey": "AtSQWv9a4T8LNZHPmSN6e7cTQyrqHXIyWoPx7PclwTWr",
+      "SyncerPubkey": "AuEyf1PgB0SeBhmF5qdJk4NkY2rgf4FHX_FN5JYln4bA",
+      "Term": "BREW FOR EVERYONE"
+    },
+    "syncService": {
+      "SyncerPubkey": "AuEyf1PgB0SeBhmF5qdJk4NkY2rgf4FHX_FN5JYln4bA",
+      "Term": "BREW FOR EVERYONE"
+    },
+    "genesisBlock": {
+      "GroupId": "5ecf1e9a-8c25-4239-be5d-c3375a6c4103",
+      "ProducerPubkey": "Au4y0gADS1S7F66kB5rqcTwIMKHsX2kyxiI6iUsm3yZc",
+      "TimeStamp": "1694458069896011238",
+      "Consensus": {
+        "Data": "CiRhYTRmNTE0NC00Y2NkLTQ1OTYtYWM2YS02NWZhZjgxNzhlNDIiZQokNWVjZjFlOWEtOGMyNS00MjM5LWJlNWQtYzMzNzVhNmM0MTAzKOgHMixBdTR5MGdBRFMxUzdGNjZrQjVycWNUd0lNS0hzWDJreXhpSTZpVXNtM3laYzoMSW5pdGlhbCBGb3Jr"
+      },
+      "BlockHash": "eVvC9zRV0jLldWdRhQaf8t0Adzmi4Ux+1HxjtVJjR+Q=",
+      "ProducerSign": "lT643sDGM+7lwa7LvNIaSz4+Bsyr53FRQxl16pI4IW0tfmBf3zdsrLDK2S19VbK90e043kqqJMNyBL/HtFaZYgA="
+    },
+    "hash": "IctLoFUXxREDhP7bdgDRFvsIG32UuC+ghmYs55rMoYQ=",
+    "sign": "hRPQSZv4Rr6E9Les2yzUfcV3y8cMBxBQ0Zf9qt0NG1cfOFqYBOaigJ2H8NHZeDaKK++zxZWg+fThywjUAiKMwwE="
+  }
 
+You can verify the hash and signature of a seed by using the following api
+  curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQ1ZWNmMWU5YS04YzI1LTQyMzktYmU1ZC1jMzM3NWE2YzQxMDMSDGNlbGxhcl9ncm91cBosQXE1ajkwN3hQel9xVjFzVEVRekIwUHhvazlENy12WENTSTlKR2JqVFowamUqQDVjOTQzYmU3MmZkZDlkODk2NTJlMTg0ZTdiN2RhZWYxMTNkNGEwOTM4Y2U5ZmE5OWJiMTU1MzI2M2Q0MTk0M2QyDGR1bW15X2FwcF9pZDoPbXlfZHVtbXlfY2VsbGFyQtYCCiQ1ZWNmMWU5YS04YzI1LTQyMzktYmU1ZC1jMzM3NWE2YzQxMDMiLEF1NHkwZ0FEUzFTN0Y2NmtCNXJxY1R3SU1LSHNYMmt5eGlJNmlVc20zeVpjMOa7yPewlPvBFzqQARKNAQokYWE0ZjUxNDQtNGNjZC00NTk2LWFjNmEtNjVmYWY4MTc4ZTQyImUKJDVlY2YxZTlhLThjMjUtNDIzOS1iZTVkLWMzMzc1YTZjNDEwMyjoBzIsQXU0eTBnQURTMVM3RjY2a0I1cnFjVHdJTUtIc1gya3l4aUk2aVVzbTN5WmM6DEluaXRpYWwgRm9ya0IgeVvC9zRV0jLldWdRhQaf8t0Adzmi4Ux+1HxjtVJjR+RKQZU+uN7AxjPu5cGuy7zSGks+PgbMq+dxUUMZdeqSOCFtLX5gX983bKywytktfVWyvdHtON5KqiTDcgS/x7RWmWIASnESbwosQXRTUVd2OWE0VDhMTlpIUG1TTjZlN2NUUXlycUhYSXlXb1B4N1BjbHdUV3ISLEF1RXlmMVBnQjBTZUJobUY1cWRKazROa1kycmdmNEZIWF9GTjVKWWxuNGJBGhFCUkVXIEZPUiBFVkVSWU9ORUpFCAESQQosQXVFeWYxUGdCMFNlQmhtRjVxZEprNE5rWTJyZ2Y0RkhYX0ZONUpZbG40YkESEUJSRVcgRk9SIEVWRVJZT05FUiAhy0ugVRfFEQOE/tt2ANEW+wgbfZS4L6CGZiznmsyhhFpBhRPQSZv4Rr6E9Les2yzUfcV3y8cMBxBQ0Zf9qt0NG1cfOFqYBOaigJ2H8NHZeDaKK++zxZWg+fThywjUAiKMwwE="}' http://127.0.0.1:8002/api/v2/group/verifyseed
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+result:
+  {
+    "verified": true,
+    "error": ""
+  }
 
 
 ===== TO BE MODIFIED =====

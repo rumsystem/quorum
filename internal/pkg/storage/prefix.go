@@ -35,8 +35,8 @@ const (
 	CNS_INFO_PREFIX = "cns"     //consensus info
 
 	// cellar db
-	CELLAR_PREFIX     = "cellar"     //cellar
-	CELLAR_GRP_PREFIX = "cellar_grp" //cellar group
+	SYNC_PREFIX = "sync_s" //sync service
+	BREW_PREFIX = "brew_s" //brew service
 )
 
 func _getEthPubkey(libp2pPubkey string) string {
@@ -255,27 +255,12 @@ func GetGroupConsensusKey(groupId string, prefix ...string) string {
 	return nodeprefix + CNS_INFO_PREFIX + "_" + groupId + "_"
 }
 
-func GetCellarPrefix() string {
-	return CELLAR_PREFIX + "_"
+func GetSyncServiceKey(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + SYNC_PREFIX + "_" + groupId
 }
 
-func GetCellarGroupPrefix() string {
-	return CELLAR_GRP_PREFIX + "_"
-}
-
-func GetCellarSeedKey(cellarId string) string {
-	return GetCellarPrefix() + "seed_" + cellarId
-}
-
-func GetCellarKey(cellarId string) string {
-	result := GetCellarPrefix() + cellarId
-	return result
-}
-
-func GetCellarGroupKey(cellarId, groupId string) string {
-	return GetCellarGroupPrefix() + cellarId + "_" + groupId
-}
-
-func GetCellarGroupPrefixByCellarId(cellarId string) string {
-	return GetCellarGroupPrefix() + cellarId + "_"
+func GetBrewServiceKey(groupId string, prefix ...string) string {
+	nodeprefix := utils.GetPrefix(prefix...)
+	return nodeprefix + BREW_PREFIX + "_" + groupId
 }

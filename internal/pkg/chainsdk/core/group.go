@@ -9,16 +9,20 @@ import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
 	"github.com/rumsystem/quorum/internal/pkg/storage/def"
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
+	"github.com/rumsystem/quorum/pkg/data"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 var group_log = logging.Logger("group")
 
 type Group struct {
-	Item     *quorumpb.GroupItem
-	ChainCtx *Chain
-	GroupId  string
-	Nodename string
+	Item        *quorumpb.GroupItem
+	BrewService *quorumpb.BrewServiceItem
+	SyncService *quorumpb.SyncServiceItem
+	ChainCtx    *Chain
+	GroupId     string
+	Nodename    string
 }
 
 func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) error {
@@ -70,6 +74,40 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 		return err
 	}
 
+	//set group services
+	grp.BrewService = nil
+	grp.SyncService = nil
+
+	//parse group service items
+	group_log.Debugf("<%s> save group service items", grp.Item.GroupId)
+	if seed.Services != nil {
+		for _, service := range seed.Services {
+			if service.Type == quorumpb.GroupServiceType_BREW_SERVICE {
+				brewService := &quorumpb.BrewServiceItem{}
+				err = proto.Unmarshal(service.Service, brewService)
+				if err != nil {
+					return err
+				}
+				grp.BrewService = brewService
+				err = nodectx.GetNodeCtx().GetChainStorage().SaveGroupBrewService(grp.GroupId, brewService, grp.Nodename)
+				if err != nil {
+					return err
+				}
+			} else if service.Type == quorumpb.GroupServiceType_SYNC_SERVICE {
+				syncService := &quorumpb.SyncServiceItem{}
+				err = proto.Unmarshal(service.Service, syncService)
+				if err != nil {
+					return err
+				}
+				grp.SyncService = syncService
+				err = nodectx.GetNodeCtx().GetChainStorage().SaveGroupSyncService(grp.GroupId, syncService, grp.Nodename)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
 	grp.ChainCtx.NewChainWithSeed(seed, groupItem, grp.Nodename)
@@ -102,6 +140,20 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	grp.Item = item
 	grp.GroupId = item.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
+
+	//set group services
+	grp.BrewService = nil
+	grp.SyncService = nil
+
+	brewService, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupBrewService(grp.GroupId, grp.Nodename)
+	if err == nil {
+		grp.BrewService = brewService
+	}
+
+	syncService, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupSyncService(grp.GroupId, grp.Nodename)
+	if err == nil {
+		grp.SyncService = syncService
+	}
 
 	//create and initial chain
 	grp.ChainCtx = &Chain{}
@@ -292,8 +344,18 @@ func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, err
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) AddCellar(seed *quorumpb.GroupSeed, serviceType quorumpb.GroupServiceType, proof *quorumpb.ServiceReqProofItem) (string, error) {
+func (grp *Group) ReqCellarServices(cellarSeed *quorumpb.GroupSeed, serviceType quorumpb.GroupServiceType, proof *quorumpb.ServiceReqProofItem) (string, error) {
 	group_log.Debugf("<%s> AddCellar called", grp.Item.GroupId)
+	verified, err := data.VerifyGroupSeed(cellarSeed)
+	if err != nil {
+		return "", err
+	}
+
+	if !verified {
+		return "", fmt.Errorf("seed not verified")
+	}
+
+	//create req service trx
 
 	/*
 		signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
