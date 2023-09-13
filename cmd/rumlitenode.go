@@ -202,10 +202,10 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 
 	//Commented by cuicat
 	//start sync all groups
-	err = chain.GetGroupMgr().StartSyncAllGroups()
-	if err != nil {
-		logger.Fatalf(err.Error())
-	}
+	//err = chain.GetGroupMgr().StartSyncAllGroups()
+	//if err != nil {
+	//	logger.Fatalf(err.Error())
+	//}
 
 	//run local http api service
 	h := &api.Handler{

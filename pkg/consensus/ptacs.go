@@ -21,7 +21,7 @@ type PTAcs struct {
 }
 
 func NewPTACS(cfg Config, consensus *quorumpb.Consensus, epoch uint64, chAcsDone chan *PTAcsResult) *PTAcs {
-	ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
+	//ptacs_log.Infof("NewTrxACS called epoch <%d>", epoch)
 	acs := &PTAcs{
 		Config:        cfg,
 		epoch:         epoch,
@@ -40,7 +40,7 @@ func NewPTACS(cfg Config, consensus *quorumpb.Consensus, epoch uint64, chAcsDone
 }
 
 func (a *PTAcs) InputValue(val []byte) error {
-	ptacs_log.Info("InputValue called")
+	//ptacs_log.Info("InputValue called")
 	rbc, ok := a.rbcInsts[a.MyPubkey]
 	if !ok {
 		return fmt.Errorf("could not find rbc instance <%s>", a.MyPubkey)

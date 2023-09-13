@@ -16,19 +16,19 @@ import (
 )
 
 type JoinGroupBySeedParams struct {
-	Seed            []byte `from:"seed" json:"seed" validate:"required"`
-	UserSignKeyName string `from:"user_sign_keyname" json:"user_sign_keyname" validate:"required"`
+	Seed        []byte `from:"seed" json:"seed" validate:"required"`
+	UserKeyName string `from:"user_keyname" json:"user_keyname" validate:"required"`
 }
 
 type JoinGroupBySeedResult struct {
-	GroupItem *pb.GroupItem `json:"groupItem"`
+	GroupId string `json:"group_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
 }
 
 func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOptions) (*JoinGroupBySeedResult, error) {
 	ks := localcrypto.GetKeystore()
 
 	//check if trx sign keyname exist
-	userSignPubkey, err := ks.GetEncodedPubkey(params.UserSignKeyName, localcrypto.Sign)
+	userSignPubkey, err := ks.GetEncodedPubkey(params.UserKeyName, localcrypto.Sign)
 	if err != nil {
 		return nil, errors.New("trx sign keyname not found in local keystore")
 	}
@@ -73,5 +73,5 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 		return nil, rumerrors.NewBadRequestError(msg)
 	}
 
-	return &JoinGroupBySeedResult{GroupItem: group.Item}, nil
+	return &JoinGroupBySeedResult{GroupId: group.GroupId}, nil
 }

@@ -9,6 +9,13 @@ Start the first rumlite node "o1"
   
   RUM_KSPASSWD=123 go run main.go rumlitenode --peername o1 --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir o1keystore  --loglevel "debug"
 
+start rumlite node "u1"
+
+
+
+start runlite node "u2"
+
+
 Now we can create the group seed
 
 - a group needs 3 keys
@@ -553,6 +560,12 @@ start o1
 start u1
   RUM_KSPASSWD=123 go run main.go rumlitenode --peername u1 --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir u1keystore  --loglevel "debug"
 
+start u2
+  RUM_KSPASSWD=123 go run main.go rumlitenode --peername u2 --listen /ip4/127.0.0.1/tcp/7004 --apiport 8004 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir u2keystore  --loglevel "debug"
+
+
+<------------------------------ o1 start a cellar group to provide service -------------------------------->
+
 o1 create keys for cellar group
   cellar owner :
     curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_owner"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
@@ -572,7 +585,7 @@ o1 create keys for cellar group
       "pubkey": "AvbcnXkcfHdzr7cHtRsWuMwLL-1vDNpxDLhcQxjd1Acr"
     }
 
-  cellar trx sign (use to sign trx in cellar group)
+  cellar trx signer (sign all trx except trxs need owner privillage)
 
     curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_trx_sign"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
 
@@ -654,8 +667,7 @@ o1 create keys for cellar group
 
 create cellar group seed
 
-  curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"o1_cellar_appid", "app_name":"o1_cellar", "group_name":"o1_cellar_group","consen
-  sus_type":"poa", "sync_type":"private", "epoch_duration":1000, "owner_keyname":"o1_cellar_owner", "producer_keyname":"o1_cellar_producer", "brew_service":{"term":"BREW FOR EVERYONE", "contract":""}, "sync_service":{"term":"SYNC FOR EVERYONE","contract":""}, "brewer_keyname":"o1_cellar_brewer", "syncer_keyname":"o1_cellar_syncer"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
+  curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"o1_cellar_appid", "app_name":"o1_cellar", "group_name":"o1_cellar_group","consensus_type":"poa", "sync_type":"private", "epoch_duration":1000, "owner_keyname":"o1_cellar_owner", "producer_keyname":"o1_cellar_producer", "brew_service":{"term":"BREW FOR EVERYONE", "contract":""}, "sync_service":{"term":"SYNC FOR EVERYONE","contract":""}, "brewer_keyname":"o1_cellar_brewer", "syncer_keyname":"o1_cellar_syncer"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
 
   {
     "group_id": "5bf9db41-631c-4818-9a54-f85c1a503f84",
@@ -722,9 +734,439 @@ parse seed to check the details
     "sign": "WirtXz9yNC8oNUJxocyhHLht9DVPQM2918ilTjrQrdRGHBzkFCiQ5WrncRxmrdFYL2ZRvyTDb9Duyaiomo6ICwE="
   }
 
-o1 join the new cellar group
+o1 join the cellar group
+  curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQ1YmY5ZGI0MS02MzFjLTQ4MTgtOWE1NC1mODVjMWE1MDNmODQSD28xX2NlbGxhcl9ncm91cBosQWlmSjloeF9CblpFYWRUVGJQdl9sVUViaElRMG15Zjl4T1dGR192TnhCYVIgASpANTA4ZmQ0NTI5NmFmZmE1Mjc3ZTViODAxZDEyYThjOWM5ZDMwMDAwYjdlMzc3M2IxZWE2ZThiY2JkYTc2OGEzYTIPbzFfY2VsbGFyX2FwcGlkOglvMV9jZWxsYXJC1gIKJDViZjlkYjQxLTYzMWMtNDgxOC05YTU0LWY4NWMxYTUwM2Y4NCIsQTJmTHBLMEg4M1gyb3QwTXJkakx1REhpcjVHMkxQUFptV3FkV0VjX3JOU0kwhLPDxZ6WkMIXOpABEo0BCiRiNjFlOGU1Zi0yNGZjLTQ1MjctODc4OS1jNjk1MGEwMTFhMzciZQokNWJmOWRiNDEtNjMxYy00ODE4LTlhNTQtZjg1YzFhNTAzZjg0KOgHMixBMmZMcEswSDgzWDJvdDBNcmRqTHVESGlyNUcyTFBQWm1XcWRXRWNfck5TSToMSW5pdGlhbCBGb3JrQiAczmWLUjOPK9Ditm2EytWFRY0f1kZks7wg/mYvULMn4EpBZbfMHkdDF5w5Ec0snG3Qv9zZYkeLxrpZT/5OX8inOzlHsfKgnaC6hvjbpKgo9Q2RBhOq8xc8drtUkpukfrWULQFKcRJvCixBX1piZlNEdEx3akl6SUFmR1RmV2FCQ2RnX3dpcDBBUF8xdm16a1hVZGtjQRIsQWxPdGxydEkycjJISFZpLXJEWXYyWFVsc0JoUVlSYnJyWTY2NFdya1czdVQaEUJSRVcgRk9SIEVWRVJZT05FSkUIARJBCixBbE90bHJ0STJyMkhIVmktckRZdjJYVWxzQmhRWVJicnJZNjY0V3JrVzN1VBIRQlJFVyBGT1IgRVZFUllPTkVSICjnwqAMA4JEwaqhPtE3m6y0AFbrzrMDAKfOau/WQsNKWkFaKu1fP3I0Lyg1QnGhzKEcuG30NU9Azb3XyKVOOtCt1EYcHOQUKJDlaudxHGat0VgvZlG/JMNv0O7JqKiajogLAQ==", "user_keyname":"o1_cellar_trx_sign"}' http://127.0.0.1:8002/api/v2/group/joingroupbyseed
 
+  {
+    "GroupId": "5bf9db41-631c-4818-9a54-f85c1a503f84"
+  }
 
+<------------------------------ u1 start a app group -------------------------------->
+
+u1 create keys for app group
+  group owner :
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"u1_owner"}'  http://127.0.0.1:8003/api/v2/keystore/createsignkey
+
+    {
+      "key_alias": "28dd1a2c-36df-4f78-9073-55e5e4fea360",
+      "key_name": "u1_owner",
+      "pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW"
+    }
+
+  group producer
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"u1_producer"}'  http://127.0.0.1:8003/api/v2/keystore/createsignkey
+    
+    {
+      "key_alias": "0d923fee-0233-4169-92cf-cd437dc9a2a6",
+      "key_name": "u1_producer",
+      "pubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a"
+    }
+
+  group user (sign all trxs expect trxs need owner privilege)
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"u1_user"}'  http://127.0.0.1:8003/api/v2/keystore/createsignkey
+
+    {
+      "key_alias": "dff2253a-1927-4a4d-8240-5dc2ef418671",
+      "key_name": "u1_user",
+      "pubkey": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ"
+    }
+
+  verify all keys created and saved in local keystore
+    curl -X GET -H 'Content-Type: application/json'  -d '{}' http://127.0.0.1:8003/api/v2/keystore/getallkeys
+
+    {
+    "keys_list": [
+      {
+        "pubkey": "A6EXxDHtKdc3BhJMh4NzmfIaMTCOrfef8LFKWE0GWjkQ",
+        "key_name": "default",
+        "alias": []
+      },
+      {
+        "pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+        "key_name": "u1_owner",
+        "alias": [
+          "28dd1a2c-36df-4f78-9073-55e5e4fea360"
+        ]
+      },
+      {
+        "pubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a",
+        "key_name": "u1_producer",
+        "alias": [
+          "0d923fee-0233-4169-92cf-cd437dc9a2a6"
+        ]
+      },
+      {
+        "pubkey": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+        "key_name": "u1_user",
+        "alias": [
+          "dff2253a-1927-4a4d-8240-5dc2ef418671"
+        ]
+      }
+    ]
+  }
+
+u1 create the app group seed
+  curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"u1_appid", "app_name":"u1_app_name", "group_name":"u1_app_group","consensus_type":"poa", "sync_type":"public", "epoch_duration":2000, "owner_keyname":"u1_owner", "producer_keyname":"u1_producer"}' http://127.0.0.1:8003/api/v2/group/newseed | jq
+
+  {
+    "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+    "owner_keyname": "u1_owner",
+    "producer_sign_keyname": "u1_producer",
+    "brewer_keyname": "",
+    "syncer_keyname": "",
+    "seed": "CiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTESDHUxX2FwcF9ncm91cBosQXVKM0daaG5KaG94VXZQbzJpamxWc1VKMXhjTHBzN00xUUdyZVRBTW12YVcqQGMzNjk5MTZkNzBjZGY4MGMyNzYzODU5YjVhM2IxZTY4ZmNmOTRkMDFkYzlhNTdjYjNhODYzZmE5NjY3NjljNjgyCHUxX2FwcGlkOgt1MV9hcHBfbmFtZULWAgokMjRkYzFmNjUtODMxNC00MjlmLWI0NGEtZDk4YTY4OTFkMmUxIixBbkNXUEhzRkJPbzhhOGdLQzgtLU9ZUm1CT0c4YzlfNnJyZzF1WXl4RXYzYTCVtsq20uagwhc6kAESjQEKJDIzMDJlOGJmLTZlZGQtNDlmOS1iMGI1LTU2OGYzZDI2ZDdjYiJlCiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTEo0A8yLEFuQ1dQSHNGQk9vOGE4Z0tDOC0tT1lSbUJPRzhjOV82cnJnMXVZeXhFdjNhOgxJbml0aWFsIEZvcmtCID7ZMxY57KC2DUnozlGOmXMu9xLyNxrDCXsNmwT0B8v2SkEqEGGrSNjTJH209Q/271BpJJNuJM7f3L+agzoF+WAo3AAACtz+PM6yvKetsUpyyZe8YDcjJadbn62D0+oS4V0gAVIgPfjaIKQRCZzoBL12Cu3aFcasCKOb7cPahOgpOmEyfJtaQYdVDW/qNX2ZInidsO+B05N+fH2nVS9EMu0iY8Pzh5i+f+DT7BDeKqa6vb7MhaW4BKkmE3dW7c/eJY22lwwDdtQB"
+  }
+
+u1 parse the group seed to verify details
+curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTESDHUxX2FwcF9ncm91cBosQXVKM0daaG5KaG94VXZQbzJpamxWc1VKMXhjTHBzN00xUUdyZVRBTW12YVcqQGMzNjk5MTZkNzBjZGY4MGMyNzYzODU5YjVhM2IxZTY4ZmNmOTRkMDFkYzlhNTdjYjNhODYzZmE5NjY3NjljNjgyCHUxX2FwcGlkOgt1MV9hcHBfbmFtZULWAgokMjRkYzFmNjUtODMxNC00MjlmLWI0NGEtZDk4YTY4OTFkMmUxIixBbkNXUEhzRkJPbzhhOGdLQzgtLU9ZUm1CT0c4YzlfNnJyZzF1WXl4RXYzYTCVtsq20uagwhc6kAESjQEKJDIzMDJlOGJmLTZlZGQtNDlmOS1iMGI1LTU2OGYzZDI2ZDdjYiJlCiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTEo0A8yLEFuQ1dQSHNGQk9vOGE4Z0tDOC0tT1lSbUJPRzhjOV82cnJnMXVZeXhFdjNhOgxJbml0aWFsIEZvcmtCID7ZMxY57KC2DUnozlGOmXMu9xLyNxrDCXsNmwT0B8v2SkEqEGGrSNjTJH209Q/271BpJJNuJM7f3L+agzoF+WAo3AAACtz+PM6yvKetsUpyyZe8YDcjJadbn62D0+oS4V0gAVIgPfjaIKQRCZzoBL12Cu3aFcasCKOb7cPahOgpOmEyfJtaQYdVDW/qNX2ZInidsO+B05N+fH2nVS9EMu0iY8Pzh5i+f+DT7BDeKqa6vb7MhaW4BKkmE3dW7c/eJY22lwwDdtQB"}' http://127.0.0.1:8003/api/v2/group/parseseed
+
+{
+  "groupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+  "groupName": "u1_app_group",
+  "ownerPubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+  "producerPubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a",
+  "syncType": "PUBLIC",
+  "cipherKey": "c369916d70cdf80c2763859b5a3b1e68fcf94d01dc9a57cb3a863fa966769c68",
+  "appId": "u1_appid",
+  "appName": "u1_app_name",
+  "consensusInfo": {
+    "ConsensusId": "2302e8bf-6edd-49f9-b0b5-568f3d26d7cb",
+    "ForkInfo": {
+      "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+      "EpochDuration": 2000,
+      "producers": [
+        "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a"
+      ],
+      "Memo": "Initial Fork"
+    }
+  },
+  "brewService": null,
+  "syncService": null,
+  "genesisBlock": {
+    "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+    "ProducerPubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a",
+    "TimeStamp": "1694623624105990933",
+    "Consensus": {
+      "Data": "CiQyMzAyZThiZi02ZWRkLTQ5ZjktYjBiNS01NjhmM2QyNmQ3Y2IiZQokMjRkYzFmNjUtODMxNC00MjlmLWI0NGEtZDk4YTY4OTFkMmUxKNAPMixBbkNXUEhzRkJPbzhhOGdLQzgtLU9ZUm1CT0c4YzlfNnJyZzF1WXl4RXYzYToMSW5pdGlhbCBGb3Jr"
+    },
+    "BlockHash": "PtkzFjnsoLYNSejOUY6Zcy73EvI3GsMJew2bBPQHy/Y=",
+    "ProducerSign": "KhBhq0jY0yR9tPUP9u9QaSSTbiTO39y/moM6BflgKNwAAArc/jzOsrynrbFKcsmXvGA3IyWnW5+tg9PqEuFdIAE="
+  },
+  "hash": "PfjaIKQRCZzoBL12Cu3aFcasCKOb7cPahOgpOmEyfJs=",
+  "sign": "h1UNb+o1fZkieJ2w74HTk358fadVL0Qy7SJjw/OHmL5/4NPsEN4qprq9vsyFpbgEqSYTd1btz94ljbaXDAN21AE="
+}
+
+u1 join the app group
+  curl -X POST -H 'Content-Type: application/json' -d '           {"seed":"CiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTESDHUxX2FwcF9ncm91cBosQXVKM0daaG5KaG94VXZQbzJpamxWc1VKMXhjTHBzN00xUUdyZVRBTW12YVcqQGMzNjk5MTZkNzBjZGY4MGMyNzYzODU5YjVhM2IxZTY4ZmNmOTRkMDFkYzlhNTdjYjNhODYzZmE5NjY3NjljNjgyCHUxX2FwcGlkOgt1MV9hcHBfbmFtZULWAgokMjRkYzFmNjUtODMxNC00MjlmLWI0NGEtZDk4YTY4OTFkMmUxIixBbkNXUEhzRkJPbzhhOGdLQzgtLU9ZUm1CT0c4YzlfNnJyZzF1WXl4RXYzYTCVtsq20uagwhc6kAESjQEKJDIzMDJlOGJmLTZlZGQtNDlmOS1iMGI1LTU2OGYzZDI2ZDdjYiJlCiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTEo0A8yLEFuQ1dQSHNGQk9vOGE4Z0tDOC0tT1lSbUJPRzhjOV82cnJnMXVZeXhFdjNhOgxJbml0aWFsIEZvcmtCID7ZMxY57KC2DUnozlGOmXMu9xLyNxrDCXsNmwT0B8v2SkEqEGGrSNjTJH209Q/271BpJJNuJM7f3L+agzoF+WAo3AAACtz+PM6yvKetsUpyyZe8YDcjJadbn62D0+oS4V0gAVIgPfjaIKQRCZzoBL12Cu3aFcasCKOb7cPahOgpOmEyfJtaQYdVDW/qNX2ZInidsO+B05N+fH2nVS9EMu0iY8Pzh5i+f+DT7BDeKqa6vb7MhaW4BKkmE3dW7c/eJY22lwwDdtQB", "user_keyname":"u1_user"}' http://127.0.0.1:8003/api/v2/group/joingroupbyseed
+
+  {
+    "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1"
+  }
+
+u1 make some random POST to the group (to create some blocks)
+  curl -X POST -H 'Content-Type: application/json'  -d '{"data":"xxxx"}'  http://127.0.0.1:8003/api/v1/group/24dc1f65-8314-429f-b44a-d98a6891d2e1/content
+  {
+    "trx_id": "91ed8959-91f6-4cd9-928d-a6e700bb1df2"
+  }
+
+  ...
+
+check group info to make sure new blocks are produces 
+
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8003/api/v1/groups
+
+  {
+  "groups": [
+    {
+      "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+      "group_name": "u1_app_group",
+      "owner_pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+      "user_pubkey": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+      "user_eth_addr": "0x377165A3DbF66d35eBC812fD5de8d7Ed71B57968",
+      "consensus_type": "POA",
+      "sync_type": "PUBLIC",
+      "cipher_key": "c369916d70cdf80c2763859b5a3b1e68fcf94d01dc9a57cb3a863fa966769c68",
+      "app_id": "u1_appid",
+      "app_name": "u1_app_name",
+      "currt_top_block": 7,
+      "last_updated": 1694627052238543626,
+      "rex_syncer_status": "IDLE",
+      "rex_Syncer_result": null,
+      "peers": null
+    }
+  ]
+}
+
+get a block to verify the block is sign by the given producer
+
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8003/api/v1/block/24dc1f65-8314-429f-b44a-d98a6891d2e1/1
+
+  {
+  "block": {
+    "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+    "BlockId": 1,
+    "PrevHash": "PtkzFjnsoLYNSejOUY6Zcy73EvI3GsMJew2bBPQHy/Y=",
+    "ProducerPubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a",
+    "Trxs": [
+      {
+        "TrxId": "91ed8959-91f6-4cd9-928d-a6e700bb1df2",
+        "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+        "Data": "vG3v7EFkBia3zYPtBqtuyUE9bA61cTz0C12nBG6jTg==",
+        "TimeStamp": "1694626805323396793",
+        "Version": "2.1.0",
+        "SenderPubkey": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+        "Hash": "Zdxaep4DW78tfQEn9F2MWuatJ8FsFAdYPmjk8HQa2qU=",
+        "SenderSign": "VzkXFWRF7MMNIh6sEaPrwmMsfDtgEg1Gl9kyX9MdO8lc/R0soL8RatB6tUdpCqYwTwTSwB1Sw1GSLwyBdHRpWgE="
+      }
+    ],
+    "TimeStamp": "1694626806151106765",
+    "BlockHash": "3wIc/Oz6aDvHYMr0aqVV0FkVjrtndyzywssWeG/jK+Y=",
+    "ProducerSign": "VXCQX1jD8Y3YEPiYw5mfW7ZuTNTPLfTkinzDyChZMGgMPu3oX34+UIoS1wcInB9yt3neNQR8lUHO8Y7ulW7kYQA="
+  },
+  "status": "onchain"
+}
+
+get a trx 
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8003/api/v1/trx/24dc1f65-8314-429f-b44a-d98a6891d2e1/91ed8959-91f6-4cd9-928d-a6e700bb1df2
+
+  {
+    "trx": {
+      "TrxId": "91ed8959-91f6-4cd9-928d-a6e700bb1df2",
+      "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+      "Data": "vG3v7EFkBia3zYPtBqtuyUE9bA61cTz0C12nBG6jTg==",
+      "TimeStamp": "1694626805323396793",
+      "Version": "2.1.0",
+      "SenderPubkey": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+      "Hash": "Zdxaep4DW78tfQEn9F2MWuatJ8FsFAdYPmjk8HQa2qU=",
+      "SenderSign": "VzkXFWRF7MMNIh6sEaPrwmMsfDtgEg1Gl9kyX9MdO8lc/R0soL8RatB6tUdpCqYwTwTSwB1Sw1GSLwyBdHRpWgE="
+    },
+    "status": "onchain"
+  }
+
+<------------------------------ u2 join u1 group to sync block -------------------------------->
+
+create u2 group key 
+  curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"u2_user"}'  http://127.0.0.1:8004/api/v2/keystore/createsignkey
+
+  {
+    "key_alias": "c0d929fb-eb3d-4072-8947-86455f251f78",
+    "key_name": "u2_user",
+  " pubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo"
+  }
+
+verify key is created and saved to local keystore
+  curl -X GET -H 'Content-Type: application/json'  -d '{}' http://127.0.0.1:8004/api/v2/keystore/getallkeys
+
+  {
+  "keys_list": [
+    {
+      "pubkey": "A3K3FBc6IEPWCkQnzsLoW712v7b-UoMTmMgwB4Nncr4p",
+      "key_name": "default",
+      "alias": []
+    },
+    {
+      "pubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo",
+      "key_name": "u2_user",
+      "alias": [
+        "c0d929fb-eb3d-4072-8947-86455f251f78"
+      ]
+    }
+  ]
+}
+
+u2 join u1's app group 
+- in real world app development, u2 should parse the seed and provide ui to show seed details to app user
+- in real world app development, u2 should verify the seed and show verify result to app user
+
+  curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTESDHUxX2FwcF9ncm91cBosQXVKM0daaG5KaG94VXZQbzJpamxWc1VKMXhjTHBzN00xUUdyZVRBTW12YVcqQGMzNjk5MTZkNzBjZGY4MGMyNzYzODU5YjVhM2IxZTY4ZmNmOTRkMDFkYzlhNTdjYjNhODYzZmE5NjY3NjljNjgyCHUxX2FwcGlkOgt1MV9hcHBfbmFtZULWAgokMjRkYzFmNjUtODMxNC00MjlmLWI0NGEtZDk4YTY4OTFkMmUxIixBbkNXUEhzRkJPbzhhOGdLQzgtLU9ZUm1CT0c4YzlfNnJyZzF1WXl4RXYzYTCVtsq20uagwhc6kAESjQEKJDIzMDJlOGJmLTZlZGQtNDlmOS1iMGI1LTU2OGYzZDI2ZDdjYiJlCiQyNGRjMWY2NS04MzE0LTQyOWYtYjQ0YS1kOThhNjg5MWQyZTEo0A8yLEFuQ1dQSHNGQk9vOGE4Z0tDOC0tT1lSbUJPRzhjOV82cnJnMXVZeXhFdjNhOgxJbml0aWFsIEZvcmtCID7ZMxY57KC2DUnozlGOmXMu9xLyNxrDCXsNmwT0B8v2SkEqEGGrSNjTJH209Q/271BpJJNuJM7f3L+agzoF+WAo3AAACtz+PM6yvKetsUpyyZe8YDcjJadbn62D0+oS4V0gAVIgPfjaIKQRCZzoBL12Cu3aFcasCKOb7cPahOgpOmEyfJtaQYdVDW/qNX2ZInidsO+B05N+fH2nVS9EMu0iY8Pzh5i+f+DT7BDeKqa6vb7MhaW4BKkmE3dW7c/eJY22lwwDdtQB", "user_keyname":"u1_user"}' http://127.0.0.1:8004/api/v2/group/joingroupbyseed
+
+  {
+    "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1"
+  }
+
+u2 verify group info
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8004/api/v1/groups
+  {
+    "groups": [
+      {
+        "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+        "group_name": "u1_app_group",
+        "owner_pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+        "user_pubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo",
+        "user_eth_addr": "0xD414F851D8E836b6b0C0AD55131438DdF5c26D53",
+        "consensus_type": "POA",
+        "sync_type": "PUBLIC",
+        "cipher_key": "c369916d70cdf80c2763859b5a3b1e68fcf94d01dc9a57cb3a863fa966769c68",
+        "app_id": "u1_appid",
+        "app_name": "u1_app_name",
+        "currt_top_block": 0,
+        "last_updated": 1694630653914133701,
+        "rex_syncer_status": "IDLE",
+        "rex_Syncer_result": null,
+        "peers": [
+          "16Uiu2HAmPVq1UoPZxRajDdUsbTgeM78rMNsh3M32vxPTmKBUMZcK"
+        ]
+      }
+    ]
+  }
+
+u2 start sync 
+  curl -X POST -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8004/api/v1/group/24dc1f65-8314-429f-b44a-d98a6891d2e1/startsync
+  {
+    "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+    "Error": ""
+  }
+
+u2 check sync result
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8004/api/v1/groups
+
+  {
+  "groups": [
+    {
+      "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+      "group_name": "u1_app_group",
+      "owner_pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+      "user_pubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo",
+      "user_eth_addr": "0xD414F851D8E836b6b0C0AD55131438DdF5c26D53",
+      "consensus_type": "POA",
+      "sync_type": "PUBLIC",
+      "cipher_key": "c369916d70cdf80c2763859b5a3b1e68fcf94d01dc9a57cb3a863fa966769c68",
+      "app_id": "u1_appid",
+      "app_name": "u1_app_name",
+      "currt_top_block": 7,
+      "last_updated": 1694626842164570354,
+      "rex_syncer_status": "SYNCING",
+      "rex_Syncer_result": {
+        "Provider": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+        "FromBlock": 8,
+        "BlockProvided": 0,
+        "SyncResult": "BLOCK_NOT_FOUND",
+        "LastSyncTaskTimestamp": 1694630691
+      },
+      "peers": [
+        "16Uiu2HAmPVq1UoPZxRajDdUsbTgeM78rMNsh3M32vxPTmKBUMZcK"
+      ]
+    }
+  ]
+}
+
+u2 try post to the group
+  curl -X POST -H 'Content-Type: application/json'  -d '{"data":"xxxx"}'  http://127.0.0.1:8004/api/v1/group/24dc1f65-8314-429f-b44a-d98a6891d2e1/content
+
+  {
+    "trx_id": "fa57a055-e70f-415c-9324-daefcb3f07f4"
+  }
+
+u2 and u1 verify new block <8> are created and sync to both node
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8003/api/v1/groups
+  {
+    "groups": [
+      {
+        "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+        "group_name": "u1_app_group",
+        "owner_pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+        "user_pubkey": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+        "user_eth_addr": "0x377165A3DbF66d35eBC812fD5de8d7Ed71B57968",
+        "consensus_type": "POA",
+        "sync_type": "PUBLIC",
+        "cipher_key": "c369916d70cdf80c2763859b5a3b1e68fcf94d01dc9a57cb3a863fa966769c68",
+        "app_id": "u1_appid",
+        "app_name": "u1_app_name",
+        "currt_top_block": 8,
+        "last_updated": 1694630861444865323,
+        "rex_syncer_status": "IDLE",
+        "rex_Syncer_result": null,
+        "peers": [
+          "16Uiu2HAmLNnk6635S9pv42RVC9QDMwqaTN98unDKjURoN9qDtVP6"
+        ]
+      }
+    ]
+  }
+
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8004/api/v1/groups
+  {
+    "groups": [
+      {
+        "group_id": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+        "group_name": "u1_app_group",
+        "owner_pubkey": "AuJ3GZhnJhoxUvPo2ijlVsUJ1xcLps7M1QGreTAMmvaW",
+        "user_pubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo",
+        "user_eth_addr": "0xD414F851D8E836b6b0C0AD55131438DdF5c26D53",
+        "consensus_type": "POA",
+        "sync_type": "PUBLIC",
+        "cipher_key": "c369916d70cdf80c2763859b5a3b1e68fcf94d01dc9a57cb3a863fa966769c68",
+        "app_id": "u1_appid",
+        "app_name": "u1_app_name",
+        "currt_top_block": 8,
+        "last_updated": 1694630821431279966,
+        "rex_syncer_status": "SYNCING",
+        "rex_Syncer_result": {
+          "Provider": "A5R9Gl8ngJE-ZNR1gVNlYG4I9df8UALzls5ykDG3-ntZ",
+          "FromBlock": 9,
+          "BlockProvided": 0,
+          "SyncResult": "BLOCK_NOT_FOUND",
+          "LastSyncTaskTimestamp": 1694630931
+        },
+        "peers": [
+          "16Uiu2HAmPVq1UoPZxRajDdUsbTgeM78rMNsh3M32vxPTmKBUMZcK"
+        ]
+      }
+    ]
+  }
+
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8003/api/v1/block/24dc1f65-8314-429f-b44a-d98a6891d2e1/8
+  {
+    "block": {
+      "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+      "BlockId": 8,
+      "PrevHash": "lyNxRBcxKv8Z7oL8kfmrfvsx5OFHx+dnQ1mt5Zib03Q=",
+      "ProducerPubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a",
+      "Trxs": [
+        {
+          "TrxId": "fa57a055-e70f-415c-9324-daefcb3f07f4",
+          "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+          "Data": "TsRGdnwvmsgn96JZw5gbnKVwwbM4GihSG9Bj6XLB5g==",
+          "TimeStamp": "1694630821058901987",
+          "Version": "2.1.0",
+          "SenderPubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo",
+          "Hash": "O1njJaWwCm5WM5TLBjjBdjEVFLPbkgdLzTkvQx5j+P4=",
+          "SenderSign": "xcv7/rWA0vjUol7C6t+OR6jFEp9uk1wF664bYJPXM8UQg4e3rIK5D0cP3SRAp7+NUgMxCV9STHMnbovZOg2phAE="
+        }
+      ],
+      "TimeStamp": "1694630821431279966",
+      "BlockHash": "8bZu/krGbZw/azbuB5qWJojye92LX1f1EnVEhBIB3rI=",
+      "ProducerSign": "ujO3UeqGc9omavOlPzeds03YD5XUUXubbtVMnK+AvC1XKVNZILwzZG+qLoixRjGDpSW/DaXI/9CN7V+mI9KQlQA="
+    },
+    "status": "onchain"
+  }
+
+  curl -X GET -H 'Content-Type: application/json'  -d '{}'  http://127.0.0.1:8004/api/v1/block/24dc1f65-8314-429f-b44a-d98a6891d2e1/8
+  {
+    "block": {
+      "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+      "BlockId": 8,
+      "PrevHash": "lyNxRBcxKv8Z7oL8kfmrfvsx5OFHx+dnQ1mt5Zib03Q=",
+      "ProducerPubkey": "AnCWPHsFBOo8a8gKC8--OYRmBOG8c9_6rrg1uYyxEv3a",
+      "Trxs": [
+        {
+          "TrxId": "fa57a055-e70f-415c-9324-daefcb3f07f4",
+          "GroupId": "24dc1f65-8314-429f-b44a-d98a6891d2e1",
+          "Data": "TsRGdnwvmsgn96JZw5gbnKVwwbM4GihSG9Bj6XLB5g==",
+          "TimeStamp": "1694630821058901987",
+          "Version": "2.1.0",
+          "SenderPubkey": "Aje0brurgMtwDvhpUGEpdBZuK89cFPpMsS9J0-RtkdXo",
+          "Hash": "O1njJaWwCm5WM5TLBjjBdjEVFLPbkgdLzTkvQx5j+P4=",
+          "SenderSign": "xcv7/rWA0vjUol7C6t+OR6jFEp9uk1wF664bYJPXM8UQg4e3rIK5D0cP3SRAp7+NUgMxCV9STHMnbovZOg2phAE="
+        }
+      ],
+      "TimeStamp": "1694630821431279966",
+      "BlockHash": "8bZu/krGbZw/azbuB5qWJojye92LX1f1EnVEhBIB3rI=",
+      "ProducerSign": "ujO3UeqGc9omavOlPzeds03YD5XUUXubbtVMnK+AvC1XKVNZILwzZG+qLoixRjGDpSW/DaXI/9CN7V+mI9KQlQA="
+    },
+    "status": "onchain"
+  }
+
+<-------------------------------u1 request SYNC service for app_group from o1 cellar group--------------------------------->
 
 
 

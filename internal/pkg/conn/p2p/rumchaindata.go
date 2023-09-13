@@ -23,7 +23,6 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 	pkg := rummsg.DataPackage
 
 	if pkg.Type == quorumpb.PackageType_SYNC {
-		rumexchangelog.Debugf("receive a Sync Msg, from <%s>", frompeerid)
 		//decompress syncmsg data
 		content := new(bytes.Buffer)
 		if err := utils.Decompress(bytes.NewReader(pkg.Data), content); err != nil {
@@ -36,9 +35,10 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 		if err == nil {
 			targetchain, ok := r.rex.chainmgr[syncMsg.GroupId]
 			if ok {
+				rumexchangelog.Debugf("receive Sync Msg, peerId <%s>, groupId <%s>, handle it", frompeerid, syncMsg.GroupId)
 				return targetchain.HandleSyncMsgRex(syncMsg, s)
 			} else {
-				rumexchangelog.Warningf("receive a syncMsg for unknown group <%s> from: <%s>", syncMsg.GroupId, frompeerid)
+				rumexchangelog.Debugf("receive Sync Msg, peerId <%s>, groupId <%s> not found, ignore", frompeerid, syncMsg.GroupId)
 			}
 		} else {
 			rumexchangelog.Warningf(err.Error())

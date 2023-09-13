@@ -154,6 +154,8 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	a.POST("/v1/token/revoke", apph.RevokeToken)
 	a.GET("/v1/token/list", apph.ListToken)
 
+	r.POST("/v1/group/:group_id/startsync", h.StartSync)
+
 	if nodeopt.EnableRelay {
 		r.POST("/v1/network/relay", h.AddRelayServers)
 	}
@@ -188,7 +190,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	//deprecated
 	//r.POST("/v1/group", h.CreateGroupUrl())
 	//r.POST("/v2/group/join", h.JoinGroupV2())
-	//r.POST("/v1/group/:group_id/startsync", h.StartSync)
 
 	// start https or http server
 	host := config.APIHost

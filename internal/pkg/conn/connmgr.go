@@ -293,8 +293,9 @@ func (connMgr *ConnMgr) SendSyncRespMsgRex(resp *quorumpb.ReqBlockResp, s networ
 	}
 
 	syncMsg := &quorumpb.SyncMsg{
-		Type: quorumpb.SyncMsgType_REQ_BLOCK_RESP,
-		Data: pbBytes,
+		Type:    quorumpb.SyncMsgType_REQ_BLOCK_RESP,
+		GroupId: resp.GroupId,
+		Data:    pbBytes,
 	}
 
 	//marshal sync msg

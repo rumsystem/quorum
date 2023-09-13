@@ -405,7 +405,7 @@ func (chain *Chain) HandleBftMsgPsConn(msg *quorumpb.BftMsg) error {
 
 // handler SyncMsg from rex
 func (chain *Chain) HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, s network.Stream) error {
-	chain_log.Debugf("<%s> HandleTrxRex called", chain.groupItem.GroupId)
+	chain_log.Debugf("<%s> HandleSyncMsgRex called", chain.groupItem.GroupId)
 	switch syncMsg.Type {
 	case quorumpb.SyncMsgType_REQ_BLOCK:
 		chain.handleReqBlockRex(syncMsg, s)

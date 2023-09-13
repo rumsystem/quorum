@@ -163,7 +163,7 @@ func (rs *RexLiteSyncer) Start() {
 				blockBundles := &quorumpb.BlocksBundle{}
 				block, err := rs.chain.GetBlockFromDSCache(rs.GroupId, nextBlock, rs.nodename)
 				if err != nil {
-					rex_syncer_log.Warningf("<%s> SyncWorker sync from local cache error <%s>", rs.GroupId, err.Error())
+					rex_syncer_log.Debugf("<%s> SyncWorker sync block <%d> from local cache failed, <%s>", rs.GroupId, nextBlock, err.Error())
 				} else {
 					for block != nil {
 						blockBundles.Blocks = append(blockBundles.Blocks, block)

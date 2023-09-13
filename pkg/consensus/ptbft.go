@@ -64,7 +64,7 @@ func NewPTBft(ctx context.Context, cfg Config, iface def.ChainMolassesIface) *PT
 }
 
 func (bft *PTBft) getNextTask() (*PTTask, error) {
-	ptbft_log.Debugf("<%s> getNextTask called", bft.GroupId)
+	//ptbft_log.Debugf("<%s> getNextTask called", bft.GroupId)
 
 	trxs, err := bft.txBuffer.GetNRandTrx(bft.BatchSize)
 	if err != nil {
@@ -100,10 +100,10 @@ func (bft *PTBft) getNextTask() (*PTTask, error) {
 
 	ptbft_log.Debugf("<%s> >>> Load task: epoch <%d> try propose the following trxs:", bft.GroupId, proposedEpoch)
 	for _, trx := range trxs {
-		ptbft_log.Debugf("trx : <%s>", trx.TrxId)
+		ptbft_log.Debugf("<%s> trx : <%s>", bft.GroupId, trx.TrxId)
 	}
 	if len(trxs) == 0 {
-		ptbft_log.Debugf("<>")
+		ptbft_log.Debugf("<%s> <>", bft.GroupId)
 	}
 
 	chAcsDone := make(chan *PTAcsResult, 1)
@@ -176,7 +176,7 @@ func (bft *PTBft) ProposeWorker() {
 					ptbft_log.Debugf("<%s> PTBftWorker acs done, epoch <%d>, taskCtx done without result", bft.GroupId, bftTask.Epoch)
 					return
 				case result := <-bftTask.chAcsDone:
-					ptbft_log.Debugf("<%s> PTBftWorker acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
+					//ptbft_log.Debugf("<%s> PTBftWorker acs done, epoch <%d>, handle result", bft.GroupId, result.epoch)
 					bft.acsDone(result)
 					return
 				}
@@ -218,7 +218,7 @@ func (bft *PTBft) HandleHBMessage(hbMsg *quorumpb.HBMsgv1) error {
 }
 
 func (bft *PTBft) acsDone(result *PTAcsResult) {
-	ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
+	//ptbft_log.Debugf("<%s> AcsDone called, Epoch <%d>", bft.GroupId, result.epoch)
 	trxs := make(map[string]*quorumpb.Trx) //trx_id
 
 	//decode trxs
@@ -242,11 +242,11 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 		}
 	}
 
-	ptbft_log.Debugf("<%s> >>> epoch <%d> done, trxs to package", bft.GroupId, result.epoch)
+	ptbft_log.Debugf("<%s> ### epoch <%d> done, trxs to package", bft.GroupId, result.epoch)
 	//try package trxs with a new block
 	if len(trxs) != 0 {
 		for _, trx := range trxs {
-			ptbft_log.Debugf("<%s> --- <%s>", bft.GroupId, trx.TrxId)
+			ptbft_log.Debugf("<%s> trx : <%s>", bft.GroupId, trx.TrxId)
 		}
 
 		//Try build block and broadcast it
@@ -266,7 +266,7 @@ func (bft *PTBft) acsDone(result *PTAcsResult) {
 		//update local BlockId
 		bft.cIface.IncCurrBlockId()
 	} else {
-		ptbft_log.Debugf("<%s> --- <>", bft.GroupId)
+		ptbft_log.Debugf("<%s> <>", bft.GroupId)
 	}
 
 	//update and save local epoch
