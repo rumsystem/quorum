@@ -344,8 +344,16 @@ func (grp *Group) UpdGroupSyncer(item *quorumpb.UpdGroupSyncerItem) (string, err
 	return grp.sendTrx(trx)
 }
 
-func (grp *Group) ReqCellarServices(cellarSeed *quorumpb.GroupSeed, serviceType quorumpb.GroupServiceType, proof *quorumpb.ServiceReqProofItem, memo string) (string, error) {
-	group_log.Debugf("<%s> AddCellar called", grp.Item.GroupId)
+func (grp *Group) ReqCellarServices(cellarSeedByts []byte, serviceType quorumpb.GroupServiceType, proof []byte, memo string) (string, error) {
+	group_log.Debugf("<%s> ReqCellarServices called", grp.Item.GroupId)
+
+	//unmarshall cellardbytes to groupseed
+	cellarSeed := &quorumpb.GroupSeed{}
+	err := proto.Unmarshal(cellarSeedByts, cellarSeed)
+	if err != nil {
+		return "", err
+	}
+
 	verified, err := data.VerifyGroupSeed(cellarSeed)
 	if err != nil {
 		return "", err
@@ -355,35 +363,32 @@ func (grp *Group) ReqCellarServices(cellarSeed *quorumpb.GroupSeed, serviceType 
 		return "", fmt.Errorf("seed not verified")
 	}
 
-	proofByts, err := proto.Marshal(proof)
+	//get my group seed
+	myseed, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupSeed(grp.Item.GroupId)
 	if err != nil {
 		return "", err
 	}
 
-	reqProof := &quorumpb.ServiceReqProofItem{
-		Type:  serviceType,
-		Proof: proofByts,
+	//marshall myseed to bytes
+	myseedByts, err := proto.Marshal(myseed)
+	if err != nil {
+		return "", err
 	}
 
-	//get my group seed
-	myseed, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupSeed(grp.Item.GroupId)
-
 	req := &quorumpb.AddCellarReqItem{}
-	req.GroupId = grp.Item.GroupId
-	req.Seed = myseed
+	req.Seed = myseedByts
 	req.CurrentBlockId = grp.GetCurrentBlockId()
-	req.Proof = reqProof
+	req.Proof = proof
 	req.Memo = memo
 
 	//create addcellarreq trx
-
 	signKeyName := grp.ChainCtx.GetKeynameByPubkey(grp.Item.OwnerPubKey)
 	if signKeyName == "" {
 		group_log.Debugf("<%s> AddGroupCellar failed, sign key not exist", grp.Item.GroupId)
 		return "", fmt.Errorf("sign key not exist")
 	}
 
-	trx, err := grp.ChainCtx.GetTrxFactory().GetAddCellarReqTrx(grp.Item.OwnerPubKey, signKeyName, req)
+	trx, err := grp.ChainCtx.GetTrxFactory().GetAddCellarReqTrx(grp.Item.OwnerPubKey, signKeyName, cellarSeed.CipherKey, req)
 	if err != nil {
 		return "", err
 	}

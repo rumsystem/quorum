@@ -350,13 +350,87 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 		quorumpb.TrxType_CHAIN_CONFIG,
 		quorumpb.TrxType_APP_CONFIG,
 		quorumpb.TrxType_FORK:
-		chain.producerAddTrx(trx)
+
+		if chain.IsPublicGroup() {
+			chain.producerAddTrx(trx)
+		}
+
+		//else {
+		//TBD verify if trx sender hsa privilege to add trx
+		//}
+
+	case quorumpb.TrxType_SERVICE_REQ:
+		chain.handleServiceReq(trx)
+	case quorumpb.TrxType_SERVICE_RESP:
+		chain_log.Debugf("Receive service resp <%x>", trx)
 	default:
 		chain_log.Warningf("<%s> unsupported msg type", chain.groupItem.GroupId)
 		err := errors.New("unsupported msg type")
 		return err
 	}
 	return nil
+}
+
+func (chain *Chain) handleServiceReq(trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> handleServiceReq called", chain.groupItem.GroupId)
+	//decode data
+	ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
+	if err != nil {
+		return err
+	}
+
+	decodedData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+	if err != nil {
+		return err
+	}
+
+	req := &quorumpb.AddCellarReqItem{}
+	err = proto.Unmarshal(decodedData, req)
+	if err != nil {
+		return err
+	}
+
+	//TBD verify proof
+	verified, err := chain.verifyServiceReq(req)
+	if err != nil {
+		return err
+	}
+
+	if !verified {
+		chain_log.Warningf("<%s> invalid service req, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
+		return fmt.Errorf("invalid service req, signature verify failed")
+	}
+
+	//TBD, handle service req
+	chain_log.Debugf("TBD, handle serviceReq")
+	return nil
+}
+
+func (chain *Chain) verifyServiceReq(req *quorumpb.AddCellarReqItem) (bool, error) {
+	//TBD, send proof to
+	chain_log.Debugf("%v", req)
+
+	//verify seed is valid
+	//verify proof
+
+	reqSeed := &quorumpb.GroupSeed{}
+	err := proto.Unmarshal(req.Seed, reqSeed)
+	if err != nil {
+		return false, err
+	}
+
+	seedValid, err := rumchaindata.VerifyGroupSeed(reqSeed)
+	if err != nil {
+		return false, err
+	}
+
+	if !seedValid {
+		return false, errors.New("invalid seed")
+	}
+
+	chain_log.Debugf("req seed is valid, groupId <%s>", reqSeed.GroupId)
+
+	return true, nil
 }
 
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {

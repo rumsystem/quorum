@@ -309,25 +309,22 @@ message SyncServiceProofItem {
     reserved 2 to 100;
 }
 
-message ServiceReqProofItem {
-    GroupServiceType   Type  = 1; //BREW or STORAGE
-    bytes              Proof = 2; //StorageServiceProofItem or BrewServiceProofItem
-}
-
 message  AddCellarReqItem {
-    string              GroupId         = 1;
-    GroupSeed           Seed            = 2;
+    string              ReqId           = 1;
+    bytes               Seed            = 2;
     uint64              CurrentBlockId  = 3;
-    ServiceReqProofItem Proof           = 4;
-    string              Memo            = 5;
-    reserved  8 to 100;
+    GroupServiceType    ServiceType     = 4;
+    bytes               Proof           = 5;
+    string              Memo            = 6;
+    reserved  7 to 100;
 }
 
 message AddCellarRespItem{
-    string GroupId                       = 1;
-    AddCellarReqItem   OrigReq           = 2;
-    uint64             TimeStamp         = 3;
-    string             CellarOwnerPubkey = 4;
+    string             Resp              = 1;
+    string             GroupId           = 2;
+    AddCellarReqItem   OrigReq           = 3;
+    uint64             TimeStamp         = 4;
+    string             CellarOwnerPubkey = 5;
 }
 
 message CellarSyncDoneItem {

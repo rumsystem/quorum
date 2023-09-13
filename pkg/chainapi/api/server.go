@@ -99,8 +99,6 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v2/group/verifyseed", h.VerifyGroupSeed)
 	r.POST("/v1/group/rmdata", h.ClearGroupData)
 
-	//r.POST("/v1/group/leave", h.LeaveGroup)
-
 	r.POST("/v1/network/peers", h.AddPeers)
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
 	r.POST("/v1/tools/seedurlextend", h.SeedUrlextend)
@@ -108,16 +106,16 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 
-	//get block by id
+	//get block by block_id
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 
-	//get trx by id
+	//get trx by trx_id
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
 
 	//get all groups
 	r.GET("/v1/groups", h.GetGroups)
 
-	//get group by id
+	//get group by group_id
 	r.GET("/v1/group/:group_id", h.GetGroupById)
 
 	//get trx allow list
@@ -190,6 +188,7 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	//deprecated
 	//r.POST("/v1/group", h.CreateGroupUrl())
 	//r.POST("/v2/group/join", h.JoinGroupV2())
+	//r.POST("/v1/group/leave", h.LeaveGroup)
 
 	// start https or http server
 	host := config.APIHost

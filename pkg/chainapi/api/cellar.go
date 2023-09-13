@@ -12,10 +12,10 @@ import (
 
 type AddCellearParam struct {
 	GroupId    string `from:"group_id" json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
-	CellarSeed *quorumpb.GroupSeed
-	Type       string                        `from:"type" json:"type" validate:"required,oneof=brew sync" example:"brew"`
-	Proof      *quorumpb.ServiceReqProofItem `from:"proof" json:"proof" validate:"required" example:"proof"`
-	Memo       string                        `from:"memo" json:"memo" validate:"required" example:"memo"`
+	CellarSeed []byte `from:"cellar_seed" json:"cellar_seed" validate:"required" example:"cellar_seed"`
+	Type       string `from:"type" json:"type" validate:"required,oneof=brew sync" example:"brew"`
+	Proof      []byte `from:"proof" json:"proof" validate:"required" example:"proof"`
+	Memo       string `from:"memo" json:"memo" validate:"required" example:"memo"`
 }
 
 type AddCellearResult struct {

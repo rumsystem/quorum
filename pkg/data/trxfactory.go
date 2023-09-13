@@ -66,11 +66,12 @@ func (factory *TrxFactory) GetForkTrx(senderPubkey, senderKeyname string, item *
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_FORK, encodedcontent, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetAddCellarReqTrx(senderPubkey, senderKeyname string, item *quorumpb.AddCellarReqItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetAddCellarReqTrx(senderPubkey, senderKeyname, cellarCipherKey string, item *quorumpb.AddCellarReqItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
 
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_SERVICE_REQ, encodedcontent, senderPubkey, senderKeyname)
+	return CreateTrxByEthKey(factory.nodename, factory.version, factory.groupId, senderPubkey, senderKeyname, cellarCipherKey, quorumpb.TrxType_SERVICE_REQ, encodedcontent)
+
 }
