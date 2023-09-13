@@ -295,7 +295,7 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 		} else {
 			err = chain.HandleBftMsgPsConn(bftMsg)
 		}
-	} else if pkg.Type == quorumpb.PackageType_BROADCAST_MSG {
+	} else if pkg.Type == quorumpb.PackageType_BROADCAST {
 		broadcastMsg := &quorumpb.BroadcastMsg{}
 		err = proto.Unmarshal(pkg.Data, broadcastMsg)
 		if err != nil {
@@ -642,10 +642,7 @@ func (chain *Chain) IsProducer() bool {
 }
 
 func (chain *Chain) IsPublicGroup() bool {
-	if chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC {
-		return true
-	}
-	return false
+	return chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC
 }
 
 func (chain *Chain) GetMyProducerPubkey() string {
@@ -768,6 +765,11 @@ func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) 
 		case quorumpb.TrxType_CHAIN_CONFIG:
 			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
+		case quorumpb.TrxType_SERVICE_REQ:
+			chain_log.Debugf("<%s> apply SERVICE_REQ trx", chain.groupItem.GroupId)
+		case quorumpb.TrxType_SERVICE_RESP:
+			chain_log.Debugf("<%s> apply SERVICE_RESP trx", chain.groupItem.GroupId)
+
 		//case quorumpb.TrxType_CONSENSUS:
 		//	chain_log.Debugf("<%s> apply CONSENSUS trx", chain.groupItem.GroupId)
 		//	chain.applyConseususTrx(trx, decodedData, nodename)

@@ -8,7 +8,7 @@ type TrxFactoryIface interface {
 	GetChainConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error)
 	GetUpdAppConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.AppConfigItem) (*quorumpb.Trx, error)
 	GetUpdGroupSyncerTrx(senderPubkey, senderKeyname string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error)
-	GetAddCellarReqTrx(senderPubkey, senderKeyname string, item *quorumpb.AddToCellarReqItem) (*quorumpb.Trx, error)
+	GetAddCellarReqTrx(senderPubkey, senderKeyname string, item *quorumpb.AddCellarReqItem) (*quorumpb.Trx, error)
 	GetPostAnyTrx(senderPubkey, senderKeyname string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error)
 	GetForkTrx(senderPubkey, senderKeyname string, item *quorumpb.ForkItem) (*quorumpb.Trx, error)
 }

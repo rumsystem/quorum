@@ -541,6 +541,199 @@ result:
   }
 
 
+
+start bootstramp
+  RUM_KSPASSWD=123 go run main.go bootstrapnode --listen /ip4/0.0.0.0/tcp/10666 --loglevel "debug"
+    get id
+    --- > bootstrap host created, ID:<16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2>,
+
+start o1
+  RUM_KSPASSWD=123 go run main.go rumlitenode --peername o1 --listen /ip4/127.0.0.1/tcp/7002 --apiport 8002 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir o1keystore  --loglevel "debug"
+
+start u1
+  RUM_KSPASSWD=123 go run main.go rumlitenode --peername u1 --listen /ip4/127.0.0.1/tcp/7003 --apiport 8003 --peer /ip4/127.0.0.1/tcp/10666/p2p/16Uiu2HAm9w95mPtMLghqw6c2Zua7rX36zJAd7bMRonUvS7R9d4w2 --configdir config --datadir data --keystoredir u1keystore  --loglevel "debug"
+
+o1 create keys for cellar group
+  cellar owner :
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_owner"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
+
+    {
+      "key_alias": "91e8542f-237a-4dee-bc0c-7252c5177b6d",
+      "key_name": "o1_cellar_owner",
+      "pubkey": "AifJ9hx_BnZEadTTbPv_lUEbhIQ0myf9xOWFG_vNxBaR"
+    }
+
+  cellar producer
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_producer"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
+    
+    {
+      "key_alias": "defeb806-d87a-4cec-8b6c-1f7cccf14955",
+      "key_name": "o1_cellar_trx_sign",
+      "pubkey": "AvbcnXkcfHdzr7cHtRsWuMwLL-1vDNpxDLhcQxjd1Acr"
+    }
+
+  cellar trx sign (use to sign trx in cellar group)
+
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_trx_sign"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
+
+    {
+      "key_alias": "defeb806-d87a-4cec-8b6c-1f7cccf14955",
+      "key_name": "o1_cellar_trx_sign",
+      "pubkey": "AvbcnXkcfHdzr7cHtRsWuMwLL-1vDNpxDLhcQxjd1Acr"
+    }
+
+  cellar brewer
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_brewer"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
+    {
+      "key_alias": "995799d1-115f-40d1-b6d0-40369e8b45c8",
+      "key_name": "o1_cellar_brewer",
+      "pubkey": "A_ZbfSDtLwjIzIAfGTfWaBCdg_wip0AP_1vmzkXUdkcA"
+    }
+
+
+  cellar syncer
+    curl -X POST -H 'Content-Type: application/json' -d '{"key_name":"o1_cellar_syncer"}'  http://127.0.0.1:8002/api/v2/keystore/createsignkey
+    {
+      "key_alias": "1100ef72-5935-45f4-85ec-0adc566ed337",
+      "key_name": "o1_cellar_syncer",
+      "pubkey": "AlOtlrtI2r2HHVi-rDYv2XUlsBhQYRbrrY664WrkW3uT"
+    }
+
+  make sure all keys are created, list all keys
+    curl -X GET -H 'Content-Type: application/json'  -d '{}' http://127.0.0.1:8002/api/v2/keystore/getallkeys
+
+    {
+    "keys_list": [
+      {
+        "pubkey": "AtA-xhMRKjTg2vf3UaNEGVje_Av13RLACksQSjvy6aF8",
+        "key_name": "db646a74-3e10-4a73-9371-5682ef5c0a21_neoproducer_sign_keyname",
+        "alias": []
+      },
+      {
+        "pubkey": "A5FayGbpAPzPn4qwglQHqu20cLbb8QeMjoJfqa2pNTTt",
+        "key_name": "default",
+        "alias": []
+      },
+      {
+        "pubkey": "A_ZbfSDtLwjIzIAfGTfWaBCdg_wip0AP_1vmzkXUdkcA",
+        "key_name": "o1_cellar_brewer",
+        "alias": [
+          "995799d1-115f-40d1-b6d0-40369e8b45c8"
+        ]
+      },
+      {
+        "pubkey": "AifJ9hx_BnZEadTTbPv_lUEbhIQ0myf9xOWFG_vNxBaR",
+        "key_name": "o1_cellar_owner",
+        "alias": [
+          "91e8542f-237a-4dee-bc0c-7252c5177b6d"
+        ]
+      },
+      {
+        "pubkey": "A2fLpK0H83X2ot0MrdjLuDHir5G2LPPZmWqdWEc_rNSI",
+        "key_name": "o1_cellar_producer",
+        "alias": [
+          "d298ea65-5430-4227-a01d-370dc65dc6d4"
+        ]
+      },
+      {
+        "pubkey": "AlOtlrtI2r2HHVi-rDYv2XUlsBhQYRbrrY664WrkW3uT",
+        "key_name": "o1_cellar_syncer",
+        "alias": [
+          "1100ef72-5935-45f4-85ec-0adc566ed337"
+        ]
+      },
+      {
+        "pubkey": "AvbcnXkcfHdzr7cHtRsWuMwLL-1vDNpxDLhcQxjd1Acr",
+        "key_name": "o1_cellar_trx_sign",
+        "alias": [
+          "defeb806-d87a-4cec-8b6c-1f7cccf14955"
+        ]
+      }
+    ]
+  }
+
+create cellar group seed
+
+  curl -X POST -H 'Content-Type: application/json' -d '{"app_id":"o1_cellar_appid", "app_name":"o1_cellar", "group_name":"o1_cellar_group","consen
+  sus_type":"poa", "sync_type":"private", "epoch_duration":1000, "owner_keyname":"o1_cellar_owner", "producer_keyname":"o1_cellar_producer", "brew_service":{"term":"BREW FOR EVERYONE", "contract":""}, "sync_service":{"term":"SYNC FOR EVERYONE","contract":""}, "brewer_keyname":"o1_cellar_brewer", "syncer_keyname":"o1_cellar_syncer"}' http://127.0.0.1:8002/api/v2/group/newseed | jq
+
+  {
+    "group_id": "5bf9db41-631c-4818-9a54-f85c1a503f84",
+    "owner_keyname": "o1_cellar_owner",
+    "producer_sign_keyname": "o1_cellar_producer",
+    "brewer_keyname": "o1_cellar_brewer",
+    "syncer_keyname": "o1_cellar_syncer",
+    "seed_byts": "CiQ1YmY5ZGI0MS02MzFjLTQ4MTgtOWE1NC1mODVjMWE1MDNmODQSD28xX2NlbGxhcl9ncm91cBosQWlmSjloeF9CblpFYWRUVGJQdl9sVUViaElRMG15Zjl4T1dGR192TnhCYVIgASpANTA4ZmQ0NTI5NmFmZmE1Mjc3ZTViODAxZDEyYThjOWM5ZDMwMDAwYjdlMzc3M2IxZWE2ZThiY2JkYTc2OGEzYTIPbzFfY2VsbGFyX2FwcGlkOglvMV9jZWxsYXJC1gIKJDViZjlkYjQxLTYzMWMtNDgxOC05YTU0LWY4NWMxYTUwM2Y4NCIsQTJmTHBLMEg4M1gyb3QwTXJkakx1REhpcjVHMkxQUFptV3FkV0VjX3JOU0kwhLPDxZ6WkMIXOpABEo0BCiRiNjFlOGU1Zi0yNGZjLTQ1MjctODc4OS1jNjk1MGEwMTFhMzciZQokNWJmOWRiNDEtNjMxYy00ODE4LTlhNTQtZjg1YzFhNTAzZjg0KOgHMixBMmZMcEswSDgzWDJvdDBNcmRqTHVESGlyNUcyTFBQWm1XcWRXRWNfck5TSToMSW5pdGlhbCBGb3JrQiAczmWLUjOPK9Ditm2EytWFRY0f1kZks7wg/mYvULMn4EpBZbfMHkdDF5w5Ec0snG3Qv9zZYkeLxrpZT/5OX8inOzlHsfKgnaC6hvjbpKgo9Q2RBhOq8xc8drtUkpukfrWULQFKcRJvCixBX1piZlNEdEx3akl6SUFmR1RmV2FCQ2RnX3dpcDBBUF8xdm16a1hVZGtjQRIsQWxPdGxydEkycjJISFZpLXJEWXYyWFVsc0JoUVlSYnJyWTY2NFdya1czdVQaEUJSRVcgRk9SIEVWRVJZT05FSkUIARJBCixBbE90bHJ0STJyMkhIVmktckRZdjJYVWxzQmhRWVJicnJZNjY0V3JrVzN1VBIRQlJFVyBGT1IgRVZFUllPTkVSICjnwqAMA4JEwaqhPtE3m6y0AFbrzrMDAKfOau/WQsNKWkFaKu1fP3I0Lyg1QnGhzKEcuG30NU9Azb3XyKVOOtCt1EYcHOQUKJDlaudxHGat0VgvZlG/JMNv0O7JqKiajogLAQ=="
+  }
+
+verify seed is validhistory
+
+  curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQ1YmY5ZGI0MS02MzFjLTQ4MTgtOWE1NC1mODVjMWE1MDNmODQSD28xX2NlbGxhcl9ncm91cBosQWlmSjloeF9CblpFYWRUVGJQdl9sVUViaElRMG15Zjl4T1dGR192TnhCYVIgASpANTA4ZmQ0NTI5NmFmZmE1Mjc3ZTViODAxZDEyYThjOWM5ZDMwMDAwYjdlMzc3M2IxZWE2ZThiY2JkYTc2OGEzYTIPbzFfY2VsbGFyX2FwcGlkOglvMV9jZWxsYXJC1gIKJDViZjlkYjQxLTYzMWMtNDgxOC05YTU0LWY4NWMxYTUwM2Y4NCIsQTJmTHBLMEg4M1gyb3QwTXJkakx1REhpcjVHMkxQUFptV3FkV0VjX3JOU0kwhLPDxZ6WkMIXOpABEo0BCiRiNjFlOGU1Zi0yNGZjLTQ1MjctODc4OS1jNjk1MGEwMTFhMzciZQokNWJmOWRiNDEtNjMxYy00ODE4LTlhNTQtZjg1YzFhNTAzZjg0KOgHMixBMmZMcEswSDgzWDJvdDBNcmRqTHVESGlyNUcyTFBQWm1XcWRXRWNfck5TSToMSW5pdGlhbCBGb3JrQiAczmWLUjOPK9Ditm2EytWFRY0f1kZks7wg/mYvULMn4EpBZbfMHkdDF5w5Ec0snG3Qv9zZYkeLxrpZT/5OX8inOzlHsfKgnaC6hvjbpKgo9Q2RBhOq8xc8drtUkpukfrWULQFKcRJvCixBX1piZlNEdEx3akl6SUFmR1RmV2FCQ2RnX3dpcDBBUF8xdm16a1hVZGtjQRIsQWxPdGxydEkycjJISFZpLXJEWXYyWFVsc0JoUVlSYnJyWTY2NFdya1czdVQaEUJSRVcgRk9SIEVWRVJZT05FSkUIARJBCixBbE90bHJ0STJyMkhIVmktckRZdjJYVWxzQmhRWVJicnJZNjY0V3JrVzN1VBIRQlJFVyBGT1IgRVZFUllPTkVSICjnwqAMA4JEwaqhPtE3m6y0AFbrzrMDAKfOau/WQsNKWkFaKu1fP3I0Lyg1QnGhzKEcuG30NU9Azb3XyKVOOtCt1EYcHOQUKJDlaudxHGat0VgvZlG/JMNv0O7JqKiajogLAQ=="}' http://127.0.0.1:8002/api/v2/group/verifyseed
+
+  {
+    "verified": true,
+    "error": ""
+  }
+
+parse seed to check the details
+
+  curl -X POST -H 'Content-Type: application/json' -d '{"seed":"CiQ1YmY5ZGI0MS02MzFjLTQ4MTgtOWE1NC1mODVjMWE1MDNmODQSD28xX2NlbGxhcl9ncm91cBosQWlmSjloeF9CblpFYWRUVGJQdl9sVUViaElRMG15Zjl4T1dGR192TnhCYVIgASpANTA4ZmQ0NTI5NmFmZmE1Mjc3ZTViODAxZDEyYThjOWM5ZDMwMDAwYjdlMzc3M2IxZWE2ZThiY2JkYTc2OGEzYTIPbzFfY2VsbGFyX2FwcGlkOglvMV9jZWxsYXJC1gIKJDViZjlkYjQxLTYzMWMtNDgxOC05YTU0LWY4NWMxYTUwM2Y4NCIsQTJmTHBLMEg4M1gyb3QwTXJkakx1REhpcjVHMkxQUFptV3FkV0VjX3JOU0kwhLPDxZ6WkMIXOpABEo0BCiRiNjFlOGU1Zi0yNGZjLTQ1MjctODc4OS1jNjk1MGEwMTFhMzciZQokNWJmOWRiNDEtNjMxYy00ODE4LTlhNTQtZjg1YzFhNTAzZjg0KOgHMixBMmZMcEswSDgzWDJvdDBNcmRqTHVESGlyNUcyTFBQWm1XcWRXRWNfck5TSToMSW5pdGlhbCBGb3JrQiAczmWLUjOPK9Ditm2EytWFRY0f1kZks7wg/mYvULMn4EpBZbfMHkdDF5w5Ec0snG3Qv9zZYkeLxrpZT/5OX8inOzlHsfKgnaC6hvjbpKgo9Q2RBhOq8xc8drtUkpukfrWULQFKcRJvCixBX1piZlNEdEx3akl6SUFmR1RmV2FCQ2RnX3dpcDBBUF8xdm16a1hVZGtjQRIsQWxPdGxydEkycjJISFZpLXJEWXYyWFVsc0JoUVlSYnJyWTY2NFdya1czdVQaEUJSRVcgRk9SIEVWRVJZT05FSkUIARJBCixBbE90bHJ0STJyMkhIVmktckRZdjJYVWxzQmhRWVJicnJZNjY0V3JrVzN1VBIRQlJFVyBGT1IgRVZFUllPTkVSICjnwqAMA4JEwaqhPtE3m6y0AFbrzrMDAKfOau/WQsNKWkFaKu1fP3I0Lyg1QnGhzKEcuG30NU9Azb3XyKVOOtCt1EYcHOQUKJDlaudxHGat0VgvZlG/JMNv0O7JqKiajogLAQ=="}' http://127.0.0.1:8002/api/v2/group/parseseed
+
+  {
+    "groupId": "5bf9db41-631c-4818-9a54-f85c1a503f84",
+    "groupName": "o1_cellar_group",
+    "ownerPubkey": "AifJ9hx_BnZEadTTbPv_lUEbhIQ0myf9xOWFG_vNxBaR",
+    "producerPubkey": "A2fLpK0H83X2ot0MrdjLuDHir5G2LPPZmWqdWEc_rNSI",
+    "syncType": "PRIVATE",
+    "cipherKey": "508fd45296affa5277e5b801d12a8c9c9d30000b7e3773b1ea6e8bcbda768a3a",
+    "appId": "o1_cellar_appid",
+    "appName": "o1_cellar",
+    "consensusInfo": {
+      "ConsensusId": "b61e8e5f-24fc-4527-8789-c6950a011a37",
+      "ForkInfo": {
+        "GroupId": "5bf9db41-631c-4818-9a54-f85c1a503f84",
+        "EpochDuration": 1000,
+        "producers": [
+          "A2fLpK0H83X2ot0MrdjLuDHir5G2LPPZmWqdWEc_rNSI"
+        ],
+        "Memo": "Initial Fork"
+      }
+    },
+    "brewService": {
+      "BrewerPubkey": "A_ZbfSDtLwjIzIAfGTfWaBCdg_wip0AP_1vmzkXUdkcA",
+      "SyncerPubkey": "AlOtlrtI2r2HHVi-rDYv2XUlsBhQYRbrrY664WrkW3uT",
+      "Term": "BREW FOR EVERYONE"
+    },
+    "syncService": {
+      "SyncerPubkey": "AlOtlrtI2r2HHVi-rDYv2XUlsBhQYRbrrY664WrkW3uT",
+      "Term": "BREW FOR EVERYONE"
+    },
+    "genesisBlock": {
+      "GroupId": "5bf9db41-631c-4818-9a54-f85c1a503f84",
+      "ProducerPubkey": "A2fLpK0H83X2ot0MrdjLuDHir5G2LPPZmWqdWEc_rNSI",
+      "TimeStamp": "1694550492655442308",
+      "Consensus": {
+        "Data": "CiRiNjFlOGU1Zi0yNGZjLTQ1MjctODc4OS1jNjk1MGEwMTFhMzciZQokNWJmOWRiNDEtNjMxYy00ODE4LTlhNTQtZjg1YzFhNTAzZjg0KOgHMixBMmZMcEswSDgzWDJvdDBNcmRqTHVESGlyNUcyTFBQWm1XcWRXRWNfck5TSToMSW5pdGlhbCBGb3Jr"
+      },
+      "BlockHash": "HM5li1IzjyvQ4rZthMrVhUWNH9ZGZLO8IP5mL1CzJ+A=",
+      "ProducerSign": "ZbfMHkdDF5w5Ec0snG3Qv9zZYkeLxrpZT/5OX8inOzlHsfKgnaC6hvjbpKgo9Q2RBhOq8xc8drtUkpukfrWULQE="
+    },
+    "hash": "KOfCoAwDgkTBqqE+0TebrLQAVuvOswMAp85q79ZCw0o=",
+    "sign": "WirtXz9yNC8oNUJxocyhHLht9DVPQM2918ilTjrQrdRGHBzkFCiQ5WrncRxmrdFYL2ZRvyTDb9Duyaiomo6ICwE="
+  }
+
+o1 join the new cellar group
+
+
+
+
+
+
+
+
+
+
+
 ===== TO BE MODIFIED =====
 酒窖（cellar）
 酒窖其实也是一个group，同步类型可以是public或者private，producer可以是一个或者多个（一旦确定则不可更改，除非停机fork）

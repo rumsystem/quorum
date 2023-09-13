@@ -97,8 +97,8 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v2/group/addcellar", h.AddCellar)
 	r.POST("/v2/group/parseseed", h.ParseGroupSeed)
 	r.POST("/v2/group/verifyseed", h.VerifyGroupSeed)
-
 	r.POST("/v1/group/rmdata", h.ClearGroupData)
+
 	//r.POST("/v1/group/leave", h.LeaveGroup)
 
 	r.POST("/v1/network/peers", h.AddPeers)

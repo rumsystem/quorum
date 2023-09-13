@@ -314,32 +314,26 @@ message ServiceReqProofItem {
     bytes              Proof = 2; //StorageServiceProofItem or BrewServiceProofItem
 }
 
-message  AddToCellarReqItem {
+message  AddCellarReqItem {
     string              GroupId         = 1;
     GroupSeed           Seed            = 2;
     uint64              CurrentBlockId  = 3;
     ServiceReqProofItem Proof           = 4;
     string              Memo            = 5;
-    bytes               Hash            = 6;
-    bytes               Signature       = 7;
     reserved  8 to 100;
 }
 
-message AddToCellarRespItem{
+message AddCellarRespItem{
     string GroupId                       = 1;
-    AddToCellarReqItem OrigReq           = 2;
+    AddCellarReqItem   OrigReq           = 2;
     uint64             TimeStamp         = 3;
     string             CellarOwnerPubkey = 4;
-    bytes              Hash              = 5;
-    bytes              Signature         = 6;
 }
 
 message CellarSyncDoneItem {
     string          GroupId      = 1;
     ReqBlockResp    ReqBlockResp = 2;
     string CellarOwnerPubkey     = 3;
-    bytes Hash                   = 4;
-    bytes Signature              = 5;
 }
 
 message NodeSDKGroupItem {

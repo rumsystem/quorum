@@ -10,21 +10,22 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
-type UpdateGroupCellearParam struct {
+type AddCellearParam struct {
 	GroupId    string `from:"group_id" json:"group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	CellarSeed *quorumpb.GroupSeed
-	Type       string `from:"type" json:"type" validate:"required,oneof=brew sync" example:"brew"`
-	Proof      *quorumpb.ServiceReqProofItem
+	Type       string                        `from:"type" json:"type" validate:"required,oneof=brew sync" example:"brew"`
+	Proof      *quorumpb.ServiceReqProofItem `from:"proof" json:"proof" validate:"required" example:"proof"`
+	Memo       string                        `from:"memo" json:"memo" validate:"required" example:"memo"`
 }
 
-type UpdateGroupCellearResult struct {
+type AddCellearResult struct {
 	GroupId string `from:"group_id" json:"group_id" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	TrxId   string `from:"trx_id" json:"trx_id" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 }
 
 func (h *Handler) AddCellar(c echo.Context) (err error) {
 	cc := c.(*utils.CustomContext)
-	params := new(UpdateGroupCellearParam)
+	params := new(AddCellearParam)
 	if err := cc.BindAndValidate(params); err != nil {
 		return err
 	}
@@ -42,11 +43,11 @@ func (h *Handler) AddCellar(c echo.Context) (err error) {
 			return rumerrors.NewBadRequestError("Invalid service type")
 		}
 
-		trxId, err := group.ReqCellarServices(params.CellarSeed, serviceType, params.Proof)
+		trxId, err := group.ReqCellarServices(params.CellarSeed, serviceType, params.Proof, params.Memo)
 		if err != nil {
 			return err
 		}
-		return c.JSON(http.StatusOK, &UpdateGroupCellearResult{
+		return c.JSON(http.StatusOK, &AddCellearResult{
 			GroupId: params.GroupId,
 			TrxId:   trxId,
 		})
