@@ -10,6 +10,7 @@ type GroupIface interface {
 	GetRexSyncerStatus() string
 	StartSync() error
 	StopSync() error
+	GetCurrentBlockId() uint64
 }
 
 type RexSyncResult struct {

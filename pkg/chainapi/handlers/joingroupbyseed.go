@@ -24,6 +24,8 @@ type JoinGroupBySeedResult struct {
 	GroupId string `json:"group_id" validate:"required" example:"c0020941-e648-40c9-92dc-682645acd17e"`
 }
 
+const JOIN_BY_API = "join_by_api"
+
 func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOptions) (*JoinGroupBySeedResult, error) {
 	ks := localcrypto.GetKeystore()
 
@@ -59,7 +61,7 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 
 	//create empty group
 	group := &chain.Group{}
-	err = group.JoinGroupBySeed(userSignPubkey, seed)
+	err = group.JoinGroupBySeed(JOIN_BY_API, userSignPubkey, seed)
 	if err != nil {
 		return nil, rumerrors.NewBadRequestError(err)
 	}

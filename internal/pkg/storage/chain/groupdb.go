@@ -9,12 +9,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) AddGroup(groupItem *quorumpb.GroupItem) error {
+func (cs *Storage) AddGroup(parentGroupId string, groupItem *quorumpb.GroupItem) error {
 	//check if group exist
-	key := s.GetGroupItemKey(groupItem.GroupId)
+	key := s.GetGroupItemKey(parentGroupId, groupItem.GroupId)
 	exist, _ := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist {
-		return errors.New("Group with same GroupId existed")
+		return errors.New("group with same GroupId existed")
 	}
 
 	//add group to db
@@ -25,35 +25,35 @@ func (cs *Storage) AddGroup(groupItem *quorumpb.GroupItem) error {
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-func (cs *Storage) UpdGroup(groupItem *quorumpb.GroupItem) error {
+func (cs *Storage) UpdGroup(parentGroupId string, groupItem *quorumpb.GroupItem) error {
 	value, err := proto.Marshal(groupItem)
 	if err != nil {
 		return err
 	}
 
-	key := s.GetGroupItemKey(groupItem.GroupId)
+	key := s.GetGroupItemKey(parentGroupId, groupItem.GroupId)
 	//upd group to db
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
 }
 
-func (cs *Storage) RmGroup(groupId string) error {
+func (cs *Storage) RmGroup(parentGroupId string, groupId string) error {
 	//check if group exist
-	key := s.GetGroupItemKey(groupId)
+	key := s.GetGroupItemKey(parentGroupId, groupId)
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		if err != nil {
 			return err
 		}
-		return errors.New("Group Not Found")
+		return errors.New("group Not found")
 	}
 
 	//delete group
 	return cs.dbmgr.GroupInfoDb.Delete([]byte(key))
 }
 
-func (cs *Storage) GetGroupInfo(groupId string) (*quorumpb.GroupItem, error) {
+func (cs *Storage) GetGroupItem(parentGroupId, groupId string) (*quorumpb.GroupItem, error) {
 	//check if group exist
-	key := s.GetGroupItemKey(groupId)
+	key := s.GetGroupItemKey(parentGroupId, groupId)
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		if err != nil {
@@ -138,9 +138,10 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 	return nil
 }
 
-func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
+// NodeSDK
+func (cs *Storage) AddGroupV2(parentGroupId string, groupItem *quorumpb.NodeSDKGroupItem) error {
 	//check if group exist
-	key := s.GetGroupItemKey(groupItem.Group.GroupId)
+	key := s.GetGroupItemKey(parentGroupId, groupItem.Group.GroupId)
 	exist, _ := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if exist {
 		return errors.New("group with same GroupId existed")
@@ -155,8 +156,8 @@ func (cs *Storage) AddGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
 }
 
 // Get Gorup Info
-func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, error) {
-	key := s.GetGroupItemKey(groupId)
+func (cs *Storage) GetGroupInfoV2(parentGroupId string, groupId string) (*quorumpb.NodeSDKGroupItem, error) {
+	key := s.GetGroupItemKey(parentGroupId, groupId)
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		if err != nil {
@@ -179,10 +180,10 @@ func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, e
 	return groupInfo, nil
 }
 
-func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
+func (cs *Storage) GetAllGroupsV2(parentGroupId string) ([]*quorumpb.NodeSDKGroupItem, error) {
 	var result []*quorumpb.NodeSDKGroupItem
 
-	key := s.GetGroupItemKey("")
+	key := s.GetGroupItemKey(parentGroupId, "")
 	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
@@ -198,13 +199,13 @@ func (cs *Storage) GetAllGroupsV2() ([]*quorumpb.NodeSDKGroupItem, error) {
 	return result, err
 }
 
-func (cs *Storage) UpdGroupV2(groupItem *quorumpb.NodeSDKGroupItem) error {
+func (cs *Storage) UpdGroupV2(parentGroupId string, groupItem *quorumpb.NodeSDKGroupItem) error {
 	value, err := proto.Marshal(groupItem)
 	if err != nil {
 		return err
 	}
 
-	key := s.GetGroupItemKey(groupItem.Group.GroupId)
+	key := s.GetGroupItemKey(parentGroupId, groupItem.Group.GroupId)
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {
 		if err != nil {
@@ -268,4 +269,26 @@ func (cs *Storage) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
 	})
 
 	return seeds, err
+}
+
+// Get group list
+func (cs *Storage) GetSubGroupItems(parentGroupId string) ([]*quorumpb.GroupItem, error) {
+	var groupItems []*quorumpb.GroupItem
+	key := s.GetGroupItemPrefix(parentGroupId)
+
+	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+
+		groupItem := &quorumpb.GroupItem{}
+		err = proto.Unmarshal(v, groupItem)
+		if err != nil {
+			return err
+		}
+
+		groupItems = append(groupItems, groupItem)
+		return nil
+	})
+	return groupItems, err
 }

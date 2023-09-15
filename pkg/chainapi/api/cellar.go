@@ -31,7 +31,10 @@ func (h *Handler) AddCellar(c echo.Context) (err error) {
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[params.GroupId]; !ok {
+
+	subGroups, err := groupmgr.GetSubGroups(chain.JOIN_BY_API)
+
+	if group, ok := subGroups[params.GroupId]; !ok {
 		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	} else {
 		var serviceType quorumpb.GroupServiceType

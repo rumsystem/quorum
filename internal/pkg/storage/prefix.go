@@ -10,7 +10,7 @@ import (
 const (
 	TRX_PREFIX             = "trx"             //trx
 	BLK_PREFIX             = "blk"             //block
-	GRP_PREFIX             = "grp"             //group
+	GRP_PREFIX             = "grp"             //local group
 	CHNINFO_PREFIX         = "chain"           //chaininfo
 	CNT_PREFIX             = "cnt"             //content
 	PRD_PREFIX             = "prd"             //producer
@@ -88,12 +88,12 @@ func GetCachedBlockKey(groupId string, blockId uint64, prefix ...string) string 
 	return _prefix + epochSD
 }
 
-func GetGroupItemPrefix() string {
-	return GROUPITEM_PREFIX + "_"
+func GetGroupItemPrefix(parentGroupId string) string {
+	return GROUPITEM_PREFIX + "_" + parentGroupId + "_"
 }
 
-func GetGroupItemKey(groupId string) string {
-	return GetGroupItemPrefix() + groupId
+func GetGroupItemKey(parentGroupId, groupId string) string {
+	return GetGroupItemPrefix(parentGroupId) + groupId
 }
 
 func GetChainInfoEpoch(groupId string, prefix ...string) string {

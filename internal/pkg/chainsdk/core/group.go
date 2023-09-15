@@ -17,15 +17,16 @@ import (
 var group_log = logging.Logger("group")
 
 type Group struct {
-	Item        *quorumpb.GroupItem
-	BrewService *quorumpb.BrewServiceItem
-	SyncService *quorumpb.SyncServiceItem
-	ChainCtx    *Chain
-	GroupId     string
-	Nodename    string
+	ParentGroupId string
+	Item          *quorumpb.GroupItem
+	BrewService   *quorumpb.BrewServiceItem
+	SyncService   *quorumpb.SyncServiceItem
+	ChainCtx      *Chain
+	GroupId       string
+	Nodename      string
 }
 
-func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) error {
+func (grp *Group) JoinGroupBySeed(parentGroupId, userPubkey string, seed *quorumpb.GroupSeed) error {
 	group_log.Debugf("<%s> JoinGoupBySeed called", seed.GroupId)
 
 	groupItem := &quorumpb.GroupItem{
@@ -42,6 +43,7 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 		AppName:        seed.AppName,
 	}
 
+	grp.ParentGroupId = parentGroupId
 	grp.Item = groupItem
 	grp.GroupId = groupItem.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
@@ -125,7 +127,7 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 	grp.ChainCtx.CreateConsensus()
 
 	//save groupItem to db
-	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.Item)
+	err = nodectx.GetNodeCtx().GetChainStorage().AddGroup(grp.ParentGroupId, grp.Item)
 	if err != nil {
 		return err
 	}
@@ -134,9 +136,10 @@ func (grp *Group) JoinGroupBySeed(userPubkey string, seed *quorumpb.GroupSeed) e
 	return nil
 }
 
-func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
+func (grp *Group) LoadGroup(parentGroupId string, item *quorumpb.GroupItem) {
 	group_log.Debugf("<%s> LoadGroup called", item.GroupId)
 	//save groupItem
+	grp.ParentGroupId = parentGroupId
 	grp.Item = item
 	grp.GroupId = item.GroupId
 	grp.Nodename = nodectx.GetNodeCtx().Name
@@ -183,15 +186,14 @@ func (grp *Group) LoadGroup(item *quorumpb.GroupItem) {
 	group_log.Infof("Group <%s> loaded", grp.Item.GroupId)
 }
 
-func (grp *Group) LoadGroupById(groupId string) error {
-
+func (grp *Group) LoadGroupById(parentGroupId, groupId string) error {
 	//load groupitem by groupid
-	groupItem, err := nodectx.GetDbMgr().GetGroupById(groupId)
+	groupItem, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupItem(parentGroupId, groupId)
 	if err != nil {
 		return err
 	}
 
-	grp.LoadGroup(groupItem)
+	grp.LoadGroup(parentGroupId, groupItem)
 	return nil
 }
 
@@ -212,6 +214,7 @@ func (grp *Group) Teardown() error {
 	return nil
 }
 
+/*
 func (grp *Group) LeaveGrp() error {
 	group_log.Debugf("<%s> LeaveGrp called", grp.Item.GroupId)
 
@@ -225,6 +228,11 @@ func (grp *Group) LeaveGrp() error {
 
 	//remove group from local db
 	return nodectx.GetNodeCtx().GetChainStorage().RmGroup(grp.Item.GroupId)
+}
+*/
+
+func (grp *Group) GetGroupId() string {
+	return grp.Item.GroupId
 }
 
 func (grp *Group) IsProducer() bool {

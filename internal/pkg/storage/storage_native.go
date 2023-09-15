@@ -327,7 +327,6 @@ func CreateDb(path string) (*DbMgr, error) {
 	manager := DbMgr{
 		GroupInfoDb: groupDb,
 		Db:          dataDb,
-		Auth:        nil,
 		DataPath:    path,
 	}
 	return &manager, nil

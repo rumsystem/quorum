@@ -42,7 +42,33 @@ func (cs *Storage) RmBlock(groupId string, blockId uint64, cached bool, prefix .
 
 // get block by block_id
 func (cs *Storage) GetBlock(groupId string, blockId uint64, cached bool, prefix ...string) (*quorumpb.Block, error) {
-	return cs.dbmgr.GetBlock(groupId, blockId, cached, prefix...)
+	var key string
+	if cached {
+		key = s.GetCachedBlockKey(groupId, blockId, prefix...)
+	} else {
+		key = s.GetBlockKey(groupId, blockId, prefix...)
+	}
+
+	isExist, err := cs.dbmgr.Db.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	if !isExist {
+		return nil, rumerrors.ErrBlockExist
+	}
+
+	value, err := cs.dbmgr.Db.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	block := quorumpb.Block{}
+	err = proto.Unmarshal(value, &block)
+	if err != nil {
+		return nil, err
+	}
+
+	return &block, err
 }
 
 // check if block exist

@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"strconv"
 	"sync"
 
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
@@ -16,22 +15,18 @@ var dbmgr_log = logging.Logger("dbmgr")
 type DbMgr struct {
 	GroupInfoDb QuorumStorage
 	Db          QuorumStorage
-	Auth        QuorumStorage
 	seq         sync.Map
 	DataPath    string
 }
 
 func (dbMgr *DbMgr) CloseDb() {
 	dbMgr.GroupInfoDb.Close()
+	dbmgr_log.Infof("GroupInfoDb closed")
 	dbMgr.Db.Close()
-	//dbMgr.Auth.Close()
-	dbmgr_log.Infof("ChainCtx Db closed")
+	dbmgr_log.Infof("Db closed")
 }
 
-func (dbMgr *DbMgr) TryMigration(nodeDataVer int) {
-	//no need run migration for the first version
-}
-
+// should move to blockdb
 // get block
 func (dbMgr *DbMgr) GetBlock(groupId string, blockId uint64, cached bool, prefix ...string) (*quorumpb.Block, error) {
 	var key string
@@ -163,93 +158,6 @@ func (dbMgr *DbMgr) IsBlockExist(groupId string, blockId uint64, cached bool, pr
 		key = GetBlockKey(groupId, blockId, prefix...)
 	}
 	return dbMgr.Db.IsExist([]byte(key))
-}
-
-// Get group list
-func (dbMgr *DbMgr) GetGroupsBytes() ([][]byte, error) {
-	var groupItemList [][]byte
-	key := GetGroupItemPrefix()
-
-	err := dbMgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		groupItemList = append(groupItemList, v)
-		return nil
-	})
-	return groupItemList, err
-}
-
-// get group by groupid
-func (dbMgr *DbMgr) GetGroupById(groupId string) (*quorumpb.GroupItem, error) {
-	key := GetGroupItemKey(groupId)
-	value, err := dbMgr.GroupInfoDb.Get([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-
-	groupItem := &quorumpb.GroupItem{}
-	err = proto.Unmarshal(value, groupItem)
-	if err != nil {
-		return nil, err
-	}
-
-	return groupItem, nil
-}
-
-func (dbMgr *DbMgr) GetAppConfigItemInt(itemKey string, groupId string, prefix ...string) (int, error) {
-	key := GetAppConfigKey(groupId, itemKey, prefix...)
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return -1, err
-	}
-
-	var config quorumpb.AppConfigItem
-	err = proto.Unmarshal(value, &config)
-	if err != nil {
-		return -1, err
-	}
-
-	result, err := strconv.Atoi(config.Value)
-	return result, err
-}
-
-func (dbMgr *DbMgr) GetAppConfigItemBool(itemKey string, groupId string, prefix ...string) (bool, error) {
-	key := GetAppConfigKey(groupId, itemKey, prefix...)
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return false, err
-	}
-
-	var config quorumpb.AppConfigItem
-	err = proto.Unmarshal(value, &config)
-	if err != nil {
-		return false, err
-	}
-
-	result, err := strconv.ParseBool(config.Value)
-	return result, err
-}
-
-func (dbMgr *DbMgr) GetAppConfigItemString(itemKey string, groupId string, prefix ...string) (string, error) {
-	key := GetAppConfigKey(groupId, itemKey, prefix...)
-	value, err := dbMgr.Db.Get([]byte(key))
-	if err != nil {
-		return "", err
-	}
-
-	var config quorumpb.AppConfigItem
-	err = proto.Unmarshal(value, &config)
-	if err != nil {
-		return "", err
-	}
-
-	return config.Value, err
-}
-
-func (dbMgr *DbMgr) GetAnnouncedEncryptKeys(groupId string, prefix ...string) (pubkeylist []string, err error) {
-	keys := []string{}
-	return keys, nil
 }
 
 // get next nonce

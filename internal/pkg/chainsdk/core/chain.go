@@ -29,6 +29,7 @@ var chain_log = logging.Logger("chain")
 var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
 
 type Chain struct {
+	group         *Group
 	groupItem     *quorumpb.GroupItem
 	nodename      string
 	producerPool  map[string]*quorumpb.ProducerItem
@@ -46,9 +47,10 @@ type Chain struct {
 	KeyMap        map[string]string // key: pubkey; value: keyname
 }
 
-func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.GroupItem, nodename string) error {
+func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.GroupItem, group *Group, nodename string) error {
 	chain_log.Debugf("<%s> NewChain called", item.GroupId)
 
+	chain.group = group
 	chain.groupItem = item
 	chain.nodename = nodename
 
@@ -403,6 +405,44 @@ func (chain *Chain) handleServiceReq(trx *quorumpb.Trx) error {
 
 	//TBD, handle service req
 	chain_log.Debugf("TBD, handle serviceReq")
+
+	// verify service type is corrct
+	canBrew := false
+	canSync := false
+
+	if chain.group.BrewService != nil {
+		canBrew = true
+	}
+
+	if chain.group.SyncService == nil {
+		canSync = true
+	}
+
+	if req.ServiceType == quorumpb.GroupServiceType_BREW_SERVICE && !canBrew {
+		chain_log.Warningf("<%s> invalid service req, service type <%s> not supported", chain.groupItem.GroupId, req.ServiceType.String())
+		return fmt.Errorf("invalid service req, service type <%s> not supported", req.ServiceType.String())
+	} else if req.ServiceType == quorumpb.GroupServiceType_SYNC_SERVICE && !canSync {
+		chain_log.Warningf("<%s> invalid service req, service type <%s> not supported", chain.groupItem.GroupId, req.ServiceType.String())
+		return fmt.Errorf("invalid service req, service type <%s> not supported", req.ServiceType.String())
+	}
+
+	reqSeed := &quorumpb.GroupSeed{}
+	err = proto.Unmarshal(req.Seed, reqSeed)
+	if err != nil {
+		return err
+	}
+
+	//join req group by seed
+	reqGroup := &Group{}
+	err = reqGroup.JoinGroupBySeed(chain.groupItem.GroupId, chain.groupItem.OwnerPubKey, reqSeed)
+	if err != nil {
+		return err
+	}
+
+	reqGroup.StartSync()
+
+	//tbd save to groupMgr
+
 	return nil
 }
 

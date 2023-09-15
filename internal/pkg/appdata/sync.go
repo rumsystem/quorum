@@ -63,14 +63,6 @@ func NewAppSyncAgent(apiroot string, nodename string, appdb *AppDb, dbmgr *stora
 	return appsync
 }
 
-func (appsync *AppSync) GetGroups() []*quorumpb.GroupItem {
-	var items []*quorumpb.GroupItem
-	for _, grp := range appsync.groupmgr.Groups {
-		items = append(items, grp.Item)
-	}
-	return items
-}
-
 func (appsync *AppSync) ParseBlockTrxs(groupid string, block *quorumpb.Block) error {
 	appsynclog.Infof("ParseBlockTrxs %d trx(s) on group %s blockId <%d>", len(block.Trxs), groupid, block.BlockId)
 	err := appsync.appdb.AddMetaByTrx(block.BlockId, groupid, block.Trxs)
@@ -106,35 +98,34 @@ func (appsync *AppSync) RunSync(groupid string, lastSyncBlock uint64, highestBlo
 	}
 }
 
-func (appsync *AppSync) Start(interval int) {
+func (appsync *AppSync) Start(parentGroupId string, interval int) {
 	go func() {
 		for {
-			groups := appsync.GetGroups()
-			for _, groupitem := range groups {
-				groupId := groupitem.GroupId
-				group, ok := appsync.groupmgr.Groups[groupId]
-				if !ok {
-					appsynclog.Errorf("can not find group : %s", groupId)
-					continue
-				}
+			groups, err := appsync.groupmgr.GetSubGroups(parentGroupId)
+			if err != nil {
+				appsynclog.Debugf("get sub groups err %s", err)
+				return
+			}
 
-				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "Block")
+			for _, group := range groups {
+
+				blockIdStr, err := appsync.appdb.GetGroupStatus(group.GroupId, "Block")
 				if err == nil {
 					if blockIdStr == "" { //init, set to 0
 						blockIdStr = "0"
 					}
 				} else {
-					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupId, err)
+					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", group.GroupId, err)
 					continue
 				}
 
 				lastSyncBlock, err := strconv.ParseUint(blockIdStr, 10, 64)
 				if err == nil {
 					if group.GetCurrentBlockId() > lastSyncBlock {
-						appsync.RunSync(groupId, lastSyncBlock, group.GetCurrentBlockId())
+						appsync.RunSync(group.GroupId, lastSyncBlock, group.GetCurrentBlockId())
 					}
 				} else {
-					appsynclog.Errorf("sync group : %s Get Group last sync block err %s", groupId, err)
+					appsynclog.Errorf("sync group : %s Get Group last sync block err %s", group.GroupId, err)
 				}
 			}
 

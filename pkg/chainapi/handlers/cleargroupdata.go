@@ -23,9 +23,13 @@ func ClearGroupData(params *ClearGroupDataParam) (*ClearGroupDataResult, error) 
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	_, ok := groupmgr.Groups[params.GroupId]
-	if ok {
+	isExist, err := groupmgr.IsGroupExist(chain.JOIN_BY_API, params.GroupId)
+	if err != nil {
 		return nil, rumerrors.NewBadRequestError(rumerrors.ErrClearJoinedGroup)
+	}
+
+	if !isExist {
+		return nil, rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
 
 	nodename := nodectx.GetNodeCtx().Name
