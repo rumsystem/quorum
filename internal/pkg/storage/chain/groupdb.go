@@ -138,6 +138,81 @@ func RemoveGroupData(db s.QuorumStorage, groupId string, prefix ...string) error
 	return nil
 }
 
+// group seed
+func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
+	key := s.GetSeedKey(seed.GenesisBlock.GroupId)
+	value, err := proto.Marshal(seed)
+	if err != nil {
+		return err
+	}
+	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
+}
+
+func (cs *Storage) GetGroupSeed(groupId string) (*quorumpb.GroupSeed, error) {
+	key := s.GetSeedKey(groupId)
+	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New("group seed not exist")
+	}
+
+	value, err := cs.dbmgr.GroupInfoDb.Get([]byte(key))
+	if err != nil {
+		return nil, err
+	}
+
+	var result quorumpb.GroupSeed
+	if err := proto.Unmarshal(value, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (cs *Storage) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
+	var seeds map[string]*quorumpb.GroupSeed = make(map[string]*quorumpb.GroupSeed)
+
+	prefix := s.GetSeedPrefix()
+	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(prefix), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		var pbSeed quorumpb.GroupSeed
+		if err := json.Unmarshal(v, &pbSeed); err != nil {
+			return err
+		}
+		seeds[string(k)] = &pbSeed
+
+		return nil
+	})
+
+	return seeds, err
+}
+
+// Get group list
+func (cs *Storage) GetSubGroupItems(parentGroupId string) ([]*quorumpb.GroupItem, error) {
+	var groupItems []*quorumpb.GroupItem
+	key := s.GetGroupItemPrefix(parentGroupId)
+
+	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
+		if err != nil {
+			return err
+		}
+
+		groupItem := &quorumpb.GroupItem{}
+		err = proto.Unmarshal(v, groupItem)
+		if err != nil {
+			return err
+		}
+
+		groupItems = append(groupItems, groupItem)
+		return nil
+	})
+	return groupItems, err
+}
+
 // NodeSDK
 func (cs *Storage) AddGroupV2(parentGroupId string, groupItem *quorumpb.NodeSDKGroupItem) error {
 	//check if group exist
@@ -216,79 +291,4 @@ func (cs *Storage) UpdGroupV2(parentGroupId string, groupItem *quorumpb.NodeSDKG
 
 	//upd group to db
 	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
-}
-
-// group seed
-func (cs *Storage) SetGroupSeed(seed *quorumpb.GroupSeed) error {
-	key := s.GetSeedKey(seed.GenesisBlock.GroupId)
-	value, err := proto.Marshal(seed)
-	if err != nil {
-		return err
-	}
-	return cs.dbmgr.GroupInfoDb.Set([]byte(key), value)
-}
-
-func (cs *Storage) GetGroupSeed(groupId string) (*quorumpb.GroupSeed, error) {
-	key := s.GetSeedKey(groupId)
-	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-	if !exist {
-		return nil, errors.New("group seed not exist")
-	}
-
-	value, err := cs.dbmgr.GroupInfoDb.Get([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-
-	var result quorumpb.GroupSeed
-	if err := proto.Unmarshal(value, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-func (cs *Storage) GetAllGroupSeeds() (map[string]*quorumpb.GroupSeed, error) {
-	var seeds map[string]*quorumpb.GroupSeed = make(map[string]*quorumpb.GroupSeed)
-
-	prefix := s.GetSeedPrefix()
-	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(prefix), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-		var pbSeed quorumpb.GroupSeed
-		if err := json.Unmarshal(v, &pbSeed); err != nil {
-			return err
-		}
-		seeds[string(k)] = &pbSeed
-
-		return nil
-	})
-
-	return seeds, err
-}
-
-// Get group list
-func (cs *Storage) GetSubGroupItems(parentGroupId string) ([]*quorumpb.GroupItem, error) {
-	var groupItems []*quorumpb.GroupItem
-	key := s.GetGroupItemPrefix(parentGroupId)
-
-	err := cs.dbmgr.GroupInfoDb.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
-		if err != nil {
-			return err
-		}
-
-		groupItem := &quorumpb.GroupItem{}
-		err = proto.Unmarshal(v, groupItem)
-		if err != nil {
-			return err
-		}
-
-		groupItems = append(groupItems, groupItem)
-		return nil
-	})
-	return groupItems, err
 }

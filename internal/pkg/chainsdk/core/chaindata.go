@@ -2,18 +2,14 @@ package chain
 
 import (
 	"github.com/rumsystem/quorum/internal/pkg/nodectx"
-	"github.com/rumsystem/quorum/internal/pkg/storage"
 	"google.golang.org/protobuf/proto"
 
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type ChainData struct {
-	nodename       string
-	groupId        string
-	groupCipherKey string
-	userSignPubkey string
-	dbmgr          *storage.DbMgr
+	nodename string
+	groupId  string
 }
 
 // TBD, move this to chain confi

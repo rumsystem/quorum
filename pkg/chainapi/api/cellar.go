@@ -1,13 +1,7 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/labstack/echo/v4"
-	chain "github.com/rumsystem/quorum/internal/pkg/chainsdk/core"
-	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
-	"github.com/rumsystem/quorum/internal/pkg/utils"
-	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
 type AddCellearParam struct {
@@ -24,35 +18,40 @@ type AddCellearResult struct {
 }
 
 func (h *Handler) AddCellar(c echo.Context) (err error) {
-	cc := c.(*utils.CustomContext)
-	params := new(AddCellearParam)
-	if err := cc.BindAndValidate(params); err != nil {
-		return err
-	}
+	/*
+	   cc := c.(*utils.CustomContext)
+	   params := new(AddCellearParam)
 
-	groupmgr := chain.GetGroupMgr()
+	   	if err := cc.BindAndValidate(params); err != nil {
+	   		return err
+	   	}
 
-	subGroups, err := groupmgr.GetSubGroups(chain.JOIN_BY_API)
+	   groupmgr := chain.GetGroupMgr()
 
-	if group, ok := subGroups[params.GroupId]; !ok {
-		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
-	} else {
-		var serviceType quorumpb.GroupServiceType
-		if params.Type == "brew" {
-			serviceType = quorumpb.GroupServiceType_BREW_SERVICE
-		} else if params.Type == "sync" {
-			serviceType = quorumpb.GroupServiceType_SYNC_SERVICE
-		} else {
-			return rumerrors.NewBadRequestError("Invalid service type")
-		}
+	   subGroups, err := groupmgr.GetSubGroups(chain.JOIN_BY_API)
 
-		trxId, err := group.ReqCellarServices(params.CellarSeed, serviceType, params.Proof, params.Memo)
-		if err != nil {
-			return err
-		}
-		return c.JSON(http.StatusOK, &AddCellearResult{
-			GroupId: params.GroupId,
-			TrxId:   trxId,
-		})
-	}
+	   	if group, ok := subGroups[params.GroupId]; !ok {
+	   		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
+	   	} else {
+
+	   		var serviceType quorumpb.GroupServiceType
+	   		if params.Type == "brew" {
+	   			serviceType = quorumpb.GroupServiceType_BREW_SERVICE
+	   		} else if params.Type == "sync" {
+	   			serviceType = quorumpb.GroupServiceType_SYNC_SERVICE
+	   		} else {
+	   			return rumerrors.NewBadRequestError("Invalid service type")
+	   		}
+
+	   		trxId, err := group.ReqCellarServices(params.CellarSeed, serviceType, params.Proof, params.Memo)
+	   		if err != nil {
+	   			return err
+	   		}
+	   		return c.JSON(http.StatusOK, &AddCellearResult{
+	   			GroupId: params.GroupId,
+	   			TrxId:   trxId,
+	   		})
+	   	}
+	*/
+	return nil
 }

@@ -120,28 +120,8 @@ func (producer *MolassesProducer) createBftConfig(producerPubkey string) (*Confi
 }
 
 func (producer *MolassesProducer) AddTrxToTxBuffer(trx *quorumpb.Trx) {
-	molaproducer_log.Debugf("<%s> AddTrxToTxBuffer called", producer.groupId)
-
-	//check if trx sender is in group block list
-	isAllow, err := nodectx.GetNodeCtx().GetChainStorage().CheckTrxTypeAuth(trx.GroupId, trx.SenderPubkey, trx.Type, producer.nodename)
-	if err != nil {
-		return
-	}
-
-	if !isAllow {
-		molaproducer_log.Debugf("<%s> pubkey <%s> don't has permission to send trx with type <%s>", producer.groupId, trx.SenderPubkey, trx.Type.String())
-		return
-	}
-
-	//check if trx with same trxid exist (already packaged)
-	isExist, _ := nodectx.GetNodeCtx().GetChainStorage().IsTrxExist(trx.GroupId, trx.TrxId, producer.nodename)
-	if isExist {
-		molaproducer_log.Debugf("<%s> trx <%s> already packaged, ignore", producer.groupId, trx.TrxId)
-		return
-	}
-
-	//molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
-	err = producer.ptbft.AddTrx(trx)
+	molaproducer_log.Debugf("<%s> Molasses AddTrx called, add trx <%s>", producer.groupId, trx.TrxId)
+	err := producer.ptbft.AddTrx(trx)
 	if err != nil {
 		molaproducer_log.Errorf("add trx failed with error <%s>", err.Error())
 	}

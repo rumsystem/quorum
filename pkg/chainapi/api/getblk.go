@@ -41,24 +41,25 @@ func (h *Handler) GetBlock(c echo.Context) (err error) {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	groupmgr := chain.GetGroupMgr()
-	if group, ok := groupmgr.Groups[groupid]; ok {
-		block, isOnChain, err := group.GetBlock(blockId)
-		if err != nil {
-			return rumerrors.NewBadRequestError(err)
-		}
-
-		resp := &GetBlockResponse{
-			Block: block,
-		}
-
-		if isOnChain {
-			resp.Status = "onchain"
-		} else {
-			resp.Status = "offchain"
-		}
-		return c.JSON(http.StatusOK, resp)
-	} else {
+	group, err := chain.GetGroupMgr().GetGroupIfaceFromIndex(groupid)
+	if err != nil {
 		return rumerrors.NewBadRequestError(fmt.Sprintf("Group %s not exist", groupid))
 	}
+
+	block, isOnChain, err := group.GetBlock(blockId)
+	if err != nil {
+		return rumerrors.NewBadRequestError(err)
+	}
+
+	resp := &GetBlockResponse{
+		Block: block,
+	}
+
+	if isOnChain {
+		resp.Status = "onchain"
+	} else {
+		resp.Status = "offchain"
+	}
+	return c.JSON(http.StatusOK, resp)
+
 }

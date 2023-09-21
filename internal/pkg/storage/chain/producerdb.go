@@ -2,18 +2,12 @@ package chainstorage
 
 import (
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
-	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-func (cs *Storage) AddProducer(item *quorumpb.ProducerItem, prefix ...string) error {
-	pk, _ := localcrypto.Libp2pPubkeyToEthBase64(item.ProducerPubkey)
-	if pk == "" {
-		pk = item.ProducerPubkey
-	}
-
-	key := s.GetProducerKey(item.GroupId, pk, prefix...)
+func (cs *Storage) AddProducer(item *quorumpb.Producer, prefix ...string) error {
+	key := s.GetProducerKey(item.GroupId, item.ProducerPubkey, prefix...)
 	pbyte, err := proto.Marshal(item)
 	if err != nil {
 		return err
@@ -27,15 +21,15 @@ func (cs *Storage) RemoveAllProducers(groupId string, prefix ...string) error {
 	return err
 }
 
-func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.ProducerItem, error) {
-	var pList []*quorumpb.ProducerItem
+func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.Producer, error) {
+	var pList []*quorumpb.Producer
 	key := s.GetProducerPrefix(groupId, prefix...)
 	err := cs.dbmgr.Db.PrefixForeach([]byte(key), func(k []byte, v []byte, err error) error {
 		if err != nil {
 			return err
 		}
 
-		item := &quorumpb.ProducerItem{}
+		item := &quorumpb.Producer{}
 		perr := proto.Unmarshal(v, item)
 		if perr != nil {
 			return perr
@@ -43,11 +37,10 @@ func (cs *Storage) GetProducers(groupId string, prefix ...string) ([]*quorumpb.P
 		pList = append(pList, item)
 		return nil
 	})
-
 	return pList, err
 }
 
-func (cs *Storage) GetProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.ProducerItem, error) {
+func (cs *Storage) GetProducer(groupId string, pubkey string, prefix ...string) (*quorumpb.Producer, error) {
 	key := s.GetProducerKey(groupId, pubkey, prefix...)
 
 	value, err := cs.dbmgr.Db.Get([]byte(key))
@@ -55,7 +48,7 @@ func (cs *Storage) GetProducer(groupId string, pubkey string, prefix ...string) 
 		return nil, err
 	}
 
-	var producer quorumpb.ProducerItem
+	var producer quorumpb.Producer
 	err = proto.Unmarshal(value, &producer)
 	if err != nil {
 		return nil, err
@@ -64,7 +57,7 @@ func (cs *Storage) GetProducer(groupId string, pubkey string, prefix ...string) 
 	return &producer, err
 }
 
-func (cs *Storage) IsProducer(groupId, pubkey string, prefix ...string) (bool, error) {
+func (cs *Storage) IsProducerExist(groupId, pubkey string, prefix ...string) (bool, error) {
 	key := s.GetProducerKey(groupId, pubkey, prefix...)
 	return cs.dbmgr.Db.IsExist([]byte(key))
 }

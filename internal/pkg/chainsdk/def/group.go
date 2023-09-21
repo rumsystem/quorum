@@ -4,19 +4,14 @@ import (
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 )
 
+const LOCAL_GROUP = "local_grp"
+
 type GroupIface interface {
 	SendRawTrx(trx *quorumpb.Trx) (string, error)
 	GetTrx(trxId string) (*quorumpb.Trx, bool, error)
 	GetRexSyncerStatus() string
-	StartSync() error
-	StopSync() error
 	GetCurrentBlockId() uint64
-}
-
-type RexSyncResult struct {
-	Provider              string
-	FromBlock             uint64
-	BlockProvided         int32
-	SyncResult            string
-	LastSyncTaskTimestamp int64
+	GetBlock(blockId uint64) (*quorumpb.Block, bool, error)
+	//StartSync() error
+	//StopSync() error
 }

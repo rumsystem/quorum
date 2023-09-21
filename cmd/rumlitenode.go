@@ -169,12 +169,9 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 
 	//initial group manager
 	chain.InitGroupMgr()
-	//if nodeoptions.IsRexTestMode == true {
-	//	chain.GetGroupMgr().SetRumExchangeTestMode()
-	//}
 
 	//load all groups
-	err = chain.GetGroupMgr().LoadAllGroups()
+	err = chain.GetGroupMgr().LoadLocalGroups()
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
@@ -244,9 +241,9 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 	signalType := <-rlNodeSignalch
 	signal.Stop(rlNodeSignalch)
 
-	chain.GetGroupMgr().StopSyncAllGroups()
 	//teardown all groups
-	chain.GetGroupMgr().TeardownAllGroups()
+	chain.GetGroupMgr().TeardownLocalGroups()
+
 	//close ctx db
 	nodectx.GetDbMgr().CloseDb()
 

@@ -32,21 +32,21 @@ func (factory *TrxFactory) GetUpdAppConfigTrx(senderPubkey, senderKeyname string
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_APP_CONFIG, encodedcontent, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetChainConfigTrx(senderPubkey, senderKeyname string, item *quorumpb.ChainConfigItem) (*quorumpb.Trx, error) {
-	encodedcontent, err := proto.Marshal(item)
-	if err != nil {
-		return nil, err
-	}
-
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_CHAIN_CONFIG, encodedcontent, senderPubkey, senderKeyname)
-}
-
 func (factory *TrxFactory) GetUpdGroupSyncerTrx(senderPubkey, senderKeyname string, item *quorumpb.UpdGroupSyncerItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err
 	}
-	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_GRP_SYNCER, encodedcontent, senderPubkey, senderKeyname)
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_SYNCER, encodedcontent, senderPubkey, senderKeyname)
+}
+
+func (factory *TrxFactory) GetUpdGroupPosterTrx(senderPubkey, senderKeyname string, item *quorumpb.UpdGroupPosterItem) (*quorumpb.Trx, error) {
+	encodedcontent, err := proto.Marshal(item)
+	if err != nil {
+		return nil, err
+	}
+
+	return factory.CreateTrxByEthKey(quorumpb.TrxType_UPD_POSTER, encodedcontent, senderPubkey, senderKeyname)
 }
 
 func (factory *TrxFactory) GetPostAnyTrx(senderPubkey, senderKeyname string, content []byte, encryptto ...[]string) (*quorumpb.Trx, error) {
@@ -66,7 +66,7 @@ func (factory *TrxFactory) GetForkTrx(senderPubkey, senderKeyname string, item *
 	return factory.CreateTrxByEthKey(quorumpb.TrxType_FORK, encodedcontent, senderPubkey, senderKeyname)
 }
 
-func (factory *TrxFactory) GetAddCellarReqTrx(senderPubkey, senderKeyname, cellarCipherKey string, item *quorumpb.AddCellarReqItem) (*quorumpb.Trx, error) {
+func (factory *TrxFactory) GetAddCellarReqTrx(senderPubkey, senderKeyname, cellarCipherKey string, item *quorumpb.ReqGroupServiceItem) (*quorumpb.Trx, error) {
 	encodedcontent, err := proto.Marshal(item)
 	if err != nil {
 		return nil, err

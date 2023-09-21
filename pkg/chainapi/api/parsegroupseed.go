@@ -14,20 +14,22 @@ type ParseGroupSeedParam struct {
 }
 
 type ParseGroupSeedResult struct {
-	GroupId        string                     `json:"groupId"`
-	GroupName      string                     `json:"groupName"`
-	OwnerPubkey    string                     `json:"ownerPubkey"`
-	ProducerPubkey string                     `json:"producerPubkey"`
-	SyncType       string                     `json:"syncType"`
-	CipherKey      string                     `json:"cipherKey"`
-	AppId          string                     `json:"appId"`
-	AppName        string                     `json:"appName"`
-	ConsensusInfo  *quorumpb.PoaConsensusInfo `json:"consensusInfo"`
-	BrewService    *quorumpb.BrewServiceItem  `json:"brewService"`
-	SyncService    *quorumpb.SyncServiceItem  `json:"syncService"`
-	GenesisBlock   *quorumpb.Block            `json:"genesisBlock"`
-	Hash           []byte                     `json:"hash"`
-	Signature      []byte                     `json:"sign"`
+	GroupId        string                       `json:"groupId"`
+	GroupName      string                       `json:"groupName"`
+	OwnerPubkey    string                       `json:"ownerPubkey"`
+	ProducerPubkey string                       `json:"producerPubkey"`
+	AuthType       string                       `json:"authType"`
+	CipherKey      string                       `json:"cipherKey"`
+	AppId          string                       `json:"appId"`
+	AppName        string                       `json:"appName"`
+	ConsensusInfo  *quorumpb.PoaConsensusInfo   `json:"consensusInfo"`
+	ProduceService *quorumpb.ProduceServiceItem `json:"brewService"`
+	SyncService    *quorumpb.SyncServiceItem    `json:"syncService"`
+	CtnService     *quorumpb.CtnServiceItem     `json:"ctnService"`
+	PublishSevice  *quorumpb.PublishServiceItem `json:"postService"`
+	GenesisBlock   *quorumpb.Block              `json:"genesisBlock"`
+	Hash           []byte                       `json:"hash"`
+	Signature      []byte                       `json:"sign"`
 }
 
 func (h *Handler) ParseGroupSeed(c echo.Context) (err error) {
@@ -47,7 +49,7 @@ func (h *Handler) ParseGroupSeed(c echo.Context) (err error) {
 		GroupName:      seed.GroupName,
 		OwnerPubkey:    seed.OwnerPubkey,
 		ProducerPubkey: seed.GenesisBlock.ProducerPubkey,
-		SyncType:       seed.SyncType.String(),
+		AuthType:       seed.AuthType.String(),
 		CipherKey:      seed.CipherKey,
 		AppId:          seed.AppId,
 		AppName:        seed.AppName,
@@ -67,20 +69,34 @@ func (h *Handler) ParseGroupSeed(c echo.Context) (err error) {
 
 	//retrieve services
 	for _, serviceItem := range seed.Services {
-		if serviceItem.Type == quorumpb.GroupServiceType_SYNC_SERVICE {
+		if serviceItem.TaskType == quorumpb.GroupTaskType_SYNC {
 			syncService := &quorumpb.SyncServiceItem{}
-			err = proto.Unmarshal(serviceItem.Service, syncService)
+			err = proto.Unmarshal(serviceItem.Data, syncService)
 			if err != nil {
 				return err
 			}
 			result.SyncService = syncService
-		} else if serviceItem.Type == quorumpb.GroupServiceType_BREW_SERVICE {
-			brewService := &quorumpb.BrewServiceItem{}
-			err = proto.Unmarshal(serviceItem.Service, brewService)
+		} else if serviceItem.TaskType == quorumpb.GroupTaskType_PRODUCE {
+			produceService := &quorumpb.ProduceServiceItem{}
+			err = proto.Unmarshal(serviceItem.Data, produceService)
 			if err != nil {
 				return err
 			}
-			result.BrewService = brewService
+			result.ProduceService = produceService
+		} else if serviceItem.TaskType == quorumpb.GroupTaskType_CTN {
+			ctnService := &quorumpb.CtnServiceItem{}
+			err = proto.Unmarshal(serviceItem.Data, ctnService)
+			if err != nil {
+				return err
+			}
+			result.CtnService = ctnService
+		} else if serviceItem.TaskType == quorumpb.GroupTaskType_PUBLISH {
+			publishService := &quorumpb.PublishServiceItem{}
+			err = proto.Unmarshal(serviceItem.Data, publishService)
+			if err != nil {
+				return err
+			}
+			result.PublishSevice = publishService
 		}
 	}
 	return c.JSON(http.StatusOK, result)

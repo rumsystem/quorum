@@ -75,7 +75,7 @@ func InitConn() error {
 	return nil
 }
 
-func (conn *Conn) RegisterChainCtx(groupId, ownerPubkey, userSignPubkey string, cIface chaindef.ChainDataSyncIface) error {
+func (conn *Conn) RegisterChainCtx(groupId string, cIface chaindef.ChainDataSyncIface) error {
 	conn_log.Debugf("RegisterChainCtx called, groupId <%s>", groupId)
 	connMgr := &ConnMgr{}
 	connMgr.initGroupConnMgr(groupId, cIface)
@@ -262,7 +262,7 @@ func (connMgr *ConnMgr) SendSyncReqMsgRex(req *quorumpb.ReqBlock) error {
 
 	//create pkg
 	pkg := &quorumpb.Package{
-		Type: quorumpb.PackageType_SYNC,
+		Type: quorumpb.PackageType_BLOCK_SYNC,
 		Data: compressedContent.Bytes(),
 	}
 
@@ -312,7 +312,7 @@ func (connMgr *ConnMgr) SendSyncRespMsgRex(resp *quorumpb.ReqBlockResp, s networ
 
 	//create pkg
 	pkg := &quorumpb.Package{
-		Type: quorumpb.PackageType_SYNC,
+		Type: quorumpb.PackageType_BLOCK_SYNC,
 		Data: compressedContent.Bytes(),
 	}
 

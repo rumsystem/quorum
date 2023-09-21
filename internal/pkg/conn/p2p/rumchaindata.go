@@ -22,7 +22,7 @@ func (r *RexChainData) Handler(rummsg *quorumpb.RumDataMsg, s network.Stream) er
 	frompeerid := s.Conn().RemotePeer()
 	pkg := rummsg.DataPackage
 
-	if pkg.Type == quorumpb.PackageType_SYNC {
+	if pkg.Type == quorumpb.PackageType_BLOCK_SYNC {
 		//decompress syncmsg data
 		content := new(bytes.Buffer)
 		if err := utils.Decompress(bytes.NewReader(pkg.Data), content); err != nil {

@@ -29,22 +29,26 @@ var chain_log = logging.Logger("chain")
 var DEFAULT_PROPOSE_TRX_INTERVAL = 1000 //ms
 
 type Chain struct {
-	group         *Group
-	groupItem     *quorumpb.GroupItem
-	nodename      string
-	producerPool  map[string]*quorumpb.ProducerItem
-	syncerPool    map[string]*quorumpb.Syncer
-	trxFactory    *rumchaindata.TrxFactory
-	rexSyncer     *RexLiteSyncer
-	chaindata     *ChainData
-	Consensus     def.Consensus
-	CurrBlock     uint64
-	CurrEpoch     uint64
-	LatestUpdate  int64
 	ChainCtx      context.Context
 	CtxCancelFunc context.CancelFunc
-	PoaConsensus  *quorumpb.PoaConsensusInfo
-	KeyMap        map[string]string // key: pubkey; value: keyname
+
+	group      *Group
+	groupItem  *quorumpb.GroupItem
+	nodename   string
+	trxFactory *rumchaindata.TrxFactory
+
+	producerPool map[string]*quorumpb.Producer
+	syncerPool   map[string]*quorumpb.Syncer
+	posterPool   map[string]*quorumpb.Poster
+
+	rexSyncer *RexLiteSyncer
+	chaindata *ChainData
+
+	PoaConsensus *quorumpb.PoaConsensusInfo
+	Consensus    def.Consensus
+	CurrBlock    uint64
+	CurrEpoch    uint64
+	LatestUpdate int64
 }
 
 func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.GroupItem, group *Group, nodename string) error {
@@ -82,13 +86,7 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 	chain.ChainCtx, chain.CtxCancelFunc = context.WithCancel(nodectx.GetNodeCtx().Ctx)
 
 	//initial chaindata manager
-	chain.chaindata = &ChainData{
-		nodename:       chain.nodename,
-		groupId:        chain.groupItem.GroupId,
-		groupCipherKey: chain.groupItem.CipherKey,
-		userSignPubkey: chain.groupItem.UserSignPubkey,
-		dbmgr:          nodectx.GetDbMgr(),
-	}
+	chain.chaindata = &ChainData{nodename: chain.nodename, groupId: chain.groupItem.GroupId}
 
 	chain_log.Debugf("<%s> initial chain config", item.GroupId)
 	currEpoch := forkItem.StartFromEpoch
@@ -104,19 +102,6 @@ func (chain *Chain) NewChainWithSeed(seed *quorumpb.GroupSeed, item *quorumpb.Gr
 	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
 	chain_log.Debugf("<%s> NewChain done", chain.groupItem.GroupId)
 
-	//initial keymap
-	ks := localcrypto.GetKeystore()
-	pubkeys := []string(forkItem.Producers)
-	pubkeys = append(pubkeys, chain.groupItem.UserSignPubkey)
-	pubkeys = append(pubkeys, chain.groupItem.OwnerPubKey)
-	keymap, err := chain.findKeyNames(ks, pubkeys)
-
-	if err != nil {
-		chain_log.Debugf("<%s> findKeyNames failed with error <%s>", chain.groupItem.GroupId, err.Error())
-		return err
-	}
-
-	chain.KeyMap = keymap
 	return nil
 }
 
@@ -134,11 +119,8 @@ func (chain *Chain) LoadChain(item *quorumpb.GroupItem, nodename string) error {
 
 	//initial chaindata manager
 	chain.chaindata = &ChainData{
-		nodename:       chain.nodename,
-		groupId:        chain.groupItem.GroupId,
-		groupCipherKey: chain.groupItem.CipherKey,
-		userSignPubkey: chain.groupItem.UserSignPubkey,
-		dbmgr:          nodectx.GetDbMgr(),
+		nodename: chain.nodename,
+		groupId:  chain.groupItem.GroupId,
 	}
 
 	currBlockId, currEpoch, lastUpdate, err := nodectx.GetNodeCtx().GetChainStorage().GetChainInfo(chain.groupItem.GroupId, chain.nodename)
@@ -156,19 +138,6 @@ func (chain *Chain) LoadChain(item *quorumpb.GroupItem, nodename string) error {
 		chain_log.Debugf("<%s> LoadAndUpdCurrPoaConsensus failed with error <%s>", chain.groupItem.GroupId, err.Error())
 		return err
 	}
-
-	//initial keymap
-	ks := localcrypto.GetKeystore()
-	pubkeys := []string(chain.PoaConsensus.ForkInfo.Producers)
-	pubkeys = append(pubkeys, chain.groupItem.UserSignPubkey)
-	pubkeys = append(pubkeys, chain.groupItem.OwnerPubKey)
-	keymap, err := chain.findKeyNames(ks, pubkeys)
-
-	if err != nil {
-		chain_log.Debugf("<%s> findKeyNames failed with error <%s>", chain.groupItem.GroupId, err.Error())
-		return err
-	}
-	chain.KeyMap = keymap
 
 	//initial Syncer
 	chain.rexSyncer = NewRexLiteSyncer(chain.ChainCtx, chain.groupItem, chain.nodename, chain, chain)
@@ -315,52 +284,26 @@ func (chain *Chain) HandlePsConnMessage(pkg *quorumpb.Package) error {
 // Handle Trx from PsConn
 func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> HandleTrxPsConn called", chain.groupItem.GroupId)
-
-	//only producer(owner) need handle trx msg from psconn (to build block)
-	if !chain.IsProducer() {
-		return nil
-	}
-
-	if trx.Version != nodectx.GetNodeCtx().Version {
-		chain_log.Warningf("trx Version mismatch trx_id <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
-		return fmt.Errorf("trx Version mismatch")
-	}
-
-	// decompress
-	content := new(bytes.Buffer)
-	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
-		chain_log.Errorf("utils.Decompress failed: %s", err)
-		return fmt.Errorf("utils.Decompress failed: %s", err)
-	}
-	trx.Data = content.Bytes()
-
-	verified, err := rumchaindata.VerifyTrx(trx)
+	shouldProcess, err := chain.ShouldProcess(trx)
 	if err != nil {
-		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
-		return fmt.Errorf("verify trx failed")
+		chain_log.Warningf("<%s> ShouldProcess failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return err
 	}
 
-	if !verified {
-		chain_log.Warningf("<%s> invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
-		return fmt.Errorf("invalid trx, signature verify failed")
+	if !shouldProcess {
+		chain_log.Warningf("<%s> ShouldProcess return false", chain.groupItem.GroupId)
+		return nil
 	}
 
 	switch trx.Type {
 	case
 		quorumpb.TrxType_POST,
-		quorumpb.TrxType_UPD_GRP_SYNCER,
-		quorumpb.TrxType_CHAIN_CONFIG,
+		quorumpb.TrxType_UPD_SYNCER,
+		quorumpb.TrxType_UPD_POSTER,
 		quorumpb.TrxType_APP_CONFIG,
-		quorumpb.TrxType_FORK:
-
-		if chain.IsPublicGroup() {
-			chain.producerAddTrx(trx)
-		}
-
-		//else {
-		//TBD verify if trx sender hsa privilege to add trx
-		//}
-
+		quorumpb.TrxType_FORK,
+		quorumpb.TrxType_ARCHIVE:
+		chain.producerAddTrx(trx)
 	case quorumpb.TrxType_SERVICE_REQ:
 		chain.handleServiceReq(trx)
 	case quorumpb.TrxType_SERVICE_RESP:
@@ -373,79 +316,117 @@ func (chain *Chain) HandleTrxPsConn(trx *quorumpb.Trx) error {
 	return nil
 }
 
-func (chain *Chain) handleServiceReq(trx *quorumpb.Trx) error {
-	chain_log.Debugf("<%s> handleServiceReq called", chain.groupItem.GroupId)
-	//decode data
-	ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
-	if err != nil {
-		return err
+func (chain *Chain) ShouldProcess(trx *quorumpb.Trx) (bool, error) {
+	//TBD only the group user who provide ProduceService process incoming trx from psconn
+	if !chain.IsProducer() {
+		return false, nil
 	}
 
-	decodedData, err := localcrypto.AesDecode(trx.Data, ciperKey)
-	if err != nil {
-		return err
+	if trx.Version != nodectx.GetNodeCtx().Version {
+		chain_log.Warningf("trx Version mismatch trx_id <%s>: <%s> vs <%s>", trx.TrxId, trx.Version, nodectx.GetNodeCtx().Version)
+		return false, fmt.Errorf("trx Version mismatch")
 	}
 
-	req := &quorumpb.AddCellarReqItem{}
-	err = proto.Unmarshal(decodedData, req)
-	if err != nil {
-		return err
+	// decompress
+	content := new(bytes.Buffer)
+	if err := utils.Decompress(bytes.NewReader(trx.Data), content); err != nil {
+		chain_log.Errorf("utils.Decompress failed: %s", err)
+		return false, fmt.Errorf("utils.Decompress failed: %s", err)
 	}
+	trx.Data = content.Bytes()
 
-	//TBD verify proof
-	verified, err := chain.verifyServiceReq(req)
+	verified, err := rumchaindata.VerifyTrx(trx)
 	if err != nil {
-		return err
+		chain_log.Warningf("<%s> verify Trx failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return false, fmt.Errorf("verify trx failed")
 	}
 
 	if !verified {
-		chain_log.Warningf("<%s> invalid service req, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
-		return fmt.Errorf("invalid service req, signature verify failed")
+		chain_log.Warningf("<%s> invalid Trx, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
+		return false, fmt.Errorf("invalid trx, signature verify failed")
 	}
 
-	//TBD, handle service req
-	chain_log.Debugf("TBD, handle serviceReq")
+	// TBD, check if trx should be processed according to group service
+	return true, nil
+}
 
-	// verify service type is corrct
-	canBrew := false
-	canSync := false
+func (chain *Chain) handleServiceReq(trx *quorumpb.Trx) error {
+	chain_log.Debugf("<%s> handleServiceReq called", chain.groupItem.GroupId)
 
-	if chain.group.BrewService != nil {
-		canBrew = true
-	}
+	/*
+		//decode data
+		ciperKey, err := hex.DecodeString(chain.groupItem.CipherKey)
+		if err != nil {
+			return err
+		}
 
-	if chain.group.SyncService == nil {
-		canSync = true
-	}
+		decodedData, err := localcrypto.AesDecode(trx.Data, ciperKey)
+		if err != nil {
+			return err
+		}
 
-	if req.ServiceType == quorumpb.GroupServiceType_BREW_SERVICE && !canBrew {
-		chain_log.Warningf("<%s> invalid service req, service type <%s> not supported", chain.groupItem.GroupId, req.ServiceType.String())
-		return fmt.Errorf("invalid service req, service type <%s> not supported", req.ServiceType.String())
-	} else if req.ServiceType == quorumpb.GroupServiceType_SYNC_SERVICE && !canSync {
-		chain_log.Warningf("<%s> invalid service req, service type <%s> not supported", chain.groupItem.GroupId, req.ServiceType.String())
-		return fmt.Errorf("invalid service req, service type <%s> not supported", req.ServiceType.String())
-	}
+		req := &quorumpb.AddCellarReqItem{}
+		err = proto.Unmarshal(decodedData, req)
+		if err != nil {
+			return err
+		}
 
-	reqSeed := &quorumpb.GroupSeed{}
-	err = proto.Unmarshal(req.Seed, reqSeed)
-	if err != nil {
-		return err
-	}
+		//TBD verify proof
+		verified, err := chain.verifyServiceReq(req)
+		if err != nil {
+			return err
+		}
 
-	//join req group by seed
-	reqGroup := &Group{}
-	err = reqGroup.JoinGroupBySeed(chain.groupItem.GroupId, chain.groupItem.OwnerPubKey, reqSeed)
-	if err != nil {
-		return err
-	}
+		if !verified {
+			chain_log.Warningf("<%s> invalid service req, signature verify failed, sender <%s>", chain.groupItem.GroupId, trx.SenderPubkey)
+			return fmt.Errorf("invalid service req, signature verify failed")
+		}
 
-	reqGroup.StartSync()
+		//TBD, handle service req
+		chain_log.Debugf("TBD, handle serviceReq")
 
-	//tbd save to groupMgr
+		// verify service type is corrct
+		canBrew := false
+		canSync := false
+
+		if chain.group.BrewService != nil {
+			canBrew = true
+		}
+
+		if chain.group.SyncService == nil {
+			canSync = true
+		}
+
+		if req.ServiceType == quorumpb.GroupServiceType_BREW_SERVICE && !canBrew {
+			chain_log.Warningf("<%s> invalid service req, service type <%s> not supported", chain.groupItem.GroupId, req.ServiceType.String())
+			return fmt.Errorf("invalid service req, service type <%s> not supported", req.ServiceType.String())
+		} else if req.ServiceType == quorumpb.GroupServiceType_SYNC_SERVICE && !canSync {
+			chain_log.Warningf("<%s> invalid service req, service type <%s> not supported", chain.groupItem.GroupId, req.ServiceType.String())
+			return fmt.Errorf("invalid service req, service type <%s> not supported", req.ServiceType.String())
+		}
+
+		reqSeed := &quorumpb.GroupSeed{}
+		err = proto.Unmarshal(req.Seed, reqSeed)
+		if err != nil {
+			return err
+		}
+
+		//join req group by seed
+		reqGroup := &Group{}
+		err = reqGroup.JoinGroupBySeed(chain.groupItem.GroupId, chain.groupItem.OwnerPubKey, reqSeed)
+		if err != nil {
+			return err
+		}
+
+		reqGroup.StartSync()
+
+		//tbd save to groupMgr
+	*/
 
 	return nil
 }
 
+/*
 func (chain *Chain) verifyServiceReq(req *quorumpb.AddCellarReqItem) (bool, error) {
 	//TBD, send proof to
 	chain_log.Debugf("%v", req)
@@ -473,16 +454,13 @@ func (chain *Chain) verifyServiceReq(req *quorumpb.AddCellarReqItem) (bool, erro
 	return true, nil
 }
 
+*/
+
 func (chain *Chain) producerAddTrx(trx *quorumpb.Trx) error {
 	chain_log.Debugf("<%s> producerAddTrx called", chain.groupItem.GroupId)
 
 	if chain.Consensus == nil || chain.Consensus.Producer() == nil {
 		chain_log.Warningf("<%s> producerAddTrx failed, consensus or producer is nil", chain.groupItem.GroupId)
-		return nil
-	}
-
-	if !chain.IsProducer() {
-		chain_log.Warningf("<%s> producerAddTrx failed, not producer", chain.groupItem.GroupId)
 		return nil
 	}
 
@@ -529,6 +507,41 @@ func (chain *Chain) HandleSyncMsgRex(syncMsg *quorumpb.SyncMsg, s network.Stream
 	return nil
 }
 
+func (chain *Chain) shouldProcesReq(req *quorumpb.ReqBlock) (bool, error) {
+	//do nothing is req is from myself
+	/*
+		if req.ReqPubkey == chain.groupItem.MySyncer.SyncerPubkey {
+			chain_log.Debugf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "req from myself")
+			return nil
+		}
+	*/
+
+	if chain.groupItem.MySyncer == nil {
+		chain_log.Debugf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "my syncer is nil")
+		return false, errors.New("my syncer is nil")
+	}
+
+	//check if req sender is allow to sync
+	/*
+		if !(chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC) && !chain.IsGroupSyncer(req.ReqPubkey) {
+			chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "not a syncer")
+			return nil
+		}
+	*/
+
+	//verify req
+	verified, err := rumchaindata.VerifyReqBlock(req)
+	if err != nil {
+		chain_log.Warningf("<%s> verify ReqBlock failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		return false, err
+	}
+
+	if !verified {
+		chain_log.Warningf("<%s> Invalid ReqBlock, signature verify failed, sender <%s>", chain.groupItem.GroupId, req.ReqPubkey)
+		return false, errors.New("invalid ReqBlock")
+	}
+}
+
 func (chain *Chain) HandleBroadcastMsgPsConn(brd *quorumpb.BroadcastMsg) error {
 	chain_log.Debugf("<%s> HandleGroupBroadcastPsConn called", chain.groupItem.GroupId)
 	return nil
@@ -544,28 +557,15 @@ func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Strea
 		return err
 	}
 
-	//do nothing is req is from myself
-	if req.ReqPubkey == chain.groupItem.UserSignPubkey {
-		chain_log.Debugf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "req from myself")
-		return nil
-	}
-
-	//check if req sender is allow to sync
-	if !(chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC) && !chain.IsGroupSyncer(req.ReqPubkey) {
-		chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "not a syncer")
-		return nil
-	}
-
-	//verify req
-	verified, err := rumchaindata.VerifyReqBlock(req)
+	shouldProcess, err := chain.shouldProcesReq(req)
 	if err != nil {
-		chain_log.Warningf("<%s> verify ReqBlock failed with err <%s>", chain.groupItem.GroupId, err.Error())
+		chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, err.Error())
 		return err
 	}
 
-	if !verified {
-		chain_log.Warningf("<%s> Invalid ReqBlock, signature verify failed, sender <%s>", chain.groupItem.GroupId, req.ReqPubkey)
-		return errors.New("invalid ReqBlock")
+	if !shouldProcess {
+		chain_log.Warningf("<%s> handleReqBlocksRex error <%s>", chain.groupItem.GroupId, "shouldProcess return false")
+		return nil
 	}
 
 	//get resp
@@ -578,10 +578,8 @@ func (chain *Chain) handleReqBlockRex(syncMsg *quorumpb.SyncMsg, s network.Strea
 	chain_log.Debugf("-- requester <%s>, from Block <%d>, request <%d> blocks", req.ReqPubkey, req.FromBlock, req.BlksRequested)
 	chain_log.Debugf("-- send fromBlock <%d>, total <%d> blocks, status <%s>", req.FromBlock, len(blocks), result.String())
 
-	//resp, err = chain.trxFactory.GetReqBlocksRespTrx("", chain.groupItem.GroupId, requester, fromBlock, blkReqs, blocks, result)
-	userSignKeyname := chain.GetKeynameByPubkey(chain.groupItem.UserSignPubkey)
-
-	resp, err := rumchaindata.GetReqBlocksRespMsg(req, chain.groupItem.UserSignPubkey, userSignKeyname, blocks, result)
+	resp, err := rumchaindata.GetReqBlocksRespMsg(req, chain.groupItem.MySyncer.SyncerPubkey,
+		chain.groupItem.MySyncer.SyncerKeyname, blocks, result)
 
 	if err != nil {
 		return err
@@ -604,7 +602,7 @@ func (chain *Chain) handleReqBlockRespRex(syncMsg *quorumpb.SyncMsg) error {
 	}
 
 	//if not asked by me, ignore it
-	if resp.RequesterPubkey != chain.groupItem.UserSignPubkey {
+	if resp.RequesterPubkey != chain.groupItem.MySyncer.SyncerPubkey {
 		//chain_log.Debugf("<%s> HandleReqBlockResp error <%s>", chain.Group.GroupId, rumerrors.ErrSenderMismatch.Error())
 		return nil
 	}
@@ -659,13 +657,13 @@ func (chain *Chain) updSyncerList() {
 	}
 }
 
-func (chain *Chain) updateProducerPool() {
+func (chain *Chain) UpdateProducerPool() error {
 	chain_log.Debugf("<%s> UpdProducerList called", chain.groupItem.GroupId)
-	chain.producerPool = make(map[string]*quorumpb.ProducerItem)
+	chain.producerPool = make(map[string]*quorumpb.Producer)
 	producers, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(chain.groupItem.GroupId, chain.nodename)
-
 	if err != nil {
 		chain_log.Debugf("Get producer failed with err <%s>", err.Error())
+		return err
 	}
 
 	producerPubkey := []string{}
@@ -675,54 +673,19 @@ func (chain *Chain) updateProducerPool() {
 		chain_log.Debugf("<%s> load producer <%s>", chain.groupItem.GroupId, item.ProducerPubkey)
 	}
 
-	//check if I have the new producer pubkey in local keychain
-	ks := localcrypto.GetKeystore()
-	producerKeymap, err := chain.findKeyNames(ks, producerPubkey)
-	if err != nil {
-		chain_log.Debugf("<%s> findKeyNames failed with error <%s>", chain.groupItem.GroupId, err.Error())
-		return
-	}
-
-	for key, value := range producerKeymap {
-		chain.KeyMap[key] = value
-	}
+	return nil
 }
 
-func (chain *Chain) UpdateCellarpool() {
-	chain_log.Debugf("<%s> UpdateCellarpool called", chain.groupItem.GroupId)
+func (chain *Chain) GetMyPoster() *quorumpb.Poster {
+	return chain.groupItem.MyPoster
 }
 
-func (chain *Chain) findKeyNames(ks localcrypto.Keystore, pubkeys []string) (map[string]string, error) {
-	allkeys, err := ks.ListAll()
-	if err != nil {
-		chain_log.Warningf("<%s> ListAll failed with error <%s>", chain.groupItem.GroupId, err.Error())
-		return nil, err
-	}
+func (chain *Chain) GetMySyncer() *quorumpb.Syncer {
+	return chain.groupItem.MySyncer
+}
 
-	//dump all pubkeys to a map
-	pubkeyMap := make(map[string]string)
-	for _, key := range allkeys {
-		pubkey, err := ks.GetEncodedPubkey(key.Keyname, localcrypto.Sign)
-		if err != nil {
-			chain_log.Warningf("<%s> GetEncodedPubkey failed with error <%s>", chain.groupItem.GroupId, err.Error())
-			continue
-		}
-		pubkeyMap[pubkey] = key.Keyname
-	}
-
-	keymap := make(map[string]string) //key: pubkey; value: keyname
-	//find keyname by pubkey
-	for _, pubkey := range pubkeys {
-		if keyname, ok := pubkeyMap[pubkey]; ok {
-			keymap[pubkey] = keyname
-		}
-	}
-
-	for pubkey, keyname := range keymap {
-		chain_log.Debugf("create keymap: <%s> -> <%s>", pubkey, keyname)
-	}
-
-	return keymap, nil
+func (chain *Chain) GetMyProducer() *quorumpb.Producer {
+	return chain.groupItem.MyProducer
 }
 
 func (chain *Chain) CreateConsensus() error {
@@ -747,41 +710,18 @@ func (chain *Chain) CreateConsensus() error {
 
 // TBD, only 1 producer is allowd in RUMLITE
 func (chain *Chain) IsProducer() bool {
-	for key, _ := range chain.producerPool {
-		if _, ok := chain.KeyMap[key]; ok {
-			return true
-		}
+	if chain.groupItem.MyProducer != nil {
+		return true
 	}
 	return false
 }
 
 func (chain *Chain) IsPublicGroup() bool {
-	return chain.groupItem.SyncType == quorumpb.GroupSyncType_PUBLIC
-}
-
-func (chain *Chain) GetMyProducerPubkey() string {
-	for key := range chain.producerPool {
-		if _, ok := chain.KeyMap[key]; ok {
-			return key
-		}
-	}
-	return ""
-}
-
-func (chain *Chain) GetKeynameByPubkey(pubkey string) string {
-	if keyname, ok := chain.KeyMap[pubkey]; ok {
-		return keyname
-	}
-	return ""
+	return chain.groupItem.AuthType == quorumpb.GroupAuthType_PUBLIC
 }
 
 func (chain *Chain) IsProducerByPubkey(pubkey string) bool {
 	_, ok := chain.producerPool[pubkey]
-	return ok
-}
-
-func (chain *Chain) HasOwnerKey() bool {
-	_, ok := chain.KeyMap[chain.groupItem.OwnerPubKey]
 	return ok
 }
 
@@ -844,9 +784,10 @@ func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) 
 		}
 
 		//check if these type of TRX is send by owner
-		if trx.Type == quorumpb.TrxType_CHAIN_CONFIG ||
-			trx.Type == quorumpb.TrxType_FORK ||
-			trx.Type == quorumpb.TrxType_UPD_GRP_SYNCER {
+		if trx.Type == quorumpb.TrxType_FORK ||
+			trx.Type == quorumpb.TrxType_UPD_SYNCER ||
+			trx.Type == quorumpb.TrxType_UPD_POSTER ||
+			trx.Type == quorumpb.TrxType_APP_CONFIG {
 			if !chain.checkOwnerKey(trx.SenderPubkey) {
 				chain_log.Warningf("<%s> trx <%s> with type <%s> is not send by owner, skip", chain.groupItem.GroupId, trx.TrxId, trx.Type.String())
 				continue
@@ -869,16 +810,16 @@ func (chain *Chain) ApplyTrxsRumLiteNode(trxs []*quorumpb.Trx, nodename string) 
 		case quorumpb.TrxType_POST:
 			chain_log.Debugf("<%s> apply POST trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().AddPost(trx, decodedData, nodename)
-		case quorumpb.TrxType_UPD_GRP_SYNCER:
+		case quorumpb.TrxType_UPD_SYNCER:
 			chain_log.Debugf("<%s> apply UPD_GRP_SYNCER trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateGroupSyncer(trx.TrxId, decodedData, nodename)
 			chain.updSyncerList()
+		case quorumpb.TrxType_UPD_POSTER:
+			chain_log.Debugf("<%s> apply UPD_POSTER trx", chain.groupItem.GroupId)
+			//TBD, update poster
 		case quorumpb.TrxType_APP_CONFIG:
 			chain_log.Debugf("<%s> apply APP_CONFIG trx", chain.groupItem.GroupId)
 			nodectx.GetNodeCtx().GetChainStorage().UpdateAppConfig(decodedData, nodename)
-		case quorumpb.TrxType_CHAIN_CONFIG:
-			chain_log.Debugf("<%s> apply CHAIN_CONFIG trx", chain.groupItem.GroupId)
-			nodectx.GetNodeCtx().GetChainStorage().UpdateChainConfig(decodedData, nodename)
 		case quorumpb.TrxType_SERVICE_REQ:
 			chain_log.Debugf("<%s> apply SERVICE_REQ trx", chain.groupItem.GroupId)
 		case quorumpb.TrxType_SERVICE_RESP:

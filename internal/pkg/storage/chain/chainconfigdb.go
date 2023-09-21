@@ -1,5 +1,6 @@
 package chainstorage
 
+/*
 import (
 	"errors"
 
@@ -236,3 +237,5 @@ func (cs *Storage) GetAllChainConfigInBytes(groupId string, Prefix ...string) ([
 
 	return chainConfigByteList, err
 }
+
+*/

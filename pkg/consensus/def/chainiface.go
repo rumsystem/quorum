@@ -19,8 +19,8 @@ type ChainMolassesIface interface {
 	GetLastUpdate() int64
 	IsProducer() bool
 	IsPublicGroup() bool
-	HasOwnerKey() bool
 	GetCurrPoaConsensus() *quorumpb.PoaConsensusInfo
-	GetMyProducerPubkey() string
-	GetKeynameByPubkey(pubkey string) string
+	GetMyProducer() *quorumpb.Producer
+	GetMyPoster() *quorumpb.Poster
+	GetMySyncer() *quorumpb.Syncer
 }

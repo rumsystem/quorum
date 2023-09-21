@@ -6,7 +6,7 @@ enum PackageType {
     TRX                   = 0;
     BLOCK                 = 1;
     BFT                   = 2;
-    SYNC                  = 3;
+    BLOCK_SYNC            = 3;
     BROADCAST             = 4;
 }
 
@@ -26,14 +26,23 @@ enum TrxStroageType {
 }
 
 enum TrxType {
-    POST               = 0; // post to group
-    UPD_GRP_SYNCER     = 1; // owner update group syncer
-    CHAIN_CONFIG       = 2; // chain configuration
-    APP_CONFIG         = 3; // app configuration
-    FORK               = 4; 
-    ARCHIVE            = 5;
-    SERVICE_REQ        = 6;
-    SERVICE_RESP       = 7; 
+    POST         = 0; // post to group
+    UPD_SYNCER   = 1; // owner update group syncer
+    UPD_POSTER   = 2; // owner update group poster
+    APP_CONFIG   = 3; // app configuration
+    SERVICE_REQ  = 4;
+    SERVICE_RESP = 5; 
+    FORK         = 6; 
+    ARCHIVE      = 7;
+    reserved 8 to 100;
+}
+
+message Owner {
+    string GroupId      = 1;
+    string OwnerKeyname = 2;
+    string OwnerPubkey  = 3;
+    string Memo         = 4;
+    reserved 5 to 100;
 }
 
 message PostItem {
@@ -43,80 +52,58 @@ message PostItem {
     int64  TimeStamp    = 4;
 }
 
-message ProducerItem {
-   string     GroupId        = 1;
-   string     ProducerPubkey = 2;
-   string     ProofTrxId     = 3;
-   int64      BlkCnt         = 4;   
-   string     Memo           = 5;
+message UpdGroupPosterItem {
+    Poster     Poster     = 1;
+    ActionType Action     = 2;
+    string     Memo       = 3;
+    reserved   4 to 100;
+}
+
+message Poster {
+    string     GroupId             = 1;
+    string     PosterKeyname       = 2;
+    string     PosterPubkey        = 3;
+    string     Memo                = 4;
+    reserved   5 to 100;
+}
+
+message Syncer {
+   string     GroupId             = 1;
+   string     SyncerKeyname       = 2;
+   string     SyncerPubkey        = 3;
+   string     Memo                = 4;
+   reserved   5 to 100;
 }
 
 message UpdGroupSyncerItem {
     Syncer     Syncer     = 1;
     ActionType Action     = 2;
     string     Memo       = 3;
+    reserved   4 to 100;
 }
 
-message Syncer {
-   string     GroupId             = 1;
-   string     SyncerPubkey        = 2;
-   string     Memo                = 3;
-   reserved   4 to 100;
-}
-
-enum ChainConfigType {
-    SET_TRX_AUTH_MODE = 0;
-    UPD_DNY_LIST      = 1;
-    UPD_ALW_LIST      = 2;
-}
-
-enum TrxAuthMode {
-    FOLLOW_ALW_LIST = 0;
-    FOLLOW_DNY_LIST = 1;
-}
-
-enum AuthListType {
-    ALLOW_LIST = 0;
-    DENY_LIST  = 1;
-} 
-
-message ChainConfigItem {
-    string          GroupId        = 1;
-    ChainConfigType Type           = 2;
-    bytes           Data           = 3;
-    string          OwnerPubkey    = 4;
-    string          OwnerSignature = 5;
-    int64           TimeStamp      = 6;       
-    string          Memo           = 7; 
-}
-
-message ChainSendTrxRuleListItem {
-    ActionType Action       = 1; 
-    string     Pubkey       = 3;
-    repeated   TrxType Type = 4;
-}
-
-message SetTrxAuthModeItem {
-    TrxType     Type = 1;
-    TrxAuthMode Mode = 2;
+message Producer {
+    string     GroupId             = 1;
+    string     ProducerKeyanme     = 2;
+    string     ProducerPubkey      = 3;
+    string     Memo                = 4;
+    reserved   5 to 100;
 }
 
 enum AppConfigType {
     INT    = 0;
     BOOL   = 1;
     STRING = 2;
+    reserved 3 to 100;
 }
 
 message AppConfigItem{
     string        GroupId     = 1;
     ActionType    Action      = 2;
-    string        Name        = 3;
-    AppConfigType Type        = 4;
+    AppConfigType Type        = 3;
+    string        Name        = 4;
     string        Value       = 5;
-    string        OwnerPubkey = 6;
-    string        OwnerSign   = 7;
-    string        Memo        = 8;
-    int64         TimeStamp   = 9;
+    string        Memo        = 6;
 }
 
 message Trx {
@@ -205,6 +192,7 @@ enum ReqBlkResult {
 //BROADCAST_MSG
 enum BroadcastType {
     GENERAL                = 0; // general broadcast
+    reserved 1 to 100;
 }
 
 message BroadcastMsg {
@@ -212,7 +200,7 @@ message BroadcastMsg {
     bytes         Data = 2;
 }
 
-enum GroupSyncType {
+enum GroupAuthType {
     PUBLIC   = 0;
     PRIVATE  = 1;
 }
@@ -231,75 +219,104 @@ message PoaConsensusInfo {
     string ConsensusId   = 1;    
     uint64 ChainVer      = 2; 
     string InTrx         = 3;
-    ForkItem ForkInfo   = 4;
+    ForkItem ForkInfo    = 4;
 }
 
-message ForkItem {
-    string        GroupId          = 1;
-    uint64        StartFromBlock   = 3;
-    uint64        StartFromEpoch   = 4;
-    uint64        EpochDuration    = 5;
-    repeated      string producers = 6;
-    string        Memo             = 7;
+message GroupServices {
+    PublishServiceItem PublishService = 1;
+    SyncServiceItem    SyncService    = 2;
+    ProduceServiceItem ProduceService = 3;
+    CtnServiceItem     CtnService     = 4;
 }
 
 message GroupItem {
-    string            GroupId                 = 1;
-    string            GroupName               = 2;
-    string            OwnerPubKey             = 3;
-    string            UserSignPubkey          = 4;
-    int64             LastUpdate              = 5;
-    Block             GenesisBlock            = 6;
-    GroupSyncType     SyncType                = 7;
-    GroupConsenseType ConsenseType            = 9;
-    string            CipherKey               = 10;
-    string            AppId                   = 11;    
-    string            AppName                 = 12;
-    reserved          13 to 100;
+    string                 GroupId                 = 1;
+    string                 GroupName               = 2;
+    string                 OwnerPubKey             = 3;
+    int64                  LastUpdate              = 4;
+    Block                  GenesisBlock            = 5;
+    GroupAuthType          AuthType                = 6;
+    GroupConsenseType      ConsenseType            = 7;
+    string                 CipherKey               = 8;
+    string                 AppId                   = 9;    
+    string                 AppName                 = 10;
+    Owner                  MyOwner                 = 11;
+    Poster                 MyPoster                = 12;
+    Syncer                 MySyncer                = 13;
+    Producer               MyProducer              = 14;
+    GroupServices          GroupServices           = 15;
+    reserved          16 to 100;
 }
 
 message GroupSeed {
     string        GroupId                   = 1;
     string        GroupName                 = 2;
     string        OwnerPubkey               = 3;
-    GroupSyncType SyncType                  = 4;
+    GroupAuthType AuthType                  = 4;
     string        CipherKey                 = 5;
     string        AppId                     = 6;
     string        AppName                   = 7;
     Block         GenesisBlock              = 8;
-    repeated      GroupServiceItem Services = 9;
+    repeated      GroupService     Services = 9;
     bytes         Hash                      = 10;
     bytes         Signature                 = 11;
 }
 
 //GroupService
-enum GroupServiceType {
-    BREW_SERVICE    = 0;
-    SYNC_SERVICE    = 1;
-    reserved 2 to 100;
-}
-
-message BrewServiceItem {
-    string BrewerPubkey = 1;
-    string SyncerPubkey = 2;
-    string Term         = 3;    
-    bytes  Contract     = 4;
-    reserved 5 to 100;
-}
-
-message SyncServiceItem {
-    string SyncerPubkey  = 1;
-    string Term          = 2;
-    bytes  Contract      = 3;
+enum GroupTaskType {
+    PUBLISH    = 0;
+    SYNC       = 1;
+    PRODUCE    = 2;
+    CTN        = 3;
     reserved 4 to 100;
 }
 
-message GroupServiceItem {
-    GroupServiceType   Type        = 1; 
-    bytes              Service     = 2;
+message GroupTask {
+    GroupTaskType Type = 1;
+    bytes         Data = 2;
 }
 
-message BrewServiceProofItem {
+message GroupService {
+    GroupTaskType TaskType = 1;
+    bytes         Data = 2;
+}
+
+message PublishServiceItem {
+    string Term                   = 1;
+    bytes  Contract               = 2;
+    PublishServiceProofItem Proof = 3;
+    reserved 4 to 100;
+}
+
+message SyncServiceItem {
+    string Term                = 1;
+    bytes  Contract            = 2;
+    Syncer Syncer              = 3;
+    SyncServiceProofItem Proof = 4;
+    reserved 5 to 100;
+}
+
+message ProduceServiceItem {
+    string   Term       = 1;    
+    bytes    Contract   = 2;
+    Producer Producer   = 3;    
+    ProduceServiceProofItem Proof = 4;    
+    reserved 5 to 100;
+}
+
+message CtnServiceItem {
+    string          Term        = 1;
+    bytes           Contract    = 2;
+    repeated string APIs        = 3;
+    reserved 4 to 100;
+}
+
+message PublishServiceProofItem {
+    bytes Proof = 1;
+    reserved 2 to 100;
+}
+
+message ProduceServiceProofItem {
     bytes Proof = 1;
     reserved 2 to 100;
 }
@@ -309,28 +326,31 @@ message SyncServiceProofItem {
     reserved 2 to 100;
 }
 
-message  AddCellarReqItem {
-    string              ReqId           = 1;
-    bytes               Seed            = 2;
-    uint64              CurrentBlockId  = 3;
-    GroupServiceType    ServiceType     = 4;
-    bytes               Proof           = 5;
-    string              Memo            = 6;
-    reserved  7 to 100;
+message CtnServiceProofItem {
+    bytes Proof = 1;
+    reserved 2 to 100;
 }
 
-message AddCellarRespItem{
-    string             Resp              = 1;
-    string             GroupId           = 2;
-    AddCellarReqItem   OrigReq           = 3;
-    uint64             TimeStamp         = 4;
-    string             CellarOwnerPubkey = 5;
+message ReqGroupServiceProof {
+    GroupTaskType    TaskType = 1;
+    bytes            Data     = 2;
 }
 
-message CellarSyncDoneItem {
-    string          GroupId      = 1;
-    ReqBlockResp    ReqBlockResp = 2;
-    string CellarOwnerPubkey     = 3;
+message  ReqGroupServiceItem {
+    string                        ReqId           = 1;
+    bytes                         Seed            = 2;
+    uint64                        CurrentBlockId  = 3;
+    repeated ReqGroupServiceProof Proofs = 4;
+    string                        Memo            = 5;
+    reserved  6 to 100;
+}
+
+message ServiceRespItem{
+    string                RespId            = 1;
+    string                GroupId           = 2;
+    ReqGroupServiceItem   OrigReq           = 3;
+    uint64                TimeStamp         = 4;
+    string                CellarOwnerPubkey = 5;
 }
 
 message NodeSDKGroupItem {
@@ -424,4 +444,12 @@ message Aux {
     bool       Value        = 4;
 }
 
+message ForkItem {
+    string        GroupId          = 1;
+    uint64        StartFromBlock   = 3;
+    uint64        StartFromEpoch   = 4;
+    uint64        EpochDuration    = 5;
+    repeated      string Producers   = 6;
+    string        Memo             = 7;
+}
 

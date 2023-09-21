@@ -106,6 +106,9 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 
+	//r.GET("/v2/groop/:group_id/getcontract", h.GetContract)	//get contract by service type
+	//r.POST("/v2/group/:group_id/setproof", h.SetProof)        //set proof by servcie type
+
 	//get block by block_id
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 
