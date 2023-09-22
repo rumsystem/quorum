@@ -58,12 +58,12 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 	}
 
 	groupmgr := chain.GetGroupMgr()
-	group, ok := groupmgr.Groups[getGroupCtnReqItem.GroupId]
-	if !ok {
+	groupIface, err := groupmgr.GetGroupIfaceFromIndex(getGroupCtnReqItem.GroupId)
+	if err != nil {
 		return rumerrors.NewBadRequestError(rumerrors.ErrGroupNotFound)
 	}
 
-	ciperKey, err := hex.DecodeString(group.Item.CipherKey)
+	ciperKey, err := hex.DecodeString(groupIface.GetCipherKey())
 	if err != nil {
 		return rumerrors.NewBadRequestError(err)
 	}
@@ -101,7 +101,7 @@ func (h *Handler) GetContentNSdk(c echo.Context) (err error) {
 
 	trxList := []*TrxItem{}
 	for _, trxid := range trxids {
-		trx, isOnChain, err := group.GetTrx(trxid)
+		trx, isOnChain, err := groupIface.GetTrx(trxid)
 		if err != nil {
 			c.Logger().Errorf("GetTrx Err: %s", err)
 			continue

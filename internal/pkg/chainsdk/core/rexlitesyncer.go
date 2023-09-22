@@ -125,6 +125,11 @@ func (rs *RexLiteSyncer) Start() {
 	rs.lock.Lock()
 	defer rs.lock.Unlock()
 
+	if rs.chain.GetMySyncer() == nil {
+		rex_syncer_log.Debugf("<%s>  no syncer found in chain", rs.GroupId)
+		return
+	}
+
 	if rs.rexSyncerCtx != nil {
 		rs.rexSyncerCancel()
 	}
@@ -153,8 +158,9 @@ func (rs *RexLiteSyncer) Start() {
 
 				nextBlock := rs.cdnIface.GetCurrBlockId() + uint64(1)
 				//trx, trxerr = rs.chain.GetTrxFactory().GetReqBlocksTrx("", rs.GroupId, nextBlock, REQ_BLOCKS_PER_REQUEST)
-				userSignKeyname := rs.chain.GetKeynameByPubkey(rs.GroupItem.UserSignPubkey)
-				req, reqerr = rumchaindata.GetReqBlocksMsg(rs.GroupId, rs.GroupItem.UserSignPubkey, userSignKeyname, nextBlock, REQ_BLOCKS_PER_REQUEST)
+				mySyncer := rs.chain.GetMySyncer()
+
+				req, reqerr = rumchaindata.GetReqBlocksMsg(rs.GroupId, mySyncer.SyncerPubkey, mySyncer.SyncerKeyname, nextBlock, REQ_BLOCKS_PER_REQUEST)
 
 				if reqerr != nil {
 					rex_syncer_log.Warningf("<%s> SyncWorker run task get trx failed, err <%s>", rs.GroupId, reqerr.Error())

@@ -40,14 +40,13 @@ func (producer *MolassesProducer) StartPropose() {
 	defer producer.locker.Unlock()
 
 	if !producer.cIface.IsProducer() {
-		molaproducer_log.Debugf("<%s> unapproved producer do nothing", producer.groupId)
+		molaproducer_log.Debugf("<%s> not a producer, do nothing", producer.groupId)
 		return
 	}
 
-	producerPubkey := producer.cIface.GetMyProducerPubkey()
-
-	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, producerPubkey)
-	config, err := producer.createBftConfig(producerPubkey)
+	myProducer := producer.cIface.GetMyProducer()
+	molaproducer_log.Debugf("<%s> producer <%s> start propose", producer.groupId, myProducer.ProducerPubkey)
+	config, err := producer.createBftConfig(myProducer)
 	if err != nil {
 		molaproducer_log.Error("create bft failed with error: %s", err.Error())
 		return
@@ -68,7 +67,7 @@ func (producer *MolassesProducer) StopPropose() {
 	producer.ptbft = nil
 }
 
-func (producer *MolassesProducer) createBftConfig(producerPubkey string) (*Config, error) {
+func (producer *MolassesProducer) createBftConfig(myProducer *quorumpb.Producer) (*Config, error) {
 	molaproducer_log.Debugf("<%s> createBftConfig called", producer.groupId)
 	producer_nodes, err := nodectx.GetNodeCtx().GetChainStorage().GetProducers(producer.groupId, producer.nodename)
 	if err != nil {
@@ -97,18 +96,11 @@ func (producer *MolassesProducer) createBftConfig(producerPubkey string) (*Confi
 
 	molaproducer_log.Debugf("batchSize <%d>", batchSize)
 
-	//get producer keyname
-	keyname := producer.cIface.GetKeynameByPubkey(producerPubkey)
-	if keyname == "" {
-		molaproducer_log.Debugf("get keyname failed")
-		return nil, nil
-	}
-
 	config := &Config{
 		GroupId:     producer.groupId,
 		NodeName:    producer.nodename,
-		MyPubkey:    producerPubkey,
-		MyKeyName:   keyname,
+		MyPubkey:    myProducer.ProducerPubkey,
+		MyKeyName:   myProducer.ProducerKeyanme,
 		OwnerPubKey: producer.grpItem.OwnerPubKey,
 		N:           N,
 		f:           f,

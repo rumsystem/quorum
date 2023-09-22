@@ -97,12 +97,12 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 	c.Logger().Debug("GetDataNSdk request payload: %+v", *getDataNodeSDKItem)
 
 	groupmgr := chain.GetGroupMgr()
-	group, ok := groupmgr.Groups[getDataNodeSDKItem.GroupId]
-	if !ok {
+	groupIface, err := groupmgr.GetGroupIfaceFromIndex(getDataNodeSDKItem.GroupId)
+	if err != nil {
 		return rumerrors.NewBadRequestError("INVALID_GROUP")
 	}
 
-	ciperKey, err := hex.DecodeString(group.Item.CipherKey)
+	ciperKey, err := hex.DecodeString(groupIface.GetCipherKey())
 	if err != nil {
 		return rumerrors.NewBadRequestError("CHAINSDK_INTERNAL_ERROR")
 	}
@@ -186,18 +186,20 @@ func (h *Handler) GetDataNSdk(c echo.Context) (err error) {
 			return rumerrors.NewBadRequestError("INVALID_DATA")
 		}
 
-		if grp, ok := groupmgr.Groups[item.GroupId]; ok {
-			grpInfo := new(GrpInfoNodeSDK)
-			grpInfo.GroupId = grp.Item.GroupId
-			grpInfo.Owner = grp.Item.OwnerPubKey
-			grpInfo.Provider = grp.Item.UserSignPubkey
-			grpInfo.LatestUpdate = grp.Item.LastUpdate
-			//grpInfo.Epoch = grp.Item.Epoch
-
-			return c.JSON(http.StatusOK, grpInfo)
-		} else {
+		grpItem, err := groupmgr.GetGroupItemFromIndex(item.GroupId)
+		if err != nil {
 			return rumerrors.NewBadRequestError("INVALID_GROUP")
 		}
+
+		grpInfo := new(GrpInfoNodeSDK)
+		grpInfo.GroupId = grpItem.GroupId
+		grpInfo.Owner = grpItem.OwnerPubKey
+		//Add more if needed
+		//grpInfo.Provider = grpItem.UserSignPubkey
+		//grpInfo.LatestUpdate = grpItem.LastUpdate
+
+		return c.JSON(http.StatusOK, grpInfo)
+
 	default:
 		return rumerrors.NewBadRequestError("UNKNOWN_REQ_TYPE")
 	}

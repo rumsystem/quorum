@@ -21,6 +21,7 @@ type UpdGrpSyncerResult struct {
 
 type UpdGrpSyncerParam struct {
 	GroupId      string `from:"group_id"        json:"group_id"     validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
+	SubGroupId   string `from:"sub_group_id"    json:"sub_group_id" validate:"required,uuid4" example:"5ed3f9fe-81e2-450d-9146-7a329aac2b62"`
 	SyncerPubkey string `from:"syncer_pubkey"   json:"syncer_pubkey" validate:"required" example:"CAISIQOxCH2yVZPR8t6gVvZapxcIPBwMh9jB80pDLNeuA5s8hQ=="`
 	Action       string `from:"action"          json:"action"       validate:"required,oneof=add remove" example:"add"`
 	Memo         string `from:"memo"            json:"memo"`

@@ -15,6 +15,7 @@ import (
 )
 
 type GetGroupCtnPrarms struct {
+	ParentGroupId   string   `json:"parent_group_id" validate:"required,uuid4"`
 	GroupId         string   `json:"group_id" validate:"required,uuid4"`
 	Num             int      `json:"num" validate:"required"`
 	StartTrx        string   `json:"start_trx"`
@@ -39,6 +40,9 @@ type GroupContentObjectItem struct {
 	TimeStamp int64
 }
 
+//Added by cuicat
+//Should verify function later
+
 func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cc := c.(*utils.CustomContext)
@@ -47,7 +51,7 @@ func (h *NodeSDKHandler) GetGroupCtn() echo.HandlerFunc {
 			return err
 		}
 
-		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(params.GroupId)
+		nodesdkGroupItem, err := nodesdkctx.GetCtx().GetChainStorage().GetGroupInfoV2(params.ParentGroupId, params.GroupId)
 		if err != nil {
 			return rumerrors.NewBadRequestError(err)
 		}

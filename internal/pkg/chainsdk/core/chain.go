@@ -540,6 +540,8 @@ func (chain *Chain) shouldProcesReq(req *quorumpb.ReqBlock) (bool, error) {
 		chain_log.Warningf("<%s> Invalid ReqBlock, signature verify failed, sender <%s>", chain.groupItem.GroupId, req.ReqPubkey)
 		return false, errors.New("invalid ReqBlock")
 	}
+
+	return true, nil
 }
 
 func (chain *Chain) HandleBroadcastMsgPsConn(brd *quorumpb.BroadcastMsg) error {

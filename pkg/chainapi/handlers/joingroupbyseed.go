@@ -35,7 +35,7 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 	}
 
 	//check if group alreay exist
-	isExist, err := chain.GetGroupMgr().IsParentGroupExist(chaindef.JOIN_BY_API)
+	isExist, err := chain.GetGroupMgr().IsLocalGroupExist(seed.GroupId)
 	if err != nil {
 		return nil, rumerrors.NewBadRequestError(err)
 	}
@@ -56,7 +56,7 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 
 	//create empty group
 	group := &chain.Group{}
-	err = group.JoinGroupBySeed(chaindef.JOIN_BY_API,
+	err = group.JoinGroupBySeed(chaindef.LOCAL_GROUP,
 		params.OwnerKeyname,
 		params.PosterKeyname,
 		params.ProducerKeyname,
@@ -66,7 +66,10 @@ func JoinGroupBySeed(params *JoinGroupBySeedParams, nodeoptions *options.NodeOpt
 	}
 
 	//add group to groupMgr
-	chain.GetGroupMgr().AddSubGroup(chaindef.JOIN_BY_API, group.GroupItem)
+	err = chain.GetGroupMgr().AddLocalGroup(group)
+	if err != nil {
+		return nil, rumerrors.NewBadRequestError(err)
+	}
 
 	//save group seed
 	if err := nodectx.GetNodeCtx().GetChainStorage().SetGroupSeed(seed); err != nil {

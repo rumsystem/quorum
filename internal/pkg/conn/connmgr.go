@@ -183,7 +183,7 @@ func (connMgr *ConnMgr) SendUserTrxPubsub(trx *quorumpb.Trx, channelId ...string
 	return psconn.Publish(pkgBytes)
 }
 
-func (connMgr *ConnMgr) SendTrxToCellar(seed *quorumpb.GroupSeed, trx *quorumpb.Trx) error {
+func (connMgr *ConnMgr) SendTrxBySeed(seed *quorumpb.GroupSeed, trx *quorumpb.Trx) error {
 	conn_log.Debugf("<%s> initialPsConn called", connMgr.GroupId)
 	connMgr.pscounsmu.Lock()
 	defer connMgr.pscounsmu.Unlock()

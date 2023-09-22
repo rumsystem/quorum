@@ -46,6 +46,14 @@ func InitGroupMgr() error {
 	return nil
 }
 
+func GetSubGroupIndex(parentGroupId, subGroupId string) string {
+	return parentGroupId + "_" + subGroupId
+}
+
+func GetLocalGroupIndex(groupId string) string {
+	return groupId
+}
+
 func (groupMgr *GroupMgr) LoadLocalGroups() error {
 	groupMgr_log.Debug("LoadLocalGroups called")
 
@@ -72,8 +80,8 @@ func (groupMgr *GroupMgr) LoadLocalGroups() error {
 			SubGroups: make(map[string]*Group),
 		}
 
-		//update all groups index
-		groupMgr.GroupIndex[group.GroupId] = group
+		//add local group to index
+		groupMgr.GroupIndex[GetLocalGroupIndex(group.GroupId)] = group
 
 		//load all sub groups
 		subGroupItesm, err := nodectx.GetNodeCtx().GetChainStorage().GetSubGroupItems(group.GroupId)
@@ -90,9 +98,9 @@ func (groupMgr *GroupMgr) LoadLocalGroups() error {
 			localGroup.SubGroups[subGroup.GroupId] = subGroup
 		}
 
-		//add all sub groups to group index map
+		//add all sub groups to group index
 		for _, subGroup := range localGroup.SubGroups {
-			groupMgr.GroupIndex[subGroup.GroupId] = subGroup
+			groupMgr.GroupIndex[GetSubGroupIndex(group.GroupId, subGroup.GroupId)] = subGroup
 		}
 	}
 	return nil
@@ -107,10 +115,10 @@ func (groupMgr *GroupMgr) TeardownLocalGroups() {
 	for _, localGroup := range groupMgr.LocalGroups {
 		groupMgr_log.Debugf("teardown loacl group : <%s>", localGroup.GroupId)
 		groupMgr.TeardownSubGroups(localGroup.GroupId)
-
 		localGroup.Group.Teardown()
 		//remove from group index
-		delete(groupMgr.GroupIndex, localGroup.GroupId)
+		delete(groupMgr.GroupIndex, GetLocalGroupIndex(localGroup.GroupId))
+
 	}
 }
 
@@ -122,8 +130,74 @@ func (groupMgr *GroupMgr) TeardownSubGroups(parentGroupId string) {
 		//remove from parent group
 		delete(groupMgr.LocalGroups[parentGroupId].SubGroups, subGroup.GroupId)
 		//remove from group index
-		delete(groupMgr.GroupIndex, subGroup.GroupId)
+		delete(groupMgr.GroupIndex, GetSubGroupIndex(parentGroupId, subGroup.GroupId))
 	}
+}
+
+func (groupMgr *GroupMgr) TeardownLocalGroupById(groupId string) error {
+	groupMgr_log.Debugf("TeardownLocalGroupById called, groupId: <%s>", groupId)
+	groupMgr.locker.Lock()
+	defer groupMgr.locker.Unlock()
+	if _, ok := groupMgr.LocalGroups[groupId]; !ok {
+		return fmt.Errorf("local group not exist: %s", groupId)
+	}
+
+	//close all sub groups
+	groupMgr.TeardownSubGroups(groupId)
+	//close local group
+	groupMgr.LocalGroups[groupId].Group.Teardown()
+
+	//remove from group index
+	delete(groupMgr.GroupIndex, GetLocalGroupIndex(groupId))
+	//remove from local group map
+	delete(groupMgr.LocalGroups, groupId)
+	return nil
+}
+
+func (groupMgr *GroupMgr) TeardownSubGroupById(localGroupId, groupId string) error {
+	groupMgr_log.Debugf("TeardownSubGroupById called, localGroupId: <%s>, groupId: <%s>", localGroupId, groupId)
+
+	groupMgr.locker.Lock()
+	defer groupMgr.locker.Unlock()
+
+	if _, ok := groupMgr.LocalGroups[localGroupId]; !ok {
+		return fmt.Errorf("local group not exist: %s", localGroupId)
+	}
+
+	if _, ok := groupMgr.LocalGroups[localGroupId].SubGroups[groupId]; !ok {
+		return fmt.Errorf("sub group not exist: %s", groupId)
+	}
+
+	//close sub group
+	groupMgr.LocalGroups[localGroupId].SubGroups[groupId].Teardown()
+	//remove from group index
+	delete(groupMgr.GroupIndex, GetSubGroupIndex(localGroupId, groupId))
+	//remove from local group map
+	delete(groupMgr.LocalGroups[localGroupId].SubGroups, groupId)
+	return nil
+}
+
+func (groupMgr *GroupMgr) AddLocalGroup(group *Group) error {
+	groupMgr_log.Debugf("AddLocalGroup called, groupId: <%s>", group.GroupId)
+	groupMgr.locker.Lock()
+	defer groupMgr.locker.Unlock()
+
+	if _, ok := groupMgr.LocalGroups[group.GroupId]; ok {
+		return fmt.Errorf("group already exist: %s", group.GroupId)
+	}
+
+	//create localGroup and add to groupMgr
+	localGroup := &LocalGroup{
+		GroupId:   group.GroupId,
+		Group:     group,
+		SubGroups: make(map[string]*Group),
+	}
+
+	//add to groupMgr
+	groupMgr.LocalGroups[group.GroupId] = localGroup
+	//add to group index
+	groupMgr.GroupIndex[GetLocalGroupIndex(group.GroupId)] = group
+	return nil
 }
 
 func (groupMgr *GroupMgr) AddSubGroup(localGroupId string, group *Group) error {
@@ -144,13 +218,13 @@ func (groupMgr *GroupMgr) AddSubGroup(localGroupId string, group *Group) error {
 	localGroup.SubGroups[group.GroupId] = group
 
 	//check if already exist in group index
-	if _, ok := groupMgr.GroupIndex[group.GroupId]; ok {
+	if _, ok := groupMgr.GroupIndex[GetSubGroupIndex(localGroupId, group.GroupId)]; ok {
 		groupMgr_log.Warningf("sub group already exist in other local group: %s", group.GroupId)
 		return nil
 	}
 
 	//add to group index
-	groupMgr.GroupIndex[group.GroupId] = group
+	groupMgr.GroupIndex[GetSubGroupIndex(localGroupId, group.GroupId)] = group
 	return nil
 }
 
@@ -171,7 +245,7 @@ func (groupMgr *GroupMgr) TeamDownSubGroup(localGroupId, groupId string) error {
 
 	localGroup.SubGroups[groupId].Teardown()
 	delete(localGroup.SubGroups, groupId)
-	delete(groupMgr.GroupIndex, groupId)
+	delete(groupMgr.GroupIndex, GetSubGroupIndex(localGroupId, groupId))
 	return nil
 }
 
@@ -241,29 +315,35 @@ func (groupMgr *GroupMgr) GetSubGroupItem(localGroupId string) ([]*quorumpb.Grou
 	return result, nil
 }
 
-func (groupmgr *GroupMgr) GetGroupIface(localGroupId, gorupId string) (chaindef.GroupIface, error) {
-	groupMgr_log.Debugf("GetGroupIface called, localGroupId: %s, groupId: %s", localGroupId, gorupId)
+func (groupMgr *GroupMgr) GetLocalGroupItems() ([]*quorumpb.GroupItem, error) {
+	groupMgr_log.Debugf("GetLocalGroups called")
 
-	groupmgr.locker.Lock()
-	defer groupmgr.locker.Unlock()
+	groupMgr.locker.Lock()
+	defer groupMgr.locker.Unlock()
 
-	if _, ok := groupmgr.LocalGroups[localGroupId]; !ok {
-		return nil, fmt.Errorf("local group not exist: %s", localGroupId)
+	result := []*quorumpb.GroupItem{}
+	for _, grp := range groupMgr.LocalGroups {
+		result = append(result, grp.Group.GroupItem)
 	}
 
-	if gorupId == "" {
-		return groupmgr.LocalGroups[localGroupId].Group, nil
-	}
-
-	LocalGroup := groupmgr.LocalGroups[localGroupId]
-	if _, ok := LocalGroup.SubGroups[gorupId]; !ok {
-		return nil, fmt.Errorf("group not exist: %s", gorupId)
-	}
-
-	return LocalGroup.SubGroups[gorupId], nil
+	return result, nil
 }
 
-func (groupmgr *GroupMgr) GetSubGroupIface(localGroupId string) ([]chaindef.GroupIface, error) {
+func (groupMgr *GroupMgr) GetLocalGroupIfaces() ([]chaindef.GroupIface, error) {
+	groupMgr_log.Debugf("GetLocalGroups called")
+
+	groupMgr.locker.Lock()
+	defer groupMgr.locker.Unlock()
+
+	result := []chaindef.GroupIface{}
+	for _, grp := range groupMgr.LocalGroups {
+		result = append(result, grp.Group)
+	}
+
+	return result, nil
+}
+
+func (groupmgr *GroupMgr) GetSubGroupIfaces(localGroupId string) ([]chaindef.GroupIface, error) {
 	groupMgr_log.Debugf("GetSubGroupIface called, localGroupId: %s", localGroupId)
 
 	groupmgr.locker.Lock()
@@ -282,28 +362,24 @@ func (groupmgr *GroupMgr) GetSubGroupIface(localGroupId string) ([]chaindef.Grou
 	return result, nil
 }
 
-func (GroupMgr *GroupMgr) GetGroupIfaceFromIndex(groupId string) (chaindef.GroupIface, error) {
-	groupMgr_log.Debugf("GetGroupItemFromIndex called, groupId: %s", groupId)
+func (groupmgr *GroupMgr) GetGroupIface(localGroupId, subGroupId string) (chaindef.GroupIface, error) {
+	groupMgr_log.Debugf("GetGroupIface called, localGroupId: %s, groupId: %s", localGroupId, subGroupId)
 
-	GroupMgr.locker.Lock()
-	defer GroupMgr.locker.Unlock()
+	groupmgr.locker.Lock()
+	defer groupmgr.locker.Unlock()
 
-	if _, ok := GroupMgr.GroupIndex[groupId]; !ok {
-		return nil, fmt.Errorf("group not exist: %s", groupId)
+	if _, ok := groupmgr.LocalGroups[localGroupId]; !ok {
+		return nil, fmt.Errorf("local group not exist: %s", localGroupId)
 	}
 
-	return GroupMgr.GroupIndex[groupId], nil
-}
-
-func (GroupMgr *GroupMgr) GetGroupItemFromIndex(groupId string) (*quorumpb.GroupItem, error) {
-	groupMgr_log.Debugf("GetGroupItemFromIndex called, groupId: %s", groupId)
-
-	GroupMgr.locker.Lock()
-	defer GroupMgr.locker.Unlock()
-
-	if _, ok := GroupMgr.GroupIndex[groupId]; !ok {
-		return nil, fmt.Errorf("group not exist: %s", groupId)
+	if subGroupId == "" {
+		return groupmgr.LocalGroups[localGroupId].Group, nil
 	}
 
-	return GroupMgr.GroupIndex[groupId].GroupItem, nil
+	LocalGroup := groupmgr.LocalGroups[localGroupId]
+	if _, ok := LocalGroup.SubGroups[subGroupId]; !ok {
+		return nil, fmt.Errorf("group not exist: %s", subGroupId)
+	}
+
+	return LocalGroup.SubGroups[subGroupId], nil
 }

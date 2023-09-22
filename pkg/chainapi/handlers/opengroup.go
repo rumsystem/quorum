@@ -9,7 +9,8 @@ import (
 )
 
 type OpenGroupParam struct {
-	GroupId string `from:"group_id" json:"group_id" validate:"required,uuid4" example:"ac0eea7c-2f3c-4c67-80b3-136e46b924a8"`
+	GroupId    string `from:"group_id" json:"group_id" validate:"required,uuid4" example:"ac0eea7c-2f3c-4c67-80b3-136e46b924a8"`
+	SubGroupId string `from:"sub_group_id" json:"sub_group_id" validate:"required,uuid4" example:"ac0eea7c-2f3c-4c67-80b3-136e46b924a8"`
 }
 
 type OpenGroupResult struct {

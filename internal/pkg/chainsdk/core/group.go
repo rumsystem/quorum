@@ -191,7 +191,7 @@ func (grp *Group) JoinGroupBySeed(parentGroupId, ownerKeyname, posterKeyname, pr
 	grp.ChainCtx.NewChainWithSeed(seed, groupItem, grp, grp.Nodename)
 
 	//load and update group producers
-	grp.ChainCtx.updateProducerPool()
+	grp.ChainCtx.UpdateProducerPool()
 
 	//create and register ConnMgr for chainctx
 	conn.GetConn().RegisterChainCtx(groupItem.GroupId, grp.ChainCtx)
@@ -205,7 +205,20 @@ func (grp *Group) JoinGroupBySeed(parentGroupId, ownerKeyname, posterKeyname, pr
 		return err
 	}
 
+	//save group to groupMgr
+	GetGroupMgr().AddLocalGroup(grp)
+
 	group_log.Debugf("Join Group <%s> done", grp.GroupId)
+	return nil
+}
+
+func (grp *Group) LoadGroupById(parentGroupId, groupId string) error {
+	//load groupitem by groupid
+	groupItem, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupItem(parentGroupId, groupId)
+	if err != nil {
+		return err
+	}
+	grp.LoadGroup(parentGroupId, groupItem)
 	return nil
 }
 
@@ -225,7 +238,7 @@ func (grp *Group) LoadGroup(parentGroupId string, item *quorumpb.GroupItem) erro
 	}
 
 	//reload producers
-	grp.ChainCtx.updateProducerPool()
+	grp.ChainCtx.UpdateProducerPool()
 
 	//create and register ConnMgr for chainctx
 	conn.GetConn().RegisterChainCtx(item.GroupId, grp.ChainCtx)
@@ -233,15 +246,10 @@ func (grp *Group) LoadGroup(parentGroupId string, item *quorumpb.GroupItem) erro
 	//create group consensus
 	grp.ChainCtx.CreateConsensus()
 	group_log.Infof("Group <%s> loaded", grp.GroupId)
-}
 
-func (grp *Group) LoadGroupById(parentGroupId, groupId string) error {
-	//load groupitem by groupid
-	groupItem, err := nodectx.GetNodeCtx().GetChainStorage().GetGroupItem(parentGroupId, groupId)
-	if err != nil {
-		return err
-	}
-	grp.LoadGroup(parentGroupId, groupItem)
+	//save group to groupMgr
+	GetGroupMgr().AddLocalGroup(grp)
+
 	return nil
 }
 
@@ -262,26 +270,52 @@ func (grp *Group) Teardown() error {
 	return nil
 }
 
-func (grp *Group) StartAllServics() error {
+func (grp *Group) StartAllMyServics() error {
 	group_log.Debugf("<%s> StartAllServics called", grp.GroupItem.GroupId)
 	return grp.ChainCtx.StartSync()
 }
 
-func (grp *Group) StopAllServices() error {
+func (grp *Group) StopAllMyServices() error {
 	group_log.Debugf("<%s> StopAllServices called", grp.GroupItem.GroupId)
 	grp.ChainCtx.StopSync()
 	return nil
+}
+
+func (grp *Group) ClearGroupData() error {
+	group_log.Debugf("<%s> ClearGroupData called", grp.GroupId)
+	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.GroupId, grp.Nodename)
 }
 
 func (grp *Group) GetGroupId() string {
 	return grp.GroupId
 }
 
-func (grp *Group) ClearGroupData() error {
-	group_log.Debugf("<%s> ClearGroupData called", grp.GroupId)
+func (grp *Group) GetNodeName() string {
+	return grp.Nodename
+}
 
-	//remove group data from local db
-	return nodectx.GetNodeCtx().GetChainStorage().RemoveGroupData(grp.GroupId, grp.Nodename)
+func (grp *Group) GetOwnerPubkey() string {
+	return grp.GroupItem.OwnerPubKey
+}
+
+func (grp *Group) GetGroupName() string {
+	return grp.GroupItem.GroupName
+}
+
+func (grp *Group) GetConsensusType() string {
+	return grp.GroupItem.ConsenseType.String()
+}
+
+func (grp *Group) GetAuthType() string {
+	return grp.GroupItem.AuthType.String()
+}
+
+func (grp *Group) GetAppId() string {
+	return grp.GroupItem.AppId
+}
+
+func (grp *Group) GetAppName() string {
+	return grp.GroupItem.AppName
 }
 
 func (grp *Group) GetCurrentEpoch() uint64 {
@@ -296,12 +330,12 @@ func (grp *Group) GetCurrentBlockId() uint64 {
 	return grp.ChainCtx.GetCurrBlockId()
 }
 
-func (grp *Group) GetNodeName() string {
-	return grp.Nodename
-}
-
 func (grp *Group) GetRexSyncerStatus() string {
 	return grp.ChainCtx.GetRexSyncerStatus()
+}
+
+func (grp *Group) GetLastUpdated() int64 {
+	return grp.ChainCtx.GetLastUpdate()
 }
 
 func (grp *Group) GetBlock(blockId uint64) (blk *quorumpb.Block, isOnChain bool, err error) {
@@ -324,13 +358,16 @@ func (grp *Group) GetTrx(trxId string) (tx *quorumpb.Trx, isOnChain bool, err er
 	if err == nil {
 		return trx, true, nil
 	}
-
 	trx, err = nodectx.GetNodeCtx().GetChainStorage().GetTrx(grp.GroupId, trxId, def.Cache, grp.Nodename)
 	if err == nil {
 		return trx, false, nil
 	}
 
 	return nil, false, fmt.Errorf("GetTrx failed, trx <%s> not exist", trxId)
+}
+
+func (grp *Group) GetCipherKey() string {
+	return grp.GroupItem.CipherKey
 }
 
 func (grp *Group) GetProducers() ([]*quorumpb.Producer, error) {
@@ -352,7 +389,6 @@ func (grp *Group) GetCurrentConsensus() (*quorumpb.Consensus, error) {
 	return nodectx.GetNodeCtx().GetChainStorage().GetGroupConsensus(grp.GroupId, grp.Nodename)
 }
 
-// send POST trx
 func (grp *Group) PostToGroup(content []byte) (string, error) {
 	group_log.Debugf("<%s> PostToGroup called", grp.GroupId)
 
@@ -394,10 +430,52 @@ func (grp *Group) UpdGroupPoster(item *quorumpb.UpdGroupPosterItem) (string, err
 	return grp.sendTrx(trx)
 }
 
+// send update appconfig trx
+func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
+	group_log.Debugf("<%s> UpdAppConfig called", grp.GroupId)
+	if grp.GroupItem.MyOwner == nil {
+		return "", fmt.Errorf("myOwner not exist")
+	}
+
+	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx(grp.GroupItem.MyOwner.OwnerKeyname, grp.GroupItem.MyOwner.OwnerKeyname, item)
+	if err != nil {
+		return "", nil
+	}
+	return grp.sendTrx(trx)
+}
+
+// send raw trx, for light node API
+func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
+	return grp.sendTrx(trx)
+}
+
+func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
+	connMgr, err := conn.GetConn().GetConnMgr(grp.GroupItem.GroupId)
+	if err != nil {
+		return "", err
+	}
+	err = connMgr.SendUserTrxPubsub(trx)
+	if err != nil {
+		return "", err
+	}
+
+	return trx.TrxId, nil
+}
+
+func (grp *Group) SendTrxBySeed(trx *quorumpb.Trx, cellarSeed *quorumpb.GroupSeed) (string, error) {
+	connMgr, err := conn.GetConn().GetConnMgr(grp.GroupItem.GroupId)
+	if err != nil {
+		return "", err
+	}
+	err = connMgr.SendTrxBySeed(cellarSeed, trx)
+	if err != nil {
+		return "", err
+	}
+	return trx.TrxId, nil
+}
+
 func (grp *Group) ReqCellarServices(cellarSeedByts []byte, serviceType quorumpb.GroupTaskType, proof []byte, memo string) (string, error) {
-
 	group_log.Debugf("<%s> ReqCellarServices called", grp.GroupId)
-
 	/*
 		//unmarshall cellardbytes to groupseed
 		cellarSeed := &quorumpb.GroupSeed{}
@@ -449,53 +527,3 @@ func (grp *Group) ReqCellarServices(cellarSeedByts []byte, serviceType quorumpb.
 	*/
 	return "", nil
 }
-
-// send update appconfig trx
-func (grp *Group) UpdAppConfig(item *quorumpb.AppConfigItem) (string, error) {
-	group_log.Debugf("<%s> UpdAppConfig called", grp.GroupId)
-	if grp.GroupItem.MyOwner == nil {
-		return "", fmt.Errorf("myOwner not exist")
-	}
-
-	trx, err := grp.ChainCtx.GetTrxFactory().GetUpdAppConfigTrx(grp.GroupItem.MyOwner.OwnerKeyname, grp.GroupItem.MyOwner.OwnerKeyname, item)
-	if err != nil {
-		return "", nil
-	}
-	return grp.sendTrx(trx)
-}
-
-// send raw trx, for light node API
-func (grp *Group) SendRawTrx(trx *quorumpb.Trx) (string, error) {
-	return grp.sendTrx(trx)
-}
-
-func (grp *Group) sendTrx(trx *quorumpb.Trx) (string, error) {
-	connMgr, err := conn.GetConn().GetConnMgr(grp.GroupItem.GroupId)
-	if err != nil {
-		return "", err
-	}
-	err = connMgr.SendUserTrxPubsub(trx)
-	if err != nil {
-		return "", err
-	}
-
-	return trx.TrxId, nil
-}
-
-func (grp *Group) sendTrxToCellar(trx *quorumpb.Trx, cellarSeed *quorumpb.GroupSeed) (string, error) {
-	connMgr, err := conn.GetConn().GetConnMgr(grp.GroupItem.GroupId)
-	if err != nil {
-		return "", err
-	}
-	err = connMgr.SendTrxToCellar(cellarSeed, trx)
-	if err != nil {
-		return "", err
-	}
-	return trx.TrxId, nil
-}
-
-/*
-func (grp *Group) IsProducer() bool {
-	return grp.ChainCtx.IsProducer()
-}
-*/

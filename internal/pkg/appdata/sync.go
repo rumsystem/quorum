@@ -98,34 +98,35 @@ func (appsync *AppSync) RunSync(groupid string, lastSyncBlock uint64, highestBlo
 	}
 }
 
-func (appsync *AppSync) Start(parentGroupId string, interval int) {
+func (appsync *AppSync) StartSyncLocalGroups(interval int) {
 	go func() {
 		for {
-			groups, err := appsync.groupmgr.GetSubGroups(parentGroupId)
+			groupIfaces, err := appsync.groupmgr.GetLocalGroupIfaces()
 			if err != nil {
-				appsynclog.Debugf("get sub groups err %s", err)
+				appsynclog.Debugf("get local groups err %s", err)
 				return
 			}
 
-			for _, group := range groups {
-
-				blockIdStr, err := appsync.appdb.GetGroupStatus(group.GroupId, "Block")
+			for _, iface := range groupIfaces {
+				groupId := iface.GetGroupId()
+				blockIdStr, err := appsync.appdb.GetGroupStatus(groupId, "Block")
 				if err == nil {
 					if blockIdStr == "" { //init, set to 0
 						blockIdStr = "0"
 					}
 				} else {
-					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", group.GroupId, err)
+					appsynclog.Errorf("sync group : %s GetGroupStatus err %s", groupId, err)
 					continue
 				}
 
 				lastSyncBlock, err := strconv.ParseUint(blockIdStr, 10, 64)
 				if err == nil {
-					if group.GetCurrentBlockId() > lastSyncBlock {
-						appsync.RunSync(group.GroupId, lastSyncBlock, group.GetCurrentBlockId())
+					currBlkId := iface.GetCurrentBlockId()
+					if currBlkId > lastSyncBlock {
+						appsync.RunSync(groupId, lastSyncBlock, currBlkId)
 					}
 				} else {
-					appsynclog.Errorf("sync group : %s Get Group last sync block err %s", group.GroupId, err)
+					appsynclog.Errorf("sync group : %s Get Group last sync block err %s", groupId, err)
 				}
 			}
 

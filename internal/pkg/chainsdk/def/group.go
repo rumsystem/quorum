@@ -12,6 +12,13 @@ type GroupIface interface {
 	GetRexSyncerStatus() string
 	GetCurrentBlockId() uint64
 	GetBlock(blockId uint64) (*quorumpb.Block, bool, error)
-	//StartSync() error
-	//StopSync() error
+	GetGroupId() string
+	GetCipherKey() string
+	GetOwnerPubkey() string
+	GetGroupName() string
+	GetConsensusType() string
+	GetAuthType() string
+	GetAppId() string
+	GetAppName() string
+	GetLastUpdated() int64
 }

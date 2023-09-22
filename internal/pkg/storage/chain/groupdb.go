@@ -231,7 +231,7 @@ func (cs *Storage) AddGroupV2(parentGroupId string, groupItem *quorumpb.NodeSDKG
 }
 
 // Get Gorup Info
-func (cs *Storage) GetGroupInfoV2(parentGroupId string, groupId string) (*quorumpb.NodeSDKGroupItem, error) {
+func (cs *Storage) GetGroupInfoV2(groupId string) (*quorumpb.NodeSDKGroupItem, error) {
 	key := s.GetGroupItemKey(parentGroupId, groupId)
 	exist, err := cs.dbmgr.GroupInfoDb.IsExist([]byte(key))
 	if !exist {

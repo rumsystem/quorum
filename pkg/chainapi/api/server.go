@@ -94,10 +94,25 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v2/group/open", h.OpenGroup)
 	r.POST("/v2/group/close", h.CloseGroup)
 	r.POST("/v2/group/updsyncer", h.UpdGroupSyncer)
-	r.POST("/v2/group/addcellar", h.AddCellar)
+	//r.POST("/v2/group/updposter", h.UpdGroupPoster)
+
+	//r.POST("/v2/group/updatemysyncer", h.UpdMyGroupSyncer)
+	//r.POST('/v2/group/updatemyposter', h.UpdMyGroupPoster)
+	//r.POST("/v2/group/updproducers", h.UpdGroupProducers)
+	//r.POST("/v2/group/addcellar", h.AddCellar)
+
+	r.GET("/v2/group/local", h.ListLocalGroups)
+	r.GET("/v2/group/listlocal/:group_id", h.ListLocalGroup)
+	//r.GET("/v2/group/listsub/:group_id", h.ListSubGroups)
+	//r.GET("/v2/group/listsub/:group_id/:sub_group_id", h.ListSubGroup)
+
 	r.POST("/v2/group/parseseed", h.ParseGroupSeed)
 	r.POST("/v2/group/verifyseed", h.VerifyGroupSeed)
 	r.POST("/v1/group/rmdata", h.ClearGroupData)
+
+	//r.GET("/v2/groop/:group_id/getcontract", h.GetContract)	//get contract by service type
+	//r.POST("/v2/group/:group_id/setproof", h.SetProof)        //set proof by servcie type
+	r.GET("/v1/block/local/:group_id/:block_id", h.GetBlock)
 
 	r.POST("/v1/network/peers", h.AddPeers)
 	r.POST("/v1/tools/pubkeytoaddr", h.PubkeyToEthaddr)
@@ -106,29 +121,11 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	r.POST("/v1/group/appconfig", h.MgrAppConfig)
 	r.POST("/v1/group/chainconfig", h.MgrChainConfig)
 
-	//r.GET("/v2/groop/:group_id/getcontract", h.GetContract)	//get contract by service type
-	//r.POST("/v2/group/:group_id/setproof", h.SetProof)        //set proof by servcie type
-
 	//get block by block_id
 	r.GET("/v1/block/:group_id/:block_id", h.GetBlock)
 
 	//get trx by trx_id
 	r.GET("/v1/trx/:group_id/:trx_id", h.GetTrx)
-
-	//get all groups
-	r.GET("/v1/groups", h.GetGroups)
-
-	//get group by group_id
-	r.GET("/v1/group/:group_id", h.GetGroupById)
-
-	//get trx allow list
-	r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
-
-	//get trx deny list
-	r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
-
-	//get trx auth mode
-	r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
 	//get app config key list
 	r.GET("/v1/group/:group_id/appconfig/keylist", h.GetAppConfigKey)
@@ -192,6 +189,21 @@ func StartRumLiteNodeServer(config StartServerParam, signalch chan os.Signal, h 
 	//r.POST("/v1/group", h.CreateGroupUrl())
 	//r.POST("/v2/group/join", h.JoinGroupV2())
 	//r.POST("/v1/group/leave", h.LeaveGroup)
+
+	//get all groups
+	//r.GET("/v1/groups", h.GetGroups)
+
+	//get group by group_id
+	//r.GET("/v1/group/:group_id", h.GetGroupById)
+
+	//get trx allow list
+	//r.GET("/v1/group/:group_id/trx/allowlist", h.GetChainTrxAllowList)
+
+	//get trx deny list
+	//r.GET("/v1/group/:group_id/trx/denylist", h.GetChainTrxDenyList)
+
+	//get trx auth mode
+	//r.GET("/v1/group/:group_id/trx/auth/:trx_type", h.GetChainTrxAuthMode)
 
 	// start https or http server
 	host := config.APIHost

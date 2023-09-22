@@ -217,7 +217,7 @@ func runRumLiteNode(config cli.RumLiteNodeFlag) {
 
 	apiaddress := fmt.Sprintf("http://localhost:%d/api/v1", config.APIPort)
 	appsync := appdata.NewAppSyncAgent(apiaddress, nodectx.GetNodeCtx().Name, appdb, dbManager)
-	appsync.Start(10)
+	appsync.StartSyncLocalGroups(10)
 	apph := &appapi.Handler{
 		Appdb:     appdb,
 		Trxdb:     newchainstorage,
