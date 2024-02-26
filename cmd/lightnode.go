@@ -55,7 +55,7 @@ func init() {
 	flags.String("datadir", "./data/", "config dir")
 	flags.String("keystoredir", "./keystore/", "keystore dir")
 	flags.String("keystorename", "defaultkeystore", "keystore name")
-	flags.String("keystorepass", "", "keystore password")
+	flags.String("keystorepwd", "", "keystore password")
 	flags.String("apihost", "", "Domain or public ip addresses for api server")
 	flags.Int("apiport", 5215, "api server listen port")
 	flags.String("jsontracer", "", "output tracer data to a json file")
