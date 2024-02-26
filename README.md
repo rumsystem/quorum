@@ -112,22 +112,32 @@ Try [rum-app](https://rumsystem.net/apps), a cross platform RUM GUI application.
 Run the [quorum binary](#build_quorum):
 
 ```sh
-./quorum fullnode --peername peer --listen /ip4/0.0.0.0/tcp/7000 --listen /ip4/0.0.0.0/tcp/9000/ws --apiport 8000 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir rum/peerConfig --datadir rum/peerData --keystoredir rum/keystore --loglevel debug
+./quorum fullnode \
+    --listen=/ip4/0.0.0.0/tcp/7000 \
+    --listen=/ip4/0.0.0.0/tcp/9000/ws \
+    --apiport=8000 \
+    --peer=/ip4/94.23.17.189/tcp/62777/p2p/16Uiu2HAm5waftP3s4oE1EzGF2SyWeK726P5B8BSgFJqSiz6xScGz \
+    --configdir=rum/config \
+    --datadir=rum/data \
+    --keystoredir=rum/keystore \
+    --keystorepwd=yourpassword \
+    --loglevel=debug \
+    --enabledevnetwork=false 
 ```
 
 OPTIONS:
 
 ```sh
-   --peername    default:`peer`, used in and same with `configdir` and `datadir`
-   --listen      a multiaddress for the peer service listening
-   --apihost     http api listening host, a domain or a public ip address
-   --apiport     http api listening port
-   --peer        a bootstrap peer multiaddress. Any online peer could be used for bootstrap, you can use the RUM testing bootstrap server for testing.
-   --configdir   a directory for config files. The `peer` of `peerConfig` must same as peername `peer`, eg: if `mypeer2Config`, peername must be `mypeer2`.
-   --datadir     all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
-   --keystoredir a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
-   --debug       enable logging level to debug or not
+   --listen      required. a multiaddress for the peer service listening
+   --apihost     required. http api listening host, a domain or a public ip address
+   --peer        required. a bootstrap peer multiaddress. Any online peer could be used for bootstrap, you can use the RUM testing bootstrap server for testing.
+   --configdir   optional. a directory for config files. The `peer` of `peerConfig` must same as peername `peer`, eg: if `mypeer2Config`, peername must be `mypeer2`.
+   --datadir     optional. all data storage location. The `peer` of `peerData` must same as peername `peer`, eg: if `mypeer2Data`, peername must be `mypeer2`.
+   --keystoredir optional. a directory to store private keys. All key files are password protected, and it\'s very important to keep backups of all your keys.
+   --keystorepwd optional. password for all keystores. Or using the system environment variable `RUM_KSPASSWD`.
 ```
+
+See more by running ```./quorum help``` and ```./quorum fullnode --help```.
 
 *or*
 
@@ -148,7 +158,7 @@ docker run --user 1001 \
     -p 8000:8000 \
     -p 8001:8001 \
     -e RUM_KSPASSWD='myverysecretpassword' \
-    quorum fullnode --listen /ip4/0.0.0.0/tcp/8000 --listen /ip4/0.0.0.0/tcp/8001/ws  --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u,/ip4/132.145.109.63/tcp/10666/p2p/16Uiu2HAmTovb8kAJiYK8saskzz7cRQhb45NRK5AsbtdmYsLfD3RM
+    quorum fullnode --listen /ip4/0.0.0.0/tcp/8000 --listen /ip4/0.0.0.0/tcp/8001/ws  --apiport 8002 --peer /ip4/94.23.17.189/tcp/62777/p2p/16Uiu2HAm5waftP3s4oE1EzGF2SyWeK726P5B8BSgFJqSiz6xScGz 
 ```
 
 ### Example: a private decentralized forum
@@ -315,12 +325,38 @@ Add more producers to prevent outages.
 1. Build the quorum binary by running the command: `make linux` or  `make buildall`. You can find the binary file in the `dist` dir.
 2. Add a shell script to run the peer:
 
+Using the system environment variable `RUM_KSPASSWD` or add the param `keystorepwd`.
+
+```sh
+export RUM_KSPASSWD=your_very_secret_password 
+```
+
 ```bash
-RUM_KSPASSWD=your_very_secret_password ./dist/linux_amd64/quorum fullnode --peername your_peer_name --listen /ip4/0.0.0.0/tcp/7002 --listen /ip4/0.0.0.0/tcp/7100/ws --apiport 8002 --peer /ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u --configdir /var/data/your_peer_nameConfig --datadir /var/data/your_peer_nameData --keystoredir /var/data/keystore --loglevel debug
+# run fullnode of quorum
+peername=my_first_peer
+
+./quorum fullnode \
+    --keystorepwd=your_very_secret_password \
+    --keystoredir=keystore/$peername \
+    --configdir=config/$peername \
+    --datadir=data/$peername \
+    --peer=/ip4/101.42.141.118/tcp/62777/p2p/16Uiu2HAm9uziCEHprbzJoBdG9uktUQSYuFY58eW7o5Dz7rKhRn2j \
+    --listen=/ip4/0.0.0.0/tcp/60137 \
+    --listen=/ip4/0.0.0.0/tcp/60135/ws \
+    --apiport=60136 \
+    --log-compress=true \
+    --log-max-age=7 \
+    --log-max-backups=100 \
+    --log-max-size=10 \
+    --logfile=logs/$peername/quorum.log \
+    --loglevel=debug \
+    --enabledevnetwork=false 
 ```
 
 [view OPTIONS](#run_a_peer)
 
 3. Run the shell script.
 
-Tips: You can use our public bootstrap peer ```/ip4/94.23.17.189/tcp/10666/p2p/16Uiu2HAmGTcDnhj3KVQUwVx8SGLyKBXQwfAxNayJdEwfsnUYKK4u``` or any other online peers as bootstrap.
+Tips: You can use our public bootstrap peer ```/ip4/94.23.17.189/tcp/62777/p2p/16Uiu2HAm5waftP3s4oE1EzGF2SyWeK726P5B8BSgFJqSiz6xScGz``` or any other online peers as bootstrap. 
+
+You can also run a bootstrapnode by using the following command: `./quorum bootstrapnode --help`.

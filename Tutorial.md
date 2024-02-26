@@ -4,6 +4,36 @@
 
 <span id="top"></span>
 
+## 概述：
+
+Quorum 核心的是 fullnode（全节点），大量的 fullnode 在少量 bootstrap node 的协助下构建为分布式网络。
+
+每个 fullnode 都能自主选择是否开放 api 给 lightnode（轻节点）调用来收发数据。
+
+在 quorum 这个分布式网络中，数据以 trx 的形式被归集在指定的 group 中。
+
+每个 fullnode 可以创建或加入多个 groups，每个 group 以顺序区块的方式（区块链）保存这些 trxs，也就是说，每个 rum group 都是一条独立的区块链。用户可以选择创建或加入（订阅）指定的 groups。
+
+fullnode 与 lightnode 的最大区别在于，是否需要在本地同步和保存区块链的完整数据。—— 如果用户创建/加入多个 groups，那么就有多条相应的 group 级别的区块链。fullnode 在本地同步和保管指定区块链的完整数据，lightnode 通常只需要通过 fullnode 提供的 api 筛选和保存自己所需的数据。
+
+Quorum 生态内的 apps/servers 可以是基于 fullnode 的，也可以是基于 lightnode 的。一般用户想要快速体验，推荐前往官网选择感兴趣的应用：https://rumsystem.net/apps 
+
+任选一个方式，都可启动一个 fullnode：
+
+1、采用 [rum app（全节点应用）](https://rumsystem.net/apps )，包含 quorum 主程序和图形界面的桌面应用。
+
+2、开发者友好：只需要 quorum 主程序，通过 curl 或相应语言的 sdk 使用 api 来与主程序交互。
+
+在 main 分支通过 `make linux` 编译，在 `README.md` 查看启动指令，或直接 `./quorum help` 查看完整的指令和参数帮助。
+
+还可以通过 `quorum jwt` 命令或 [api: CreateToken](https://rumsystem.github.io/quorum-api/#/Apps/post_app_api_v1_token) 来生成 role 为 chain 级的 jwt token。这类 token 掌握对 fullnode 的所有权限。本地可通过 ip:host 和 jwt 使用 api 访问和管理 fullnode。—— 连接远程节点的功能，也已经被 [rum app（全节点应用）](https://rumsystem.net/apps) 所支持。
+
+通过 `quorum jwt` 命令或 [api: CreateToken](https://rumsystem.github.io/quorum-api/#/Apps/post_app_api_v1_token) 来生成 role 为 node 级的 jwt token。这类 token 掌握对相应 group 的部分权限，比如获取 group 的所有数据，以及往链上推送数据。
+
+所有完整 api 可查阅：https://github.com/rumsystem/quorum-api 
+
+也许你需要[封装好的 sdk](https://github.com/okdaodine/awesome-quorum?tab=readme-ov-file#sdk)。
+
 ## Menu
 
 Start:

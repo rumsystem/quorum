@@ -36,7 +36,7 @@ check the version and get help:
 ./quorum bootstrapnode \
     --keystoredir=mynodes/bootstrapnode/keystore \
     --keystorename=default \
-    --keystorepass=myboot123 \
+    --keystorepwd=myboot123 \
     --configdir=mynodes/bootstrapnode/config \
     --datadir=mynodes/bootstrapnode/data \
     --listen=/ip4/0.0.0.0/tcp/50510 \
@@ -68,7 +68,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --peername=peer \
     --keystoredir=mynodes/fullnode_owner/keystore \
     --keystorename=default \
-    --keystorepass=myowner456 \
+    --keystorepwd=myowner456 \
     --configdir=mynodes/fullnode_owner/config \
     --datadir=mynodes/fullnode_owner/data \
     --certdir=mynodes/fullnode_owner/certs \
@@ -93,7 +93,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --peername=peer \
     --keystoredir=mynodes/fullnode_user/keystore \
     --keystorename=default \
-    --keystorepass=myuser456 \
+    --keystorepwd=myuser456 \
     --configdir=mynodes/fullnode_user/config \
     --datadir=mynodes/fullnode_user/data \
     --certdir=mynodes/fullnode_user/certs \
@@ -118,7 +118,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --peername=peer \
     --keystoredir=mynodes/producernode1/keystore \
     --keystorename=default \
-    --keystorepass=myproducer111 \
+    --keystorepwd=myproducer111 \
     --configdir=mynodes/producernode1/config \
     --datadir=mynodes/producernode1/data \
     --certdir=mynodes/producernode1/certs \
@@ -142,7 +142,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --peername=peer \
     --keystoredir=mynodes/producernode2/keystore \
     --keystorename=default \
-    --keystorepass=myproducer222 \
+    --keystorepwd=myproducer222 \
     --configdir=mynodes/producernode2/config \
     --datadir=mynodes/producernode2/data \
     --certdir=mynodes/producernode2/certs \
@@ -165,7 +165,7 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --peername=peer \
     --keystoredir=mynodes/producernode2/keystore \
     --keystorename=default \
-    --keystorepass=myproducer333 \
+    --keystorepwd=myproducer333 \
     --configdir=mynodes/producernode3/config \
     --datadir=mynodes/producernode3/data \
     --certdir=mynodes/producernode3/certs \
