@@ -73,7 +73,7 @@ func init() {
 	flags.String("configdir", "./config/", "config and keys dir")
 	flags.String("keystoredir", "./keystore/", "keystore dir")
 	flags.String("keystorename", "defaultkeystore", "keystore name")
-	flags.String("keystorepass", "", "keystore password")
+	flags.String("keystorepwd", "", "keystore password")
 	flags.Bool("debug", false, "show debug log")
 
 	if err := rnodeViper.BindPFlags(flags); err != nil {

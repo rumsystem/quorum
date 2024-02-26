@@ -84,7 +84,7 @@ func init() {
 	flags.String("datadir", "./data/", "data dir")
 	flags.String("keystoredir", "./keystore/", "keystore dir")
 	flags.String("keystorename", "default", "keystore name")
-	flags.String("keystorepass", "", "keystore password")
+	flags.String("keystorepwd", "", "keystore password")
 	flags.StringSlice("listen", nil, "Adds a multiaddress to the listen list, e.g.: --listen /ip4/127.0.0.1/tcp/4215 --listen /ip4/127.0.0.1/tcp/5215/ws")
 	flags.String("apihost", "localhost", "Domain or public ip addresses for api server")
 	flags.Uint("apiport", 5215, "api server listen port")
