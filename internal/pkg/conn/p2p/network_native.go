@@ -230,7 +230,7 @@ func (node *Node) ConnectPeers(ctx context.Context, peerok chan struct{}, maxpee
 					}
 					skip := false
 					for _, sp := range node.SkipPeers {
-						if sp == peer.ID.Pretty() {
+						if sp == peer.ID.String() {
 							skip = true
 						}
 					}

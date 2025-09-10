@@ -21,10 +21,16 @@ func SetAllLoggers(lvl int) {
 }
 
 func LevelFromString(level string) (int, error) {
-	l, e := log.LevelFromString(level)
+	l, e := Log_levelFromString(level)
 	return int(l), e
 }
 
 func SetPrimaryCore(core zapcore.Core) {
 	log.SetPrimaryCore(core)
+}
+
+func Log_levelFromString(level string) (log.LogLevel, error) {
+	lvl := zapcore.InfoLevel // zero value
+	err := lvl.Set(level)
+	return log.LogLevel(lvl), err
 }

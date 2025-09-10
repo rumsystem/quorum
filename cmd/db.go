@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
 	"github.com/spf13/cobra"
