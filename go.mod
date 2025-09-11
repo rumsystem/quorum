@@ -12,7 +12,7 @@ toolchain go1.24.6
 // replace github.com/libp2p/go-libp2p => ../go-libp2p
 
 require (
-	filippo.io/age v1.1.1
+	filippo.io/age v1.2.1
 	github.com/NebulousLabs/merkletree v0.0.0-20181203152040-08d5d54b07f5
 	github.com/Press-One/go-update v1.0.0
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0
