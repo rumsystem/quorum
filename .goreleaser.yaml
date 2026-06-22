@@ -1,4 +1,5 @@
 # Make sure to check the documentation at https://goreleaser.com
+version: 2
 builds:
   - id: quorum
     env:
@@ -14,33 +15,30 @@ builds:
       -w
       -X main.GitCommit={{.ShortCommit}}
     hooks:
-      # Ignores failures, this is just best effort.
-      post: find dist -name 'quorum*' -type f -print0 | xargs -n 1 -0 upx
+      post: sh -c 'command -v upx >/dev/null && find dist -name "quorum*" -type f -print0 | xargs -n 1 -0 upx || true'
 
-dockers:
-  - image_templates:
-      ["ghcr.io/rumsystem/{{ .ProjectName }}:{{ .Version }}-amd64"]
-    goarch: amd64
-    goos: linux
+dockers_v2:
+  - id: quorum
+    ids:
+      - quorum
+    images:
+      - ghcr.io/rumsystem/{{ .ProjectName }}
+    tags:
+      - "{{ .Version }}"
+      - latest
     dockerfile: Dockerfile-goreleaser
-    build_flag_templates:
-      - --platform=linux/amd64
-      - --label=org.opencontainers.image.title={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/rumsystem/{{ .ProjectName }}
-      - --label=org.opencontainers.image.version={{ .Version }}
-      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
-      - --label=org.opencontainers.image.revision={{ .FullCommit }}
-
-docker_manifests:
-  - name_template: ghcr.io/rumsystem/{{ .ProjectName }}:{{ .Version }}
-    image_templates:
-      - ghcr.io/rumsystem/{{ .ProjectName }}:{{ .Version }}-amd64
-  - name_template: ghcr.io/rumsystem/{{ .ProjectName }}:latest
-    image_templates:
-      - ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Version }}-amd64
+    platforms:
+      - linux/amd64
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.url: "https://github.com/rumsystem/{{ .ProjectName }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.created: '{{ time "2006-01-02T15:04:05Z07:00" }}'
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_
@@ -52,11 +50,12 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 release:
   github:
     owner: rumsystem

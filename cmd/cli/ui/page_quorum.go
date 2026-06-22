@@ -21,7 +21,6 @@ import (
 	"github.com/rumsystem/quorum/cmd/cli/api"
 	"github.com/rumsystem/quorum/cmd/cli/config"
 	"github.com/rumsystem/quorum/cmd/cli/model"
-	"github.com/rumsystem/quorum/cmd/cli/utils"
 	"github.com/rumsystem/quorum/pkg/pb"
 )
 
@@ -595,7 +594,7 @@ func drawQuorumGroups() {
 	// draw groupListView's content
 	groupListView.Clear()
 	for i, group := range quorumData.GetGroups().GroupInfos {
-		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.GroupStatus))
+		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.RexSyncerStatus))
 		item.SetShortcut(rune('a' + i))
 		groupListView.AddItem(item)
 	}
@@ -668,11 +667,11 @@ func drawQuorumCurrentGroup() {
 				fmt.Fprintf(groupInfoView, "Name:   %s\n", group.GroupName)
 				fmt.Fprintf(groupInfoView, "ID:     %s\n", group.GroupId)
 				fmt.Fprintf(groupInfoView, "Owner:  %s\n", group.OwnerPubKey)
-				fmt.Fprintf(groupInfoView, "HighestHeight: %d\n", group.HighestHeight)
-				fmt.Fprintf(groupInfoView, "Status: %s\n", group.GroupStatus)
+				fmt.Fprintf(groupInfoView, "Current Epoch: %d\n", group.CurrtEpoch)
+				fmt.Fprintf(groupInfoView, "Status: %s\n", group.RexSyncerStatus)
 				fmt.Fprintf(groupInfoView, "\n")
 				fmt.Fprintf(groupInfoView, "Last Update:  %s\n", time.Unix(0, group.LastUpdated))
-				fmt.Fprintf(groupInfoView, "Latest Block: %s\n", group.HighestBlockId)
+				fmt.Fprintf(groupInfoView, "Current Top Block: %d\n", group.CurrtTopBlock)
 				break
 			}
 		}
@@ -922,7 +921,6 @@ func goQuorumNick(nick string) {
 	} else {
 		cmdInput.SetLabel(fmt.Sprintf("Nickname TRX %s Sent: ", ret.TrxId))
 		cmdInput.SetText("Wait for syncing...")
-		go goAutoAckGroupTrx(curGroup)
 	}
 }
 
@@ -949,29 +947,8 @@ func goQuorumCreateContent(content string) {
 		} else {
 			cmdInput.SetLabel(fmt.Sprintf("TRX %s: ", ret.TrxId))
 			cmdInput.SetText("Syncing with peers..")
-			go goAutoAckGroupTrx(curGroup)
 			App.SetFocus(contentView)
 		}
-	}
-}
-
-func goAutoAckGroupTrx(groupId string) {
-	trxIds, err := utils.CheckTrx(groupId, "", "")
-	if err != nil {
-		Error("Failed to check trx info from pubqueue", err.Error())
-		return
-	}
-	if len(trxIds) > 0 {
-		cmdInput.SetLabel(fmt.Sprintf("[%d] TRX ACKED: ", len(trxIds)))
-		info := ""
-		for idx, tId := range trxIds {
-			if idx >= 2 {
-				info += ".."
-				break
-			}
-			info += fmt.Sprintf("%s ", tId)
-		}
-		cmdInput.SetText(info)
 	}
 }
 

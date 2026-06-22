@@ -187,7 +187,7 @@ func (r *RexService) Publish(groupid string, channelpeers []peer.ID, msg *quorum
 	//defer cancel()
 
 	for _, p := range peers {
-		if err := r.PublishToPeerId(msg, peer.Encode(p)); err == nil {
+		if err := r.PublishToPeerId(msg, p.String()); err == nil {
 			r.peerstore.Scorers().BlockProviderScorer().Touch(p)
 			rumexchangelog.Debugf("writemsg to network stream succ: %s.", p)
 			return nil

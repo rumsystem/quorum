@@ -64,7 +64,7 @@ func GetNetwork(nodehost *host.Host, nodeinfo *p2p.NodeInfo, nodeopt *options.No
 		groupnetwork.Peers = nodectx.GetNodeCtx().ListGroupPeers(group.Item.GroupId)
 		groupnetworklist = append(groupnetworklist, groupnetwork)
 	}
-	result.Peerid = (*nodehost).ID().Pretty()
+	result.Peerid = (*nodehost).ID().String()
 	result.Ethaddr = ethaddr
 	result.NatType = nodeinfo.NATType.String()
 	result.NatEnabled = nodeopt.EnableNat

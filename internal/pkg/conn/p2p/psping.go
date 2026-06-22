@@ -36,7 +36,7 @@ func NewPSPingService(ctx context.Context, ps *pubsub.PubSub, peerid peer.ID) *P
 }
 
 func (p *PSPing) EnablePing() error {
-	peerid := p.PeerId.Pretty()
+	peerid := p.PeerId.String()
 	var err error
 	topicid := fmt.Sprintf("PSPing:%s", peerid)
 	p.Topic, err = p.ps.Join(topicid)

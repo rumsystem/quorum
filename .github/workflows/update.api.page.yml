@@ -7,19 +7,18 @@ on:
 
 jobs:
   update:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: ">=1.19.0"
+          go-version: "1.25.x"
 
       - name: Checkout quorum repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Swag Init
         run: |
-          go install github.com/swaggo/swag/cmd/swag@v1.7.0
           make gen-doc
 
       - name: Check swagger.json generated
@@ -35,19 +34,19 @@ jobs:
           exit 1
 
       - name: Upload swagger.json to artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quorum-artifact
           path: docs/swagger.json
 
       - name: Checkout quorum-api repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rumsystem/quorum-api
           ssh-key: ${{ secrets.QUORUM_API_ACCESS_KEY }}
 
       - name: Download swagger.json from artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: quorum-artifact
           path: docs

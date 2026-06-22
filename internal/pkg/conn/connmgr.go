@@ -51,24 +51,6 @@ type ConnMgr struct {
 	//Rex     *p2p.RexService
 }
 
-type PsConnChanel uint
-
-const (
-	UserChannel PsConnChanel = iota
-	ProducerChannel
-)
-
-func (t PsConnChanel) String() string {
-	switch t {
-	case UserChannel:
-		return "UserChannel"
-	case ProducerChannel:
-		return "ProducerChannel"
-	default:
-		return fmt.Sprintf("%d", int(t))
-	}
-}
-
 const (
 	CLOSE_PRD_CHANN_TIMER time.Duration = 20 * time.Second
 )

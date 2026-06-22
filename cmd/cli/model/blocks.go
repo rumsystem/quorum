@@ -11,19 +11,20 @@ import (
 
 // can only check from back to front
 type BlockRangeOpt struct {
-	CurBlockId  string
-	NextBlockId string
+	CurBlockId  uint64
+	NextBlockId uint64
 	Count       int
 	Done        bool
+	Initialized bool
 }
 
-var DefaultBlockRange = BlockRangeOpt{"", "", 20, false}
+var DefaultBlockRange = BlockRangeOpt{0, 0, 20, false, false}
 
 type BlocksDataModel struct {
 	Pager         map[string]BlockRangeOpt
 	Groups        qApi.GroupInfoList
 	Blocks        []pb.Block
-	NextBlocks    map[string][]string
+	NextBlocks    map[uint64][]uint64
 	Cache         map[string][]pb.Block
 	CurGroup      string
 	TickerCh      chan struct{}
@@ -121,7 +122,7 @@ func (m *BlocksDataModel) GetBlocks() []pb.Block {
 	return m.Blocks
 }
 
-func (m *BlocksDataModel) GetBlockById(id string) *pb.Block {
+func (m *BlocksDataModel) GetBlockById(id uint64) *pb.Block {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -173,7 +174,7 @@ func (m *BlocksDataModel) SetPager(groupId string, opt BlockRangeOpt) {
 	pager[groupId] = opt
 }
 
-func (m *BlocksDataModel) SetNextBlock(prev string, next string) int {
+func (m *BlocksDataModel) SetNextBlock(prev uint64, next uint64) int {
 	m.RWMutex.Lock()
 	defer m.RWMutex.Unlock()
 
@@ -190,17 +191,17 @@ func (m *BlocksDataModel) SetNextBlock(prev string, next string) int {
 		nbmap[prev] = blocks
 		return len(blocks)
 	} else {
-		nextBlocks := []string{}
+		nextBlocks := []uint64{}
 		nextBlocks = append(nextBlocks, next)
 		nbmap[prev] = nextBlocks
 		return 1
 	}
 }
 
-func (m *BlocksDataModel) GetNextBlocks(blockId string) []string {
+func (m *BlocksDataModel) GetNextBlocks(blockId uint64) []uint64 {
 	m.RLock()
 	defer m.RUnlock()
-	ret := []string{}
+	ret := []uint64{}
 
 	ret, ok := m.NextBlocks[blockId]
 	if !ok {

@@ -77,7 +77,6 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --listen=/ip4/0.0.0.0/tcp/50610 \
     --listen=/ip4/0.0.0.0/tcp/50611/ws \
     --apiport=50613 \
-    --autoack=true \
     --log-compress=true \
     --log-max-age=7 \
     --log-max-backups=3 \
@@ -102,7 +101,6 @@ so, your bootstrap peer is `/ip4/127.0.0.1/tcp/50510/p2p/16Uiu2HAkxfXvruFGQUAURi
     --listen=/ip4/0.0.0.0/tcp/50620 \
     --listen=/ip4/0.0.0.0/tcp/50621/ws \
     --apiport=50623 \
-    --autoack=true \
     --log-compress=true \
     --log-max-age=7 \
     --log-max-backups=3 \
@@ -570,5 +568,3 @@ chain should ready for work
 p2 should start consensus sync and back to idle
 
 ### 5. Chain is fully recovered
-
-

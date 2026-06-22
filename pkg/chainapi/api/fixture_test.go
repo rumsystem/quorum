@@ -37,6 +37,11 @@ var (
 
 func TestMain(m *testing.M) {
 	fullnodes = 2
+	unlock, err := testnode.AcquireIntegrationTestLock()
+	if err != nil {
+		panic(err)
+	}
+
 	pidch := make(chan int)
 
 	go func() {
@@ -56,7 +61,6 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 	cliargs := testnode.Nodecliargs{Rextest: false}
 	var nodeInfos []*testnode.NodeInfo
-	var err error
 	nodeInfos, tempdatadir, err = testnode.RunNodesWithBootstrap(ctx, cliargs, pidch, fullnodes, 2)
 	if err != nil {
 		panic(err)
@@ -86,6 +90,7 @@ func TestMain(m *testing.M) {
 	exitVal := m.Run()
 	logger.Debug("after tests clean:", tempdatadir)
 	testnode.Cleanup(tempdatadir, nodeInfos)
+	unlock()
 	os.Exit(exitVal)
 }
 

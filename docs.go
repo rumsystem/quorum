@@ -1,3 +1,6 @@
+//go:build docs
+// +build docs
+
 package main
 
 import (

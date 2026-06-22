@@ -57,7 +57,7 @@ func (h *Handler) JoinGroupV2() echo.HandlerFunc {
 		}
 		genesisBlockBytes, err := json.Marshal(seed.GenesisBlock)
 		if err != nil {
-			msg := fmt.Sprintf("unmarshal genesis block failed with msg: %s" + err.Error())
+			msg := fmt.Sprintf("unmarshal genesis block failed with msg: %s", err.Error())
 			return rumerrors.NewBadRequestError(msg)
 		}
 

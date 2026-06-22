@@ -141,11 +141,6 @@ func cmdInputInit() {
 				exitAll()
 
 				Blocks()
-			} else if strings.HasPrefix(cmdStr, model.CommandModePubqueue.Cmd) {
-				reset("")
-				exitAll()
-
-				Pubqueue()
 			} else if strings.HasPrefix(cmdStr, model.CommandModeQuorum.Cmd) {
 				reset("")
 

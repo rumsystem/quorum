@@ -17,6 +17,6 @@ func (h *Handler) GetBootstrapNodeInfo(c echo.Context) (err error) {
 	output := make(map[string]interface{})
 	output[NODE_STATUS] = "NODE_ONLINE"
 	output[NODETYPE] = "bootstrap"
-	output[NODE_ID] = nodectx.GetNodeCtx().PeerId.Pretty()
+	output[NODE_ID] = nodectx.GetNodeCtx().PeerId.String()
 	return c.JSON(http.StatusOK, output)
 }

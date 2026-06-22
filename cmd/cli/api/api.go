@@ -130,40 +130,6 @@ func ForceSyncGroup(groupId string) (syncRes *GroupForceSyncRetStruct, err error
 	return &ret, nil
 }
 
-func GetPubQueue(groupId string, trxId string, status string) (*handlers.PubQueueInfo, error) {
-	url := fmt.Sprintf(
-		"%s/api/v1/group/%s/pubqueue?trx=%s&status=%s", ApiServer, groupId, trxId, status)
-	ret := handlers.PubQueueInfo{}
-	body, err := httpGet(url)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(body, &ret)
-	if err != nil || ret.GroupId == "" {
-		return nil, errors.New(string(body))
-	}
-	return &ret, nil
-}
-
-func PubQueueAck(trxIds []string) ([]string, error) {
-	url := fmt.Sprintf("%s/api/v1/trx/ack", ApiServer)
-	param := qApi.PubQueueAckPayload{trxIds}
-	payload, err := json.Marshal(&param)
-	if err != nil {
-		return nil, err
-	}
-	ret := []string{}
-	body, err := httpPost(url, payload)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(body, &ret)
-	if err != nil {
-		return nil, errors.New(string(body))
-	}
-	return ret, nil
-}
-
 func IsQuorumContentMessage(content ContentStruct) bool {
 	// only support Note
 	if content.TypeUrl == "quorum.pb.Object" {
@@ -184,14 +150,6 @@ func IsQuorumContentUserInfo(content ContentStruct) bool {
 		}
 	}
 	return false
-}
-
-func AddGroupConfig(groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
-	return ModifyGroupConfig("add", groupId, key, tp, value, memo)
-}
-
-func DelGroupConfig(groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
-	return ModifyGroupConfig("del", groupId, key, tp, value, memo)
 }
 
 func ModifyGroupConfig(action, groupId, key, tp, value, memo string) (*handlers.AppConfigResult, error) {
@@ -595,14 +553,12 @@ func ApproveAnnouncedProducer(groupId string, user *handlers.AnnouncedProducerLi
 	ret := &handlers.GrpProducerResult{}
 	url := ApiServer + "/api/v1/group/producer"
 
-	action := "add"
 	if removal {
-		action = "remove"
+		return nil, errors.New("producer removal is not supported by the current chain API")
 	}
 
 	data := handlers.GrpProducerParam{
-		Action:         action,
-		ProducerPubkey: user.AnnouncedPubkey,
+		ProducerPubkey: []string{user.AnnouncedPubkey},
 		GroupId:        groupId,
 		Memo:           "by cli",
 	}
