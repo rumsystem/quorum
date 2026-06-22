@@ -3,9 +3,9 @@ package chainstorage
 import (
 	"errors"
 
-	"github.com/golang/protobuf/proto"
 	s "github.com/rumsystem/quorum/internal/pkg/storage"
 	quorumpb "github.com/rumsystem/quorum/pkg/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 func (cs *Storage) AddTrxHBB(trx *quorumpb.Trx, queueId string) error {

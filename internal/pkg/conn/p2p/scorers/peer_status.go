@@ -6,9 +6,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p/peerdata"
-	//p2ptypes "github.com/prysmaticlabs/prysm/v3/beacon-chain/p2p/types"
-	//types "github.com/prysmaticlabs/prysm/v3/consensus-types/primitives"
-	//"github.com/prysmaticlabs/prysm/v3/time"
 )
 
 var _ Scorer = (*PeerStatusScorer)(nil)
@@ -18,8 +15,6 @@ var _ Scorer = (*PeerStatusScorer)(nil)
 type PeerStatusScorer struct {
 	config *PeerStatusScorerConfig
 	store  *peerdata.Store
-	//ourHeadSlot         types.Slot
-	//highestPeerHeadSlot types.Slot
 }
 
 // PeerStatusScorerConfig holds configuration parameters for peer status scoring service.
@@ -48,21 +43,7 @@ func (s *PeerStatusScorer) score(pid peer.ID) float64 {
 	if s.isBadPeer(pid) {
 		return BadPeerScore
 	}
-	score := float64(0)
-	//peerData, ok := s.store.PeerData(pid)
-	//if !ok || peerData.ChainState == nil {
-	//	return score
-	//}
-	//if peerData.ChainState.HeadSlot < s.ourHeadSlot {
-	//	return score
-	//}
-	// Calculate score as a ratio to the known maximum head slot.
-	// The closer the current peer's head slot to the maximum, the higher is the calculated score.
-	//if s.highestPeerHeadSlot > 0 {
-	//	score = float64(peerData.ChainState.HeadSlot) / float64(s.highestPeerHeadSlot)
-	//	return math.Round(score*ScoreRoundingFactor) / ScoreRoundingFactor
-	//}
-	return score
+	return 0
 }
 
 // IsBadPeer states if the peer is to be considered bad.
@@ -106,53 +87,28 @@ func (s *PeerStatusScorer) BadPeers() []peer.ID {
 	return badPeers
 }
 
-// SetPeerStatus sets chain state data for a given peer.
-//func (s *PeerStatusScorer) SetPeerStatus(pid peer.ID, chainState Status, validationError error) {
+// SetPeerStatus records the latest validation result for a given peer.
 func (s *PeerStatusScorer) SetPeerStatus(pid peer.ID, validationError error) {
 	s.store.Lock()
 	defer s.store.Unlock()
 
 	peerData := s.store.PeerDataGetOrCreate(pid)
-	//peerData.ChainState = chainState
 	peerData.ChainStateLastUpdated = time.Now()
 	peerData.ChainStateValidationError = validationError
-
-	// Update maximum known head slot (scores will be calculated with respect to that maximum value).
-	//if chainState != nil && chainState.HeadSlot > s.highestPeerHeadSlot {
-	//	s.highestPeerHeadSlot = chainState.HeadSlot
-	//}
 }
 
-// PeerStatus gets the chain state of the given remote peer.
-// This can return nil if there is no known chain state for the peer.
+// PeerStatus returns the known status placeholder for the given remote peer.
 // This will error if the peer does not exist.
-//func (s *PeerStatusScorer) PeerStatus(pid peer.ID) (Status, error) {
 func (s *PeerStatusScorer) PeerStatus(pid peer.ID) (int, error) {
 	s.store.RLock()
 	defer s.store.RUnlock()
-	//return s.peerStatus(pid)
-	return 0, nil
+	return s.peerStatus(pid)
 }
 
 // peerStatus lock-free version of PeerStatus.
-//func (s *PeerStatusScorer) peerStatus(pid peer.ID) (Status, error) {
 func (s *PeerStatusScorer) peerStatus(pid peer.ID) (int, error) {
-	//if peerData, ok := s.store.PeerData(pid); ok {
 	if _, ok := s.store.PeerData(pid); ok {
-		//if peerData.ChainState == nil {
-		//	//return nil, peerdata.ErrNoPeerStatus
-		//	return 0, peerdata.ErrNoPeerStatus
-		//}
-		//return peerData.ChainState, nil
 		return 0, nil
 	}
-	//return nil, peerdata.ErrPeerUnknown
 	return 0, peerdata.ErrPeerUnknown
 }
-
-// SetHeadSlot updates known head slot.
-//func (s *PeerStatusScorer) SetHeadSlot(slot types.Slot) {
-//	s.store.Lock()
-//	defer s.store.Unlock()
-//	s.ourHeadSlot = slot
-//}

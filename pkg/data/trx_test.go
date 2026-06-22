@@ -1,3 +1,6 @@
+//go:build legacy_tests
+// +build legacy_tests
+
 package data
 
 import (

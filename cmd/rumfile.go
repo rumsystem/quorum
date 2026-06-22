@@ -444,7 +444,7 @@ func VerifyFileFormat(filename string) (*Fileinfo, error) {
 	case ".epub":
 		return OpenEpub(filename)
 	default:
-		return nil, fmt.Errorf("unsupported file: ", ext)
+		return nil, fmt.Errorf("unsupported file: %s", ext)
 	}
 }
 

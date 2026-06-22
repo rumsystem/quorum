@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	_ "github.com/golang/protobuf/ptypes/timestamp" //import for swaggo
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	_ "github.com/multiformats/go-multiaddr" //import for swaggo
@@ -29,6 +28,7 @@ import (
 	localcrypto "github.com/rumsystem/quorum/pkg/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	_ "google.golang.org/protobuf/types/known/timestamppb" //import for swaggo
 )
 
 var (
@@ -93,7 +93,6 @@ func init() {
 	flags.StringSlice("peer", nil, "bootstrap peer address")
 	flags.String("skippeers", "", "peer id lists, will be skipped in the pubsub connection")
 	flags.String("jsontracer", "", "output tracer data to a json file")
-	flags.Bool("autoack", true, "auto ack the transactions in pubqueue")
 	flags.Bool("autorelay", true, "enable relay")
 
 	fullNodeViper = options.NewViper()

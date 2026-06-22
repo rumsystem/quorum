@@ -55,16 +55,6 @@ func (cache *QuorumDataCache) Get(key []byte) ([]byte, error) {
 	return nil, errors.New("Not found")
 }
 
-func (cache *QuorumDataCache) StartSync(interval int) {
-	if cache != nil {
-	}
-}
-
-func (cache *QuorumDataCache) StopSync() {
-	if cache != nil {
-	}
-}
-
 func Shutdown() {
 	if QCache != nil && QCache.db != nil {
 		QCache.db.Close()

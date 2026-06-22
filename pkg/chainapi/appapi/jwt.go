@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	rumerrors "github.com/rumsystem/quorum/internal/pkg/errors"
 	"github.com/rumsystem/quorum/internal/pkg/logging"
 	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
@@ -57,14 +57,13 @@ func getJWTKey() (string, error) {
 	return nodeOpt.JWT.Key, nil
 }
 
-func CustomJWTConfig(jwtKey string) middleware.JWTConfig {
-	config := middleware.JWTConfig{
+func CustomJWTConfig(jwtKey string) echojwt.Config {
+	config := echojwt.Config{
 		SigningMethod: "HS256",
 		SigningKey:    []byte(jwtKey),
-		AuthScheme:    "Bearer",
-		TokenLookup:   "header:" + echo.HeaderAuthorization,
+		TokenLookup:   "header:" + echo.HeaderAuthorization + ":Bearer ",
 		ContextKey:    jwtContextKey,
-		ParseTokenFunc: func(auth string, c echo.Context) (interface{}, error) {
+		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
 			return utils.ParseJWTToken(auth, jwtKey)
 		},
 		Skipper: rummiddleware.JWTSkipper,
@@ -283,14 +282,10 @@ func (h *Handler) ListToken(c echo.Context) error {
 }
 
 func jwtFromHeader(c echo.Context) (string, error) {
-	config := CustomJWTConfig("")
-	header := config.TokenLookup
-	authScheme := config.AuthScheme
-	parts := strings.Split(header, ":")
-	auth := c.Request().Header.Get(parts[1])
-	l := len(authScheme)
-	if len(auth) > l+1 && auth[:l] == authScheme {
-		return auth[l+1:], nil
+	auth := c.Request().Header.Get(echo.HeaderAuthorization)
+	const bearerPrefix = "Bearer "
+	if token, ok := strings.CutPrefix(auth, bearerPrefix); ok {
+		return token, nil
 	}
 	return "", errors.New("missing jwt token")
 }

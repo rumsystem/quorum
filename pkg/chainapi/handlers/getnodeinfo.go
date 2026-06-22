@@ -90,7 +90,7 @@ func GetNodeInfo(networkName string) (*NodeInfo, error) {
 	}
 
 	info.NodePublickey = p2pcrypto.ConfigEncodeKey(pubkeybytes)
-	info.NodeID = nodectx.GetNodeCtx().PeerId.Pretty()
+	info.NodeID = nodectx.GetNodeCtx().PeerId.String()
 
 	peers := nodectx.GetNodeCtx().PeersProtocol()
 	info.Peers = *peers

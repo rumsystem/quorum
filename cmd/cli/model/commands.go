@@ -36,7 +36,6 @@ var (
 	CommandModeQuorum       = Command{Cmd: "/mode.quorum", Help: "$cmd\t Switch to quorum mode(default).\n"}
 	CommandModeBlocks       = Command{Cmd: "/mode.blocks", Help: "$cmd\t Switch to blocks mode.\n"}
 	CommandModeNetwork      = Command{Cmd: "/mode.network", Help: "$cmd\t Switch to network mode.\n"}
-	CommandModePubqueue     = Command{Cmd: "/mode.pubqueue", Help: "$cmd\t Switch to pubqueue mode.\n"}
 
 	// mode quorum only
 	CommandQuorumSend = Command{Cmd: "/send", Help: "$cmd xxxx\t Send message to current group.(quorum mode only)\n"}
@@ -66,7 +65,6 @@ var BaseCommands = []Command{
 	CommandModeBlocks,
 	CommandModeQuorum,
 	CommandModeNetwork,
-	CommandModePubqueue,
 }
 
 var QuorumCommands = []Command{

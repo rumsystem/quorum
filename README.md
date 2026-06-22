@@ -72,7 +72,9 @@ A peer-to-peer system must provide economic incentive to minimize the Free-rider
 
 <span id="build_quorum"></span>
 
-Build the quorum binary by running the command: `make linux` or  `make buildall`. You can find the binary file in the `dist` dir.
+Build the quorum binary by running the command: `make linux` for Linux amd64 or `make buildall` for all supported amd64 targets. You can find the binary file in the `dist` dir.
+
+Release packaging uses GoReleaser separately: run `make goreleaser-build` for a local Linux amd64 snapshot package, `make goreleaser-build-all` for all configured snapshot packages, or `make release` for a release build.
 
 *or*
 
@@ -322,7 +324,7 @@ Add more producers to prevent outages.
 
 ### Run a RUM peer on server
 
-1. Build the quorum binary by running the command: `make linux` or  `make buildall`. You can find the binary file in the `dist` dir.
+1. Build the quorum binary by running the command: `make linux` or `make buildall`. You can find the binary file in the `dist` dir.
 2. Add a shell script to run the peer:
 
 Using the system environment variable `RUM_KSPASSWD` or add the param `keystorepwd`.

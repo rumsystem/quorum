@@ -26,7 +26,6 @@ type FullNodeFlag struct {
 	KeyStoreDir      string
 	KeyStoreName     string
 	KeyStorePwd      string
-	AutoAck          bool
 	EnableRelay      bool
 }
 
@@ -48,7 +47,6 @@ type BootstrapNodeFlag struct {
 	KeyStoreDir      string
 	KeyStoreName     string
 	KeyStorePwd      string
-	AutoAck          bool
 	EnableRelay      bool
 }
 

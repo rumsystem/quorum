@@ -1,7 +1,5 @@
 package api
 
-import qApi "github.com/rumsystem/quorum/pkg/chainapi/api"
-
 type PagerOpt struct {
 	StartTrxId string
 	Reverse    bool
@@ -173,10 +171,16 @@ type GroupForceSyncRetStruct struct {
 
 // GET /api/v1/network/peers/ping
 type PingInfoItemStruct struct {
-	Addrs       []string             `json:"addrs"`
-	Protocols   []string             `json:"protocols"`
-	RTT         [10]int64            `json:"rtt"`
-	Connections []qApi.AddrProtoPair `json:"connections"`
+	Addrs       []string        `json:"addrs"`
+	Protocols   []string        `json:"protocols"`
+	RTT         [10]int64       `json:"rtt"`
+	Connections []AddrProtoPair `json:"connections"`
+}
+
+type AddrProtoPair struct {
+	Local    string `json:"local"`
+	Remote   string `json:"remote"`
+	Protocol string `json:"protocol"`
 }
 
 // POST approve user

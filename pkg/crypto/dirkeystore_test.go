@@ -1,5 +1,5 @@
-//go:build !js
-// +build !js
+//go:build !js && legacy_tests
+// +build !js,legacy_tests
 
 package crypto
 

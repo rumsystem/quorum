@@ -27,7 +27,7 @@ var blocksPageLeft = cview.NewList()      // groups
 var blocksPageRight = cview.NewTextView() // blocks
 
 var blocksData = model.BlocksDataModel{
-	NextBlocks:    make(map[string][]string),
+	NextBlocks:    make(map[uint64][]uint64),
 	Pager:         make(map[string]model.BlockRangeOpt),
 	TickerRunning: false,
 	Counter:       0,
@@ -112,13 +112,14 @@ func initBlocksPageInputHandler() {
 			return
 		}
 		curOpt := blocksData.GetPager(curGroup)
-		if curOpt.NextBlockId != "" {
+		if !curOpt.Done {
 			blocksData.SetPager(curGroup,
 				model.BlockRangeOpt{
 					CurBlockId:  curOpt.NextBlockId,
-					NextBlockId: "",
+					NextBlockId: 0,
 					Count:       curOpt.Count,
 					Done:        false,
+					Initialized: true,
 				})
 			//clearBlocksSelection()
 			//blocksPageRight.ScrollToBeginning()
@@ -231,24 +232,20 @@ func goBlocksContent() {
 		if opt.Done {
 			return
 		}
-		if opt.CurBlockId == "" {
+		if !opt.Initialized {
 			// Get the latest block id first
 			for _, group := range blocksData.GetGroups().GroupInfos {
 				if group.GroupId == curGroup {
-					if len(group.HighestBlockId) > 0 {
-						opt.CurBlockId = group.HighestBlockId
-						blocksData.SetPager(curGroup, model.BlockRangeOpt{CurBlockId: opt.CurBlockId, NextBlockId: opt.NextBlockId, Count: opt.Count})
-					}
+					opt.CurBlockId = group.CurrtTopBlock
+					opt.Initialized = true
+					blocksData.SetPager(curGroup, opt)
 				}
 			}
-		}
-		if opt.CurBlockId == "" {
-			Error("Failed to get blocks", "Can not get HighestBlockId of this group")
-			return
 		}
 		var startBlockId = opt.CurBlockId
 		var curBlockId = opt.CurBlockId
 		var count = opt.Count
+		done := false
 		for i := 0; i < count; i++ {
 			curOpt := blocksData.GetPager(curGroup)
 			curG := blocksData.GetCurrentGroup()
@@ -256,29 +253,31 @@ func goBlocksContent() {
 				config.Logger.Warnf("Abort blocks fetching due to opts change or group change\n")
 				return
 			}
-			block, err := api.GetBlockById(curGroup, curBlockId)
+			block, err := api.GetBlockById(curGroup, strconv.FormatUint(curBlockId, 10))
 			checkFatalError(err)
 			if block == nil {
 				config.Logger.Infof("Abort blocks fetching, nil block found\n")
 				break
 			}
-			if block.PrevBlockId != "" {
-				blocks = append(blocks, *block)
-				nextBlockLen := blocksData.SetNextBlock(block.PrevBlockId, block.BlockId)
+			blocks = append(blocks, *block)
+			if curBlockId > 0 {
+				prevBlockId := curBlockId - 1
+				nextBlockLen := blocksData.SetNextBlock(prevBlockId, block.BlockId)
 				if nextBlockLen > 1 {
 					// show message
-					Error("Multiple children detected", fmt.Sprintf("Block %s has %d children", block.BlockId, nextBlockLen))
-					config.Logger.Errorf("Multiple children detected: Block %s has %d children", block.BlockId, nextBlockLen)
+					Error("Multiple children detected", fmt.Sprintf("Block %d has %d children", block.BlockId, nextBlockLen))
+					config.Logger.Errorf("Multiple children detected: Block %d has %d children", block.BlockId, nextBlockLen)
 				}
-				curBlockId = block.PrevBlockId
+				curBlockId = prevBlockId
 			} else {
 				config.Logger.Infof("blocks fetched, no prev block\n")
+				done = true
 				break
 			}
 		}
 		curOpt := blocksData.GetPager(curGroup)
 		if blocksData.GetCurrentGroup() == curGroup && curOpt.CurBlockId == startBlockId && curOpt.Count == count {
-			blocksData.SetPager(curGroup, model.BlockRangeOpt{CurBlockId: startBlockId, NextBlockId: curBlockId, Count: curOpt.Count, Done: true})
+			blocksData.SetPager(curGroup, model.BlockRangeOpt{CurBlockId: startBlockId, NextBlockId: curBlockId, Count: curOpt.Count, Done: done, Initialized: true})
 			// safe to update
 			curBlocks := blocksData.GetBlocks()
 			blocksData.SetBlocks(append(curBlocks, blocks...))
@@ -295,7 +294,7 @@ func goBlocksContent() {
 func drawBlocksGroups() {
 	blocksPageLeft.Clear()
 	for i, group := range blocksData.GetGroups().GroupInfos {
-		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.GroupStatus))
+		item := cview.NewListItem(fmt.Sprintf("%s(%s)", group.GroupName, group.RexSyncerStatus))
 		item.SetShortcut(rune('a' + i))
 		blocksPageLeft.AddItem(item)
 	}
@@ -337,11 +336,11 @@ func drawBlocksContent() {
 			fmt.Fprintf(blocksPageRight, "Name:   %s\n", group.GroupName)
 			fmt.Fprintf(blocksPageRight, "ID:     %s\n", group.GroupId)
 			fmt.Fprintf(blocksPageRight, "Owner:  %s\n", group.OwnerPubKey)
-			fmt.Fprintf(blocksPageRight, "HighestHeight: %d\n", group.HighestHeight)
-			fmt.Fprintf(blocksPageRight, "Status: %s\n", group.GroupStatus)
+			fmt.Fprintf(blocksPageRight, "Current Epoch: %d\n", group.CurrtEpoch)
+			fmt.Fprintf(blocksPageRight, "Status: %s\n", group.RexSyncerStatus)
 			fmt.Fprintf(blocksPageRight, "\n")
 			fmt.Fprintf(blocksPageRight, "Last Update:  %s\n", time.Unix(0, group.LastUpdated))
-			fmt.Fprintf(blocksPageRight, "Highest Block: %s\n", group.HighestBlockId)
+			fmt.Fprintf(blocksPageRight, "Current Top Block: %d\n", group.CurrtTopBlock)
 			break
 		}
 	}
@@ -349,11 +348,11 @@ func drawBlocksContent() {
 
 	blocks := blocksData.GetBlocks()
 	for i, block := range blocks {
-		fmt.Fprintf(blocksPageRight, "[\"%d\"][::b]%s[-:-:-]\n", i, block.BlockId)
+		fmt.Fprintf(blocksPageRight, "[\"%d\"][::b]%d[-:-:-]\n", i, block.BlockId)
 		fmt.Fprintf(blocksPageRight, "%s\n", time.Unix(0, block.TimeStamp))
 
-		fmt.Fprintf(blocksPageRight, "Hash: %s\n", hex.EncodeToString(block.Hash))
-		fmt.Fprintf(blocksPageRight, "Signature: %s\n", hex.EncodeToString(block.Signature))
+		fmt.Fprintf(blocksPageRight, "Hash: %s\n", hex.EncodeToString(block.BlockHash))
+		fmt.Fprintf(blocksPageRight, "Signature: %s\n", hex.EncodeToString(block.ProducerSign))
 		fmt.Fprintf(blocksPageRight, "Trxs:\n")
 		for _, trx := range block.Trxs {
 			fmt.Fprintf(blocksPageRight, "\t- trx %s\n", trx.TrxId)
@@ -379,7 +378,7 @@ func drawBlocksContent() {
 
 		fmt.Fprintf(blocksPageRight, "Children:\n")
 		for _, child := range blocksData.GetNextBlocks(block.BlockId) {
-			fmt.Fprintf(blocksPageRight, "\t- blk %s\n", child)
+			fmt.Fprintf(blocksPageRight, "\t- blk %d\n", child)
 		}
 		fmt.Fprintf(blocksPageRight, "\n\n")
 	}
@@ -398,11 +397,17 @@ func jumpToBlock(id string) {
 		Error("No Group in selection", "Please select a group first.")
 		return
 	}
-	curOpt := blocksData.GetPager(curGroup)
-	if curOpt.CurBlockId == id {
+	blockId, err := strconv.ParseUint(strings.TrimSpace(id), 10, 64)
+	if err != nil {
+		Error("Invalid block id", err.Error())
 		return
 	}
-	blocksData.SetPager(curGroup, model.BlockRangeOpt{CurBlockId: id, Count: curOpt.Count})
+	curOpt := blocksData.GetPager(curGroup)
+	if curOpt.CurBlockId == blockId {
+		return
+	}
+	blocksData.SetPager(curGroup, model.BlockRangeOpt{CurBlockId: blockId, Count: curOpt.Count, Initialized: true})
+	blocksData.SetBlocks([]pb.Block{})
 	go goBlocksContent()
 	clearBlocksSelection()
 	blocksPageRight.ScrollToBeginning()

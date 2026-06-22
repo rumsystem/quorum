@@ -6,8 +6,8 @@ import (
 	"os"
 	"syscall"
 
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/rumsystem/ip-cert/pkg/zerossl"
 	"github.com/rumsystem/quorum/internal/pkg/conn/p2p"
 	rummiddleware "github.com/rumsystem/quorum/internal/pkg/middleware"
@@ -33,7 +33,7 @@ func StartBootstrapNodeServer(config StartServerParam, signalch chan os.Signal, 
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
-	e.Use(middleware.JWTWithConfig(customJWTConfig))
+	e.Use(echojwt.WithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.LocalhostSkipper,
 		Policy:    policyStr,
@@ -68,7 +68,7 @@ func StartProducerServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
-	e.Use(middleware.JWTWithConfig(customJWTConfig))
+	e.Use(echojwt.WithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.LocalhostSkipper,
 		Policy:    policyStr,
@@ -126,7 +126,7 @@ func StartFullNodeServer(config StartServerParam, signalch chan os.Signal, h *Ha
 	quitch = signalch
 	e := utils.NewEcho(config.IsDebug)
 	customJWTConfig := appapi.CustomJWTConfig(nodeopt.JWT.Key)
-	e.Use(middleware.JWTWithConfig(customJWTConfig))
+	e.Use(echojwt.WithConfig(customJWTConfig))
 	e.Use(rummiddleware.OpaWithConfig(rummiddleware.OpaConfig{
 		Skipper:   rummiddleware.JWTSkipper,
 		Policy:    policyStr,

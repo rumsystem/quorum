@@ -43,7 +43,6 @@ func Init() {
 	adminPageInit()
 	chainConfigPageInit()
 	networkPageInit()
-	pubqueuePageInit()
 
 	// display groups
 	App.EnableMouse(false)

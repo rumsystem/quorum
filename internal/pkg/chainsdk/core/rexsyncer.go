@@ -136,8 +136,6 @@ func (rs *RexSyncer) Stop() {
 	rs.Status = CLOSED
 	rs.mustatus.Unlock()
 	// TODO: don't close channel until destory all related timers
-	//safeCloseTaskQ(rs.taskq)
-	//safeCloseResultQ(rs.resultq)
 	rex_syncer_log.Debugf("<%s> rexsyncer stop success.", rs.GroupId)
 }
 
@@ -155,45 +153,6 @@ func (rs *RexSyncer) GetLastRexSyncResult() (*def.RexSyncResult, error) {
 	return rs.LastSyncResult, nil
 }
 
-func safeClose(ch chan struct{}) (recovered bool) {
-	defer func() {
-		if recover() != nil {
-			recovered = true
-		}
-	}()
-	if ch == nil {
-		return false
-	}
-	close(ch)
-	return false
-}
-
-func safeCloseTaskQ(ch chan *SyncTask) (recovered bool) {
-	defer func() {
-		if recover() != nil {
-			recovered = true
-		}
-	}()
-	if ch == nil {
-		return false
-	}
-	close(ch)
-	return false
-}
-
-func safeCloseResultQ(ch chan *SyncResult) (recovered bool) {
-	defer func() {
-		if recover() != nil {
-			recovered = true
-		}
-	}()
-	if ch == nil {
-		return false
-	}
-	close(ch)
-	return false
-}
-
 func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask, cancel context.CancelFunc) error {
 	//TODO: close this goroutine when the processTask func return. add some defer signal?
 	rex_syncer_log.Debugf("runTask called, taskId <%d>, retry <%d>", task.TaskId, rs.CurrRetryCount)
@@ -208,8 +167,6 @@ func (rs *RexSyncer) runTask(ctx context.Context, task *SyncTask, cancel context
 	}()
 
 	select {
-	//case <-rs.taskdone:
-	//	return nil
 	case <-ctx.Done():
 		switch ctx.Err() {
 		case context.DeadlineExceeded:
@@ -354,7 +311,6 @@ func (rs *RexSyncer) handleResult(result *SyncResult) error {
 		NextSyncTaskTimeStamp: -1,
 	}
 
-	//rs.taskdone <- struct{}{}
 	if rs.CurrentTaskCancel != nil {
 		rs.CurrentTaskCancel()
 	}

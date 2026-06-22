@@ -571,4 +571,3 @@ p2 should start consensus sync and back to idle
 
 ### 5. Chain is fully recovered
 
-

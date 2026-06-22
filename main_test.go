@@ -75,6 +75,11 @@ func TestMain(m *testing.M) {
 		return
 	}
 
+	unlock, err := testnode.AcquireIntegrationTestLock()
+	if err != nil {
+		panic(err)
+	}
+
 	logger.Debugf("Setup test env")
 	logger.Debugf(">>> full nodes: <%d>", fullnodes)
 	logger.Debugf(">>> producer nodes: <%d>", producernodes)
@@ -115,6 +120,7 @@ func TestMain(m *testing.M) {
 	exitVal := m.Run()
 	logger.Debug("all tests finished, clean up:", tempdatadir)
 	testnode.Cleanup(tempdatadir, nodelist)
+	unlock()
 	os.Exit(exitVal)
 }
 
