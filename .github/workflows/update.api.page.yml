@@ -7,7 +7,7 @@ on:
 
 jobs:
   update:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
@@ -34,19 +34,19 @@ jobs:
           exit 1
 
       - name: Upload swagger.json to artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quorum-artifact
           path: docs/swagger.json
 
       - name: Checkout quorum-api repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: rumsystem/quorum-api
           ssh-key: ${{ secrets.QUORUM_API_ACCESS_KEY }}
 
       - name: Download swagger.json from artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: quorum-artifact
           path: docs
